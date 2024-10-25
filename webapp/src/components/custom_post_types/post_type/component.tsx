@@ -80,19 +80,30 @@ const PostType = ({
         }
     };
 
-    const recordings = callProps.recording_files?.length || 0;
+    const recordings = Object.values(callProps.recordings).filter(job => Boolean(job.file_id)).map(job => job.file_id);
+    const transcriptions = Object.values(callProps.transcriptions).filter(job => Boolean(job.file_id)).map(job => job.file_id);
 
-    const recordingsSubMessage = recordings > 0 ? (
-        <RecordingsContainer>
+    const recordingsSubMessage = recordings.length > 0 ? (
+        <ArtifactsContainer>
             <CompassIcon
                 icon='file-video-outline'
                 style={{display: 'inline', fontSize: '16px'}}
             />
-            <span>{formatMessage({defaultMessage: '{count, plural, =1 {# recording} other {# recordings}}'}, {count: recordings})}</span>
-        </RecordingsContainer>
+            <span>{formatMessage({defaultMessage: '{count, plural, =1 {# recording} other {# recordings}}'}, {count: recordings.length})}</span>
+        </ArtifactsContainer>
     ) : null;
 
-    const subMessage = callProps.start_at && callProps.end_at ? (
+    const transcriptionsSubMessage = recordings.length > 0 ? (
+        <ArtifactsContainer>
+            <CompassIcon
+                icon='file-text-outline'
+                style={{display: 'inline', fontSize: '16px'}}
+            />
+            <span>{formatMessage({defaultMessage: '{count, plural, =1 {# transcription} other {# transcriptions}}'}, {count: transcriptions.length})}</span>
+        </ArtifactsContainer>
+    ) : null;
+
+    const subMessage = callProps.start_at > 0 && callProps.end_at > 0 ? (
         <>
             <span>
                 {formatMessage(
@@ -159,7 +170,7 @@ const PostType = ({
 
     const compactTitle = compactDisplay && !isRHS ? <br/> : <></>;
     const title = callProps.title ? <h3 className='markdown__heading'>{callProps.title}</h3> : compactTitle;
-    const callActive = !callProps.end_at;
+    const callActive = callProps.end_at === 0;
     const inCall = connectedID === post.channel_id;
     const iconAndText = (
         <>
@@ -189,14 +200,14 @@ const PostType = ({
             <Main data-testid={'call-thread'}>
                 <SubMain>
                     <Left>
-                        <CallIndicator $ended={Boolean(callProps.end_at)}>
-                            {!callProps.end_at &&
+                        <CallIndicator $ended={!callActive}>
+                            {callActive &&
                                 <ActiveCallIcon
                                     fill='var(--center-channel-bg)'
                                     style={{width: '20px', height: '20px'}}
                                 />
                             }
-                            {callProps.end_at &&
+                            {!callActive &&
                                 <LeaveCallIcon
                                     fill={'rgba(var(--center-channel-color-rgb), 0.72)'}
                                     style={{width: '24px', height: '20px'}}
@@ -205,17 +216,17 @@ const PostType = ({
                         </CallIndicator>
                         <MessageWrapper>
                             <Message>
-                                {!callProps.end_at &&
+                                {callActive &&
                                     formatMessage({defaultMessage: 'Call started'})
                                 }
-                                {callProps.end_at &&
+                                {!callActive &&
                                     formatMessage({defaultMessage: 'Call ended'})
                                 }
                             </Message>
                             <SubMessage>{subMessage}</SubMessage>
                         </MessageWrapper>
                     </Left>
-                    { (recordings > 0 || callActive) && <RowDivider/> }
+                    { (recordings.length > 0 || callActive) && <RowDivider/> }
                     <Right>
                         {callActive &&
                             <>
@@ -231,7 +242,8 @@ const PostType = ({
                                 {button}
                             </>
                         }
-                        {recordingsSubMessage}
+                        {recordings.length > 0 && recordingsSubMessage}
+                        {transcriptions.length > 0 && transcriptionsSubMessage}
                     </Right>
                 </SubMain>
             </Main>
@@ -428,7 +440,7 @@ const Divider = styled.span`
     margin: 0 4px;
 `;
 
-const RecordingsContainer = styled.div`
+const ArtifactsContainer = styled.div`
     display: flex;
     align-items: center;
     font-size: 12px;
