@@ -1,0 +1,35 @@
+version: '2.4'
+services:
+  postgres:
+    image: "postgres:11"
+    restart: always
+    tmpfs: /var/lib/postgresql/data
+    networks:
+      default:
+        aliases:
+          - postgres
+    environment:
+      POSTGRES_USER: mmuser
+      POSTGRES_PASSWORD: mostest
+      POSTGRES_DB: mattermost_test
+    command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
+    volumes:
+     - "./postgres.conf:/etc/postgresql/postgresql.conf"
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-h", "localhost" ]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+
+  start_dependencies:
+    image: mattermost/mattermost-wait-for-dep:latest
+    depends_on:
+      - postgres
+    command: postgres:5432
+    networks:
+      default:
+
+networks:
+  default:
+    name: ${DOCKER_NETWORK}
+    external: true
