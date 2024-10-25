@@ -319,6 +319,7 @@
   "yO68rk": "Die Anrufe laufen derzeit im Testmodus, und nur Systemadministratoren können sie starten. Wende dich für Hilfe direkt an deinen Systemadministrator",
   "yfYHc5": "ICE Host Override",
   "yjQNKt": "Anrufe sind in diesem Kanal deaktiviert.",
+  "yx0b7N": "{count, plural, =1 {# Transkription} other {# Transkriptionen}}",
   "zMlIqq": "Diese Einstellung ist deaktiviert, da der Server nicht lizenziert ist und Anrufe nur in DM-Kanälen möglich sind.",
   "zUH89x": "Die Gesprächsaufzeichnung wird verarbeitet und in der Gesprächs-Unterhaltung gepostet. Bist du sicher, dass du die Aufzeichnung beenden willst?",
   "zx0myy": "Teilnehmer",
