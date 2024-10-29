@@ -2,6 +2,7 @@ import './component.scss';
 
 import {DesktopCaptureSource} from '@mattermost/desktop-api';
 import React, {CSSProperties} from 'react';
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {logDebug, logErr} from 'src/log';
@@ -30,7 +31,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            zIndex: 10000,
+            zIndex: 1000,
             background: 'rgba(0, 0, 0, 0.64)',
         },
         modal: {
@@ -133,7 +134,17 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                             src={source.thumbnailURL}
                         />
                     </div>
-                    <span style={this.style.sourceLabel as CSSProperties}>{source.name}</span>
+
+                    <OverlayTrigger
+                        placement='bottom'
+                        overlay={
+                            <Tooltip id='tooltip-screen-source-name'>
+                                {source.name}
+                            </Tooltip>
+                        }
+                    >
+                        <span style={this.style.sourceLabel as CSSProperties}>{source.name}</span>
+                    </OverlayTrigger>
                 </button>
             );
         });
