@@ -15,7 +15,6 @@ import (
 )
 
 func TestCallsStore(t *testing.T) {
-	t.Parallel()
 	testStore(t, map[string]func(t *testing.T, store *Store){
 		"TestCreateCall":               testCreateCall,
 		"TestDeleteCall":               testDeleteCall,

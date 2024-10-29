@@ -14,7 +14,6 @@ import (
 )
 
 func TestCallsChannelsStore(t *testing.T) {
-	t.Parallel()
 	testStore(t, map[string]func(t *testing.T, store *Store){
 		"TestCreateCallsChannel":  testCreateCallsChannel,
 		"TestUpdateCallsChannel":  testUpdateCallsChannel,

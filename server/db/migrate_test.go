@@ -18,8 +18,6 @@ func TestMigrate(t *testing.T) {
 		binaryParams := name == "postgres_binary_params"
 
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
 			store, tearDown := newPostgresStore(t, binaryParams)
 			require.NotNil(t, store)
 			t.Cleanup(tearDown)
@@ -148,8 +146,6 @@ func TestMigrate(t *testing.T) {
 	}
 
 	t.Run("mysql", func(t *testing.T) {
-		t.Parallel()
-
 		store, tearDown := newMySQLStore(t)
 		require.NotNil(t, store)
 		t.Cleanup(tearDown)
