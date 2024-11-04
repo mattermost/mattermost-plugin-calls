@@ -10,8 +10,9 @@ export default function AllowScreenSharing(props: CustomComponentProps) {
         props.onChange(props.id, e.target.value === 'true');
     };
 
+    // This setting has a default of true so we need to handle the unset case.
     // @ts-ignore val is a boolean, but the signature says 'string'. (being defensive here, just in case)
-    const checked = props.value === 'true' || props.value === true;
+    const checked = typeof props.value === 'undefined' || props.value === 'true' || props.value === true;
 
     return (
         <div

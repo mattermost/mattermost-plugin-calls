@@ -78,5 +78,9 @@ test.describe('admin console', () => {
         // Check dropdown input
         await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.recordingqualitydropdown').selectOption('High');
         await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.recordingquality')).toMatchSnapshot('calls-system-console-recording-quality.png');
+
+        // Ensure AllowScreenSharing defaults to true
+        await expect(page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.allowscreensharingtrue')).toBeChecked();
+        await expect(page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.allowscreensharingfalse')).not.toBeChecked();
     });
 });
