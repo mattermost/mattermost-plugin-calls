@@ -52,33 +52,6 @@ jobs:
           compression-level: 0
           retention-days: 1
 
-  build-calls-transcriber:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: e2e/checkout-transcriber-repo
-        uses: actions/checkout@v4
-        with:
-          repository: mattermost/calls-transcriber
-          path: calls-transcriber
-
-      - name: e2e/setup-docker-buildx
-        uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb # v3.3.0
-
-      - name: e2e/build-image
-        working-directory: ./calls-transcriber
-        run: |
-          make docker-build CI=false
-          docker save --output calls-transcriber.tar calls-transcriber:master
-
-      - name: e2e/persist-mattermost-calls-transcriber-image
-        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
-        with:
-          name: mattermost-plugin-calls-transcriber-image
-          path: ${{ github.workspace }}/calls-transcriber/calls-transcriber.tar
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 1
-
   generate-matrix:
     runs-on: ubuntu-22.04
     outputs:
@@ -95,7 +68,6 @@ jobs:
     runs-on: ubuntu-22.04
     needs:
       - build-mattermost-plugin-calls
-      - build-calls-transcriber
       - generate-matrix
     env:
       COMPOSE_PROJECT_NAME: playwright_tests
@@ -103,6 +75,7 @@ jobs:
       CONTAINER_SERVER: playwright_tests_server
       IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.8.0
       IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.7.6
+      IMAGE_CALLS_TRANSCRIBER: mattermost/calls-recorder:v0.5.0
       IMAGE_SERVER: mattermostdevelopment/mattermost-enterprise-edition:master
       IMAGE_CURL: curlimages/curl:8.7.1
       CI_NODE_INDEX: ${{ matrix.run_id }}
@@ -149,12 +122,6 @@ jobs:
           name: mattermost-plugin-calls-package
           path: dist
 
-      - name: e2e/download-calls-transcriber-image
-        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
-        with:
-          name: mattermost-plugin-calls-transcriber-image
-          path: ${{ github.workspace }}
-
       - name: e2e/docker-login
         uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
         # Do not authenticate on Forks
@@ -168,7 +135,6 @@ jobs:
           DOCKER_CLIENT_TIMEOUT: 120
           COMPOSE_HTTP_TIMEOUT: 120
           DOCKER_COMPOSE_FILE: ${{ github.workspace }}/e2e/docker/docker-compose.yaml
-          TRANSCRIBER_IMAGE_PATH: ${{ github.workspace }}/calls-transcriber.tar
         run: |
           mkdir -p ${{ github.workspace }}/logs
           mkdir -p ${{ github.workspace }}/config

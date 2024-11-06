@@ -13,13 +13,15 @@ echo "Pulling ${IMAGE_CALLS_RECORDER} in order to be quickly accessible ... "
 # Pull calls-recorder image to be used by calls-offloader.
 docker pull ${IMAGE_CALLS_RECORDER}
 
-## Load calls-transcriber image
-docker load --input ${TRANSCRIBER_IMAGE_PATH}
+echo "Pulling ${IMAGE_CALLS_TRANSCRIBER} in order to be quickly accessible ... "
+# Pull calls-transcriber image to be used by calls-offloader.
+docker pull ${IMAGE_CALLS_TRANSCRIBER}
 
 # We retag the official images so they can be run instead of the expected local
 # one (DEV_MODE=true). Alternatively we'd have to build our own image from scratch or make
 # some CI specific changes on the offloader.
 docker image tag ${IMAGE_CALLS_RECORDER} calls-recorder:master
+docker image tag ${IMAGE_CALLS_TRANSCRIBER} calls-transcriber:master
 
 ## Print images info
 docker images
