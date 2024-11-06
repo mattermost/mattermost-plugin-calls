@@ -30,6 +30,12 @@ const config: PlaywrightTestConfig = {
                 '--auto-select-desktop-capture-source="Entire screen"',
                 '--use-file-for-fake-audio-capture=./assets/sample.wav',
             ],
+            firefoxUserPrefs: {
+                'media.navigator.streams.fake': true,
+                'permissions.default.microphone': 1,
+                'permissions.default.camera': 1,
+                'media.navigator.permission.disabled': true,
+            },
         },
 
         // Unfortunately waitForFunction is flaky and randomly returns CSP failures.
@@ -46,6 +52,14 @@ const config: PlaywrightTestConfig = {
         {
             name: 'webkit',
         },
+
+        // NOTE: https://mattermost.atlassian.net/browse/MM-61558
+        // {
+        //     name: 'firefox',
+        //     use: {
+        //         browserName: 'firefox',
+        //     },
+        // },
     ] : [
         {
             name: 'chromium',
