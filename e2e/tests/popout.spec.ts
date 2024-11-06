@@ -420,3 +420,43 @@ test.describe('popout window - reactions', () => {
         await expect(popOut.locator('#calls-popout-emoji-picker')).toBeHidden();
     });
 });
+
+test.describe('popout window - screen sharing', () => {
+    test.use({storageState: userStorages[0]});
+
+    test('player renders correctly', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.goto();
+        await devPage.startCall();
+
+        const [popOut] = await Promise.all([
+            context.waitForEvent('page'),
+            page.click('#calls-widget-expand-button'),
+        ]);
+
+        await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+
+        // Verify screen player is hidden
+        await expect(popOut.locator('#screen-player')).toBeHidden();
+
+        // Start screen sharing
+        await popOut.locator('#calls-popout-screenshare-button').click();
+
+        // Verify screen player is visible
+        await expect(popOut.locator('#screen-player')).toBeVisible();
+
+        // Verify the player is actually showing something
+        const box = await popOut.locator('#screen-player').boundingBox();
+        expect(box?.width).toBeGreaterThan(1000);
+        expect(box?.height).toBeGreaterThan(500);
+
+        // Stop screen sharing
+        await popOut.locator('#calls-popout-screenshare-button').click();
+
+        // Verify screen player is now hidden
+        await expect(popOut.locator('#screen-player')).toBeHidden();
+
+        // Leave call
+        await devPage.leaveCall();
+    });
+});
