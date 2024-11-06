@@ -52,6 +52,8 @@ const config: PlaywrightTestConfig = {
         {
             name: 'webkit',
         },
+
+        // NOTE: https://mattermost.atlassian.net/browse/MM-61558
         // {
         //     name: 'firefox',
         //     use: {
