@@ -69,7 +69,7 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
                     border={false}
                 />
                 <OverlayTrigger
-                    placement='top'
+                    placement={onWidget && window.desktop ? 'bottom' : 'top'}
                     overlay={
                         <Tooltip id='tooltip-invite-message'>
                             {tooltip}
