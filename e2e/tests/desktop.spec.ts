@@ -100,7 +100,7 @@ test.describe('desktop', () => {
                     message: [
                         {id: '1', name: 'source_1', thumbnailURL},
                         {id: '2', name: 'source_2', thumbnailURL},
-                        {id: '3', name: 'source_3', thumbnailURL},
+                        {id: '3', name: 'very very very very very long source name', thumbnailURL},
                     ],
                 },
                 window.location.origin);
@@ -113,9 +113,17 @@ test.describe('desktop', () => {
         await page.locator('#calls-widget-menu-screenshare').click();
         await expect(page.locator('#calls-screen-source-modal')).toBeVisible();
         expect(await page.locator('#calls-screen-source-modal').screenshot()).toMatchSnapshot('calls-screen-source-modal.png');
+
+        // Verify tooltip shows correctly
+        await page.getByText('very very').hover();
+        await expect(page.locator('#tooltip-screen-source-name')).toBeVisible();
+        await expect(page.locator('#tooltip-screen-source-name')).toContainText('very very very very very long source name');
+
         await page.locator('#calls-screen-source-modal button:has-text("source_2")').click();
+
         await page.locator('#calls-screen-source-modal button:has-text("Share")').click();
         await expect(page.locator('#calls-screen-source-modal')).toBeHidden();
+
         await devPage.leaveCall();
     });
 
