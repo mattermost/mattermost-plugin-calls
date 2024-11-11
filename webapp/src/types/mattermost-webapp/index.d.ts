@@ -1,13 +1,23 @@
 import {Channel} from '@mattermost/types/channels';
 import {CommandArgs} from '@mattermost/types/integrations';
 import {PluginConfiguration} from '@mattermost/types/plugins/user_settings';
-import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {PluginSiteStatsHandler} from '@mattermost/types/store/plugin';
+import type {
+    AdminConsolePluginComponent,
+    AdminConsolePluginCustomSection,
+    CallButtonAction,
+    ChannelHeaderAction,
+    ChannelHeaderButtonAction,
+    CustomRouteComponent,
+    DesktopNotificationHook,
+    FilePreviewComponent,
+    NeedsTeamComponent,
+    SlashCommandWillBePostedHook,
+} from '@mattermost/types/store/plugins';
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import {Store as BaseStore} from 'redux';
 import {ThunkDispatch} from 'redux-thunk';
-import {RealNewPostMessageProps} from 'src/types/types';
 
 export type Translations = {
     [key: string]: string;
@@ -40,25 +50,22 @@ export interface PluginRegistry {
 
     registerChannelToastComponent(component: React.ElementType);
 
-    registerChannelHeaderButtonAction(component: React.ElementType, fn: (channel: Channel) => void);
+    registerChannelHeaderButtonAction(component: React.ElementType, action: ChannelHeaderButtonAction['action']);
 
-    registerChannelHeaderMenuAction(component: React.ElementType, fn: (channelID: string) => void);
+    registerChannelHeaderMenuAction(component: React.ElementType, action: ChannelHeaderAction['action']);
 
     registerWebSocketEventHandler(evType: string, fn: (event: WebSocketEvent) => void);
 
-    registerCustomRoute(route: string, component: React.ElementType);
+    registerCustomRoute(route: string, component: CustomRouteComponent['component']);
 
-    registerNeedsTeamRoute(route: string, component: React.ElementType);
+    registerNeedsTeamRoute(route: string, component: NeedsTeamComponent['component']);
 
-    registerSlashCommandWillBePostedHook(hook: (message: string, args: CommandArgs) => SlashCommandWillBePostedReturn);
+    registerSlashCommandWillBePostedHook(hook: SlashCommandWillBePostedHook['hook']);
 
     // registerDesktopNotificationHook requires MM v8.1
-    registerDesktopNotificationHook(hook: (post: Post, msgProps: RealNewPostMessageProps, channel: Channel, teamId: string, args: DesktopNotificationArgs) => Promise<{
-        error?: string;
-        args?: DesktopNotificationArgs;
-    }>)
+    registerDesktopNotificationHook(hook: DesktopNotificationHook['hook'])
 
-    registerCallButtonAction(button: React.ElementType, dropdownButton: React.ElementType, fn: (channel: Channel) => void);
+    registerCallButtonAction(button: React.ElementType, dropdownButton: React.ElementType, action: CallButtonAction['action']);
 
     unregisterComponent(componentID: string);
 
@@ -68,15 +75,15 @@ export interface PluginRegistry {
 
     unregisterReconnectHandler(handler: () => void);
 
-    registerAdminConsoleCustomSetting(key: string, component: React.FunctionComponent<CustomComponentProps>, options?: { showTitle: boolean });
+    registerAdminConsoleCustomSetting(key: string, component: AdminConsolePluginComponent['component'], options?: { showTitle: boolean });
 
     registerTranslations(handler: (locale: string) => Translations | Promise<Translations>);
 
-    registerFilePreviewComponent(overrideFn: (fi: FileInfo, post?: Post) => boolean, component: React.ElementType);
+    registerFilePreviewComponent(overrideFn: FilePreviewComponent['override'], component: FilePreviewComponent['component']);
 
     registerSiteStatisticsHandler(handler: PluginSiteStatsHandler);
 
-    registerAdminConsoleCustomSection(key: string, component: React.FunctionComponent<{ settingsList: ReactNode[]; }>);
+    registerAdminConsoleCustomSection(key: string, component: AdminConsolePluginCustomSection['component']);
 
     registerUserSettings(settings: PluginConfiguration);
 }
