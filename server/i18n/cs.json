@@ -5,7 +5,7 @@
     },
     {
         "id": "app.admin.concurrent_sessions_warning.enterprise",
-        "translation": "Důrazně doporučujeme nasadit službu RTCD pro přenesení zpracování hovorů na samostatnou instanci, aby byla zachována výkonnost, škálovatelnost a spolehlivost vašeho hlavního serveru Mattermost."
+        "translation": "Důrazně doporučujeme [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) pro přenesení zpracování hovorů na samostatnou instanci, aby byla zachována výkonnost, škálovatelnost a spolehlivost vašeho hlavního serveru Mattermost."
     },
     {
         "id": "app.admin.concurrent_sessions_warning.intro",
@@ -13,11 +13,11 @@
     },
     {
         "id": "app.admin.concurrent_sessions_warning.team",
-        "translation": "Důrazně doporučujeme přejít na Mattermost Enterprise Edition a nasadit službu RTCD pro přenesení zpracování hovorů na samostatnou instanci, aby byla zachována výkonnost, škálovatelnost a spolehlivost vašeho hlavního serveru Mattermost."
+        "translation": "Důrazně doporučujeme přejít na [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) a [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) pro přenesení zpracování hovorů na samostatnou instanci, aby byla zachována výkonnost, škálovatelnost a spolehlivost vašeho hlavního serveru Mattermost."
     },
     {
         "id": "app.call.ended_message",
-        "translation": "Hovor ukončen"
+        "translation": "Hovor skončil"
     },
     {
         "id": "app.call.new_recording_and_transcription_message",
@@ -29,6 +29,30 @@
     },
     {
         "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
-        "translation": "Důrazně doporučujeme přejít na Enterprise verzi a nasadit službu RTCD pro přenesení zpracování hovorů na samostatnou instanci, aby byla zachována výkonnost, škálovatelnost a spolehlivost vašeho hlavního serveru Mattermost."
+        "translation": "Důrazně doporučujeme přejít na[Enterprise](https://mattermost.com/pricing/) a [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) pro přenesení zpracování hovorů na samostatnou instanci, aby byla zachována výkonnost, škálovatelnost a spolehlivost vašeho hlavního serveru Mattermost."
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "Zde je přepis hovoru"
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Username}} začal hovor"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}} začal hovor"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "Byli jste pozváni na hovor"
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}} vás zve k hovoru"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "Nepodařilo se uložit konfiguraci."
     }
 ]
