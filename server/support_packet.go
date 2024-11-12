@@ -30,7 +30,7 @@ type SupportPacket struct {
 func (p *Plugin) GenerateSupportData(_ *plugin.Context) ([]*model.FileData, error) {
 	stats, err := p.store.GetCallsStats()
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to calls stats")
+		return nil, errors.Wrap(err, "Failed to get calls stats")
 	}
 
 	diagnostics := SupportPacket{
