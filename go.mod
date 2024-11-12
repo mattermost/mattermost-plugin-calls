@@ -22,7 +22,7 @@ require (
 	github.com/mattermost/calls-transcriber v0.4.1-0.20240925183146-a4131b656fa5
 	github.com/mattermost/logr/v2 v2.0.21
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
-	github.com/mattermost/mattermost/server/public v0.1.7
+	github.com/mattermost/mattermost/server/public v0.1.8
 	github.com/mattermost/morph v1.1.0
 	github.com/mattermost/rtcd v0.17.2-0.20241010232710-2137f0c5b45f
 	github.com/mattermost/squirrel v0.2.0
