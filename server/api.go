@@ -370,6 +370,8 @@ func (p *Plugin) handlePostCallsChannel(w http.ResponseWriter, r *http.Request) 
 		if res.Err != "" {
 			return
 		}
+
+		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(storedChannel); err != nil {
 			p.LogError(err.Error())
 		}
