@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
@@ -157,50 +158,47 @@ func (p *Plugin) OnActivate() (retErr error) {
 		p.LogDebug("rtcd client manager initialized successfully")
 
 		p.rtcdManager = rtcdManager
+	} else {
+		rtcServerConfig := rtc.ServerConfig{
+			ICEAddressUDP:   cfg.UDPServerAddress,
+			ICEAddressTCP:   cfg.TCPServerAddress,
+			ICEPortUDP:      *cfg.UDPServerPort,
+			ICEPortTCP:      *cfg.TCPServerPort,
+			ICEHostOverride: cfg.ICEHostOverride,
+			ICEServers:      rtc.ICEServers(cfg.getICEServers(false)),
+			TURNConfig: rtc.TURNConfig{
+				CredentialsExpirationMinutes: *cfg.TURNCredentialsExpirationMinutes,
+			},
+			EnableIPv6:      *cfg.EnableIPv6,
+			UDPSocketsCount: runtime.NumCPU(),
+		}
+		if *cfg.ServerSideTURN {
+			rtcServerConfig.TURNConfig.StaticAuthSecret = cfg.TURNStaticAuthSecret
+		}
+		if cfg.ICEHostPortOverride != nil {
+			rtcServerConfig.ICEHostPortOverride = rtc.ICEHostPortOverride(fmt.Sprintf("%d", *cfg.ICEHostPortOverride))
+		}
+		rtcServer, err := rtc.NewServer(rtcServerConfig, newLogger(p), p.metrics.RTCMetrics())
+		if err != nil {
+			p.LogError(err.Error())
+			return err
+		}
 
-		go p.clusterEventsHandler()
+		if err := rtcServer.Start(); err != nil {
+			p.LogError(err.Error())
+			return err
+		}
 
-		p.LogDebug("activated", "ClusterID", status.ClusterId)
+		p.rtcServer = rtcServer
 
-		return nil
-	}
-
-	rtcServerConfig := rtc.ServerConfig{
-		ICEAddressUDP:   cfg.UDPServerAddress,
-		ICEAddressTCP:   cfg.TCPServerAddress,
-		ICEPortUDP:      *cfg.UDPServerPort,
-		ICEPortTCP:      *cfg.TCPServerPort,
-		ICEHostOverride: cfg.ICEHostOverride,
-		ICEServers:      rtc.ICEServers(cfg.getICEServers(false)),
-		TURNConfig: rtc.TURNConfig{
-			CredentialsExpirationMinutes: *cfg.TURNCredentialsExpirationMinutes,
-		},
-		EnableIPv6: *cfg.EnableIPv6,
-	}
-	if *cfg.ServerSideTURN {
-		rtcServerConfig.TURNConfig.StaticAuthSecret = cfg.TURNStaticAuthSecret
-	}
-	if cfg.ICEHostPortOverride != nil {
-		rtcServerConfig.ICEHostPortOverride = rtc.ICEHostPortOverride(fmt.Sprintf("%d", *cfg.ICEHostPortOverride))
-	}
-	rtcServer, err := rtc.NewServer(rtcServerConfig, newLogger(p), p.metrics.RTCMetrics())
-	if err != nil {
-		p.LogError(err.Error())
-		return err
-	}
-
-	if err := rtcServer.Start(); err != nil {
-		p.LogError(err.Error())
-		return err
+		go p.wsWriter()
 	}
 
 	p.mut.Lock()
 	p.nodeID = status.ClusterId
-	p.rtcServer = rtcServer
 	p.mut.Unlock()
 
 	go p.clusterEventsHandler()
-	go p.wsWriter()
 
 	p.LogDebug("activated", "ClusterID", status.ClusterId)
 
