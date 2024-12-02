@@ -13,6 +13,7 @@
   "0LuKMT": "Vous êtes déjà dans un appel",
   "0cE6s2": "Les appels ne peuvent pas être lancés dans un contexte non sécurisé",
   "0fFRUQ": "Commence à présenter",
+  "0fj4bj": "Autoriser le partage d'écran",
   "10k1Mv": "L'URL menant à l'instance du service calls-offloader.",
   "1QvHUW": "Votre enregistrement se termine dans {count, plural, =1 {# minute} other {# minutes}}.",
   "1s4g9H": "Quand activé, les clients utiliseront les canaux de données WebRTC pour signaler les nouvelles pistes de médias. Cela peut mener à un processus plus efficace et moins enclin aux problèmes de concurrence, particulièrement dans le cas de fréquentes déconnexions WebSocket.",
