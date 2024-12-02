@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -678,8 +679,9 @@ func TestHandleJoin(t *testing.T) {
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
 	rtcServer, err := rtc.NewServer(rtc.ServerConfig{
-		ICEPortUDP: 33443,
-		ICEPortTCP: 33443,
+		ICEPortUDP:      33443,
+		ICEPortTCP:      33443,
+		UDPSocketsCount: runtime.NumCPU(),
 	}, newLogger(&p), p.metrics.RTCMetrics())
 	require.NoError(t, err)
 
