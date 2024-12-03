@@ -25,7 +25,7 @@
     },
     {
         "id": "app.call.new_recording_and_transcription_message",
-        "translation": "Voici l'enregistrement de l'appel. La transcription est en cours de traitement et sera postée dès qu'elle sera prête."
+        "translation": "Voici l'enregistrement de l'appel. La transcription est en cours de traitement et sera publiée dès qu'elle sera prête."
     },
     {
         "id": "app.call.new_recording_message",
