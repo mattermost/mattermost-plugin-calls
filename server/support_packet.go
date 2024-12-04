@@ -4,7 +4,7 @@
 package main
 
 import (
-	"path"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -30,13 +30,13 @@ func (p *Plugin) GenerateSupportData(_ *plugin.Context) ([]*model.FileData, erro
 		Version:    manifest.Version,
 		CallsStats: stats,
 	}
-	b, err := yaml.Marshal(diagnostics)
+	body, err := yaml.Marshal(diagnostics)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to marshal diagnostics")
 	}
 
 	return []*model.FileData{{
-		Filename: path.Join(manifest.Id, "diagnostics.yaml"),
-		Body:     b,
+		Filename: filepath.Join(manifest.Id, "diagnostics.yaml"),
+		Body:     body,
 	}}, nil
 }
