@@ -44,6 +44,9 @@
       ],
       "plugin/*": [
         "../webapp/src/*"
+      ],
+      "key-mirror": [
+        "../webapp/mattermost-webapp/webapp/channels/src/types/external/key-mirror.d.ts"
       ]
     },
   },
