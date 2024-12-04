@@ -80,6 +80,7 @@ jobs:
       IMAGE_CURL: curlimages/curl:8.7.1
       CI_NODE_INDEX: ${{ matrix.run_id }}
       CI_NODE_TOTAL: ${{ needs.generate-matrix.outputs.parallelism }}
+      WORKSPACE: ${{github.workspace}}
     strategy:
       matrix: ${{ fromJson(needs.generate-matrix.outputs.parallelism-matrix) }}
     steps:
@@ -130,41 +131,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_DEV_USERNAME }}
           password: ${{ secrets.DOCKERHUB_DEV_TOKEN }}
 
-      - name: e2e/prepare-server
+      - name: e2e/run-server
         env:
           DOCKER_CLIENT_TIMEOUT: 120
           COMPOSE_HTTP_TIMEOUT: 120
           DOCKER_COMPOSE_FILE: ${{ github.workspace }}/e2e/docker/docker-compose.yaml
+          MM_PLUGIN_CALLS_TEST_LICENSE: ${{ secrets.MM_PLUGIN_CALLS_TEST_LICENSE }}
         run: |
-          mkdir -p ${{ github.workspace }}/logs
-          mkdir -p ${{ github.workspace }}/config
-          mkdir -p ${{ github.workspace }}/dotenv
-
-          ## Navigate to mattermost server build folder to spawn the environment
-          cd mattermost/server/build/
           ${{ github.workspace }}/e2e/scripts/prepare-server.sh
-          cd -
-
-          ## Add extra environment variables for mattermost server
-          echo "MM_LICENSE=${{ secrets.MM_PLUGIN_CALLS_TEST_LICENSE }}" >> dotenv/app.private.env
-          echo "MM_FEATUREFLAGS_BoardsProduct=true" >> dotenv/app.private.env
-          echo "MM_SERVICEENVIRONMENT=test" >> dotenv/app.private.env
-          echo "MM_CALLS_JOB_SERVICE_URL=http://calls-offloader:4545" >> dotenv/app.private.env
-
-          sudo chown -R 2000:2000 ${{ github.workspace }}/logs
-          sudo chown -R 2000:2000 ${{ github.workspace }}/config
-
-          # Spawn mattermost server
-          echo "Spawning mattermost server ... "
-          docker run -d --quiet --name ${CONTAINER_SERVER} \
-          --net ${DOCKER_NETWORK} \
-          --net-alias mm-server \
-          --user mattermost:mattermost \
-          --env-file="${{ github.workspace }}/dotenv/app.private.env" \
-          -v ${{ github.workspace }}/config:/mattermost/config:rw \
-          -v ${{ github.workspace }}/logs:/mattermost/logs:rw \
-          ${IMAGE_SERVER} \
-          sh -c "/mattermost/bin/mattermost server"
 
       - name: e2e/build-e2e-image
         working-directory: e2e
@@ -174,16 +148,12 @@ jobs:
           docker build --quiet -t mm-playwright -f Playwright.Dockerfile .
 
       - name: e2e/test
+        env:
+          WORKSPACE: ${{github.workspace}}
+          RUN_ID: ${{matrix.run_id}}
         id: test
         run: |
-          mkdir -p ${{ github.workspace }}/results
           ${{ github.workspace }}/e2e/scripts/run.sh
-
-          ## Check if we have an early failures in order to upload logs
-          NUM_FAILURES=0
-          NUM_FAILURES=$((NUM_FAILURES + $(jq '.suites[].suites[].specs[].tests[] | last(.results[]) | select(.status != "passed").status' < ${{ github.workspace }}/results/pw-results-${{ matrix.run_id }}.json | wc -l)))
-          echo "FAILURES=${NUM_FAILURES}" >> ${GITHUB_OUTPUT}
-          sudo chown -R 1001:1001 ${{ github.workspace }}/logs
 
       - name: e2e/persist-report-results
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0

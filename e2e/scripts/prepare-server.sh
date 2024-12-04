@@ -2,6 +2,10 @@
 set -eu
 set -o pipefail
 
+mkdir -p ${WORKPACE}/logs
+mkdir -p ${WORKPACE}/config
+mkdir -p ${WORKPACE}/dotenv
+
 docker network create ${DOCKER_NETWORK}
 
 # Start server dependencies
@@ -41,3 +45,24 @@ docker run -d --quiet --user root --name "${COMPOSE_PROJECT_NAME}_callsoffloader
 
 # Check that calls-offloader is up and ready
 docker run --rm --quiet --name "${COMPOSE_PROJECT_NAME}_curl_callsoffloader" --net ${DOCKER_NETWORK} ${IMAGE_CURL} sh -c "until curl -fs http://calls-offloader:4545/version; do echo Waiting for calls-offloader; sleep 5; done; echo calls-offloader is up"
+
+## Add extra environment variables for mattermost server
+echo "MM_LICENSE=${{ secrets.MM_PLUGIN_CALLS_TEST_LICENSE }}" >> ${WORKPACE}/dotenv/app.private.env
+echo "MM_FEATUREFLAGS_BoardsProduct=true" >> ${WORKPACE}/dotenv/app.private.env
+echo "MM_SERVICEENVIRONMENT=test" >> ${WORKPACE}/dotenv/app.private.env
+echo "MM_CALLS_JOB_SERVICE_URL=http://calls-offloader:4545" >> ${WORKSPACE}/dotenv/app.private.env
+
+sudo chown -R 2000:2000 ${WORKPACE}/logs
+sudo chown -R 2000:2000 ${WORKPACE}/config
+
+# Spawn mattermost server
+echo "Spawning mattermost server ... "
+docker run -d --quiet --name ${CONTAINER_SERVER} \
+  --net ${DOCKER_NETWORK} \
+  --net-alias mm-server \
+  --user mattermost:mattermost \
+  --env-file="${WORKPACE}/dotenv/app.private.env" \
+  -v ${WORKPACE}/config:/mattermost/config:rw \
+  -v ${WORKPACE}/logs:/mattermost/logs:rw \
+  ${IMAGE_SERVER} \
+  sh -c "/mattermost/bin/mattermost server"
