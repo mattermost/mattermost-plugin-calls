@@ -21,10 +21,24 @@ services:
       timeout: 10s
       retries: 3
 
+  haproxy:
+    image: nginx
+    container_name: ${CONTAINER_PROXY}
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    restart: on-failure
+    networks:
+      default:
+        aliases:
+          - mm-server
+    ports:
+      - "8065:8065"
+
   start_dependencies:
     image: mattermost/mattermost-wait-for-dep:latest
     depends_on:
       - postgres
+      - haproxy
     command: postgres:5432
     networks:
       default:
