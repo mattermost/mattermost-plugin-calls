@@ -73,6 +73,7 @@ jobs:
       COMPOSE_PROJECT_NAME: playwright_tests
       DOCKER_NETWORK: playwright_tests
       CONTAINER_SERVER: playwright_tests_server
+      CONTAINER_PROXY: playwright_tests_proxy
       IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.8.0
       IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.7.7
       IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.5.0
@@ -108,14 +109,6 @@ jobs:
         run: |
           mkdir -p ${{ github.workspace }}/config
           go run main.go
-
-      - name: e2e/patch-generated-configuration
-        env:
-          OUTPUT_CONFIG: ${{ github.workspace }}/config/config.json
-        run: |
-          cp ${OUTPUT_CONFIG} ${OUTPUT_CONFIG}.orig
-          jq -f ${{ github.workspace }}/e2e/overlay-config.jq ${OUTPUT_CONFIG}.orig > ${OUTPUT_CONFIG}
-          diff ${OUTPUT_CONFIG}.orig ${OUTPUT_CONFIG} || true
 
       - name: e2e/download-mattermost-plugin-calls-package
         uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4

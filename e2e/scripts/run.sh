@@ -2,39 +2,59 @@
 set -eu
 set -o pipefail
 
+function print_logs {
+	docker logs ${CONTAINER_SERVER}1
+	docker logs ${CONTAINER_SERVER}2
+	docker logs ${CONTAINER_PROXY}
+}
+
+trap print_logs EXIT
+
 mkdir -p "${WORKSPACE}/results"
+
+# Generate sysadmin
+echo "Generating sysadmin ..."
+docker exec \
+	${CONTAINER_SERVER}1 \
+	sh -c "/mattermost/bin/mmctl --local user create --email sysadmin@example.com --username sysadmin --password 'Sys@dmin-sample1'"
+
+# Auth mmctl
+echo "Authenticating mmctl ..."
+docker exec \
+	${CONTAINER_SERVER}1 \
+	sh -c "echo 'Sys@dmin-sample1' > pwd.txt && /mattermost/bin/mmctl auth login http://localhost:8065 --username sysadmin --name local --password-file pwd.txt"
 
 # Install Playbooks
 echo "Installing playbooks ..."
 docker exec \
-	${CONTAINER_SERVER} \
-	sh -c "/mattermost/bin/mmctl --local plugin add /mattermost/prepackaged_plugins/mattermost-plugin-playbooks-v2*.tar.gz && /mattermost/bin/mmctl --local plugin enable playbooks"
+	${CONTAINER_SERVER}1 \
+	sh -c "/mattermost/bin/mmctl plugin add /mattermost/prepackaged_plugins/mattermost-plugin-playbooks-v2*.tar.gz"
+
+# Enable Playbooks
+echo "Enabling playbooks ..."
+docker exec \
+	${CONTAINER_SERVER}1 \
+	sh -c "/mattermost/bin/mmctl plugin enable playbooks"
 
 # Copy built plugin into server
-echo "Copying calls plugin into ${CONTAINER_SERVER} server container ..."
-docker cp dist/*.tar.gz ${CONTAINER_SERVER}:/mattermost/bin/calls
+echo "Copying calls plugin into ${CONTAINER_SERVER}1 server container ..."
+docker cp dist/*.tar.gz ${CONTAINER_SERVER}1:/mattermost/bin/calls
 
 # Copy config patch into server container
-echo "Copying calls config patch into ${CONTAINER_SERVER} server container ..."
-docker cp e2e/config-patch.json ${CONTAINER_SERVER}:/mattermost
+echo "Copying calls config patch into ${CONTAINER_SERVER}1 server container ..."
+docker cp e2e/config-patch.json ${CONTAINER_SERVER}1:/mattermost
 
 # Install Calls
 echo "Installing calls ..."
 docker exec \
-	${CONTAINER_SERVER} \
-	sh -c "/mattermost/bin/mmctl --local plugin add bin/calls"
+	${CONTAINER_SERVER}1 \
+	sh -c "/mattermost/bin/mmctl plugin add bin/calls && sleep 2"
 
 # Patch config
 echo "Patching calls config ..."
 docker exec \
-	${CONTAINER_SERVER} \
-	sh -c "/mattermost/bin/mmctl --local plugin disable com.mattermost.calls && /mattermost/bin/mmctl --local config patch /mattermost/config-patch.json && /mattermost/bin/mmctl --local plugin enable com.mattermost.calls"
-
-# Generates a sysadmin that Playwright can use
-echo "Generating sample data with mmctl ..."
-docker exec \
-	${CONTAINER_SERVER} \
-	sh -c "/mattermost/bin/mmctl --local sampledata"
+	${CONTAINER_SERVER}1 \
+	sh -c "/mattermost/bin/mmctl plugin disable com.mattermost.calls && sleep 2 && /mattermost/bin/mmctl config patch /mattermost/config-patch.json && sleep 2 && /mattermost/bin/mmctl plugin enable com.mattermost.calls"
 
 echo "Spawning playwright image ..."
 # run e2e
@@ -46,7 +66,7 @@ echo "Spawning playwright image ..."
 # https://docs.docker.com/engine/reference/run/#network-settings
 # https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts
 docker run -d --name playwright-e2e \
-	--network=container:${CONTAINER_SERVER} \
+	--network=container:${CONTAINER_PROXY} \
 	--entrypoint "" \
 	mm-playwright \
 	bash -c "npm ci && npx playwright install && npx playwright test --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
@@ -75,6 +95,6 @@ docker cp playwright-e2e:/usr/src/calls-e2e/pw-results.json results/pw-results-$
 
 ## Check if we have an early failures in order to upload logs
 NUM_FAILURES=0
-NUM_FAILURES=$((NUM_FAILURES + $(jq '.suites[].suites[].specs[].tests[] | last(.results[]) | select(.status != "passed").status' < "${WORKSPACE}/results/pw-results-${RUN_ID}.json"" | wc -l)))
-echo "FAILURES=${NUM_FAILURES}" >> ${GITHUB_OUTPUT}
+NUM_FAILURES=$((NUM_FAILURES + $(jq '.suites[].suites[].specs[].tests[] | last(.results[]) | select(.status != "passed").status' <"${WORKSPACE}/results/pw-results-${RUN_ID}.json" | wc -l)))
+echo "FAILURES=${NUM_FAILURES}" >>${GITHUB_OUTPUT}
 sudo chown -R 1001:1001 "${WORKSPACE}/logs"

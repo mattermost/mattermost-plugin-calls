@@ -2,15 +2,23 @@
 set -eu
 set -o pipefail
 
-mkdir -p ${WORKPACE}/logs
-mkdir -p ${WORKPACE}/config
-mkdir -p ${WORKPACE}/dotenv
+function print_logs {
+	docker logs ${CONTAINER_SERVER}1
+	docker logs ${CONTAINER_SERVER}2
+	docker logs ${CONTAINER_PROXY}
+}
+
+trap print_logs EXIT
+
+mkdir -p ${WORKSPACE}/logs
+mkdir -p ${WORKSPACE}/config
+mkdir -p ${WORKSPACE}/dotenv
 
 docker network create ${DOCKER_NETWORK}
 
 # Start server dependencies
 echo "Starting server dependencies ... "
-DOCKER_NETWORK=${DOCKER_NETWORK} docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
+DOCKER_NETWORK=${DOCKER_NETWORK} CONTAINER_PROXY=${CONTAINER_PROXY} docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
 timeout --foreground 90s bash -c "until docker compose -f ${DOCKER_COMPOSE_FILE} exec -T postgres pg_isready ; do sleep 5 ; done"
 
 echo "Pulling ${IMAGE_CALLS_RECORDER} in order to be quickly accessible ... "
@@ -33,36 +41,87 @@ docker images
 echo "Spawning calls-offloader service with docker host access ..."
 # Spawn calls offloader image as root to access local docker socket
 docker run -d --quiet --user root --name "${COMPOSE_PROJECT_NAME}_callsoffloader" \
-  -v /var/run/docker.sock:/var/run/docker.sock:rw \
-  --net ${DOCKER_NETWORK} \
-  --env "API_SECURITY_ALLOWSELFREGISTRATION=true" \
-  --env "JOBS_MAXCONCURRENTJOBS=20" \
-  --env "LOGGER_ENABLEFILE=false" \
-  --env "LOGGER_CONSOLELEVEL=DEBUG" \
-  --env "DEV_MODE=true" \
-  --env "DOCKER_NETWORK=${DOCKER_NETWORK}" \
-  --network-alias=calls-offloader ${IMAGE_CALLS_OFFLOADER}
+	-v /var/run/docker.sock:/var/run/docker.sock:rw \
+	--net ${DOCKER_NETWORK} \
+	--env "API_SECURITY_ALLOWSELFREGISTRATION=true" \
+	--env "JOBS_MAXCONCURRENTJOBS=20" \
+	--env "LOGGER_ENABLEFILE=false" \
+	--env "LOGGER_CONSOLELEVEL=DEBUG" \
+	--env "DEV_MODE=true" \
+	--env "DOCKER_NETWORK=${DOCKER_NETWORK}" \
+	--network-alias=calls-offloader ${IMAGE_CALLS_OFFLOADER}
 
 # Check that calls-offloader is up and ready
 docker run --rm --quiet --name "${COMPOSE_PROJECT_NAME}_curl_callsoffloader" --net ${DOCKER_NETWORK} ${IMAGE_CURL} sh -c "until curl -fs http://calls-offloader:4545/version; do echo Waiting for calls-offloader; sleep 5; done; echo calls-offloader is up"
 
-## Add extra environment variables for mattermost server
-echo "MM_LICENSE=${{ secrets.MM_PLUGIN_CALLS_TEST_LICENSE }}" >> ${WORKPACE}/dotenv/app.private.env
-echo "MM_FEATUREFLAGS_BoardsProduct=true" >> ${WORKPACE}/dotenv/app.private.env
-echo "MM_SERVICEENVIRONMENT=test" >> ${WORKPACE}/dotenv/app.private.env
-echo "MM_CALLS_JOB_SERVICE_URL=http://calls-offloader:4545" >> ${WORKSPACE}/dotenv/app.private.env
+## Add extra environment variables for mattermost server. This is needed to override configuration in HA since
+## the config is stored in DB.
+echo "MM_LICENSE=${MM_PLUGIN_CALLS_TEST_LICENSE}" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_FEATUREFLAGS_BoardsProduct=true" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_SERVICEENVIRONMENT=test" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CALLS_JOB_SERVICE_URL=http://calls-offloader:4545" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CONFIG=postgres://mmuser:mostest@postgres/mattermost_test?sslmode=disable&connect_timeout=10&binary_parameters=yes" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_SERVICESETTINGS_SITEURL=http://mm-server:8065" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_SERVICESETTINGS_ENABLELOCALMODE=true" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_SERVICESETTINGS_ENABLEDEVELOPER=true" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_SERVICESETTINGS_ENABLETESTING=true" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_SERVICESETTINGS_ALLOWCORSFROM=http://localhost:8065" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_SERVICESETTINGS_ENABLEONBOARDINGFLOW=false" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_PLUGINSETTINGS_ENABLE=true" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_PLUGINSETTINGS_ENABLEUPLOADS=true" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_PLUGINSETTINGS_AUTOMATICPREPACKAGEDPLUGINS=false" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CLUSTERSETTINGS_ENABLE=true" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CLUSTERSETTINGS_CLUSTERNAME=mm_server_e2e" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_LOGSETTINGS_CONSOLELEVEL=DEBUG" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_LOGSETTINGS_FILELEVEL=DEBUG" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_SQLSETTINGS_DATASOURCE=postgres://mmuser:mostest@postgres:5432/mattermost_test?sslmode=disable&connect_timeout=10&binary_parameters=yes" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_EXPERIMENTALSETTINGS_DISABLEAPPBAR=false" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_ANNOUNCEMENTSETTINGS_USERNOTICESENABLED=false" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED=false" >>${WORKSPACE}/dotenv/app.private.env
 
-sudo chown -R 2000:2000 ${WORKPACE}/logs
-sudo chown -R 2000:2000 ${WORKPACE}/config
+sudo cp -r ${WORKSPACE}/logs ${WORKSPACE}/logs1
+sudo cp -r ${WORKSPACE}/config ${WORKSPACE}/config1
+sudo chown -R 2000:2000 ${WORKSPACE}/logs1
+sudo chown -R 2000:2000 ${WORKSPACE}/config1
+
+sudo cp -r ${WORKSPACE}/logs ${WORKSPACE}/logs2
+sudo cp -r ${WORKSPACE}/config ${WORKSPACE}/config2
+sudo chown -R 2000:2000 ${WORKSPACE}/logs2
+sudo chown -R 2000:2000 ${WORKSPACE}/config2
+
+mkdir -p ${WORKSPACE}/mmdata
+sudo chown -R 2000:2000 ${WORKSPACE}/mmdata
 
 # Spawn mattermost server
-echo "Spawning mattermost server ... "
-docker run -d --quiet --name ${CONTAINER_SERVER} \
-  --net ${DOCKER_NETWORK} \
-  --net-alias mm-server \
-  --user mattermost:mattermost \
-  --env-file="${WORKPACE}/dotenv/app.private.env" \
-  -v ${WORKPACE}/config:/mattermost/config:rw \
-  -v ${WORKPACE}/logs:/mattermost/logs:rw \
-  ${IMAGE_SERVER} \
-  sh -c "/mattermost/bin/mattermost server"
+echo "Spawning mattermost server 1 ... "
+docker run -d --quiet --name ${CONTAINER_SERVER}1 \
+	--net ${DOCKER_NETWORK} \
+	--net-alias mm-server1 \
+	--user mattermost:mattermost \
+	--env-file="${WORKSPACE}/dotenv/app.private.env" \
+	-v ${WORKSPACE}/config1:/mattermost/config:rw \
+	-v ${WORKSPACE}/logs1:/mattermost/logs:rw \
+	-v ${WORKSPACE}/mmdata:/mattermost/data:rw \
+	${IMAGE_SERVER} \
+	sh -c "/mattermost/bin/mattermost server"
+
+echo "Checking node 1 is up and running"
+timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_mm1 --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://mm-server1:8065/api/v4/system/ping; do echo Waiting for mm-server1; sleep 2; done; echo mm-server1 is up"
+
+echo "Spawning mattermost server 2 ... "
+docker run -d --quiet --name ${CONTAINER_SERVER}2 \
+	--net ${DOCKER_NETWORK} \
+	--net-alias mm-server2 \
+	--user mattermost:mattermost \
+	--env-file="${WORKSPACE}/dotenv/app.private.env" \
+	-v ${WORKSPACE}/config2:/mattermost/config:rw \
+	-v ${WORKSPACE}/logs2:/mattermost/logs:rw \
+	-v ${WORKSPACE}/mmdata:/mattermost/data:rw \
+	${IMAGE_SERVER} \
+	sh -c "/mattermost/bin/mattermost server"
+
+echo "Checking node 2 is up and running"
+timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_mm2 --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://mm-server2:8065/api/v4/system/ping; do echo Waiting for mm-server2; sleep 2; done; echo mm-server2 is up"
+
+echo "Checking proxy is up and running"
+timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_proxy --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://mm-server:8065/api/v4/system/ping; do echo Waiting for proxy; sleep 2; done; echo proxy is up"
