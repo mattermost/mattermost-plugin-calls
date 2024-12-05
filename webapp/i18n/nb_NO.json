@@ -308,6 +308,7 @@
   "x82IOl": "Demp",
   "xXjqzO": "Flere innstillinger",
   "xYhChH": "Er du sikker på at du vil fjerne <b>{userName}</b> fra samtalen?",
+  "xhPELz": "(Valgfritt) Når aktivert, vil den sende og bruke de konfigurerte TURN-kandidatene til serverinitierte tilkoblinger.",
   "yL9vD/": "Velkommen til din Mattermost Enterprise-prøveperiode! Den utløper {trialExpirationDate}. Du har nå tilgang til <rtcdDocsLink>RTCD-tjenester</rtcdDocsLink>, <recordingsDocsLink>anropsopptak</recordingsDocsLink>, <guestAccountsLink>gjestekontoer</guestAccountsLink>, <autoComplianceReportsLink> automatiserte samsvarsrapporter</autoComplianceReportsmobileLinkSecure> og mobil sikker ID-push-varsling</mobileSecureNotificationsLink>, blant mange andre funksjoner. Se alle funksjonene i vår <documentationLink>dokumentasjon</documentationLink>.",
   "yO68rk": "Samtaler kjører for øyeblikket i testmodus, og bare systemadministratorer kan starte dem. Ta direkte kontakt med systemadministratoren din for å få hjelp",
   "yfYHc5": "Overstyring av ICE-vert",
@@ -315,5 +316,6 @@
   "yx0b7N": "{count, plural, =1 {# transcription} other {# transcriptions}}",
   "zMlIqq": "Denne innstillingen er deaktivert ettersom serveren er ulisensiert og anrop kun er tilgjengelig i DM-kanaler.",
   "zUH89x": "Samtaleopptaket vil bli behandlet og lagt ut i samtaletråden. Er du sikker på at du vil stoppe opptaket?",
-  "zx0myy": "Deltakere"
+  "zx0myy": "Deltakere",
+  "zxBgWa": "(Valgfritt) IP-en (eller vertsnavnet) som skal brukes som verts-ICE-kandidat. Hvis den er tom, løses den som standard via STUN."
 }
