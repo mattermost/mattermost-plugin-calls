@@ -23,7 +23,7 @@ type SupportPacket struct {
 func (p *Plugin) GenerateSupportData(_ *plugin.Context) ([]*model.FileData, error) {
 	stats, err := p.store.GetCallsStats()
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to get calls stats")
+		return nil, errors.Wrap(err, "failed to get calls stats")
 	}
 
 	diagnostics := SupportPacket{
@@ -32,7 +32,7 @@ func (p *Plugin) GenerateSupportData(_ *plugin.Context) ([]*model.FileData, erro
 	}
 	body, err := yaml.Marshal(diagnostics)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to marshal diagnostics")
+		return nil, errors.Wrap(err, "failed to marshal diagnostics")
 	}
 
 	return []*model.FileData{{
