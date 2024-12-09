@@ -127,8 +127,8 @@ func newPostgresStore(t *testing.T, binaryParams bool) (*Store, func()) {
 		u.RawQuery = values.Encode()
 		dsn = u.String()
 	}
-	settings.DataSource = model.NewString(dsn)
-	settings.DriverName = model.NewString(model.DatabaseDriverPostgres)
+	settings.DataSource = model.NewPointer(dsn)
+	settings.DriverName = model.NewPointer(model.DatabaseDriverPostgres)
 
 	mockLogger.On("Info", mock.Anything).Run(func(args mock.Arguments) {
 		log.Print(args.Get(0).(string))
@@ -162,8 +162,8 @@ func newMySQLStore(t *testing.T) (*Store, func()) {
 
 	var settings model.SqlSettings
 	settings.SetDefaults(false)
-	settings.DataSource = model.NewString(dsn)
-	settings.DriverName = model.NewString(model.DatabaseDriverMysql)
+	settings.DataSource = model.NewPointer(dsn)
+	settings.DriverName = model.NewPointer(model.DatabaseDriverMysql)
 
 	config, err := mysql.ParseDSN(dsn)
 	require.NoError(t, err)

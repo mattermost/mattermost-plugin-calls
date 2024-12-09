@@ -30,8 +30,8 @@ func TestNewStore(t *testing.T) {
 
 		var settings model.SqlSettings
 		settings.SetDefaults(false)
-		settings.DataSource = model.NewString(dsn)
-		settings.DriverName = model.NewString(model.DatabaseDriverPostgres)
+		settings.DataSource = model.NewPointer(dsn)
+		settings.DriverName = model.NewPointer(model.DatabaseDriverPostgres)
 
 		t.Run("writer only", func(t *testing.T) {
 			mockLogger.On("Info", "store: no reader connector passed, using writer").Once()
@@ -67,8 +67,8 @@ func TestNewStore(t *testing.T) {
 
 		var settings model.SqlSettings
 		settings.SetDefaults(false)
-		settings.DataSource = model.NewString(dsn)
-		settings.DriverName = model.NewString(model.DatabaseDriverMysql)
+		settings.DataSource = model.NewPointer(dsn)
+		settings.DriverName = model.NewPointer(model.DatabaseDriverMysql)
 
 		t.Run("writer only", func(t *testing.T) {
 			mockLogger.On("Info", "store: no reader connector passed, using writer").Once()

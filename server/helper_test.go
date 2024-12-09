@@ -86,8 +86,8 @@ func NewTestStore(t *testing.T) (*db.Store, func()) {
 	values.Set("binary_parameters", "yes")
 	u.RawQuery = values.Encode()
 	dsn = u.String()
-	settings.DataSource = model.NewString(dsn)
-	settings.DriverName = model.NewString(model.DatabaseDriverPostgres)
+	settings.DataSource = model.NewPointer(dsn)
+	settings.DriverName = model.NewPointer(model.DatabaseDriverPostgres)
 
 	mockLogger.On("Info", mock.Anything).Run(func(args mock.Arguments) {
 		log.Print(args.Get(0).(string))
