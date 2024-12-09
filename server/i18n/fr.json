@@ -1,1 +1,58 @@
-[]
+[
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "Les appels sur les serveurs sans licence sont seulement disponibles en message direct."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "Nous recommandons fortement de [déployer le service RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service) afin de décharger le traitement des appels vers une instance séparée pour maintenir la performance, la scalabilité et la fiabilité de votre serveur Mattermost principal."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "Votre installation subit une charge élevée provenant de Mattermost Calls qui peut impacter négativement la performance et la réactivité du système."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "Nous recommandons fortement de passer à [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) et de [déployer le service RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service) afin de décharger le traitement des appels vers une instance séparée pour maintenir la performance, la scalabilité et la fiabilité de votre serveur Mattermost principal."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "Nous recommandons fortement de mettre à niveau vers [Enterprise](https://mattermost.com/pricing/) et de [déployer le service RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service) afin de décharger le traitement des appels vers une instance séparée pour maintenir la performance, la scalabilité et la fiabilité de votre serveur Mattermost principal."
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "Appel terminé"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "Voici l'enregistrement de l'appel. La transcription est en cours de traitement et sera publiée dès qu'elle sera prête."
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "Voici l'enregistrement de l'appel"
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "Voici la transcription de l'appel"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}} a commencé un appel"
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Username}} a commencé un appel"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "Vous avez été invité à un appel"
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}} vous invite à un appel"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "Échec de sauvegarde de la configuration."
+    }
+]
