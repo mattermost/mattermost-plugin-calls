@@ -7101,7 +7101,7 @@ This product contains 'react'.
 React is a JavaScript library for building user interfaces.
 
 * HOMEPAGE:
-  * https://reactjs.org/
+  * https://react.dev/
 
 * LICENSE: MIT
 
@@ -7137,7 +7137,7 @@ This product contains 'react'.
 React is a JavaScript library for building user interfaces.
 
 * HOMEPAGE:
-  * https://reactjs.org/
+  * https://react.dev/
 
 * LICENSE: MIT
 
@@ -7209,7 +7209,7 @@ This product contains 'react-dom'.
 React package for working with the DOM.
 
 * HOMEPAGE:
-  * https://reactjs.org/
+  * https://react.dev/
 
 * LICENSE: MIT
 
@@ -7245,7 +7245,7 @@ This product contains 'react-dom'.
 React package for working with the DOM.
 
 * HOMEPAGE:
-  * https://reactjs.org/
+  * https://react.dev/
 
 * LICENSE: MIT
 
