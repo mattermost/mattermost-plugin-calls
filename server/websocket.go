@@ -78,9 +78,7 @@ var (
 	newBatcher = batching.NewBatcher
 )
 
-var (
-	sessionAuthCheckInterval = 10 * time.Second
-)
+var sessionAuthCheckInterval = 10 * time.Second
 
 type CallsClientJoinData struct {
 	ChannelID string
@@ -569,11 +567,10 @@ func (p *Plugin) wsWriter() {
 			if !ok {
 				return
 			}
-			p.mut.RLock()
-			us := p.sessions[msg.SessionID]
-			p.mut.RUnlock()
+
+			us := p.getSessionByOriginalID(msg.SessionID)
 			if us == nil {
-				p.LogError("session should not be nil")
+				p.LogError("failed to get session by originalConnID", "originalConnID", msg.SessionID)
 				continue
 			}
 
@@ -600,7 +597,7 @@ func (p *Plugin) wsWriter() {
 			p.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
 				"data":   string(msg.Data),
 				"connID": msg.SessionID,
-			}, &WebSocketBroadcast{ConnectionID: msg.SessionID, ReliableClusterSend: true})
+			}, &WebSocketBroadcast{ConnectionID: us.connID, ReliableClusterSend: true})
 		case <-p.stopCh:
 			return
 		}
@@ -617,8 +614,8 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID, handlerID s
 		// Clearing the previous session since it gets copied over after
 		// successful reconnect.
 		p.mut.Lock()
-		if p.sessions[connID] == us {
-			p.LogDebug("clearing session after reconnect", "userID", userID, "connID", connID, "channelID", channelID)
+		if p.sessions[connID] == us && !us.rtc {
+			p.LogDebug("clearing non-RTC session after reconnect", "userID", userID, "connID", connID, "channelID", channelID)
 			delete(p.sessions, connID)
 		}
 		p.mut.Unlock()
@@ -1062,14 +1059,21 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 
 	us = newUserSession(userID, channelID, connID, state.Call.ID, rtc)
 	us.originalConnID = originalConnID
+	if p.sessions[originalConnID] != nil {
+		// We need to ensure to clear the original session to avoid potentially tracking it twice in case the ID has changed
+		// and we are the node handling it's RTC counterpart.
+		p.LogDebug("clearing original session after reconnect", "userID", userID, "connID", connID, "originalConnID", originalConnID, "channelID", channelID)
+		delete(p.sessions, originalConnID)
+	}
 	p.sessions[connID] = us
 	p.mut.Unlock()
 
 	if err := p.sendClusterMessage(clusterMessage{
-		ConnID:   prevConnID,
-		UserID:   userID,
-		CallID:   state.Call.ID,
-		SenderID: p.nodeID,
+		ConnID:    prevConnID,
+		NewConnID: connID,
+		UserID:    userID,
+		CallID:    state.Call.ID,
+		SenderID:  p.nodeID,
 	}, clusterMessageTypeReconnect, ""); err != nil {
 		p.LogError(err.Error())
 	}
