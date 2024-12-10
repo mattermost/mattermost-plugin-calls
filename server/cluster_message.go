@@ -13,7 +13,10 @@ import (
 )
 
 type clusterMessage struct {
-	ConnID        string           `json:"conn_id,omitempty"`
+	ConnID string `json:"conn_id,omitempty"`
+	// NewConnID is used by clusterMessageTypeReconnect to inform other nodes
+	// about the new WS connection ID in case it changed.
+	NewConnID     string           `json:"new_conn_id,omitempty"`
 	UserID        string           `json:"user_id,omitempty"`
 	ChannelID     string           `json:"channel_id,omitempty"`
 	CallID        string           `json:"call_id,omitempty"`
