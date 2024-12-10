@@ -33,7 +33,7 @@ func TestAddUserSession(t *testing.T) {
 		metrics:           mockMetrics,
 		configuration: &configuration{
 			clientConfig: clientConfig{
-				DefaultEnabled: model.NewBool(true),
+				DefaultEnabled: model.NewPointer(true),
 			},
 		},
 		sessions: map[string]*session{},
@@ -57,7 +57,7 @@ func TestAddUserSession(t *testing.T) {
 		}, nil).Once()
 
 		var cs *callState
-		state, err := p.addUserSession(cs, model.NewBool(false), "userID", "connID", "channelID", "", model.ChannelTypeOpen)
+		state, err := p.addUserSession(cs, model.NewPointer(false), "userID", "connID", "channelID", "", model.ChannelTypeOpen)
 		require.Nil(t, state)
 		require.EqualError(t, err, "calls are disabled in the channel")
 	})
@@ -78,7 +78,7 @@ func TestAddUserSession(t *testing.T) {
 			&model.WebsocketBroadcast{UserId: "userA", ChannelId: "channelID", ReliableClusterSend: true}).Once()
 
 		// Start call
-		retState, err := p.addUserSession(nil, model.NewBool(true), "userA", "connA", "channelID", "", model.ChannelTypeOpen)
+		retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", model.ChannelTypeOpen)
 		require.NoError(t, err)
 		require.NotNil(t, retState)
 		require.Equal(t, map[string]struct{}{"userA": {}}, retState.Props.Participants)
@@ -94,7 +94,7 @@ func TestAddUserSession(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		retState2, err := p.addUserSession(retState, model.NewBool(true), "userB", "connB", "channelID", "", model.ChannelTypeOpen)
+		retState2, err := p.addUserSession(retState, model.NewPointer(true), "userB", "connB", "channelID", "", model.ChannelTypeOpen)
 		require.NotNil(t, retState2)
 		require.EqualError(t, err, "failed to create call session: failed to run query: pq: duplicate key value violates unique constraint \"calls_sessions_pkey\"")
 
@@ -120,7 +120,7 @@ func TestAddUserSession(t *testing.T) {
 				Message:   "app.add_user_session.group_calls_not_allowed_error",
 			}).Return(nil).Once()
 
-			retState, err := p.addUserSession(nil, model.NewBool(true), "userA", "connA", "channelID", "", model.ChannelTypeOpen)
+			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", model.ChannelTypeOpen)
 			require.Equal(t, errGroupCallsNotAllowed, err)
 			require.Nil(t, retState)
 		})
@@ -131,7 +131,7 @@ func TestAddUserSession(t *testing.T) {
 				Message:   "app.add_user_session.group_calls_not_allowed_error",
 			}).Return(nil).Once()
 
-			retState, err := p.addUserSession(nil, model.NewBool(true), "userA", "connA", "channelID", "", model.ChannelTypePrivate)
+			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", model.ChannelTypePrivate)
 			require.Equal(t, errGroupCallsNotAllowed, err)
 			require.Nil(t, retState)
 		})
@@ -142,7 +142,7 @@ func TestAddUserSession(t *testing.T) {
 				Message:   "app.add_user_session.group_calls_not_allowed_error",
 			}).Return(nil).Once()
 
-			retState, err := p.addUserSession(nil, model.NewBool(true), "userA", "connA", "channelID", "", model.ChannelTypeGroup)
+			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", model.ChannelTypeGroup)
 			require.Equal(t, errGroupCallsNotAllowed, err)
 			require.Nil(t, retState)
 		})
@@ -152,7 +152,7 @@ func TestAddUserSession(t *testing.T) {
 			mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
 				&model.WebsocketBroadcast{UserId: "userA", ChannelId: "channelID", ReliableClusterSend: true}).Once()
 
-			retState, err := p.addUserSession(nil, model.NewBool(true), "userA", "connA", "channelID", "", model.ChannelTypeDirect)
+			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", model.ChannelTypeDirect)
 			require.NoError(t, err)
 			require.NotNil(t, retState)
 			require.Equal(t, map[string]struct{}{"userA": {}}, retState.Props.Participants)

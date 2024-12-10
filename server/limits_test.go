@@ -186,7 +186,7 @@ func TestSendConcurrentSessionsWarning(t *testing.T) {
 
 		mockAPI.On("GetLicense").Return(&model.License{
 			Features: &model.Features{
-				Cloud: model.NewBool(true),
+				Cloud: model.NewPointer(true),
 			},
 		}, nil).Once()
 

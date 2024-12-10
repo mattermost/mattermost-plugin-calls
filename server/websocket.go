@@ -700,7 +700,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	}
 	var callsEnabled *bool
 	if callsChannel != nil {
-		callsEnabled = model.NewBool(callsChannel.Enabled)
+		callsEnabled = model.NewPointer(callsChannel.Enabled)
 	}
 
 	addSessionToCall := func(state *callState) *callState {
