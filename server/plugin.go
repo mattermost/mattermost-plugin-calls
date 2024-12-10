@@ -178,6 +178,10 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			close(us.wsReconnectCh)
 			if !us.rtc {
 				delete(p.sessions, us.connID)
+			} else {
+				// If we are the RTC handler for this session, we need to update the connID with the new connection ID in case it changed.
+				// This is needed to correctly send out WS events (e.g. signaling) since we target a specific ConnectionId in the broadcast.
+				us.connID = msg.NewConnID
 			}
 		} else {
 			return fmt.Errorf("session already reconnected, connID=%q", msg.ConnID)
@@ -214,10 +218,8 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		return nil
 	case clusterMessageTypeSignaling:
 		p.LogDebug("signaling event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID)
-		p.mut.RLock()
-		us := p.sessions[msg.ConnID]
-		p.mut.RUnlock()
 
+		us := p.getSessionByOriginalID(msg.ConnID)
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, connID=%q, channelID=%q",
 				ev.Id, msg.UserID, msg.ConnID, msg.ChannelID)
@@ -231,7 +233,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			msgType = rtc.ICEMessage
 		}
 		rtcMsg := rtc.Message{
-			SessionID: us.connID,
+			SessionID: us.originalConnID,
 			Type:      msgType,
 			Data:      msg.ClientMessage.Data,
 		}
@@ -241,10 +243,8 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 	case clusterMessageTypeUserState:
 		p.LogDebug("user state event", "ChannelID", msg.ChannelID, "UserID", msg.UserID, "ConnID", msg.ConnID)
-		p.mut.RLock()
-		us := p.sessions[msg.ConnID]
-		p.mut.RUnlock()
 
+		us := p.getSessionByOriginalID(msg.ConnID)
 		if us == nil {
 			return fmt.Errorf("session doesn't exist, ev=%s, userID=%q, connID=%q, channelID=%q",
 				ev.Id, msg.UserID, msg.ConnID, msg.ChannelID)
@@ -265,7 +265,7 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 		}
 
 		rtcMsg := rtc.Message{
-			SessionID: us.connID,
+			SessionID: us.originalConnID,
 			Type:      msgType,
 			Data:      msg.ClientMessage.Data,
 		}
