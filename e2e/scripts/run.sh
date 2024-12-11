@@ -59,7 +59,7 @@ docker exec \
 echo "Spawning playwright image ..."
 # run e2e
 # `--network=container` tells this container to share a network stack
-# with the server container. This means that `localhost` is the same
+# with the proxy container. This means that `localhost` is the same
 # interface for both. That's relevant because some browser APIs
 # that Calls uses require a 'secure context', which is either HTTPS
 # or localhost.
