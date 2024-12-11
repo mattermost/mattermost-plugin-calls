@@ -23,7 +23,10 @@
     "sections": [
       {
         "key": "GeneralSettings",
+        "title": "General Settings",
+        "subtitle": "Settings for participants, screen sharing, ringing, and more",
         "custom": true,
+        "fallback": true,
         "settings": [
           {
             "key": "DefaultEnabled",
@@ -79,7 +82,10 @@
       },
       {
         "key": "RTCDService",
+        "title": "RTCD Service",
+        "subtitle": "Configure a dedicated service used to offload calls and efficiently support scalable and secure deployments",
         "custom": true,
+        "fallback": true,
         "settings": [
           {
             "key": "RTCDServiceURL",
@@ -93,7 +99,10 @@
       },
       {
         "key": "RTCServer",
+        "title": "RTC Server",
+        "subtitle": "Network configuration for the integrated RTC server",
         "custom": true,
+        "fallback": true,
         "settings": [
           {
             "key": "UDPServerAddress",
@@ -143,7 +152,9 @@
       },
       {
         "key": "ICEAndTURN",
+        "title": "ICE and TURN",
         "custom": true,
+        "fallback": true,
         "settings": [
           {
             "key": "ICEHostOverride",
@@ -197,7 +208,10 @@
       },
       {
         "key": "CallRecordings",
+        "title": "Call recordings",
+        "subtitle": "Recordings include the entire call window view along with participants’ audio track and any shared screen video. Recordings are stored in Mattermost",
         "custom": true,
+        "fallback": true,
         "settings": [
           {
             "key": "EnableRecordings",
@@ -246,7 +260,10 @@
       },
       {
         "key": "CallTranscriptions",
+        "title": "Call transcriptions",
+        "subtitle": "Allows calls to be transcribed to text files. Recordings must be enabled",
         "custom": true,
+        "fallback": true,
         "settings": [
           {
             "key": "EnableTranscriptions",
@@ -322,7 +339,10 @@
       },
       {
         "key": "CallLiveCaptions",
+        "title": "Live captions",
+        "subtitle": "Displays spoken words as text captions during a call. Recordings and transcriptions must be enabled",
         "custom": true,
+        "fallback": true,
         "settings": [
           {
             "key": "EnableLiveCaptions",
@@ -378,7 +398,7 @@
       }
     ],
     "settings": [
-     {
+      {
         "key": "DefaultEnabled",
         "display_name": "Test mode",
         "type": "custom",
