@@ -3,7 +3,7 @@ const fs = require('fs');
 
 // Define the directory and pattern
 const directory = process.cwd();
-const pattern = /^playwright-report-\d+$/;
+const pattern = /^playwright-report-(core-)?\d+$/;
 
 // Function to filter directories based on the pattern
 function filterDirectories(item) {
@@ -23,11 +23,12 @@ fs.readdir(directory, (err, items) => {
   // List to store directory paths
   const inputReportPaths = matchedDirectories.map(item => `${directory}/${item}`);
 
+  console.log(items, matchedDirectories, inputReportPaths);
+
   const config = {
     outputFolderName: "merged-html-report", // default value
     outputBasePath: process.cwd() // default value
   }
 
   mergeHTMLReports(inputReportPaths, config);
-
 });
