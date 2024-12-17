@@ -31,7 +31,9 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         }
     });
 
-    test('slash command, popout + buttons', async ({page, context, request}) => {
+    test('slash command, popout + buttons', {
+        tag: '@core',
+    }, async ({page, context, request}) => {
         await apiSetEnableTranscriptions(false);
 
         // start call

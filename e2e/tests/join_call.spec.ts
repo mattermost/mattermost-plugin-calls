@@ -14,7 +14,9 @@ test.beforeEach(async ({page}) => {
 test.describe('join call', () => {
     test.use({storageState: userStorages[0]});
 
-    test('channel header button', async ({page}) => {
+    test('channel header button', {
+        tag: '@core',
+    }, async ({page}) => {
         // start a call
         const userPage = await startCall(userStorages[1]);
 
@@ -145,7 +147,9 @@ test.describe('join call', () => {
         await userADevPage.leaveCall();
     });
 
-    test('multiple sessions per user', async () => {
+    test('multiple sessions per user', {
+        tag: '@core',
+    }, async () => {
         test.setTimeout(200000);
 
         // start a call

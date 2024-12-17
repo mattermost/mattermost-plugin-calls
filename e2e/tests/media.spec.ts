@@ -14,7 +14,9 @@ test.beforeEach(async ({page}) => {
 test.describe('screen sharing', () => {
     test.use({storageState: userStorages[0]});
 
-    test('share screen button', async ({page}) => {
+    test('share screen button', {
+        tag: '@core',
+    }, async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         const devPage = new PlaywrightDevPage(page);
@@ -77,7 +79,9 @@ test.describe('screen sharing', () => {
         await userPage.leaveCall();
     });
 
-    test('presenter leaving and joining back', async ({page}) => {
+    test('presenter leaving and joining back', {
+        tag: '@core',
+    }, async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         const devPage = new PlaywrightDevPage(page);
@@ -125,7 +129,9 @@ test.describe('screen sharing', () => {
         await userPage.leaveCall();
     });
 
-    test('av1', async ({page}) => {
+    test('av1', {
+        tag: '@core',
+    }, async ({page}) => {
         test.setTimeout(180000);
 
         // Enabling AV1
@@ -275,7 +281,9 @@ test.describe('screen sharing', () => {
 test.describe('sending voice', () => {
     test.use({storageState: userStorages[0]});
 
-    test('unmuting', async ({page}) => {
+    test('unmuting', {
+        tag: '@core',
+    }, async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         const devPage = new PlaywrightDevPage(page);
@@ -307,7 +315,9 @@ test.describe('sending voice', () => {
         await userPage.leaveCall();
     });
 
-    test('unmuting after ws reconnect', async ({page}) => {
+    test('unmuting after ws reconnect', {
+        tag: '@core',
+    }, async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         const devPage = new PlaywrightDevPage(page);
