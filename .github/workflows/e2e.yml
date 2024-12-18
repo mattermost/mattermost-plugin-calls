@@ -123,6 +123,7 @@ jobs:
       CONTAINER_SERVER: playwright_tests_server
       CONTAINER_PROXY: playwright_tests_proxy
       CONTAINER_RTCD: playwright_tests_rtcd
+      CONTAINER_OFFLOADER: playwright_tests_offloader
       IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.8.1-dev2
       IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.7.7
       IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.5.0
