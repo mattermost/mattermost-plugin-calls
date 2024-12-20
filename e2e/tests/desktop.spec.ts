@@ -46,6 +46,16 @@ test.beforeEach(async ({page}, info) => {
             desktopAPICalls.leaveCall = true;
         });
 
+        await page.exposeFunction('getDesktopSources', () => {
+            // The base64 image string needs to be in this scope since this function executed on the page.
+            const thumbnailURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAADhCAAAAADD3bzAAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAHdElNRQfmARELKziLK+FjAAACGUlEQVR42u3RQQ0AIBDAMMC/rBPGGwXs0SpYsj2LkvM7gJchMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJjSIwhMYbEGBJzARuNAobpTuE8AAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDIyLTAxLTE3VDExOjQzOjU2KzAwOjAwvzbXMAAAACV0RVh0ZGF0ZTptb2RpZnkAMjAyMi0wMS0xN1QxMTo0Mzo1NiswMDowMM5rb4wAAAAASUVORK5CYII=';
+            return [
+                {id: '1', name: 'source name 1', thumbnailURL},
+                {id: '2', name: 'source name 2', thumbnailURL},
+                {id: '3', name: 'Calls Widget', thumbnailURL},
+            ];
+        });
+
         await page.addInitScript(() => {
             window.desktopAPI = {
                 getAppInfo: window.getAppInfo,
@@ -62,6 +72,7 @@ test.beforeEach(async ({page}, info) => {
                 },
                 sendCallsError: window.sendCallsError,
                 leaveCall: window.leaveCall,
+                getDesktopSources: window.getDesktopSources,
             };
         });
     }
@@ -176,6 +187,32 @@ test.describe('desktop', () => {
 
         // verify we are screen sharing
         await expect(devPage.page.locator('#screen-player')).toBeVisible();
+
+        await devPage.leaveCall();
+    });
+
+    test('desktopAPI: widget window should be excluded from sharing sources', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+
+        await page.evaluate(() => {
+            window.desktop = {version: '5.10.0'};
+        });
+
+        await page.locator('#calls-widget-toggle-menu-button').click();
+        await page.locator('#calls-widget-menu-screenshare').click();
+        await expect(page.locator('#calls-screen-source-modal')).toBeVisible();
+        expect(await page.locator('#calls-screen-source-modal').screenshot()).toMatchSnapshot('calls-screen-source-modal-no-widget.png');
+
+        // Verify widget window is not in the list of sources
+        await expect(page.getByText('source name 1')).toBeVisible();
+        await expect(page.getByText('source name 2')).toBeVisible();
+        await expect(page.getByText('Calls Widget')).not.toBeVisible();
+
+        await page.locator('#calls-screen-source-modal button:has-text("source name 2")').click();
+
+        await page.locator('#calls-screen-source-modal button:has-text("Share")').click();
+        await expect(page.locator('#calls-screen-source-modal')).toBeHidden();
 
         await devPage.leaveCall();
     });
