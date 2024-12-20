@@ -7,6 +7,7 @@ function print_logs {
 	docker logs ${CONTAINER_SERVER}2
 	docker logs ${CONTAINER_PROXY}
 	docker logs ${CONTAINER_RTCD}
+	docker logs ${CONTAINER_OFFLOADER}
 }
 
 trap print_logs EXIT
@@ -55,7 +56,7 @@ docker run --rm --quiet --name "${COMPOSE_PROJECT_NAME}_curl_rtcd" --net ${DOCKE
 
 echo "Spawning calls-offloader service with docker host access ..."
 # Spawn calls offloader image as root to access local docker socket
-docker run -d --quiet --user root --name "${COMPOSE_PROJECT_NAME}_callsoffloader" \
+docker run -d --quiet --user root --name "${CONTAINER_OFFLOADER}" \
 	-v /var/run/docker.sock:/var/run/docker.sock:rw \
 	--net ${DOCKER_NETWORK} \
 	--env "API_SECURITY_ALLOWSELFREGISTRATION=true" \
