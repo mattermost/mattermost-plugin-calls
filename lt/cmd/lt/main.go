@@ -19,7 +19,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 
-	"github.com/pion/webrtc/v3/pkg/rtcerr"
+	"github.com/pion/webrtc/v4/pkg/rtcerr"
 )
 
 const pkgPrefix = "github.com/mattermost/mattermost-plugin-calls/lt/"
