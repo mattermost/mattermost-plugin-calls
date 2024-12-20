@@ -212,6 +212,10 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                         this.props.hideScreenSourceModal();
                         return;
                     }
+
+                    // Exclude the calls widget window from the list.
+                    sources = sources.filter((source) => source.name !== 'Calls Widget');
+
                     this.setState({
                         sources,
                         selected: sources[0]?.id || '',
