@@ -67,7 +67,7 @@ docker cp e2e/config-patch.json ${CONTAINER_SERVER}1:/mattermost
 echo "Installing calls ..."
 docker exec \
 	${CONTAINER_SERVER}1 \
-	sh -c "/mattermost/bin/mmctl plugin add bin/calls && sleep 2"
+	sh -c "/mattermost/bin/mmctl plugin add bin/calls && sleep 5"
 
 # Patch config
 echo "Patching calls config ..."
