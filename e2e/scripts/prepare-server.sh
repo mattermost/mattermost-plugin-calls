@@ -49,6 +49,8 @@ docker run -d --quiet --name "${CONTAINER_RTCD}" \
 	--env "RTCD_LOGGER_ENABLEFILE=false" \
 	--env "RTCD_LOGGER_CONSOLELEVEL=DEBUG" \
 	--env "RTCD_API_SECURITY_ALLOWSELFREGISTRATION=true" \
+	--env "RTCD_RTC_ICEADDRESSUDP=172.18.0.2" \
+	--env "RTCD_RTC_ICEADDRESSTCP=172.18.0.2" \
 	--network-alias=rtcd "rtcd:e2e"
 
 # Check that rtcd is up and ready
