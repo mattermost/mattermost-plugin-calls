@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go v1.50.3
 	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/mattermost/mattermost/server/public v0.0.12
-	github.com/mattermost/rtcd v0.18.1-0.20241217221808-6f179b09e3d7
+	github.com/mattermost/rtcd v0.18.1-0.20241219235235-f558e9c621d4
 	github.com/pion/rtp v1.8.9
 	github.com/pion/webrtc/v4 v4.0.6
 	gopkg.in/hraban/opus.v2 v2.0.0-20230925203106-0188a62cb302
