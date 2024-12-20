@@ -3,9 +3,28 @@ set -eu
 set -o pipefail
 
 function print_logs {
-	docker logs ${CONTAINER_SERVER}1
-	docker logs ${CONTAINER_SERVER}2
-	docker logs ${CONTAINER_PROXY}
+	exit_code=$?
+	if [[ ${exit_code} -ne 0 ]]; then
+		echo "Script exited with failure code ${exit_code}, printing logs..."
+		docker logs ${CONTAINER_SERVER}1
+		docker logs ${CONTAINER_SERVER}2
+		docker logs ${CONTAINER_PROXY}
+		docker logs ${CONTAINER_RTCD}
+		docker logs ${CONTAINER_OFFLOADER}
+
+		# Log all containers
+		docker ps -a
+
+		# Print transcriber job logs in case of failure.
+		for ID in $(docker ps -a --filter=ancestor="calls-transcriber:master" --filter=status="exited" --format "{{.ID}}"); do
+			docker logs $ID
+		done
+
+		# Print recorder job logs in case of failure.
+		for ID in $(docker ps -a --filter=ancestor="calls-recorder:master" --filter=status="exited" --format "{{.ID}}"); do
+			docker logs $ID
+		done
+	fi
 }
 
 trap print_logs EXIT
@@ -73,25 +92,16 @@ docker run -d --name playwright-e2e \
 
 docker logs -f playwright-e2e
 
-# Log all containers
-docker ps -a
-
-# Offloader logs
-docker logs "${COMPOSE_PROJECT_NAME}_callsoffloader"
-
-# Print transcriber job logs in case of failure.
-for ID in $(docker ps -a --filter=ancestor="calls-transcriber:master" --filter=status="exited" --format "{{.ID}}"); do
-	docker logs $ID
-done
-
-# Print recorder job logs in case of failure.
-for ID in $(docker ps -a --filter=ancestor="calls-recorder:master" --filter=status="exited" --format "{{.ID}}"); do
-	docker logs $ID
-done
-
 docker cp playwright-e2e:/usr/src/calls-e2e/test-results results/test-results-${CI_NODE_INDEX}
 docker cp playwright-e2e:/usr/src/calls-e2e/playwright-report results/playwright-report-${CI_NODE_INDEX}
 docker cp playwright-e2e:/usr/src/calls-e2e/pw-results.json results/pw-results-${CI_NODE_INDEX}.json
+
+## Dumping services logs to be uploaded as artifacts in case of failures.
+docker logs ${CONTAINER_SERVER}1 >"${WORKSPACE}/logs/server1.log"
+docker logs ${CONTAINER_SERVER}2 >"${WORKSPACE}/logs/server2.log"
+docker logs ${CONTAINER_PROXY} >"${WORKSPACE}/logs/proxy.log"
+docker logs ${CONTAINER_RTCD} >"${WORKSPACE}/logs/rtcd.log"
+docker logs ${CONTAINER_OFFLOADER} >"${WORKSPACE}/logs/offloader.log"
 
 ## Check if we have an early failures in order to upload logs
 NUM_FAILURES=0
