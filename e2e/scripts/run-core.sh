@@ -33,6 +33,12 @@ docker cp playwright-e2e-core:/usr/src/calls-e2e/test-results results/test-resul
 docker cp playwright-e2e-core:/usr/src/calls-e2e/playwright-report results/playwright-report-core-${CI_NODE_INDEX}
 docker cp playwright-e2e-core:/usr/src/calls-e2e/pw-results.json results/pw-results-core-${CI_NODE_INDEX}.json
 
+## Dumping services logs to be uploaded as artifacts in case of failures.
+docker logs ${CONTAINER_SERVER}1 >"${WORKSPACE}/logs/server1_core.log"
+docker logs ${CONTAINER_SERVER}2 >"${WORKSPACE}/logs/server2_core.log"
+docker logs ${CONTAINER_PROXY} >"${WORKSPACE}/logs/proxy_core.log"
+docker logs ${CONTAINER_OFFLOADER} >"${WORKSPACE}/logs/offloader_core.log"
+
 ## Check if we have an early failures in order to upload logs
 NUM_FAILURES=0
 NUM_FAILURES=$((NUM_FAILURES + $(jq '.suites[].suites[].specs[].tests[] | last(.results[]) | select(.status != "passed").status' <"${WORKSPACE}/results/pw-results-core-${RUN_ID}.json" | wc -l)))
