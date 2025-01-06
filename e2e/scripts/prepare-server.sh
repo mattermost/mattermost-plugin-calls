@@ -52,7 +52,7 @@ docker run -d --quiet --name "${CONTAINER_RTCD}" \
 	--network-alias=rtcd "rtcd:e2e"
 
 # Check that rtcd is up and ready
-timeout --foreground 90s bash -c "docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_rtcd --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://rtcd:8045/api/version; do echo Waiting for rtcd; sleep 2; done; echo rtcd is up"
+timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_rtcd --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://rtcd:8045/api/version; do echo Waiting for rtcd; sleep 2; done; echo rtcd is up"
 
 echo "Spawning calls-offloader service with docker host access ..."
 # Spawn calls offloader image as root to access local docker socket
