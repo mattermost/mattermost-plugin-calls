@@ -6,9 +6,9 @@ require (
 	github.com/aws/aws-sdk-go v1.50.3
 	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/mattermost/mattermost/server/public v0.0.12
-	github.com/mattermost/rtcd v0.18.1-0.20241219235235-f558e9c621d4
-	github.com/pion/rtp v1.8.9
-	github.com/pion/webrtc/v4 v4.0.6
+	github.com/mattermost/rtcd v0.18.1-0.20250106111030-12f101e29772
+	github.com/pion/rtp v1.8.10
+	github.com/pion/webrtc/v4 v4.0.7
 	gopkg.in/hraban/opus.v2 v2.0.0-20230925203106-0188a62cb302
 )
 
@@ -48,8 +48,8 @@ require (
 	github.com/wiggin77/srslog v1.0.1 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/net v0.32.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
