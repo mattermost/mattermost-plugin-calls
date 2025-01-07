@@ -3,11 +3,9 @@ module github.com/mattermost/mattermost-plugin-calls
 go 1.22.7
 
 require (
-	github.com/pion/ice/v2 v2.3.25 // indirect
-	github.com/pion/rtcp v1.2.14 // indirect
-	github.com/pion/webrtc/v3 v3.2.42 // indirect
+	github.com/pion/rtcp v1.2.15 // indirect
 	github.com/prometheus/client_golang v1.16.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 )
 
 require (
@@ -24,7 +22,7 @@ require (
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.1.9
 	github.com/mattermost/morph v1.1.0
-	github.com/mattermost/rtcd v0.18.1-0.20241122194949-fc76bf6a2f16
+	github.com/mattermost/rtcd v0.18.1-0.20250107081358-290c5ce0a692
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
@@ -35,7 +33,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/pion/interceptor v0.1.29 => github.com/streamer45/interceptor v0.0.0-20240411210059-c7d42d2dafc1
+replace github.com/pion/interceptor v0.1.37 => github.com/streamer45/interceptor v0.0.0-20250106110758-7e0fb613abef
 
 replace github.com/mattermost/mattermost-plugin-calls/server/public => ./server/public
 
@@ -101,19 +99,21 @@ require (
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240612014219-fbbf4953d986 // indirect
-	github.com/pion/datachannel v1.5.6 // indirect
-	github.com/pion/dtls/v2 v2.2.11 // indirect
-	github.com/pion/interceptor v0.1.29 // indirect
+	github.com/pion/datachannel v1.5.10 // indirect
+	github.com/pion/dtls/v3 v3.0.4 // indirect
+	github.com/pion/ice/v4 v4.0.3 // indirect
+	github.com/pion/interceptor v0.1.37 // indirect
 	github.com/pion/logging v0.2.2 // indirect
-	github.com/pion/mdns v0.0.12 // indirect
+	github.com/pion/mdns/v2 v2.0.7 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
-	github.com/pion/rtp v1.8.6 // indirect
-	github.com/pion/sctp v1.8.16 // indirect
+	github.com/pion/rtp v1.8.10 // indirect
+	github.com/pion/sctp v1.8.35 // indirect
 	github.com/pion/sdp/v3 v3.0.9 // indirect
-	github.com/pion/srtp/v2 v2.0.18 // indirect
-	github.com/pion/stun v0.6.1 // indirect
-	github.com/pion/transport/v2 v2.2.5 // indirect
-	github.com/pion/turn/v2 v2.1.6 // indirect
+	github.com/pion/srtp/v3 v3.0.4 // indirect
+	github.com/pion/stun/v3 v3.0.0 // indirect
+	github.com/pion/transport/v3 v3.0.7 // indirect
+	github.com/pion/turn/v4 v4.0.0 // indirect
+	github.com/pion/webrtc/v4 v4.0.7 // indirect
 	github.com/plar/go-adaptive-radix-tree v1.0.4 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
@@ -136,6 +136,7 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/wiggin77/merror v1.0.5 // indirect
 	github.com/wiggin77/srslog v1.0.1 // indirect
+	github.com/wlynxg/anet v0.0.5 // indirect
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.56.0 // indirect
@@ -144,13 +145,13 @@ require (
 	go.opentelemetry.io/otel/metric v1.31.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.21.0 // indirect
 	go.opentelemetry.io/otel/trace v1.31.0 // indirect
-	golang.org/x/crypto v0.28.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/mod v0.19.0 // indirect
-	golang.org/x/net v0.27.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240805194559-2c9e96a0b5d4 // indirect
