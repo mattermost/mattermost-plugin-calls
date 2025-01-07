@@ -2,7 +2,8 @@
   "PluginSettings": {
     "Plugins": {
       "com.mattermost.calls": {
-        "enablerecordings": true
+        "enablerecordings": true,
+        "rtcdserviceurl": "http://rtcd:8045"
       }
     }
   }
