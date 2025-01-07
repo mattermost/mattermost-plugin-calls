@@ -52,7 +52,7 @@ docker run -d --quiet --name "${CONTAINER_RTCD}" \
 	--network-alias=rtcd "rtcd:e2e"
 
 # Check that rtcd is up and ready
-docker run --rm --quiet --name "${COMPOSE_PROJECT_NAME}_curl_rtcd" --net ${DOCKER_NETWORK} ${IMAGE_CURL} sh -c "until curl -fs http://rtcd:8045/version; do echo Waiting for rtcd; sleep 5; done; echo rtcd is up"
+timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_rtcd --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://rtcd:8045/version; do echo Waiting for rtcd; sleep 2; done; echo rtcd is up"
 
 echo "Spawning calls-offloader service with docker host access ..."
 # Spawn calls offloader image as root to access local docker socket
@@ -76,7 +76,6 @@ echo "MM_LICENSE=${MM_PLUGIN_CALLS_TEST_LICENSE}" >>${WORKSPACE}/dotenv/app.priv
 echo "MM_FEATUREFLAGS_BoardsProduct=true" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICEENVIRONMENT=test" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_CALLS_JOB_SERVICE_URL=http://calls-offloader:4545" >>${WORKSPACE}/dotenv/app.private.env
-echo "MM_CALLS_RTCD_SERVICE_URL=http://rtcd:8045" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_CONFIG=postgres://mmuser:mostest@postgres/mattermost_test?sslmode=disable&connect_timeout=10&binary_parameters=yes" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICESETTINGS_SITEURL=http://mm-server:8065" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICESETTINGS_ENABLELOCALMODE=true" >>${WORKSPACE}/dotenv/app.private.env
