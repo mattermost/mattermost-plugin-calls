@@ -162,6 +162,10 @@ func (p *Plugin) OnActivate() (retErr error) {
 		p.LogDebug("rtcd client manager initialized successfully")
 
 		p.rtcdManager = rtcdManager
+
+		if err := p.cleanUpState(); err != nil {
+			p.LogError("failed to cleanup state", "err", err.Error())
+		}
 	} else {
 		rtcServerConfig := rtc.ServerConfig{
 			ICEAddressUDP:   cfg.UDPServerAddress,

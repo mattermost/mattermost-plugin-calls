@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	"github.com/mattermost/mattermost-plugin-calls/server/license"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/random"
@@ -705,4 +707,52 @@ func (h *rtcdHost) isFlagged() bool {
 	h.mut.RLock()
 	defer h.mut.RUnlock()
 	return h.flagged
+}
+
+func (m *rtcdClientManager) hasCallEnded(call *public.Call) bool {
+	m.ctx.LogDebug("RTCD host is set in call, checking...", "callID", call.ID, "rtcdHost", call.Props.RTCDHost)
+	host := m.getHost(call.Props.RTCDHost)
+	if host != nil {
+		m.ctx.LogDebug("RTCD host found", "callID", call.ID, "rtcdHost", call.Props.RTCDHost)
+
+		// Version compatibility check. We need to be talking to RTCD v1.0.0 or higher to be able to call GetSessions.
+		info, err := host.client.GetVersionInfo()
+		if err != nil {
+			m.ctx.LogDebug("failed to get version info", "err", err.Error(), "callID", call.ID, "rtcdHost", call.Props.RTCDHost)
+			return false
+		}
+
+		// Always support dev builds.
+		if info.BuildVersion == "" || info.BuildVersion == "master" || strings.HasPrefix(info.BuildVersion, "dev") {
+			m.ctx.LogDebug("skipping version compatibility check", "buildVersion", info.BuildVersion, "callID", call.ID, "rtcdHost", call.Props.RTCDHost)
+		} else if err := checkMinVersion("v1.0.0", info.BuildVersion); err != nil {
+			m.ctx.LogDebug("RTCD host version is not compatible", "err", err.Error(), "callID", call.ID, "rtcdHost", call.Props.RTCDHost)
+			return false
+		}
+
+		cfgs, code, err := host.client.GetSessions(call.ID)
+		if err != nil {
+			m.ctx.LogDebug("failed to get sessions for call", "err", err.Error(), "callID", call.ID, "rtcdHost", call.Props.RTCDHost)
+		}
+
+		if code != http.StatusOK && code != http.StatusNotFound {
+			m.ctx.LogDebug("unexpected status code from RTCD", "code", code, "callID", call.ID, "rtcdHost", call.Props.RTCDHost)
+			// The request above could fail for various reasons, in which case we can't assume the call has ended.
+			return false
+		}
+
+		if len(cfgs) > 0 {
+			// The call is ongoing so we skip state cleanup.
+			m.ctx.LogDebug("call is still ongoing", "callID", call.ID, "rtcdHost", call.Props.RTCDHost)
+			return false
+		}
+
+		// no call ongoing
+		m.ctx.LogDebug("call was not found", "callID", call.ID, "rtcdHost", call.Props.RTCDHost)
+	} else {
+		// If the host is not found we can assume the RTCD node is gone for good so there's no way a call would be ongoing.
+		m.ctx.LogDebug("RTCD host not found", "callID", call.ID, "rtcdHost", call.Props.RTCDHost)
+	}
+
+	return true
 }
