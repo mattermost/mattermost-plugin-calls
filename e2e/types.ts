@@ -18,8 +18,15 @@ declare global {
         onScreenShared: () => void,
         sendCallsError: () => void,
         leaveCall: () => void,
+        getDesktopSources: () => DesktopSource[],
     }
 }
+
+export type DesktopSource = {
+    id: string;
+    name: string;
+    thumbnailURL: string;
+};
 
 export type UserState = {
     username: string;

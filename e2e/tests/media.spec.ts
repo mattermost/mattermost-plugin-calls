@@ -14,7 +14,9 @@ test.beforeEach(async ({page}) => {
 test.describe('screen sharing', () => {
     test.use({storageState: userStorages[0]});
 
-    test('share screen button', async ({page}) => {
+    test('share screen button', {
+        tag: '@core',
+    }, async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         const devPage = new PlaywrightDevPage(page);
@@ -77,7 +79,9 @@ test.describe('screen sharing', () => {
         await userPage.leaveCall();
     });
 
-    test('presenter leaving and joining back', async ({page}) => {
+    test('presenter leaving and joining back', {
+        tag: '@core',
+    }, async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         const devPage = new PlaywrightDevPage(page);
@@ -125,7 +129,9 @@ test.describe('screen sharing', () => {
         await userPage.leaveCall();
     });
 
-    test('av1', async ({page}) => {
+    test('av1', {
+        tag: '@core',
+    }, async ({page}) => {
         test.setTimeout(180000);
 
         // Enabling AV1
@@ -154,46 +160,35 @@ test.describe('screen sharing', () => {
 
         type rtcCodecStats = {
             type: string,
-            mimeType: string,
+            codecId: string,
         };
 
-        type rtcCodecs = {
-            vp8?: rtcCodecStats,
-            av1?: rtcCodecStats,
-        };
-
-        let rxCodecs = await receiverPage.page.evaluate(async () => {
+        let rxCodec = await receiverPage.page.evaluate(async () => {
             const stats = await window.callsClient.peer.pc.getStats();
-            const codecs: rtcCodecs = {};
+            let codec = '';
             stats.forEach((report: rtcCodecStats) => {
-                if (report.type === 'codec') {
-                    if (report.mimeType === 'video/VP8') {
-                        codecs.vp8 = report;
-                    } else if (report.mimeType === 'video/AV1') {
-                        codecs.av1 = report;
-                    }
+                if (report.type !== 'inbound-rtp') {
+                    return;
                 }
+                codec = report.codecId;
             });
-            return codecs;
+            return codec;
         });
-        expect(rxCodecs.av1).toBeDefined();
+        expect(rxCodec).toBe('CIT01_45_level-idx=5;profile=0;tier=0');
 
         let txCodecs = await senderPage.page.evaluate(async () => {
             const stats = await window.callsClient.peer.pc.getStats();
-            const codecs: rtcCodecs = {};
+            const codecs: string[] = [];
             stats.forEach((report: rtcCodecStats) => {
-                if (report.type === 'codec') {
-                    if (report.mimeType === 'video/VP8') {
-                        codecs.vp8 = report;
-                    } else if (report.mimeType === 'video/AV1') {
-                        codecs.av1 = report;
-                    }
+                if (report.type !== 'outbound-rtp') {
+                    return;
                 }
+                codecs.push(report.codecId);
             });
             return codecs;
         });
-        expect(txCodecs.vp8).toBeDefined();
-        expect(txCodecs.av1).toBeDefined();
+        expect(txCodecs).toContain('COT01_39_level-idx=5;profile=0;tier=0');
+        expect(txCodecs).toContain('COT01_96');
 
         await page.getByTestId('calls-widget-stop-screenshare').click();
 
@@ -228,39 +223,32 @@ test.describe('screen sharing', () => {
         // Give it a couple of seconds for encoders/decoders stats to be available.
         await senderPage.wait(2000);
 
-        rxCodecs = await receiverPage.page.evaluate(async () => {
+        rxCodec = await receiverPage.page.evaluate(async () => {
             const stats = await window.callsClient.peer.pc.getStats();
-            const codecs: rtcCodecs = {};
+            let codec = '';
             stats.forEach((report: rtcCodecStats) => {
-                if (report.type === 'codec') {
-                    if (report.mimeType === 'video/VP8') {
-                        codecs.vp8 = report;
-                    } else if (report.mimeType === 'video/AV1') {
-                        codecs.av1 = report;
-                    }
+                if (report.type !== 'inbound-rtp') {
+                    return;
                 }
+                codec = report.codecId;
             });
-            return codecs;
+            return codec;
         });
-        expect(rxCodecs.vp8).toBeDefined();
-        expect(rxCodecs.av1).not.toBeDefined();
+        expect(rxCodec).toBe('CIT01_96');
 
         txCodecs = await senderPage.page.evaluate(async () => {
             const stats = await window.callsClient.peer.pc.getStats();
-            const codecs: rtcCodecs = {};
+            const codecs: string[] = [];
             stats.forEach((report: rtcCodecStats) => {
-                if (report.type === 'codec') {
-                    if (report.mimeType === 'video/VP8') {
-                        codecs.vp8 = report;
-                    } else if (report.mimeType === 'video/AV1') {
-                        codecs.av1 = report;
-                    }
+                if (report.type !== 'outbound-rtp') {
+                    return;
                 }
+                codecs.push(report.codecId);
             });
             return codecs;
         });
-        expect(txCodecs.vp8).toBeDefined();
-        expect(txCodecs.av1).not.toBeDefined();
+        expect(txCodecs).toHaveLength(1);
+        expect(txCodecs[0]).toBe('COT01_96');
 
         await page.getByTestId('calls-widget-stop-screenshare').click();
 
@@ -275,7 +263,9 @@ test.describe('screen sharing', () => {
 test.describe('sending voice', () => {
     test.use({storageState: userStorages[0]});
 
-    test('unmuting', async ({page}) => {
+    test('unmuting', {
+        tag: '@core',
+    }, async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         const devPage = new PlaywrightDevPage(page);
@@ -307,7 +297,9 @@ test.describe('sending voice', () => {
         await userPage.leaveCall();
     });
 
-    test('unmuting after ws reconnect', async ({page}) => {
+    test('unmuting after ws reconnect', {
+        tag: '@core',
+    }, async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         const devPage = new PlaywrightDevPage(page);

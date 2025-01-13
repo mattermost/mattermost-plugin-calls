@@ -6,6 +6,8 @@ function print_logs {
 	docker logs ${CONTAINER_SERVER}1
 	docker logs ${CONTAINER_SERVER}2
 	docker logs ${CONTAINER_PROXY}
+	docker logs ${CONTAINER_RTCD}
+	docker logs ${CONTAINER_OFFLOADER}
 }
 
 trap print_logs EXIT
@@ -35,12 +37,26 @@ docker pull ${IMAGE_CALLS_TRANSCRIBER}
 docker image tag ${IMAGE_CALLS_RECORDER} calls-recorder:master
 docker image tag ${IMAGE_CALLS_TRANSCRIBER} calls-transcriber:master
 
+## Load rtcd image
+docker load --input ${RTCD_IMAGE_PATH}
+
 ## Print images info
 docker images
 
+echo "Spawning RTCD service..."
+docker run -d --quiet --name "${CONTAINER_RTCD}" \
+	--net ${DOCKER_NETWORK} \
+	--env "RTCD_LOGGER_ENABLEFILE=false" \
+	--env "RTCD_LOGGER_CONSOLELEVEL=DEBUG" \
+	--env "RTCD_API_SECURITY_ALLOWSELFREGISTRATION=true" \
+	--network-alias=rtcd "rtcd:e2e"
+
+# Check that rtcd is up and ready
+timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_rtcd --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://rtcd:8045/version; do echo Waiting for rtcd; sleep 2; done; echo rtcd is up"
+
 echo "Spawning calls-offloader service with docker host access ..."
 # Spawn calls offloader image as root to access local docker socket
-docker run -d --quiet --user root --name "${COMPOSE_PROJECT_NAME}_callsoffloader" \
+docker run -d --quiet --user root --name "${CONTAINER_OFFLOADER}" \
 	-v /var/run/docker.sock:/var/run/docker.sock:rw \
 	--net ${DOCKER_NETWORK} \
 	--env "API_SECURITY_ALLOWSELFREGISTRATION=true" \

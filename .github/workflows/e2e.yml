@@ -52,6 +52,53 @@ jobs:
           compression-level: 0
           retention-days: 1
 
+  build-rtcd-image:
+    runs-on: ubuntu-22.04
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+    steps:
+      # Try to fetch branch that matches branch on plugin side.
+      - name: e2e/checkout-rtcd-repo
+        id: try-checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        continue-on-error: true
+        with:
+          repository: mattermost/rtcd
+          path: rtcd
+          ref: ${{  env.BRANCH_NAME  }}
+
+      # Fallback to default branch if the above is missing.
+      - name: e2e/checkout-rtcd-repo-fallback
+        if: steps.try-checkout.outcome == 'failure'
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          repository: mattermost/rtcd
+          path: rtcd
+
+      - name: e2e/setup-docker-buildx
+        uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb # v3.3.0
+
+      - name: e2e/build-image
+        working-directory: ./rtcd
+        run: |
+          make docker-build CI=false
+          if [[ ${{steps.try-checkout.outcome}} == 'failure' ]]; then
+            RTCD_IMAGE="rtcd:master"
+          else
+            RTCD_IMAGE="rtcd:dev-$(git log --pretty=format:'%h' -n 1)"
+          fi
+          docker tag "${RTCD_IMAGE}" "rtcd:e2e"
+          docker save --output rtcd.tar "rtcd:e2e"
+
+      - name: e2e/persist-mattermost-rtcd-image
+        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
+        with:
+          name: mattermost-rtcd-image
+          path: ${{ github.workspace }}/rtcd/rtcd.tar
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
   generate-matrix:
     runs-on: ubuntu-22.04
     outputs:
@@ -69,14 +116,17 @@ jobs:
     needs:
       - build-mattermost-plugin-calls
       - generate-matrix
+      - build-rtcd-image
     env:
       COMPOSE_PROJECT_NAME: playwright_tests
       DOCKER_NETWORK: playwright_tests
       CONTAINER_SERVER: playwright_tests_server
       CONTAINER_PROXY: playwright_tests_proxy
-      IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.8.0
-      IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.7.7
-      IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.5.0
+      CONTAINER_RTCD: playwright_tests_rtcd
+      CONTAINER_OFFLOADER: playwright_tests_offloader
+      IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.9.0
+      IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.8.0
+      IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.6.0
       IMAGE_SERVER: mattermostdevelopment/mattermost-enterprise-edition:master
       IMAGE_CURL: curlimages/curl:8.7.1
       CI_NODE_INDEX: ${{ matrix.run_id }}
@@ -116,6 +166,12 @@ jobs:
           name: mattermost-plugin-calls-package
           path: dist
 
+      - name: e2e/download-rtcd-image
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          name: mattermost-rtcd-image
+          path: ${{ github.workspace }}
+
       - name: e2e/docker-login
         uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
         # Do not authenticate on Forks
@@ -130,6 +186,7 @@ jobs:
           COMPOSE_HTTP_TIMEOUT: 120
           DOCKER_COMPOSE_FILE: ${{ github.workspace }}/e2e/docker/docker-compose.yaml
           MM_PLUGIN_CALLS_TEST_LICENSE: ${{ secrets.MM_PLUGIN_CALLS_TEST_LICENSE }}
+          RTCD_IMAGE_PATH: ${{ github.workspace }}/rtcd.tar
         run: |
           ${{ github.workspace }}/e2e/scripts/prepare-server.sh
 
@@ -148,6 +205,14 @@ jobs:
         run: |
           ${{ github.workspace }}/e2e/scripts/run.sh
 
+      - name: e2e/test-core
+        env:
+          WORKSPACE: ${{github.workspace}}
+          RUN_ID: ${{matrix.run_id}}
+        id: test-core
+        run: |
+          ${{ github.workspace }}/e2e/scripts/run-core.sh
+
       - name: e2e/persist-report-results
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
         with:
@@ -157,7 +222,7 @@ jobs:
           retention-days: 1
 
       - name: e2e/persist-report-logs
-        if: ${{ fromJson(steps.test.outputs.FAILURES) > 0 }}
+        if: ${{ (fromJson(steps.test.outputs.FAILURES) > 0) || (fromJson(steps.test-core.outputs.FAILURES) > 0) }}
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
         with:
           name: e2e-playwright-logs-${{ matrix.run_id }}
