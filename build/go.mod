@@ -7,7 +7,7 @@ toolchain go1.22.7
 require (
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/mattermost/mattermost-plugin-starter-template/build v0.0.0-20210825072926-a80b0661954e
-	github.com/mattermost/mattermost/server/public v0.1.10-0.20241211180836-5b55100aee46
+	github.com/mattermost/mattermost/server/public v0.1.10-0.20250113101959-086e6d9df61c
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.9.0
 	sigs.k8s.io/yaml v1.2.0
