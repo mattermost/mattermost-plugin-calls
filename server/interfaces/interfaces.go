@@ -57,4 +57,6 @@ type RTCDClient interface {
 	Close() error
 	GetVersionInfo() (rtcd.VersionInfo, error)
 	GetSystemInfo() (rtcd.SystemInfo, error)
+	GetSession(callID, sessionID string) (rtc.SessionConfig, int, error)
+	GetSessions(callID string) ([]rtc.SessionConfig, int, error)
 }
