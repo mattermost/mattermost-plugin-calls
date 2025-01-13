@@ -709,6 +709,9 @@ func (h *rtcdHost) isFlagged() bool {
 	return h.flagged
 }
 
+// hasCallEnded checks if the call has ended by querying the RTCD host assigned to the call.
+// Since this method is used to clean up the call state, it's important to be as conservative as possible
+// and only return true if we are absolutely sure the call has ended.
 func (m *rtcdClientManager) hasCallEnded(call *public.Call) bool {
 	m.ctx.LogDebug("RTCD host is set in call, checking...", "callID", call.ID, "rtcdHost", call.Props.RTCDHost)
 	host := m.getHost(call.Props.RTCDHost)
