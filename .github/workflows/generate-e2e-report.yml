@@ -7,6 +7,8 @@ on:
     types:
       - completed
 
+permissions: read-all
+
 jobs:
   generate-report:
     runs-on: ubuntu-22.04
@@ -14,6 +16,8 @@ jobs:
     steps:
       - name: e2e-report/checkout-mattermost-plugin-calls-repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          persist-credentials: false
 
       - name: e2e-report/download-paywright-report-results
         uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
@@ -42,6 +46,7 @@ jobs:
 
           echo "Generating the e2e report ... "
           cp ${{ github.workspace }}/e2e/scripts/merge-reports.js .
+          rm -vf package.json
           npm install --include=dev @playwright/test playwright-merge-html-reports fs
           node merge-reports.js
 
