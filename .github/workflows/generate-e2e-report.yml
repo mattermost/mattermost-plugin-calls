@@ -13,6 +13,8 @@ jobs:
   generate-report:
     runs-on: ubuntu-22.04
     if: github.repository_owner == 'mattermost' && github.event.workflow_run.conclusion == 'success'
+    permissions:
+          statuses: write
     steps:
       - name: e2e-report/checkout-mattermost-plugin-calls-repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
