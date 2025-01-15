@@ -39,3 +39,4 @@ e2e/plugin.json
 
 # server bundled translations
 server/assets/i18n
+.aider*
