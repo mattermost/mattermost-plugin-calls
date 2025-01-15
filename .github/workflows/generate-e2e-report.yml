@@ -76,6 +76,8 @@ jobs:
           echo "You can find the report [here](${{ steps.stats.outputs.S3_REPORT }})" >> "${GITHUB_STEP_SUMMARY}"
 
       - name: e2e-report/send-success-status
+        permissions:
+          statuses: write
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # 7.0.1
         with:
           script: |
