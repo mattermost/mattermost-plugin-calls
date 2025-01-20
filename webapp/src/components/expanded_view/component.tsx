@@ -16,7 +16,6 @@ import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
-import {compareSemVer} from 'semver-parser';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
@@ -73,7 +72,6 @@ import {
     isDMChannel,
     sendDesktopEvent,
     setCallsGlobalCSSVars,
-    shouldRenderDesktopWidget,
     untranslatable,
 } from 'src/utils';
 import styled, {createGlobalStyle, css} from 'styled-components';
