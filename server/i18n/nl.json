@@ -49,7 +49,7 @@
     },
     {
         "id": "app.admin.concurrent_sessions_warning.enterprise",
-        "translation": "We raden ten zeerste aan om [de RTCD service te implementeren](https://mattermost.com/pl/calls-deployment-the-rtcd-service) om het verwerken van oproepen te offloaden naar een aparte instantie om de prestaties, schaalbaarheid en betrouwbaarheid van je belangrijkste Mattermostserver te behouden."
+        "translation": "We raden ten zeerste aan om [de RTCD service te implementeren](https://mattermost.com/pl/calls-deployment-the-rtcd-service) om het verwerken van oproepen te offloaden naar een aparte instantie om de prestaties, schaalbaarheid en betrouwbaarheid van je belangrijkste Mattermost-server te behouden."
     },
     {
         "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
