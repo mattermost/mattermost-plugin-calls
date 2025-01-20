@@ -82,5 +82,10 @@ test.describe('admin console', () => {
         // Ensure AllowScreenSharing defaults to true
         await expect(page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.allowscreensharingtrue')).toBeChecked();
         await expect(page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.allowscreensharingfalse')).not.toBeChecked();
+
+        // Check TURNStaticAuthSecret setting (MM-62637)
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.turnstaticauthsecret')).toMatchSnapshot('calls-system-console-turn-static-auth-secret-empty.png');
+        await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.turnstaticauthsecretinput').fill('secret');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.turnstaticauthsecret')).toMatchSnapshot('calls-system-console-turn-static-auth-secret-filled.png');
     });
 });
