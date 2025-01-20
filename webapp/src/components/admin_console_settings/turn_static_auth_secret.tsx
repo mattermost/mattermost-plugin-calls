@@ -13,7 +13,7 @@ export default function TURNStaticAuthSecret(props: CustomComponentProps) {
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'TURNStaticAuthSecret')?.placeholder || '';
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        props.onChange(props.id, parseInt(e.target.value, 10));
+        props.onChange(props.id, e.target.value);
     };
 
     return (
