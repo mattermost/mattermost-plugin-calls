@@ -85,7 +85,7 @@ test.describe('popout window', () => {
         await expect(popOut.page.locator('#sidebar-right [data-testid=call-thread]')).toBeVisible();
 
         // Expand call thread
-        await popOut.page.locator('[aria-label="Expand"]').click();
+        await popOut.page.locator('[aria-label="Expand Sidebar Icon"]').click();
 
         // Verify leave button can be clicked. Checking for visibility would work even
         // if there's an element showing on top
