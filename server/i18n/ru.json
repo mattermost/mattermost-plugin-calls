@@ -1,1 +1,58 @@
-[]
+[
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "Звонки на нелицензионных серверах доступны только в личных каналах."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "Ваша установка интенсивно используется Mattermost Calls, что может негативно сказаться на производительности и отзывчивости системы."
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "Звонок завершен"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "Вот запись разговора. Транскрипция находится в процессе обработки и будет выложена, когда будет готова."
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "Вот расшифровка звонка"
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Username}} начал вызов"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}} начал звонок"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "Вас пригласили на звонок"
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "Вот запись разговора"
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}} приглашает вас на звонок"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "Не удалось сохранить конфигурацию."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "Мы настоятельно рекомендуем [развернуть службу RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), чтобы разгрузить обработку вызовов на отдельный экземпляр, чтобы сохранить производительность, масштабируемость и надежность вашего основного сервера Mattermost."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "Мы настоятельно рекомендуем перейти на [Enterprise](https://mattermost.com/pricing/) и [развернуть службу RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), чтобы разгрузить обработку звонков на отдельный экземпляр и сохранить производительность, масштабируемость и надежность вашего основного сервера Mattermost."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "Мы настоятельно рекомендуем перейти на [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) и [развернуть сервис RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), чтобы разгрузить обработку вызовов на отдельный экземпляр, чтобы сохранить производительность, масштабируемость и надежность вашего основного сервера Mattermost."
+    }
+]
