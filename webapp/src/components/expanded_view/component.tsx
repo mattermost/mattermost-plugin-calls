@@ -17,7 +17,6 @@ import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
-import {compareSemVer} from 'semver-parser';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
@@ -74,7 +73,6 @@ import {
     isDMChannel,
     sendDesktopEvent,
     setCallsGlobalCSSVars,
-    shouldRenderDesktopWidget,
     untranslatable,
 } from 'src/utils';
 import styled, {createGlobalStyle, css} from 'styled-components';
@@ -510,14 +508,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
             this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else if (!this.props.screenSharingSession) {
-            if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
-                this.props.showScreenSourceModal();
-            } else if (window.desktopAPI?.openScreenShareModal) {
+            if (window.desktopAPI?.openScreenShareModal) {
                 logDebug('desktopAPI.openScreenShareModal');
                 window.desktopAPI.openScreenShareModal();
-            } else if (shouldRenderDesktopWidget()) {
-                // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
-                sendDesktopEvent('desktop-sources-modal-request');
             } else {
                 const stream = await getScreenStream('', hasExperimentalFlag());
                 if (window.opener && stream) {
