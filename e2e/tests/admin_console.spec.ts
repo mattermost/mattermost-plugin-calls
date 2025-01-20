@@ -34,13 +34,13 @@ test.describe('admin console', () => {
         await expect(page.locator('.admin-console__header')).toContainText('Calls');
 
         // Verify all sections render as expected.
-        await expect(await resizeAndScreenshot(page, 'calls-general-settings-section')).toMatchSnapshot('calls-system-console-general-settings-section.png');
-        await expect(await resizeAndScreenshot(page, 'calls-rtcd-service-section')).toMatchSnapshot('calls-system-console-rtcd-service-section.png');
-        await expect(await resizeAndScreenshot(page, 'calls-rtc-server-section')).toMatchSnapshot('calls-system-console-rtc-server-section.png');
-        await expect(await resizeAndScreenshot(page, 'calls-ice-and-turn-section')).toMatchSnapshot('calls-system-console-ice-and-turn-section.png');
-        await expect(await resizeAndScreenshot(page, 'calls-recordings-section')).toMatchSnapshot('calls-system-console-recordings-section.png');
-        await expect(await resizeAndScreenshot(page, 'calls-transcriptions-section')).toMatchSnapshot('calls-system-console-transcriptions-section.png');
-        await expect(await resizeAndScreenshot(page, 'calls-live-captions-section')).toMatchSnapshot('calls-system-console-live-captions-section.png');
+        await expect(await resizeAndScreenshot(page, 'calls-general-settings-section')).toMatchSnapshot('calls-system-console-general-settings-section.png', {maxDiffPixels: 0});
+        await expect(await resizeAndScreenshot(page, 'calls-rtcd-service-section')).toMatchSnapshot('calls-system-console-rtcd-service-section.png', {maxDiffPixels: 0});
+        await expect(await resizeAndScreenshot(page, 'calls-rtc-server-section')).toMatchSnapshot('calls-system-console-rtc-server-section.png', {maxDiffPixels: 0});
+        await expect(await resizeAndScreenshot(page, 'calls-ice-and-turn-section')).toMatchSnapshot('calls-system-console-ice-and-turn-section.png', {maxDiffPixels: 0});
+        await expect(await resizeAndScreenshot(page, 'calls-recordings-section')).toMatchSnapshot('calls-system-console-recordings-section.png', {maxDiffPixels: 0});
+        await expect(await resizeAndScreenshot(page, 'calls-transcriptions-section')).toMatchSnapshot('calls-system-console-transcriptions-section.png', {maxDiffPixels: 0});
+        await expect(await resizeAndScreenshot(page, 'calls-live-captions-section')).toMatchSnapshot('calls-system-console-live-captions-section.png', {maxDiffPixels: 0});
     });
 
     test('config settings', async ({page}) => {
@@ -52,35 +52,41 @@ test.describe('admin console', () => {
 
         // wait for any animation to complete
         await wait(1000);
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.PluginStates.com+mattermost+calls.Enable')).toMatchSnapshot('calls-system-console-enable-plugin-false.png');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.PluginStates.com+mattermost+calls.Enable')).toMatchSnapshot('calls-system-console-enable-plugin-false.png', {maxDiffPixels: 0});
 
         await page.getByTestId('PluginSettings.PluginStates.com+mattermost+calls.Enabletrue').click();
 
         // wait for any animation to complete
         await wait(1000);
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.PluginStates.com+mattermost+calls.Enable')).toMatchSnapshot('calls-system-console-enable-plugin-true.png');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.PluginStates.com+mattermost+calls.Enable')).toMatchSnapshot('calls-system-console-enable-plugin-true.png', {maxDiffPixels: 0});
 
         // Check number input
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.maxcallparticipants')).toMatchSnapshot('calls-system-console-max-call-participants-default.png');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.maxcallparticipants')).toMatchSnapshot('calls-system-console-max-call-participants-default.png', {maxDiffPixels: 0});
         await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.maxcallparticipantsnumber').fill('10');
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.maxcallparticipants')).toMatchSnapshot('calls-system-console-max-call-participants-modified.png');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.maxcallparticipants')).toMatchSnapshot('calls-system-console-max-call-participants-modified.png', {maxDiffPixels: 0});
 
         // Check text input
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.rtcdserviceurl')).toMatchSnapshot('calls-system-console-rtcd-url-empty.png');
         await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.rtcdserviceurlinput').fill('http://rtcd.local:8065');
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.rtcdserviceurl')).toMatchSnapshot('calls-system-console-rtcd-url-filled.png');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.rtcdserviceurl')).toMatchSnapshot('calls-system-console-rtcd-url-filled.png', {maxDiffPixels: 0});
+        await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.rtcdserviceurlinput').clear();
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.rtcdserviceurl')).toMatchSnapshot('calls-system-console-rtcd-url-empty.png', {maxDiffPixels: 0});
 
         // Check textarea input
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.iceserversconfigs')).toMatchSnapshot('calls-system-console-ice-configs-empty.png');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.iceserversconfigs')).toMatchSnapshot('calls-system-console-ice-configs-empty.png', {maxDiffPixels: 0});
         await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.iceserversconfigsinput').fill('[]');
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.iceserversconfigs')).toMatchSnapshot('calls-system-console-ice-configs-filled.png');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.iceserversconfigs')).toMatchSnapshot('calls-system-console-ice-configs-filled.png', {maxDiffPixels: 0});
 
         // Check dropdown input
         await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.recordingqualitydropdown').selectOption('High');
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.recordingquality')).toMatchSnapshot('calls-system-console-recording-quality.png');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.recordingquality')).toMatchSnapshot('calls-system-console-recording-quality.png', {maxDiffPixels: 0});
 
         // Ensure AllowScreenSharing defaults to true
         await expect(page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.allowscreensharingtrue')).toBeChecked();
         await expect(page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.allowscreensharingfalse')).not.toBeChecked();
+
+        // Check TURNStaticAuthSecret setting (MM-62637)
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.turnstaticauthsecret')).toMatchSnapshot('calls-system-console-turn-static-auth-secret-empty.png', {maxDiffPixels: 0});
+        await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.turnstaticauthsecretinput').fill('secret');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.turnstaticauthsecret')).toMatchSnapshot('calls-system-console-turn-static-auth-secret-filled.png', {maxDiffPixels: 0});
     });
 });
