@@ -22,8 +22,6 @@ import {
     callStartedTimestampFn,
     getCallPropsFromPost,
     getUserDisplayName,
-    sendDesktopEvent,
-    shouldRenderDesktopWidget,
     toHuman,
     untranslatable,
 } from 'src/utils';
@@ -74,9 +72,8 @@ const PostType = ({
             // NOTE: this also handles the desktop global widget case since the opener window
             // will have the client.
             callsClient.disconnect();
-        } else if (shouldRenderDesktopWidget()) {
-            // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
-            sendDesktopEvent('calls-leave-call', {callID: post.channel_id});
+        } else if (window.desktopAPI?.leaveCall) {
+            window.desktopAPI.leaveCall();
         }
     };
 
