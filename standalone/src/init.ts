@@ -1,4 +1,6 @@
-// CSS
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import 'mattermost-webapp/sass/styles.scss';
 import 'mattermost-webapp/components/widgets/menu/menu.scss';
 import 'mattermost-webapp/components/widgets/menu/menu_group.scss';

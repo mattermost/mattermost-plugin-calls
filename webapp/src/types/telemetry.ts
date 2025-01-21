@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 export enum Event {
     OpenExpandedView = 'user_open_expanded_view',
     CloseExpandedView = 'user_close_expanded_view',

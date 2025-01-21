@@ -1,4 +1,7 @@
-/* eslint-disable max-lines */
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+// eslint-disable max-lines
 // eslint-disable-next-line simple-import-sort/imports
 import {parseRTCStats, RTCMonitor, RTCPeer} from '@mattermost/calls-common';
 import type {EmojiData, CallsClientJoinData} from '@mattermost/calls-common/lib/types';

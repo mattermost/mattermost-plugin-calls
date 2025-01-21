@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {getChannel as getChannelAction, getChannelMembers} from 'mattermost-redux/actions/channels';
 import {getMyPreferences} from 'mattermost-redux/actions/preferences';
 import {getMyTeamMembers, getMyTeams, getTeam as getTeamAction, selectTeam} from 'mattermost-redux/actions/teams';

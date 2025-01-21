@@ -1,5 +1,7 @@
-/* eslint-disable max-lines */
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
 
+/* eslint-disable max-lines */
 import {CallChannelState} from '@mattermost/calls-common/lib/types';
 import WebSocketClient from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
