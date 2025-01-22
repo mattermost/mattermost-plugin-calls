@@ -1,6 +1,6 @@
 Mattermost Calls
 
-©2015-present Mattermost,Inc. All Rights Reserved. See LICENSE for license information.
+©2020-present Mattermost,Inc. All Rights Reserved. See LICENSE for license information.
 
 NOTICES:
 --------
