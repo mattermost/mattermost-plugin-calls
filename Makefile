@@ -295,6 +295,12 @@ bundle:
 	rm -rf standalone/dist/i18n
 	mkdir -p dist/$(PLUGIN_ID)
 	./build/bin/manifest dist
+ifneq ($(wildcard LICENSE.txt),)
+	cp -r LICENSE.txt dist/$(PLUGIN_ID)/
+endif
+ifneq ($(wildcard NOTICE.txt),)
+	cp -r NOTICE.txt dist/$(PLUGIN_ID)/
+endif
 ifneq ($(wildcard $(ASSETS_DIR)/.),)
 	cp -r server/i18n $(ASSETS_DIR)/
 	cp -r $(ASSETS_DIR) dist/$(PLUGIN_ID)/
