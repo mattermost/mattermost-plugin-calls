@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import React, {useCallback, useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';

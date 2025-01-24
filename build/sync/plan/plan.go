@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 // Package plan handles the synchronization plan.
 //
 // Each synchronization plan is a set of checks and actions to perform on specified paths

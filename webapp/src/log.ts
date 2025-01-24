@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 /* eslint-disable no-console */
 
 import {STORAGE_CALLS_CLIENT_LOGS_KEY} from 'src/constants';

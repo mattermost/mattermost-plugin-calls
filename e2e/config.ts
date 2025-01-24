@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {expect, request} from '@playwright/test';
 
 import {adminState, baseURL, pluginID} from './constants';

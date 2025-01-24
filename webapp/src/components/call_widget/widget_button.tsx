@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import React, {CSSProperties, useRef, useState} from 'react';
 import {Overlay} from 'react-bootstrap';
 import {StyledTooltip} from 'src/components/shared';

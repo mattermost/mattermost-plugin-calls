@@ -199,6 +199,9 @@ ifneq ($(HAS_SERVER),)
 	@echo Running golangci-lint
 	golangci-lint run ./server/...
 	cd server/public && golangci-lint run ./...
+
+	$(GO) install github.com/mattermost/mattermost-govet/v2@3f08281c344327ac09364f196b15f9a81c7eff08
+	$(GO) vet -vettool=$(GOBIN)/mattermost-govet -license -license.year=2020 ./server/...
 endif
 
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set
@@ -290,6 +293,12 @@ bundle:
 	rm -rf standalone/dist/i18n
 	mkdir -p dist/$(PLUGIN_ID)
 	./build/bin/manifest dist
+ifneq ($(wildcard LICENSE.txt),)
+	cp -r LICENSE.txt dist/$(PLUGIN_ID)/
+endif
+ifneq ($(wildcard NOTICE.txt),)
+	cp -r NOTICE.txt dist/$(PLUGIN_ID)/
+endif
 ifneq ($(wildcard $(ASSETS_DIR)/.),)
 	cp -r server/i18n $(ASSETS_DIR)/
 	cp -r $(ASSETS_DIR) dist/$(PLUGIN_ID)/
