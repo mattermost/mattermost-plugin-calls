@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {pluginId} from './manifest';
 
 export const USER_JOINED = pluginId + '_user_joined';

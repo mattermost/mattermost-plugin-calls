@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import React, {useState} from 'react';
 import {useIntl} from 'react-intl';
 import styled, {css} from 'styled-components';

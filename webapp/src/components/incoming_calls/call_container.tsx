@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {getMyTeams} from 'mattermost-redux/selectors/entities/teams';
 import React from 'react';
 import {useSelector} from 'react-redux';

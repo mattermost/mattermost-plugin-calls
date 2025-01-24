@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {defineMessage, MessageDescriptor} from 'react-intl';
 import {CallAlertConfig, CallAlertType} from 'src/types/types';
 

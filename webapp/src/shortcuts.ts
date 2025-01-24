@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 export const MUTE_UNMUTE = 'mute-unmute';
 export const RAISE_LOWER_HAND = 'raise-lower-hand';
 export const MAKE_REACTION = 'make-reaction';

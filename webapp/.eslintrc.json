@@ -21,7 +21,8 @@
     "import",
     "formatjs",
     "unused-imports",
-    "simple-import-sort"
+    "simple-import-sort",
+    "header"
   ],
   "env": {
     "browser": true,
@@ -145,6 +146,12 @@
     ],
     "global-require": 2,
     "guard-for-in": 2,
+    "header/header": [
+      2,
+      "line",
+      " Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.\n See LICENSE.txt for license information.",
+      2
+    ],
     "id-blacklist": 0,
     "import/no-unresolved": 0,
     "indent": [

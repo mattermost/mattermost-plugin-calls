@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {CallState, CallStateData, JobStopData, UserJoinedData, WebsocketEventData} from '@mattermost/calls-common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import {ChannelTypes} from 'mattermost-redux/action_types';

@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {Caption} from '@mattermost/calls-common/lib/types';
 import {FileInfo} from '@mattermost/types/files';
 import {Post} from '@mattermost/types/posts';

@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import React, {ComponentProps} from 'react';
 import {useIntl} from 'react-intl';
 import {endCall} from 'src/actions';

@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import React, {useState} from 'react';
 import {FormattedMessage} from 'react-intl';
 import MutedIcon from 'src/components/icons/muted_icon';

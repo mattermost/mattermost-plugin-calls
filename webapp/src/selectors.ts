@@ -1,3 +1,6 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {CallsConfig, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';

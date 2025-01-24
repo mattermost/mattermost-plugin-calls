@@ -1,5 +1,7 @@
-/* eslint-disable no-process-env */
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
 
+/* eslint-disable no-process-env */
 import {chromium, Page, test} from '@playwright/test';
 import * as fs from 'fs';
 
