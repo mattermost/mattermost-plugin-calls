@@ -201,9 +201,7 @@ ifneq ($(HAS_SERVER),)
 	cd server/public && golangci-lint run ./...
 
 	$(GO) install github.com/mattermost/mattermost-govet/v2@3f08281c344327ac09364f196b15f9a81c7eff08
-	# Multiple runs instead of ./... since `go vet` trips over Dumpy.go in node_modules.
 	$(GO) vet -vettool=$(GOBIN)/mattermost-govet -license -license.year=2020 ./server/...
-	cd lt && $(GO) vet -vettool=$(GOBIN)/mattermost-govet -license -license.year=2020 ./...
 endif
 
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set
