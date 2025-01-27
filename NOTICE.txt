@@ -1,11 +1,11 @@
 Mattermost Calls
 
-©2020-present Mattermost,Inc. All Rights Reserved. See LICENSE for license information.
+©2020-present Mattermost, Inc. All Rights Reserved. See LICENSE.txt for license information.
 
 NOTICES:
 --------
 
-This document includes a list of open source components used in Mattermost Calls plugin, including those that have been modified.
+This document includes a list of open source components used in the plugin, including those that have been modified.
 
 --------
 
