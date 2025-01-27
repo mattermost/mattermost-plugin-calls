@@ -1,6 +1,6 @@
 ---
 title: "Mattermost Calls"
-copyright: "©2015-present Mattermost,Inc. All Rights Reserved. See LICENSE for license information."
+copyright: "©2020-present Mattermost,Inc. All Rights Reserved. See LICENSE for license information."
 description: "This document includes a list of open source components used in Mattermost Calls plugin, including those that have been modified."
 search:
   - "go.mod"
