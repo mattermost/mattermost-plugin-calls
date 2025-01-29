@@ -39,6 +39,4 @@ jobs:
           working-directory: ./lt
       - name: mattermost-govet
         shell: bash
-        run: go install github.com/mattermost/mattermost-govet/v2@3f08281c344327ac09364f196b15f9a81c7eff08 && go vet -vettool=$(go env GOBIN)/mattermost-govet -license -license.year=2020 ./...
-        with:
-          working-directory: ./lt
+        run: cd ./lt && go install github.com/mattermost/mattermost-govet/v2@3f08281c344327ac09364f196b15f9a81c7eff08 && go vet -vettool=$(go env GOBIN)/mattermost-govet -license -license.year=2020 ./...
