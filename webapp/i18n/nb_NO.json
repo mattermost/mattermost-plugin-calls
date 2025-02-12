@@ -13,6 +13,7 @@
   "0cE6s2": "Samtaler kan ikke initieres i en usikker kontekst",
   "0fFRUQ": "Begynn presentasjon",
   "0fj4bj": "Tillat skjermdeling",
+  "10k1Mv": "URL-adressen som peker til en kjørende calls-offloader-jobbtjenesteinstans.",
   "1QvHUW": "Opptaket ditt avsluttes om {count, plural, =1 {# minute} other {# minutes}}.",
   "1s4g9H": "Når satt til sann, vil klienter bruke WebRTC-datakanaler til å signalisere nye mediespor. Dette kan resultere i en mer effektiv og mindre løpsutsatt prosess, spesielt i tilfelle hyppige WebSocket frakoblinger.",
   "1vzfaf": "Avslutt samtalen for alle",
