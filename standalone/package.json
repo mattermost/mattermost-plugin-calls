@@ -31,7 +31,7 @@
     "redux": "4.2.0",
     "semver-parser": "4.0.0",
     "styled-components": "6.1.8",
-    "stylis": "4.3.1"
+    "stylis": "4.3.5"
   },
   "devDependencies": {
     "@babel/core": "7.16.0",
