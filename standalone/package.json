@@ -22,7 +22,7 @@
     "@mattermost/compass-icons": "0.1.31",
     "@msgpack/msgpack": "2.7.1",
     "bootstrap": "3.4.1",
-    "core-js": "3.26.1",
+    "core-js": "3.40.0",
     "luxon": "3.3.0",
     "react": "17.0.2",
     "react-bootstrap": "github:mattermost/react-bootstrap#c6957962364e0818a51bbfd13e89919903b422d6",
