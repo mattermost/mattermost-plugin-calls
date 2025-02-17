@@ -50,7 +50,7 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
                     className='form-control'
                     type={'number'}
                     placeholder={placeholder}
-                    value={props.value}
+                    value={props.value ?? 60}
                     onChange={handleChange}
                     disabled={props.disabled}
                 />
