@@ -40,6 +40,9 @@
       ],
       "reselect": [
         "./mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/selectors/create_selector/index"
+      ],
+      "key-mirror": [
+        "./mattermost-webapp/webapp/channels/src/types/external/key-mirror.d.ts"
       ]
     }
   },
