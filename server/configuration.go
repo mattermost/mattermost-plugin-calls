@@ -156,8 +156,10 @@ const (
 	maxAllowedPort            = 49151
 )
 
-type ICEServers []string
-type ICEServersConfigs rtc.ICEServers
+type (
+	ICEServers        []string
+	ICEServersConfigs rtc.ICEServers
+)
 
 func (cfgs *ICEServersConfigs) UnmarshalJSON(data []byte) error {
 	if len(data) == 0 {
@@ -676,8 +678,8 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 
 	// Allow env var to permanently override system console settings
 	if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
-		if max, err := strconv.Atoi(maxPart); err == nil {
-			*cfg.MaxCallParticipants = max
+		if maxVal, err := strconv.Atoi(maxPart); err == nil {
+			*cfg.MaxCallParticipants = maxVal
 		} else {
 			p.LogError("setOverrides", "failed to parse MM_CALLS_MAX_PARTICIPANTS", err.Error())
 		}
