@@ -29,9 +29,7 @@ const (
 	channelNameMaxLength = 24
 )
 
-var (
-	filenameSanitizationRE = regexp.MustCompile(`[\\:*?\"<>|\n\s/]`)
-)
+var filenameSanitizationRE = regexp.MustCompile(`[\\:*?\"<>|\n\s/]`)
 
 func (p *Plugin) getNotificationNameFormat(userID string) string {
 	config := p.API.GetConfig()
@@ -153,12 +151,12 @@ func sanitizeFilename(name string) string {
 	return filenameSanitizationRE.ReplaceAllString(name, "_")
 }
 
-func truncateString(s string, len int) string {
-	if utf8.RuneCountInString(s) <= len {
+func truncateString(s string, length int) string {
+	if utf8.RuneCountInString(s) <= length {
 		return s
 	}
 
-	return fmt.Sprintf(fmt.Sprintf("%%.%ds…", len), s)
+	return fmt.Sprintf(fmt.Sprintf("%%.%ds…", length), s)
 }
 
 func (p *Plugin) genFilenameForCall(channelID string) (filename string) {
