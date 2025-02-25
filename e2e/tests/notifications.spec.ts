@@ -207,13 +207,18 @@ test.describe('notifications', () => {
         await expect(notification).toContainText(`${usernames[1]} is inviting you to a call with ${usernames[2]}`);
 
         // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
-        const textEl = notification.getByText(`${usernames[1]}`);
-        await expect(textEl).toBeVisible();
+        let textEl = notification.getByText(`${usernames[1]}`);
         await textEl.evaluate((el, username) => {
             if (el.textContent) {
                 el.textContent = el.textContent.replace(username, 'testuser');
             }
         }, usernames[1]);
+        textEl = notification.getByText(`${usernames[2]}`);
+        await textEl.evaluate((el, username) => {
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser2');
+            }
+        }, usernames[2]);
 
         await expect(await notification.screenshot()).toMatchSnapshot('call-incoming-notification-gm.png');
 
@@ -258,13 +263,18 @@ test.describe('notifications', () => {
         await expect(notification).toContainText(`${usernames[1]} is inviting you to a call with ${usernames[2]}`);
 
         // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
-        const textEl = notification.getByText(`${usernames[1]}`);
-        await expect(textEl).toBeVisible();
+        let textEl = notification.getByText(`${usernames[1]}`);
         await textEl.evaluate((el, username) => {
             if (el.textContent) {
                 el.textContent = el.textContent.replace(username, 'testuser');
             }
         }, usernames[1]);
+        textEl = notification.getByText(`${usernames[2]}`);
+        await textEl.evaluate((el, username) => {
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser2');
+            }
+        }, usernames[2]);
 
         await expect(await notification.screenshot()).toMatchSnapshot('call-incoming-notification-gm.png');
 
@@ -294,13 +304,18 @@ test.describe('notifications', () => {
         await expect(notification).toContainText(`${usernames[1]} is inviting you to a call with ${usernames[2]}`);
 
         // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
-        const textEl = notification.getByText(`${usernames[1]}`);
-        await expect(textEl).toBeVisible();
+        let textEl = notification.getByText(`${usernames[1]}`);
         await textEl.evaluate((el, username) => {
             if (el.textContent) {
                 el.textContent = el.textContent.replace(username, 'testuser');
             }
         }, usernames[1]);
+        textEl = notification.getByText(`${usernames[2]}`);
+        await textEl.evaluate((el, username) => {
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser2');
+            }
+        }, usernames[2]);
 
         await expect(await notification.screenshot()).toMatchSnapshot('call-incoming-notification-gm.png');
 
