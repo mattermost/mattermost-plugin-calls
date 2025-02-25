@@ -89,7 +89,9 @@ test.describe('notifications', () => {
         const textEl = notification.getByText(`${usernames[1]}`);
         await expect(textEl).toBeVisible();
         await textEl.evaluate((el, username) => {
-            el.textContent = el.textContent.replace(username, 'testuser');
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
         }, usernames[1]);
 
         await expect(await notification.screenshot()).toMatchSnapshot('call-incoming-notification-dm.png');
@@ -136,7 +138,9 @@ test.describe('notifications', () => {
         const textEl = notification.getByText(`${usernames[1]}`);
         await expect(textEl).toBeVisible();
         await textEl.evaluate((el, username) => {
-            el.textContent = el.textContent.replace(username, 'testuser');
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
         }, usernames[1]);
 
         await expect(await notification.screenshot()).toMatchSnapshot('call-incoming-notification-dm.png');
@@ -172,7 +176,9 @@ test.describe('notifications', () => {
         const textEl = notification.getByText(`${usernames[1]}`);
         await expect(textEl).toBeVisible();
         await textEl.evaluate((el, username) => {
-            el.textContent = el.textContent.replace(username, 'testuser');
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
         }, usernames[1]);
 
         await expect(await notification.screenshot()).toMatchSnapshot('call-incoming-notification-dm.png');
@@ -204,7 +210,9 @@ test.describe('notifications', () => {
         const textEl = notification.getByText(`${usernames[1]}`);
         await expect(textEl).toBeVisible();
         await textEl.evaluate((el, username) => {
-            el.textContent = el.textContent.replace(username, 'testuser');
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
         }, usernames[1]);
 
         await expect(await notification.screenshot()).toMatchSnapshot('call-incoming-notification-gm.png');
@@ -253,7 +261,9 @@ test.describe('notifications', () => {
         const textEl = notification.getByText(`${usernames[1]}`);
         await expect(textEl).toBeVisible();
         await textEl.evaluate((el, username) => {
-            el.textContent = el.textContent.replace(username, 'testuser');
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
         }, usernames[1]);
 
         await expect(await notification.screenshot()).toMatchSnapshot('call-incoming-notification-gm.png');
@@ -287,7 +297,9 @@ test.describe('notifications', () => {
         const textEl = notification.getByText(`${usernames[1]}`);
         await expect(textEl).toBeVisible();
         await textEl.evaluate((el, username) => {
-            el.textContent = el.textContent.replace(username, 'testuser');
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
         }, usernames[1]);
 
         await expect(await notification.screenshot()).toMatchSnapshot('call-incoming-notification-gm.png');

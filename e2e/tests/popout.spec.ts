@@ -19,7 +19,9 @@ test.describe('popout window', () => {
         const textEl = popOut.page.getByText(`${getUsernamesForTest()[0]} (you)`, {exact: true});
         await expect(textEl).toBeVisible();
         await textEl.evaluate((el, username) => {
-            el.textContent = el.textContent.replace(username, 'testuser');
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
         }, getUsernamesForTest()[0]);
 
         expect(await popOut.page.locator('#calls-expanded-view-participants-grid').screenshot()).toMatchSnapshot('expanded-view-participants-grid.png');
@@ -294,7 +296,9 @@ test.describe('popout window', () => {
         const textEl = popOut.getByText(`${getUsernamesForTest()[0]} (you)`, {exact: true});
         await expect(textEl).toBeVisible();
         await textEl.evaluate((el, username) => {
-            el.textContent = el.textContent.replace(username, 'testuser');
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
         }, getUsernamesForTest()[0]);
 
         expect(await popOut.locator('#calls-expanded-view-participants-grid').screenshot()).toMatchSnapshot('expanded-view-participants-grid.png');

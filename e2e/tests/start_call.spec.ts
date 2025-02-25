@@ -384,7 +384,9 @@ test.describe('switching products', () => {
         const textEl = participantsList.getByText(`${usernames[0]}`);
         await expect(textEl).toBeVisible();
         await textEl.evaluate((el, username) => {
-            el.textContent = el.textContent.replace(username, 'testuser');
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
         }, usernames[0]);
 
         expect(await participantsList.screenshot()).toMatchSnapshot('calls-widget-participants-list-playbooks.png');

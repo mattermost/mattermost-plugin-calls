@@ -67,7 +67,9 @@ test.describe('join call', () => {
         const textEl = page.locator('.post__body').last().getByText(`by ${usernames[1]}`);
         await expect(textEl).toBeVisible();
         await textEl.evaluate((el, username) => {
-            el.textContent = el.textContent.replace(username, 'testuser');
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
         }, usernames[1]);
 
         expect(await page.locator('data-testid=call-thread').last().screenshot()).toMatchSnapshot('call-thread-join.png');
