@@ -4,6 +4,10 @@
 import React, {forwardRef, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 import ReactSelect from 'react-select';
+import {
+    STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
+    STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
+} from 'src/constants';
 import {logErr} from 'src/log';
 import styled from 'styled-components';
 
@@ -41,17 +45,37 @@ const AudioDevicesSelection = forwardRef<AudioDevicesSelectionHandle, AudioDevic
             return selectedOption;
         }
 
-        const defaultDeviceID = deviceType === 'inputs' ?
-            window.localStorage.getItem('calls_default_audio_input') :
-            window.localStorage.getItem('calls_default_audio_output');
+        const defaultDeviceData = deviceType === 'inputs' ?
+            window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY) :
+            window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY);
 
-        for (const device of devices) {
-            if (device.deviceId === defaultDeviceID) {
-                return {
-                    label: device.label,
-                    value: device.deviceId,
+        let defaultDevice: {deviceId: string; label?: string} = {
+            deviceId: '',
+        };
+
+        if (defaultDeviceData) {
+            try {
+                defaultDevice = JSON.parse(defaultDeviceData);
+            } catch {
+                // Backwards compatibility case when we used to store the device id directly (before MM-63274).
+                defaultDevice = {
+                    deviceId: defaultDeviceData,
                 };
             }
+        }
+
+        let selected = devices.filter((dev) => {
+            return dev.deviceId === defaultDevice.deviceId || dev.label === defaultDevice.label;
+        });
+        if (selected.length > 1) {
+            // If there are multiple devices with the same label, we select the default device by ID.
+            selected = selected.filter((dev) => dev.deviceId === defaultDevice.deviceId);
+        }
+        if (selected.length > 0) {
+            return {
+                label: selected[0].label,
+                value: selected[0].deviceId,
+            };
         }
 
         return {
@@ -122,10 +146,17 @@ export default function AudioDevicesSettingsSection() {
 
     const handleSave = () => {
         if (audioInputsRef.current) {
-            window.localStorage.setItem('calls_default_audio_input', audioInputsRef.current.getOption().value);
+            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
+                deviceId: audioInputsRef.current.getOption().value,
+                label: audioInputsRef.current.getOption().label,
+            }));
         }
         if (audioOutputsRef.current) {
-            window.localStorage.setItem('calls_default_audio_output', audioOutputsRef.current.getOption().value);
+            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({
+                deviceId: audioOutputsRef.current.getOption().value,
+                label: audioOutputsRef.current.getOption().label,
+            },
+            ));
         }
         setActive(false);
     };
