@@ -379,6 +379,14 @@ test.describe('switching products', () => {
         await devPage.page.locator('#calls-widget-participants-button').click();
         const participantsList = devPage.page.locator('#calls-widget-participants-list');
         await expect(participantsList).toBeVisible();
+
+        // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
+        const textEl = participantsList.getByText(`${usernames[0]}`);
+        await expect(textEl).toBeVisible();
+        await textEl.evaluate((el, username) => {
+            el.textContent = el.textContent.replace(username, 'testuser');
+        }, usernames[0]);
+
         expect(await participantsList.screenshot()).toMatchSnapshot('calls-widget-participants-list-playbooks.png');
 
         await devPage.leaveCall();
