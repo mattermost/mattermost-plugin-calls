@@ -18,9 +18,9 @@ test.describe('popout window', () => {
         // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
         const textEl = popOut.page.getByText(`${getUsernamesForTest()[0]} (you)`, {exact: true});
         await expect(textEl).toBeVisible();
-        await textEl.evaluate((el) => {
-            el.textContent = 'testuser (you)';
-        });
+        await textEl.evaluate((el, username) => {
+            el.textContent = el.textContent.replace(username, 'testuser');
+        }, getUsernamesForTest()[0]);
 
         expect(await popOut.page.locator('#calls-expanded-view-participants-grid').screenshot()).toMatchSnapshot('expanded-view-participants-grid.png');
         expect(await popOut.page.locator('#calls-expanded-view-controls').screenshot()).toMatchSnapshot('expanded-view-controls.png');
@@ -293,9 +293,9 @@ test.describe('popout window', () => {
         // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
         const textEl = popOut.getByText(`${getUsernamesForTest()[0]} (you)`, {exact: true});
         await expect(textEl).toBeVisible();
-        await textEl.evaluate((el) => {
-            el.textContent = 'testuser (you)';
-        });
+        await textEl.evaluate((el, username) => {
+            el.textContent = el.textContent.replace(username, 'testuser');
+        }, getUsernamesForTest()[0]);
 
         expect(await popOut.locator('#calls-expanded-view-participants-grid').screenshot()).toMatchSnapshot('expanded-view-participants-grid.png');
 

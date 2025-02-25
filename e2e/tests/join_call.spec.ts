@@ -63,6 +63,13 @@ test.describe('join call', () => {
 
         await expect(page.locator('data-testid=call-thread').last()).toBeVisible();
 
+        // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
+        const textEl = page.locator('.post__body').last().getByText(`by ${usernames[1]}`);
+        await expect(textEl).toBeVisible();
+        await textEl.evaluate((el, username) => {
+            el.textContent = el.textContent.replace(username, 'testuser');
+        }, usernames[1]);
+
         expect(await page.locator('data-testid=call-thread').last().screenshot()).toMatchSnapshot('call-thread-join.png');
 
         await joinCallButton.click();
