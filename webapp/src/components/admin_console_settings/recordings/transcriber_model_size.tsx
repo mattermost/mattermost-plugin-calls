@@ -60,7 +60,7 @@ const TranscriberModelSize = (props: CustomComponentProps) => {
                     data-testid={props.id + 'dropdown'}
                     className='form-control'
                     id={props.id}
-                    value={props.value}
+                    value={props.value ?? 'base'}
                     onChange={handleChange}
                     disabled={props.disabled}
                 >
