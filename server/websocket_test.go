@@ -1098,8 +1098,8 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil)
 		mockAPI.On("LogError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
-		defer func(min int) {
-			minMembersCountForBatching = min
+		defer func(minVal int) {
+			minMembersCountForBatching = minVal
 			newBatcher = batching.NewBatcher
 		}(minMembersCountForBatching)
 		minMembersCountForBatching = 1
