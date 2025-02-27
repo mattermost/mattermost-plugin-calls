@@ -15,9 +15,9 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
-	github.com/mattermost/calls-offloader v0.9.1-0.20250219183213-18dd69ca3951
-	github.com/mattermost/calls-recorder v0.8.1-0.20250219182918-d582583c3f40
-	github.com/mattermost/calls-transcriber v0.6.1-0.20250219184051-f5cf4c2aded8
+	github.com/mattermost/calls-offloader v0.9.1-0.20250226201731-e01c23deba76
+	github.com/mattermost/calls-recorder v0.8.1-0.20250226201816-c7f3886b61bd
+	github.com/mattermost/calls-transcriber v0.6.1-0.20250227204433-b4b213b69a8a
 	github.com/mattermost/logr/v2 v2.0.21
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.1.10
