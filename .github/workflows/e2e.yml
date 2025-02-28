@@ -124,9 +124,9 @@ jobs:
       CONTAINER_PROXY: playwright_tests_proxy
       CONTAINER_RTCD: playwright_tests_rtcd
       CONTAINER_OFFLOADER: playwright_tests_offloader
-      IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.9.0
-      IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.8.0
-      IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.6.0
+      IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.9.1
+      IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.8.1
+      IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.6.1
       IMAGE_SERVER: mattermostdevelopment/mattermost-enterprise-edition:master
       IMAGE_CURL: curlimages/curl:8.7.1
       CI_NODE_INDEX: ${{ matrix.run_id }}
