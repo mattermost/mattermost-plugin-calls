@@ -148,8 +148,10 @@ const (
 	maxAllowedPort            = 49151
 )
 
-type ICEServers []string
-type ICEServersConfigs rtc.ICEServers
+type (
+	ICEServers        []string
+	ICEServersConfigs rtc.ICEServers
+)
 
 func (cfgs *ICEServersConfigs) UnmarshalJSON(data []byte) error {
 	if len(data) == 0 {
@@ -188,52 +190,52 @@ func (is *ICEServers) UnmarshalJSON(data []byte) error {
 
 func (c *configuration) SetDefaults() {
 	if c.UDPServerPort == nil {
-		c.UDPServerPort = model.NewInt(8443)
+		c.UDPServerPort = model.NewPointer(8443)
 	}
 	if c.TCPServerPort == nil {
-		c.TCPServerPort = model.NewInt(8443)
+		c.TCPServerPort = model.NewPointer(8443)
 	}
 
-	c.AllowEnableCalls = model.NewBool(true)
+	c.AllowEnableCalls = model.NewPointer(true)
 
 	if c.DefaultEnabled == nil {
-		c.DefaultEnabled = model.NewBool(false)
+		c.DefaultEnabled = model.NewPointer(false)
 	}
 	if c.MaxCallParticipants == nil {
-		c.MaxCallParticipants = model.NewInt(0) // unlimited
+		c.MaxCallParticipants = model.NewPointer(0) // unlimited
 	}
 	if c.TURNCredentialsExpirationMinutes == nil {
-		c.TURNCredentialsExpirationMinutes = model.NewInt(1440)
+		c.TURNCredentialsExpirationMinutes = model.NewPointer(1440)
 	}
 	if c.ServerSideTURN == nil {
-		c.ServerSideTURN = model.NewBool(false)
+		c.ServerSideTURN = model.NewPointer(false)
 	}
 	if c.AllowScreenSharing == nil {
-		c.AllowScreenSharing = model.NewBool(true)
+		c.AllowScreenSharing = model.NewPointer(true)
 	}
 	if c.EnableRecordings == nil {
-		c.EnableRecordings = model.NewBool(false)
+		c.EnableRecordings = model.NewPointer(false)
 	}
 	if c.EnableTranscriptions == nil {
-		c.EnableTranscriptions = model.NewBool(false)
+		c.EnableTranscriptions = model.NewPointer(false)
 	}
 	if c.TranscriberNumThreads == nil {
-		c.TranscriberNumThreads = model.NewInt(transcriber.NumThreadsDefault)
+		c.TranscriberNumThreads = model.NewPointer(transcriber.NumThreadsDefault)
 	}
 	if c.MaxRecordingDuration == nil {
-		c.MaxRecordingDuration = model.NewInt(defaultRecDurationMinutes)
+		c.MaxRecordingDuration = model.NewPointer(defaultRecDurationMinutes)
 	}
 	if c.RecordingQuality == "" {
 		c.RecordingQuality = "medium"
 	}
 	if c.EnableSimulcast == nil {
-		c.EnableSimulcast = model.NewBool(false)
+		c.EnableSimulcast = model.NewPointer(false)
 	}
 	if c.EnableIPv6 == nil {
-		c.EnableIPv6 = model.NewBool(false)
+		c.EnableIPv6 = model.NewPointer(false)
 	}
 	if c.EnableRinging == nil {
-		c.EnableRinging = model.NewBool(false)
+		c.EnableRinging = model.NewPointer(false)
 	}
 	if c.TranscriberModelSize == "" {
 		c.TranscriberModelSize = transcriber.ModelSizeDefault
@@ -242,16 +244,16 @@ func (c *configuration) SetDefaults() {
 		c.TranscribeAPI = transcriber.TranscribeAPIDefault
 	}
 	if c.EnableLiveCaptions == nil {
-		c.EnableLiveCaptions = model.NewBool(false)
+		c.EnableLiveCaptions = model.NewPointer(false)
 	}
 	if c.LiveCaptionsModelSize == "" {
 		c.LiveCaptionsModelSize = transcriber.LiveCaptionsModelSizeDefault
 	}
 	if c.LiveCaptionsNumTranscribers == nil {
-		c.LiveCaptionsNumTranscribers = model.NewInt(transcriber.LiveCaptionsNumTranscribersDefault)
+		c.LiveCaptionsNumTranscribers = model.NewPointer(transcriber.LiveCaptionsNumTranscribersDefault)
 	}
 	if c.LiveCaptionsNumThreadsPerTranscriber == nil {
-		c.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(transcriber.LiveCaptionsNumThreadsPerTranscriberDefault)
+		c.LiveCaptionsNumThreadsPerTranscriber = model.NewPointer(transcriber.LiveCaptionsNumThreadsPerTranscriberDefault)
 	}
 	if c.LiveCaptionsLanguage == "" {
 		c.LiveCaptionsLanguage = transcriber.LiveCaptionsLanguageDefault
@@ -356,18 +358,18 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveCaptionsLanguage = c.LiveCaptionsLanguage
 
 	if c.UDPServerPort != nil {
-		cfg.UDPServerPort = model.NewInt(*c.UDPServerPort)
+		cfg.UDPServerPort = model.NewPointer(*c.UDPServerPort)
 	}
 
 	if c.TCPServerPort != nil {
-		cfg.TCPServerPort = model.NewInt(*c.TCPServerPort)
+		cfg.TCPServerPort = model.NewPointer(*c.TCPServerPort)
 	}
 
 	// AllowEnableCalls is always true
-	cfg.AllowEnableCalls = model.NewBool(true)
+	cfg.AllowEnableCalls = model.NewPointer(true)
 
 	if c.DefaultEnabled != nil {
-		cfg.DefaultEnabled = model.NewBool(*c.DefaultEnabled)
+		cfg.DefaultEnabled = model.NewPointer(*c.DefaultEnabled)
 	}
 
 	if c.ICEServers != nil {
@@ -381,63 +383,63 @@ func (c *configuration) Clone() *configuration {
 	}
 
 	if c.MaxCallParticipants != nil {
-		cfg.MaxCallParticipants = model.NewInt(*c.MaxCallParticipants)
+		cfg.MaxCallParticipants = model.NewPointer(*c.MaxCallParticipants)
 	}
 
 	if c.TURNCredentialsExpirationMinutes != nil {
-		cfg.TURNCredentialsExpirationMinutes = model.NewInt(*c.TURNCredentialsExpirationMinutes)
+		cfg.TURNCredentialsExpirationMinutes = model.NewPointer(*c.TURNCredentialsExpirationMinutes)
 	}
 
 	if c.ServerSideTURN != nil {
-		cfg.ServerSideTURN = model.NewBool(*c.ServerSideTURN)
+		cfg.ServerSideTURN = model.NewPointer(*c.ServerSideTURN)
 	}
 
 	if c.AllowScreenSharing != nil {
-		cfg.AllowScreenSharing = model.NewBool(*c.AllowScreenSharing)
+		cfg.AllowScreenSharing = model.NewPointer(*c.AllowScreenSharing)
 	}
 
 	if c.EnableRecordings != nil {
-		cfg.EnableRecordings = model.NewBool(*c.EnableRecordings)
+		cfg.EnableRecordings = model.NewPointer(*c.EnableRecordings)
 	}
 
 	if c.EnableTranscriptions != nil {
-		cfg.EnableTranscriptions = model.NewBool(*c.EnableTranscriptions)
+		cfg.EnableTranscriptions = model.NewPointer(*c.EnableTranscriptions)
 	}
 
 	if c.TranscriberNumThreads != nil {
-		cfg.TranscriberNumThreads = model.NewInt(*c.TranscriberNumThreads)
+		cfg.TranscriberNumThreads = model.NewPointer(*c.TranscriberNumThreads)
 	}
 
 	if c.EnableLiveCaptions != nil {
-		cfg.EnableLiveCaptions = model.NewBool(*c.EnableLiveCaptions)
+		cfg.EnableLiveCaptions = model.NewPointer(*c.EnableLiveCaptions)
 	}
 
 	if c.MaxRecordingDuration != nil {
-		cfg.MaxRecordingDuration = model.NewInt(*c.MaxRecordingDuration)
+		cfg.MaxRecordingDuration = model.NewPointer(*c.MaxRecordingDuration)
 	}
 
 	if c.EnableSimulcast != nil {
-		cfg.EnableSimulcast = model.NewBool(*c.EnableSimulcast)
+		cfg.EnableSimulcast = model.NewPointer(*c.EnableSimulcast)
 	}
 
 	if c.EnableIPv6 != nil {
-		cfg.EnableIPv6 = model.NewBool(*c.EnableIPv6)
+		cfg.EnableIPv6 = model.NewPointer(*c.EnableIPv6)
 	}
 
 	if c.EnableRinging != nil {
-		cfg.EnableRinging = model.NewBool(*c.EnableRinging)
+		cfg.EnableRinging = model.NewPointer(*c.EnableRinging)
 	}
 
 	if c.ICEHostPortOverride != nil {
-		cfg.ICEHostPortOverride = model.NewInt(*c.ICEHostPortOverride)
+		cfg.ICEHostPortOverride = model.NewPointer(*c.ICEHostPortOverride)
 	}
 
 	if c.LiveCaptionsNumTranscribers != nil {
-		cfg.LiveCaptionsNumTranscribers = model.NewInt(*c.LiveCaptionsNumTranscribers)
+		cfg.LiveCaptionsNumTranscribers = model.NewPointer(*c.LiveCaptionsNumTranscribers)
 	}
 
 	if c.LiveCaptionsNumThreadsPerTranscriber != nil {
-		cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(*c.LiveCaptionsNumThreadsPerTranscriber)
+		cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewPointer(*c.LiveCaptionsNumThreadsPerTranscriber)
 	}
 
 	return &cfg
@@ -487,12 +489,12 @@ func (p *Plugin) getClientConfig(c *configuration) clientConfig {
 	}
 
 	return clientConfig{
-		AllowEnableCalls:     model.NewBool(true), // always true
+		AllowEnableCalls:     model.NewPointer(true), // always true
 		DefaultEnabled:       c.DefaultEnabled,
 		ICEServers:           c.ICEServers,
 		ICEServersConfigs:    c.getICEServers(true),
 		MaxCallParticipants:  c.MaxCallParticipants,
-		NeedsTURNCredentials: model.NewBool(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
+		NeedsTURNCredentials: model.NewPointer(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
 		AllowScreenSharing:   c.AllowScreenSharing,
 		EnableRecordings:     c.EnableRecordings,
 		EnableTranscriptions: c.EnableTranscriptions,
@@ -641,7 +643,7 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 }
 
 func (p *Plugin) setOverrides(cfg *configuration) {
-	cfg.AllowEnableCalls = model.NewBool(true)
+	cfg.AllowEnableCalls = model.NewPointer(true)
 
 	if license := p.API.GetLicense(); license != nil && isCloud(license) {
 		// On Cloud installations we want calls enabled in all channels so we
