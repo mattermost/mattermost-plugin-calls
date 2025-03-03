@@ -15,7 +15,7 @@ jobs:
     uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@0142d75f52214c0bdc625c9cbbb6c832874eb683
     with:
       golangci-lint-version: "v1.57.2"
-      golang-version: "1.21"
+      golang-version: "1.22"
     secrets: inherit
 
   lt:
@@ -35,7 +35,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
         with:
-          go-version: "1.21"
+          go-version: "1.22"
       - name: Run linter
         shell: bash
         run: cd ./lt && golangci-lint run ./...

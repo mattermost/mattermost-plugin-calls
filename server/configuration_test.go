@@ -54,7 +54,7 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.UDPServerPort = model.NewInt(45)
+				cfg.UDPServerPort = model.NewPointer(45)
 				return cfg
 			}(),
 			err: "UDPServerPort is not valid: 45 is not in allowed range [80, 49151]",
@@ -64,7 +64,7 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.UDPServerPort = model.NewInt(443)
+				cfg.UDPServerPort = model.NewPointer(443)
 				return cfg
 			}(),
 		},
@@ -73,7 +73,7 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.MaxCallParticipants = model.NewInt(-1)
+				cfg.MaxCallParticipants = model.NewPointer(-1)
 				return cfg
 			}(),
 			err: "MaxCallParticipants is not valid",
@@ -83,7 +83,7 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.TURNCredentialsExpirationMinutes = model.NewInt(-1)
+				cfg.TURNCredentialsExpirationMinutes = model.NewPointer(-1)
 				return cfg
 			}(),
 			err: "TURNCredentialsExpirationMinutes is not valid",
@@ -93,7 +93,7 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.MaxRecordingDuration = model.NewInt(1)
+				cfg.MaxRecordingDuration = model.NewPointer(1)
 				return cfg
 			}(),
 			err: "MaxRecordingDuration is not valid: range should be [15, 180]",
@@ -113,7 +113,7 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.ICEHostPortOverride = model.NewInt(45)
+				cfg.ICEHostPortOverride = model.NewPointer(45)
 				return cfg
 			}(),
 			err: "ICEHostPortOverride is not valid: 45 is not in allowed range [80, 49151]",
@@ -123,9 +123,9 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.EnableRecordings = model.NewBool(true)
-				cfg.EnableTranscriptions = model.NewBool(true)
-				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.EnableRecordings = model.NewPointer(true)
+				cfg.EnableTranscriptions = model.NewPointer(true)
+				cfg.EnableLiveCaptions = model.NewPointer(true)
 				cfg.LiveCaptionsModelSize = ""
 				return cfg
 			}(),
@@ -136,10 +136,10 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.EnableRecordings = model.NewBool(true)
-				cfg.EnableTranscriptions = model.NewBool(true)
-				cfg.EnableLiveCaptions = model.NewBool(true)
-				cfg.LiveCaptionsNumTranscribers = model.NewInt(0)
+				cfg.EnableRecordings = model.NewPointer(true)
+				cfg.EnableTranscriptions = model.NewPointer(true)
+				cfg.EnableLiveCaptions = model.NewPointer(true)
+				cfg.LiveCaptionsNumTranscribers = model.NewPointer(0)
 				return cfg
 			}(),
 			err: "LiveCaptionsNumTranscribers is not valid: should be greater than 0",
@@ -149,10 +149,10 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.EnableRecordings = model.NewBool(true)
-				cfg.EnableTranscriptions = model.NewBool(true)
-				cfg.EnableLiveCaptions = model.NewBool(true)
-				cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewInt(0)
+				cfg.EnableRecordings = model.NewPointer(true)
+				cfg.EnableTranscriptions = model.NewPointer(true)
+				cfg.EnableLiveCaptions = model.NewPointer(true)
+				cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewPointer(0)
 				return cfg
 			}(),
 			err: "LiveCaptionsNumThreadsPerTranscriber is not valid: should be greater than 0",
@@ -162,9 +162,9 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.EnableRecordings = model.NewBool(true)
-				cfg.EnableTranscriptions = model.NewBool(true)
-				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.EnableRecordings = model.NewPointer(true)
+				cfg.EnableTranscriptions = model.NewPointer(true)
+				cfg.EnableLiveCaptions = model.NewPointer(true)
 				cfg.LiveCaptionsLanguage = ""
 				return cfg
 			}(),
@@ -174,9 +174,9 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.EnableRecordings = model.NewBool(true)
-				cfg.EnableTranscriptions = model.NewBool(true)
-				cfg.EnableLiveCaptions = model.NewBool(true)
+				cfg.EnableRecordings = model.NewPointer(true)
+				cfg.EnableTranscriptions = model.NewPointer(true)
+				cfg.EnableLiveCaptions = model.NewPointer(true)
 				cfg.LiveCaptionsLanguage = "inv"
 				return cfg
 			}(),
@@ -187,9 +187,9 @@ func TestConfigurationIsValid(t *testing.T) {
 			input: func() configuration {
 				var cfg configuration
 				cfg.SetDefaults()
-				cfg.EnableRecordings = model.NewBool(true)
-				cfg.EnableTranscriptions = model.NewBool(true)
-				cfg.TranscriberNumThreads = model.NewInt(0)
+				cfg.EnableRecordings = model.NewPointer(true)
+				cfg.EnableTranscriptions = model.NewPointer(true)
+				cfg.TranscriberNumThreads = model.NewPointer(0)
 				return cfg
 			}(),
 			err: "TranscriberNumThreads is not valid: should be greater than 0",
@@ -230,9 +230,9 @@ func TestGetClientConfig(t *testing.T) {
 	clientCfg := p.getClientConfig(p.getConfiguration())
 
 	// defaults
-	require.Equal(t, model.NewBool(true), clientCfg.AllowEnableCalls)
+	require.Equal(t, model.NewPointer(true), clientCfg.AllowEnableCalls)
 	require.Equal(t, p.getConfiguration().AllowEnableCalls, clientCfg.AllowEnableCalls)
-	require.Equal(t, model.NewBool(false), clientCfg.DefaultEnabled)
+	require.Equal(t, model.NewPointer(false), clientCfg.DefaultEnabled)
 	require.Equal(t, p.getConfiguration().DefaultEnabled, clientCfg.DefaultEnabled)
 
 	*p.configuration.AllowEnableCalls = false

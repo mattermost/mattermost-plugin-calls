@@ -166,13 +166,13 @@ func TestTruncateString(t *testing.T) {
 func TestPlugin_canSendPushNotifications(t *testing.T) {
 	config := &model.Config{
 		EmailSettings: model.EmailSettings{
-			SendPushNotifications:  model.NewBool(true),
-			PushNotificationServer: model.NewString(model.MHPNS),
+			SendPushNotifications:  model.NewPointer(true),
+			PushNotificationServer: model.NewPointer(model.MHPNS),
 		},
 	}
 	license := &model.License{
 		Features: &model.Features{
-			MHPNS: model.NewBool(true),
+			MHPNS: model.NewPointer(true),
 		},
 	}
 	tests := []struct {
@@ -191,9 +191,10 @@ func TestPlugin_canSendPushNotifications(t *testing.T) {
 			name: "no push notification server",
 			config: &model.Config{
 				EmailSettings: model.EmailSettings{
-					SendPushNotifications:  model.NewBool(true),
+					SendPushNotifications:  model.NewPointer(true),
 					PushNotificationServer: nil,
-				}},
+				},
+			},
 			license: nil,
 			want:    nil,
 		},
@@ -201,9 +202,10 @@ func TestPlugin_canSendPushNotifications(t *testing.T) {
 			name: "push notification server blank",
 			config: &model.Config{
 				EmailSettings: model.EmailSettings{
-					SendPushNotifications:  model.NewBool(true),
-					PushNotificationServer: model.NewString(""),
-				}},
+					SendPushNotifications:  model.NewPointer(true),
+					PushNotificationServer: model.NewPointer(""),
+				},
+			},
 			license: nil,
 			want:    nil,
 		},
@@ -211,9 +213,10 @@ func TestPlugin_canSendPushNotifications(t *testing.T) {
 			name: "push notifications set to false",
 			config: &model.Config{
 				EmailSettings: model.EmailSettings{
-					SendPushNotifications:  model.NewBool(false),
-					PushNotificationServer: model.NewString(model.MHPNS),
-				}},
+					SendPushNotifications:  model.NewPointer(false),
+					PushNotificationServer: model.NewPointer(model.MHPNS),
+				},
+			},
 			license: nil,
 			want:    nil,
 		},
@@ -228,7 +231,7 @@ func TestPlugin_canSendPushNotifications(t *testing.T) {
 			config: config,
 			license: &model.License{
 				Features: &model.Features{
-					MHPNS: model.NewBool(false),
+					MHPNS: model.NewPointer(false),
 				},
 			},
 			want: errors.New("push notifications have been disabled. Update your license or go to System Console > Environment > Push Notification Server to use a different server"),
