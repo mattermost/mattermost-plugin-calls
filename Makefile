@@ -495,7 +495,7 @@ endif
 
 ## Create plugin server mock files
 server-mocks:
-	$(GO) install github.com/vektra/mockery/v2/...@v2.40.3
+	$(GO) install github.com/vektra/mockery/v2/...@v2.53.0
 	$(GOBIN)/mockery
 
 ## To generate db migrations list
