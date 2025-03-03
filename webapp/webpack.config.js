@@ -116,7 +116,7 @@ module.exports = {
         'prop-types': 'PropTypes',
         'react-bootstrap': 'ReactBootstrap',
         'react-router-dom': 'ReactRouterDom',
-        'react-intl': 'ReactIntl'
+        'react-intl': 'ReactIntl',
     },
     output: {
         devtoolNamespace: PLUGIN_ID,
