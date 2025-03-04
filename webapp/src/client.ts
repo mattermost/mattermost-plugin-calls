@@ -107,17 +107,51 @@ export default class CallsClient extends EventEmitter {
             };
         }
 
-        const defaultInputID = window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY);
-        const defaultOutputID = window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY);
-        if (defaultInputID && !this.currentAudioInputDevice) {
-            const devices = this.audioDevices.inputs.filter((dev) => {
-                return dev.deviceId === defaultInputID;
+        let defaultInputDevice: {deviceId: string; label?: string} = {
+            deviceId: '',
+        };
+        const defaultAudioInputData = window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY);
+        if (defaultAudioInputData) {
+            try {
+                defaultInputDevice = JSON.parse(defaultAudioInputData);
+            } catch {
+                // Backwards compatibility case when we used to store the device id directly (before MM-63274).
+                defaultInputDevice = {
+                    deviceId: defaultAudioInputData,
+                };
+            }
+        }
+
+        let defaultOutputDevice: {deviceId: string; label?: string} = {
+            deviceId: '',
+        };
+        const defaultAudioOutputData = window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY);
+        if (defaultAudioOutputData) {
+            try {
+                defaultOutputDevice = JSON.parse(defaultAudioOutputData);
+            } catch {
+                // Backwards compatibility case when we used to store the device id directly (before MM-63274).
+                defaultOutputDevice = {
+                    deviceId: defaultAudioOutputData,
+                };
+            }
+        }
+
+        if (defaultInputDevice.deviceId && !this.currentAudioInputDevice) {
+            let devices = this.audioDevices.inputs.filter((dev) => {
+                return dev.deviceId === defaultInputDevice.deviceId || dev.label === defaultInputDevice.label;
             });
+
+            if (devices.length > 1) {
+                // If there are multiple devices with the same label, we select the default device by ID.
+                logInfo('multiple audio input devices found with the same label, checking by id', devices);
+                devices = devices.filter((dev) => dev.deviceId === defaultInputDevice.deviceId);
+            }
 
             if (devices && devices.length === 1) {
                 logDebug(`found default audio input device to use: ${devices[0].label}`);
                 audioOptions.deviceId = {
-                    exact: defaultInputID,
+                    exact: devices[0].deviceId,
                 };
                 this.currentAudioInputDevice = devices[0];
             } else {
@@ -126,10 +160,16 @@ export default class CallsClient extends EventEmitter {
             }
         }
 
-        if (defaultOutputID) {
-            const devices = this.audioDevices.outputs.filter((dev) => {
-                return dev.deviceId === defaultOutputID;
+        if (defaultOutputDevice.deviceId) {
+            let devices = this.audioDevices.outputs.filter((dev) => {
+                return dev.deviceId === defaultOutputDevice.deviceId || dev.label === defaultOutputDevice.label;
             });
+
+            if (devices.length > 1) {
+                // If there are multiple devices with the same label, we select the default device by ID.
+                logInfo('multiple audio output devices found with the same label, checking by id', devices);
+                devices = devices.filter((dev) => dev.deviceId === defaultInputDevice.deviceId);
+            }
 
             if (devices && devices.length === 1) {
                 logDebug(`found default audio output device to use: ${devices[0].label}`);
@@ -423,7 +463,7 @@ export default class CallsClient extends EventEmitter {
             return;
         }
 
-        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, device.deviceId);
+        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify(device));
         this.currentAudioInputDevice = device;
 
         // We emit this event so it's easier to keep state in sync between widget and pop out.
@@ -473,7 +513,7 @@ export default class CallsClient extends EventEmitter {
         if (!this.peer) {
             return;
         }
-        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, device.deviceId);
+        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify(device));
         this.currentAudioOutputDevice = device;
 
         // We emit this event so it's easier to keep state in sync between widget and pop out.
