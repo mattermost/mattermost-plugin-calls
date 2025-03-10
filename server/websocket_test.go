@@ -625,7 +625,7 @@ func TestHandleJoin(t *testing.T) {
 		metrics:           mockMetrics,
 		configuration: &configuration{
 			clientConfig: clientConfig{
-				DefaultEnabled: model.NewBool(true),
+				DefaultEnabled: model.NewPointer(true),
 			},
 		},
 		sessions:               map[string]*session{},

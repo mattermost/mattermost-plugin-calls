@@ -21,7 +21,7 @@ const (
 	DBPass         = "mostest"
 	DBNetworkAlias = "db"
 
-	PostgresImage = "postgres:11"
+	PostgresImage = "postgres:13"
 	PostgrePort   = 5432
 
 	MySQLImage = "mysql/mysql-server:8.0.32"

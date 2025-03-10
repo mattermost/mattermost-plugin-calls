@@ -32,7 +32,7 @@ func TestAddUserSession(t *testing.T) {
 		metrics:           mockMetrics,
 		configuration: &configuration{
 			clientConfig: clientConfig{
-				DefaultEnabled: model.NewBool(true),
+				DefaultEnabled: model.NewPointer(true),
 			},
 		},
 		sessions: map[string]*session{},
@@ -54,7 +54,7 @@ func TestAddUserSession(t *testing.T) {
 
 	t.Run("not enabled", func(t *testing.T) {
 		var cs *callState
-		state, err := p.addUserSession(cs, model.NewBool(false), "userID", "connID", "channelID", "")
+		state, err := p.addUserSession(cs, model.NewPointer(false), "userID", "connID", "channelID", "")
 		require.Nil(t, state)
 		require.EqualError(t, err, "calls are not enabled")
 	})
@@ -66,7 +66,7 @@ func TestAddUserSession(t *testing.T) {
 			&model.WebsocketBroadcast{UserId: "userA", ChannelId: "channelID", ReliableClusterSend: true}).Once()
 
 		// Start call
-		retState, err := p.addUserSession(nil, model.NewBool(true), "userA", "connA", "channelID", "")
+		retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "")
 		require.NoError(t, err)
 		require.NotNil(t, retState)
 		require.Equal(t, map[string]struct{}{"userA": {}}, retState.Props.Participants)
@@ -82,7 +82,7 @@ func TestAddUserSession(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		retState2, err := p.addUserSession(retState, model.NewBool(true), "userB", "connB", "channelID", "")
+		retState2, err := p.addUserSession(retState, model.NewPointer(true), "userB", "connB", "channelID", "")
 		require.NotNil(t, retState2)
 		require.EqualError(t, err, "failed to create call session: failed to run query: pq: duplicate key value violates unique constraint \"calls_sessions_pkey\"")
 

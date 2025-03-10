@@ -75,9 +75,7 @@ var (
 	joinLeaveBatchingInterval = time.Second
 )
 
-var (
-	sessionAuthCheckInterval = 10 * time.Second
-)
+var sessionAuthCheckInterval = 10 * time.Second
 
 type CallsClientJoinData struct {
 	ChannelID string
@@ -694,7 +692,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	}
 	var callsEnabled *bool
 	if callsChannel != nil {
-		callsEnabled = model.NewBool(callsChannel.Enabled)
+		callsEnabled = model.NewPointer(callsChannel.Enabled)
 	}
 
 	addSessionToCall := func(state *callState) *callState {

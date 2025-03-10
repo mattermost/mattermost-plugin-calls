@@ -43,8 +43,8 @@ func TestSetupConn(t *testing.T) {
 			t.Run("defaults", func(t *testing.T) {
 				var settings model.SqlSettings
 				settings.SetDefaults(false)
-				settings.DataSource = model.NewString(dsn)
-				settings.DriverName = model.NewString(driverName)
+				settings.DataSource = model.NewPointer(dsn)
+				settings.DriverName = model.NewPointer(driverName)
 				s := &Store{
 					driverName: driverName,
 					settings:   settings,
@@ -67,8 +67,8 @@ func TestSetupConn(t *testing.T) {
 
 				var settings model.SqlSettings
 				settings.SetDefaults(false)
-				settings.DataSource = model.NewString(dsn)
-				settings.DriverName = model.NewString(driverName)
+				settings.DataSource = model.NewPointer(dsn)
+				settings.DriverName = model.NewPointer(driverName)
 				s := &Store{
 					driverName: driverName,
 					settings:   settings,
