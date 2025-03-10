@@ -15,14 +15,14 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
-	github.com/mattermost/calls-offloader v0.9.2-0.20250310143401-9d8d6d335251
-	github.com/mattermost/calls-recorder v0.8.1-0.20250219182918-d582583c3f40
-	github.com/mattermost/calls-transcriber v0.6.1-0.20250219184051-f5cf4c2aded8
+	github.com/mattermost/calls-offloader v0.9.2
+	github.com/mattermost/calls-recorder v0.8.2
+	github.com/mattermost/calls-transcriber v0.6.2
 	github.com/mattermost/logr/v2 v2.0.21
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.1.10
 	github.com/mattermost/morph v1.1.0
-	github.com/mattermost/rtcd v1.0.2-0.20250310180637-d93ac54cb042
+	github.com/mattermost/rtcd v1.0.2
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
