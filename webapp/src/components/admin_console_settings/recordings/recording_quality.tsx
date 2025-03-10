@@ -42,7 +42,7 @@ const RecordingQuality = (props: CustomComponentProps) => {
                     data-testid={props.id + 'dropdown'}
                     className='form-control'
                     id={props.id}
-                    value={props.value}
+                    value={props.value ?? 'medium'}
                     onChange={handleChange}
                     disabled={props.disabled}
                 >

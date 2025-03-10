@@ -246,10 +246,10 @@ test.describe('setting audio input device', () => {
         await page.locator('#calls-widget-audio-input-button').click();
         await expect(page.locator('#calls-widget-audio-inputs-menu')).toBeVisible();
 
-        let currentAudioInputDevice = await page.evaluate(() => {
+        const currentAudioInputDeviceID = await page.evaluate(() => {
             return window.callsClient.currentInputAudioDevice?.deviceId;
         });
-        if (currentAudioInputDevice) {
+        if (currentAudioInputDeviceID) {
             test.fail();
             return;
         }
@@ -257,10 +257,10 @@ test.describe('setting audio input device', () => {
         await page.locator('#calls-widget-audio-inputs-menu button:has-text("Fake Audio Input 1")').click();
         await expect(page.locator('#calls-widget-audio-inputs-menu')).toBeHidden();
 
-        currentAudioInputDevice = await page.evaluate(() => {
-            return window.callsClient.currentAudioInputDevice?.deviceId;
+        const currentAudioInputDevice = await page.evaluate(() => {
+            return window.callsClient.currentAudioInputDevice;
         });
-        if (!currentAudioInputDevice) {
+        if (currentAudioInputDevice.label !== 'Fake Audio Input 1') {
             test.fail();
             return;
         }
@@ -272,7 +272,7 @@ test.describe('setting audio input device', () => {
         const currentAudioInputDevice2 = await page.evaluate(() => {
             return window.callsClient.currentAudioInputDevice?.deviceId;
         });
-        if (currentAudioInputDevice2 !== currentAudioInputDevice) {
+        if (currentAudioInputDevice2 !== currentAudioInputDevice.deviceId) {
             test.fail();
             return;
         }
@@ -280,10 +280,10 @@ test.describe('setting audio input device', () => {
         await devPage.leaveCall();
 
         await page.reload();
-        const deviceID = await page.evaluate(() => {
-            return window.localStorage.getItem('calls_default_audio_input');
+        const device = await page.evaluate(() => {
+            return JSON.parse(window.localStorage.getItem('calls_default_audio_input')!);
         });
-        if (!deviceID) {
+        if (!device || !device.deviceId || !device.label) {
             test.fail();
         }
     });
@@ -316,10 +316,10 @@ test.describe('setting audio output device', () => {
         await page.locator('#calls-widget-audio-output-button').click();
         await expect(page.locator('#calls-widget-audio-outputs-menu')).toBeVisible();
 
-        let currentAudioOutputDevice = await page.evaluate(() => {
+        const currentAudioOutputDeviceID = await page.evaluate(() => {
             return window.callsClient.currentAudioOutputDevice?.deviceId;
         });
-        if (currentAudioOutputDevice) {
+        if (currentAudioOutputDeviceID) {
             test.fail();
             return;
         }
@@ -327,10 +327,10 @@ test.describe('setting audio output device', () => {
         await page.locator('#calls-widget-audio-outputs-menu button:has-text("Fake Audio Output 1")').click();
         await expect(page.locator('#calls-widget-audio-outputs-menu')).toBeHidden();
 
-        currentAudioOutputDevice = await page.evaluate(() => {
-            return window.callsClient.currentAudioOutputDevice?.deviceId;
+        const currentAudioOutputDevice = await page.evaluate(() => {
+            return window.callsClient.currentAudioOutputDevice;
         });
-        if (!currentAudioOutputDevice) {
+        if (currentAudioOutputDevice.label !== 'Fake Audio Output 1') {
             test.fail();
             return;
         }
@@ -342,7 +342,7 @@ test.describe('setting audio output device', () => {
         const currentAudioOutputDevice2 = await page.evaluate(() => {
             return window.callsClient.currentAudioOutputDevice?.deviceId;
         });
-        if (currentAudioOutputDevice2 !== currentAudioOutputDevice) {
+        if (currentAudioOutputDevice2 !== currentAudioOutputDevice.deviceId) {
             test.fail();
             return;
         }
@@ -350,10 +350,10 @@ test.describe('setting audio output device', () => {
         await devPage.leaveCall();
 
         await page.reload();
-        const deviceID = await page.evaluate(() => {
-            return window.localStorage.getItem('calls_default_audio_output');
+        const device = await page.evaluate(() => {
+            return JSON.parse(window.localStorage.getItem('calls_default_audio_output')!);
         });
-        if (!deviceID) {
+        if (!device || !device.deviceId || !device.label) {
             test.fail();
         }
     });
@@ -379,6 +379,16 @@ test.describe('switching products', () => {
         await devPage.page.locator('#calls-widget-participants-button').click();
         const participantsList = devPage.page.locator('#calls-widget-participants-list');
         await expect(participantsList).toBeVisible();
+
+        // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
+        const textEl = participantsList.getByText(`${usernames[0]}`);
+        await expect(textEl).toBeVisible();
+        await textEl.evaluate((el, username) => {
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
+        }, usernames[0]);
+
         expect(await participantsList.screenshot()).toMatchSnapshot('calls-widget-participants-list-playbooks.png');
 
         await devPage.leaveCall();

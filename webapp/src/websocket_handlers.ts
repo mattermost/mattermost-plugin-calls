@@ -87,6 +87,7 @@ import {Store} from './types/mattermost-webapp';
 import {
     followThread,
     getCallsClient,
+    getCallsClientSessionID,
     getUserDisplayName,
     notificationsStopRinging,
     playSound,
@@ -179,9 +180,9 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
     const sessionID = ev.data.session_id;
 
     if (window.callsClient?.channelID === channelID) {
-        if (userID === currentUserID) {
+        if (sessionID === getCallsClientSessionID()) {
             playSound('join_self');
-        } else if (shouldPlayJoinUserSound(store.getState())) {
+        } else if (userID !== currentUserID && shouldPlayJoinUserSound(store.getState())) {
             playSound('join_user');
         }
     }
