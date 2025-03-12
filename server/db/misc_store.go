@@ -14,6 +14,12 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
+var postColumns = []string{
+	"Id", "CreateAt", "UpdateAt", "EditAt", "DeleteAt",
+	"IsPinned", "UserId", "ChannelId", "RootId", "OriginalId",
+	"Message", "Type", "Props", "Hashtags", "Filenames", "FileIds", "HasReactions", "RemoteId",
+}
+
 func (s *Store) KVGet(pluginID, key string, fromWriter bool) ([]byte, error) {
 	s.metrics.IncStoreOp("KVGet")
 	defer func(start time.Time) {
@@ -58,7 +64,7 @@ func (s *Store) GetPost(postID string) (*model.Post, error) {
 	}(time.Now())
 
 	qb := getQueryBuilder(s.driverName).
-		Select("*").
+		Select(postColumns...).
 		From("Posts").
 		Where(sq.Eq{"Id": postID})
 	q, args, err := qb.ToSql()

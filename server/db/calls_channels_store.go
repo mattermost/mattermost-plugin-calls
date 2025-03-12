@@ -14,6 +14,8 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
+var callsChannelsColumns = []string{"ChannelID", "Enabled", "Props"}
+
 func (s *Store) CreateCallsChannel(channel *public.CallsChannel) error {
 	s.metrics.IncStoreOp("CreateCallsChannel")
 	defer func(start time.Time) {
@@ -26,7 +28,7 @@ func (s *Store) CreateCallsChannel(channel *public.CallsChannel) error {
 
 	qb := getQueryBuilder(s.driverName).
 		Insert("calls_channels").
-		Columns("ChannelID", "Enabled", "Props").
+		Columns(callsChannelsColumns...).
 		Values(channel.ChannelID, channel.Enabled, s.newJSONValueWrapper(channel.Props))
 
 	q, args, err := qb.ToSql()
@@ -50,7 +52,7 @@ func (s *Store) GetCallsChannel(channelID string, opts GetCallsChannelOpts) (*pu
 		s.metrics.ObserveStoreMethodsTime("GetCallsChannel", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("*").
+	qb := getQueryBuilder(s.driverName).Select(callsChannelsColumns...).
 		From("calls_channels").
 		Where(sq.Eq{"ChannelID": channelID})
 
@@ -80,7 +82,7 @@ func (s *Store) GetAllCallsChannels(opts GetCallsChannelOpts) ([]*public.CallsCh
 	// TODO: consider implementing paging
 	// This should be fine for now as we wouldn't expect to have more than a few
 	// channels with calls explicitly enabled/disabled.
-	qb := getQueryBuilder(s.driverName).Select("*").From("calls_channels")
+	qb := getQueryBuilder(s.driverName).Select(callsChannelsColumns...).From("calls_channels")
 
 	q, args, err := qb.ToSql()
 	if err != nil {
