@@ -25,6 +25,7 @@ func TestCallsStore(t *testing.T) {
 		"TestGetRTCDHostForCall":       testGetRTCDHostForCall,
 		"TestGetAllActiveCalls":        testGetAllActiveCalls,
 		"TestGetCallActive":            testGetCallActive,
+		"TestCallsTableColumnAddition": testCallsTableColumnAddition,
 	})
 }
 
@@ -338,6 +339,69 @@ func testGetCallActive(t *testing.T, store *Store) {
 		require.NoError(t, err)
 		require.False(t, active)
 	})
+}
+
+func testCallsTableColumnAddition(t *testing.T, store *Store) {
+	// This test simulates adding a new column to the calls table
+	// and verifies that existing code can still fetch data correctly
+
+	// Create a call with the current schema
+	call := &public.Call{
+		ID:           model.NewId(),
+		CreateAt:     time.Now().UnixMilli(),
+		ChannelID:    model.NewId(),
+		StartAt:      time.Now().UnixMilli(),
+		PostID:       model.NewId(),
+		ThreadID:     model.NewId(),
+		OwnerID:      model.NewId(),
+		Participants: []string{model.NewId(), model.NewId()},
+		Stats: public.CallStats{
+			ScreenDuration: 45,
+		},
+		Props: public.CallProps{
+			Hosts: []string{"userA", "userB"},
+		},
+	}
+
+	err := store.CreateCall(call)
+	require.NoError(t, err)
+
+	// Simulate adding a new column to the calls table
+	var alterTableSQL string
+	if store.driverName == model.DatabaseDriverPostgres {
+		alterTableSQL = "ALTER TABLE calls ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+	} else {
+		alterTableSQL = "ALTER TABLE calls ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+	}
+
+	_, err = store.wDB.Exec(alterTableSQL)
+	require.NoError(t, err)
+
+	// Verify we can still fetch the call correctly after schema change
+	gotCall, err := store.GetCall(call.ID, GetCallOpts{FromWriter: true})
+	require.NoError(t, err)
+	require.Equal(t, call, gotCall)
+
+	// Verify we can still update the call
+	call.EndAt = time.Now().UnixMilli()
+	err = store.UpdateCall(call)
+	require.NoError(t, err)
+
+	// Verify the update worked correctly
+	updatedCall, err := store.GetCall(call.ID, GetCallOpts{FromWriter: true})
+	require.NoError(t, err)
+	require.Equal(t, call.EndAt, updatedCall.EndAt)
+
+	// Clean up - drop the test column
+	var dropColumnSQL string
+	if store.driverName == model.DatabaseDriverPostgres {
+		dropColumnSQL = "ALTER TABLE calls DROP COLUMN test_column"
+	} else {
+		dropColumnSQL = "ALTER TABLE calls DROP COLUMN test_column"
+	}
+
+	_, err = store.wDB.Exec(dropColumnSQL)
+	require.NoError(t, err)
 }
 
 func testGetActiveCallByChannelID(t *testing.T, store *Store) {
