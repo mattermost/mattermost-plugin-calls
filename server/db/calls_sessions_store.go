@@ -14,6 +14,8 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
+var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand"}
+
 func (s *Store) CreateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("CreateCallSession")
 	defer func(start time.Time) {
@@ -26,7 +28,7 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 
 	qb := getQueryBuilder(s.driverName).
 		Insert("calls_sessions").
-		Columns("ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand").
+		Columns(callsSessionsColumns...).
 		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.Unmuted, session.RaisedHand)
 
 	q, args, err := qb.ToSql()
@@ -106,7 +108,7 @@ func (s *Store) GetCallSession(id string, opts GetCallSessionOpts) (*public.Call
 		s.metrics.ObserveStoreMethodsTime("GetCallSession", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("*").
+	qb := getQueryBuilder(s.driverName).Select(callsSessionsColumns...).
 		From("calls_sessions").
 		Where(sq.Eq{"ID": id})
 
@@ -133,7 +135,7 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 		s.metrics.ObserveStoreMethodsTime("GetCallSessions", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("*").
+	qb := getQueryBuilder(s.driverName).Select("ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand").
 		From("calls_sessions").
 		Where(sq.Eq{"CallID": callID})
 

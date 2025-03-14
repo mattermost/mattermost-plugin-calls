@@ -16,10 +16,11 @@ import (
 
 func TestCallsJobsStore(t *testing.T) {
 	testStore(t, map[string]func(t *testing.T, store *Store){
-		"TestCreateCallJob":     testCreateCallJob,
-		"TestUpdateCallJob":     testUpdateCallJob,
-		"TestGetCallJob":        testGetCallJob,
-		"TestGetActiveCallJobs": testGetActiveCallJobs,
+		"TestCreateCallJob":                testCreateCallJob,
+		"TestUpdateCallJob":                testUpdateCallJob,
+		"TestGetCallJob":                   testGetCallJob,
+		"TestGetActiveCallJobs":            testGetActiveCallJobs,
+		"TestCallsJobsTableColumnAddition": testCallsJobsTableColumnAddition,
 	})
 }
 
@@ -258,4 +259,64 @@ func testGetActiveCallJobs(t *testing.T, store *Store) {
 		require.Nil(t, jobs[public.JobTypeRecording])
 		require.Empty(t, jobs)
 	})
+}
+
+func testCallsJobsTableColumnAddition(t *testing.T, store *Store) {
+	// This test simulates adding a new column to the calls_jobs table
+	// and verifies that existing code can still fetch data correctly
+
+	// Create a job with the current schema
+	job := &public.CallJob{
+		ID:        model.NewId(),
+		CallID:    model.NewId(),
+		Type:      public.JobTypeRecording,
+		CreatorID: model.NewId(),
+		InitAt:    time.Now().UnixMilli(),
+		StartAt:   time.Now().UnixMilli(),
+		Props: public.CallJobProps{
+			JobID: "test-job-id",
+		},
+	}
+
+	err := store.CreateCallJob(job)
+	require.NoError(t, err)
+
+	// Simulate adding a new column to the calls_jobs table
+	var alterTableSQL string
+	if store.driverName == model.DatabaseDriverPostgres {
+		alterTableSQL = "ALTER TABLE calls_jobs ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+	} else {
+		alterTableSQL = "ALTER TABLE calls_jobs ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+	}
+
+	_, err = store.wDB.Exec(alterTableSQL)
+	require.NoError(t, err)
+
+	// Verify we can still fetch the job correctly after schema change
+	gotJob, err := store.GetCallJob(job.ID, GetCallJobOpts{IncludeEnded: true})
+	require.NoError(t, err)
+	require.Equal(t, job, gotJob)
+
+	// Verify we can still update the job
+	job.EndAt = time.Now().UnixMilli()
+	job.Props.BotConnID = "test-bot-conn-id"
+	err = store.UpdateCallJob(job)
+	require.NoError(t, err)
+
+	// Verify the update worked correctly
+	updatedJob, err := store.GetCallJob(job.ID, GetCallJobOpts{IncludeEnded: true})
+	require.NoError(t, err)
+	require.Equal(t, job.EndAt, updatedJob.EndAt)
+	require.Equal(t, job.Props, updatedJob.Props)
+
+	// Clean up - drop the test column
+	var dropColumnSQL string
+	if store.driverName == model.DatabaseDriverPostgres {
+		dropColumnSQL = "ALTER TABLE calls_jobs DROP COLUMN test_column"
+	} else {
+		dropColumnSQL = "ALTER TABLE calls_jobs DROP COLUMN test_column"
+	}
+
+	_, err = store.wDB.Exec(dropColumnSQL)
+	require.NoError(t, err)
 }

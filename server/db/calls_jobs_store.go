@@ -14,6 +14,8 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
+var callsJobsColumns = []string{"ID", "CallID", "Type", "CreatorID", "InitAt", "StartAt", "EndAt", "Props"}
+
 func (s *Store) CreateCallJob(job *public.CallJob) error {
 	s.metrics.IncStoreOp("CreateCallJob")
 	defer func(start time.Time) {
@@ -26,7 +28,7 @@ func (s *Store) CreateCallJob(job *public.CallJob) error {
 
 	qb := getQueryBuilder(s.driverName).
 		Insert("calls_jobs").
-		Columns("ID", "CallID", "Type", "CreatorID", "InitAt", "StartAt", "EndAt", "Props").
+		Columns(callsJobsColumns...).
 		Values(job.ID, job.CallID, job.Type, job.CreatorID, job.InitAt, job.StartAt, job.EndAt, s.newJSONValueWrapper(job.Props))
 
 	q, args, err := qb.ToSql()
@@ -82,7 +84,7 @@ func (s *Store) GetCallJob(id string, opts GetCallJobOpts) (*public.CallJob, err
 		s.metrics.ObserveStoreMethodsTime("GetCallJob", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("*").
+	qb := getQueryBuilder(s.driverName).Select(callsJobsColumns...).
 		From("calls_jobs").
 		Where(sq.Eq{"ID": id})
 
@@ -113,7 +115,7 @@ func (s *Store) GetActiveCallJobs(callID string, opts GetCallJobOpts) (map[publi
 		s.metrics.ObserveStoreMethodsTime("GetActiveCallJobs", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("*").
+	qb := getQueryBuilder(s.driverName).Select(callsJobsColumns...).
 		From("calls_jobs").
 		Where(sq.And{
 			sq.Eq{"CallID": callID},

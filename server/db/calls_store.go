@@ -158,7 +158,7 @@ func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 		s.metrics.ObserveStoreMethodsTime("GetCall", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("*").
+	qb := getQueryBuilder(s.driverName).Select(callsColumns...).
 		From("calls").
 		Where(sq.Eq{"ID": callID})
 
@@ -218,7 +218,7 @@ func (s *Store) GetActiveCallByChannelID(channelID string, opts GetCallOpts) (*p
 		s.metrics.ObserveStoreMethodsTime("GetActiveCallByChannelID", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("*").
+	qb := getQueryBuilder(s.driverName).Select(callsColumns...).
 		From("calls").
 		Where(
 			sq.And{
@@ -252,7 +252,7 @@ func (s *Store) GetAllActiveCalls(opts GetCallOpts) ([]*public.Call, error) {
 		s.metrics.ObserveStoreMethodsTime("GetAllActiveCalls", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("*").
+	qb := getQueryBuilder(s.driverName).Select(callsColumns...).
 		From("calls").
 		Where(
 			sq.And{
