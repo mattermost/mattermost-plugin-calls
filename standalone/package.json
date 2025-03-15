@@ -30,7 +30,7 @@
     "react-redux": "7.2.4",
     "redux": "4.2.0",
     "semver-parser": "4.0.0",
-    "styled-components": "6.1.8",
+    "styled-components": "6.1.14",
     "stylis": "4.3.1"
   },
   "devDependencies": {
