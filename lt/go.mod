@@ -1,12 +1,12 @@
 module github.com/mattermost/mattermost-plugin-calls/lt
 
-go 1.22.7
+go 1.23.6
 
 require (
 	github.com/aws/aws-sdk-go v1.50.3
 	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/mattermost/mattermost/server/public v0.1.10
-	github.com/mattermost/rtcd v1.0.2-0.20250307011846-db3f6972eb19
+	github.com/mattermost/rtcd v1.0.3-0.20250317162951-d8a8059a496b
 	github.com/pion/rtp v1.8.10
 	github.com/pion/webrtc/v4 v4.0.7
 	gopkg.in/hraban/opus.v2 v2.0.0-20230925203106-0188a62cb302

@@ -4,7 +4,7 @@
 import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {getChannelNamesForTest, getUserStoragesForTest, startCallAndPopout} from '../utils';
+import {getChannelNamesForTest, getUsernamesForTest, getUserStoragesForTest, startCallAndPopout} from '../utils';
 
 const userStorages = getUserStoragesForTest();
 
@@ -14,6 +14,16 @@ test.describe('popout window', () => {
     test('popout opens muted', async () => {
         const [page, popOut] = await startCallAndPopout(userStorages[0]);
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
+
+        // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
+        const textEl = popOut.page.getByText(`${getUsernamesForTest()[0]} (you)`, {exact: true});
+        await expect(textEl).toBeVisible();
+        await textEl.evaluate((el, username) => {
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
+        }, getUsernamesForTest()[0]);
+
         expect(await popOut.page.locator('#calls-expanded-view-participants-grid').screenshot()).toMatchSnapshot('expanded-view-participants-grid.png');
         expect(await popOut.page.locator('#calls-expanded-view-controls').screenshot()).toMatchSnapshot('expanded-view-controls.png');
         await expect(popOut.page.locator('#calls-popout-mute-button')).toBeVisible();
@@ -281,6 +291,16 @@ test.describe('popout window', () => {
 
         // Make sure participants are visibile.
         await expect(popOut.locator('#calls-expanded-view')).toBeVisible();
+
+        // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
+        const textEl = popOut.getByText(`${getUsernamesForTest()[0]} (you)`, {exact: true});
+        await expect(textEl).toBeVisible();
+        await textEl.evaluate((el, username) => {
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
+        }, getUsernamesForTest()[0]);
+
         expect(await popOut.locator('#calls-expanded-view-participants-grid').screenshot()).toMatchSnapshot('expanded-view-participants-grid.png');
 
         // leave call

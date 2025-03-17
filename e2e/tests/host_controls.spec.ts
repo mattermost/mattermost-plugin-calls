@@ -132,7 +132,7 @@ test.describe('host controls', () => {
         await user0Page.expectMuted(usernames[2], false);
 
         // mute others snapshot
-        expect(await (await user0Page.getWidgetParticipantList()).screenshot()).toMatchSnapshot('mute-others-widget.png');
+        expect(await (await user0Page.page.locator('#calls-widget-participants-list > li.MenuHeader')).screenshot()).toMatchSnapshot('mute-others-widget.png');
 
         // mute others
         await user0Page.muteOthers();

@@ -15,10 +15,11 @@ import (
 
 func TestCallsChannelsStore(t *testing.T) {
 	testStore(t, map[string]func(t *testing.T, store *Store){
-		"TestCreateCallsChannel":  testCreateCallsChannel,
-		"TestUpdateCallsChannel":  testUpdateCallsChannel,
-		"TestGetCallsChannel":     testGetCallsChannel,
-		"TestGetAllCallsChannels": testGetAllCallsChannels,
+		"TestCreateCallsChannel":               testCreateCallsChannel,
+		"TestUpdateCallsChannel":               testUpdateCallsChannel,
+		"TestGetCallsChannel":                  testGetCallsChannel,
+		"TestGetAllCallsChannels":              testGetAllCallsChannels,
+		"TestCallsChannelsTableColumnAddition": testCallsChannelsTableColumnAddition,
 	})
 }
 
@@ -140,4 +141,61 @@ func testGetAllCallsChannels(t *testing.T, store *Store) {
 		require.NoError(t, err)
 		require.ElementsMatch(t, createdChannels, channels)
 	})
+}
+
+func testCallsChannelsTableColumnAddition(t *testing.T, store *Store) {
+	// This test simulates adding a new column to the calls_channels table
+	// and verifies that existing code can still fetch data correctly
+
+	// Create a channel with the current schema
+	channel := &public.CallsChannel{
+		ChannelID: model.NewId(),
+		Enabled:   true,
+		Props: map[string]any{
+			"string_prop": "test",
+			"number_prop": float64(45),
+		},
+	}
+
+	err := store.CreateCallsChannel(channel)
+	require.NoError(t, err)
+
+	// Simulate adding a new column to the calls_channels table
+	var alterTableSQL string
+	if store.driverName == model.DatabaseDriverPostgres {
+		alterTableSQL = "ALTER TABLE calls_channels ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+	} else {
+		alterTableSQL = "ALTER TABLE calls_channels ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+	}
+
+	_, err = store.wDB.Exec(alterTableSQL)
+	require.NoError(t, err)
+
+	// Verify we can still fetch the channel correctly after schema change
+	gotChannel, err := store.GetCallsChannel(channel.ChannelID, GetCallsChannelOpts{FromWriter: true})
+	require.NoError(t, err)
+	require.Equal(t, channel, gotChannel)
+
+	// Verify we can still update the channel
+	channel.Enabled = false
+	channel.Props["new_prop"] = "added after schema change"
+	err = store.UpdateCallsChannel(channel)
+	require.NoError(t, err)
+
+	// Verify the update worked correctly
+	updatedChannel, err := store.GetCallsChannel(channel.ChannelID, GetCallsChannelOpts{FromWriter: true})
+	require.NoError(t, err)
+	require.Equal(t, channel.Enabled, updatedChannel.Enabled)
+	require.Equal(t, channel.Props, updatedChannel.Props)
+
+	// Clean up - drop the test column
+	var dropColumnSQL string
+	if store.driverName == model.DatabaseDriverPostgres {
+		dropColumnSQL = "ALTER TABLE calls_channels DROP COLUMN test_column"
+	} else {
+		dropColumnSQL = "ALTER TABLE calls_channels DROP COLUMN test_column"
+	}
+
+	_, err = store.wDB.Exec(dropColumnSQL)
+	require.NoError(t, err)
 }

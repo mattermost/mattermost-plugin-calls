@@ -379,6 +379,16 @@ test.describe('switching products', () => {
         await devPage.page.locator('#calls-widget-participants-button').click();
         const participantsList = devPage.page.locator('#calls-widget-participants-list');
         await expect(participantsList).toBeVisible();
+
+        // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
+        const textEl = participantsList.getByText(`${usernames[0]}`);
+        await expect(textEl).toBeVisible();
+        await textEl.evaluate((el, username) => {
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
+        }, usernames[0]);
+
         expect(await participantsList.screenshot()).toMatchSnapshot('calls-widget-participants-list-playbooks.png');
 
         await devPage.leaveCall();
@@ -436,6 +446,38 @@ test.describe('ux', () => {
 
         // Verify we switched channel through the link
         await expect(page.url()).toEqual(getChannelURL(getChannelNamesForTest()[0]));
+
+        await devPage.leaveCall();
+    });
+
+    test('call post card', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+
+        const postEl = page.locator('.post__body').last();
+        await expect(postEl).toBeVisible();
+
+        // open RHS
+        await postEl.click();
+        await expect(page.locator('#rhsContainer')).toBeVisible();
+
+        // get call post card element
+        const cardEl = page.locator('#rhsContainer').getByTestId('call-thread');
+
+        // We update the text content to make the snapshot matching consistent since usernames will vary depending on test parallelism.
+        const textEl = cardEl.getByText(`${usernames[0]}`);
+        await expect(textEl).toBeVisible();
+        await textEl.evaluate((el, username) => {
+            if (el.textContent) {
+                el.textContent = el.textContent.replace(username, 'testuser');
+            }
+        }, usernames[0]);
+
+        // Wait a second for the rendering to be stable.
+        await devPage.wait(1000);
+
+        // Verify the card looks as expected.
+        expect(await cardEl.screenshot()).toMatchSnapshot('calls-card-rhs.png');
 
         await devPage.leaveCall();
     });
