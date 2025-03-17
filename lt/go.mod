@@ -6,8 +6,8 @@ require (
 	github.com/aws/aws-sdk-go v1.50.3
 	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/mattermost/mattermost/server/public v0.1.10
-	github.com/mattermost/rtcd v1.0.3-0.20250317162951-d8a8059a496b
-	github.com/pion/rtp v1.8.10
+	github.com/mattermost/rtcd v1.0.3-0.20250317221008-7bc1f7ac6460
+	github.com/pion/rtp v1.8.13
 	github.com/pion/webrtc/v4 v4.0.7
 	gopkg.in/hraban/opus.v2 v2.0.0-20230925203106-0188a62cb302
 )
@@ -40,7 +40,7 @@ require (
 	github.com/pion/dtls/v3 v3.0.4 // indirect
 	github.com/pion/ice/v4 v4.0.3 // indirect
 	github.com/pion/interceptor v0.1.37 // indirect
-	github.com/pion/logging v0.2.2 // indirect
+	github.com/pion/logging v0.2.3 // indirect
 	github.com/pion/mdns/v2 v2.0.7 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/rtcp v1.2.15 // indirect
