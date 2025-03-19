@@ -408,8 +408,7 @@ test.describe('notifications', () => {
         });
         await expect(notificationsSoundedAt.length).toEqual(2);
 
-        await user1.leaveCall();
-        await user2.leaveCall();
+        await Promise.all([user1.leaveCall(), user2.leaveCall()]);
     });
 
     test('stacked notifications while in a call - webapp', async ({page}) => {
@@ -472,8 +471,7 @@ test.describe('notifications', () => {
         });
         await expect(notificationsSoundedAt.length).toEqual(0);
 
-        await user1.leaveCall();
-        await user2.leaveCall();
+        await Promise.all([user1.leaveCall(), user2.leaveCall()]);
     });
 
     test('stacked notifications while in a call - global widget', async ({page}) => {
@@ -547,8 +545,7 @@ test.describe('notifications', () => {
         await expect(await condensedNotification.screenshot()).toMatchSnapshot('call-incoming-condensed-notification-gm.png');
         await expect(condensedNotification).toContainText(`Call from ${usernames[2]} with ${usernames[1]}`);
 
-        await user1.leaveCall();
-        await user2.leaveCall();
+        await Promise.all([user1.leaveCall(), user2.leaveCall()]);
     });
 
     test('dismiss works across clients and is recorded (reloading and new client)', async ({page}) => {
@@ -603,8 +600,7 @@ test.describe('notifications', () => {
         await expect(notification).toBeVisible();
         await expect(notification).toContainText(`${usernames[2]} is inviting you to a call with ${usernames[1]}`);
 
-        await user1.leaveCall();
-        await user2.leaveCall();
+        await Promise.all([user1.leaveCall(), user2.leaveCall()]);
     });
 
     test('do not ring twice for same call, lhs -> widget', async ({page}) => {
@@ -644,8 +640,7 @@ test.describe('notifications', () => {
         });
         await expect(notificationsSoundedAt.length).toEqual(1);
 
-        await devPage.leaveCall();
-        await user1.leaveCall();
+        await Promise.all([user1.leaveCall(), devPage.leaveCall()]);
     });
 
     test('do not ring twice for same call, widget -> lhs', async ({page}) => {
@@ -700,8 +695,7 @@ test.describe('notifications', () => {
         await devPage.startCall();
         await devPage.expectNotifications(0, 0, 1, 1);
 
-        await user1.leaveCall();
-        await devPage.leaveCall();
+        await Promise.all([user1.leaveCall(), devPage.leaveCall()]);
     });
 
     test('user is DND: no ringing, no desktop notification', async ({page, request}) => {
@@ -937,8 +931,7 @@ test.describe('notifications', () => {
         // Expect to be in the new DM call
         await expect(page.locator('.calls-channel-link')).toContainText(usernames[1]);
 
-        await user1.leaveCall();
-        await devPage.leaveCall();
+        await Promise.all([user1.leaveCall(), devPage.leaveCall()]);
     });
 
     test('ringing stops on last leave, and /call end', async ({page}) => {
