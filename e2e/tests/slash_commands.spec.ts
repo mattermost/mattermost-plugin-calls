@@ -36,6 +36,10 @@ test.describe('slash commands', () => {
     test('end call as second host', async ({page}) => {
         const user0Page = new PlaywrightDevPage(page);
 
+        // Here we are potentially introducing flakiness since the host is the first user to join
+        // and through the Promise.all() call both users join in parallel.
+        // That said, in one case (the second user) we have to spawn a new browser process,
+        // so we are am assuming the first user will consistently beat that, guaranteeing the order.
         const [, user1Page] = await Promise.all([
             user0Page.startCall(),
             joinCall(userStorages[1]),
