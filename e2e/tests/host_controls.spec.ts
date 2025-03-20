@@ -10,7 +10,7 @@ import {
     joinCall,
     joinCallAndPopout,
     startCall,
-    startCallAndPopout,
+    startCallAndPopoutFromPage,
 } from '../utils';
 
 const userStorages = getUserStoragesForTest();
@@ -30,10 +30,18 @@ test.afterEach(async ({page}) => {
 test.describe('host controls', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('host change', async () => {
-        const user0Page = await startCall(userStorages[0]);
-        let user1Page = await joinCall(userStorages[1]);
-        const user2Page = await joinCall(userStorages[2]);
+    test('host change', async ({page}) => {
+        const user0Page = new PlaywrightDevPage(page);
+
+        // Here we are potentially introducing flakiness since the host is the first user to join
+        // and through the Promise.all() call both users join in parallel.
+        // That said, in one case (the second user) we have to spawn a new browser process,
+        // so we are am assuming the first user will consistently beat that, guaranteeing the order.
+        const [_, user1Page, user2Page] = await Promise.all([
+            user0Page.startCall(),
+            startCall(userStorages[1]),
+            startCall(userStorages[2]),
+        ]);
 
         await user0Page.page.locator('#calls-widget-participants-button').click();
         const participantsList = user0Page.page.locator('#calls-widget-participants-list');
@@ -61,18 +69,23 @@ test.describe('host controls', () => {
         await expect(user0Page.page.getByTestId('participant-list-host')).toContainText(usernames[0]);
 
         // When the assigned host returns, the designated host regains host control.
-        user1Page = await joinCall(userStorages[1]);
+        await user1Page.joinCall();
         await user0Page.wait(1000);
         await expect(user0Page.page.getByTestId('participant-list-host')).toContainText(usernames[1]);
 
-        await user0Page.leaveCall();
-        await user1Page.leaveCall();
-        await user2Page.leaveCall();
+        await Promise.all([user0Page.leaveCall(), user1Page.leaveCall(), user2Page.leaveCall()]);
     });
 
-    test('widget', async () => {
-        const user0Page = await startCall(userStorages[0]);
-        let user1Page = await joinCall(userStorages[1]);
+    test('widget', async ({page}) => {
+        // Here we are potentially introducing flakiness since the host is the first user to join
+        // and through the Promise.all() call both users join in parallel.
+        // That said, in one case (the second user) we have to spawn a new browser process,
+        // so we are am assuming the first user will consistently beat that, guaranteeing the order.
+        const user0Page = new PlaywrightDevPage(page);
+        const [_, user1Page] = await Promise.all([
+            user0Page.startCall(),
+            startCall(userStorages[1]),
+        ]);
 
         //
         // HOST CHANGE
@@ -96,7 +109,7 @@ test.describe('host controls', () => {
         await user0Page.expectNotice(HostNotice.HostChanged, 'You');
 
         // Returning host notice is shown
-        user1Page = await joinCall(userStorages[1]);
+        await user1Page.joinCall();
         await user0Page.expectNotice(HostNotice.HostChanged, usernames[1]);
         await user1Page.expectNotice(HostNotice.HostChanged, 'You');
 
@@ -190,14 +203,12 @@ test.describe('host controls', () => {
         await expect(user0Page.page.locator('#screen-player')).toBeHidden();
         await expect(user2Page.page.locator('#screen-player')).toBeHidden();
 
-        await user0Page.leaveCall();
-        await user2Page.leaveCall();
+        await Promise.all([user0Page.leaveCall(), user2Page.leaveCall()]);
     });
 
-    test('popout - participant card - make host', async () => {
-        const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
-        // eslint-disable-next-line prefer-const
-        let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
+    test('popout - participant card - make host', async ({page}) => {
+        const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
+        const [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
 
         //
         // MAKE HOST
@@ -224,18 +235,16 @@ test.describe('host controls', () => {
         await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, 'You');
 
         // 1 returns; returning host notice is shown
-        user1Page = await joinCall(userStorages[1]);
+        await user1Page.joinCall();
         await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[1]);
         await user1Page.expectNotice(HostNotice.HostChanged, 'You');
 
-        await user0Page.leaveCall();
-        await user1Page.leaveCall();
+        await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test('popout - participant card - mute, lower hand', async () => {
-        const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
-        // eslint-disable-next-line prefer-const
-        let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
+    test('popout - participant card - mute, lower hand', async ({page}) => {
+        const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
+        const [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
 
         //
         // MUTE
@@ -270,12 +279,11 @@ test.describe('host controls', () => {
         await user0Popout.expectUnRaisedHandOnPoput(usernames[1]);
         await user1Popout.expectNoticeOnPopout(HostNotice.LowerHand, usernames[0]);
 
-        await user0Page.leaveCall();
-        await user1Page.leaveCall();
+        await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test('popout - participant card - remove, stop screenshare', async () => {
-        const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
+    test('popout - participant card - remove, stop screenshare', async ({page}) => {
+        const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
 
@@ -296,6 +304,7 @@ test.describe('host controls', () => {
         // STOP SCREENSHARING
         //
         [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
+
         await user1Page.shareScreen();
         await user0Popout.expectScreenSharedOnPopout();
 
@@ -305,12 +314,11 @@ test.describe('host controls', () => {
         await expect(user0Popout.page.locator('#screen-player')).toBeHidden();
         await expect(user1Popout.page.locator('#screen-player')).toBeHidden();
 
-        await user0Page.leaveCall();
-        await user1Page.leaveCall();
+        await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test('popout - RHS - make host', async () => {
-        const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
+    test('popout - RHS - make host', async ({page}) => {
+        const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
 
@@ -349,12 +357,11 @@ test.describe('host controls', () => {
         await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[1]);
         await user1Page.expectNotice(HostNotice.HostChanged, 'You');
 
-        await user0Page.leaveCall();
-        await user1Page.leaveCall();
+        await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test('popout - RHS - mute, lower hand', async () => {
-        const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
+    test('popout - RHS - mute, lower hand', async ({page}) => {
+        const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
 
@@ -422,13 +429,11 @@ test.describe('host controls', () => {
         await user0Popout.expectMutedOnPopout(usernames[1], true);
         await user0Popout.expectMutedOnPopout(usernames[2], true);
 
-        await user0Page.leaveCall();
-        await user1Page.leaveCall();
-        await user2Page.leaveCall();
+        await Promise.all([user0Page.leaveCall(), user1Page.leaveCall(), user2Page.leaveCall()]);
     });
 
-    test('popout - RHS - remove, stop screenshare', async () => {
-        const [user0Page, user0Popout] = await startCallAndPopout(userStorages[0]);
+    test('popout - RHS - remove, stop screenshare', async ({page}) => {
+        const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
 
@@ -472,7 +477,6 @@ test.describe('host controls', () => {
         await expect(user0Popout.page.locator('#screen-player')).toBeHidden();
         await expect(user1Popout.page.locator('#screen-player')).toBeHidden();
 
-        await user0Page.leaveCall();
-        await user1Page.leaveCall();
+        await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 });
