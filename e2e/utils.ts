@@ -57,9 +57,7 @@ export async function startCall(userState: string) {
     return userPage;
 }
 
-export async function startCallAndPopout(userState: string) {
-    const userPage = await newUserPage(userState);
-    await userPage.goto();
+export async function startCallAndPopoutFromPage(userPage: PlaywrightDevPage) {
     await userPage.startCall();
 
     const [popOut, _] = await Promise.all([

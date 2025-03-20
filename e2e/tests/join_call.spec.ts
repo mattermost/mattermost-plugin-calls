@@ -4,7 +4,7 @@
 import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
-import {getUserIdxForTest, getUsernamesForTest, getUserStoragesForTest, joinCall, startCall, startCallAndPopout, startDMWith} from '../utils';
+import {getUserIdxForTest, getUsernamesForTest, getUserStoragesForTest, joinCall, startCall, startCallAndPopoutFromPage, startDMWith} from '../utils';
 
 const userStorages = getUserStoragesForTest();
 const usernames = getUsernamesForTest();
@@ -20,14 +20,10 @@ test.describe('join call', () => {
     test('channel header button', {
         tag: '@core',
     }, async ({page}) => {
-        // start a call
-        const userPage = await startCall(userStorages[1]);
-
         const devPage = new PlaywrightDevPage(page);
-        await devPage.joinCall();
-        await devPage.leaveCall();
+        const [userPage, _] = await Promise.all([startCall(userStorages[1]), devPage.joinCall()]);
 
-        await userPage.leaveCall();
+        await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
     test('channel toast', async ({page}) => {
@@ -49,9 +45,7 @@ test.describe('join call', () => {
         await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
 
         const devPage = new PlaywrightDevPage(page);
-        await devPage.leaveCall();
-
-        await userPage.leaveCall();
+        await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
     test('call thread', async ({page}) => {
@@ -161,13 +155,15 @@ test.describe('join call', () => {
 
     test('multiple sessions per user', {
         tag: '@core',
-    }, async () => {
-        test.setTimeout(200000);
+    }, async ({page}) => {
+        const sessionAPage = new PlaywrightDevPage(page);
 
         // start a call
-        const sessionAPage = await startCall(userStorages[1]);
-        const sessionBPage = await joinCall(userStorages[1]);
-        const sessionCPage = await joinCall(userStorages[1]);
+        const [_, sessionBPage, sessionCPage] = await Promise.all([
+            sessionAPage.startCall(),
+            startCall(userStorages[1]),
+            startCall(userStorages[1]),
+        ]);
 
         // Verify there are three participants
         const numParticipantsEl = sessionCPage.page.locator('#calls-widget-participants-button span');
@@ -178,9 +174,7 @@ test.describe('join call', () => {
             return;
         }
 
-        await sessionAPage.leaveCall();
-        await sessionBPage.leaveCall();
-        await sessionCPage.leaveCall();
+        await Promise.all([sessionAPage.leaveCall(), sessionBPage.leaveCall(), sessionCPage.leaveCall()]);
     });
 });
 
@@ -189,12 +183,12 @@ test.describe('end call', () => {
     const userIdx = getUserIdxForTest();
 
     test('widget', async ({page}) => {
-        // userA starts a call
+        // userA starts a call and userB joins
         const userAPage = new PlaywrightDevPage(page);
-        await userAPage.startCall();
-
-        // userB joins
-        const userBPage = await joinCall(userStorages[1]);
+        const [_, userBPage] = await Promise.all([
+            userAPage.startCall(),
+            joinCall(userStorages[1]),
+        ]);
 
         // userA ends call
         await page.locator('#calls-widget-leave-button').click();
@@ -211,12 +205,12 @@ test.describe('end call', () => {
     });
 
     test('post card', async ({page}) => {
-        // userA starts a call
+        // userA starts a call and userB joins
         const userAPage = new PlaywrightDevPage(page);
-        await userAPage.startCall();
-
-        // userB joins
-        const userBPage = await joinCall(userStorages[1]);
+        const [_, userBPage] = await Promise.all([
+            userAPage.startCall(),
+            joinCall(userStorages[1]),
+        ]);
 
         // userA ends call
         const leaveCallButton = page.locator('.post__body').last().getByRole('button', {name: 'Leave'});
@@ -234,8 +228,8 @@ test.describe('end call', () => {
         await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('popout', async () => {
-        const [page, popOut] = await startCallAndPopout(userStorages[0]);
+    test('popout', async ({page}) => {
+        const [_, popOut] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
 
         // userB joins
@@ -249,9 +243,9 @@ test.describe('end call', () => {
         await popOut.page.getByTestId('modal-confirm-button').getByText('End call').click();
 
         // verify call has ended
-        await expect(page.page.locator('#calls-widget')).toBeHidden();
-        await expect(page.page.locator('#calls-channel-toast')).toBeHidden();
-        await expect(page.page.locator(`#sidebarItem_calls${userIdx}`).getByTestId('calls-sidebar-active-call-icon')).toBeHidden();
+        await expect(page.locator('#calls-widget')).toBeHidden();
+        await expect(page.locator('#calls-channel-toast')).toBeHidden();
+        await expect(page.locator(`#sidebarItem_calls${userIdx}`).getByTestId('calls-sidebar-active-call-icon')).toBeHidden();
         await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
     });
 });
