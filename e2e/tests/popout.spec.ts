@@ -41,6 +41,7 @@ test.describe('popout window', () => {
         const [_, popOut] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
         await popOut.leaveFromPopout();
+        await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
     test('window title matches', async ({page}) => {
