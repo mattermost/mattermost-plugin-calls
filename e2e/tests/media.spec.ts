@@ -20,10 +20,12 @@ test.describe('screen sharing', () => {
     test('share screen button', {
         tag: '@core',
     }, async ({page}) => {
-        const userPage = await startCall(userStorages[1]);
-
         const devPage = new PlaywrightDevPage(page);
-        await devPage.joinCall();
+
+        const [userPage, _] = await Promise.all([
+            startCall(userStorages[1]),
+            devPage.joinCall(),
+        ]);
 
         await page.locator('#calls-widget-toggle-menu-button').click();
         await page.locator('#calls-widget-menu-screenshare').click();
@@ -43,15 +45,16 @@ test.describe('screen sharing', () => {
         await expect(page.locator('#screen-player')).toBeHidden();
         await expect(userPage.page.locator('#screen-player')).toBeHidden();
 
-        await devPage.leaveCall();
-        await userPage.leaveCall();
+        await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
     test('share screen keyboard shortcut', async ({page}) => {
-        const userPage = await startCall(userStorages[1]);
-
         const devPage = new PlaywrightDevPage(page);
-        await devPage.joinCall();
+
+        const [userPage, _] = await Promise.all([
+            startCall(userStorages[1]),
+            devPage.joinCall(),
+        ]);
 
         if (process.platform === 'darwin') {
             await page.keyboard.press('Meta+Shift+E');
@@ -78,17 +81,18 @@ test.describe('screen sharing', () => {
         await expect(page.locator('#screen-player')).toBeHidden();
         await expect(userPage.page.locator('#screen-player')).toBeHidden();
 
-        await devPage.leaveCall();
-        await userPage.leaveCall();
+        await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
     test('presenter leaving and joining back', {
         tag: '@core',
     }, async ({page}) => {
-        const userPage = await startCall(userStorages[1]);
-
         const devPage = new PlaywrightDevPage(page);
-        await devPage.joinCall();
+
+        const [userPage, _] = await Promise.all([
+            startCall(userStorages[1]),
+            devPage.joinCall(),
+        ]);
 
         // presenter starts sharing
         await page.locator('#calls-widget-toggle-menu-button').click();
@@ -128,8 +132,7 @@ test.describe('screen sharing', () => {
         });
         expect(screenStreamID).toContain('screen_');
 
-        await devPage.leaveCall();
-        await userPage.leaveCall();
+        await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
     test('av1', {
@@ -140,10 +143,12 @@ test.describe('screen sharing', () => {
         // Enabling AV1
         await apiSetEnableAV1(true);
 
-        const receiverPage = await startCall(userStorages[1]);
-
         const senderPage = new PlaywrightDevPage(page);
-        await senderPage.joinCall();
+
+        const [receiverPage, _] = await Promise.all([
+            startCall(userStorages[1]),
+            senderPage.joinCall(),
+        ]);
 
         await page.locator('#calls-widget-toggle-menu-button').click();
         await page.locator('#calls-widget-menu-screenshare').click();
@@ -198,8 +203,7 @@ test.describe('screen sharing', () => {
         await expect(page.locator('#screen-player')).toBeHidden();
         await expect(receiverPage.page.locator('#screen-player')).toBeHidden();
 
-        await senderPage.leaveCall();
-        await receiverPage.leaveCall();
+        await Promise.all([senderPage.leaveCall(), receiverPage.leaveCall()]);
 
         // Disabling AV1
         await apiSetEnableAV1(false);
@@ -207,8 +211,7 @@ test.describe('screen sharing', () => {
         // need to refresh for the updated config to be loaded
         await Promise.all([senderPage.page.reload(), receiverPage.page.reload()]);
 
-        await receiverPage.startCall();
-        await senderPage.joinCall();
+        await Promise.all([receiverPage.startCall(), senderPage.joinCall()]);
 
         await page.locator('#calls-widget-toggle-menu-button').click();
         await page.locator('#calls-widget-menu-screenshare').click();
@@ -258,8 +261,7 @@ test.describe('screen sharing', () => {
         await expect(page.locator('#screen-player')).toBeHidden();
         await expect(receiverPage.page.locator('#screen-player')).toBeHidden();
 
-        await senderPage.leaveCall();
-        await receiverPage.leaveCall();
+        await Promise.all([senderPage.leaveCall(), receiverPage.leaveCall()]);
     });
 });
 
@@ -269,10 +271,12 @@ test.describe('sending voice', () => {
     test('unmuting', {
         tag: '@core',
     }, async ({page}) => {
-        const userPage = await startCall(userStorages[1]);
-
         const devPage = new PlaywrightDevPage(page);
-        await devPage.joinCall();
+
+        const [userPage, _] = await Promise.all([
+            startCall(userStorages[1]),
+            devPage.joinCall(),
+        ]);
 
         await page.locator('#voice-mute-unmute').click();
 
@@ -296,17 +300,18 @@ test.describe('sending voice', () => {
         await expect(page.getByTestId(voiceTrackID)).toBeHidden();
         await expect(page.getByTestId(voiceTrackID)).toHaveAttribute('autoplay', '');
 
-        await devPage.leaveCall();
-        await userPage.leaveCall();
+        await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
     test('unmuting after ws reconnect', {
         tag: '@core',
     }, async ({page}) => {
-        const userPage = await startCall(userStorages[1]);
-
         const devPage = new PlaywrightDevPage(page);
-        await devPage.joinCall();
+
+        const [userPage, _] = await Promise.all([
+            startCall(userStorages[1]),
+            devPage.joinCall(),
+        ]);
 
         const reconnectHandler = () => {
             return new Promise((resolve) => {
@@ -347,7 +352,6 @@ test.describe('sending voice', () => {
         await expect(page.getByTestId(voiceTrackID)).toBeHidden();
         await expect(page.getByTestId(voiceTrackID)).toHaveAttribute('autoplay', '');
 
-        await devPage.leaveCall();
-        await userPage.leaveCall();
+        await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 });

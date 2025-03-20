@@ -187,8 +187,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(popOut.getByTestId('banner-recording-stopped')).toContainText('Recording and transcription has stopped. Processing…');
 
         // leave call
-        let popOutDev = new PlaywrightDevPage(popOut);
-        await popOutDev.leaveFromPopout();
+        await devPage.leaveCall();
 
         //
         // Lice captions tests.
@@ -246,8 +245,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(popOut.getByTestId('banner-recording-stopped')).toContainText('Recording and transcription has stopped. Processing…');
 
         // leave call
-        popOutDev = new PlaywrightDevPage(popOut);
-        await popOutDev.leaveFromPopout();
+        await devPage.leaveCall();
     });
 
     test('recording - no participants left', async ({page}) => {
