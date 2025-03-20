@@ -500,7 +500,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     window.screenSharingTrackId = stream.getVideoTracks()[0].id;
                 }
                 if (stream) {
-                    callsClient?.setScreenStream(stream);
+                    await callsClient?.setScreenStream(stream);
 
                     this.setState({screenStream: stream});
                     this.setMissingScreenPermissions(false, true);
