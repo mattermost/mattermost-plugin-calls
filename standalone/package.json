@@ -20,7 +20,7 @@
   "dependencies": {
     "@mattermost/calls-common": "github:mattermost/calls-common#bf4807b83bbf8a5624207c2b918ca30e610acbb0",
     "@mattermost/compass-icons": "0.1.31",
-    "@msgpack/msgpack": "2.7.1",
+    "@msgpack/msgpack": "2.8.0",
     "bootstrap": "3.4.1",
     "core-js": "3.26.1",
     "luxon": "3.3.0",
