@@ -261,6 +261,10 @@ func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
 			msgType = rtc.ScreenOnMessage
 		case clientMessageTypeScreenOff:
 			msgType = rtc.ScreenOffMessage
+		case clientMessageTypeVideoOn:
+			msgType = rtc.VideoOnMessage
+		case clientMessageTypeVideoOff:
+			msgType = rtc.VideoOffMessage
 		default:
 			return fmt.Errorf("unexpected client message type %q", msg.ClientMessage.Type)
 		}
