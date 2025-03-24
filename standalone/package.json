@@ -18,7 +18,7 @@
     "extract": "formatjs extract 'src/**/*.{ts,tsx}' --ignore 'src/**/*.d.ts' --out-file i18n/temp.json --id-interpolation-pattern '[sha512:contenthash:base64:6]' && formatjs compile 'i18n/temp.json' --out-file i18n/en.json && rm i18n/temp.json"
   },
   "dependencies": {
-    "@mattermost/calls-common": "github:mattermost/calls-common#1bd5ebd19d26aeba5d19e4ff971b374bc1608f15",
+    "@mattermost/calls-common": "github:mattermost/calls-common#df3b1cd6b66bdc34423a246a91305c943e3ac59c",
     "@mattermost/compass-icons": "0.1.31",
     "@msgpack/msgpack": "2.7.1",
     "bootstrap": "3.4.1",
