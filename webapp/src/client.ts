@@ -645,7 +645,7 @@ export default class CallsClient extends EventEmitter {
         return tracks;
     }
 
-    public setScreenStream(screenStream: MediaStream) {
+    public async setScreenStream(screenStream: MediaStream) {
         if (!this.ws || !this.peer || this.localScreenTrack || !screenStream) {
             return;
         }
@@ -663,7 +663,7 @@ export default class CallsClient extends EventEmitter {
 
         this.streams.push(screenStream);
 
-        screenTrack.onended = () => {
+        screenTrack.onended = async () => {
             if (screenAudioTrack) {
                 screenAudioTrack.stop();
             }
@@ -674,18 +674,18 @@ export default class CallsClient extends EventEmitter {
                 return;
             }
 
-            this.peer.removeTrack(screenTrack.id);
+            await this.peer.removeTrack(screenTrack.id);
             this.ws.send('screen_off');
         };
 
         logDebug('adding stream to peer', screenStream.id);
 
         // Always send a fallback track (VP8 encoded) for receivers that don't yet support AV1.
-        this.peer.addStream(screenStream);
+        await this.peer.addStream(screenStream);
 
         if (this.config.enableAV1 && this.av1Codec) {
             logDebug('AV1 supported, sending track', this.av1Codec);
-            this.peer.addStream(screenStream, [{
+            await this.peer.addStream(screenStream, [{
                 codec: this.av1Codec,
             }]);
         }
@@ -709,7 +709,7 @@ export default class CallsClient extends EventEmitter {
             return null;
         }
 
-        this.setScreenStream(screenStream);
+        await this.setScreenStream(screenStream);
 
         return screenStream;
     }
