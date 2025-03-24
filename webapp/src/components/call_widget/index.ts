@@ -4,7 +4,7 @@
 import {GlobalState} from '@mattermost/types/store';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId, getMyTeams, getTeam} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
@@ -19,6 +19,7 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
+    callsConfig,
     callStartAtForCurrentCall,
     clientConnecting,
     expandedView,
@@ -33,13 +34,14 @@ import {
     recordingsEnabled,
     screenSharingSessionForCurrentCall,
     sessionForCurrentCall,
+    sessionsForOtherUsersInCall,
     sessionsInCurrentCall,
     sessionsInCurrentCallMap,
     sortedIncomingCalls,
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
-import {alphaSortSessions, stateSortSessions} from 'src/utils';
+import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 
 import CallWidget from './component';
@@ -62,6 +64,12 @@ const mapStateToProps = (state: GlobalState) => {
     const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
 
     const callThreadID = threadIDForCallInChannel(state, channel?.id || '');
+
+    let connectedDMUser;
+    if (channel && isDMChannel(channel)) {
+        const otherID = getUserIdFromDM(channel.name, currentUserID);
+        connectedDMUser = getUser(state, otherID);
+    }
 
     return {
         currentUserID,
@@ -89,6 +97,9 @@ const mapStateToProps = (state: GlobalState) => {
         clientConnecting: clientConnecting(state),
         callThreadID,
         recordingsEnabled: recordingsEnabled(state),
+        enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
+        connectedDMUser,
+        otherSessions: sessionsForOtherUsersInCall(state),
     };
 };
 

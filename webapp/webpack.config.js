@@ -47,7 +47,7 @@ if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
 
 module.exports = {
     entry: [
-        './src/index.tsx',
+        './src/entry.tsx',
     ],
     resolve: {
         alias: {
@@ -121,8 +121,11 @@ module.exports = {
     output: {
         devtoolNamespace: PLUGIN_ID,
         path: path.join(__dirname, '/dist'),
-        publicPath: '/',
+        publicPath: '',
         filename: 'main.js',
+        chunkFilename: 'chunk.[contenthash].js',
+        clean: true,
+        asyncChunks: false, // This is needed or the plugin blundle won't load properly.
     },
     devtool,
     mode,

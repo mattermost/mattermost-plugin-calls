@@ -8,7 +8,14 @@ import {getMe} from 'mattermost-redux/actions/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTeams} from 'mattermost-redux/selectors/entities/teams';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
+import {
+    USER_MUTED,
+    USER_UNMUTED,
+    USER_VIDEO_OFF,
+    USER_VIDEO_ON,
+} from 'plugin/action_types';
 import CallWidget from 'plugin/components/call_widget';
 import {
     logDebug,
@@ -58,6 +65,50 @@ async function initWidget({store, startingCall}: InitCbProps) {
             logErr('failed to fetch translations files', err);
         }
     }
+
+    window.callsClient?.on('mute', () => {
+        store.dispatch({
+            type: USER_MUTED,
+            data: {
+                channelID: window.callsClient?.channelID,
+                userID: getCurrentUserId(store.getState()),
+                session_id: window.callsClient?.getSessionID(),
+            },
+        });
+    });
+
+    window.callsClient?.on('unmute', () => {
+        store.dispatch({
+            type: USER_UNMUTED,
+            data: {
+                channelID: window.callsClient?.channelID,
+                userID: getCurrentUserId(store.getState()),
+                session_id: window.callsClient?.getSessionID(),
+            },
+        });
+    });
+
+    window.callsClient?.on('video_on', () => {
+        store.dispatch({
+            type: USER_VIDEO_ON,
+            data: {
+                channelID: window.callsClient?.channelID,
+                userID: getCurrentUserId(store.getState()),
+                session_id: window.callsClient?.getSessionID(),
+            },
+        });
+    });
+
+    window.callsClient?.on('video_off', () => {
+        store.dispatch({
+            type: USER_VIDEO_OFF,
+            data: {
+                channelID: window.callsClient?.channelID,
+                userID: getCurrentUserId(store.getState()),
+                session_id: window.callsClient?.getSessionID(),
+            },
+        });
+    });
 
     ReactDOM.render(
         <Provider store={store}>

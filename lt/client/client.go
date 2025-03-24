@@ -87,6 +87,7 @@ type Config struct {
 	WsURL         string
 	Duration      time.Duration
 	Unmuted       bool
+	Video         bool
 	Speak         bool
 	ScreenSharing bool
 	Recording     bool
@@ -153,7 +154,7 @@ func NewUser(cfg Config, opts ...Option) *User {
 	return u
 }
 
-func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPTransceiver) {
+func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPTransceiver, videoType string) {
 	getExtensionID := func(URI string) uint8 {
 		for _, ext := range trx.Sender().GetParameters().RTPParameters.HeaderExtensions {
 			if ext.URI == URI {
@@ -167,11 +168,11 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 	payloader = &codecs.VP8Payloader{
 		EnablePictureID: true,
 	}
-	filename := fmt.Sprintf("./samples/screen_%s.ivf", track.RID())
+	filename := fmt.Sprintf("./samples/%s_%s.ivf", videoType, track.RID())
 	if track.Codec().MimeType == webrtc.MimeTypeAV1 {
 		u.log.Info("sending AV1 screen track")
 		payloader = &codecs.AV1Payloader{}
-		filename = fmt.Sprintf("./samples/screen_av1_%s.ivf", track.RID())
+		filename = fmt.Sprintf("./samples/%s_av1_%s.ivf", videoType, track.RID())
 	}
 
 	packetizer := rtp.NewPacketizer(
@@ -247,7 +248,7 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 	}
 }
 
-func (u *User) transmitScreen() {
+func (u *User) transmitVideo(videoType string) {
 	streamID := model.NewId()
 
 	enableSimulcast, _ := u.callsConfig["EnableSimulcast"].(bool)
@@ -276,14 +277,19 @@ func (u *User) transmitScreen() {
 		tracks = []webrtc.TrackLocal{trackLow, trackHigh}
 	}
 
-	trx, err := u.callsClient.StartScreenShare(tracks)
+	var trx *webrtc.RTPTransceiver
+	if videoType == "screen" {
+		trx, err = u.callsClient.StartScreenShare(tracks)
+	} else {
+		trx, err = u.callsClient.StartVideo(tracks)
+	}
 	if err != nil {
 		u.log.Error(err.Error())
 		os.Exit(1)
 	}
 
 	if enableSimulcast {
-		go u.sendVideoFile(trackLow, trx)
+		go u.sendVideoFile(trackLow, trx, videoType)
 	} else if enableAV1 {
 		// Fallback VP8 track
 		fallbackTrack, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelHigh))
@@ -291,15 +297,21 @@ func (u *User) transmitScreen() {
 			u.log.Error(err.Error())
 			os.Exit(1)
 		}
-		trx2, err := u.callsClient.StartScreenShare([]webrtc.TrackLocal{fallbackTrack})
+
+		var trx2 *webrtc.RTPTransceiver
+		if videoType == "screen" {
+			trx2, err = u.callsClient.StartScreenShare([]webrtc.TrackLocal{fallbackTrack})
+		} else {
+			trx2, err = u.callsClient.StartVideo([]webrtc.TrackLocal{fallbackTrack})
+		}
 		if err != nil {
 			u.log.Error(err.Error())
 			os.Exit(1)
 		}
-		go u.sendVideoFile(fallbackTrack, trx2)
+		go u.sendVideoFile(fallbackTrack, trx2, videoType)
 	}
 
-	u.sendVideoFile(trackHigh, trx)
+	u.sendVideoFile(trackHigh, trx, videoType)
 }
 
 func (u *User) transmitAudio() {
@@ -478,7 +490,10 @@ func (u *User) onConnect() {
 		go u.transmitSpeech()
 	}
 	if u.cfg.ScreenSharing {
-		go u.transmitScreen()
+		go u.transmitVideo("screen")
+	}
+	if u.cfg.Video {
+		go u.transmitVideo("video")
 	}
 
 	if u.cfg.Recording && u.hostID.Load() == u.userID {

@@ -23,6 +23,7 @@ export const CallsConfigDefault: CallsConfig = {
     TranscribeAPI: TranscribeAPI.WhisperCPP,
     GroupCallsAllowed: false,
     EnableDCSignaling: false,
+    EnableVideo: false,
 };
 
 export type ChannelState = {
@@ -38,14 +39,15 @@ export type CallsClientConfig = {
     enableAV1: boolean;
     dcSignaling: boolean;
     dcLocking: boolean;
+    enableVideo: boolean;
 }
 
-export type AudioDevices = {
+export type MediaDevices = {
     inputs: MediaDeviceInfo[];
     outputs: MediaDeviceInfo[];
 }
 
-export type TrackInfo = {
+export type TrackMetadata = {
     id: string;
     streamID: string;
     kind: string;
@@ -57,7 +59,7 @@ export type TrackInfo = {
 export type CallsClientStats = {
     initTime: number;
     callID: string;
-    tracksInfo: TrackInfo[];
+    tracksInfo: TrackMetadata[];
     rtcStats: RTCStats | null;
 }
 
@@ -100,6 +102,14 @@ export const CallAlertStatesDefault = {
         show: false,
     },
     missingAudioInputPermissions: {
+        active: false,
+        show: false,
+    },
+    missingVideoInput: {
+        active: false,
+        show: false,
+    },
+    missingVideoInputPermissions: {
         active: false,
         show: false,
     },
