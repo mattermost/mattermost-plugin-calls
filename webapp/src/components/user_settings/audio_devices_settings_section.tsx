@@ -3,29 +3,16 @@
 
 import React, {forwardRef, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
-import ReactSelect from 'react-select';
+import {
+    Description, type DevicesSelectionHandle, type DevicesSelectionProps, Fieldset,
+    SelectionWrapper, SelectLabel, type SelectOption, StyledReactSelect} from 'src/components/user_settings/common';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
 import {logErr} from 'src/log';
-import styled from 'styled-components';
 
-type SelectOption = {
-    label: string;
-    value: string;
-};
-
-type AudioDevicesSelectionProps = {
-    deviceType: string;
-    devices: MediaDeviceInfo[];
-};
-
-type AudioDevicesSelectionHandle = {
-    getOption: () => SelectOption;
-};
-
-const AudioDevicesSelection = forwardRef<AudioDevicesSelectionHandle, AudioDevicesSelectionProps>(({deviceType, devices}: AudioDevicesSelectionProps, ref) => {
+const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectionProps>(({deviceType, devices}: DevicesSelectionProps, ref) => {
     const {formatMessage} = useIntl();
     const [selectedOption, setSelectedOption] = useState<SelectOption|null>(null);
 
@@ -115,23 +102,6 @@ const AudioDevicesSelection = forwardRef<AudioDevicesSelectionHandle, AudioDevic
     );
 });
 
-const StyledReactSelect = styled(ReactSelect)`
-  width: 260px;
-`;
-
-const SelectionWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-const SelectLabel = styled.label`
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 20px;
-  margin: 0;
-`;
-
 export default function AudioDevicesSettingsSection() {
     const {formatMessage} = useIntl();
     const [active, setActive] = useState(false);
@@ -141,8 +111,8 @@ export default function AudioDevicesSettingsSection() {
     const description = formatMessage({defaultMessage: 'Set up audio devices to be used for Mattermost calls'});
     const editLabel = formatMessage({defaultMessage: 'Edit'});
 
-    const audioInputsRef = useRef<AudioDevicesSelectionHandle>(null);
-    const audioOutputsRef = useRef<AudioDevicesSelectionHandle>(null);
+    const audioInputsRef = useRef<DevicesSelectionHandle>(null);
+    const audioOutputsRef = useRef<DevicesSelectionHandle>(null);
 
     const handleSave = () => {
         if (audioInputsRef.current) {
@@ -268,13 +238,3 @@ export default function AudioDevicesSettingsSection() {
         </section>
     );
 }
-
-const Description = styled.span`
-  margin-top: 8px;
-`;
-
-const Fieldset = styled.fieldset`
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-`;

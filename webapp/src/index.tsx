@@ -10,6 +10,7 @@ import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
+import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
@@ -41,6 +42,7 @@ import EnableDCSignaling from 'src/components/admin_console_settings/enable_dc_s
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
 import EnableSimulcast from 'src/components/admin_console_settings/enable_simulcast';
+import EnableVideo from 'src/components/admin_console_settings/enable_video';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
 import ICEServersConfigs from 'src/components/admin_console_settings/ice_servers_configs';
@@ -91,6 +93,7 @@ import {
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
+import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
@@ -107,6 +110,8 @@ import {
     USER_MUTED,
     USER_RAISE_HAND,
     USER_UNMUTED,
+    USER_VIDEO_OFF,
+    USER_VIDEO_ON,
     USERS_STATES,
 } from './action_types';
 import CallsClient from './client';
@@ -155,8 +160,10 @@ import {
     getUserIDsForSessions,
     getWSConnectionURL,
     isCallsPopOut,
+    isDMChannel,
     playSound,
     sendDesktopEvent,
+    setCallsGlobalCSSVars,
     shouldRenderDesktopWidget,
 } from './utils';
 import {
@@ -181,6 +188,8 @@ import {
     handleUserScreenOn,
     handleUserUnmuted,
     handleUserUnraisedHand,
+    handleUserVideoOff,
+    handleUserVideoOn,
     handleUserVoiceOff,
     handleUserVoiceOn,
 } from './websocket_handlers';
@@ -305,6 +314,14 @@ export default class Plugin {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_host_removed`, (ev) => {
             handleHostRemoved(store, ev);
         });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_video_on`, (ev) => {
+            handleUserVideoOn(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_video_off`, (ev) => {
+            handleUserVideoOff(store, ev);
+        });
     }
 
     private initialize(registry: PluginRegistry, store: Store) {
@@ -316,6 +333,9 @@ export default class Plugin {
             RestClient.setUrl(window.basename);
             Client4.setUrl(window.basename);
         }
+
+        const theme = getTheme(store.getState());
+        setCallsGlobalCSSVars(theme.sidebarBg);
 
         // Register root DOM element for Calls. This is where the widget will render.
         if (!document.getElementById('calls')) {
@@ -366,18 +386,6 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
         registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
         registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
-
-        registry.registerUserSettings({
-            id: pluginId,
-            uiName: 'Calls',
-            icon: 'icon-phone-in-talk',
-            sections: [
-                {
-                    title: 'Audio devices settings',
-                    component: AudioDevicesSettingsSection,
-                },
-            ],
-        });
 
         registry.registerFilePreviewComponent((fi, post) => {
             return String(post?.type) === CALL_RECORDING_POST_TYPE;
@@ -491,6 +499,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('EnableAV1', EnableAV1);
         registry.registerAdminConsoleCustomSetting('EnableRinging', EnableRinging);
         registry.registerAdminConsoleCustomSetting('EnableDCSignaling', EnableDCSignaling);
+        registry.registerAdminConsoleCustomSetting('EnableVideo', EnableVideo);
 
         // RTCD Service
         if (registry.registerAdminConsoleCustomSection) {
@@ -619,11 +628,13 @@ export default class Plugin {
         }
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
+            const channel = getChannel(store.getState(), channelID);
+
             // Desktop handler
             const payload = {
                 callID: channelID,
                 title: title || '',
-                channelURL: getChannelURL(store.getState(), getChannel(store.getState(), channelID), getCurrentTeamId(store.getState())),
+                channelURL: getChannelURL(store.getState(), channel, getCurrentTeamId(store.getState())),
                 rootID: rootId || '',
                 startingCall: !channelHasCall(store.getState(), channelID),
             };
@@ -665,6 +676,7 @@ export default class Plugin {
                     simulcast: callsConfig(state).EnableSimulcast,
                     enableAV1: callsConfig(state).EnableAV1,
                     dcSignaling: callsConfig(state).EnableDCSignaling,
+                    enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
                 });
                 window.currentCallData = CurrentCallDataDefault;
 
@@ -758,6 +770,28 @@ export default class Plugin {
                 window.callsClient.on('lower_hand', () => {
                     store.dispatch({
                         type: USER_LOWER_HAND,
+                        data: {
+                            channelID: window.callsClient?.channelID,
+                            userID: getCurrentUserId(store.getState()),
+                            session_id: window.callsClient?.getSessionID(),
+                        },
+                    });
+                });
+
+                window.callsClient.on('video_on', () => {
+                    store.dispatch({
+                        type: USER_VIDEO_ON,
+                        data: {
+                            channelID: window.callsClient?.channelID,
+                            userID: getCurrentUserId(store.getState()),
+                            session_id: window.callsClient?.getSessionID(),
+                        },
+                    });
+                });
+
+                window.callsClient.on('video_off', () => {
+                    store.dispatch({
+                        type: USER_VIDEO_OFF,
                         data: {
                             channelID: window.callsClient?.channelID,
                             userID: getCurrentUserId(store.getState()),
@@ -945,6 +979,26 @@ export default class Plugin {
             unsubscribeActivateListener();
 
             await store.dispatch(getCallsConfig());
+
+            const sections = [
+                {
+                    title: 'Audio devices settings',
+                    component: AudioDevicesSettingsSection,
+                },
+            ];
+
+            if (callsConfig(store.getState()).EnableVideo) {
+                sections.push({
+                    title: 'Video devices settings',
+                    component: VideoDevicesSettingsSection,
+                });
+            }
+            registry.registerUserSettings({
+                id: pluginId,
+                uiName: 'Calls',
+                icon: 'icon-phone-in-talk',
+                sections,
+            });
 
             // We don't care about fetching other calls states in pop out.
             // Current call state will be requested over websocket
