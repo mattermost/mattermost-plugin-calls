@@ -28,7 +28,7 @@
     "react-bootstrap": "github:mattermost/react-bootstrap#c6957962364e0818a51bbfd13e89919903b422d6",
     "react-dom": "17.0.2",
     "react-redux": "7.2.4",
-    "redux": "4.2.0",
+    "redux": "4.2.1",
     "semver-parser": "4.0.0",
     "styled-components": "6.1.8",
     "stylis": "4.3.1"
