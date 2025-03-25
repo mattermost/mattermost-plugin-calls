@@ -28,6 +28,7 @@ import {
     UserReactionData,
     UserRemovedData,
     UserScreenOnOffData,
+    UserVideoOnOffData,
     UserVoiceOnOffData,
     WebsocketEventData,
 } from '@mattermost/calls-common/lib/types';
@@ -54,6 +55,8 @@ import {DesktopNotificationArgs, Store, WebAppUtils} from 'plugin/types/mattermo
 import {
     getPluginPath,
     getWSConnectionURL,
+    isDMChannel,
+    setCallsGlobalCSSVars,
 } from 'plugin/utils';
 import {
     handleCallEnd,
@@ -76,6 +79,8 @@ import {
     handleUserScreenOn,
     handleUserUnmuted,
     handleUserUnraisedHand,
+    handleUserVideoOff,
+    handleUserVideoOn,
     handleUserVoiceOff,
     handleUserVoiceOn,
 } from 'plugin/websocket_handlers';
@@ -236,6 +241,7 @@ export default async function init(cfg: InitConfig) {
         simulcast: callsConfig(store.getState()).EnableSimulcast,
         enableAV1: callsConfig(store.getState()).EnableAV1,
         dcSignaling: callsConfig(store.getState()).EnableDCSignaling,
+        enableVideo: callsConfig(store.getState()).EnableVideo && isDMChannel(channel),
     };
 
     connectCall(joinData, clientConfig, (ev) => {
@@ -306,6 +312,12 @@ export default async function init(cfg: InitConfig) {
         case `custom_${pluginId}_host_removed`:
             handleHostRemoved(store, ev as WebSocketMessage<HostControlRemoved>);
             break;
+        case `custom_${pluginId}_user_video_on`:
+            handleUserVideoOn(store, ev as WebSocketMessage<UserVideoOnOffData>);
+            break;
+        case `custom_${pluginId}_user_video_off`:
+            handleUserVideoOff(store, ev as WebSocketMessage<UserVideoOnOffData>);
+            break;
         case 'user_removed':
             handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);
             break;
@@ -319,6 +331,7 @@ export default async function init(cfg: InitConfig) {
 
     const theme = getTheme(store.getState());
     applyTheme(theme);
+    setCallsGlobalCSSVars(theme.sidebarBg);
 
     try {
         cfg.initCb({store, theme, channelID, startingCall: !active});
