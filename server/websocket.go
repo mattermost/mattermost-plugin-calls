@@ -25,11 +25,6 @@ import (
 const (
 	wsEventSignal = "signal"
 
-	// DEPRECATED in favour of user_joined (since v0.21.0)
-	wsEventUserConnected = "user_connected"
-	// DEPRECATED in favour of user_left (since v0.21.0)
-	wsEventUserDisconnected = "user_disconnected"
-
 	wsEventUserJoined                = "user_joined"
 	wsEventUserLeft                  = "user_left"
 	wsEventUserMuted                 = "user_muted"
@@ -57,9 +52,6 @@ const (
 	wsEventHostRemoved               = "host_removed"
 
 	wsReconnectionTimeout = 10 * time.Second
-
-	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-	wsEventCallRecordingState = "call_recording_state"
 )
 
 var (
@@ -126,9 +118,6 @@ func (wsb *WebSocketBroadcast) ToModel() *model.WebsocketBroadcast {
 func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *WebSocketBroadcast) {
 	botID := p.getBotID()
 	// We don't want to expose to clients that the bot is in a call.
-	if (ev == wsEventUserConnected || ev == wsEventUserDisconnected) && data["userID"] == botID {
-		return
-	}
 	if (ev == wsEventUserJoined || ev == wsEventUserLeft) && data["user_id"] == botID {
 		return
 	}
@@ -858,15 +847,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			"connID": connID,
 		}, &WebSocketBroadcast{ConnectionID: connID, ReliableClusterSend: true})
 
-		if len(state.sessionsForUser(userID)) == 1 {
-			// Only send event on first session join.
-			// This is to keep backwards compatibility with clients not supporting
-			// multi-sessions.
-			p.publishWebSocketEvent(wsEventUserConnected, map[string]interface{}{
-				"userID": userID,
-			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
-		}
-
 		p.publishWebSocketEvent(wsEventUserJoined, map[string]interface{}{
 			"user_id":    userID,
 			"session_id": connID,
@@ -876,16 +856,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 				"callID":   channelID,
 				"jobState": getClientStateFromCallJob(state.Recording).toMap(),
-			}, &WebSocketBroadcast{
-				ChannelID:           channelID,
-				ReliableClusterSend: true,
-				UserIDs:             getUserIDsFromSessions(state.sessions),
-			})
-
-			// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-				"callID":   channelID,
-				"recState": getClientStateFromCallJob(state.Recording).toMap(),
 			}, &WebSocketBroadcast{
 				ChannelID:           channelID,
 				ReliableClusterSend: true,

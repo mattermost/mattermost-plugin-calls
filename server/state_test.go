@@ -30,9 +30,7 @@ func TestCallStateGetClientState(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		var cs callState
 		var css CallStateClient
-		css.Users = []string{}
-		css.States = []UserStateClient{}
-		css.Sessions = css.States
+		css.Sessions = []UserStateClient{}
 		require.Equal(t, &css, cs.getClientState("botID", "userID"))
 	})
 
@@ -60,14 +58,6 @@ func TestCallStateGetClientState(t *testing.T) {
 		ccs := CallStateClient{
 			ID:      cs.ID,
 			StartAt: cs.StartAt,
-			Users:   []string{"userA"},
-			States: []UserStateClient{
-				{
-					SessionID:  "sessionA",
-					UserID:     "userA",
-					RaisedHand: 1100,
-				},
-			},
 			Sessions: []UserStateClient{
 				{
 					SessionID:  "sessionA",
@@ -76,7 +66,6 @@ func TestCallStateGetClientState(t *testing.T) {
 				},
 			},
 			ThreadID:               cs.ThreadID,
-			ScreenSharingID:        "userA",
 			ScreenSharingSessionID: cs.Props.ScreenSharingSessionID,
 			OwnerID:                cs.OwnerID,
 			HostID:                 cs.Props.Hosts[0],
@@ -109,14 +98,6 @@ func TestCallStateGetClientState(t *testing.T) {
 		ccs := CallStateClient{
 			ID:      "test",
 			StartAt: 100,
-			Users:   []string{"userA"},
-			States: []UserStateClient{
-				{
-					SessionID:  "sessionA",
-					UserID:     "userA",
-					RaisedHand: 1100,
-				},
-			},
 			Sessions: []UserStateClient{
 				{
 					SessionID:  "sessionA",
@@ -155,24 +136,6 @@ func TestCallStateGetClientState(t *testing.T) {
 		}
 
 		ccs := CallStateClient{
-			Users: []string{"userA", "userA", "userB"},
-			States: []UserStateClient{
-				{
-					SessionID:  "sessionA",
-					UserID:     "userA",
-					RaisedHand: 0,
-				},
-				{
-					SessionID:  "sessionB",
-					UserID:     "userA",
-					RaisedHand: 0,
-				},
-				{
-					SessionID:  "sessionC",
-					UserID:     "userB",
-					RaisedHand: 0,
-				},
-			},
 			Sessions: []UserStateClient{
 				{
 					SessionID:  "sessionA",
@@ -194,8 +157,6 @@ func TestCallStateGetClientState(t *testing.T) {
 
 		actualCS := cs.getClientState("botID", "")
 
-		require.ElementsMatch(t, ccs.Users, actualCS.Users)
-		require.ElementsMatch(t, ccs.States, actualCS.States)
 		require.ElementsMatch(t, ccs.Sessions, actualCS.Sessions)
 	})
 }

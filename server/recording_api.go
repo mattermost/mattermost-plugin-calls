@@ -70,16 +70,6 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 			ReliableClusterSend: true,
 			UserIDs:             getUserIDsFromSessions(state.sessions),
 		})
-
-		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-			"callID":   callID,
-			"recState": clientState.toMap(),
-		}, &WebSocketBroadcast{
-			ChannelID:           callID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
 	}
 }
 
@@ -112,16 +102,6 @@ func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst
 				ReliableClusterSend: true,
 				UserIDs:             getUserIDsFromSessions(state.sessions),
 			})
-
-			// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-				"callID":   callID,
-				"recState": getClientStateFromCallJob(recState).toMap(),
-			}, &WebSocketBroadcast{
-				ChannelID:           callID,
-				ReliableClusterSend: true,
-				UserIDs:             getUserIDsFromSessions(state.sessions),
-			})
 		}
 	}()
 
@@ -131,16 +111,6 @@ func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst
 	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 		"callID":   callID,
 		"jobState": getClientStateFromCallJob(recState).toMap(),
-	}, &WebSocketBroadcast{
-		ChannelID:           callID,
-		ReliableClusterSend: true,
-		UserIDs:             getUserIDsFromSessions(state.sessions),
-	})
-
-	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-		"callID":   callID,
-		"recState": getClientStateFromCallJob(recState).toMap(),
 	}, &WebSocketBroadcast{
 		ChannelID:           callID,
 		ReliableClusterSend: true,
@@ -204,16 +174,6 @@ func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst
 		UserIDs:             getUserIDsFromSessions(state.sessions),
 	})
 
-	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-		"callID":   callID,
-		"recState": getClientStateFromCallJob(recState).toMap(),
-	}, &WebSocketBroadcast{
-		ChannelID:           callID,
-		ReliableClusterSend: true,
-		UserIDs:             getUserIDsFromSessions(state.sessions),
-	})
-
 	go p.recJobTimeoutChecker(callID, recJobID)
 
 	return getClientStateFromCallJob(recState), http.StatusOK, nil
@@ -245,16 +205,6 @@ func (p *Plugin) stopRecordingJob(state *callState, callID string) (rst *JobStat
 				ReliableClusterSend: true,
 				UserIDs:             getUserIDsFromSessions(state.sessions),
 			})
-
-			// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-				"callID":   callID,
-				"recState": getClientStateFromCallJob(recState).toMap(),
-			}, &WebSocketBroadcast{
-				ChannelID:           callID,
-				ReliableClusterSend: true,
-				UserIDs:             getUserIDsFromSessions(state.sessions),
-			})
 		}
 	}()
 
@@ -271,16 +221,6 @@ func (p *Plugin) stopRecordingJob(state *callState, callID string) (rst *JobStat
 	p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 		"callID":   callID,
 		"jobState": getClientStateFromCallJob(recState).toMap(),
-	}, &WebSocketBroadcast{
-		ChannelID:           callID,
-		ReliableClusterSend: true,
-		UserIDs:             getUserIDsFromSessions(state.sessions),
-	})
-
-	// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-	p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-		"callID":   callID,
-		"recState": getClientStateFromCallJob(recState).toMap(),
 	}, &WebSocketBroadcast{
 		ChannelID:           callID,
 		ReliableClusterSend: true,
