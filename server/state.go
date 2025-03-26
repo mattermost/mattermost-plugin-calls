@@ -138,19 +138,6 @@ func getClientStateFromCallJob(job *public.CallJob) *JobStateClient {
 	}
 }
 
-func (cs *callState) sessionsForUser(userID string) []*public.CallSession {
-	if cs == nil {
-		return nil
-	}
-	var sessions []*public.CallSession
-	for _, session := range cs.sessions {
-		if session.UserID == userID {
-			sessions = append(sessions, session)
-		}
-	}
-	return sessions
-}
-
 func (cs *callState) getRecording() (*public.CallJob, error) {
 	if cs == nil {
 		return nil, fmt.Errorf("no call ongoing")
