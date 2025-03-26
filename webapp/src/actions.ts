@@ -555,7 +555,6 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
         type: USER_SCREEN_ON,
         data: {
             channelID,
-            userID: call.screen_sharing_id,
             session_id: call.screen_sharing_session_id,
         },
     });
