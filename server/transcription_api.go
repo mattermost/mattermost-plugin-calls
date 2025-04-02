@@ -83,12 +83,6 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 				ReliableClusterSend: true,
 				UserIDs:             getUserIDsFromSessions(state.sessions),
 			})
-
-			// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-			p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-				"callID":   callID,
-				"recState": recClientState.toMap(),
-			}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
 		}
 
 		// MM-57265: This message is delayed and not shown to the client correctly.

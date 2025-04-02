@@ -22,9 +22,7 @@ const (
 	msgChSize = 50
 )
 
-var (
-	errGroupCallsNotAllowed = fmt.Errorf("unlicensed servers only allow calls in DMs")
-)
+var errGroupCallsNotAllowed = fmt.Errorf("unlicensed servers only allow calls in DMs")
 
 type session struct {
 	userID         string
@@ -368,16 +366,6 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			ReliableClusterSend: true,
 			UserIDs:             getUserIDsFromSessions(state.sessions),
 		})
-
-		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-			"callID":   channelID,
-			"recState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &WebSocketBroadcast{
-			ChannelID:           channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
 	}
 
 	if state.Transcription != nil && state.Transcription.EndAt == 0 && originalConnID == state.Transcription.Props.BotConnID {
@@ -423,14 +411,6 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 	}
 
-	if len(state.sessionsForUser(userID)) == 0 {
-		// Only send event when all sessions for user have left.
-		// This is to keep backwards compatibility with clients not supporting
-		// multi-sessions.
-		p.publishWebSocketEvent(wsEventUserDisconnected, map[string]interface{}{
-			"userID": userID,
-		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
-	}
 	p.publishWebSocketEvent(wsEventUserLeft, map[string]interface{}{
 		"user_id":    userID,
 		"session_id": originalConnID,

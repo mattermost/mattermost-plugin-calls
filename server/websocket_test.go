@@ -757,11 +757,6 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
 			&model.WebsocketBroadcast{ConnectionId: connID, ReliableClusterSend: true}).Once()
 
-		// DEPRECATED
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventUserConnected, map[string]any{"userID": userID},
-			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
-
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, map[string]any{"session_id": connID, "user_id": userID},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
@@ -807,11 +802,6 @@ func TestHandleJoin(t *testing.T) {
 		mockMetrics.On("DecWebSocketConn").Once()
 		mockRTCMetrics.On("DecRTCSessions", "default").Once()
 		mockRTCMetrics.On("IncRTCConnState", "closed").Once()
-
-		// DEPRECATED
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventUserDisconnected, map[string]any{"userID": userID},
-			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
@@ -907,11 +897,6 @@ func TestHandleJoin(t *testing.T) {
 			mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
 				&model.WebsocketBroadcast{ConnectionId: connID, ReliableClusterSend: true}).Once()
 
-			// DEPRECATED
-			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected).Once()
-			mockAPI.On("PublishWebSocketEvent", wsEventUserConnected, map[string]any{"userID": userID},
-				&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
-
 			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined).Once()
 			mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, map[string]any{"session_id": connID, "user_id": userID},
 				&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
@@ -956,11 +941,6 @@ func TestHandleJoin(t *testing.T) {
 		mockMetrics.On("DecWebSocketConn").Times(10)
 		mockRTCMetrics.On("DecRTCSessions", "default").Times(10)
 		mockRTCMetrics.On("IncRTCConnState", "closed").Times(10)
-
-		// DEPRECATED
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected).Times(10)
-		mockAPI.On("PublishWebSocketEvent", wsEventUserDisconnected, mock.Anything,
-			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Times(10)
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Times(10)
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
@@ -1061,10 +1041,6 @@ func TestHandleJoin(t *testing.T) {
 		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventJoin, mock.Anything, mock.Anything)
 		defer mockAPI.On("PublishWebSocketEvent", wsEventJoin, mock.Anything, mock.Anything).Unset()
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected)
-		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected).Unset()
-		mockAPI.On("PublishWebSocketEvent", wsEventUserConnected, map[string]any{"userID": userID},
-			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined)
 		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, mock.Anything, mock.Anything)
@@ -1085,10 +1061,6 @@ func TestHandleJoin(t *testing.T) {
 		defer mockRTCMetrics.On("DecRTCSessions", "default").Unset()
 		mockRTCMetrics.On("IncRTCConnState", "closed")
 		defer mockRTCMetrics.On("IncRTCConnState", "closed").Unset()
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected)
-		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected).Unset()
-		mockAPI.On("PublishWebSocketEvent", wsEventUserDisconnected, mock.Anything,
-			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft)
 		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
@@ -1289,11 +1261,6 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
 			&model.WebsocketBroadcast{ConnectionId: connID, ReliableClusterSend: true}).Once()
 
-		// DEPRECATED
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserConnected).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventUserConnected, map[string]any{"userID": userID},
-			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
-
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserJoined).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserJoined, map[string]any{"session_id": connID, "user_id": userID},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
@@ -1321,11 +1288,6 @@ func TestHandleJoin(t *testing.T) {
 		mockMetrics.On("DecWebSocketConn").Once()
 		mockRTCMetrics.On("DecRTCSessions", "default").Once()
 		mockRTCMetrics.On("IncRTCConnState", "closed").Once()
-
-		// DEPRECATED
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDisconnected).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventUserDisconnected, map[string]any{"userID": userID},
-			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
