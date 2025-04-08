@@ -2,5 +2,57 @@
     {
         "id": "app.admin.concurrent_sessions_warning.intro",
         "translation": "Installasjonen din opplever tung bruk fra Mattermost Calls, og det kan påvirke systemytelsen og responsen negativt."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "Vi vil sterkt anbefale å bytte til [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) og [distribuere RTCD-tjenesten](https://mattermost.com/pl/calls-deployment -the-rtcd-service) for å avlaste samtalebehandling til en egen instans for å opprettholde ytelsen, skalerbarheten og påliteligheten til hovedserveren for Mattermost."
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}} inviterer deg til en samtale"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "Kunne ikke lagre konfigurasjonen."
+    },
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "Anrop på ulisensierte servere er kun tilgjengelig i DM."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "Vi vil sterkt anbefale å [distribuere RTCD-tjenesten](https://mattermost.com/pl/calls-deployment-the-rtcd-service) for å overføre samtalebehandling til en separat instans for å opprettholde ytelsen, skalerbarheten og påliteligheten til din hovedserver for Mattermost."
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "Samtale avsluttet"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "Her er samtaleopptaket. Transkripsjon prosesseres og vil bli lagt ut når den er klar."
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Username}} startet et anrop"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}} startet et anrop"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "Du har blitt invitert til en samtale"
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "Her er samtaleopptaket"
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "Her er samtaletranskripsjonen"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "Vi vil sterkt anbefale å oppgradere til [Enterprise](https://mattermost.com/pricing/) og [distribuere RTCD-tjenesten](https://mattermost.com/pl/calls-deployment-the-rtcd-service) for å avlaste samtalebehandling til en egen instans for å opprettholde ytelsen, skalerbarheten og påliteligheten til din hovedserver for Mattermost."
     }
 ]
