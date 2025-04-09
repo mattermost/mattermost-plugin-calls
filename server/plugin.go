@@ -42,7 +42,8 @@ type Plugin struct {
 	configurationLock sync.RWMutex
 	// configuration is the active plugin configuration. Consult getConfiguration and
 	// setConfiguration for usage.
-	configuration *configuration
+	configuration      *configuration
+	configEnvOverrides map[string]string
 
 	apiRouter *mux.Router
 

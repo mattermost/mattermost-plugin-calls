@@ -8,7 +8,7 @@ import {
     LabelRow, leftCol, rightCol,
 } from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
-import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
+import {callsConfig, callsConfigEnvOverrides, isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const JobServiceURL = (props: CustomComponentProps) => {
@@ -16,6 +16,9 @@ const JobServiceURL = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const recordingEnabled = useSelector(recordingsEnabled);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'JobServiceURL' in overrides;
 
     if (cloud || restricted || !recordingEnabled) {
         return null;
@@ -27,6 +30,11 @@ const JobServiceURL = (props: CustomComponentProps) => {
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
     };
+
+    // Use the value from config if it's overridden by environment variable
+    const value = overridden ? config.JobServiceURL : props.value;
+
+    const disabled = props.disabled || overridden;
 
     return (
         <div
@@ -47,12 +55,12 @@ const JobServiceURL = (props: CustomComponentProps) => {
                 <input
                     data-testid={props.id + 'input'}
                     id={props.id}
-                    className='form-control'
+                    className={disabled ? 'form-control disabled' : 'form-control'}
                     type={'input'}
                     placeholder={placeholder}
-                    value={props.value}
+                    value={value}
                     onChange={handleChange}
-                    disabled={props.disabled}
+                    disabled={disabled}
                 />
                 <div
                     data-testid={props.id + 'help-text'}
@@ -60,6 +68,12 @@ const JobServiceURL = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: 'The URL pointing to a running calls-offloader job service instance.'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );

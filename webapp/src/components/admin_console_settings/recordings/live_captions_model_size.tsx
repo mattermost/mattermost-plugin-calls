@@ -7,6 +7,8 @@ import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
 import {
+    callsConfig,
+    callsConfigEnvOverrides,
     isCloud,
     isOnPremNotEnterprise,
     liveCaptionsEnabled,
@@ -22,6 +24,9 @@ const LiveCaptionsModelSize = (props: CustomComponentProps) => {
     const recordingEnabled = useSelector(recordingsEnabled);
     const transcriptionEnabled = useSelector(transcriptionsEnabled);
     const liveCaptionEnabled = useSelector(liveCaptionsEnabled);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'LiveCaptionsModelSize' in overrides;
 
     if (cloud || restricted || !recordingEnabled || !transcriptionEnabled || !liveCaptionEnabled) {
         return null;
@@ -45,6 +50,11 @@ const LiveCaptionsModelSize = (props: CustomComponentProps) => {
         props.onChange(props.id, e.target.value);
     };
 
+    // Use the value from config if it's overridden by environment variable
+    const value = overridden ? config.LiveCaptionsModelSize : props.value;
+
+    const disabled = props.disabled || overridden;
+
     return (
         <div
             data-testid={props.id}
@@ -63,11 +73,11 @@ const LiveCaptionsModelSize = (props: CustomComponentProps) => {
             <div className={rightCol}>
                 <select
                     data-testid={props.id + 'dropdown'}
-                    className='form-control'
+                    className={disabled ? 'form-control disabled' : 'form-control'}
                     id={props.id}
-                    value={props.value}
+                    value={value}
                     onChange={handleChange}
-                    disabled={props.disabled}
+                    disabled={disabled}
                 >
                     {options}
                 </select>
@@ -77,6 +87,12 @@ const LiveCaptionsModelSize = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: 'The speech-to-text model size to use for live captions. Heavier models will produce more accurate results at the expense of processing time and resources usage.'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );

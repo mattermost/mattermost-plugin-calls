@@ -466,6 +466,27 @@ func (p *Plugin) handleConfig(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// handleEnv returns the config env overrides
+func (p *Plugin) handleEnv(w http.ResponseWriter, r *http.Request) error {
+	userID := r.Header.Get("Mattermost-User-Id")
+	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
+
+	if !isAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return nil
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	p.configurationLock.Lock()
+	defer p.configurationLock.Unlock()
+	if err := json.NewEncoder(w).Encode(p.configEnvOverrides); err != nil {
+		return fmt.Errorf("error encoding config env overrides: %w", err)
+	}
+
+	return nil
+}
+
 func (p *Plugin) checkAPIRateLimits(userID string) error {
 	p.apiLimitersMut.RLock()
 	limiter := p.apiLimiters[userID]

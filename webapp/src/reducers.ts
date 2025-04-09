@@ -40,6 +40,7 @@ import {
     LIVE_CAPTIONS_ENABLED,
     LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
+    RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CHANNEL_STATE,
     RECORDINGS_ENABLED,
@@ -783,6 +784,15 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
     }
 };
 
+const callsConfigEnvOverrides = (state = {}, action: { type: string, data: Record<string, string> }) => {
+    switch (action.type) {
+    case RECEIVED_CALLS_CONFIG_ENV_OVERRIDES:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 const rtcdEnabled = (state = false, action: {type: string, data: boolean}) => {
     switch (action.type) {
     case RTCD_ENABLED:
@@ -1004,6 +1014,7 @@ export default combineReducers({
     switchCallModal,
     screenSourceModal,
     callsConfig,
+    callsConfigEnvOverrides,
     rtcdEnabled,
     callsUserPreferences,
     recordings,

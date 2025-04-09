@@ -65,6 +65,7 @@ import {
     LIVE_CAPTIONS_ENABLED,
     LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
+    RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
     RINGING_FOR_CALL,
@@ -125,6 +126,16 @@ export const getCallsConfig = (): ActionFuncAsync<CallsConfig> => {
             {method: 'get'},
         ),
         onSuccess: [RECEIVED_CALLS_CONFIG],
+    });
+};
+
+export const getCallsConfigEnvOverrides = (): ActionFuncAsync<Record<string, string>> => {
+    return bindClientFunc({
+        clientFunc: () => RestClient.fetch<Record<string, string>>(
+            `${getPluginPath()}/env`,
+            {method: 'get'},
+        ),
+        onSuccess: [RECEIVED_CALLS_CONFIG_ENV_OVERRIDES],
     });
 };
 

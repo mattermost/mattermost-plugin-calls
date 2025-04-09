@@ -7,6 +7,8 @@ import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
 import {
+    callsConfig,
+    callsConfigEnvOverrides,
     isCloud,
     isOnPremNotEnterprise,
     liveCaptionsEnabled,
@@ -22,6 +24,9 @@ const LiveCaptionsLanguage = (props: CustomComponentProps) => {
     const recordingEnabled = useSelector(recordingsEnabled);
     const transcriptionEnabled = useSelector(transcriptionsEnabled);
     const liveCaptionEnabled = useSelector(liveCaptionsEnabled);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'LiveCaptionsLanguage' in overrides;
 
     if (cloud || restricted || !recordingEnabled || !transcriptionEnabled || !liveCaptionEnabled) {
         return null;
@@ -33,6 +38,11 @@ const LiveCaptionsLanguage = (props: CustomComponentProps) => {
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
     };
+
+    // Use the value from config if it's overridden by environment variable
+    const value = overridden ? config.LiveCaptionsLanguage : props.value;
+
+    const disabled = props.disabled || overridden;
 
     return (
         <div
@@ -53,12 +63,12 @@ const LiveCaptionsLanguage = (props: CustomComponentProps) => {
                 <input
                     data-testid={props.id + 'input'}
                     id={props.id}
-                    className='form-control'
+                    className={disabled ? 'form-control disabled' : 'form-control'}
                     type={'input'}
                     placeholder={placeholder}
-                    value={props.value}
+                    value={value}
                     onChange={handleChange}
-                    disabled={props.disabled}
+                    disabled={disabled}
                 />
                 <div
                     data-testid={props.id + 'help-text'}
@@ -66,6 +76,12 @@ const LiveCaptionsLanguage = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: 'The language passed to the live captions transcriber. Should be a 2-letter ISO 639 Set 1 language code, e.g. \'en\'. If blank, will be set to English \'en\' as default.'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );

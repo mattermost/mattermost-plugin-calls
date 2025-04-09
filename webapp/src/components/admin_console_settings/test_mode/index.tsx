@@ -3,16 +3,28 @@
 
 import React, {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
 import {leftCol, RadioInput, RadioInputLabel, rightCol} from 'src/components/admin_console_settings/common';
+import {callsConfig, callsConfigEnvOverrides} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const TestMode = (props: CustomComponentProps) => {
     const {formatMessage} = useIntl();
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'DefaultEnabled' in overrides;
 
     // Note: this component is taking the DefaultEnabled config setting and converting it to 'TestMode'.
     // DefaultEnabled = true  => TestMode = 'off'
     // DefaultEnabled = false => TestMode = 'on'
-    const testMode = props.value ? 'off' : 'on';
+
+    // Use the value from config if it's overridden by environment variable
+    let testMode;
+    if (overridden) {
+        testMode = config.DefaultEnabled ? 'off' : 'on';
+    } else {
+        testMode = props.value === 'true' ? 'off' : 'on';
+    }
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const newVal = e.target.value !== 'on';
@@ -20,6 +32,8 @@ const TestMode = (props: CustomComponentProps) => {
         // @ts-ignore -- newVal needs to be a boolean, but the signature says 'string'
         props.onChange(props.id, newVal);
     };
+
+    const disabled = props.disabled || overridden;
 
     return (
         <div
@@ -30,7 +44,7 @@ const TestMode = (props: CustomComponentProps) => {
                 {formatMessage({defaultMessage: 'Test mode'})}
             </label>
             <div className={rightCol}>
-                <RadioInputLabel $disabled={props.disabled}>
+                <RadioInputLabel $disabled={disabled}>
                     <RadioInput
                         data-testid={props.id + '_on'}
                         type='radio'
@@ -39,11 +53,11 @@ const TestMode = (props: CustomComponentProps) => {
                         name={props.id + '_on'}
                         checked={testMode === 'on'}
                         onChange={handleChange}
-                        disabled={props.disabled}
+                        disabled={disabled}
                     />
                     {formatMessage({defaultMessage: 'On'})}
                 </RadioInputLabel>
-                <RadioInputLabel $disabled={props.disabled}>
+                <RadioInputLabel $disabled={disabled}>
                     <RadioInput
                         data-testid={props.id + '_off'}
                         type='radio'
@@ -52,7 +66,7 @@ const TestMode = (props: CustomComponentProps) => {
                         name={props.id + '_off'}
                         checked={testMode === 'off'}
                         onChange={handleChange}
-                        disabled={props.disabled}
+                        disabled={disabled}
                     />
                     {formatMessage({defaultMessage: 'Off'})}
                 </RadioInputLabel>
@@ -62,6 +76,12 @@ const TestMode = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: 'When test mode is enabled, only system admins are able to start calls in channels. This allows testing to confirm calls are working as expected.'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>);
 };
