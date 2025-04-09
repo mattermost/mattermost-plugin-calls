@@ -21,9 +21,9 @@ export default function MaxCallParticipants(props: CustomComponentProps) {
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'MaxCallParticipants')?.placeholder || '';
 
     // Use the value from config if it's overridden by environment variable
-    let value = props.value || 0;
+    let value = props.value;
     if (overridden) {
-        value = config.MaxCallParticipants;
+        value = config.MaxCallParticipants.toString();
     }
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {

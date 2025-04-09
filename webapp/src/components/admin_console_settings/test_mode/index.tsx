@@ -19,11 +19,12 @@ const TestMode = (props: CustomComponentProps) => {
     // DefaultEnabled = false => TestMode = 'on'
 
     // Use the value from config if it's overridden by environment variable
-    let testMode;
+    let checked;
     if (overridden) {
-        testMode = config.DefaultEnabled ? 'off' : 'on';
+        checked = !config.DefaultEnabled;
     } else {
-        testMode = props.value === 'true' ? 'off' : 'on';
+        // @ts-ignore val is a boolean, but the signature says 'string'. (being defensive here, just in case)
+        checked = !props.value || props.value === 'false' || props.value === false;
     }
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -51,7 +52,7 @@ const TestMode = (props: CustomComponentProps) => {
                         value='on'
                         id={props.id + '_on'}
                         name={props.id + '_on'}
-                        checked={testMode === 'on'}
+                        checked={checked}
                         onChange={handleChange}
                         disabled={disabled}
                     />
@@ -64,7 +65,7 @@ const TestMode = (props: CustomComponentProps) => {
                         value='off'
                         id={props.id + '_off'}
                         name={props.id + '_off'}
-                        checked={testMode === 'off'}
+                        checked={!checked}
                         onChange={handleChange}
                         disabled={disabled}
                     />
