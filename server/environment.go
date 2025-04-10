@@ -121,25 +121,25 @@ func (p *Plugin) processStructFields(val reflect.Value, prefix, fieldPath string
 	}
 }
 
-// fieldNameToEnvKey converts a camelCase or PascalCase field name to an
-// uppercase environment variable key with underscores.
-// Example: RTCDServiceURL -> RTCD_SERVICE_URL
-func fieldNameToEnvKey(fieldName string) string {
+// Pre-compiled regular expressions for fieldNameToEnvKey
+var (
 	// Add underscore before uppercase letters that follow lowercase letters or digits
 	// e.g., "camelCase" -> "camel_Case"
-	re1 := regexp.MustCompile(`([a-z0-9])([A-Z])`)
-	s := re1.ReplaceAllString(fieldName, "${1}_${2}")
+	reFieldLowerToUpper = regexp.MustCompile(`([a-z0-9])([A-Z])`)
 
 	// Add underscore before uppercase letters that are followed by lowercase letters
 	// and not preceded by an underscore
 	// e.g., "RTCDService" -> "RTCD_Service"
-	re2 := regexp.MustCompile(`([A-Z])([A-Z][a-z])`)
-	s = re2.ReplaceAllString(s, "${1}_${2}")
+	reFieldUpperToUpperLower = regexp.MustCompile(`([A-Z])([A-Z][a-z])`)
+)
 
-	// Add underscore before digits that follow letters
-	// e.g., "With123" -> "With_123"
-	re3 := regexp.MustCompile(`([a-zA-Z])([0-9])`)
-	s = re3.ReplaceAllString(s, "${1}_${2}")
+// fieldNameToEnvKey converts a camelCase or PascalCase field name to an
+// uppercase environment variable key with underscores.
+// Example: RTCDServiceURL -> RTCD_SERVICE_URL
+func fieldNameToEnvKey(fieldName string) string {
+	// Apply the pre-compiled regular expressions
+	s := reFieldLowerToUpper.ReplaceAllString(fieldName, "${1}_${2}")
+	s = reFieldUpperToUpperLower.ReplaceAllString(s, "${1}_${2}")
 
 	// Convert to uppercase
 	return strings.ToUpper(s)

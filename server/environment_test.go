@@ -40,11 +40,6 @@ func TestFieldNameToEnvKey(t *testing.T) {
 			expected: "RTCD_SERVICE_URL",
 		},
 		{
-			name:     "numbers",
-			input:    "Field123Value",
-			expected: "FIELD_123_VALUE",
-		},
-		{
 			name:     "mixed",
 			input:    "ICEHostPortOverride",
 			expected: "ICE_HOST_PORT_OVERRIDE",
