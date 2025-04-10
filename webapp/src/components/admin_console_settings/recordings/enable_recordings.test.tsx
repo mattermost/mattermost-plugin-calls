@@ -110,6 +110,25 @@ describe('EnableRecordings', () => {
         expect(screen.getByTestId('EnableRecordingsfalse')).toBeChecked();
     });
 
+    it('should handle overridden false value correctly', () => {
+        renderComponent({}, {
+            'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    EnableRecordings: false,
+                },
+                callsConfigEnvOverrides: {
+                    EnableRecordings: 'false',
+                },
+            },
+        });
+
+        // False should be checked when overridden
+        expect(screen.getByTestId('EnableRecordingstrue')).not.toBeChecked();
+        expect(screen.getByTestId('EnableRecordingsfalse')).toBeChecked();
+        expect(screen.getByTestId('EnableRecordingstrue')).toBeDisabled();
+        expect(screen.getByTestId('EnableRecordingsfalse')).toBeDisabled();
+    });
+
     it('should handle undefined value correctly', () => {
         // eslint-disable-next-line no-undefined
         renderComponent({value: undefined});

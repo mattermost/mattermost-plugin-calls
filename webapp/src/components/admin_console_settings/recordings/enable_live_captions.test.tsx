@@ -114,6 +114,27 @@ describe('EnableLiveCaptions', () => {
         expect(screen.getByTestId('EnableLiveCaptionsfalse')).toBeChecked();
     });
 
+    it('should handle overridden false value correctly', () => {
+        renderComponent({}, {
+            'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    EnableRecordings: true,
+                    EnableTranscriptions: true,
+                    EnableLiveCaptions: false,
+                },
+                callsConfigEnvOverrides: {
+                    EnableLiveCaptions: 'false',
+                },
+            },
+        });
+
+        // False should be checked when overridden
+        expect(screen.getByTestId('EnableLiveCaptionstrue')).not.toBeChecked();
+        expect(screen.getByTestId('EnableLiveCaptionsfalse')).toBeChecked();
+        expect(screen.getByTestId('EnableLiveCaptionstrue')).toBeDisabled();
+        expect(screen.getByTestId('EnableLiveCaptionsfalse')).toBeDisabled();
+    });
+
     it('should handle undefined value correctly', () => {
         // eslint-disable-next-line no-undefined
         renderComponent({value: undefined});

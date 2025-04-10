@@ -81,6 +81,25 @@ describe('EnableSimulcast', () => {
         expect(screen.getByTestId('EnableSimulcastfalse')).toBeChecked();
     });
 
+    it('should handle overridden false value correctly', () => {
+        renderComponent({}, {
+            'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    EnableSimulcast: false,
+                },
+                callsConfigEnvOverrides: {
+                    EnableSimulcast: 'false',
+                },
+            },
+        });
+
+        // False should be checked when overridden
+        expect(screen.getByTestId('EnableSimulcasttrue')).not.toBeChecked();
+        expect(screen.getByTestId('EnableSimulcastfalse')).toBeChecked();
+        expect(screen.getByTestId('EnableSimulcasttrue')).toBeDisabled();
+        expect(screen.getByTestId('EnableSimulcastfalse')).toBeDisabled();
+    });
+
     it('should handle undefined value correctly', () => {
         // eslint-disable-next-line no-undefined
         renderComponent({value: undefined});

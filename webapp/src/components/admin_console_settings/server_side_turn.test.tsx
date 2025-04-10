@@ -82,6 +82,26 @@ describe('ServerSideTURN', () => {
         expect(screen.getByTestId('ServerSideTURN_off')).toBeChecked();
     });
 
+    it('should handle overridden false value correctly', () => {
+        renderComponent({}, {
+            'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    ServerSideTURN: false,
+                },
+                callsConfigEnvOverrides: {
+                    ServerSideTURN: 'false',
+                },
+                rtcdEnabled: false,
+            },
+        });
+
+        // Off should be checked when overridden
+        expect(screen.getByTestId('ServerSideTURN_on')).not.toBeChecked();
+        expect(screen.getByTestId('ServerSideTURN_off')).toBeChecked();
+        expect(screen.getByTestId('ServerSideTURN_on')).toBeDisabled();
+        expect(screen.getByTestId('ServerSideTURN_off')).toBeDisabled();
+    });
+
     it('should handle undefined value correctly', () => {
         // eslint-disable-next-line no-undefined
         renderComponent({value: undefined});

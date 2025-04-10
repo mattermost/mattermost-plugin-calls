@@ -81,6 +81,25 @@ describe('EnableDCSignaling', () => {
         expect(screen.getByTestId('EnableDCSignalingfalse')).toBeChecked();
     });
 
+    it('should handle overridden false value correctly', () => {
+        renderComponent({}, {
+            'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    EnableDCSignaling: false,
+                },
+                callsConfigEnvOverrides: {
+                    EnableDCSignaling: 'false',
+                },
+            },
+        });
+
+        // False should be checked when overridden
+        expect(screen.getByTestId('EnableDCSignalingtrue')).not.toBeChecked();
+        expect(screen.getByTestId('EnableDCSignalingfalse')).toBeChecked();
+        expect(screen.getByTestId('EnableDCSignalingtrue')).toBeDisabled();
+        expect(screen.getByTestId('EnableDCSignalingfalse')).toBeDisabled();
+    });
+
     it('should handle undefined value correctly', () => {
         // eslint-disable-next-line no-undefined
         renderComponent({value: undefined});

@@ -81,6 +81,25 @@ describe('EnableRinging', () => {
         expect(screen.getByTestId('EnableRingingfalse')).toBeChecked();
     });
 
+    it('should handle overridden false value correctly', () => {
+        renderComponent({}, {
+            'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    EnableRinging: false,
+                },
+                callsConfigEnvOverrides: {
+                    EnableRinging: 'false',
+                },
+            },
+        });
+
+        // False should be checked when overridden
+        expect(screen.getByTestId('EnableRingingtrue')).not.toBeChecked();
+        expect(screen.getByTestId('EnableRingingfalse')).toBeChecked();
+        expect(screen.getByTestId('EnableRingingtrue')).toBeDisabled();
+        expect(screen.getByTestId('EnableRingingfalse')).toBeDisabled();
+    });
+
     it('should handle undefined value correctly', () => {
         // eslint-disable-next-line no-undefined
         renderComponent({value: undefined});

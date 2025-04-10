@@ -81,6 +81,25 @@ describe('TestMode', () => {
         expect(screen.getByTestId('DefaultEnabled_off')).not.toBeChecked();
     });
 
+    it('should handle overridden false value correctly', () => {
+        renderComponent({}, {
+            'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    DefaultEnabled: false,
+                },
+                callsConfigEnvOverrides: {
+                    DefaultEnabled: 'false',
+                },
+            },
+        });
+
+        // On should be checked when overridden (DefaultEnabled = false => TestMode = on)
+        expect(screen.getByTestId('DefaultEnabled_on')).toBeChecked();
+        expect(screen.getByTestId('DefaultEnabled_off')).not.toBeChecked();
+        expect(screen.getByTestId('DefaultEnabled_on')).toBeDisabled();
+        expect(screen.getByTestId('DefaultEnabled_off')).toBeDisabled();
+    });
+
     it('should handle undefined value correctly', () => {
         // eslint-disable-next-line no-undefined
         renderComponent({value: undefined});

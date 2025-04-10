@@ -81,6 +81,25 @@ describe('EnableAV1', () => {
         expect(screen.getByTestId('EnableAV1false')).toBeChecked();
     });
 
+    it('should handle overridden false value correctly', () => {
+        renderComponent({}, {
+            'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    EnableAV1: false,
+                },
+                callsConfigEnvOverrides: {
+                    EnableAV1: 'false',
+                },
+            },
+        });
+
+        // False should be checked when overridden
+        expect(screen.getByTestId('EnableAV1true')).not.toBeChecked();
+        expect(screen.getByTestId('EnableAV1false')).toBeChecked();
+        expect(screen.getByTestId('EnableAV1true')).toBeDisabled();
+        expect(screen.getByTestId('EnableAV1false')).toBeDisabled();
+    });
+
     it('should handle undefined value correctly', () => {
         // eslint-disable-next-line no-undefined
         renderComponent({value: undefined});

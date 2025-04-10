@@ -112,6 +112,26 @@ describe('EnableTranscriptions', () => {
         expect(screen.getByTestId('EnableTranscriptionsfalse')).toBeChecked();
     });
 
+    it('should handle overridden false value correctly', () => {
+        renderComponent({}, {
+            'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    EnableRecordings: true,
+                    EnableTranscriptions: false,
+                },
+                callsConfigEnvOverrides: {
+                    EnableTranscriptions: 'false',
+                },
+            },
+        });
+
+        // False should be checked when overridden
+        expect(screen.getByTestId('EnableTranscriptionstrue')).not.toBeChecked();
+        expect(screen.getByTestId('EnableTranscriptionsfalse')).toBeChecked();
+        expect(screen.getByTestId('EnableTranscriptionstrue')).toBeDisabled();
+        expect(screen.getByTestId('EnableTranscriptionsfalse')).toBeDisabled();
+    });
+
     it('should handle undefined value correctly', () => {
         // eslint-disable-next-line no-undefined
         renderComponent({value: undefined});

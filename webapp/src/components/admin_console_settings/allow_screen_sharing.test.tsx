@@ -81,6 +81,25 @@ describe('AllowScreenSharing', () => {
         expect(screen.getByTestId('AllowScreenSharingfalse')).toBeChecked();
     });
 
+    it('should handle overridden false value correctly', () => {
+        renderComponent({}, {
+            'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    AllowScreenSharing: false,
+                },
+                callsConfigEnvOverrides: {
+                    AllowScreenSharing: 'false',
+                },
+            },
+        });
+
+        // False should be checked when overridden
+        expect(screen.getByTestId('AllowScreenSharingtrue')).not.toBeChecked();
+        expect(screen.getByTestId('AllowScreenSharingfalse')).toBeChecked();
+        expect(screen.getByTestId('AllowScreenSharingtrue')).toBeDisabled();
+        expect(screen.getByTestId('AllowScreenSharingfalse')).toBeDisabled();
+    });
+
     it('should handle undefined value correctly (default to true)', () => {
         // eslint-disable-next-line no-undefined
         renderComponent({value: undefined});

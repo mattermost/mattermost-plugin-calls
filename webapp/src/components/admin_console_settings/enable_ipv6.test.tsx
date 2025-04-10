@@ -82,6 +82,26 @@ describe('EnableIPv6', () => {
         expect(screen.getByTestId('EnableIPv6false')).toBeChecked();
     });
 
+    it('should handle overridden false value correctly', () => {
+        renderComponent({}, {
+            'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    EnableIPv6: false,
+                },
+                callsConfigEnvOverrides: {
+                    EnableIPv6: 'false',
+                },
+                rtcdEnabled: false,
+            },
+        });
+
+        // False should be checked when overridden
+        expect(screen.getByTestId('EnableIPv6true')).not.toBeChecked();
+        expect(screen.getByTestId('EnableIPv6false')).toBeChecked();
+        expect(screen.getByTestId('EnableIPv6true')).toBeDisabled();
+        expect(screen.getByTestId('EnableIPv6false')).toBeDisabled();
+    });
+
     it('should handle undefined value correctly', () => {
         // eslint-disable-next-line no-undefined
         renderComponent({value: undefined});
