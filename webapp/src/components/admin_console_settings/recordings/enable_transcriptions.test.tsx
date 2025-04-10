@@ -104,6 +104,23 @@ describe('EnableTranscriptions', () => {
         expect(screen.getByTestId('EnableTranscriptionsfalse')).toBeChecked();
     });
 
+    it('should handle boolean false value correctly', () => {
+        renderComponent({value: false});
+
+        // False should be checked
+        expect(screen.getByTestId('EnableTranscriptionstrue')).not.toBeChecked();
+        expect(screen.getByTestId('EnableTranscriptionsfalse')).toBeChecked();
+    });
+
+    it('should handle undefined value correctly', () => {
+        // eslint-disable-next-line no-undefined
+        renderComponent({value: undefined});
+
+        // Should default to false when undefined
+        expect(screen.getByTestId('EnableTranscriptionstrue')).not.toBeChecked();
+        expect(screen.getByTestId('EnableTranscriptionsfalse')).toBeChecked();
+    });
+
     it('should call onChange when radio button is clicked', async () => {
         const onChange = jest.fn();
         renderComponent({value: 'true', onChange});

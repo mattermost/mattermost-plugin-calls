@@ -73,6 +73,23 @@ describe('TestMode', () => {
         expect(screen.getByTestId('DefaultEnabled_off')).not.toBeChecked();
     });
 
+    it('should handle boolean false value correctly', () => {
+        renderComponent({value: false});
+
+        // On should be checked (DefaultEnabled = false => TestMode = on)
+        expect(screen.getByTestId('DefaultEnabled_on')).toBeChecked();
+        expect(screen.getByTestId('DefaultEnabled_off')).not.toBeChecked();
+    });
+
+    it('should handle undefined value correctly', () => {
+        // eslint-disable-next-line no-undefined
+        renderComponent({value: undefined});
+
+        // Should default to test mode on (DefaultEnabled = false) when undefined
+        expect(screen.getByTestId('DefaultEnabled_on')).toBeChecked();
+        expect(screen.getByTestId('DefaultEnabled_off')).not.toBeChecked();
+    });
+
     it('should call onChange when radio button is clicked', async () => {
         const onChange = jest.fn();
         renderComponent({value: 'true', onChange});

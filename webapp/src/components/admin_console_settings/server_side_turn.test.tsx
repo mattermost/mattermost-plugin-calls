@@ -74,6 +74,23 @@ describe('ServerSideTURN', () => {
         expect(screen.getByTestId('ServerSideTURN_off')).toBeChecked();
     });
 
+    it('should handle boolean false value correctly', () => {
+        renderComponent({value: false});
+
+        // Off should be checked
+        expect(screen.getByTestId('ServerSideTURN_on')).not.toBeChecked();
+        expect(screen.getByTestId('ServerSideTURN_off')).toBeChecked();
+    });
+
+    it('should handle undefined value correctly', () => {
+        // eslint-disable-next-line no-undefined
+        renderComponent({value: undefined});
+
+        // Should default to off when undefined
+        expect(screen.getByTestId('ServerSideTURN_on')).not.toBeChecked();
+        expect(screen.getByTestId('ServerSideTURN_off')).toBeChecked();
+    });
+
     it('should call onChange when radio button is clicked', async () => {
         const onChange = jest.fn();
         renderComponent({value: 'on', onChange});

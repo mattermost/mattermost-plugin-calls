@@ -73,6 +73,23 @@ describe('AllowScreenSharing', () => {
         expect(screen.getByTestId('AllowScreenSharingfalse')).toBeChecked();
     });
 
+    it('should handle falsey values correctly', () => {
+        renderComponent({value: false});
+
+        // False should be checked
+        expect(screen.getByTestId('AllowScreenSharingtrue')).not.toBeChecked();
+        expect(screen.getByTestId('AllowScreenSharingfalse')).toBeChecked();
+    });
+
+    it('should handle undefined value correctly (default to true)', () => {
+        // eslint-disable-next-line no-undefined
+        renderComponent({value: undefined});
+
+        // True should be checked (default)
+        expect(screen.getByTestId('AllowScreenSharingtrue')).toBeChecked();
+        expect(screen.getByTestId('AllowScreenSharingfalse')).not.toBeChecked();
+    });
+
     it('should call onChange when radio button is clicked', async () => {
         const onChange = jest.fn();
         renderComponent({value: 'true', onChange});
