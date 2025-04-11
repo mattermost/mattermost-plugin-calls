@@ -2405,6 +2405,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     isMuted={!otherSession.unmuted}
                     hasVideo={Boolean(otherSession.video)}
                     videoView={videoView}
+                    mirrorVideo={false}
                 />
                 }
 
@@ -2416,6 +2417,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     isMuted={!selfSession.unmuted}
                     hasVideo={Boolean(selfSession.video)}
                     videoView={videoView}
+                    mirrorVideo={localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
                 />
                 }
             </div>
@@ -2860,15 +2862,6 @@ const CallsDMVideoPlayer = (props: CallsDMVideoPlayerProps) => {
     );
 };
 
-type CallsWidgetProfileProps = {
-    profile: UserProfile;
-    isSpeaking: boolean;
-    isMuted: boolean;
-    videoStream: MediaStream | null;
-    hasVideo: boolean;
-    videoView: boolean;
-}
-
 const WidgetProfileContainer = styled.div<{$videoView: boolean}>`
   display: flex;
   position: relative;
@@ -2898,12 +2891,26 @@ const MuteState = styled.div<{ $isMuted: boolean }>`
   align-items: center;
 `;
 
-const WidgetProfileVideoPlayer = styled.video`
+const WidgetProfileVideoPlayer = styled.video<{$mirror: boolean}>`
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 4px;
+
+  ${({$mirror}) => $mirror && css`
+    transform: scaleX(-1);
+  `}
 `;
+
+type CallsWidgetProfileProps = {
+    profile: UserProfile;
+    isSpeaking: boolean;
+    isMuted: boolean;
+    videoStream: MediaStream | null;
+    hasVideo: boolean;
+    videoView: boolean;
+    mirrorVideo: boolean;
+}
 
 const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
     const MuteIcon = props.isMuted ? MutedIcon : UnmutedIcon;
@@ -2939,6 +2946,7 @@ const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
                 ref={videoElRefCb}
                 autoPlay={true}
                 muted={true}
+                $mirror={props.mirrorVideo}
             />
             }
 
