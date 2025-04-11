@@ -39,9 +39,6 @@ export const DefaultVideoTrackOptions: MediaTrackConstraints = {
     frameRate: {
         ideal: 30,
     },
-    aspectRatio: {
-        ideal: 4 / 3,
-    },
     width: {
         ideal: 640,
     },
