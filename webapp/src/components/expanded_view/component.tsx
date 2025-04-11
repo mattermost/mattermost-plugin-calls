@@ -1080,7 +1080,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const noVideoInputDevices = this.state.alerts.missingVideoInput.active;
         const noVideoPermissions = this.state.alerts.missingVideoInputPermissions.active;
         const isVideoOn = this.isVideoOn();
-        const VideoIcon = this.isVideoOn() || noVideoInputDevices || noVideoPermissions ? VideoOffIcon : VideoOnIcon;
+        const VideoIcon = this.isVideoOn() || noVideoInputDevices || noVideoPermissions ? VideoOnIcon : VideoOffIcon;
         let videoTooltipText = isVideoOn ? formatMessage({defaultMessage: 'Turn camera off'}) : formatMessage({defaultMessage: 'Turn camera on'});
         let videoTooltipSubtext = '';
         if (noVideoInputDevices) {
