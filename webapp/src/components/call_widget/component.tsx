@@ -2383,6 +2383,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const otherProfile = this.props.connectedDMUser;
         const otherSession = this.props.otherSessions[0];
         const selfSession = this.props.currentSession;
+        const videoView = (otherSession?.video || selfSession?.video) ?? false;
 
         return (
             <div
@@ -2398,17 +2399,23 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                 { otherProfile && otherSession &&
                 <CallsWidgetProfile
+                    videoStream={this.state.otherVideoStream}
                     profile={otherProfile}
                     isSpeaking={Boolean(otherSession.voice)}
                     isMuted={!otherSession.unmuted}
+                    hasVideo={Boolean(otherSession.video)}
+                    videoView={videoView}
                 />
                 }
 
                 { selfProfile && selfSession &&
                 <CallsWidgetProfile
+                    videoStream={this.state.selfVideoStream}
                     profile={selfProfile}
                     isSpeaking={Boolean(selfSession.voice)}
                     isMuted={!selfSession.unmuted}
+                    hasVideo={Boolean(selfSession.video)}
+                    videoView={videoView}
                 />
                 }
             </div>
@@ -2857,9 +2864,12 @@ type CallsWidgetProfileProps = {
     profile: UserProfile;
     isSpeaking: boolean;
     isMuted: boolean;
+    videoStream: MediaStream | null;
+    hasVideo: boolean;
+    videoView: boolean;
 }
 
-const WidgetProfileContainer = styled.div`
+const WidgetProfileContainer = styled.div<{$videoView: boolean}>`
   display: flex;
   position: relative;
   justify-content: center;
@@ -2868,6 +2878,10 @@ const WidgetProfileContainer = styled.div`
   height: 75px;
   border-radius: 4px;
   flex: 1;
+
+  ${({$videoView}) => $videoView && css`
+      height: 128px;
+  `}
 `;
 
 const MuteState = styled.div<{ $isMuted: boolean }>`
@@ -2875,7 +2889,7 @@ const MuteState = styled.div<{ $isMuted: boolean }>`
   bottom: 4px;
   left: 4px;
   border-radius: 20px;
-  background: var(--calls-bg);
+  background: #14213E;
   width: 20px;
   height: 20px;
   border-radius: 20px;
@@ -2884,11 +2898,33 @@ const MuteState = styled.div<{ $isMuted: boolean }>`
   align-items: center;
 `;
 
+const WidgetProfileVideoPlayer = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+`;
+
 const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
     const MuteIcon = props.isMuted ? MutedIcon : UnmutedIcon;
 
+    const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+    const videoElRefCb = (el: HTMLVideoElement | null) => {
+        if (el) {
+            setVideoEl(el);
+        }
+    };
+
+    useEffect(() => {
+        if (videoEl && props.videoStream) {
+            videoEl.srcObject = props.videoStream;
+        }
+    }, [props.videoStream, videoEl]);
+
     return (
-        <WidgetProfileContainer>
+        <WidgetProfileContainer $videoView={props.videoView}>
+
+            {!props.hasVideo &&
             <Avatar
                 size={40}
                 border={false}
@@ -2896,6 +2932,15 @@ const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
                 borderGlowWidth={props.isSpeaking ? 3 : 0}
                 borderGlowColor='white'
             />
+            }
+
+            {props.hasVideo &&
+            <WidgetProfileVideoPlayer
+                ref={videoElRefCb}
+                autoPlay={true}
+                muted={true}
+            />
+            }
 
             {props.isMuted &&
             <MuteState $isMuted={props.isMuted}>
