@@ -900,7 +900,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const selfProfile = this.props.profiles[this.props.currentUserID];
         const selfSession = this.props.currentSession;
         const otherProfile = this.props.connectedDMUser;
-        const otherSession = this.props.otherSessions.find((s) => s.video);
+        const otherSession = this.props.otherSessions[0];
 
         return (
             <VideoProfilesTopContainer
@@ -941,7 +941,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const selfProfile = this.props.profiles[this.props.currentUserID];
         const selfSession = this.props.currentSession;
         const otherProfile = this.props.connectedDMUser;
-        const otherSession = this.props.otherSessions.find((s) => s.video);
+        const otherSession = this.props.otherSessions[0];
 
         // If current user is the only one in the call, we show their video, otherwise we show the other user's video.
         const session = this.props.otherSessions.length === 0 ? selfSession : otherSession;
