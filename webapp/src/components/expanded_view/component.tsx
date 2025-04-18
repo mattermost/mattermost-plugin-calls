@@ -31,6 +31,7 @@ import {
 import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CollapseIcon from 'src/components/icons/collapse';
 import CompassIcon from 'src/components/icons/compassIcon';
+import GridViewIcon from 'src/components/icons/grid_view';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
 import ParticipantsIcon from 'src/components/icons/participants';
@@ -38,6 +39,7 @@ import RecordCircleIcon from 'src/components/icons/record_circle';
 import RecordSquareIcon from 'src/components/icons/record_square';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import ShareScreenIcon from 'src/components/icons/share_screen';
+import SpeakerViewIcon from 'src/components/icons/speaker_view';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import VideoOffIcon from 'src/components/icons/video_off';
@@ -140,6 +142,7 @@ interface State {
     showLiveCaptions: boolean,
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
+    viewState: 'grid' | 'speaker',
 }
 
 const StyledMediaController = styled(MediaController)`
@@ -292,6 +295,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             showLiveCaptions: false,
             alerts: CallAlertStatesDefault,
             removeConfirmation: null,
+            viewState: 'speaker',
         };
 
         if (window.opener) {
@@ -584,6 +588,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         this.props.hideExpandedView();
+    };
+
+    onSwitchViewClick = () => {
+        this.setState({
+            viewState: this.state.viewState === 'grid' ? 'speaker' : 'grid',
+        });
     };
 
     public componentDidUpdate(prevProps: Props, prevState: State) {
@@ -930,23 +940,59 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const stream = this.props.otherSessions.length === 0 ? this.state.selfVideoStream : this.state.otherVideoStream;
         const mirrorVideo = session === selfSession && localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true';
 
-        const shouldRenderTopVideoContainer = (this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video);
+        const shouldRenderTopVideoContainer = this.state.viewState === 'speaker' && ((this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video));
+
+        const renderSpeakerView = () => {
+            if (!profile || !session) {
+                return null;
+            }
+            return (
+                <VideoProfile
+                    stream={stream}
+                    profile={profile}
+                    isMuted={!session.unmuted}
+                    hasVideo={Boolean(session.video)}
+                    isSpeaking={Boolean(session.voice)}
+                    mirrorVideo={mirrorVideo}
+                />
+            );
+        };
+
+        const renderGridView = () => {
+            return (
+                <>
+                    { otherProfile && otherSession &&
+                    <VideoProfile
+                        stream={this.state.otherVideoStream}
+                        profile={otherProfile}
+                        isMuted={!otherSession.unmuted}
+                        hasVideo={Boolean(otherSession.video)}
+                        isSpeaking={Boolean(otherSession.voice)}
+                        mirrorVideo={false}
+                    />
+                    }
+
+                    { selfProfile && selfSession &&
+                    <VideoProfile
+                        stream={this.state.selfVideoStream}
+                        profile={selfProfile}
+                        isMuted={!selfSession.unmuted}
+                        hasVideo={Boolean(selfSession.video)}
+                        isSpeaking={Boolean(selfSession.voice)}
+                        mirrorVideo={mirrorVideo}
+                    />
+                    }
+                </>
+            );
+        };
 
         return (
             <VideoProfilesContainer
                 className='calls-popout-video-container'
-                $maxHeight={`calc(100vh - ${shouldRenderTopVideoContainer ? 220 : 128}px)`}
+                $maxHeight={`calc(100vh - ${shouldRenderTopVideoContainer ? 220 : 124}px)`}
             >
-                { profile && session &&
-                    <VideoProfile
-                        stream={stream}
-                        profile={profile}
-                        isMuted={!session.unmuted}
-                        hasVideo={Boolean(session.video)}
-                        isSpeaking={Boolean(session.voice)}
-                        mirrorVideo={mirrorVideo}
-                    />
-                }
+                {this.state.viewState === 'speaker' && renderSpeakerView()}
+                {this.state.viewState === 'grid' && renderGridView()}
             </VideoProfilesContainer>
         );
     };
@@ -1225,8 +1271,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const leaveCallTooltipText = formatMessage({defaultMessage: 'Leave call'});
         const closeViewLabel = formatMessage({defaultMessage: 'Close window'});
 
+        const switchViewLabel = this.state.viewState === 'speaker' ? formatMessage({defaultMessage: 'Switch to grid view'}) : formatMessage({defaultMessage: 'Switch to speaker view'});
+        const SwitchViewIcon = this.state.viewState === 'speaker' ? SpeakerViewIcon : GridViewIcon;
+
         const shouldRenderVideoContainer = this.props.currentSession?.video || this.props.otherSessions.some((s) => s.video);
-        const shouldRenderTopVideoContainer = (this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video);
+        const shouldRenderTopVideoContainer = this.state.viewState === 'speaker' && ((this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video));
 
         return (
             <div
@@ -1253,6 +1302,32 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                         <div style={this.style.headerSpreader}/>
                         <ExpandedIncomingCallContainer/>
+
+                        { this.props.enableVideo && shouldRenderVideoContainer && this.props.otherSessions.length > 0 &&
+                        <OverlayTrigger
+                            placement='bottom'
+                            key={'switch-view'}
+                            overlay={
+                                <Tooltip id='tooltip-switch-view'>
+                                    {switchViewLabel}
+                                </Tooltip>
+                            }
+                        >
+                            <SwitchViewButton
+                                className='style--none'
+                                onClick={this.onSwitchViewClick}
+                                aria-label={switchViewLabel}
+                            >
+                                <SwitchViewIcon
+                                    style={{
+                                        width: '20px',
+                                        height: '20px',
+                                    }}
+                                />
+                            </SwitchViewButton>
+                        </OverlayTrigger>
+                        }
+
                         <OverlayTrigger
                             placement='bottom'
                             key={'close-window'}
@@ -1674,6 +1749,35 @@ const CloseButton = styled.button`
 `;
 
 const CloseViewButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    padding: 10px;
+    border-radius: 4px;
+
+    svg {
+        fill: rgba(255, 255, 255, 0.64);
+    }
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.08);
+
+        svg {
+            fill: rgba(255, 255, 255, 0.72);
+        }
+    }
+
+    &:active {
+        background: rgba(255, 255, 255, 0.16);
+
+        svg {
+            fill: rgba(255, 255, 255, 0.80);
+        }
+    }
+`;
+
+const SwitchViewButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
