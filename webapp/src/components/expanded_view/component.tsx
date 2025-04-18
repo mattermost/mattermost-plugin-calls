@@ -954,7 +954,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return (
             <VideoProfilesContainer
                 className='calls-popout-video-container'
-                $maxHeight={`calc(100vh - ${shouldRenderTopVideoContainer ? 212 : 128}px)`}
+                $maxHeight={`calc(100vh - ${shouldRenderTopVideoContainer ? 220 : 128}px)`}
             >
                 { profile && session &&
                     <VideoProfile
