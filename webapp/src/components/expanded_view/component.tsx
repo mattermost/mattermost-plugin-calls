@@ -905,6 +905,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     renderTopVideoContainer = () => {
+        const {formatMessage} = this.props.intl;
+
         // Here we are assuming this only renders in a DM which is the case
         // right now.
         const selfProfile = this.props.profiles[this.props.currentUserID];
@@ -921,6 +923,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <VideoProfile
                             stream={this.state.selfVideoStream}
                             profile={selfProfile}
+                            profileName={formatMessage({defaultMessage: '(you)'})}
                             isMuted={!selfSession.unmuted}
                             hasVideo={Boolean(selfSession.video)}
                             isSpeaking={Boolean(selfSession.voice)}
@@ -934,6 +937,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <VideoProfile
                             stream={this.state.otherVideoStream}
                             profile={otherProfile}
+                            profileName={getUserDisplayName(otherProfile)}
                             isMuted={!otherSession.unmuted}
                             hasVideo={Boolean(otherSession.video)}
                             isSpeaking={Boolean(otherSession.voice)}
@@ -945,7 +949,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         );
     };
 
-    renderVideoContainer2 = () => {
+    renderVideoContainer = () => {
+        const {formatMessage} = this.props.intl;
+
         // Here we are assuming this only renders in a DM which is the case
         // right now.
         const selfProfile = this.props.profiles[this.props.currentUserID];
@@ -969,6 +975,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <VideoProfile
                     stream={stream}
                     profile={profile}
+                    profileName={session === selfSession ? formatMessage({defaultMessage: '(you)'}) : getUserDisplayName(profile)}
                     isMuted={!session.unmuted}
                     hasVideo={Boolean(session.video)}
                     isSpeaking={Boolean(session.voice)}
@@ -984,6 +991,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <VideoProfile
                         stream={this.state.otherVideoStream}
                         profile={otherProfile}
+                        profileName={getUserDisplayName(profile)}
                         isMuted={!otherSession.unmuted}
                         hasVideo={Boolean(otherSession.video)}
                         isSpeaking={Boolean(otherSession.voice)}
@@ -995,6 +1003,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <VideoProfile
                         stream={this.state.selfVideoStream}
                         profile={selfProfile}
+                        profileName={formatMessage({defaultMessage: '(you)'})}
                         isMuted={!selfSession.unmuted}
                         hasVideo={Boolean(selfSession.video)}
                         isSpeaking={Boolean(selfSession.voice)}
@@ -1012,44 +1021,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             >
                 {this.state.viewState === 'speaker' && renderSpeakerView()}
                 {this.state.viewState === 'grid' && renderGridView()}
-            </VideoProfilesContainer>
-        );
-    };
-
-    renderVideoContainer = () => {
-        // Here we are assuming this only renders in a DM which is the case
-        // right now.
-        const selfProfile = this.props.profiles[this.props.currentUserID];
-        const selfSession = this.props.currentSession;
-        const otherProfile = this.props.connectedDMUser;
-        const otherSession = this.props.otherSessions.find((s) => s.video);
-
-        return (
-            <VideoProfilesContainer
-                className='calls-popout-video-container'
-                $maxHeight='calc(100vh - 124px)'
-            >
-                { otherProfile && otherSession &&
-                    <VideoProfile
-                        stream={this.state.otherVideoStream}
-                        profile={otherProfile}
-                        isMuted={!otherSession.unmuted}
-                        hasVideo={Boolean(otherSession.video)}
-                        isSpeaking={Boolean(otherSession.voice)}
-                        mirrorVideo={false}
-                    />
-                }
-
-                { selfProfile && selfSession &&
-                    <VideoProfile
-                        stream={this.state.selfVideoStream}
-                        profile={selfProfile}
-                        isMuted={!selfSession.unmuted}
-                        hasVideo={Boolean(selfSession.video)}
-                        isSpeaking={Boolean(selfSession.voice)}
-                        mirrorVideo={localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
-                    />
-                }
             </VideoProfilesContainer>
         );
     };
@@ -1385,7 +1356,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     />
                     }
 
-                    {!this.props.screenSharingSession && shouldRenderVideoContainer && this.renderVideoContainer2()}
+                    {!this.props.screenSharingSession && shouldRenderVideoContainer && this.renderVideoContainer()}
 
                     {this.props.screenSharingSession && this.renderScreenSharingPlayer()}
 
@@ -1866,60 +1837,6 @@ const StyledDropdownMenu = styled(DropdownMenu)`
     border-radius: 8px;
 `;
 
-// const VideoContainer = styled.div<{$screenSharing: boolean}>`
-//   display: flex;
-//   align-items: center;
-//   flex: 1;
-//   justify-content: center;
-//   max-width: calc(100% - 16px);
-//   background: rgba(var(--button-color-rgb), 0.08);
-//   border-radius: 8px;
-//   margin: 0 12px;
-//   padding: 24px;
-//   gap: 8px;
-//   max-height: calc(100% - 124px);
-//
-//   ${({$screenSharing}) => $screenSharing && css`
-//     max-height: 140px;
-//     margin: 8px 12px;
-//     padding: 8px;
-//   `}
-// `;
-//
-// const VideoPlayerContainer = styled.div<{$screenSharing: boolean}>`
-//     position: relative;
-//     display: flex;
-//     justify-content: center;
-//     width: 50%;
-//     max-height: calc(100% - 24px);
-//
-//     ${({$screenSharing}) => $screenSharing && css`
-//       max-height: 100%;
-//     `}
-// `;
-//
-// const VideoPlayer = styled.video<{$selfView: boolean, $screenSharing: boolean, $mirror: boolean}>`
-//    width: 100%;
-//    border-radius: 8px;
-//    object-fit: cover;
-//
-//   ${({$selfView, $mirror}) => $selfView && $mirror && css`
-//     transform: scaleX(-1);
-//   `}
-//
-//   ${({$screenSharing}) => $screenSharing && css`
-//     max-width: 220px;
-//   `}
-// `;
-//
-// const VideoPlayerPlaceholder = styled.div`
-//     display: flex;
-//     align-items: center;
-//     justify-content: center;
-//     min-width: 50%;
-//     max-height: calc(100% - 24px);
-// `;
-
 const VideoProfilesTopContainer = styled.div`
     display: flex;
     align-items: center;
@@ -1985,6 +1902,7 @@ const VideoProfileState = styled.div`
 type VideoProfileProps = {
     stream: MediaStream | null;
     profile: UserProfile;
+    profileName: string;
     isMuted: boolean;
     hasVideo: boolean;
     isSpeaking: boolean;
@@ -2002,31 +1920,6 @@ const VideoProfile = (props: VideoProfileProps) => {
             videoEl.srcObject = props.stream;
         }
     }, [props.stream, videoEl]);
-
-    // return (
-    //   <VideoPlayerContainer $screenSharing={props.screenSharing}>
-    //     <VideoPlayer
-    //       ref={(el) => setVideoEl(el)}
-    //       data-testid={`calls-popout-video-player-${props.selfView ? 'self' : 'other'}`}
-    //       onLoadedMetadata={() => setIsLoading(false)}
-    //       autoPlay={true}
-    //       muted={true}
-    //       $selfView={props.selfView}
-    //       $screenSharing={props.screenSharing}
-    //       $mirror={props.selfView && localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
-    //     />
-    //   </VideoPlayerContainer>
-    // );
-
-    // return (
-    //     <VideoPlayerPlaceholder data-testid={`calls-popout-video-placeholder-${props.selfView ? 'self' : 'other'}`}>
-    //         <Avatar
-    //             size={props.screenSharing ? 96 : 128}
-    //             border={false}
-    //             url={Client4.getProfilePictureUrl(props.profile.id, props.profile.last_picture_update)}
-    //         />
-    //     </VideoPlayerPlaceholder>
-    // );
 
     return (
         <VideoProfileContainer>
@@ -2058,7 +1951,7 @@ const VideoProfile = (props: VideoProfileProps) => {
                         height: '14px',
                     }}
                 />
-                {getUserDisplayName(props.profile)}
+                {props.profileName}
             </VideoProfileState>
             }
         </VideoProfileContainer>
