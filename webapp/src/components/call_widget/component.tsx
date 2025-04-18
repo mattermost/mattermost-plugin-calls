@@ -2367,6 +2367,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const otherSession = this.props.otherSessions[0];
         const selfSession = this.props.currentSession;
         const videoView = (otherSession?.video || selfSession?.video) ?? false;
+        const selfOnly = this.props.otherSessions.length === 0;
 
         return (
             <div
@@ -2401,6 +2402,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     hasVideo={Boolean(selfSession.video)}
                     videoView={videoView}
                     mirrorVideo={localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
+                    singleSession={selfOnly}
                 />
                 }
             </div>
@@ -2845,18 +2847,21 @@ const CallsDMVideoPlayer = (props: CallsDMVideoPlayerProps) => {
     );
 };
 
-const WidgetProfileContainer = styled.div<{$videoView: boolean}>`
+const WidgetProfileContainer = styled.div<{$videoView: boolean, $singleSession?: boolean}>`
   display: flex;
   position: relative;
   justify-content: center;
   align-items: center;
   background: #E4EBFA;
-  height: 75px;
   border-radius: 4px;
   flex: 1;
 
-  ${({$videoView}) => $videoView && css`
-      height: 128px;
+  ${({$videoView, $singleSession}) => $videoView && !$singleSession && css`
+    aspect-ratio: 1;
+  `}
+
+  ${({$videoView}) => !$videoView && css`
+      height: 75px;
   `}
 `;
 
@@ -2893,6 +2898,7 @@ type CallsWidgetProfileProps = {
     hasVideo: boolean;
     videoView: boolean;
     mirrorVideo: boolean;
+    singleSession?: boolean;
 }
 
 const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
@@ -2912,7 +2918,10 @@ const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
     }, [props.videoStream, videoEl]);
 
     return (
-        <WidgetProfileContainer $videoView={props.videoView}>
+        <WidgetProfileContainer
+            $videoView={props.videoView}
+            $singleSession={props.singleSession}
+        >
 
             {!props.hasVideo &&
             <Avatar
