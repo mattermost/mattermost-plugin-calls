@@ -1020,7 +1020,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 $maxHeight={`calc(100vh - ${shouldRenderTopVideoContainer ? 220 : 124}px)`}
             >
                 {this.state.viewState === 'speaker' && renderSpeakerView()}
-                {this.state.viewState === 'grid' && renderGridView()}
+                {this.state.viewState === 'grid' && !this.props.screenSharingSession && renderGridView()}
             </VideoProfilesContainer>
         );
     };
@@ -1265,7 +1265,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const SwitchViewIcon = this.state.viewState === 'speaker' ? SpeakerViewIcon : GridViewIcon;
 
         const shouldRenderVideoContainer = this.props.currentSession?.video || this.props.otherSessions.some((s) => s.video);
-        const shouldRenderTopVideoContainer = this.state.viewState === 'speaker' && ((this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video));
+        const shouldRenderTopVideoContainer = (this.state.viewState === 'speaker' || this.props.screenSharingSession) && ((this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video));
 
         return (
             <div
@@ -1293,7 +1293,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         <div style={this.style.headerSpreader}/>
                         <ExpandedIncomingCallContainer/>
 
-                        { this.props.enableVideo && shouldRenderVideoContainer && this.props.otherSessions.length > 0 &&
+                        { this.props.enableVideo && !this.props.screenSharingSession && shouldRenderVideoContainer && this.props.otherSessions.length > 0 &&
                         <OverlayTrigger
                             placement='bottom'
                             key={'switch-view'}
