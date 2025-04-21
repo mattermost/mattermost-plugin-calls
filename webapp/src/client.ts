@@ -42,6 +42,9 @@ export const DefaultVideoTrackOptions: MediaTrackConstraints = {
     width: {
         ideal: 640,
     },
+    height: {
+        ideal: 360,
+    },
 };
 
 const rtcMonitorInterval = 10000;
