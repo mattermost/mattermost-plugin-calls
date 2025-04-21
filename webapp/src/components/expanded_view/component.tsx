@@ -980,6 +980,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     hasVideo={Boolean(session.video)}
                     isSpeaking={Boolean(session.voice)}
                     mirrorVideo={mirrorVideo}
+                    width={session.video ? '' : '100%'}
                 />
             );
         };
@@ -996,6 +997,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         hasVideo={Boolean(otherSession.video)}
                         isSpeaking={Boolean(otherSession.voice)}
                         mirrorVideo={false}
+                        width={'100%'}
                     />
                     }
 
@@ -1008,6 +1010,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         hasVideo={Boolean(selfSession.video)}
                         isSpeaking={Boolean(selfSession.voice)}
                         mirrorVideo={mirrorVideo}
+                        width={'100%'}
                     />
                     }
                 </>
@@ -1017,7 +1020,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return (
             <VideoProfilesContainer
                 className='calls-popout-video-container'
-                $maxHeight={`calc(100vh - ${shouldRenderTopVideoContainer ? 220 : 124}px)`}
+                $height={`calc(100vh - ${shouldRenderTopVideoContainer ? 220 : 124}px)`}
             >
                 {this.state.viewState === 'speaker' && renderSpeakerView()}
                 {this.state.viewState === 'grid' && !this.props.screenSharingSession && renderGridView()}
@@ -1845,7 +1848,7 @@ const VideoProfilesTopContainer = styled.div`
     padding: 0px 20px 8px 20px;
 `;
 
-const VideoProfilesContainer = styled.div<{$maxHeight: string}>`
+const VideoProfilesContainer = styled.div<{$height: string}>`
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1853,21 +1856,26 @@ const VideoProfilesContainer = styled.div<{$maxHeight: string}>`
     flex: 1;
     padding: 8px 20px;
 
-    ${({$maxHeight}) => $maxHeight && css`
-      max-height: ${$maxHeight};
+    ${({$height}) => $height && css`
+      height: ${$height};
+      max-height: ${$height};
     `}
 `;
 
-const VideoProfileContainer = styled.div`
+const VideoProfileContainer = styled.div<{$width?: string}>`
   display: flex;
   position: relative;
   align-items: center;
   justify-content: center;
   background: black;
   border-radius: 8px;
-  width: 100%;
   max-width: 960px;
   height: 100%;
+  max-height: 100%;
+
+  ${({$width}) => $width && css`
+      width: ${$width};
+  `}
 `;
 
 const VideoProfilePlayer = styled.video<{$mirror: boolean}>`
@@ -1907,6 +1915,7 @@ type VideoProfileProps = {
     hasVideo: boolean;
     isSpeaking: boolean;
     mirrorVideo: boolean;
+    width?: string;
 };
 
 const VideoProfile = (props: VideoProfileProps) => {
@@ -1922,7 +1931,7 @@ const VideoProfile = (props: VideoProfileProps) => {
     }, [props.stream, videoEl]);
 
     return (
-        <VideoProfileContainer>
+        <VideoProfileContainer $width={props.width}>
             {!props.hasVideo &&
             <Avatar
                 size={80}

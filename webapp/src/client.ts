@@ -42,6 +42,13 @@ export const DefaultVideoTrackOptions: MediaTrackConstraints = {
     width: {
         ideal: 640,
     },
+    height: {
+
+        // Firefox doesn't support aspectRatio.
+        // Moreover, it doesn't reliably support 16/9 even if the camera allows for it.
+        // (https://bugzilla.mozilla.org/show_bug.cgi?id=1193640)
+        ideal: 360,
+    },
     aspectRatio: {
         ideal: 16 / 9,
     },
