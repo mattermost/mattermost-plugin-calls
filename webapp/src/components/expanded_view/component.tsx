@@ -980,7 +980,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     hasVideo={Boolean(session.video)}
                     isSpeaking={Boolean(session.voice)}
                     mirrorVideo={mirrorVideo}
-                    width={session.video ? '' : '100%'}
+                    aspectRatio={session === otherSession && !session.video ? '16/9' : ''}
                 />
             );
         };
@@ -1855,6 +1855,7 @@ const VideoProfilesContainer = styled.div<{$height: string}>`
     gap: 12px;
     flex: 1;
     padding: 8px 20px;
+    max-width: 100vw;
 
     ${({$height}) => $height && css`
       height: ${$height};
@@ -1862,16 +1863,20 @@ const VideoProfilesContainer = styled.div<{$height: string}>`
     `}
 `;
 
-const VideoProfileContainer = styled.div<{$width?: string}>`
+const VideoProfileContainer = styled.div<{$width?: string, $aspectRatio?: string}>`
   display: flex;
   position: relative;
   align-items: center;
   justify-content: center;
   background: black;
   border-radius: 8px;
-  max-width: 960px;
   height: 100%;
   max-height: 100%;
+  max-width: 100%;
+
+  ${({$aspectRatio}) => $aspectRatio && css`
+    aspect-ratio: ${$aspectRatio};
+  `}
 
   ${({$width}) => $width && css`
       width: ${$width};
@@ -1916,6 +1921,7 @@ type VideoProfileProps = {
     isSpeaking: boolean;
     mirrorVideo: boolean;
     width?: string;
+    aspectRatio?: string;
 };
 
 const VideoProfile = (props: VideoProfileProps) => {
@@ -1931,7 +1937,10 @@ const VideoProfile = (props: VideoProfileProps) => {
     }, [props.stream, videoEl]);
 
     return (
-        <VideoProfileContainer $width={props.width}>
+        <VideoProfileContainer
+            $width={props.width}
+            $aspectRatio={props.aspectRatio}
+        >
             {!props.hasVideo &&
             <Avatar
                 size={80}
