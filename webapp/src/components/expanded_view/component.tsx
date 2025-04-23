@@ -963,7 +963,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const session = this.props.otherSessions.length === 0 ? selfSession : otherSession;
         const profile = this.props.otherSessions.length === 0 ? selfProfile : otherProfile;
         const stream = this.props.otherSessions.length === 0 ? this.state.selfVideoStream : this.state.otherVideoStream;
-        const mirrorVideo = session === selfSession && localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true';
+        const mirrorSelfVideo = localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true';
 
         const shouldRenderTopVideoContainer = this.state.viewState === 'speaker' && ((this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video));
 
@@ -975,11 +975,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <VideoProfile
                     stream={stream}
                     profile={profile}
-                    profileName={session === selfSession ? formatMessage({defaultMessage: '(you)'}) : getUserDisplayName(profile)}
+                    profileName={session === selfSession ? `${getUserDisplayName(profile)} ${formatMessage({defaultMessage: '(you)'})}` : getUserDisplayName(profile)}
                     isMuted={!session.unmuted}
                     hasVideo={Boolean(session.video)}
                     isSpeaking={Boolean(session.voice)}
-                    mirrorVideo={mirrorVideo}
+                    mirrorVideo={session === selfSession && mirrorSelfVideo}
                     aspectRatio={session === otherSession && !session.video ? '16/9' : ''}
                 />
             );
@@ -1005,11 +1005,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     <VideoProfile
                         stream={this.state.selfVideoStream}
                         profile={selfProfile}
-                        profileName={formatMessage({defaultMessage: '(you)'})}
+                        profileName={`${getUserDisplayName(selfProfile)} ${formatMessage({defaultMessage: '(you)'})}`}
                         isMuted={!selfSession.unmuted}
                         hasVideo={Boolean(selfSession.video)}
                         isSpeaking={Boolean(selfSession.voice)}
-                        mirrorVideo={mirrorVideo}
+                        mirrorVideo={mirrorSelfVideo}
                         width={'100%'}
                     />
                     }
@@ -1925,7 +1925,6 @@ type VideoProfileProps = {
 };
 
 const VideoProfile = (props: VideoProfileProps) => {
-    // const [isLoading, setIsLoading] = useState(false);
     const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
 
     const MuteIcon = props.isMuted ? MutedIcon : UnmutedIcon;
