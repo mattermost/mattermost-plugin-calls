@@ -4,7 +4,7 @@
 // eslint-disable max-lines
 // eslint-disable-next-line simple-import-sort/imports
 import {parseRTCStats, RTCMonitor, RTCPeer} from '@mattermost/calls-common';
-import type {EmojiData, CallsClientJoinData, TrackInfo, RTPEncodingParameters} from '@mattermost/calls-common/lib/types';
+import {type EmojiData, type CallsClientJoinData, type TrackInfo, type RTPEncodingParameters} from '@mattermost/calls-common/lib/types';
 
 import {EventEmitter} from 'events';
 
@@ -75,7 +75,6 @@ export default class CallsClient extends EventEmitter {
     private connected = false;
     public initTime = Date.now();
     private rtcMonitor: RTCMonitor | null = null;
-    private av1Codec: RTCRtpCodecCapability | null = null;
     private defaultAudioTrackOptions: MediaTrackConstraints;
     private defaultVideoTrackOptions: MediaTrackConstraints;
     private defaultVideoTrackEncodings: RTPEncodingParameters[];
@@ -391,8 +390,7 @@ export default class CallsClient extends EventEmitter {
         this.channelID = joinData.channelID;
 
         if (this.config.enableAV1 && !this.config.simulcast) {
-            this.av1Codec = await RTCPeer.getVideoCodec('video/AV1');
-            if (this.av1Codec) {
+            if (await RTCPeer.getVideoCodec('video/AV1')) {
                 logDebug('client has AV1 support');
                 joinData.av1Support = true;
             }
@@ -478,6 +476,7 @@ export default class CallsClient extends EventEmitter {
                 },
                 simulcast: this.config.simulcast,
                 dcSignaling: this.config.dcSignaling,
+                enableAV1: this.config.enableAV1,
             });
 
             this.peer = peer;
@@ -836,6 +835,9 @@ export default class CallsClient extends EventEmitter {
         if (this.remoteVideoTracks.length < 1 || this.remoteVideoTracks[this.remoteVideoTracks.length - 1].readyState !== 'live') {
             return null;
         }
+
+        // We return the last video track since it should be the most recent one with updated encoding if codec changes.
+        // Obviously we'll have to review this once we add support for more than one video track (i.e., outside of DMs).
         return new MediaStream([this.remoteVideoTracks[this.remoteVideoTracks.length - 1]]);
     }
 
@@ -884,16 +886,7 @@ export default class CallsClient extends EventEmitter {
         };
 
         logDebug('adding stream to peer', screenStream.id);
-
-        // Always send a fallback track (VP8 encoded) for receivers that don't yet support AV1.
         await this.peer.addStream(screenStream);
-
-        if (this.config.enableAV1 && this.av1Codec) {
-            logDebug('AV1 supported, sending track', this.av1Codec);
-            await this.peer.addStream(screenStream, [{
-                codec: this.av1Codec,
-            }]);
-        }
 
         this.ws.send('screen_on', {
             data: JSON.stringify({
@@ -1008,13 +1001,6 @@ export default class CallsClient extends EventEmitter {
             await this.peer.replaceTrack(localVideoTrackID, localVideoTrack);
         } else {
             await this.peer.addTrack(localVideoTrack, this.localVideoStream, {encodings: this.defaultVideoTrackEncodings});
-            if (this.config.enableAV1 && this.av1Codec) {
-                logDebug('AV1 supported, sending track', this.av1Codec);
-                await this.peer.addTrack(localVideoTrack, this.localVideoStream, {
-                    codec: this.av1Codec,
-                    encodings: this.defaultVideoTrackEncodings,
-                });
-            }
             this.videoTrackAdded = true;
         }
 
