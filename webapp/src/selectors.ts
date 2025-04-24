@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallsConfig, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallsConfig, CallsVersionInfo, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
@@ -634,3 +634,6 @@ export const screenSourceModal = (state: GlobalState) => {
 export const clientConnecting = (state: GlobalState) => {
     return pluginState(state).clientConnecting;
 };
+
+export const callsVersionInfo = (state: GlobalState): CallsVersionInfo =>
+    pluginState(state).callsVersionInfo;
