@@ -19,6 +19,7 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
 
+	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -55,8 +56,9 @@ type Plugin struct {
 	clusterEvCh chan model.PluginClusterEvent
 	sessions    map[string]*session
 
-	rtcServer   *rtc.Server
-	rtcdManager *rtcdClientManager
+	rtcServer       *rtc.Server
+	rtcdManager     *rtcdClientManager
+	rtcdVersionInfo rtcd.VersionInfo
 
 	jobService *jobService
 

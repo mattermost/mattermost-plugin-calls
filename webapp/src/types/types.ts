@@ -37,6 +37,7 @@ export type CallsClientConfig = {
     simulcast?: boolean;
     enableAV1: boolean;
     dcSignaling: boolean;
+    dcLocking: boolean;
 }
 
 export type AudioDevices = {
