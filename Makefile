@@ -270,9 +270,9 @@ endif
 webapp: webapp/node_modules
 ifneq ($(HAS_WEBAPP),)
 ifeq ($(MM_DEBUG),)
-	cd webapp && $(NPM) run build;
+	cd webapp && rm -rf dist/* && $(NPM) run build;
 else
-	cd webapp && $(NPM) run debug;
+	cd webapp && rm -rf dist/* && $(NPM) run debug;
 endif
 endif
 

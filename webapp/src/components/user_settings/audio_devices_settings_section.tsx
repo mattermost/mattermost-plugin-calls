@@ -10,7 +10,9 @@ import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
+import {getAdvancedNoiseCancellation, setAdvancedNoiseCancellation} from 'src/local_storage';
 import {logErr} from 'src/log';
+import styled from 'styled-components';
 
 const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectionProps>(({deviceType, devices}: DevicesSelectionProps, ref) => {
     const {formatMessage} = useIntl();
@@ -102,10 +104,28 @@ const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
     );
 });
 
+const CheckBoxContainer = styled.div`
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    label {
+      font-weight: 400;
+      margin: 0;
+      line-height: 16px;
+    }
+
+    input {
+      margin: 0;
+      line-height: 16px;
+    }
+`;
+
 export default function AudioDevicesSettingsSection() {
     const {formatMessage} = useIntl();
     const [active, setActive] = useState(false);
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+    const [advancedNoiseCancellation, setAdvancedNoiseCancellationState] = useState(getAdvancedNoiseCancellation());
 
     const title = formatMessage({defaultMessage: 'Audio devices'});
     const description = formatMessage({defaultMessage: 'Set up audio devices to be used for Mattermost calls'});
@@ -128,6 +148,7 @@ export default function AudioDevicesSettingsSection() {
             },
             ));
         }
+        setAdvancedNoiseCancellation(advancedNoiseCancellation);
         setActive(false);
     };
 
@@ -214,6 +235,16 @@ export default function AudioDevicesSettingsSection() {
                                 devices={devices.filter((device) => device.kind === 'audiooutput')}
                                 ref={audioOutputsRef}
                             />
+                            <CheckBoxContainer>
+                                <input
+                                    type='checkbox'
+                                    id='advanced-noise-cancellation'
+                                    name='advanced-noise-cancellation'
+                                    checked={advancedNoiseCancellation}
+                                    onChange={e => setAdvancedNoiseCancellationState(e.target.checked)}
+                                />
+                                <label htmlFor='advanced-noise-cancellation'>{formatMessage({defaultMessage: 'Advanced noise cancellation'})}</label>
+                            </CheckBoxContainer>
                             <Description>{description}</Description>
                         </Fieldset>
                     </div>

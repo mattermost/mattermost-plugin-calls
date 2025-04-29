@@ -45,89 +45,155 @@ if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
     });
 }
 
-module.exports = {
-    entry: [
-        './src/entry.tsx',
-    ],
-    resolve: {
-        alias: {
-            src: path.resolve(__dirname, './src/'),
-            '@mattermost/types': path.resolve(__dirname, './mattermost-webapp/webapp/platform/types/src/'),
-            '@mattermost/client': path.resolve(__dirname, './mattermost-webapp/webapp/platform/client/src/'),
-            'mattermost-redux': path.resolve(__dirname, './mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/'),
-            reselect: path.resolve(__dirname, './mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/selectors/create_selector/index'),
-        },
-        modules: [
-            'src',
-            'node_modules',
+module.exports = [
+    {
+        entry: [
+            './src/entry.tsx',
         ],
-        extensions: ['*', '.js', '.jsx', '.ts', '.tsx'],
-        symlinks: false,
-    },
-    module: {
-        rules: [
-            {
-                test: /\.(js|jsx|ts|tsx)$/,
-                exclude: /node_modules\/(?!(mattermost-webapp)\/).*/,
-                use: {
-                    loader: 'babel-loader',
-                    options: {
-                        cacheDirectory: true,
+        resolve: {
+            alias: {
+                src: path.resolve(__dirname, './src/'),
+                '@mattermost/types': path.resolve(__dirname, './mattermost-webapp/webapp/platform/types/src/'),
+                '@mattermost/client': path.resolve(__dirname, './mattermost-webapp/webapp/platform/client/src/'),
+                'mattermost-redux': path.resolve(__dirname, './mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/'),
+                reselect: path.resolve(__dirname, './mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/selectors/create_selector/index'),
+            },
+            modules: [
+                'src',
+                'node_modules',
+            ],
+            extensions: ['*', '.js', '.jsx', '.ts', '.tsx'],
+            symlinks: false,
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.(js|jsx|ts|tsx)$/,
+                    exclude: /node_modules\/(?!(mattermost-webapp)\/).*/,
+                    use: {
+                        loader: 'babel-loader',
+                        options: {
+                            cacheDirectory: true,
 
                         // Babel configuration is in babel.config.js because jest requires it to be there.
-                    },
-                },
-            },
-            {
-                test: /\.(scss|css)$/,
-                use: [
-                    'style-loader',
-                    {
-                        loader: 'css-loader',
-                    },
-                    {
-                        loader: 'sass-loader',
-                    },
-                ],
-            },
-            {
-                test: /\.(png|eot|tiff|svg|woff2|woff|ttf|gif|mp3|wav|jpg)$/,
-                use: [
-                    {
-                        loader: 'file-loader',
-                        options: {
-                            name: 'files/[contenthash].[ext]',
                         },
                     },
-                ],
+                },
+                {
+                    test: /\.(scss|css)$/,
+                    use: [
+                        'style-loader',
+                        {
+                            loader: 'css-loader',
+                        },
+                        {
+                            loader: 'sass-loader',
+                        },
+                    ],
+                },
+                {
+                    test: /\.(png|eot|tiff|svg|woff2|woff|ttf|gif|mp3|wav|jpg)$/,
+                    use: [
+                        {
+                            loader: 'file-loader',
+                            options: {
+                                name: 'files/[contenthash].[ext]',
+                            },
+                        },
+                    ],
+                },
+                {
+                    resourceQuery: /inline/,
+                    type: 'asset/inline',
+                },
+            ],
+        },
+        externals: {
+            react: 'React',
+            'react-dom': 'ReactDOM',
+            redux: 'Redux',
+            luxon: 'Luxon',
+            'react-redux': 'ReactRedux',
+            'prop-types': 'PropTypes',
+            'react-bootstrap': 'ReactBootstrap',
+            'react-router-dom': 'ReactRouterDom',
+            'react-intl': 'ReactIntl',
+        },
+        output: {
+            devtoolNamespace: PLUGIN_ID,
+            path: path.join(__dirname, '/dist'),
+            publicPath: '',
+            filename: 'main.js',
+            chunkFilename: 'chunk.[contenthash].js',
+            asyncChunks: false, // This is needed or the plugin blundle won't load properly.
+        },
+        devtool,
+        mode,
+        plugins,
+    },
+    {
+        entry: './src/rnnoise/processor.ts',
+        resolve: {
+            alias: {
+                src: path.resolve(__dirname, './src/'),
             },
-            {
-                resourceQuery: /inline/,
-                type: 'asset/inline',
-            },
-        ],
+            modules: [
+                'src',
+                'node_modules',
+            ],
+            extensions: ['*', '.js', '.jsx', '.ts', '.tsx'],
+            symlinks: false,
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.(js|jsx|ts|tsx)$/,
+                    exclude: /node_modules\/(?!(mattermost-webapp)\/).*/,
+                    use: {
+                        loader: 'babel-loader',
+                        options: {
+                            cacheDirectory: true,
+
+                        // Babel configuration is in babel.config.js because jest requires it to be there.
+                        },
+                    },
+                },
+                {
+                    test: /\.(scss|css)$/,
+                    use: [
+                        'style-loader',
+                        {
+                            loader: 'css-loader',
+                        },
+                        {
+                            loader: 'sass-loader',
+                        },
+                    ],
+                },
+                {
+                    test: /\.(png|eot|tiff|svg|woff2|woff|ttf|gif|mp3|wav|jpg)$/,
+                    use: [
+                        {
+                            loader: 'file-loader',
+                            options: {
+                                name: 'files/[contenthash].[ext]',
+                            },
+                        },
+                    ],
+                },
+                {
+                    resourceQuery: /inline/,
+                    type: 'asset/inline',
+                },
+            ],
+        },
+        output: {
+            devtoolNamespace: PLUGIN_ID,
+            path: path.join(__dirname, '/dist/rnnoise'),
+            filename: 'processor.bundle.js',
+        },
+        devtool,
+        mode,
+        plugins,
     },
-    externals: {
-        react: 'React',
-        'react-dom': 'ReactDOM',
-        redux: 'Redux',
-        luxon: 'Luxon',
-        'react-redux': 'ReactRedux',
-        'prop-types': 'PropTypes',
-        'react-bootstrap': 'ReactBootstrap',
-        'react-router-dom': 'ReactRouterDom',
-        'react-intl': 'ReactIntl',
-    },
-    output: {
-        devtoolNamespace: PLUGIN_ID,
-        path: path.join(__dirname, '/dist'),
-        publicPath: '',
-        filename: 'main.js',
-        chunkFilename: 'chunk.[contenthash].js',
-        clean: true,
-        asyncChunks: false, // This is needed or the plugin blundle won't load properly.
-    },
-    devtool,
-    mode,
-    plugins,
-};
+];

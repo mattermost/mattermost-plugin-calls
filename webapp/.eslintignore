@@ -1,3 +1,5 @@
 mattermost-webapp/*
 
 src/manifest.*
+
+src/rnnoise/rnnoise-processor.wasm.js

@@ -111,3 +111,4 @@ export const STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY = 'calls_default_video_input'
 export const STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY = 'calls_experimental_features';
 export const STORAGE_CALLS_MIRROR_VIDEO_KEY = 'calls_mirror_video';
 export const STORAGE_CALLS_BLUR_BACKGROUND_KEY = 'calls_blur_background';
+export const STORAGE_CALLS_ADVANCED_NOISE_CANCELLATION_KEY = 'calls_advanced_noise_cancellation';

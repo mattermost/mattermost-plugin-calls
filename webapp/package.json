@@ -55,6 +55,7 @@
     "@mattermost/desktop-api": "5.10.0-1",
     "@mattermost/eslint-plugin": "1.1.0-0",
     "@mattermost/types": "file:mattermost-webapp/webapp/platform/types",
+    "@types/audioworklet": "0.0.72",
     "@types/jest": "27.0.2",
     "@types/lodash": "4.14.182",
     "@types/luxon": "3.3.0",
