@@ -12,7 +12,7 @@ import {zlibSync, strToU8} from 'fflate';
 import {MediaDevices, CallsClientConfig, CallsClientStats, TrackMetadata} from 'src/types/types';
 
 import {logDebug, logErr, logInfo, logWarn, persistClientLogs} from './log';
-import {getScreenStream, getPersistentStorage, getPluginStaticPath} from './utils';
+import {getScreenStream, getPersistentStorage, getPluginStaticPath, getPluginPath} from './utils';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 import {
     STORAGE_CALLS_CLIENT_STATS_KEY,
@@ -378,6 +378,8 @@ export default class CallsClient extends EventEmitter {
         }
 
         const init = performance.now();
+        const wasmResponse = await fetch(`${getPluginPath()}/public/rnnoise/rnnoise-processor.wasm`);
+        const wasmBinary = await wasmResponse.arrayBuffer();
         await this.audioCtx.audioWorklet.addModule(`${getPluginStaticPath()}/rnnoise/processor.bundle.js`);
         logDebug('audio worklet module loaded', performance.now() - init);
 
@@ -385,6 +387,9 @@ export default class CallsClient extends EventEmitter {
             numberOfInputs: 1,
             numberOfOutputs: 1,
             outputChannelCount: [1],
+            processorOptions: {
+                wasmBinary,
+            },
         });
         node.channelCount = 1;
         node.channelCountMode = 'explicit';

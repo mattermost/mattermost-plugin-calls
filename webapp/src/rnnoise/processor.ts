@@ -2,7 +2,6 @@
 // See LICENSE.txt for license information.
 
 import RingBuffer from './ringbuffer';
-import initModule from './rnnoise-processor.wasm.js';
 
 /* eslint-disable no-underscore-dangle */
 
@@ -20,18 +19,26 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     private inBuffer: RingBuffer;
     private outBuffer: RingBuffer;
 
-    constructor() {
+    constructor(options: AudioWorkletNodeOptions) {
         super();
 
-        this.module = initModule();
-        this.heap = new Float32Array(this.module.HEAPF32.buffer);
-        this.state = this.module._create();
+        this.module = new WebAssembly.Instance(new WebAssembly.Module(options.processorOptions.wasmBinary), {
+            env: {
+                memory: new WebAssembly.Memory({initial: 32}), // 32 64KB pages = 2MB
+            },
+        });
+
+        this.module.exports._initialize();
+
+        // this.module = initModule();
+        this.heap = new Float32Array(this.module.exports.memory.buffer);
+        this.state = this.module.exports.create();
         this.stop = false;
         this.running = false;
 
         // TODO: free these
-        this.inPtr = this.module._malloc(FRAME_SIZE * 4);
-        this.outPtr = this.module._malloc(FRAME_SIZE * 4);
+        this.inPtr = this.module.exports.malloc(FRAME_SIZE * 4);
+        this.outPtr = this.module.exports.malloc(FRAME_SIZE * 4);
 
         // Quantum size is 128 but the noise reduction algorithm works on FRAME_SIZE frames.
         // This means we need to buffer FRAME_SIZE frames before we can process them.
@@ -63,9 +70,9 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     shutdown() {
         this.port.postMessage('RNNoiseProcessor: shutdown');
         this.stop = true;
-        this.module._destroy(this.state);
-        this.module._free(this.inPtr);
-        this.module._free(this.outPtr);
+        this.module.exports.destroy(this.state);
+        this.module.exports.free(this.inPtr);
+        this.module.exports.free(this.outPtr);
     }
 
     process(inputs: Float32Array[][], outputs: Float32Array[][]) {
@@ -93,7 +100,7 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
             // }
 
             this.port.postMessage('start');
-            this.module._process_frame(this.state, this.outPtr, this.inPtr);
+            this.module.exports.process_frame(this.state, this.outPtr, this.inPtr);
             this.port.postMessage('stop');
 
             const outView = this.heap.subarray(this.outPtr / 4, (this.outPtr / 4) + FRAME_SIZE);
