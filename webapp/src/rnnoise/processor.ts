@@ -27,7 +27,6 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
                 memory: new WebAssembly.Memory({initial: 32}), // 32 64KB pages = 2MB
             },
         });
-
         this.module.exports._initialize();
 
         // this.module = initModule();
