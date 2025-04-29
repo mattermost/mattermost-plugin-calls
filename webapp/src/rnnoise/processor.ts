@@ -8,7 +8,6 @@ import initModule from './rnnoise-processor.wasm.js';
 
 // Number of audio samples per frame (10ms at 48kHz)
 const FRAME_SIZE = 480;
-const SAMPLE_RATE = 48000;
 
 class RNNoiseProcessor extends AudioWorkletProcessor {
     private module: any;
@@ -16,6 +15,10 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     private state: number;
     private stop: boolean;
     private running: boolean;
+    private inPtr: number;
+    private outPtr: number;
+    private inBuffer: RingBuffer;
+    private outBuffer: RingBuffer;
 
     constructor() {
         super();
@@ -79,7 +82,7 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
 
         this.inBuffer.push(inputs[0][0]);
 
-        if (this.inBuffer.framesAvailable >= FRAME_SIZE) {
+        if (this.inBuffer.availableFrames >= FRAME_SIZE) {
             const inView = this.heap.subarray(this.inPtr / 4, (this.inPtr / 4) + FRAME_SIZE);
             this.inBuffer.pull(inView);
 
@@ -103,7 +106,7 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
             this.outBuffer.push(outView);
         }
 
-        if (this.outBuffer.framesAvailable >= 128) {
+        if (this.outBuffer.availableFrames >= 128) {
             this.outBuffer.pull(outputs[0][0]);
         }
 

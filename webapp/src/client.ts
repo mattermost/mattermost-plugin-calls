@@ -47,6 +47,12 @@ export const DefaultVideoTrackOptions: MediaTrackConstraints = {
     },
 };
 
+type NoiseSuppressionState = {
+    node: AudioWorkletNode;
+    source: MediaStreamAudioSourceNode;
+    destination: MediaStreamAudioDestinationNode;
+}
+
 const rtcMonitorInterval = 10000;
 
 export default class CallsClient extends EventEmitter {
@@ -81,7 +87,7 @@ export default class CallsClient extends EventEmitter {
     private defaultVideoTrackEncodings: RTPEncodingParameters[];
     private segmenter: Segmenter | null = null;
     private audioCtx: AudioContext | null = null;
-    private noiseSuppressionNode: AudioWorkletNode | null = null;
+    private noiseSuppressionState: NoiseSuppressionState | null = null;
 
     constructor(config: CallsClientConfig) {
         logDebug('creating new calls client', JSON.stringify(config));
@@ -326,8 +332,6 @@ export default class CallsClient extends EventEmitter {
             });
             this.streams.push(this.stream);
 
-            console.log(this.stream.getTracks()[0].getSettings());
-
             if (getAdvancedNoiseCancellation()) {
                 logDebug('advanced noise cancellation enabled, initializing noise suppression');
                 try {
@@ -337,7 +341,11 @@ export default class CallsClient extends EventEmitter {
                 }
             }
 
-            this.audioTrack = this.stream.getAudioTracks()[0];
+            if (!this.stream) {
+                throw new Error('failed to initialize audio stream');
+            }
+
+            this.audioTrack = this.stream?.getAudioTracks()[0];
             this.streams.push(this.stream);
             this.audioTrack.enabled = false;
 
@@ -358,36 +366,33 @@ export default class CallsClient extends EventEmitter {
     private async initNoiseSuppression(stream: MediaStream) {
         if (!this.audioCtx) {
             this.audioCtx = new AudioContext({sampleRate: 48000});
-            console.log(this.audioCtx);
         }
 
         await this.audioCtx.resume();
 
-        if (this.noiseSuppressionNode) {
-            logWarn('noiseSuppressionNode already exists');
-            this.noiseSuppressionAudioSource.disconnect(this.noiseSuppressionNode);
-            this.noiseSuppressionAudioSource = this.audioCtx.createMediaStreamSource(stream);
-            console.log(this.noiseSuppressionAudioSource);
-            this.noiseSuppressionAudioSource.connect(this.noiseSuppressionNode);
-            return this.noiseSuppressionAudioDestination.stream;
+        if (this.noiseSuppressionState) {
+            this.noiseSuppressionState.source.disconnect(this.noiseSuppressionState.node);
+            this.noiseSuppressionState.source = this.audioCtx.createMediaStreamSource(stream);
+            this.noiseSuppressionState.source.connect(this.noiseSuppressionState.node);
+            return this.noiseSuppressionState.destination.stream;
         }
+
         const init = performance.now();
         await this.audioCtx.audioWorklet.addModule(`${getPluginStaticPath()}/rnnoise/processor.bundle.js`);
         logDebug('audio worklet module loaded', performance.now() - init);
 
-        this.noiseSuppressionNode = new AudioWorkletNode(this.audioCtx, 'rnnoise', {
+        const node = new AudioWorkletNode(this.audioCtx, 'rnnoise', {
             numberOfInputs: 1,
             numberOfOutputs: 1,
             outputChannelCount: [1],
         });
-        this.noiseSuppressionNode.channelCount = 1;
-        this.noiseSuppressionNode.channelCountMode = 'explicit';
-        console.log(this.noiseSuppressionNode);
+        node.channelCount = 1;
+        node.channelCountMode = 'explicit';
 
         let n = 0;
         let t0 = 0;
         let total = 0;
-        this.noiseSuppressionNode.port.onmessage = ({data}) => {
+        node.port.onmessage = ({data}) => {
             if (data === 'start') {
                 t0 = performance.now();
             } else if (data === 'stop') {
@@ -403,13 +408,18 @@ export default class CallsClient extends EventEmitter {
             }
         };
 
-        this.noiseSuppressionAudioSource = this.audioCtx.createMediaStreamSource(stream);
-        console.log(this.noiseSuppressionAudioSource);
-        this.noiseSuppressionAudioSource.connect(this.noiseSuppressionNode);
-        this.noiseSuppressionAudioDestination = this.audioCtx.createMediaStreamDestination();
-        this.noiseSuppressionNode.connect(this.noiseSuppressionAudioDestination);
+        const source = this.audioCtx.createMediaStreamSource(stream);
+        source.connect(node);
+        const destination = this.audioCtx.createMediaStreamDestination();
+        node.connect(destination);
 
-        return this.noiseSuppressionAudioDestination.stream;
+        this.noiseSuppressionState = {
+            node,
+            source,
+            destination,
+        };
+
+        return destination.stream;
     }
 
     private collectICEStats() {
@@ -679,7 +689,7 @@ export default class CallsClient extends EventEmitter {
         navigator.mediaDevices?.removeEventListener('devicechange', this.onDeviceChange);
         this.segmenter?.stop();
         this.segmenter = null;
-        this.noiseSuppressionNode?.port?.postMessage({cmd: 'stop'});
+        this.noiseSuppressionState?.node.port.postMessage({cmd: 'stop'});
         this.audioCtx?.close();
         this.audioCtx = null;
         persistClientLogs();
@@ -730,9 +740,6 @@ export default class CallsClient extends EventEmitter {
         }
 
         const newTrack = newStream.getAudioTracks()[0];
-
-        console.log(newTrack, this.audioTrack, this.stream.getAudioTracks());
-
         this.stream.removeTrack(this.audioTrack);
         this.stream.addTrack(newTrack);
         newTrack.enabled = isEnabled;
@@ -870,7 +877,7 @@ export default class CallsClient extends EventEmitter {
         // @ts-ignore: we actually mean (and need) to pass null here
         this.peer.replaceTrack(this.audioTrack.id, null);
 
-        this.noiseSuppressionNode?.port?.postMessage({cmd: 'pause'});
+        this.noiseSuppressionState?.node.port.postMessage({cmd: 'pause'});
 
         this.audioTrack.enabled = false;
 
@@ -895,7 +902,7 @@ export default class CallsClient extends EventEmitter {
             }
         }
 
-        this.noiseSuppressionNode?.port?.postMessage({cmd: 'resume'});
+        this.noiseSuppressionState?.node.port.postMessage({cmd: 'resume'});
 
         // NOTE: we purposely clear the monitor's stats cache upon unmuting
         // in order to skip some calculations since upon muting we actually
