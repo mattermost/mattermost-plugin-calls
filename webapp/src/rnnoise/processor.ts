@@ -98,9 +98,9 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
             //     inView[i] *= 32767;
             // }
 
-            this.port.postMessage('start');
+            this.port.postMessage('start_bench');
             this.module.exports.process_frame(this.state, this.outPtr, this.inPtr);
-            this.port.postMessage('stop');
+            this.port.postMessage('stop_bench');
 
             const outView = this.heap.subarray(this.outPtr / 4, (this.outPtr / 4) + FRAME_SIZE);
 

@@ -14,7 +14,7 @@ const PLUGIN_ID = require('../plugin.json').id;
 const NPM_TARGET = process.env.npm_lifecycle_event; //eslint-disable-line no-process-env
 let mode = 'production';
 let devtool = false;
-let contentSecurity = 'script-src \'self\'';
+let contentSecurity = 'script-src \'self\' \'wasm-unsafe-eval\'';
 if (NPM_TARGET === 'debug' || NPM_TARGET === 'debug:watch') {
     mode = 'development';
     devtool = 'eval-cheap-module-source-map';

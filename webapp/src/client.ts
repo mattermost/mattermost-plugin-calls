@@ -398,13 +398,13 @@ export default class CallsClient extends EventEmitter {
         let t0 = 0;
         let total = 0;
         node.port.onmessage = ({data}) => {
-            if (data === 'start') {
+            if (data === 'start_bench') {
                 t0 = performance.now();
-            } else if (data === 'stop') {
+            } else if (data === 'stop_bench') {
                 total += (performance.now() - t0);
                 n++;
                 if (n % 1000 === 0) {
-                    logDebug('processing time for ~10 second of audio', total);
+                    logDebug('processing time for 1000 frames (~10 seconds of audio)', total);
                     total = 0;
                     n = 0;
                 }
