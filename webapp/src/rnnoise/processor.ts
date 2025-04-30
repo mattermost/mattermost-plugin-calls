@@ -22,6 +22,8 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     constructor(options: AudioWorkletNodeOptions) {
         super();
 
+        // TODO: Verify whether doing this async (through either instantiate or instantiateStreaming)
+        // is any better.
         this.module = new WebAssembly.Instance(new WebAssembly.Module(options.processorOptions.wasmBinary), {
             env: {
                 memory: new WebAssembly.Memory({initial: 32}), // 32 64KB pages = 2MB
@@ -29,7 +31,6 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
         });
         this.module.exports._initialize();
 
-        // this.module = initModule();
         this.heap = new Float32Array(this.module.exports.memory.buffer);
         this.state = this.module.exports.create();
         this.stop = false;
