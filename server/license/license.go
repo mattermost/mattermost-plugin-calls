@@ -39,10 +39,10 @@ func isValidSkuShortName(license *model.License) bool {
 	}
 }
 
-// IsProfessionalLicensedOrDevelopment returns true when the server is at least licensed with
+// IsMinimumProfessionalLicensedOrDevelopment returns true when the server is at least licensed with
 // a Mattermost Professional License, or has `EnableDeveloper` and
 // `EnableTesting` configuration settings enabled, signaling a non-production, developer mode.
-func IsProfessionalLicensedOrDevelopment(config *model.Config, license *model.License) bool {
+func IsMinimumProfessionalLicensedOrDevelopment(config *model.Config, license *model.License) bool {
 	if IsProfessional(license) || IsEnterprise(license) || IsEnterpriseAdvanced(license) {
 		return true
 	}
@@ -61,7 +61,7 @@ func IsProfessionalLicensedOrDevelopment(config *model.Config, license *model.Li
 	return IsConfiguredForDevelopment(config)
 }
 
-// IsEnterpriseLicensedOrDevelopment returns true when the server is at least licensed with
+// IsMinimumEnterpriseLicensedOrDevelopment returns true when the server is at least licensed with
 // a Mattermost Enterprise License, or has `EnableDeveloper` and
 // `EnableTesting` configuration settings enabled, signaling a non-production, developer mode.
 func IsMinimumEnterpriseLicensedOrDevelopment(config *model.Config, license *model.License) bool {

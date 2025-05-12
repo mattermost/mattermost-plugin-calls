@@ -33,7 +33,7 @@ func (e *LicenseChecker) isAtLeastEnterpriseLicensed() bool {
 
 // isAtLeastProfessionalLicensed returns true when the server either has at least a Professional License or is configured for development.
 func (e *LicenseChecker) isAtLeastProfessionalLicensed() bool {
-	return license.IsProfessionalLicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
+	return license.IsMinimumProfessionalLicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
 }
 
 // RTCDAllowed returns true if the license allows use of an external rtcd service.
