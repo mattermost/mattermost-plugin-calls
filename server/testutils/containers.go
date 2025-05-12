@@ -32,9 +32,6 @@ const (
 // from the local network.
 func RunPostgresContainerLocal(ctx context.Context) (string, func(), error) {
 	cnt, tearDown, err := RunPostgresContainer(ctx, tc.CustomizeRequest(tc.GenericContainerRequest{
-		ContainerRequest: tc.ContainerRequest{
-			ExposedPorts: []string{fmt.Sprintf("%d/tcp", PostgrePort)},
-		},
 		Started: true,
 	}))
 	if err != nil {
@@ -98,9 +95,6 @@ func RunMySQLContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (*my
 // from the local network.
 func RunMySQLContainerLocal(ctx context.Context) (string, func(), error) {
 	cnt, tearDown, err := RunMySQLContainer(ctx, tc.CustomizeRequest(tc.GenericContainerRequest{
-		ContainerRequest: tc.ContainerRequest{
-			ExposedPorts: []string{fmt.Sprintf("%d/tcp", MySQLPort)},
-		},
 		Started: true,
 	}))
 	if err != nil {
