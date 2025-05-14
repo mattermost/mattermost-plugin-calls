@@ -1139,7 +1139,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <button
                         className='style--none'
                         style={{
-                            background: device.deviceId === currentDevice?.deviceId ? 'rgba(28, 88, 217, 0.08)' : '',
+                            background: device.deviceId === currentDevice?.deviceId || device.label === currentDevice?.label ? 'rgba(28, 88, 217, 0.08)' : '',
                             lineHeight: '20px',
                             padding: '8px 20px',
                             display: 'flex',
