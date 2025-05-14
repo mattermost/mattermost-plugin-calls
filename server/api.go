@@ -26,10 +26,16 @@ import (
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
 func (p *Plugin) handleGetVersion(w http.ResponseWriter, _ *http.Request) {
-	info := map[string]interface{}{
-		"version": manifest.Version,
-		"build":   buildHash,
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+
+	info := public.VersionInfo{
+		Version:     manifest.Version,
+		Build:       buildHash,
+		RTCDVersion: p.rtcdVersionInfo.BuildVersion,
+		RTCDBuild:   p.rtcdVersionInfo.BuildHash,
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(info); err != nil {
 		p.LogError(err.Error())

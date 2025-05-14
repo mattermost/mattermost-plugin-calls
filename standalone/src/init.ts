@@ -31,6 +31,7 @@ import {
     UserVoiceOnOffData,
     WebsocketEventData,
 } from '@mattermost/calls-common/lib/types';
+import {hasDCSignalingLockSupport} from '@mattermost/calls-common/lib/utils';
 import {WebSocketMessage} from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import {setServerVersion} from 'mattermost-redux/actions/general';
@@ -40,7 +41,7 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
-import {getCallActive, getCallsConfig, localSessionClose, setClientConnecting} from 'plugin/actions';
+import {getCallActive, getCallsConfig, getCallsVersionInfo, localSessionClose, setClientConnecting} from 'plugin/actions';
 import CallsClient from 'plugin/client';
 import {
     logDebug,
@@ -49,7 +50,7 @@ import {
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
 import RestClient from 'plugin/rest_client';
-import {callsConfig, iceServers, needsTURNCredentials} from 'plugin/selectors';
+import {callsConfig, callsVersionInfo, iceServers, needsTURNCredentials} from 'plugin/selectors';
 import {DesktopNotificationArgs, Store, WebAppUtils} from 'plugin/types/mattermost-webapp';
 import {
     getPluginPath,
@@ -213,6 +214,7 @@ export default async function init(cfg: InitConfig) {
     try {
         [, active] = await Promise.all([
             store.dispatch(getCallsConfig()),
+            store.dispatch(getCallsVersionInfo()),
             getCallActive(channelID),
         ]);
     } catch (err) {
@@ -236,6 +238,7 @@ export default async function init(cfg: InitConfig) {
         simulcast: callsConfig(store.getState()).EnableSimulcast,
         enableAV1: callsConfig(store.getState()).EnableAV1,
         dcSignaling: callsConfig(store.getState()).EnableDCSignaling,
+        dcLocking: hasDCSignalingLockSupport(callsVersionInfo(store.getState())),
     };
 
     connectCall(joinData, clientConfig, (ev) => {
