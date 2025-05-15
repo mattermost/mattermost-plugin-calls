@@ -3,18 +3,31 @@
 
 import React, {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
 import {leftCol, RadioInput, RadioInputLabel, rightCol} from 'src/components/admin_console_settings/common';
+import {callsConfig, callsConfigEnvOverrides} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 export default function EnableRinging(props: CustomComponentProps) {
     const {formatMessage} = useIntl();
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'EnableRinging' in overrides;
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value === 'true');
     };
 
-    // @ts-ignore val is a boolean, but the signature says 'string'. (being defensive here, just in case)
-    const checked = props.value === 'true' || props.value === true;
+    // Use the value from config if it's overridden by environment variable
+    let checked;
+    if (overridden) {
+        checked = config.EnableRinging;
+    } else {
+        // @ts-ignore val is a boolean, but the signature says 'string'. (being defensive here, just in case)
+        checked = props.value === 'true' || props.value === true;
+    }
+
+    const disabled = props.disabled || overridden;
 
     return (
         <div
@@ -25,7 +38,7 @@ export default function EnableRinging(props: CustomComponentProps) {
                 {formatMessage({defaultMessage: 'Enable call ringing'})}
             </label>
             <div className={rightCol}>
-                <RadioInputLabel $disabled={props.disabled}>
+                <RadioInputLabel $disabled={disabled}>
                     <RadioInput
                         data-testid={props.id + 'true'}
                         type='radio'
@@ -34,11 +47,11 @@ export default function EnableRinging(props: CustomComponentProps) {
                         name={props.id + 'true'}
                         checked={checked}
                         onChange={handleChange}
-                        disabled={props.disabled}
+                        disabled={disabled}
                     />
                     {formatMessage({defaultMessage: 'True'})}
                 </RadioInputLabel>
-                <RadioInputLabel $disabled={props.disabled}>
+                <RadioInputLabel $disabled={disabled}>
                     <RadioInput
                         data-testid={props.id + 'false'}
                         type='radio'
@@ -47,7 +60,7 @@ export default function EnableRinging(props: CustomComponentProps) {
                         name={props.id + 'false'}
                         checked={!checked}
                         onChange={handleChange}
-                        disabled={props.disabled}
+                        disabled={disabled}
                     />
                     {formatMessage({defaultMessage: 'False'})}
                 </RadioInputLabel>
@@ -57,6 +70,12 @@ export default function EnableRinging(props: CustomComponentProps) {
                 >
                     {formatMessage({defaultMessage: 'When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart.'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );

@@ -87,6 +87,13 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 		}
 	}).Methods("GET")
 
+	// Config environment overrides
+	router.HandleFunc("/env", func(w http.ResponseWriter, r *http.Request) {
+		if err := p.handleEnv(w, r); err != nil {
+			p.handleError(w, err)
+		}
+	}).Methods("GET")
+
 	// CallsChannels
 	router.HandleFunc("/{channel_id:[a-z0-9]{26}}", p.handleGetCallChannelState).Methods("GET") // DEPRECATED as of v1
 	router.HandleFunc("/{channel_id:[a-z0-9]{26}}", p.handlePostCallsChannel).Methods("POST")   // DEPRECATED as of v1

@@ -6,7 +6,7 @@ import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {setTranscriptionsEnabled} from 'src/actions';
 import {leftCol, RadioInput, RadioInputLabel, rightCol} from 'src/components/admin_console_settings/common';
-import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
+import {callsConfig, callsConfigEnvOverrides, isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 export const EnableTranscriptions = (props: CustomComponentProps) => {
@@ -15,6 +15,9 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const recordingEnabled = useSelector(recordingsEnabled);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'EnableTranscriptions' in overrides;
 
     // @ts-ignore -- this is complaining b/c value is supposed to be string, but... it can be bool!
     const [enabled, setEnabled] = useState(() => props.value === 'true' || props.value === true);
@@ -29,8 +32,16 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
         dispatch(setTranscriptionsEnabled(enabled));
     }, [dispatch, enabled]);
 
-    // @ts-ignore val is a boolean, but the signature says 'string'. (being defensive here, just in case)
-    const checked = props.value === 'true' || props.value === true;
+    // Use the value from config if it's overridden by environment variable
+    let checked;
+    if (overridden) {
+        checked = config.EnableTranscriptions;
+    } else {
+        // @ts-ignore val is a boolean, but the signature says 'string'. (being defensive here, just in case)
+        checked = props.value === 'true' || props.value === true;
+    }
+
+    const disabled = props.disabled || overridden;
 
     if (cloud || restricted || !recordingEnabled) {
         return null;
@@ -45,7 +56,7 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
                 {formatMessage({defaultMessage: 'Enable call transcriptions (Beta)'})}
             </label>
             <div className={rightCol}>
-                <RadioInputLabel $disabled={props.disabled}>
+                <RadioInputLabel $disabled={disabled}>
                     <RadioInput
                         data-testid={props.id + 'true'}
                         type='radio'
@@ -54,11 +65,11 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
                         name={props.id + 'true'}
                         checked={checked}
                         onChange={handleChange}
-                        disabled={props.disabled}
+                        disabled={disabled}
                     />
                     {formatMessage({defaultMessage: 'True'})}
                 </RadioInputLabel>
-                <RadioInputLabel $disabled={props.disabled}>
+                <RadioInputLabel $disabled={disabled}>
                     <RadioInput
                         data-testid={props.id + 'false'}
                         type='radio'
@@ -67,7 +78,7 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
                         name={props.id + 'false'}
                         checked={!checked}
                         onChange={handleChange}
-                        disabled={props.disabled}
+                        disabled={disabled}
                     />
                     {formatMessage({defaultMessage: 'False'})}
                 </RadioInputLabel>
@@ -77,6 +88,12 @@ export const EnableTranscriptions = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: '(Optional) When set to true, post-call transcriptions are enabled.'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>);
 };

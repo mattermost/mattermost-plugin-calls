@@ -9,12 +9,15 @@ import {
 } from 'src/components/admin_console_settings/common';
 import {useHelptext} from 'src/components/admin_console_settings/hooks';
 import manifest from 'src/manifest';
-import {rtcdEnabled} from 'src/selectors';
+import {callsConfig, callsConfigEnvOverrides, rtcdEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const TCPServerPort = (props: CustomComponentProps) => {
     const {formatMessage} = useIntl();
     const isRTCDEnabled = useSelector(rtcdEnabled);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'TCPServerPort' in overrides;
     const helpText = useHelptext(formatMessage({defaultMessage: 'The TCP port the RTC server will listen on.'}));
 
     // Webapp doesn't pass the placeholder setting.
@@ -23,6 +26,11 @@ const TCPServerPort = (props: CustomComponentProps) => {
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, parseInt(e.target.value, 10));
     };
+
+    // Use the value from config if it's overridden by environment variable
+    const value = overridden ? config.TCPServerPort : props.value;
+
+    const disabled = props.disabled || isRTCDEnabled || overridden;
 
     return (
         <div
@@ -43,12 +51,12 @@ const TCPServerPort = (props: CustomComponentProps) => {
                 <TextInput
                     data-testid={props.id + 'number'}
                     id={props.id}
-                    className='form-control'
+                    className={disabled ? 'form-control disabled' : 'form-control'}
                     type={'number'}
                     placeholder={placeholder}
-                    value={props.value}
+                    value={value}
                     onChange={handleChange}
-                    disabled={props.disabled || isRTCDEnabled}
+                    disabled={disabled}
                 />
                 <div
                     data-testid={props.id + 'help-text'}
@@ -56,6 +64,12 @@ const TCPServerPort = (props: CustomComponentProps) => {
                 >
                     {helpText}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );

@@ -40,6 +40,7 @@ import {
     LIVE_CAPTIONS_ENABLED,
     LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
+    RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CALLS_VERSION_INFO,
     RECEIVED_CHANNEL_STATE,
@@ -784,6 +785,15 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
     }
 };
 
+const callsConfigEnvOverrides = (state = {}, action: { type: string, data: Record<string, string> }) => {
+    switch (action.type) {
+    case RECEIVED_CALLS_CONFIG_ENV_OVERRIDES:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 const callsVersionInfo = (state = {}, action: { type: string, data: CallsVersionInfo }) => {
     switch (action.type) {
     case RECEIVED_CALLS_VERSION_INFO:
@@ -1014,6 +1024,7 @@ export default combineReducers({
     switchCallModal,
     screenSourceModal,
     callsConfig,
+    callsConfigEnvOverrides,
     callsVersionInfo,
     rtcdEnabled,
     callsUserPreferences,
