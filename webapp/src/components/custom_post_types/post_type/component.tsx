@@ -306,6 +306,7 @@ const Right = styled.div`
     @container main (inline-size < 566px) {
       width: 100%;
       justify-content: space-between;
+      flex-wrap: wrap;
     }
 
     &:empty {
