@@ -140,7 +140,6 @@
   "PX0KzA": "Samtalen avsluttes og alle deltakerne vil bli koblet fra. Er du sikker på at du vil avslutte samtalen?",
   "PfcsWl": "Aktiver AV1-kodek for skjermdeling (eksperimentell)",
   "PjoOvw": "Du deler din skjerm",
-  "PuUmTL": "Maksimalt antall deltakere som kan bli med i en samtale. Hvis det står tomt, eller satt til 0, betyr det ubegrenset.",
   "PzV1UF": "(Valgfritt) Et portnummer som skal brukes som overstyring for vertskandidater i stedet for det som brukes til å lytte på. Merk: denne porten vil gjelde for både UDP- og TCP-vertkandidater.",
   "Q0W0k5": "Vurder å fortelle alle at dette møtet blir tatt opp og transkribert.",
   "QJwBtw": "API-regionen for Azure Speech Services",
@@ -320,7 +319,6 @@
   "yfYHc5": "Overstyring av ICE-vert",
   "yjQNKt": "Samtaler er deaktivert i denne kanalen.",
   "yx0b7N": "{count, plural, =1 {# transcription} other {# transcriptions}}",
-  "zMlIqq": "Denne innstillingen er deaktivert ettersom serveren er ulisensiert og anrop kun er tilgjengelig i DM-kanaler.",
   "zUH89x": "Samtaleopptaket vil bli behandlet og lagt ut i samtaletråden. Er du sikker på at du vil stoppe opptaket?",
   "zx0myy": "Deltakere",
   "zxBgWa": "(Valgfritt) IP-en (eller vertsnavnet) som skal brukes som verts-ICE-kandidat. Hvis den er tom, løses den som standard via STUN."

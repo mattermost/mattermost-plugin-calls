@@ -140,7 +140,6 @@
   "PX0KzA": "L'appel se terminera et tous ses participants seront déconnectés. Êtes-vous certain de vouloir terminer cet appel ?",
   "PfcsWl": "Activer le codec AV1 pour le partage d'écran (Expérimental)",
   "PjoOvw": "Vous partagez votre écran",
-  "PuUmTL": "Le nombre maximum de participants qui peuvent rejoindre un appel. Si vide ou réglé à 0, ce nombre sera illimité.",
   "PzV1UF": "(Optionnel) Le numéro de port a utiliser pour les hôtes candidats à la place de celui utilisé pour l'écoute. Note : ce port s'appliquera pour les hôtes candidats UDP et TCP.",
   "Q0W0k5": "Pensez à informer tout le monde que cette réunion est enregistrée et retranscrite.",
   "QJwBtw": "La région API pour Azure Speech Services",
@@ -320,7 +319,6 @@
   "yfYHc5": "Hôte ICE forcé",
   "yjQNKt": "Les appels sont désactivés dans ce canal.",
   "yx0b7N": "{count, plural, =1 {# transcription} other {# transcriptions}}",
-  "zMlIqq": "Ce paramètre est désactivé, car le serveur est sans licence et les appels sont seulement disponibles dans les messages directs.",
   "zUH89x": "L'enregistrement de l'appel sera traité et publié dans le fil de discussion de l'appel. Êtes-vous sûr de vouloir arrêter l'enregistrement ?",
   "zx0myy": "Participants",
   "zxBgWa": "(Optionnel) L'adresse IP (ou nom d'hôte) à utiliser en tant que candidat d'hôte ICE. Si vide, il sera résolu via STUN par défaut."

@@ -140,7 +140,6 @@
   "PX0KzA": "Çağrı sona erecek ve tüm katılımcıların bağlantısı kesilecek. Aramayı sonlandırmak istediğinize emin misiniz?",
   "PfcsWl": "Ekran paylaşımı için AV1 kodlayıcı/çözücü bileşeni kullanılsın (Deneysel)",
   "PjoOvw": "Ekranınızı paylaşıyorsunuz",
-  "PuUmTL": "Bir çağrıya katılabilecek en fazla katılımcı sayısı. Sınırsız olması için boş bırakın veya 0 olarak ayarlayın.",
   "PzV1UF": "(İsteğe bağlı) Dinlemek için kullanılan bağlantı noktası yerine sunucu adayları için değiştirilebilecek bir bağlantı noktası numarası. Not: Bu bağlantı noktası hem UDP hem de TCP sunucu adayları için geçerli olur.",
   "Q0W0k5": "Bu toplantıya katılan kişilere görüntü ve sohbet kayıtlarının alındığını bildirmeyi değerlendirin.",
   "QJwBtw": "Azure Speech Services API bölgesi",
@@ -320,7 +319,6 @@
   "yfYHc5": "ICE sunucu değişikliği",
   "yjQNKt": "Bu kanalda çağrılar devre dışı bırakılmış.",
   "yx0b7N": "{count, plural, =1 {# uyarlama} other {# uyarlama}}",
-  "zMlIqq": "Sunucunun lisansı olmadığından ve çağrılar yalnızca doğrudan ileti kanallarında yapılabildiğinden bu ayar kullanılamaz.",
   "zUH89x": "Çağrı kaydetme işlenecek ve çağrı yazışmasına eklenecek. Kaydı durdurmak istediğinize emin misiniz?",
   "zx0myy": "Katılımcılar",
   "zxBgWa": "(İsteğe bağlı) Sunucu ICE adayı olarak kullanılacak IP adresi (ya da sunucu adı). Boş bırakılırsa, varsayılan olarak STUN ile çözümlenir."
