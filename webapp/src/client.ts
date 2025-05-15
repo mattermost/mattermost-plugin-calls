@@ -122,6 +122,8 @@ export default class CallsClient extends EventEmitter {
                 await this.setAudioOutputDevice(devices[0], false);
             }
 
+            this.emit('devicefallback', devices[0]);
+
             return;
         }
 
@@ -135,6 +137,8 @@ export default class CallsClient extends EventEmitter {
             } else if (deviceType === 'output') {
                 await this.setAudioOutputDevice(selectedDevice, false);
             }
+
+            this.emit('devicefallback', selectedDevice);
         }
     }
 
@@ -476,6 +480,7 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('remoteScreenStream');
         this.removeAllListeners('localScreenStream');
         this.removeAllListeners('devicechange');
+        this.removeAllListeners('devicefallback');
         this.removeAllListeners('error');
         this.removeAllListeners('initaudio');
         this.removeAllListeners('mute');

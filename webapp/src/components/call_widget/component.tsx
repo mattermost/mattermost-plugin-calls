@@ -520,6 +520,38 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
+        window.callsClient.on('devicefallback', (device: MediaDeviceInfo) => {
+            if (device.kind === 'audioinput') {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        audioInputDeviceFallback: {
+                            active: true,
+                            show: true,
+                            args: {
+                                deviceLabel: device.label,
+                                i: (text: string) => <i>{text}</i>,
+                            },
+                        },
+                    },
+                });
+            } else if (device.kind === 'audiooutput') {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        audioOutputDeviceFallback: {
+                            active: true,
+                            show: true,
+                            args: {
+                                deviceLabel: device.label,
+                                i: (text: string) => <i>{text}</i>,
+                            },
+                        },
+                    },
+                });
+            }
+        });
+
         window.callsClient.on('connect', () => {
             const callsClient = window.callsClient;
 
@@ -1808,7 +1840,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     id={'calls-widget-banner-alert'}
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
-                    header={formatMessage(alertConfig.bannerText)}
+                    header={formatMessage(alertConfig.bannerText, alertState.args)}
                     onLeftButtonClick={onClose}
                     onCloseButtonClick={onClose}
                 />
