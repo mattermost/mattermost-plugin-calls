@@ -159,7 +159,7 @@ export default class CallsClient extends EventEmitter {
         }
 
         if (!selectedDevice.deviceId) {
-          return null;
+            return null;
         }
 
         let devices = deviceType === 'input' ? this.audioDevices.inputs : this.audioDevices.outputs;
