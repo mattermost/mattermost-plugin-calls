@@ -35,37 +35,35 @@ var (
 	transcriberJobRunner = ""
 )
 
-var (
-	recorderBaseConfigs = map[string]recorder.RecorderConfig{
-		"low": {
-			Width:        1280,
-			Height:       720,
-			VideoRate:    1000,
-			AudioRate:    64,
-			FrameRate:    15,
-			VideoPreset:  recorder.H264PresetUltraFast,
-			OutputFormat: recorder.AVFormatMP4,
-		},
-		"medium": {
-			Width:        1280,
-			Height:       720,
-			VideoRate:    1500,
-			AudioRate:    64,
-			FrameRate:    20,
-			VideoPreset:  recorder.H264PresetVeryFast,
-			OutputFormat: recorder.AVFormatMP4,
-		},
-		"high": {
-			Width:        1920,
-			Height:       1080,
-			VideoRate:    2500,
-			AudioRate:    64,
-			FrameRate:    20,
-			VideoPreset:  recorder.H264PresetVeryFast,
-			OutputFormat: recorder.AVFormatMP4,
-		},
-	}
-)
+var recorderBaseConfigs = map[string]recorder.RecorderConfig{
+	"low": {
+		Width:        1280,
+		Height:       720,
+		VideoRate:    1000,
+		AudioRate:    64,
+		FrameRate:    15,
+		VideoPreset:  recorder.H264PresetUltraFast,
+		OutputFormat: recorder.AVFormatMP4,
+	},
+	"medium": {
+		Width:        1280,
+		Height:       720,
+		VideoRate:    1500,
+		AudioRate:    64,
+		FrameRate:    20,
+		VideoPreset:  recorder.H264PresetVeryFast,
+		OutputFormat: recorder.AVFormatMP4,
+	},
+	"high": {
+		Width:        1920,
+		Height:       1080,
+		VideoRate:    2500,
+		AudioRate:    64,
+		FrameRate:    20,
+		VideoPreset:  recorder.H264PresetVeryFast,
+		OutputFormat: recorder.AVFormatMP4,
+	},
+}
 
 type jobService struct {
 	ctx    *Plugin
@@ -93,11 +91,7 @@ func (p *Plugin) getJobServiceClientConfig(serviceURL string) (offloader.ClientC
 	// Give precedence to environment to override everything else.
 	cfg.ClientID = os.Getenv("MM_CALLS_JOB_SERVICE_CLIENT_ID")
 	cfg.AuthKey = os.Getenv("MM_CALLS_JOB_SERVICE_AUTH_KEY")
-	cfg.URL = strings.TrimSuffix(os.Getenv("MM_CALLS_JOB_SERVICE_URL"), "/")
-
-	if cfg.URL == "" {
-		cfg.URL = serviceURL
-	}
+	cfg.URL = serviceURL
 
 	// Parsing the URL in case it's already containing credentials.
 	u, clientID, authKey, err := parseURL(cfg.URL)

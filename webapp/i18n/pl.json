@@ -159,7 +159,7 @@
   "TdTXXf": "Dowiedź się więcej",
   "Tg9Lia": "Połączenia nie są obecnie włączone",
   "Thxdph": "To połączenie ma maksymalną pojemność {count, plural, =1 {# uczestnik} other {# uczestników}}.",
-  "TyskrG": "Witamy w programie próbnym Mattermost Enterprise! Wygasa on w dniu {trialExpirationDate}. Masz teraz dostęp do <recordingsDocsLink>nagrań rozmów</recordingsDocsLink>,<rtcdDocsLink>usług RTCD</rtcdDocsLink>, <guestAccountsLink>kont gości</guestAccountsLink>, <autoComplianceReportsLink>zautomatyzowanych raportów zgodności</autoComplianceReportsLink>, oraz <mobileSecureNotificationsLink>mobilnych powiadomień push secure-ID</mobileSecureNotificationsLink>, wśród wielu innych funkcji. Zobacz wszystkie funkcje w naszej dokumentacji <documentationLink></documentationLink> .",
+  "TyskrG": "Witamy w Twojej wersji próbnej Mattermost Enterprise! Wygasa on w dniu {trialExpirationDate}. Masz teraz dostęp do <recordingsDocsLink>nagrań rozmów</recordingsDocsLink>,<rtcdDocsLink>usług RTCD</rtcdDocsLink>, <guestAccountsLink>kont gości</guestAccountsLink>, <autoComplianceReportsLink>zautomatyzowanych raportów zgodności</autoComplianceReportsLink> oraz <mobileSecureNotificationsLink>mobilnych powiadomień push z bezpiecznym identyfikatorem</mobileSecureNotificationsLink>, a także wielu innych funkcji. Zobacz wszystkie funkcje w naszej <documentationLink>dokumentacji </documentationLink> .",
   "UF6kPm": "Bezpośredni",
   "UcFeI7": "Pokaż listę uczestników",
   "Ug/N7H": "Połączenia nie są dostępne w DM z nieaktywnym użytkownikiem.",

@@ -32,7 +32,7 @@ func TestAddUserSession(t *testing.T) {
 		callsClusterLocks: map[string]*cluster.Mutex{},
 		metrics:           mockMetrics,
 		configuration: &configuration{
-			clientConfig: clientConfig{
+			ClientConfig: ClientConfig{
 				DefaultEnabled: model.NewPointer(true),
 			},
 		},

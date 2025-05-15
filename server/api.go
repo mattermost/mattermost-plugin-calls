@@ -26,10 +26,16 @@ import (
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
 func (p *Plugin) handleGetVersion(w http.ResponseWriter, _ *http.Request) {
-	info := map[string]interface{}{
-		"version": manifest.Version,
-		"build":   buildHash,
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+
+	info := public.VersionInfo{
+		Version:     manifest.Version,
+		Build:       buildHash,
+		RTCDVersion: p.rtcdVersionInfo.BuildVersion,
+		RTCDBuild:   p.rtcdVersionInfo.BuildHash,
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(info); err != nil {
 		p.LogError(err.Error())
@@ -461,6 +467,27 @@ func (p *Plugin) handleConfig(w http.ResponseWriter, r *http.Request) error {
 		if err := json.NewEncoder(w).Encode(p.getClientConfig(p.getConfiguration())); err != nil {
 			return fmt.Errorf("error encoding config: %w", err)
 		}
+	}
+
+	return nil
+}
+
+// handleEnv returns the config env overrides
+func (p *Plugin) handleEnv(w http.ResponseWriter, r *http.Request) error {
+	userID := r.Header.Get("Mattermost-User-Id")
+	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
+
+	if !isAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return nil
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	p.configurationLock.Lock()
+	defer p.configurationLock.Unlock()
+	if err := json.NewEncoder(w).Encode(p.configEnvOverrides); err != nil {
+		return fmt.Errorf("error encoding config env overrides: %w", err)
 	}
 
 	return nil

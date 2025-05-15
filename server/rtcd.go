@@ -343,6 +343,10 @@ func (m *rtcdClientManager) versionCheck(client *rtcd.Client) error {
 		return fmt.Errorf("failed to get rtcd version info: %w", err)
 	}
 
+	m.ctx.mut.Lock()
+	m.ctx.rtcdVersionInfo = info
+	m.ctx.mut.Unlock()
+
 	minRTCDVersion, ok := manifest.Props["min_rtcd_version"].(string)
 	if !ok {
 		return fmt.Errorf("failed to get min_rtcd_version from manifest")
@@ -407,6 +411,10 @@ func (m *rtcdClientManager) newRTCDClient(rtcdURL, host string, dialFn rtcd.Dial
 		}
 
 		m.ctx.LogDebug("reconnection successful, replacing client")
+
+		if versionErr := m.versionCheck(client); versionErr != nil {
+			m.ctx.LogError("version compatibility check failed", "err", versionErr.Error())
+		}
 
 		if err = m.removeHost(host); err != nil {
 			m.ctx.LogError("failed to remove rtcd client: %w", err)

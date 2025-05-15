@@ -3,14 +3,19 @@
 
 import React, {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
 import {
     LabelRow, leftCol, rightCol,
 } from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
+import {callsConfig, callsConfigEnvOverrides} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 export default function TURNStaticAuthSecret(props: CustomComponentProps) {
     const {formatMessage} = useIntl();
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'TURNStaticAuthSecret' in overrides;
 
     // Webapp doesn't pass the placeholder setting.
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'TURNStaticAuthSecret')?.placeholder || '';
@@ -18,6 +23,11 @@ export default function TURNStaticAuthSecret(props: CustomComponentProps) {
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
     };
+
+    // Use the value from config if it's overridden by environment variable
+    const value = overridden ? config.TURNStaticAuthSecret : props.value;
+
+    const disabled = props.disabled || overridden;
 
     return (
         <div
@@ -38,12 +48,12 @@ export default function TURNStaticAuthSecret(props: CustomComponentProps) {
                 <input
                     data-testid={props.id + 'input'}
                     id={props.id}
-                    className='form-control'
+                    className={disabled ? 'form-control disabled' : 'form-control'}
                     type={'input'}
                     placeholder={placeholder}
-                    value={props.value}
+                    value={value}
                     onChange={handleChange}
-                    disabled={props.disabled}
+                    disabled={disabled}
                 />
                 <div
                     data-testid={props.id + 'help-text'}
@@ -51,6 +61,12 @@ export default function TURNStaticAuthSecret(props: CustomComponentProps) {
                 >
                     {formatMessage({defaultMessage: '(Optional) The secret key used to generate TURN short-lived authentication credentials.'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );

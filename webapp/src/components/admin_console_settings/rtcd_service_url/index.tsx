@@ -11,13 +11,16 @@ import {
     rightCol,
 } from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
-import {isOnPremNotEnterprise} from 'src/selectors';
+import {callsConfig, callsConfigEnvOverrides, isOnPremNotEnterprise} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const RTCDServiceURL = (props: CustomComponentProps) => {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const restricted = useSelector(isOnPremNotEnterprise);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'RTCDServiceURL' in overrides;
 
     const [enabled, setEnabled] = useState(() => !restricted && props.value?.length > 0);
 
@@ -33,6 +36,11 @@ const RTCDServiceURL = (props: CustomComponentProps) => {
         props.onChange(props.id, e.target.value);
         setEnabled(e.target.value.length > 0);
     };
+
+    // Use the value from config if it's overridden by environment variable
+    const value = overridden ? config.RTCDServiceURL : props.value;
+
+    const disabled = props.disabled || overridden;
 
     return (
         <div
@@ -53,12 +61,12 @@ const RTCDServiceURL = (props: CustomComponentProps) => {
                 <input
                     data-testid={props.id + 'input'}
                     id={props.id}
-                    className='form-control'
+                    className={disabled ? 'form-control disabled' : 'form-control'}
                     type={'input'}
                     placeholder={placeholder}
-                    value={props.value}
+                    value={value}
                     onChange={handleChange}
-                    disabled={props.disabled}
+                    disabled={disabled}
                 />
                 <div
                     data-testid={props.id + 'help-text'}
@@ -66,6 +74,12 @@ const RTCDServiceURL = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: '(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>);
 };

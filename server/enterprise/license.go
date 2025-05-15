@@ -26,37 +26,37 @@ func NewLicenseChecker(api LicensePluginAPI) *LicenseChecker {
 	}
 }
 
-// isAtLeastE20Licensed returns true when the server either has at least an E20 license or is configured for development.
-func (e *LicenseChecker) isAtLeastE20Licensed() bool {
-	return license.IsE20LicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
+// isAtLeastEnterpriseLicensed returns true when the server either has at least an Enterprise license or is configured for development.
+func (e *LicenseChecker) isAtLeastEnterpriseLicensed() bool {
+	return license.IsMinimumEnterpriseLicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
 }
 
-// isAtLeastE10Licensed returns true when the server either has at least an E10 license or is configured for development.
-func (e *LicenseChecker) isAtLeastE10Licensed() bool {
-	return license.IsE10LicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
+// isAtLeastProfessionalLicensed returns true when the server either has at least a Professional License or is configured for development.
+func (e *LicenseChecker) isAtLeastProfessionalLicensed() bool {
+	return license.IsMinimumProfessionalLicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
 }
 
 // RTCDAllowed returns true if the license allows use of an external rtcd service.
 func (e *LicenseChecker) RTCDAllowed() bool {
-	return e.isAtLeastE20Licensed() || license.IsCloud(e.api.GetLicense())
+	return e.isAtLeastEnterpriseLicensed() || license.IsCloud(e.api.GetLicense())
 }
 
 // RecordingsAllowed returns true if the license allows use of
 // the call recordings functionality.
 func (e *LicenseChecker) RecordingsAllowed() bool {
-	return e.isAtLeastE20Licensed()
+	return e.isAtLeastEnterpriseLicensed()
 }
 
 // RecordingsAllowed returns true if the license allows use of
 // the call transcriptions functionality.
 func (e *LicenseChecker) TranscriptionsAllowed() bool {
-	return e.isAtLeastE20Licensed()
+	return e.isAtLeastEnterpriseLicensed()
 }
 
 func (e *LicenseChecker) HostControlsAllowed() bool {
-	return e.isAtLeastE10Licensed()
+	return e.isAtLeastProfessionalLicensed()
 }
 
 func (e *LicenseChecker) GroupCallsAllowed() bool {
-	return e.isAtLeastE10Licensed() || os.Getenv("MM_CALLS_GROUP_CALLS_ALLOWED") == "true"
+	return e.isAtLeastProfessionalLicensed() || os.Getenv("MM_CALLS_GROUP_CALLS_ALLOWED") == "true"
 }

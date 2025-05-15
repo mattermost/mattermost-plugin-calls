@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@floating-ui/react": "0.26.12",
-    "@mattermost/calls-common": "github:mattermost/calls-common#a77defc48b1b66de297ea68cef0d19e38aa45640",
+    "@mattermost/calls-common": "github:mattermost/calls-common#e2607dcd3abde43ccffa2a77e843172dc0347712",
     "@msgpack/msgpack": "2.7.1",
     "@redux-devtools/extension": "3.2.3",
     "core-js": "3.26.1",
@@ -54,6 +54,9 @@
     "@mattermost/desktop-api": "5.10.0-1",
     "@mattermost/eslint-plugin": "1.1.0-0",
     "@mattermost/types": "file:mattermost-webapp/webapp/platform/types",
+    "@testing-library/jest-dom": "5.16.4",
+    "@testing-library/react": "12.1.4",
+    "@testing-library/user-event": "13.5.0",
     "@types/jest": "27.0.2",
     "@types/lodash": "4.14.182",
     "@types/luxon": "3.3.0",

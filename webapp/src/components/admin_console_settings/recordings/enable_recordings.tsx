@@ -10,13 +10,16 @@ import {LabelRow,
     RadioInputLabel,
     rightCol,
 } from 'src/components/admin_console_settings/common';
-import {isCloud} from 'src/selectors';
+import {callsConfig, callsConfigEnvOverrides, isCloud} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const EnableRecordings = (props: CustomComponentProps) => {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const cloud = useSelector(isCloud);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'EnableRecordings' in overrides;
 
     // @ts-ignore -- this is complaining b/c value is supposed to be string, but... it can be bool!
     const [enabled, setEnabled] = useState(() => props.value === 'true' || props.value === true);
@@ -31,9 +34,21 @@ const EnableRecordings = (props: CustomComponentProps) => {
         setEnabled(e.target.value === 'true');
     };
 
+    // Use the value from config if it's overridden by environment variable
+    let value;
+    if (overridden) {
+        value = config.EnableRecordings;
+    } else {
+        value = props.value;
+    }
+
+    const disabled = props.disabled || overridden;
+
     if (cloud) {
         return null;
     }
+
+    const checked = value === 'true' || value === true;
 
     return (
         <div
@@ -52,28 +67,28 @@ const EnableRecordings = (props: CustomComponentProps) => {
             </div>
             <div className={rightCol}>
                 <a id={props.id}/>
-                <RadioInputLabel $disabled={props.disabled}>
+                <RadioInputLabel $disabled={disabled}>
                     <RadioInput
                         data-testid={props.id + 'true'}
                         id={props.id + 'true'}
                         type={'radio'}
                         value='true'
-                        checked={Boolean(props.value)}
+                        checked={checked}
                         onChange={handleChange}
-                        disabled={props.disabled}
+                        disabled={disabled}
                     />
                     <FormattedMessage defaultMessage='True'/>
                 </RadioInputLabel>
 
-                <RadioInputLabel $disabled={props.disabled}>
+                <RadioInputLabel $disabled={disabled}>
                     <RadioInput
                         data-testid={props.id + 'false'}
                         id={props.id + 'false'}
                         type={'radio'}
                         value='false'
-                        checked={Boolean(!props.value)}
+                        checked={!checked}
                         onChange={handleChange}
-                        disabled={props.disabled}
+                        disabled={disabled}
                     />
                     <FormattedMessage defaultMessage='False'/>
                 </RadioInputLabel>
@@ -84,6 +99,12 @@ const EnableRecordings = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: '(Optional) When set to true, call recordings are enabled.'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );

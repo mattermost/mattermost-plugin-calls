@@ -7,6 +7,8 @@ import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
 import {
+    callsConfig,
+    callsConfigEnvOverrides,
     isCloud,
     isOnPremNotEnterprise,
     liveCaptionsEnabled,
@@ -22,6 +24,9 @@ const LiveCaptionsNumTranscribers = (props: CustomComponentProps) => {
     const recordingEnabled = useSelector(recordingsEnabled);
     const transcriptionEnabled = useSelector(transcriptionsEnabled);
     const liveCaptionEnabled = useSelector(liveCaptionsEnabled);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'LiveCaptionsNumTranscribers' in overrides;
 
     if (cloud || restricted || !recordingEnabled || !transcriptionEnabled || !liveCaptionEnabled) {
         return null;
@@ -33,6 +38,11 @@ const LiveCaptionsNumTranscribers = (props: CustomComponentProps) => {
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, parseInt(e.target.value, 10));
     };
+
+    // Use the value from config if it's overridden by environment variable
+    const value = overridden ? config.LiveCaptionsNumTranscribers : props.value;
+
+    const disabled = props.disabled || overridden;
 
     return (
         <div
@@ -53,12 +63,12 @@ const LiveCaptionsNumTranscribers = (props: CustomComponentProps) => {
                 <input
                     data-testid={props.id + 'number'}
                     id={props.id}
-                    className='form-control'
+                    className={disabled ? 'form-control disabled' : 'form-control'}
                     type={'number'}
                     placeholder={theDefault}
-                    value={props.value}
+                    value={value}
                     onChange={handleChange}
-                    disabled={props.disabled}
+                    disabled={disabled}
                 />
                 <div
                     data-testid={props.id + 'help-text'}
@@ -66,6 +76,12 @@ const LiveCaptionsNumTranscribers = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: 'The number of separate live-captions transcribers for each call. Each transcribes one audio stream at a time. The product of LiveCaptionsNumTranscribers * LiveCaptionsNumThreadsPerTranscriber must be in the range [1, numCPUs].'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );
