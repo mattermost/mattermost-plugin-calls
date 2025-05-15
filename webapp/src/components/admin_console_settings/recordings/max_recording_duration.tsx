@@ -8,7 +8,7 @@ import {
     LabelRow, leftCol, rightCol,
 } from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
-import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
+import {callsConfig, callsConfigEnvOverrides, isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const MaxRecordingDuration = (props: CustomComponentProps) => {
@@ -16,6 +16,9 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const recordingEnabled = useSelector(recordingsEnabled);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'MaxRecordingDuration' in overrides;
 
     if (cloud || restricted || !recordingEnabled) {
         return null;
@@ -27,6 +30,11 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, parseInt(e.target.value, 10));
     };
+
+    // Use the value from config if it's overridden by environment variable
+    const value = overridden ? config.MaxRecordingDuration : (props.value ?? 60);
+
+    const disabled = props.disabled || overridden;
 
     return (
         <div
@@ -47,12 +55,12 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
                 <input
                     data-testid={props.id + 'number'}
                     id={props.id}
-                    className='form-control'
+                    className={disabled ? 'form-control disabled' : 'form-control'}
                     type={'number'}
                     placeholder={placeholder}
-                    value={props.value ?? 60}
+                    value={value}
                     onChange={handleChange}
-                    disabled={props.disabled}
+                    disabled={disabled}
                 />
                 <div
                     data-testid={props.id + 'help-text'}
@@ -60,6 +68,12 @@ const MaxRecordingDuration = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: 'The maximum duration (in minutes) for call recordings. Value must be in the range [15, 180].'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );

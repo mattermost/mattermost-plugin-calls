@@ -7,7 +7,7 @@ import {useDispatch, useSelector} from 'react-redux';
 import {setTranscribeAPI} from 'src/actions';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import manifest from 'src/manifest';
-import {isCloud, isOnPremNotEnterprise, recordingsEnabled, transcriptionsEnabled} from 'src/selectors';
+import {callsConfig, callsConfigEnvOverrides, isCloud, isOnPremNotEnterprise, recordingsEnabled, transcriptionsEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const TranscribeAPI = (props: CustomComponentProps) => {
@@ -17,6 +17,9 @@ const TranscribeAPI = (props: CustomComponentProps) => {
     const cloud = useSelector(isCloud);
     const hasTranscriptions = useSelector(transcriptionsEnabled);
     const recordingEnabled = useSelector(recordingsEnabled);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'TranscribeAPI' in overrides;
 
     const [api, setAPI] = useState(() => props.value);
 
@@ -50,6 +53,11 @@ const TranscribeAPI = (props: CustomComponentProps) => {
         setAPI(e.target.value);
     };
 
+    // Use the value from config if it's overridden by environment variable
+    const value = overridden ? config.TranscribeAPI : props.value;
+
+    const disabled = props.disabled || overridden;
+
     return (
         <div
             data-testid={props.id}
@@ -68,11 +76,11 @@ const TranscribeAPI = (props: CustomComponentProps) => {
             <div className={rightCol}>
                 <select
                     data-testid={props.id + 'dropdown'}
-                    className='form-control'
+                    className={disabled ? 'form-control disabled' : 'form-control'}
                     id={props.id}
-                    value={props.value}
+                    value={value}
                     onChange={handleChange}
-                    disabled={props.disabled}
+                    disabled={disabled}
                 >
                     {options}
                 </select>
@@ -82,6 +90,12 @@ const TranscribeAPI = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: 'The speech-to-text API to use for post-call transcriptions.'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );

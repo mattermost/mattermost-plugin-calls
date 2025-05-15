@@ -464,6 +464,9 @@ export const ringingEnabled = (state: GlobalState) =>
 export const transcribeAPI = (state: GlobalState) =>
     callsConfig(state).TranscribeAPI;
 
+export const callsConfigEnvOverrides = (state: GlobalState): Record<string, string> =>
+    pluginState(state).callsConfigEnvOverrides;
+
 //
 // Calls enabled/disabled logic
 //
