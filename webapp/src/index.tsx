@@ -25,6 +25,7 @@ import {
     displayCallsTestModeUser,
     displayFreeTrial,
     getCallsConfig,
+    getCallsConfigEnvOverrides,
     getCallsStats,
     getCallsVersionInfo,
     incomingCallOnChannel,
@@ -948,7 +949,7 @@ export default class Plugin {
 
             unsubscribeActivateListener();
 
-            await Promise.all([store.dispatch(getCallsConfig()), store.dispatch(getCallsVersionInfo())]);
+            await Promise.all([store.dispatch(getCallsConfig()), store.dispatch(getCallsVersionInfo()), store.dispatch(getCallsConfigEnvOverrides())]);
 
             // We don't care about fetching other calls states in pop out.
             // Current call state will be requested over websocket
