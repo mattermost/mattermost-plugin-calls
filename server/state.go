@@ -90,18 +90,10 @@ type CallStateClient struct {
 	ID      string `json:"id"`
 	StartAt int64  `json:"start_at"`
 
-	// DEPRECATED in favour of Sessions (since v0.21)
-	Users []string `json:"users"`
-	// DEPRECATED in favour of Sessions (since v0.21)
-	States []UserStateClient `json:"states,omitempty"`
-
 	Sessions []UserStateClient `json:"sessions"`
 
 	ThreadID string `json:"thread_id"`
 	PostID   string `json:"post_id"`
-
-	// DEPRECATED in favour of ScreenSharingSessionID (since v0.21)
-	ScreenSharingID string `json:"screen_sharing_id"`
 
 	ScreenSharingSessionID string          `json:"screen_sharing_session_id"`
 	OwnerID                string          `json:"owner_id"`
@@ -144,19 +136,6 @@ func getClientStateFromCallJob(job *public.CallJob) *JobStateClient {
 		EndAt:   job.EndAt,
 		Err:     job.Props.Err,
 	}
-}
-
-func (cs *callState) sessionsForUser(userID string) []*public.CallSession {
-	if cs == nil {
-		return nil
-	}
-	var sessions []*public.CallSession
-	for _, session := range cs.sessions {
-		if session.UserID == userID {
-			sessions = append(sessions, session)
-		}
-	}
-	return sessions
 }
 
 func (cs *callState) getRecording() (*public.CallJob, error) {
@@ -230,7 +209,7 @@ func (cs *callState) isUserIDInCall(userID string) bool {
 }
 
 func (cs *callState) getClientState(botID, userID string) *CallStateClient {
-	users, states := cs.getUsersAndStates(botID)
+	states := cs.getStates(botID)
 
 	// For now, only send the user's own dismissed state.
 	var dismissed map[string]bool
@@ -240,27 +219,13 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		}
 	}
 
-	var screenSharingUserID string
-	if s := cs.sessions[cs.Props.ScreenSharingSessionID]; s != nil {
-		screenSharingUserID = s.UserID
-	}
-
 	return &CallStateClient{
 		ID:      cs.ID,
 		StartAt: cs.StartAt,
 
-		// DEPRECATED since v0.21
-		Users: users,
-		// DEPRECATED since v0.21
-		States: states,
-
-		Sessions: states,
-		ThreadID: cs.ThreadID,
-		PostID:   cs.PostID,
-
-		// DEPRECATED since v0.21
-		ScreenSharingID: screenSharingUserID,
-
+		Sessions:               states,
+		ThreadID:               cs.ThreadID,
+		PostID:                 cs.PostID,
 		ScreenSharingSessionID: cs.Props.ScreenSharingSessionID,
 		OwnerID:                cs.OwnerID,
 		HostID:                 cs.GetHostID(),
@@ -271,15 +236,13 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 	}
 }
 
-func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClient) {
-	users := make([]string, 0, len(cs.sessions))
+func (cs *callState) getStates(botID string) []UserStateClient {
 	states := make([]UserStateClient, 0, len(cs.sessions))
 	for _, session := range cs.sessions {
 		// We don't want to expose to the client that the bot is in a call.
 		if session.UserID == botID {
 			continue
 		}
-		users = append(users, session.UserID)
 		states = append(states, UserStateClient{
 			SessionID:  session.ID,
 			UserID:     session.UserID,
@@ -287,7 +250,7 @@ func (cs *callState) getUsersAndStates(botID string) ([]string, []UserStateClien
 			RaisedHand: session.RaisedHand,
 		})
 	}
-	return users, states
+	return states
 }
 
 func (cs *callState) onlyUserLeft(userID string) bool {
@@ -420,9 +383,9 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 			}
 
 			if job.Type == public.JobTypeRecording {
-				p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
+				p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 					"callID":   call.ChannelID,
-					"recState": getClientStateFromCallJob(job).toMap(),
+					"jobState": getClientStateFromCallJob(job).toMap(),
 				}, &WebSocketBroadcast{ChannelID: call.ChannelID, ReliableClusterSend: true})
 			}
 		}
