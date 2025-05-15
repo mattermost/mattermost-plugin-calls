@@ -174,10 +174,8 @@ export default class CallsClient extends EventEmitter {
         if (devices.length > 1) {
             // If there are multiple devices with the same label, we select the selected device by ID.
             logInfo(`getSelectedAudioDevice: multiple audio ${deviceType} devices found with the same label, checking by id`, devices);
-            devices = devices.filter((dev) => dev.deviceId === selectedDevice.deviceId);
-        }
-
-        if (devices && devices.length === 1) {
+            return devices.find((dev) => dev.deviceId === selectedDevice.deviceId) || null;
+        } else if (devices.length === 1) {
             logDebug(`getSelectedAudioDevice: found selected audio ${deviceType} device to use`, devices[0]);
             return devices[0];
         }
