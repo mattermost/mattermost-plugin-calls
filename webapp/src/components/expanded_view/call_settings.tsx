@@ -39,7 +39,7 @@ const AudioDevicesList = ({deviceType, devices, currentDevice, onDeviceClick}: A
     };
 
     const list = devices.map((device) => {
-        const isCurrentDevice = device.deviceId === currentDevice?.deviceId;
+        const isCurrentDevice = device.deviceId === currentDevice?.deviceId || device.label === currentDevice?.label;
         return (
             <li
                 className='MenuItem'
