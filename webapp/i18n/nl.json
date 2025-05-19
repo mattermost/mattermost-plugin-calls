@@ -140,7 +140,6 @@
   "PX0KzA": "Het gesprek wordt beëindigd en de verbinding met alle deelnemers wordt verbroken. Weet je zeker dat je het gesprek wil beëindigen?",
   "PfcsWl": "AV1-codec inschakelen voor scherm delen (Experimenteel)",
   "PjoOvw": "Je deelt je scherm",
-  "PuUmTL": "Het maximum aantal deelnemers dat kan deelnemen aan een gesprek. Als het leeg wordt gelaten of op 0 wordt gezet, betekent het onbeperkt.",
   "PzV1UF": "(Optioneel) Een poortnummer dat gebruikt moet worden als poort voor hostkandidaten in plaats van de poort waarop geluisterd wordt. Opmerking: deze poort is van toepassing op zowel UDP als TCP hostkandidaten.",
   "Q0W0k5": "Overweeg om iedereen te laten weten dat deze vergadering wordt opgenomen en er een transcriptie gemaakt wordt.",
   "QJwBtw": "De API-regio voor Azure Speech Services",
@@ -320,7 +319,6 @@
   "yfYHc5": "ICE-Host overrulen",
   "yjQNKt": "Gesprekken zijn uitgeschakeld in dit kanaal.",
   "yx0b7N": "{count, plural, =1 {# transcriptie} other {# transcripties}}",
-  "zMlIqq": "Deze instelling is uitgeschakeld omdat de server geen licentie heeft en gesprekken alleen beschikbaar zijn in DM-kanalen.",
   "zUH89x": "De gespreksopname wordt verwerkt en in de gespreksdraadje geplaatst. Weet je zeker dat je de opname wilt stoppen?",
   "zx0myy": "Deelnemers",
   "zxBgWa": "(Optioneel) Het IP (of hostnaam) dat gebruikt moet worden als host ICE kandidaat. Als deze leeg is, wordt dit standaard afgehandeld via STUN ."

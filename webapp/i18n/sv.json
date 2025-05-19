@@ -140,7 +140,6 @@
   "PX0KzA": "Samtalet avslutas och alla deltagare kopplas bort. Är du säker på att du vill avsluta samtalet?",
   "PfcsWl": "Aktivera AV1-codec för skärmdelning (experimentell)",
   "PjoOvw": "Du delar din skärm",
-  "PuUmTL": "Maximala antalet deltagare som kan ansluta till ett samtal. Om det lämnas tomt eller sätts till 0 innebär obegränsat antal.",
   "PzV1UF": "(Valfritt) Ett portnummer som kommer användas för värdkandidater i stället för värdens portnummer. Observera: porten gäller för både UDP- och TCP-värdkandidater.",
   "Q0W0k5": "Överväg att informera alla om att mötet blir inspelat och automatiskt transkriberat.",
   "QJwBtw": "API-regionen för Azure Speech Services",
@@ -320,7 +319,6 @@
   "yfYHc5": "Förbestämd ICE-host",
   "yjQNKt": "Samtal är avaktiverade i denna kanal.",
   "yx0b7N": "{count, plural, =1 {# transkription} other {# transkriptioner}}",
-  "zMlIqq": "Den här inställningen är inaktiverad eftersom servern inte har någon licens och samtal endast är tillgängliga i DM-kanaler.",
   "zUH89x": "Inspelningen av samtalet kommer att bearbetas och läggas upp i samtalstråden. Är du säker på att du vill stoppa inspelningen?",
   "zx0myy": "Deltagare",
   "zxBgWa": "(Valfritt) Den IP (eller det värdnamn) som ska användas som ICE-värd-kandidat. Om tomt används standardlösningen via STUN."

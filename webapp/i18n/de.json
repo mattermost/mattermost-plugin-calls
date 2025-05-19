@@ -140,7 +140,6 @@
   "PX0KzA": "Der Anruf wird beendet und die Verbindung aller Teilnehmer wird unterbrochen. Bist du sicher, dass du das Gespräch beenden willst?",
   "PfcsWl": "AV1-Codec für die Bildschirmfreigabe aktivieren (experimentell)",
   "PjoOvw": "Du teilst deinen Bildschirm",
-  "PuUmTL": "Die maximale Anzahl der Teilnehmer, die an einem Anruf teilnehmen können. Wenn sie leer bleibt oder auf 0 gesetzt wird, ist sie unbegrenzt.",
   "PzV1UF": "(Optional) Eine Portnummer, die als Override für Host-Kandidaten anstelle des Ports verwendet wird, auf dem gelauscht wird. Hinweis: Dieser Port wird sowohl für UDP- als auch für TCP-Host-Kandidaten verwendet.",
   "Q0W0k5": "Erwäge, jeden darauf hinzuweisen, dass dieses Meeting aufgezeichnet und transkribiert wird.",
   "QJwBtw": "Die API-Region für Azure Speech Services",
@@ -185,6 +184,7 @@
   "ZqqZFV": "Einstellungen für Teilnehmer, Bildschirmfreigabe, Klingeln und mehr",
   "ZvZBwP": "Verlassen und neues Gespräch beginnen",
   "Zx9T5i": "Dein Test hat begonnen!{br}Erkunde die Vorteile von Enterprise",
+  "a+2U7T": "Diese Einstellung wurde durch eine Umgebungsvariable gesetzt. Es kann nicht durch die Systemkonsole geändert werden.",
   "aC/wxa": "vor ein paar Sekunden",
   "aVENjO": "Mit Auswahl von <b>Teste kostenlos für 30 Tage</b>, stimme ich dem <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation> und <linkPrivacy>den Datenschutzrichtlinien</linkPrivacy> zu, und erhalte Produkt-Emails.",
   "aaYQI7": "Aktiviere IPv6-Unterstützung (experimentell)",
@@ -320,7 +320,6 @@
   "yfYHc5": "ICE Host Override",
   "yjQNKt": "Anrufe sind in diesem Kanal deaktiviert.",
   "yx0b7N": "{count, plural, =1 {# Transkription} other {# Transkriptionen}}",
-  "zMlIqq": "Diese Einstellung ist deaktiviert, da der Server nicht lizenziert ist und Anrufe nur in DM-Kanälen möglich sind.",
   "zUH89x": "Die Gesprächsaufzeichnung wird verarbeitet und in der Gesprächs-Unterhaltung gepostet. Bist du sicher, dass du die Aufzeichnung beenden willst?",
   "zx0myy": "Teilnehmer",
   "zxBgWa": "(Optional) Die IP (oder der Hostname), die/der als ICE-Hostkandidat verwendet werden soll. Wenn sie leer ist, wird sie standardmäßig über STUN aufgelöst."
