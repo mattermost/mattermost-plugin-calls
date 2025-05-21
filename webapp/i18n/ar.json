@@ -202,7 +202,7 @@
   "cW6887": "ميكروفون",
   "ccAjUZ": "مكالمة من {callerName}",
   "cn4U3Z": "لا توجد أجهزة إدخال الصوت",
-  "cyR7Kh": "الرجوع",
+  "cyR7Kh": "رجوع",
   "cyRErF": "عدد ناسخات التعليقات المباشرة المنفصلة لكل مكالمة. يقوم كل منها بنسخ دفق صوتي واحد في كل مرة. يجب أن يكون حاصل ضرب LiveCaptionsNumTranscribers * LiveCaptionsNumThreadsPerTranscriber في النطاق [1، numCPUs].",
   "dCb7CD": "بدء الاتصال",
   "dYWbfI": "عنوان خادم RTC (TCP)",
