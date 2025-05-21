@@ -1,1 +1,50 @@
-[]
+[
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "Skambučiai nelicencijuotuose serveriuose galimi tik DM."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "Primygtinai rekomenduojame atnaujinti [Enterprise](https://mattermost.com/pricing/) ir [įdiegti RTCD paslaugą](https://mattermost.com/pl/calls-deployment-the-rtcd-service), kad skambučių apdorojimas būtų perkeltas į atskirą egzempliorių ir būtų išlaikytas pagrindinio \"Mattermost\" serverio našumas, mastelio keitimas ir patikimumas."
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "Čia pateikiamas skambučio įrašas. Transkripcija rengiama ir bus paskelbta, kai bus parengta."
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Vartotojo vardas}} pradėjo skambutį"
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "Čia pateikiama skambučio transkripcija"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}} pradėjo skambutį"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "Buvote pakviestas į skambutį"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "Nepavyko išsaugoti konfigūracijos."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "Labai rekomenduojame [diegti RTCD paslaugą](https://mattermost.com/pl/calls-deployment-the-rtcd-service), kad skambučių apdorojimas būtų perkeltas į atskirą egzempliorių ir būtų išlaikytas pagrindinio \"Mattermost\" serverio našumas, mastelio keitimas ir patikimumas."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "Jūsų įrenginys yra intensyviai naudojamas \"Mattermost\" skambučių, o tai gali neigiamai paveikti sistemos veikimą ir reakciją."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "Labai rekomenduojame pereiti prie [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) ir [įdiegti RTCD paslaugą](https://mattermost.com/pl/calls-deployment-the-rtcd-service), kad skambučių apdorojimas būtų perkeltas į atskirą egzempliorių ir būtų išlaikytas pagrindinio \"Mattermost\" serverio našumas, mastelio keitimas ir patikimumas."
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{{.SenderName}} kviečia jus į pokalbį"
+    }
+]
