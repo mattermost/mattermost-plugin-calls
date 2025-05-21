@@ -49,10 +49,10 @@
     },
     {
         "id": "app.call.ended_message",
-        "translation": "La llamada terminó"
+        "translation": "Llamada finalizada"
     },
     {
         "id": "app.call.new_recording_message",
-        "translation": "Aquí tienes la grabación de la llamada"
+        "translation": "Aquí está la grabación de la llamada"
     }
 ]
