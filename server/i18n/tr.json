@@ -1,1 +1,46 @@
-[]
+[
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "Lisanssız sunuculardaki çağrılar yalnızca DM'lerde kullanılabilir."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "Ana Mattermost sunucunuzun performansını, ölçeklenebilirliğini ve güvenilirliğini korumak amacıyla çağrı işlemeyi ayrı bir örneğe boşaltmak için [RTCD hizmetini dağıtmanızı] (https://mattermost.com/pl/calls-deployment-the-rtcd-service) önemle tavsiye ederiz."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "Kurulumunuz, sistem performansını ve yanıt verme hızını olumsuz etkileyebilecek Mattermost Çağrıları tarafından yoğun bir şekilde kullanılıyor."
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "İşte görüşmenin deşifresi"
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Kullanıcı adı}} bir çağrı başlattı"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}} bir çağrı başlattı"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "Bir çağrıya davet edildiniz"
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}} sizi bir görüşmeye davet ediyor"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "Ana Mattermost sunucunuzun performansını, ölçeklenebilirliğini ve güvenilirliğini korumak amacıyla çağrı işlemeyi ayrı bir örneğe boşaltmak için [Enterprise](https://mattermost.com/pricing/) sürümüne yükseltmenizi ve [RTCD hizmetini dağıtmanızı](https://mattermost.com/pl/calls-deployment-the-rtcd-service) önemle tavsiye ederiz."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "Ana Mattermost sunucunuzun performansını, ölçeklenebilirliğini ve güvenilirliğini korumak amacıyla çağrı işlemeyi ayrı bir örneğe boşaltmak için [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade)'a geçmenizi ve [RTCD hizmetini dağıtmanızı](https://mattermost.com/pl/calls-deployment-the-rtcd-service) önemle tavsiye ederiz."
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "Yapılandırma kaydedilemedi."
+    }
+]
