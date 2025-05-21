@@ -46,5 +46,13 @@
     {
         "id": "app.push_notification.inviting_message",
         "translation": "{발신자 이름}}이 통화로 초대하고 있습니다."
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "통화 종료됨"
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "통화 녹음은 여기에 있습니다"
     }
 ]
