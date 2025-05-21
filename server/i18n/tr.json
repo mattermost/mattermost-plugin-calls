@@ -42,5 +42,17 @@
     {
         "id": "app.save_config.error",
         "translation": "Yapılandırma kaydedilemedi."
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "Çağrı sonlandırıldı"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "Çağrı kaydı burada. Sohbet metni işleniyor ve hazır olduğunda eklenecek."
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "Çağrının kaydını burada görebilirsiniz"
     }
 ]
