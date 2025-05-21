@@ -49,7 +49,7 @@
     },
     {
         "id": "app.call.ended_message",
-        "translation": "Chiamata terminata"
+        "translation": "La chiamata è terminata"
     },
     {
         "id": "app.call.new_recording_message",
