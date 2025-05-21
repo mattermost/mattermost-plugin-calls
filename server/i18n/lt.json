@@ -46,5 +46,13 @@
     {
         "id": "app.push_notification.inviting_message",
         "translation": "{{{.SenderName}} kviečia jus į pokalbį"
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "Pokalbis baigtas"
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "Štai pokalbio įrašas"
     }
 ]
