@@ -49,10 +49,10 @@
     },
     {
         "id": "app.call.ended_message",
-        "translation": "통화 종료됨"
+        "translation": "통화 종료"
     },
     {
         "id": "app.call.new_recording_message",
-        "translation": "통화 녹음은 여기에 있습니다"
+        "translation": "통화 녹음은 다음과 같습니다."
     }
 ]
