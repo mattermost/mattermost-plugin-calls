@@ -16,6 +16,8 @@ LDFLAGS+= -X "main.isDebug=$(MM_DEBUG)"
 LDFLAGS += -X "main.rudderWriteKey=$(MM_RUDDER_CALLS_PROD)"
 LDFLAGS += -X "main.rudderDataplaneURL=$(MM_RUDDER_DATAPLANE_URL)"
 
+COVERAGE_FLAG = -coverprofile=server/cover.out -covermode=atomic
+
 export GO111MODULE=on
 
 # We need to export GOBIN to allow it to be set
@@ -173,14 +175,14 @@ i18n-check:
 	cd webapp && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
 	cd standalone && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
 
-	$(GO) install -modfile=go.tools.mod github.com/mattermost/mattermost-utilities/mmgotool
+	$(GO) install github.com/mattermost/mattermost/tools/mmgotool@latest
 	mkdir -p server/i18n
 	cd server && $(GOBIN)/mmgotool i18n clean-empty --portal-dir="" --check
 	cd server && $(GOBIN)/mmgotool i18n check-empty-src --portal-dir=""
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: manifest-check apply golangci-lint webapp/node_modules standalone/node_modules e2e/node_modules gomod-check i18n-check
+check-style: setup-go-work manifest-check apply golangci-lint webapp/node_modules standalone/node_modules e2e/node_modules gomod-check i18n-check
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
@@ -206,7 +208,7 @@ endif
 
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set
 .PHONY: server
-server: manifest-check
+server: setup-go-work manifest-check
 ifneq ($(HAS_SERVER),)
 	mkdir -p server/dist;
 ifeq ($(MM_DEBUG),)
@@ -323,7 +325,7 @@ endif
 
 ## Builds and bundles the plugin.
 .PHONY: dist
-dist:
+dist: setup-go-work
 
 ifeq ($(CI),true)
 dist: apply server-ci webapp standalone bundle
@@ -394,25 +396,33 @@ detach: setup-attach
 gotestsum:
 	$(GO) install gotest.tools/gotestsum@v1.7.0
 
+
+.PHONY: setup-go-work
+setup-go-work: ## Sets up your go.work file
+	@echo "Creating a go.work file"
+	rm -f go.work
+	$(GO) work init
+	$(GO) work use ./.
+	$(GO) work use ./build
+	$(GO) work use ./lt
+	$(GO) work use ./server/public
+
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
 test:
 
 ifeq ($(CI),true)
-test: apply webapp/node_modules standalone/node_modules gotestsum
+test: setup-go-work apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
-	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./server/...
-	cd ./server/public && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
+	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./server/... ./server/public/... $(COVERAGE_FLAG)
 endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;
 endif
 else
-test: apply webapp/node_modules standalone/node_modules gotestsum
+test: setup-go-work apply webapp/node_modules standalone/node_modules gotestsum
 ifneq ($(HAS_SERVER),)
-	$(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/...
-	cd ./server/public && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
-	cd ./lt && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
+	$(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/... ./server/public/... ./lt/...
 endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;
@@ -446,7 +456,7 @@ i18n-extract:
 	cd webapp && $(NPM) run extract
 	cd standalone && $(NPM) run extract
 
-	$(GO) install -modfile=go.tools.mod github.com/mattermost/mattermost-utilities/mmgotool
+	$(GO) install github.com/mattermost/mattermost/tools/mmgotool@latest
 	cd server && $(GOBIN)/mmgotool i18n extract --portal-dir="" --skip-dynamic
 
 ## Disable the plugin.
