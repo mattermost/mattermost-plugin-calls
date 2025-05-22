@@ -18,6 +18,33 @@ jobs:
       golang-version: "1.23"
     secrets: inherit
 
+  code-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+      - name: Run tests and collect coverage
+        run: make test
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          files: ./server/cover.out,./webapp/coverage/lcov.info
+          disable_search: true
+
   lt:
     runs-on: ubuntu-latest
     steps:
