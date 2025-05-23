@@ -125,4 +125,5 @@ export type WebAppUtils = {
     notificationSounds: { ring: (sound: string) => void, stopRing: () => void },
     sendDesktopNotificationToMe: (title: string, body: string, channel: Channel, teamId: string, silent: boolean, soundName: string, url: string) => (dispatch: DispatchFunc) => void,
     openUserSettings: (dialogProps: {activeTab: string, isContentProductSettings: boolean}) => ActionFuncAsync;
+    browserHistory: ReturnType<typeof getHistory>;
 };
