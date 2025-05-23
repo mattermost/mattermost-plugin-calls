@@ -12,6 +12,7 @@ import {
     getCallPropsFromPost,
     getCallRecordingPropsFromPost,
     getCallsClient,
+    getCallsWindow,
     getWebappUtils,
     getWSConnectionURL,
     maxAttemptsReachedErr,
@@ -481,6 +482,35 @@ describe('utils', () => {
             expect(props.call_post_id).toBe(recProps.call_post_id);
             expect(props.recording_id).toBe(recProps.recording_id);
             expect(props.captions).toBe(recProps.captions);
+        });
+    });
+
+    describe('getCallsWindow', () => {
+        test('basic', () => {
+            const win = getCallsWindow();
+            expect(win).toBe(window);
+        });
+
+        test('opener', () => {
+            window.opener = {
+                callsClient: true,
+            };
+
+            const win = getCallsWindow();
+            expect(win).toBe(window.opener);
+        });
+
+        test('permission error on opener', () => {
+            Object.defineProperty(window, 'opener', {
+                get() {
+                    throw new Error('Permission denied to access property "window"');
+                },
+            });
+
+            const win = getCallsWindow();
+            expect(win).toBe(window);
+
+            delete window.opener;
         });
     });
 
