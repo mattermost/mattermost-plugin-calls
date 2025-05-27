@@ -9,6 +9,7 @@ export const {
     modals,
     notificationSounds,
     sendDesktopNotificationToMe,
+    browserHistory,
 }: WebAppUtils =
 
 // @ts-ignore

@@ -24,6 +24,7 @@ import {idForCallInChannel} from 'src/selectors';
 import {
     callStartedTimestampFn,
     getCallPropsFromPost,
+    getCallsClient,
     getUserDisplayName,
     toHuman,
     untranslatable,
@@ -69,8 +70,7 @@ const PostType = ({
     }, [intl, callProps.start_at]);
 
     const onLeaveButtonClick = () => {
-        const win = window.opener || window;
-        const callsClient = win.callsClient;
+        const callsClient = getCallsClient();
         if (callsClient) {
             // NOTE: this also handles the desktop global widget case since the opener window
             // will have the client.
