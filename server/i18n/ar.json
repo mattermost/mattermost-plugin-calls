@@ -1,1 +1,58 @@
-[]
+[
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "المكالمات على الخوادم غير المرخصة متاحة فقط في DMs."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "نوصي بشدة [بنشر خدمة RTCD] (https://mattermost.com/pl/calls-deployment-the-rtcd-service) لإلغاء تحميل معالجة المكالمات إلى مثيل منفصل من أجل الحفاظ على أداء خادم Mattermost الرئيسي وقابلية التوسع والموثوقية."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "نوصي بشدة بالترقية إلى [Enterprise] (https://mattermost.com/pricing/) و [نشر خدمة RTCD] (https://mattermost.com/pl/calls-deployment-the-rtcd-service) لإلغاء تحميل معالجة المكالمات إلى مثيل منفصل من أجل الحفاظ على أداء خادم Mattermost الرئيسي وقابلية التوسع والموثوقية الخاصة بك."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "يواجه التثبيت الخاص بك استخدامًا كثيفًا من مكالمات Mattermost Calls التي يمكن أن تؤثر سلبًا على أداء النظام واستجابته."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "نوصي بشدة بالتبديل إلى [إصدار ماترموست إنتربرايز] (https://mattermost.com/pl/install-enterprise-install-upgrade) و[نشر خدمة RTCD] (https://mattermost.com/pl/calls-deployment-the-rtcd-service) لإلغاء تحميل معالجة المكالمات إلى مثيل منفصل من أجل الحفاظ على أداء خادم ماترموست الرئيسي وقابلية تطويره وموثوقيته."
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "إليك تسجيل المكالمة"
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "إليك تفريغ المكالمة"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "إليك تسجيل المكالمة. يجري العمل على التفريغ وسيتم نشره عندما يصبح جاهزاً."
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.اسم المستخدم}} بدأ مكالمة"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.الاسم الأول}} {{{.LastName}} بدأت مكالمة"
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.اسم المرسل}} يدعوك إلى مكالمة"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "فشل في حفظ التكوين."
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "انتهت المكالمة"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "لقد تمت دعوتك إلى مكالمة"
+    }
+]
