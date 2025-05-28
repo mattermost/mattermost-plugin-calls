@@ -18,6 +18,7 @@ import {
 import {
     allowScreenSharing,
     areHostControlsAllowed,
+    callsConfig,
     callStartAtForCurrentCall,
     channelForCurrentCall,
     expandedView,
@@ -31,6 +32,7 @@ import {
     recordingsEnabled,
     screenSharingSessionForCurrentCall,
     sessionForCurrentCall,
+    sessionsForOtherUsersInCall,
     sessionsInCurrentCall,
     sessionsInCurrentCallMap,
     threadIDForCallInChannel,
@@ -93,6 +95,8 @@ const mapStateToProps = (state: GlobalState) => {
         transcriptionsEnabled: transcriptionsEnabled(state),
         isAdmin: isCurrentUserSystemAdmin(state),
         hostControlsAllowed: areHostControlsAllowed(state),
+        enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
+        otherSessions: sessionsForOtherUsersInCall(state),
     };
 };
 
