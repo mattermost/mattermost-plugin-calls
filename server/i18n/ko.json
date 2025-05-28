@@ -29,7 +29,7 @@
     },
     {
         "id": "app.call.started_message",
-        "translation": "{사용자 이름}}이(가) 통화를 시작했습니다."
+        "translation": "{{.Username}} started a call"
     },
     {
         "id": "app.call.started_message_fullname",
@@ -45,7 +45,7 @@
     },
     {
         "id": "app.push_notification.inviting_message",
-        "translation": "{발신자 이름}}이 통화로 초대하고 있습니다."
+        "translation": "{{.SenderName}} is inviting you to a call"
     },
     {
         "id": "app.call.ended_message",
