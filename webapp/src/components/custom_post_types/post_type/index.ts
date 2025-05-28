@@ -12,7 +12,7 @@ import {MESSAGE_DISPLAY, MESSAGE_DISPLAY_COMPACT, MESSAGE_DISPLAY_DEFAULT} from 
 import {
     channelIDForCurrentCall,
     hostIDForCallInChannel,
-    isCloudProfessionalOrEnterpriseOrTrial,
+    isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial,
     maxParticipants,
     profilesInCallInChannel,
 } from 'src/selectors';
@@ -27,7 +27,7 @@ const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
         ...ownProps,
         connectedID: channelIDForCurrentCall(state) || '',
         profiles: profilesInCallInChannel(state, ownProps.post.channel_id),
-        isCloudPaid: isCloudProfessionalOrEnterpriseOrTrial(state),
+        isCloudPaid: isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial(state),
         maxParticipants: maxParticipants(state),
         militaryTime: getBool(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.USE_MILITARY_TIME, false),
         compactDisplay: get(state, Preferences.CATEGORY_DISPLAY_SETTINGS, MESSAGE_DISPLAY, MESSAGE_DISPLAY_DEFAULT) === MESSAGE_DISPLAY_COMPACT,

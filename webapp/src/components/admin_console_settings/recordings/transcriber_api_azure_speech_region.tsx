@@ -7,6 +7,8 @@ import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
 import {
+    callsConfig,
+    callsConfigEnvOverrides,
     isCloud,
     isOnPremNotEnterprise,
     recordingsEnabled,
@@ -22,6 +24,9 @@ const TranscribeAPIAzureSpeechRegion = (props: CustomComponentProps) => {
     const recordingEnabled = useSelector(recordingsEnabled);
     const transcriptionEnabled = useSelector(transcriptionsEnabled);
     const api = useSelector(transcribeAPI);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'TranscribeAPIAzureSpeechRegion' in overrides;
 
     if (cloud || restricted || !recordingEnabled || !transcriptionEnabled || api !== TranscribeAPI.AzureAI) {
         return null;
@@ -30,6 +35,11 @@ const TranscribeAPIAzureSpeechRegion = (props: CustomComponentProps) => {
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
     };
+
+    // Use the value from config if it's overridden by environment variable
+    const value = overridden ? config.TranscribeAPIAzureSpeechRegion : props.value;
+
+    const disabled = props.disabled || overridden;
 
     return (
         <div
@@ -50,11 +60,11 @@ const TranscribeAPIAzureSpeechRegion = (props: CustomComponentProps) => {
                 <input
                     data-testid={props.id + 'input'}
                     id={props.id}
-                    className='form-control'
+                    className={disabled ? 'form-control disabled' : 'form-control'}
                     type={'input'}
-                    value={props.value}
+                    value={value}
                     onChange={handleChange}
-                    disabled={props.disabled}
+                    disabled={disabled}
                 />
                 <div
                     data-testid={props.id + 'help-text'}
@@ -62,6 +72,12 @@ const TranscribeAPIAzureSpeechRegion = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: 'The API region for Azure Speech Services'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );

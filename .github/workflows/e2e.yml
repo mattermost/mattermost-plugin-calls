@@ -125,7 +125,7 @@ jobs:
       CONTAINER_RTCD: playwright_tests_rtcd
       CONTAINER_OFFLOADER: playwright_tests_offloader
       IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.9.2
-      IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.8.2
+      IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.8.4
       IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.6.2
       IMAGE_SERVER: mattermostdevelopment/mattermost-enterprise-edition:master
       IMAGE_CURL: curlimages/curl:8.7.1

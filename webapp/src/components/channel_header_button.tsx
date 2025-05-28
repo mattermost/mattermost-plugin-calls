@@ -16,7 +16,7 @@ import {
     channelIDForCurrentCall,
     clientConnecting,
     currentChannelHasCall,
-    isCloudProfessionalOrEnterpriseOrTrial,
+    isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial,
     isCloudStarter,
     isLimitRestricted,
     maxParticipants,
@@ -35,7 +35,7 @@ const ChannelHeaderButton = () => {
     const hasCall = useSelector(currentChannelHasCall);
     const isAdmin = useSelector(isCurrentUserSystemAdmin);
     const cloudStarter = useSelector(isCloudStarter);
-    const isCloudPaid = useSelector(isCloudProfessionalOrEnterpriseOrTrial);
+    const isCloudPaid = useSelector(isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial);
     const limitRestricted = useSelector(isLimitRestricted);
     const maxCallParticipants = useSelector(maxParticipants);
     const isChannelArchived = channel && channel.delete_at > 0;

@@ -140,7 +140,6 @@
   "PX0KzA": "Hovor bude ukončen a všichni jeho účastníci budou odpojeni. Opravdu chcete hovor ukončit?",
   "PfcsWl": "Povolit kodek AV1 pro sdílení obrazovky (Experimentální)",
   "PjoOvw": "Sdílíte svou obrazovku",
-  "PuUmTL": "Maximální počet účastníků, kteří se mohou připojit k hovoru. Pokud je ponecháno prázdné nebo nastaveno na 0, znamená to neomezeně.",
   "PzV1UF": "(Volitelné) Číslo portu, které se použije jako náhrada za port hostitelských kandidátů namísto portu, na kterém se naslouchá. Poznámka: Tento port se použije pro hostitelské kandidáty jak u UDP, tak u TCP.",
   "Q0W0k5": "Zvažte oznámení účastníkům, že je tato schůzka nahrávána a přepisována.",
   "QJwBtw": "Region API pro Azure hlasové služby",
@@ -185,6 +184,7 @@
   "ZqqZFV": "Nastavení pro účastníky, sdílení obrazovky, zvonění a další",
   "ZvZBwP": "Odejít a připojit se k novému hovoru",
   "Zx9T5i": "Vaše zkušební verze byla spuštěna!{br}Prozkoumejte výhody služby Enterprise",
+  "a+2U7T": "Toto nastavení bylo nastaveno prostřednictvím proměnné prostředí. Nelze jej změnit prostřednictvím systémové konzoly.",
   "aC/wxa": "před několika sekundami",
   "aVENjO": "Výběrem možnosti <b>Vyzkoušejte na 30 dní zdarma</b> souhlasím se <linkEvaluation>smlouvou o vyhodnocení softwaru Mattermost</linkEvaluation>, <linkPrivacy>zásadami ochrany osobních údajů</linkPrivacy> a s přijímáním e-mailů o produktu.",
   "aaYQI7": "Povolit podporu IPv6 (Experimentální)",
@@ -320,7 +320,6 @@
   "yfYHc5": "Přepsání hostitelského ICE",
   "yjQNKt": "Hovory jsou v tomto kanálu zakázány.",
   "yx0b7N": "{count, plural, =1 {# přepis} other {# přepisů}}",
-  "zMlIqq": "Toto nastavení je zakázáno, protože server není licencován a hovory jsou dostupné pouze v DM kanálech.",
   "zUH89x": "Nahrávání hovoru bude zpracováno a zveřejněno ve vlákně hovoru. Jste si jisti, že chcete nahrávání zastavit?",
   "zx0myy": "Účastníci",
   "zxBgWa": "(Volitelné) IP adresa (nebo název hostitele), která bude použita jako hostitelský ICE kandidát. Pokud je pole prázdné, použije se výchozí řešení přes STUN."

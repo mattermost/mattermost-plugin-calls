@@ -48,6 +48,8 @@ export const DID_NOTIFY_FOR_CALL = pluginId + '_did_notify_for_call';
 export const CALL_END = pluginId + '_call_end';
 
 export const RECEIVED_CALLS_CONFIG = pluginId + '_received_calls_config';
+export const RECEIVED_CALLS_CONFIG_ENV_OVERRIDES = pluginId + '_received_calls_config_env_overrides';
+export const RECEIVED_CALLS_VERSION_INFO = pluginId + '_received_calls_version_info';
 export const RECORDINGS_ENABLED = pluginId + '_recordings_enabled';
 export const TRANSCRIPTIONS_ENABLED = pluginId + '_transcriptions_enabled';
 export const LIVE_CAPTIONS_ENABLED = pluginId + '_live_captions_enabled';

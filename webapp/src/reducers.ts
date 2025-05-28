@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
-import {CallJobState, CallsConfig, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {
@@ -40,7 +40,9 @@ import {
     LIVE_CAPTIONS_ENABLED,
     LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
+    RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
     RECEIVED_CALLS_USER_PREFERENCES,
+    RECEIVED_CALLS_VERSION_INFO,
     RECEIVED_CHANNEL_STATE,
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
@@ -845,6 +847,24 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
     }
 };
 
+const callsConfigEnvOverrides = (state = {}, action: { type: string, data: Record<string, string> }) => {
+    switch (action.type) {
+    case RECEIVED_CALLS_CONFIG_ENV_OVERRIDES:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
+const callsVersionInfo = (state = {}, action: { type: string, data: CallsVersionInfo }) => {
+    switch (action.type) {
+    case RECEIVED_CALLS_VERSION_INFO:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 const rtcdEnabled = (state = false, action: {type: string, data: boolean}) => {
     switch (action.type) {
     case RTCD_ENABLED:
@@ -1066,6 +1086,8 @@ export default combineReducers({
     switchCallModal,
     screenSourceModal,
     callsConfig,
+    callsConfigEnvOverrides,
+    callsVersionInfo,
     rtcdEnabled,
     callsUserPreferences,
     recordings,

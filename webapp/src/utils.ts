@@ -599,9 +599,6 @@ export function getCallPropsFromPost(post: Post): CallPostProps {
         recordings: isValidObject(post.props?.recordings) ? getJobMetadataMap(post.props.recordings) : {},
         transcriptions: isValidObject(post.props?.transcriptions) ? getJobMetadataMap(post.props.transcriptions) : {},
         participants: Array.isArray(post.props?.participants) ? post.props.participants : [],
-
-        // DEPRECATED
-        recording_files: Array.isArray(post.props?.recording_files) ? post.props.recording_files : [],
     };
 }
 

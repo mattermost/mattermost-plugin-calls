@@ -90,12 +90,10 @@ type configuration struct {
 	// The language to be passed to the live captions transcriber.
 	LiveCaptionsLanguage string
 
-	adminClientConfig
-
-	clientConfig
+	ClientConfig
 }
 
-type clientConfig struct {
+type ClientConfig struct {
 	// **DEPRECATED: use ICEServersConfigs** A comma separated list of ICE servers URLs (STUN/TURN) to use.
 	ICEServers ICEServers
 
@@ -141,13 +139,6 @@ type clientConfig struct {
 	EnableDCSignaling *bool
 	// When set to try it enables video calls in direct message channels.
 	EnableVideo *bool
-}
-
-type adminClientConfig struct {
-	clientConfig
-
-	// The speech-to-text API to use to transcribe calls.
-	TranscribeAPI transcriber.TranscribeAPI
 }
 
 const (
@@ -477,6 +468,11 @@ func (c *configuration) Clone() *configuration {
 }
 
 func (c *configuration) getRTCDURL() string {
+	if url := os.Getenv("MM_CALLS_RTCD_SERVICE_URL"); url != "" {
+		return url
+	}
+
+	// v1.8.0 (MM-62732) MM_CALLS_RTCD_URL is DEPRECATED in favor of MM_CALLS_RTCD_SERVICE_URL.
 	if url := os.Getenv("MM_CALLS_RTCD_URL"); url != "" {
 		return url
 	}
@@ -512,14 +508,14 @@ func (c *configuration) liveCaptionsEnabled() bool {
 	return false
 }
 
-func (p *Plugin) getClientConfig(c *configuration) clientConfig {
+func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 	skuShortName := "starter"
 	license := p.API.GetLicense()
 	if license != nil {
 		skuShortName = license.SkuShortName
 	}
 
-	return clientConfig{
+	return ClientConfig{
 		AllowEnableCalls:     model.NewPointer(true), // always true
 		DefaultEnabled:       c.DefaultEnabled,
 		ICEServers:           c.ICEServers,
@@ -542,11 +538,14 @@ func (p *Plugin) getClientConfig(c *configuration) clientConfig {
 	}
 }
 
-func (p *Plugin) getAdminClientConfig(c *configuration) adminClientConfig {
-	return adminClientConfig{
-		clientConfig:  p.getClientConfig(c),
-		TranscribeAPI: c.TranscribeAPI,
-	}
+func (p *Plugin) getAdminClientConfig(c *configuration) configuration {
+	p.configurationLock.Lock()
+	defer p.configurationLock.Unlock()
+
+	cfg := p.configuration.Clone()
+	cfg.ClientConfig = p.getClientConfig(c)
+
+	return *cfg
 }
 
 // getConfiguration retrieves the active configuration under lock, making it safe to use
@@ -678,6 +677,8 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 }
 
 func (p *Plugin) setOverrides(cfg *configuration) {
+	p.configEnvOverrides = p.applyEnvOverrides(cfg, "MM_CALLS")
+
 	cfg.AllowEnableCalls = model.NewPointer(true)
 
 	if l := p.API.GetLicense(); l != nil && license.IsCloud(l) {
@@ -686,8 +687,12 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 		*cfg.DefaultEnabled = true
 	}
 
-	// Allow env var to permanently override system console settings
-	if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
+	// nolint:revive
+	if maxPart := os.Getenv("MM_CALLS_MAX_CALL_PARTICIPANTS"); maxPart != "" {
+		// Nothing to do because we parsed this already through applyEnvOverrides.
+	} else if maxPart := os.Getenv("MM_CALLS_MAX_PARTICIPANTS"); maxPart != "" {
+		// v1.8.0 (MM-62732) MM_CALLS_MAX_PARTICIPANTS is DEPRECATED in favor of MM_CALLS_MAX_CALL_PARTICIPANTS.
+		// Allow env var to permanently override system console settings
 		if maxVal, err := strconv.Atoi(maxPart); err == nil {
 			*cfg.MaxCallParticipants = maxVal
 		} else {
