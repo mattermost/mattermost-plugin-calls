@@ -75,7 +75,6 @@ docker run --rm --quiet --name "${COMPOSE_PROJECT_NAME}_curl_callsoffloader" --n
 echo "MM_LICENSE=${MM_PLUGIN_CALLS_TEST_LICENSE}" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_FEATUREFLAGS_BoardsProduct=true" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICEENVIRONMENT=test" >>${WORKSPACE}/dotenv/app.private.env
-echo "MM_CALLS_JOB_SERVICE_URL=http://calls-offloader:4545" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_CONFIG=postgres://mmuser:mostest@postgres/mattermost_test?sslmode=disable&connect_timeout=10&binary_parameters=yes" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICESETTINGS_SITEURL=http://mm-server:8065" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICESETTINGS_ENABLELOCALMODE=true" >>${WORKSPACE}/dotenv/app.private.env

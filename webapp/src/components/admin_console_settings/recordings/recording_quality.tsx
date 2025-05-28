@@ -5,7 +5,7 @@ import React, {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
-import {isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
+import {callsConfig, callsConfigEnvOverrides, isCloud, isOnPremNotEnterprise, recordingsEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 const RecordingQuality = (props: CustomComponentProps) => {
@@ -13,6 +13,9 @@ const RecordingQuality = (props: CustomComponentProps) => {
     const restricted = useSelector(isOnPremNotEnterprise);
     const cloud = useSelector(isCloud);
     const recordingEnabled = useSelector(recordingsEnabled);
+    const config = useSelector(callsConfig);
+    const overrides = useSelector(callsConfigEnvOverrides);
+    const overridden = 'RecordingQuality' in overrides;
 
     if (cloud || restricted || !recordingEnabled) {
         return null;
@@ -21,6 +24,11 @@ const RecordingQuality = (props: CustomComponentProps) => {
     const handleChange = (e: ChangeEvent<HTMLSelectElement>) => {
         props.onChange(props.id, e.target.value);
     };
+
+    // Use the value from config if it's overridden by environment variable
+    const value = overridden ? config.RecordingQuality : (props.value ?? 'medium');
+
+    const disabled = props.disabled || overridden;
 
     return (
         <div
@@ -40,11 +48,11 @@ const RecordingQuality = (props: CustomComponentProps) => {
             <div className={rightCol}>
                 <select
                     data-testid={props.id + 'dropdown'}
-                    className='form-control'
+                    className={disabled ? 'form-control disabled' : 'form-control'}
                     id={props.id}
-                    value={props.value ?? 'medium'}
+                    value={value}
                     onChange={handleChange}
-                    disabled={props.disabled}
+                    disabled={disabled}
                 >
                     <option
                         key='low'
@@ -71,6 +79,12 @@ const RecordingQuality = (props: CustomComponentProps) => {
                 >
                     {formatMessage({defaultMessage: 'The audio and video quality of call recordings.\n Note: this setting can affect the overall performance of the job service and the number of concurrent recording jobs that can be run.'})}
                 </div>
+
+                {overridden &&
+                <div className='alert alert-warning'>
+                    {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                </div>
+                }
             </div>
         </div>
     );

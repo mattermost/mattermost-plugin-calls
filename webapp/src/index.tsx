@@ -3,6 +3,7 @@
 
 /* eslint-disable max-lines */
 import {CallChannelState} from '@mattermost/calls-common/lib/types';
+import {hasDCSignalingLockSupport} from '@mattermost/calls-common/lib/utils';
 import WebSocketClient from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
@@ -25,7 +26,9 @@ import {
     displayCallsTestModeUser,
     displayFreeTrial,
     getCallsConfig,
+    getCallsConfigEnvOverrides,
     getCallsStats,
+    getCallsVersionInfo,
     incomingCallOnChannel,
     loadProfilesByIdsIfMissing,
     localSessionClose,
@@ -137,6 +140,7 @@ import {
     callsExplicitlyDisabled,
     callsExplicitlyEnabled,
     callStartAtForCallInChannel,
+    callsVersionInfo,
     channelHasCall,
     channelIDForCurrentCall,
     defaultEnabled,
@@ -676,6 +680,7 @@ export default class Plugin {
                     simulcast: callsConfig(state).EnableSimulcast,
                     enableAV1: callsConfig(state).EnableAV1,
                     dcSignaling: callsConfig(state).EnableDCSignaling,
+                    dcLocking: hasDCSignalingLockSupport(callsVersionInfo(state)),
                     enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
                 });
                 window.currentCallData = CurrentCallDataDefault;
@@ -978,7 +983,7 @@ export default class Plugin {
 
             unsubscribeActivateListener();
 
-            await store.dispatch(getCallsConfig());
+            await Promise.all([store.dispatch(getCallsConfig()), store.dispatch(getCallsVersionInfo()), store.dispatch(getCallsConfigEnvOverrides())]);
 
             const sections = [
                 {

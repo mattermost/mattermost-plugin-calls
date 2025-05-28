@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallsConfig, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallsConfig, CallsVersionInfo, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
@@ -472,6 +472,9 @@ export const ringingEnabled = (state: GlobalState) =>
 export const transcribeAPI = (state: GlobalState) =>
     callsConfig(state).TranscribeAPI;
 
+export const callsConfigEnvOverrides = (state: GlobalState): Record<string, string> =>
+    pluginState(state).callsConfigEnvOverrides;
+
 //
 // Calls enabled/disabled logic
 //
@@ -529,11 +532,10 @@ export const hasPermissionsToEnableCalls = (state: GlobalState, channelId: strin
 //
 // Having trouble importing this, so embed.
 enum LicenseSkus {
-    E10 = 'E10',
-    E20 = 'E20',
     Starter = 'starter',
     Professional = 'professional',
     Enterprise = 'enterprise',
+    EntepriseAdvanced = 'advanced',
 }
 
 const cloudSku = (state: GlobalState): string =>
@@ -551,13 +553,16 @@ export const isCloudProfessional = (state: GlobalState): boolean =>
 export const isCloudEnterprise = (state: GlobalState): boolean =>
     isCloud(state) && cloudSku(state) === LicenseSkus.Enterprise;
 
+export const isCloudEnterpriseAdvanced = (state: GlobalState): boolean =>
+    isCloud(state) && cloudSku(state) === LicenseSkus.EntepriseAdvanced;
+
 const getSubscription = (state: GlobalState) => state.entities.cloud.subscription;
 
 export const isCloudTrial = (state: GlobalState): boolean =>
     getSubscription(state)?.is_free_trial === 'true';
 
-export const isCloudProfessionalOrEnterpriseOrTrial = (state: GlobalState): boolean =>
-    isCloudProfessional(state) || isCloudEnterprise(state) || isCloudTrial(state);
+export const isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial = (state: GlobalState): boolean =>
+    isCloudProfessional(state) || isCloudEnterprise(state) || isCloudEnterpriseAdvanced(state) || isCloudTrial(state);
 
 export const isCloudTrialCompleted = (state: GlobalState): boolean => {
     const subscription = getSubscription(state);
@@ -575,16 +580,17 @@ export const shouldPlayJoinUserSound = (state: GlobalState): boolean =>
 
 export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
     const license = getLicense(state);
-    const enterprise = license.SkuShortName === LicenseSkus.E20 || license.SkuShortName === LicenseSkus.Enterprise;
+    const enterprise = license.SkuShortName === LicenseSkus.Enterprise || license.SkuShortName === LicenseSkus.EntepriseAdvanced;
     return !isCloud(state) && !enterprise;
 };
 
 export const isAtLeastProfessional = (state: GlobalState): boolean => {
     const sku = callsConfig(state).sku_short_name;
-    const enterprise = sku === LicenseSkus.E20 || sku === LicenseSkus.Enterprise;
-    const professional = sku === LicenseSkus.E10 || sku === LicenseSkus.Professional;
+    const enterprise = sku === LicenseSkus.Enterprise;
+    const professional = sku === LicenseSkus.Professional;
+    const enterpriseAdvanced = sku === LicenseSkus.EntepriseAdvanced;
 
-    return enterprise || professional || isCloudProfessionalOrEnterpriseOrTrial(state);
+    return enterpriseAdvanced || enterprise || professional || isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial(state);
 };
 
 export const areHostControlsAllowed = (state: GlobalState): boolean => callsConfig(state).HostControlsAllowed;
@@ -642,3 +648,6 @@ export const screenSourceModal = (state: GlobalState) => {
 export const clientConnecting = (state: GlobalState) => {
     return pluginState(state).clientConnecting;
 };
+
+export const callsVersionInfo = (state: GlobalState): CallsVersionInfo =>
+    pluginState(state).callsVersionInfo;

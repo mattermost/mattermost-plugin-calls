@@ -262,7 +262,6 @@ describe('utils', () => {
             expect(props.start_at).toBe(0);
             expect(props.end_at).toBe(0);
             expect(props.recordings).toStrictEqual({});
-            expect(props.recording_files.length).toBe(0);
             expect(props.transcriptions).toStrictEqual({});
             expect(props.participants.length).toBe(0);
         });
@@ -278,7 +277,6 @@ describe('utils', () => {
             expect(props.start_at).toBe(0);
             expect(props.end_at).toBe(0);
             expect(props.recordings).toStrictEqual({});
-            expect(props.recording_files.length).toBe(0);
             expect(props.transcriptions).toStrictEqual({});
             expect(props.participants.length).toBe(0);
         });
@@ -291,7 +289,6 @@ describe('utils', () => {
                 recordings: null,
                 transcriptions: 45,
                 participants: 'invalid',
-                recording_files: 45,
             };
 
             const post = {
@@ -304,7 +301,6 @@ describe('utils', () => {
             expect(props.start_at).toBe(0);
             expect(props.end_at).toBe(0);
             expect(props.recordings).toStrictEqual({});
-            expect(props.recording_files.length).toBe(0);
             expect(props.transcriptions).toStrictEqual({});
             expect(props.participants.length).toBe(0);
         });
@@ -392,7 +388,6 @@ describe('utils', () => {
                         tr_id: 'trB',
                     },
                 },
-                recording_files: ['recAFileID', 'recBFileID'],
                 transcriptions: {
                     trA: {
                         file_id: 'trAFileID',
@@ -418,7 +413,6 @@ describe('utils', () => {
             expect(props.start_at).toBe(post.props.start_at);
             expect(props.end_at).toBe(post.props.end_at);
             expect(props.recordings).toStrictEqual(post.props.recordings);
-            expect(props.recording_files).toBe(post.props.recording_files);
             expect(props.transcriptions).toStrictEqual(post.props.transcriptions);
             expect(props.participants).toBe(post.props.participants);
         });

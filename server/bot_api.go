@@ -215,18 +215,6 @@ func (p *Plugin) handleBotPostRecordings(w http.ResponseWriter, r *http.Request)
 		threadID = post.RootId
 	}
 
-	// TODO: consider deprecating this in favour of the new recordings metadata
-	// object.
-	recordingFiles, ok := post.GetProp("recording_files").([]interface{})
-	if !ok {
-		recordingFiles = []interface{}{
-			info.FileIDs[0],
-		}
-	} else {
-		recordingFiles = append(recordingFiles, info.FileIDs[0])
-	}
-	post.AddProp("recording_files", recordingFiles)
-
 	T := p.getTranslationFunc("")
 
 	startAt, _ := post.GetProp("start_at").(int64)
@@ -533,16 +521,6 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 		p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
 			"callID":   callID,
 			"jobState": getClientStateFromCallJob(state.Recording).toMap(),
-		}, &WebSocketBroadcast{
-			ChannelID:           callID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
-
-		// MM-57224: deprecated, remove when not needed by mobile pre 2.14.0
-		p.publishWebSocketEvent(wsEventCallRecordingState, map[string]interface{}{
-			"callID":   callID,
-			"recState": getClientStateFromCallJob(state.Recording).toMap(),
 		}, &WebSocketBroadcast{
 			ChannelID:           callID,
 			ReliableClusterSend: true,

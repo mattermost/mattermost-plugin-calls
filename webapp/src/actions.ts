@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
-import {CallsConfig, CallState} from '@mattermost/calls-common/lib/types';
+import {CallsConfig, CallState, CallsVersionInfo} from '@mattermost/calls-common/lib/types';
 import {ClientError} from '@mattermost/client';
 import {Channel} from '@mattermost/types/channels';
 import {UserTypes} from 'mattermost-redux/action_types';
@@ -65,6 +65,8 @@ import {
     LIVE_CAPTIONS_ENABLED,
     LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
+    RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
+    RECEIVED_CALLS_VERSION_INFO,
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
     RINGING_FOR_CALL,
@@ -125,6 +127,26 @@ export const getCallsConfig = (): ActionFuncAsync<CallsConfig> => {
             {method: 'get'},
         ),
         onSuccess: [RECEIVED_CALLS_CONFIG],
+    });
+};
+
+export const getCallsConfigEnvOverrides = (): ActionFuncAsync<Record<string, string>> => {
+    return bindClientFunc({
+        clientFunc: () => RestClient.fetch<Record<string, string>>(
+            `${getPluginPath()}/env`,
+            {method: 'get'},
+        ),
+        onSuccess: [RECEIVED_CALLS_CONFIG_ENV_OVERRIDES],
+    });
+};
+
+export const getCallsVersionInfo = (): ActionFuncAsync<CallsVersionInfo> => {
+    return bindClientFunc({
+        clientFunc: () => RestClient.fetch<CallsVersionInfo>(
+            `${getPluginPath()}/version`,
+            {method: 'get'},
+        ),
+        onSuccess: [RECEIVED_CALLS_VERSION_INFO],
     });
 };
 
@@ -555,7 +577,6 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
         type: USER_SCREEN_ON,
         data: {
             channelID,
-            userID: call.screen_sharing_id,
             session_id: call.screen_sharing_session_id,
         },
     });

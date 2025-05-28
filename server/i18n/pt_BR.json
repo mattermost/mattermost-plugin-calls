@@ -1,1 +1,58 @@
-[]
+[
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "As chamadas em servidores não licenciados só estão disponíveis em mensagens diretas."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "É altamente recomendável que você [implemente o serviço RTCD] (https://mattermost.com/pl/calls-deployment-the-rtcd-service) para descarregar o processamento de chamadas em uma instância separada, a fim de manter o desempenho, a escalabilidade e a confiabilidade do seu servidor Mattermost principal."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "Sua instalação está sofrendo uso intenso das chamadas do Mattermost, o que pode afetar negativamente o desempenho e a capacidade de resposta do sistema."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "É altamente recomendável que você faça upgrade para [Enterprise] (https://mattermost.com/pricing/) e [implemente o serviço RTCD] (https://mattermost.com/pl/calls-deployment-the-rtcd-service) para descarregar o processamento de chamadas em uma instância separada, a fim de manter o desempenho, a escalabilidade e a confiabilidade do seu servidor Mattermost principal."
+    },
+    {
+        "id": "app.call.ended_message",
+        "translation": "Chamada encerrada"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "Aqui está a gravação da chamada. A transcrição está sendo processada e será publicada quando estiver pronta."
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "Aqui está a gravação da chamada"
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "Aqui está a transcrição da chamada"
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Username}} iniciou uma chamada"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}} iniciou uma chamada"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "Você foi convidado para uma chamada"
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}} está convidando você para uma chamada"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "Falha ao salvar a configuração."
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "É altamente recomendável que você mude para o [Mattermost Enterprise Edition] (https://mattermost.com/pl/install-enterprise-install-upgrade) e [implemente o serviço RTCD] (https://mattermost.com/pl/calls-deployment-the-rtcd-service) para descarregar o processamento de chamadas em uma instância separada, a fim de manter o desempenho, a escalabilidade e a confiabilidade do seu servidor Mattermost principal."
+    }
+]

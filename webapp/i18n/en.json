@@ -148,7 +148,6 @@
   "Pdrvrt": "No video input permissions",
   "PfcsWl": "Enable AV1 codec for screen sharing (Experimental)",
   "PjoOvw": "You're sharing your screen",
-  "PuUmTL": "The maximum number of participants that can join a call. If left empty, or set to 0, it means unlimited.",
   "PzV1UF": "(Optional) A port number to be used as an override for host candidates in place of the one used to listen on. Note: this port will apply to both UDP and TCP host candidates.",
   "Q0W0k5": "Consider letting everyone know that this meeting is being recorded and transcribed.",
   "QJwBtw": "The API region for Azure Speech Services",
@@ -194,6 +193,7 @@
   "ZqqZFV": "Settings for participants, screen sharing, ringing, and more",
   "ZvZBwP": "Leave and join new call",
   "Zx9T5i": "Your trial has started!{br}Explore the benefits of Enterprise",
+  "a+2U7T": "This setting has been set through an environment variable. It cannot be changed through the System Console.",
   "aC/wxa": "a few seconds ago",
   "aVENjO": "By selecting <b>Try free for 30 days</b>, I agree to the <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>Privacy Policy</linkPrivacy>, and receiving product emails.",
   "aaYQI7": "Enable IPv6 support (Experimental)",
@@ -338,7 +338,6 @@
   "yfYHc5": "ICE Host Override",
   "yjQNKt": "Calls are disabled in this channel.",
   "yx0b7N": "{count, plural, =1 {# transcription} other {# transcriptions}}",
-  "zMlIqq": "This setting is disabled as the server is unlicensed and calls are only available in DM channels.",
   "zUH89x": "The call recording will be processed and posted in the call thread. Are you sure you want to stop the recording?",
   "zx0myy": "Participants",
   "zxBgWa": "(Optional) The IP (or hostname) to be used as the host ICE candidate. If empty, it defaults to resolving via STUN."

@@ -478,6 +478,7 @@ export default class CallsClient extends EventEmitter {
                 },
                 simulcast: this.config.simulcast,
                 dcSignaling: this.config.dcSignaling,
+                dcLocking: this.config.dcLocking,
             });
 
             this.peer = peer;
