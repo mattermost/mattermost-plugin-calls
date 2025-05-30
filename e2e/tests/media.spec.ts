@@ -263,6 +263,65 @@ test.describe('screen sharing', () => {
 
         await Promise.all([senderPage.leaveCall(), receiverPage.leaveCall()]);
     });
+
+    test('share screen with audio', {
+        tag: '@core',
+    }, async ({page}) => {
+        const senderPage = new PlaywrightDevPage(page);
+
+        const [receiverPage, _] = await Promise.all([
+            startCall(userStorages[1]),
+            senderPage.joinCall(),
+        ]);
+
+        await senderPage.page.locator('#calls-widget').getByLabel('Settings').click();
+        await senderPage.page.getByText('Additional settings').click();
+
+        // Verify that Calls Settings are open and visible.
+        await expect(senderPage.page.getByRole('heading', {name: 'Calls Settings'})).toBeVisible();
+
+        // Enable screen sharing with audio.
+        await senderPage.page.getByText('Screen sharing settings', {exact: true}).click();
+
+        // Setting should be off by default.
+        expect(senderPage.page.locator('.setting-list-item').getByRole('radio', {name: 'On'})).not.toBeChecked();
+        expect(senderPage.page.locator('.setting-list-item').getByRole('radio', {name: 'Off'})).toBeChecked();
+
+        // Turning setting on.
+        await senderPage.page.locator('.setting-list-item').getByRole('radio', {name: 'On'}).check();
+        expect(senderPage.page.locator('.setting-list-item').getByRole('radio', {name: 'On'})).toBeChecked();
+        await senderPage.page.getByText('Save').click();
+
+        // Exit Calls Settings.
+        await senderPage.page.getByLabel('Close').click();
+
+        // Verify that the setting is saved in local storage.
+        const settingSavedInStorage = await (await senderPage.page.waitForFunction(() => {
+            return window.localStorage.getItem('calls_share_audio_with_screen') === 'on';
+        })).evaluate(() => {
+            return window.localStorage.getItem('calls_share_audio_with_screen') === 'on';
+        });
+
+        expect(settingSavedInStorage).toBe(true);
+
+        // Start screen sharing with audio.
+        await senderPage.page.locator('#calls-widget-toggle-menu-button').click();
+        await senderPage.page.locator('#calls-widget-menu-screenshare').click();
+
+        // Verify that the screen sharing player is rendering on both sides.
+        await expect(senderPage.page.locator('#screen-player')).toBeVisible();
+        await expect(receiverPage.page.locator('#screen-player')).toBeVisible();
+
+        // Verify that the audio track for screen sharing is received.
+        const hasReceivedAudioScreenTrack = await (await receiverPage.page.waitForFunction(() => {
+            return window.callsClient.remoteVoiceTracks.length > 0;
+        })).evaluate(() => {
+            return window.callsClient.remoteVoiceTracks.length > 0;
+        });
+        expect(hasReceivedAudioScreenTrack).toBe(true);
+
+        await Promise.all([senderPage.leaveCall(), receiverPage.leaveCall()]);
+    });
 });
 
 test.describe('sending voice', () => {

@@ -79,12 +79,12 @@ import {
 import {
     getPopOutURL,
     getUserDisplayName,
-    hasExperimentalFlag,
     isDMChannel,
     isGMChannel,
     isPrivateChannel,
     isPublicChannel,
     sendDesktopEvent,
+    shareAudioWithScreen,
     untranslatable,
 } from 'src/utils';
 import styled from 'styled-components';
@@ -678,7 +678,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     private shareScreen = async (sourceID: string, _withAudio: boolean) => {
-        const stream = await window.callsClient?.shareScreen(sourceID, hasExperimentalFlag());
+        const stream = await window.callsClient?.shareScreen(sourceID, shareAudioWithScreen());
         if (stream) {
             this.setState({screenStream: stream});
             this.setMissingScreenPermissions(false, true);
@@ -786,7 +786,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     this.props.showScreenSourceModal();
                 }
             } else {
-                await this.shareScreen('', hasExperimentalFlag());
+                await this.shareScreen('', shareAudioWithScreen());
             }
             this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }

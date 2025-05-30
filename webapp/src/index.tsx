@@ -94,6 +94,7 @@ import {
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
+import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
@@ -379,6 +380,10 @@ export default class Plugin {
                 {
                     title: 'Audio devices settings',
                     component: AudioDevicesSettingsSection,
+                },
+                {
+                    title: 'Screen sharing settings',
+                    component: ScreenSharingSettingsSection,
                 },
             ],
         });

@@ -9,7 +9,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
 import {logDebug, logErr} from 'src/log';
-import {hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
+import {sendDesktopEvent, shareAudioWithScreen, shouldRenderDesktopWidget} from 'src/utils';
 
 interface Props {
     intl: IntlShape,
@@ -164,15 +164,15 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
     private shareScreen = () => {
         if (window.desktopAPI?.shareScreen) {
             logDebug('desktopAPI.shareScreen');
-            window.desktopAPI.shareScreen(this.state.selected, hasExperimentalFlag());
+            window.desktopAPI.shareScreen(this.state.selected, shareAudioWithScreen());
         } else if (shouldRenderDesktopWidget()) {
             // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
             sendDesktopEvent('calls-widget-share-screen', {
                 sourceID: this.state.selected,
-                withAudio: hasExperimentalFlag(),
+                withAudio: shareAudioWithScreen(),
             });
         } else {
-            window.callsClient?.shareScreen(this.state.selected, hasExperimentalFlag());
+            window.callsClient?.shareScreen(this.state.selected, shareAudioWithScreen());
         }
         this.hide();
     };
