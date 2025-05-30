@@ -15,17 +15,16 @@ import (
 )
 
 const (
-	rootCommandTrigger         = "call"
-	startCommandTrigger        = "start"
-	joinCommandTrigger         = "join"
-	leaveCommandTrigger        = "leave"
-	linkCommandTrigger         = "link"
-	experimentalCommandTrigger = "experimental"
-	statsCommandTrigger        = "stats"
-	endCommandTrigger          = "end"
-	recordingCommandTrigger    = "recording"
-	hostCommandTrigger         = "host"
-	logsCommandTrigger         = "logs"
+	rootCommandTrigger      = "call"
+	startCommandTrigger     = "start"
+	joinCommandTrigger      = "join"
+	leaveCommandTrigger     = "leave"
+	linkCommandTrigger      = "link"
+	statsCommandTrigger     = "stats"
+	endCommandTrigger       = "end"
+	recordingCommandTrigger = "recording"
+	hostCommandTrigger      = "host"
+	logsCommandTrigger      = "logs"
 )
 
 var subCommands = []string{
@@ -33,7 +32,6 @@ var subCommands = []string{
 	joinCommandTrigger,
 	leaveCommandTrigger,
 	linkCommandTrigger,
-	experimentalCommandTrigger,
 	endCommandTrigger,
 	statsCommandTrigger,
 	recordingCommandTrigger,
@@ -52,10 +50,6 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Show client-generated statistics about the call."))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately."))
 	data.AddCommand(model.NewAutocompleteData(logsCommandTrigger, "", "Show client logs."))
-
-	experimentalCmdData := model.NewAutocompleteData(experimentalCommandTrigger, "", "Turn experimental features on or off.")
-	experimentalCmdData.AddTextArgument("Available options: on, off", "", "on|off")
-	data.AddCommand(experimentalCmdData)
 
 	recordingCmdData := model.NewAutocompleteData(recordingCommandTrigger, "", "Manage calls recordings")
 	recordingCmdData.AddTextArgument("Available options: start, stop", "", "start|stop")
@@ -109,25 +103,6 @@ func (p *Plugin) handleLinkCommand(args *model.CommandArgs) (*model.CommandRespo
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
 		Text:         fmt.Sprintf("Call link: %s", link),
-	}, nil
-}
-
-func handleExperimentalCommand(fields []string) (*model.CommandResponse, error) {
-	var msg string
-	if len(fields) != 3 {
-		return nil, fmt.Errorf("Invalid number of arguments provided")
-	}
-	if fields[2] == "on" {
-		msg = "Experimental features were turned on"
-	} else if fields[2] == "off" {
-		msg = "Experimental features were turned off"
-	}
-	if msg == "" {
-		return nil, fmt.Errorf("Invalid arguments provided")
-	}
-	return &model.CommandResponse{
-		ResponseType: model.CommandResponseTypeEphemeral,
-		Text:         msg,
 	}, nil
 }
 
@@ -243,10 +218,6 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == linkCommandTrigger {
 		return buildCommandResponse(p.handleLinkCommand(args))
-	}
-
-	if subCmd == experimentalCommandTrigger {
-		return buildCommandResponse(handleExperimentalCommand(fields))
 	}
 
 	if subCmd == statsCommandTrigger {

@@ -19,7 +19,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 import CallsClient from 'src/client';
-import {STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY} from 'src/constants';
+import {STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
 import RestClient from 'src/rest_client';
 import {DesktopMessage} from 'src/types/types';
 import {notificationSounds} from 'src/webapp_globals';
@@ -338,10 +338,6 @@ export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
     return sdp;
 }
 
-export function hasExperimentalFlag() {
-    return window.localStorage.getItem(STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY) === 'on';
-}
-
 export function split<T>(list: T[], i: number, pad = false): [list: T[], overflowed?: T[]] {
     if (list.length <= i + (pad ? 1 : 0)) {
         return [list];
@@ -634,4 +630,8 @@ export function sendDesktopMessage(msg: DesktopMessage) {
     const ch = new BroadcastChannel('calls_widget');
     ch.postMessage(msg);
     ch.close();
+}
+
+export function shareAudioWithScreen() {
+    return window.localStorage.getItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN) === 'on';
 }

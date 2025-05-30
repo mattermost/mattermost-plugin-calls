@@ -68,10 +68,10 @@ import {
     getCallsClient,
     getScreenStream,
     getUserDisplayName,
-    hasExperimentalFlag,
     isDMChannel,
     sendDesktopEvent,
     setCallsGlobalCSSVars,
+    shareAudioWithScreen,
     untranslatable,
 } from 'src/utils';
 import styled, {createGlobalStyle, css} from 'styled-components';
@@ -495,7 +495,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 logDebug('desktopAPI.openScreenShareModal');
                 window.desktopAPI.openScreenShareModal();
             } else {
-                const stream = await getScreenStream('', hasExperimentalFlag());
+                const stream = await getScreenStream('', shareAudioWithScreen());
                 if (window.opener && stream) {
                     window.screenSharingTrackId = stream.getVideoTracks()[0].id;
                 }
