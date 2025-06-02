@@ -92,7 +92,7 @@
   "GeElPx": "Started {callStartedAt}",
   "GjrlL9": "General settings",
   "GoLgxG": "Add reaction",
-  "HB6L88": "Configure your screen sharing settings.",
+  "HB6L88": "Configure your screen sharing settings",
   "HBa/E5": "Make host",
   "HUMEKL": "When set to true it enables using the AV1 codec to encode screen sharing tracks. This can result in improved screen sharing quality for clients that support it. Note: this setting won't apply when EnableSimulcast is true.",
   "HV60d3": "Daily Calls",
