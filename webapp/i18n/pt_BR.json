@@ -63,7 +63,7 @@
   "APILK5": "Legendas ao vivo: Número de threads por transcritor",
   "APWZiG": "Considere informar a todos que esta reunião está sendo gravada.",
   "AYHboe": "Esta é uma função paga, que pode ser testada gratuitamente por 30 dias",
-  "Ap6DG5": "{contagem, plural, =1 {# gravação} outras {# gravações}}",
+  "Ap6DG5": "{count, plural, =1 {# recording} other {# recordings}}",
   "AxMhQr": "Alta",
   "Az0GQD": "<b>{participant}</b> juntou-se à chamada.",
   "BI2zH5": "Remover da chamada",
