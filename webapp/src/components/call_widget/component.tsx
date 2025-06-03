@@ -425,7 +425,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             if (window.desktopAPI?.onScreenShared && window.desktopAPI?.onCallsError) {
                 logDebug('registering desktopAPI.onScreenShared');
                 this.unsubscribers.push(window.desktopAPI.onScreenShared((sourceID: string, withAudio: boolean) => {
-                    logDebug('desktopAPI.onScreenShared');
+                    logDebug('desktopAPI.onScreenShared', sourceID, withAudio);
                     this.shareScreen(sourceID, withAudio);
                 }));
 
@@ -677,8 +677,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     };
 
-    private shareScreen = async (sourceID: string, _withAudio: boolean) => {
-        const stream = await window.callsClient?.shareScreen(sourceID, shareAudioWithScreen());
+    private shareScreen = async (sourceID: string, withAudio: boolean) => {
+        const stream = await window.callsClient?.shareScreen(sourceID, withAudio);
         if (stream) {
             this.setState({screenStream: stream});
             this.setMissingScreenPermissions(false, true);
