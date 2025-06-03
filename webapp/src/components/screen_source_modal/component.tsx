@@ -4,14 +4,13 @@
 import './component.scss';
 
 import {DesktopCaptureSource} from '@mattermost/desktop-api';
-import {getPlatformInfo} from 'mattermost-redux/utils/browser_info';
 import React, {CSSProperties} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
 import {logDebug, logErr} from 'src/log';
-import {sendDesktopEvent, shareAudioWithScreen, shouldRenderDesktopWidget} from 'src/utils';
+import {getPlatformInfo, sendDesktopEvent, shareAudioWithScreen, shouldRenderDesktopWidget} from 'src/utils';
 
 interface Props {
     intl: IntlShape,

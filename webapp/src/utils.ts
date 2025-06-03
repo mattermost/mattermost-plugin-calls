@@ -635,3 +635,36 @@ export function sendDesktopMessage(msg: DesktopMessage) {
 export function shareAudioWithScreen() {
     return window.localStorage.getItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN) === 'on';
 }
+
+// Ported from mattermost-redux/src/utils/browser_info.ts
+export function getPlatformInfo() {
+    // Casting to undefined in case it is deprecated in any browser
+    const platform = window.navigator.platform as string | undefined;
+    const ua = window.navigator.userAgent.toLowerCase();
+
+    let platformName = 'Unknown';
+
+    // First try using platform
+    if (platform) {
+        if (platform.toLowerCase().includes('win')) {
+            platformName = 'Windows';
+        } else if (platform.toLowerCase().includes('mac')) {
+            platformName = 'MacOS';
+        } else if (platform.toLowerCase().includes('linux')) {
+            platformName = 'Linux';
+        }
+    }
+
+    // Fallback to userAgent if platform didn't work
+    if (platformName === 'Unknown') {
+        if (ua.includes('windows')) {
+            platformName = 'Windows';
+        } else if (ua.includes('mac os x')) {
+            platformName = 'MacOS';
+        } else if (ua.includes('linux')) {
+            platformName = 'Linux';
+        }
+    }
+
+    return platformName;
+}
