@@ -24,6 +24,8 @@ const (
 	clientMessageTypeVoiceOff    = "voice_off"
 	clientMessageTypeScreenOn    = "screen_on"
 	clientMessageTypeScreenOff   = "screen_off"
+	clientMessageTypeVideoOn     = "video_on"
+	clientMessageTypeVideoOff    = "video_off"
 	clientMessageTypeRaiseHand   = "raise_hand"
 	clientMessageTypeUnraiseHand = "unraise_hand"
 	clientMessageTypeReact       = "react"
