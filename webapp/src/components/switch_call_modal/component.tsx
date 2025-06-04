@@ -8,7 +8,7 @@ import {UserProfile} from '@mattermost/types/users';
 import React, {CSSProperties} from 'react';
 import {IntlShape} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
-import {getUserDisplayName, isDMChannel, isGMChannel, untranslatable} from 'src/utils';
+import {getCallsWindow, getUserDisplayName, isDMChannel, isGMChannel, untranslatable} from 'src/utils';
 
 interface Props {
     intl: IntlShape,
@@ -102,7 +102,7 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
         this.props.dismissIncomingCallNotification(this.props.targetChannelID, this.props.targetCallID);
 
         this.props.hideSwitchCallModal();
-        const win = window.opener ? window.opener : window;
+        const win = getCallsWindow();
         win.callsClient?.disconnect();
         win.postMessage({type: 'connectCall', channelID: this.props.currentChannel?.id}, win.origin);
     };
