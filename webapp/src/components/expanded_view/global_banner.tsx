@@ -10,20 +10,23 @@ import styled from 'styled-components';
 const colorMap = {
     error: 'var(--button-color)',
     warning: 'rgb(63, 67, 80)',
+    info: 'var(--center-channel-color)',
 };
 
 const hoverMap = {
     error: 'rgba(var(--button-color-rgb), 0.08)',
     warning: 'rgba(63, 67, 80, 0.08)',
+    info: 'rgba(var(--center-channel-color-rgb), 0.08)',
 };
 
 const bgMap = {
     error: 'var(--dnd-indicator)',
     warning: 'rgb(255, 188, 31)',
+    info: 'var(--center-channel-bg)',
 };
 
 export type Props = {
-    type: 'error' | 'warning',
+    type: 'error' | 'warning' | 'info',
     icon: string,
     body: string | React.ReactNode,
     onClose?: () => void,
@@ -83,10 +86,6 @@ const Banner = styled.div<{ $color: string, $bgColor: string }>`
 
     a, a:hover, a:visited {
         color: ${({$color}) => $color};
-    }
-
-    i {
-        font-size: 18px;
     }
 `;
 
