@@ -40,7 +40,7 @@ const MediaDevicesList = ({deviceType, devices, currentDevice, onDeviceClick}: M
     };
 
     const list = devices.map((device) => {
-        const isCurrentDevice = device.deviceId === currentDevice?.deviceId;
+        const isCurrentDevice = device.deviceId === currentDevice?.deviceId || device.label === currentDevice?.label;
         return (
             <li
                 className='MenuItem'
