@@ -35,7 +35,7 @@ import {
     isRecordingInCurrentCall,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
-import {getCallsClient, getPersistentStorage, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
+import {getCallsClient, getCallsWindow, getPersistentStorage, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
 type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string) => void;
 
@@ -116,7 +116,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
     }
     case 'leave':
         if (connectedID && args.channel_id === connectedID) {
-            const win = window.opener || window;
+            const win = getCallsWindow();
             const callsClient = getCallsClient();
             if (callsClient) {
                 callsClient.disconnect();
