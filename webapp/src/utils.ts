@@ -85,7 +85,7 @@ export function getChannelURL(state: GlobalState, channel?: Channel, teamId?: st
 export function getCallsClient(): CallsClient | undefined {
     let callsClient;
     try {
-        callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        callsClient = getCallsWindow().callsClient;
     } catch (err) {
         logErr(err);
     }
@@ -108,19 +108,46 @@ export function isCallsPopOut(): boolean {
     try {
         return window.opener && window.opener.callsClient;
     } catch (err) {
+        // This can happen if the MM window already has an opener on a different origin (e.g. user clicked a link on a calendar app to open MM).
+        // In this case, we know we are not in the expanded view so we can directly return window.callsClient.
+        if (err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
+            // Avoid spamming the console with this error.
+            return false;
+        }
+
         logErr(err);
+
         return false;
     }
     return false;
 }
 
+export function getCallsWindow(): Window {
+    try {
+        if (window.opener && window.opener.callsClient) {
+            return window.opener;
+        }
+    } catch (err) {
+        // This can happen if the MM window already has an opener on a different origin (e.g. user clicked a link on a calendar app to open MM).
+        // In this case, we know we are not in the expanded view so we can directly return window.callsClient.
+        if (err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
+            // Avoid spamming the console with this error.
+            return window;
+        }
+
+        logErr(err);
+    }
+
+    return window;
+}
+
 export function shouldRenderCallsIncoming() {
     try {
-        const win = window.opener ? window.opener : window;
+        const win = getCallsWindow();
         const nonChannels = window.location.pathname.startsWith('/boards') || window.location.pathname.startsWith('/playbooks') || window.location.pathname.includes(`${pluginId}/expanded/`);
         if (win.desktop && nonChannels) {
-        // don't render when we're in desktop, or in boards or playbooks, or in the expanded view.
-        // (can be simplified, but this is clearer)
+            // don't render when we're in desktop, or in boards or playbooks, or in the expanded view.
+            // (can be simplified, but this is clearer)
             return false;
         }
         return true;
@@ -392,7 +419,7 @@ export function shouldRenderDesktopWidget() {
 }
 
 export function desktopGTE(major: number, minor: number) {
-    const win = window.opener ? window.opener : window;
+    const win = getCallsWindow();
     if (!win.desktop) {
         return false;
     }
@@ -408,7 +435,7 @@ export function desktopGTE(major: number, minor: number) {
 
 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
 export function sendDesktopEvent(event: string, data?: Record<string, unknown>) {
-    const win = window.opener ? window.opener : window;
+    const win = getCallsWindow();
     win.postMessage(
         {
             type: event,
@@ -613,11 +640,10 @@ export function getCallRecordingPropsFromPost(post: Post): CallRecordingPostProp
 export function getWebappUtils() {
     let utils;
     try {
-        utils = window.opener ? window.opener.WebappUtils : window.WebappUtils;
+        utils = getCallsWindow().WebappUtils;
     } catch (err) {
         logErr(err);
     }
-
     return utils;
 }
 

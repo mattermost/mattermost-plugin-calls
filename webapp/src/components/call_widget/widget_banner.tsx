@@ -13,7 +13,7 @@ type Props = {
     iconFill?: string,
     iconColor?: string,
     body?: string | React.ReactNode,
-    header: string,
+    header: string | React.ReactNode,
     leftText?: string,
     rightText?: string,
     onLeftButtonClick?: () => void,
@@ -233,7 +233,7 @@ const Icon = styled.div<{ $fill?: string, $color?: string }>`
     font-size: 12px;
     fill: ${({$fill}) => ($fill || 'currentColor')};
     color: ${({$color}) => ($color || 'currentColor')};
-    margin-top: 4px;
+    margin-top: 6px;
 `;
 
 const CloseButton = styled(Icon)<{ $bgHover: string }>`

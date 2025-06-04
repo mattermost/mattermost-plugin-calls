@@ -58,6 +58,18 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
         bannerText: defineMessage({defaultMessage: 'Call quality may be degraded due to unstable network conditions.'}),
         dismissable: true,
     },
+    audioInputDeviceFallback: {
+        type: CallAlertType.Info,
+        icon: 'microphone',
+        bannerText: defineMessage({defaultMessage: 'The audio input device has changed to <i>{deviceLabel}</i>.'}),
+        dismissable: true,
+    },
+    audioOutputDeviceFallback: {
+        type: CallAlertType.Info,
+        icon: 'speaker',
+        bannerText: defineMessage({defaultMessage: 'The audio output device has changed to <i>{deviceLabel}</i>.'}),
+        dismissable: true,
+    },
 };
 
 export const CallRecordingDisclaimerStrings: {[key: string]: {[key: string]: MessageDescriptor}} = {

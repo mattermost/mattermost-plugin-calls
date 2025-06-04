@@ -628,6 +628,39 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         });
         callsClient.on('devicechange', this.setAudioDevices);
+
+        callsClient.on('devicefallback', (device: MediaDeviceInfo) => {
+            if (device.kind === 'audioinput') {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        audioInputDeviceFallback: {
+                            active: true,
+                            show: true,
+                            args: {
+                                deviceLabel: device.label,
+                                i: (text: string) => <i>{text}</i>,
+                            },
+                        },
+                    },
+                });
+            } else if (device.kind === 'audiooutput') {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        audioOutputDeviceFallback: {
+                            active: true,
+                            show: true,
+                            args: {
+                                deviceLabel: device.label,
+                                i: (text: string) => <i>{text}</i>,
+                            },
+                        },
+                    },
+                });
+            }
+        });
+
         callsClient.on('initaudio', () => {
             this.setState({
                 alerts: {
@@ -796,7 +829,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <GlobalBanner
                     {...alertConfig}
                     icon={alertConfig.icon}
-                    body={formatMessage(alertConfig.bannerText)}
+                    body={formatMessage(alertConfig.bannerText, alertState.args)}
                     onClose={onClose}
                 />
             );

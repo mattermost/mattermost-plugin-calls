@@ -1048,7 +1048,7 @@ export default class Plugin {
             switch (keyToAction('global', ev)) {
             case JOIN_CALL:
                 // We don't allow joining a new call from the pop-out window.
-                if (!window.opener) {
+                if (!isCallsPopOut()) {
                     joinCall(getCurrentChannelId(store.getState()), getCurrentTeamId(store.getState()));
                 }
                 break;
