@@ -16,6 +16,9 @@ mkdir -p ${WORKSPACE}/logs
 mkdir -p ${WORKSPACE}/config
 mkdir -p ${WORKSPACE}/dotenv
 
+# Remove mattermost server image to avoid caching issues.
+docker rmi -f ${IMAGE_SERVER}
+
 docker network create ${DOCKER_NETWORK}
 
 # Start server dependencies
@@ -112,13 +115,12 @@ echo "Spawning mattermost server 1 ... "
 docker run -d --quiet --name ${CONTAINER_SERVER}1 \
 	--net ${DOCKER_NETWORK} \
 	--net-alias mm-server1 \
-	--user mattermost:mattermost \
+	--user mattermost \
 	--env-file="${WORKSPACE}/dotenv/app.private.env" \
 	-v ${WORKSPACE}/config1:/mattermost/config:rw \
 	-v ${WORKSPACE}/logs1:/mattermost/logs:rw \
 	-v ${WORKSPACE}/mmdata:/mattermost/data:rw \
-	${IMAGE_SERVER} \
-	sh -c "/mattermost/bin/mattermost server"
+	${IMAGE_SERVER}
 
 echo "Checking node 1 is up and running"
 timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_mm1 --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://mm-server1:8065/api/v4/system/ping; do echo Waiting for mm-server1; sleep 2; done; echo mm-server1 is up"
@@ -127,13 +129,12 @@ echo "Spawning mattermost server 2 ... "
 docker run -d --quiet --name ${CONTAINER_SERVER}2 \
 	--net ${DOCKER_NETWORK} \
 	--net-alias mm-server2 \
-	--user mattermost:mattermost \
+	--user mattermost \
 	--env-file="${WORKSPACE}/dotenv/app.private.env" \
 	-v ${WORKSPACE}/config2:/mattermost/config:rw \
 	-v ${WORKSPACE}/logs2:/mattermost/logs:rw \
 	-v ${WORKSPACE}/mmdata:/mattermost/data:rw \
-	${IMAGE_SERVER} \
-	sh -c "/mattermost/bin/mattermost server"
+	${IMAGE_SERVER}
 
 echo "Checking node 2 is up and running"
 timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_mm2 --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://mm-server2:8065/api/v4/system/ping; do echo Waiting for mm-server2; sleep 2; done; echo mm-server2 is up"
