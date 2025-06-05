@@ -80,10 +80,9 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         // leave call
         await devPage.leaveCall();
 
-        //
         // Transcriptions test, we need to keep it here or it would conflict
         // with the above as tests are run concurrently.
-        //
+
         await page.reload();
         await apiSetEnableTranscriptions(true);
 
@@ -120,7 +119,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
 
         // open recording's preview
-        await page.locator('.ThreadViewer').locator('.post__body').nth(1).filter({has: page.getByTestId('fileAttachmentList')}).click();
+        await page.locator('#threadViewerScrollContainer').getByTestId('fileAttachmentList').nth(0).click();
         await expect(page.locator('.file-preview-modal__content')).toBeVisible();
 
         // verify transcription track exists
