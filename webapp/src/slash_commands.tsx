@@ -20,7 +20,6 @@ import {
 import {
     DisabledCallsErr,
     STORAGE_CALLS_CLIENT_STATS_KEY,
-    STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY,
 } from 'src/constants';
 import * as Telemetry from 'src/types/telemetry';
 import {modals} from 'src/webapp_globals';
@@ -164,18 +163,6 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
 
         return {};
     case 'link':
-        break;
-    case 'experimental':
-        if (fields.length < 3) {
-            break;
-        }
-        if (fields[2] === 'on') {
-            window.localStorage.setItem(STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY, 'on');
-            logDebug('experimental features enabled');
-        } else if (fields[2] === 'off') {
-            logDebug('experimental features disabled');
-            window.localStorage.removeItem(STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY);
-        }
         break;
     case 'stats': {
         if (window.callsClient) {
