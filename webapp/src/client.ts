@@ -694,6 +694,7 @@ export default class CallsClient extends EventEmitter {
         const screenAudioTrack = screenStream.getAudioTracks()[0];
 
         if (screenAudioTrack) {
+            logDebug('screen sharing with audio', screenAudioTrack);
             screenStream = new MediaStream([screenTrack, screenAudioTrack]);
         } else {
             screenStream = new MediaStream([screenTrack]);
@@ -713,20 +714,16 @@ export default class CallsClient extends EventEmitter {
             }
 
             await this.peer.removeTrack(screenTrack.id);
+            if (screenAudioTrack) {
+                await this.peer.removeTrack(screenAudioTrack.id);
+            }
+
             this.ws.send('screen_off');
         };
 
-        logDebug('adding stream to peer', screenStream.id);
+        logDebug('adding screen stream to peer', screenStream.id);
 
-        // Always send a fallback track (VP8 encoded) for receivers that don't yet support AV1.
-        await this.peer.addStream(screenStream);
-
-        if (this.config.enableAV1 && this.av1Codec) {
-            logDebug('AV1 supported, sending track', this.av1Codec);
-            await this.peer.addStream(screenStream, [{
-                codec: this.av1Codec,
-            }]);
-        }
+        this.emit('localScreenStream', screenStream);
 
         this.ws.send('screen_on', {
             data: JSON.stringify({
@@ -734,7 +731,16 @@ export default class CallsClient extends EventEmitter {
             }),
         });
 
-        this.emit('localScreenStream', screenStream);
+        // Always send a fallback track (VP8 encoded) for receivers that don't yet support AV1.
+        await this.peer.addStream(screenStream);
+
+        if (this.config.enableAV1 && this.av1Codec) {
+            logDebug('AV1 supported, sending track', this.av1Codec);
+
+            await this.peer.addTrack(screenTrack, screenStream, {
+                codec: this.av1Codec,
+            });
+        }
     }
 
     public async shareScreen(sourceID?: string, withAudio?: boolean) {
