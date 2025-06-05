@@ -8,8 +8,9 @@ import React, {CSSProperties} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
+import SpeakerIcon from 'src/components/icons/speaker_icon';
 import {logDebug, logErr} from 'src/log';
-import {hasExperimentalFlag, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
+import {getPlatformInfo, sendDesktopEvent, shareAudioWithScreen, shouldRenderDesktopWidget} from 'src/utils';
 
 interface Props {
     intl: IntlShape,
@@ -20,6 +21,7 @@ interface Props {
 interface State {
     sources: DesktopCaptureSource[],
     selected: string,
+    shareSystemAudio: boolean,
 }
 
 export default class ScreenSourceModal extends React.PureComponent<Props, State> {
@@ -93,6 +95,15 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             width: '100%',
             margin: 0,
         },
+        audioToggleContainer: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            margin: 0,
+            fontWeight: 400,
+            alignSelf: 'end',
+            padding: '16px 32px',
+        },
     };
 
     constructor(props: Props) {
@@ -101,6 +112,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
         this.state = {
             sources: [],
             selected: '',
+            shareSystemAudio: false,
         };
     }
 
@@ -157,24 +169,51 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
         this.setState({
             sources: [],
             selected: '',
+            shareSystemAudio: false,
         });
         this.props.hideScreenSourceModal();
     };
 
     private shareScreen = () => {
+        logDebug('ScreenSourceModal.shareScreen', this.state.selected, shareAudioWithScreen(), this.state.shareSystemAudio);
+
         if (window.desktopAPI?.shareScreen) {
             logDebug('desktopAPI.shareScreen');
-            window.desktopAPI.shareScreen(this.state.selected, hasExperimentalFlag());
+            window.desktopAPI.shareScreen(this.state.selected, shareAudioWithScreen() && this.state.shareSystemAudio);
         } else if (shouldRenderDesktopWidget()) {
             // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
             sendDesktopEvent('calls-widget-share-screen', {
                 sourceID: this.state.selected,
-                withAudio: hasExperimentalFlag(),
+                withAudio: shareAudioWithScreen() && this.state.shareSystemAudio,
             });
         } else {
-            window.callsClient?.shareScreen(this.state.selected, hasExperimentalFlag());
+            window.callsClient?.shareScreen(this.state.selected, shareAudioWithScreen());
         }
         this.hide();
+    };
+
+    private renderAudioToggle = () => {
+        const {formatMessage} = this.props.intl;
+        return (
+            <>
+                <SpeakerIcon
+                    style={{
+                        width: '16px',
+                        height: '16px',
+                        fill: 'rgba(var(--center-channel-color-rgb), 0.56)',
+                    }}
+                />
+                {
+                    formatMessage({defaultMessage: 'Also share system audio'})}
+                <input
+                    type='checkbox'
+                    name='shareSystemAudio'
+                    checked={this.state.shareSystemAudio}
+                    onChange={() => this.setState((prevState) => ({shareSystemAudio: !prevState.shareSystemAudio}))}
+                    style={{zoom: '1.4'}}
+                />
+            </>
+        );
     };
 
     componentDidMount() {
@@ -258,6 +297,12 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
         if (!this.props.show || this.state.sources.length === 0) {
             return null;
         }
+
+        const platformName = getPlatformInfo();
+
+        // System audio sharing is supported on Linux and Windows platforms only.
+        const shouldRenderAudioToggle = shareAudioWithScreen() && (platformName === 'Linux' || platformName === 'Windows');
+
         return (
             <div style={this.style.main as CSSProperties}>
                 <div
@@ -279,8 +324,17 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                     <hr style={this.style.divider}/>
                     <div style={this.style.body as CSSProperties}>
                         { this.renderSources() }
+
                     </div>
+
+                    { shouldRenderAudioToggle &&
+                        <label style={this.style.audioToggleContainer}>
+                            {this.renderAudioToggle()}
+                        </label>
+                    }
+
                     <hr style={this.style.divider}/>
+
                     <div style={this.style.footer}>
                         <button
                             className='style--none screen-source-modal-cancel'

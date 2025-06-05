@@ -220,6 +220,26 @@ test.describe('desktop', () => {
         await devPage.leaveCall();
     });
 
+    test('desktopAPI: share system audio toggle', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+
+        await page.evaluate(() => {
+            window.desktop = {version: '5.10.0'};
+            window.localStorage.setItem('calls_share_audio_with_screen', 'on');
+        });
+
+        await page.locator('#calls-widget-toggle-menu-button').click();
+        await page.locator('#calls-widget-menu-screenshare').click();
+        await expect(page.locator('#calls-screen-source-modal')).toBeVisible();
+        expect(await page.locator('#calls-screen-source-modal').screenshot()).toMatchSnapshot('calls-screen-source-modal-audio-toggle.png');
+
+        await expect(page.getByText('Also share system audio')).toBeVisible();
+        expect(page.getByLabel('Also share system audio')).not.toBeChecked();
+
+        await devPage.leaveCall();
+    });
+
     test('desktopAPI: screen sharing permissions error', async ({page}) => {
         await page.addInitScript(() => {
             window.desktopAPI.onScreenShared = (listener: (sourceID: string, withAudio: boolean) => void) => {

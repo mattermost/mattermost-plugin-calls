@@ -79,12 +79,12 @@ import {
 import {
     getPopOutURL,
     getUserDisplayName,
-    hasExperimentalFlag,
     isDMChannel,
     isGMChannel,
     isPrivateChannel,
     isPublicChannel,
     sendDesktopEvent,
+    shareAudioWithScreen,
     untranslatable,
 } from 'src/utils';
 import styled from 'styled-components';
@@ -425,7 +425,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             if (window.desktopAPI?.onScreenShared && window.desktopAPI?.onCallsError) {
                 logDebug('registering desktopAPI.onScreenShared');
                 this.unsubscribers.push(window.desktopAPI.onScreenShared((sourceID: string, withAudio: boolean) => {
-                    logDebug('desktopAPI.onScreenShared');
+                    logDebug('desktopAPI.onScreenShared', sourceID, withAudio);
                     this.shareScreen(sourceID, withAudio);
                 }));
 
@@ -709,8 +709,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     };
 
-    private shareScreen = async (sourceID: string, _withAudio: boolean) => {
-        const stream = await window.callsClient?.shareScreen(sourceID, hasExperimentalFlag());
+    private shareScreen = async (sourceID: string, withAudio: boolean) => {
+        const stream = await window.callsClient?.shareScreen(sourceID, withAudio);
         if (stream) {
             this.setState({screenStream: stream});
             this.setMissingScreenPermissions(false, true);
@@ -818,7 +818,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     this.props.showScreenSourceModal();
                 }
             } else {
-                await this.shareScreen('', hasExperimentalFlag());
+                await this.shareScreen('', shareAudioWithScreen());
             }
             this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
