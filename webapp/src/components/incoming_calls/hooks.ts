@@ -4,6 +4,7 @@
 import {ChannelMembership} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
+import {getProfilesInChannel} from 'mattermost-redux/actions/users';
 import {NotificationLevel} from 'mattermost-redux/constants/channels';
 import {getChannel, getMyChannelMember} from 'mattermost-redux/selectors/entities/channels';
 import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
@@ -236,12 +237,19 @@ export const useNotification = (call: IncomingCallNotification) => {
 
 export const useGetCallerNameAndOthers = (call: IncomingCallNotification, splitAt: number) => {
     const {formatMessage, formatList} = useIntl();
+    const dispatch = useDispatch();
     const teammateNameDisplay = useSelector(getTeammateNameDisplaySetting);
     const caller = useSelector((state: GlobalState) => getUser(state, call.callerID));
     const currentUser = useSelector(getCurrentUser);
     const doGetProfilesInChannel = makeGetProfilesInChannel();
     const gmMembers = useSelector((state: GlobalState) => doGetProfilesInChannel(state, call.channelID));
     const callerName = displayUsername(caller, teammateNameDisplay, false);
+
+    useEffect(() => {
+        if (call.channelID) {
+            dispatch(getProfilesInChannel(call.channelID, 0));
+        }
+    }, [call.channelID]);
 
     let others = '';
     if (call.type === ChannelType.GM) {
