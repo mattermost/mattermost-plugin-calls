@@ -98,6 +98,7 @@ import {IncomingCallContainer} from 'src/components/incoming_calls/call_containe
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
+import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
@@ -392,6 +393,22 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
         registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
         registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
+
+        registry.registerUserSettings({
+            id: pluginId,
+            uiName: 'Calls',
+            icon: 'icon-phone-in-talk',
+            sections: [
+                {
+                    title: 'Audio devices settings',
+                    component: AudioDevicesSettingsSection,
+                },
+                {
+                    title: 'Screen sharing settings',
+                    component: ScreenSharingSettingsSection,
+                },
+            ],
+        });
 
         registry.registerFilePreviewComponent((fi, post) => {
             return String(post?.type) === CALL_RECORDING_POST_TYPE;

@@ -13,6 +13,7 @@ import {
     getCallRecordingPropsFromPost,
     getCallsClient,
     getCallsWindow,
+    getPlatformInfo,
     getWebappUtils,
     getWSConnectionURL,
     maxAttemptsReachedErr,
@@ -619,6 +620,85 @@ describe('utils', () => {
 
             global.window = originalWindow;
         });
+    });
+
+    describe('getPlatformInfo', () => {
+        const originalNavigator = window.navigator;
+        beforeEach(() => {
+        // Create a mock navigator object
+            Object.defineProperty(window, 'navigator', {
+                value: {
+                    userAgent: '',
+                    platform: '',
+                },
+                writable: true,
+            });
+        });
+
+        afterEach(() => {
+        // Restore the original navigator
+            Object.defineProperty(window, 'navigator', {
+                value: originalNavigator,
+                writable: true,
+            });
+        });
+
+        const platformTestCases = [
+            {
+                name: 'Windows using platform',
+                platform: 'Win32',
+                userAgent: '',
+                expectedPlatform: 'Windows',
+            },
+            {
+                name: 'MacOS using platform',
+                platform: 'MacIntel',
+                userAgent: '',
+                expectedPlatform: 'MacOS',
+            },
+            {
+                name: 'Linux using platform',
+                platform: 'Linux x86_64',
+                userAgent: '',
+                expectedPlatform: 'Linux',
+            },
+            {
+                name: 'Windows using userAgent',
+                platform: '',
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0)',
+                expectedPlatform: 'Windows',
+            },
+            {
+                name: 'MacOS using userAgent',
+                platform: '',
+                userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+                expectedPlatform: 'MacOS',
+            },
+            {
+                name: 'Linux using userAgent',
+                platform: '',
+                userAgent: 'Mozilla/5.0 (X11; Linux x86_64)',
+                expectedPlatform: 'Linux',
+            },
+            {
+                name: 'Unknown Platform',
+                platform: '',
+                userAgent: 'Some Unknown Platform',
+                expectedPlatform: 'Unknown',
+            },
+        ];
+
+        test.each(platformTestCases)(
+            'should detect $name',
+            ({platform, userAgent, expectedPlatform}) => {
+                // @ts-expect-error we can override the platform in tests
+                window.navigator.platform = platform;
+
+                // @ts-expect-error we can override the userAgent in tests
+                window.navigator.userAgent = userAgent;
+                expect(getPlatformInfo()).toBe(expectedPlatform);
+            },
+        );
     });
 });
 
