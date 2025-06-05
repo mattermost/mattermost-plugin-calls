@@ -209,7 +209,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                     type='checkbox'
                     name='shareSystemAudio'
                     checked={this.state.shareSystemAudio}
-                    onChange={() => this.setState({shareSystemAudio: !this.state.shareSystemAudio})}
+                    onChange={() => this.setState((prevState) => ({shareSystemAudio: !prevState.shareSystemAudio}))}
                     style={{zoom: '1.4'}}
                 />
             </>
