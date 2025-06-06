@@ -168,8 +168,8 @@ func (p *Plugin) OnActivate() (retErr error) {
 		}
 	} else {
 		rtcServerConfig := rtc.ServerConfig{
-			ICEAddressUDP:   cfg.UDPServerAddress,
-			ICEAddressTCP:   cfg.TCPServerAddress,
+			ICEAddressUDP:   rtc.ICEAddress(cfg.UDPServerAddress),
+			ICEAddressTCP:   rtc.ICEAddress(cfg.TCPServerAddress),
 			ICEPortUDP:      *cfg.UDPServerPort,
 			ICEPortTCP:      *cfg.TCPServerPort,
 			ICEHostOverride: cfg.ICEHostOverride,
