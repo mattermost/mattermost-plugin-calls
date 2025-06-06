@@ -954,7 +954,12 @@ export default class Plugin {
 
             unsubscribeActivateListener();
 
-            await Promise.all([store.dispatch(getCallsConfig()), store.dispatch(getCallsVersionInfo()), store.dispatch(getCallsConfigEnvOverrides())]);
+            const requests = [store.dispatch(getCallsConfig()), store.dispatch(getCallsVersionInfo())];
+            if (isCurrentUserSystemAdmin(store.getState())) {
+                requests.push(store.dispatch(getCallsConfigEnvOverrides()));
+            }
+
+            await Promise.all(requests);
 
             // We don't care about fetching other calls states in pop out.
             // Current call state will be requested over websocket
