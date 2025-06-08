@@ -33,15 +33,15 @@
     },
     {
         "id": "app.call.started_message",
-        "translation": "{{.اسم المستخدم}} بدأ مكالمة"
+        "translation": "{{.Username}} بدأ مكالمة"
     },
     {
         "id": "app.call.started_message_fullname",
-        "translation": "{{.الاسم الأول}} {{{.LastName}} بدأت مكالمة"
+        "translation": "{{.FirstName}} {{.LastName}} بدأت مكالمة"
     },
     {
         "id": "app.push_notification.inviting_message",
-        "translation": "{{.اسم المرسل}} يدعوك إلى مكالمة"
+        "translation": "{{.SenderName}} يدعوك إلى مكالمة"
     },
     {
         "id": "app.save_config.error",
