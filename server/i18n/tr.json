@@ -17,7 +17,7 @@
     },
     {
         "id": "app.call.started_message",
-        "translation": "{{.Kullanıcı adı}} bir çağrı başlattı"
+        "translation": "{{.Username}} bir çağrı başlattı"
     },
     {
         "id": "app.call.started_message_fullname",
