@@ -37,7 +37,7 @@
     },
     {
         "id": "app.call.started_message",
-        "translation": "{{.Nombredeusuario}} inició una llamada"
+        "translation": "{{.Username}} inició una llamada"
     },
     {
         "id": "app.call.started_message_fullname",
