@@ -33,7 +33,7 @@
     },
     {
         "id": "app.call.started_message_fullname",
-        "translation": "{{.FirstName}} {{.성}}이 통화 시작"
+        "translation": "{{.FirstName}} {{.LastName}} 통화 시작"
     },
     {
         "id": "app.save_config.error",
