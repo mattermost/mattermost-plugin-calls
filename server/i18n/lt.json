@@ -13,7 +13,7 @@
     },
     {
         "id": "app.call.started_message",
-        "translation": "{{.Vartotojo vardas}} pradėjo skambutį"
+        "translation": "{{.Username}} pradėjo skambutį"
     },
     {
         "id": "app.call.new_transcription_message",
