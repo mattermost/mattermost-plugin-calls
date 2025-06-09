@@ -7,6 +7,7 @@ import {hasDCSignalingLockSupport} from '@mattermost/calls-common/lib/utils';
 import WebSocketClient from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
+import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
@@ -155,6 +156,7 @@ import {
     isLimitRestricted,
     needsTURNCredentials,
     ringingEnabled,
+    sessionsInCurrentCall,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {convertStatsToPanels} from './stats';
@@ -1043,14 +1045,18 @@ export default class Plugin {
                 sections,
             });
 
+            const currentCallChannelID = channelIDForCurrentCall(store.getState());
+
             // We don't care about fetching other calls states in pop out.
             // Current call state will be requested over websocket
             // from the ExpandedView component itself.
             if (isCallsPopOut()) {
+                await Promise.all([
+                    store.dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(sessionsInCurrentCall(store.getState())))),
+                    store.dispatch(getChannelAction(currentCallChannelID)),
+                ]);
                 return;
             }
-
-            const currentCallChannelID = channelIDForCurrentCall(store.getState());
 
             // We pass currentCallChannelID so that we
             // can skip loading its state as a result of the HTTP calls in
