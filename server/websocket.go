@@ -626,12 +626,6 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID, handlerID s
 		p.LogError(err.Error())
 	}
 
-	p.track(evCallUserLeft, map[string]interface{}{
-		"ParticipantID": userID,
-		"ChannelID":     channelID,
-		"CallID":        us.callID,
-	})
-
 	return nil
 }
 
@@ -737,13 +731,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 				"owner_id":  state.Call.OwnerID,
 				"host_id":   state.Call.GetHostID(),
 			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
-
-			p.track(evCallStarted, map[string]interface{}{
-				"ParticipantID": userID,
-				"CallID":        state.Call.ID,
-				"ChannelID":     channelID,
-				"ChannelType":   channel.Type,
-			})
 		}
 
 		p.LogDebug("session has joined call",
@@ -874,11 +861,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		}
 
 		p.metrics.IncWebSocketConn()
-		p.track(evCallUserJoined, map[string]interface{}{
-			"ParticipantID": userID,
-			"ChannelID":     channelID,
-			"CallID":        state.Call.ID,
-		})
 
 		go func() {
 			defer p.metrics.DecWebSocketConn()
