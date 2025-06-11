@@ -3,14 +3,6 @@
 
 import {WebSocketClient, WebSocketErrorType} from './websocket';
 
-// Mock the log functions
-jest.mock('./log', () => ({
-    logDebug: jest.fn(),
-    logErr: jest.fn(),
-    logInfo: jest.fn(),
-    logWarn: jest.fn(),
-}));
-
 // Mock the manifest
 jest.mock('./manifest', () => ({
     pluginId: 'com.mattermost.calls',
@@ -27,14 +19,6 @@ class MockWebSocket {
 
     constructor(url: string) {
         this.url = url;
-
-        // Simulate async connection
-        setTimeout(() => {
-            this.readyState = WebSocket.OPEN;
-            if (this.onopen) {
-                this.onopen(new Event('open'));
-            }
-        }, 0);
     }
 
     send(_: string | ArrayBuffer) {
@@ -63,7 +47,7 @@ describe('WebSocketClient', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         jest.useFakeTimers();
-        client = new WebSocketClient('ws://test.com', 'test-token');
+        client = new WebSocketClient('ws://test.com');
 
         // Get reference to the mock WebSocket instance
         mockWebSocket = (client as any).ws;
@@ -109,9 +93,6 @@ describe('WebSocketClient', () => {
         });
 
         it('should start ping interval on open', () => {
-            client = new WebSocketClient('ws://test.com');
-            mockWebSocket = (client as any).ws;
-
             const sendSpy = jest.spyOn(mockWebSocket, 'send');
 
             mockWebSocket.readyState = WebSocket.OPEN;
@@ -121,6 +102,11 @@ describe('WebSocketClient', () => {
             expect(sendSpy).toHaveBeenCalledWith(JSON.stringify({
                 action: 'ping',
                 seq: 1,
+            }));
+
+            // Simulate initial pong.
+            mockWebSocket.onmessage!(new MessageEvent('message', {
+                data: JSON.stringify({seq_reply: 1}),
             }));
 
             // Fast-forward to trigger ping interval.
@@ -133,9 +119,6 @@ describe('WebSocketClient', () => {
         });
 
         it('should emit open event on successful connection', () => {
-            client = new WebSocketClient('ws://test.com');
-            mockWebSocket = (client as any).ws;
-
             const openSpy = jest.fn();
             client.on('open', openSpy);
 
@@ -197,25 +180,32 @@ describe('WebSocketClient', () => {
 
         it('should handle pong responses', () => {
             const sendSpy = jest.spyOn(mockWebSocket, 'send');
-            
-            // Trigger ping
+
+            mockWebSocket.readyState = WebSocket.OPEN;
             mockWebSocket.onopen!(new Event('open'));
-            
+
+            // Initial ping happened.
+
+            // Simulate initial pong response
+            mockWebSocket.onmessage!(new MessageEvent('message', {
+                data: JSON.stringify({seq_reply: 1}),
+            }));
+
             // Clear the initial ping call
-            sendSpy.mockClear();
-            
+            // sendSpy.mockClear();
+
             // Advance time to trigger a ping
             jest.advanceTimersByTime(5000);
-            
+
             // Verify ping was sent and get the sequence number
             expect(sendSpy).toHaveBeenCalledWith(JSON.stringify({
                 action: 'ping',
-                seq: 4,
+                seq: 2,
             }));
 
             // Simulate pong response with matching seq_reply
             const pongMessage = {
-                seq_reply: 4,
+                seq_reply: 2,
             };
 
             mockWebSocket.onmessage!(new MessageEvent('message', {
@@ -226,7 +216,7 @@ describe('WebSocketClient', () => {
             const eventSpy = jest.fn();
             client.on('event', eventSpy);
             expect(eventSpy).not.toHaveBeenCalled();
-            
+
             // Verify waitingForPong state is cleared
             expect((client as any).waitingForPong).toBe(false);
             expect((client as any).pendingPingSeq).toBe(0);
@@ -335,17 +325,14 @@ describe('WebSocketClient', () => {
         });
 
         it('should ignore pong responses with wrong sequence number', () => {
-            const sendSpy = jest.spyOn(mockWebSocket, 'send');
-            
+            mockWebSocket.readyState = WebSocket.OPEN;
             mockWebSocket.onopen!(new Event('open'));
-            sendSpy.mockClear();
-            
-            // Trigger ping
-            jest.advanceTimersByTime(5000);
-            
-            // Verify we're waiting for pong with seq 4
+
+            // Initial ping happened.
+
+            // Verify we're waiting for pong with seq 1
             expect((client as any).waitingForPong).toBe(true);
-            expect((client as any).pendingPingSeq).toBe(4);
+            expect((client as any).pendingPingSeq).toBe(1);
 
             // Simulate pong response with wrong seq_reply
             const wrongPongMessage = {
@@ -358,39 +345,42 @@ describe('WebSocketClient', () => {
 
             // Should still be waiting for correct pong
             expect((client as any).waitingForPong).toBe(true);
-            expect((client as any).pendingPingSeq).toBe(4);
+            expect((client as any).pendingPingSeq).toBe(1);
         });
 
         it('should send ping at regular intervals', () => {
-            const sendSpy = jest.spyOn(mockWebSocket, 'send');
-
+            mockWebSocket.readyState = WebSocket.OPEN;
             mockWebSocket.onopen!(new Event('open'));
 
-            // Clear initial ping
-            sendSpy.mockClear();
+            // Initial ping happened.
 
+            // Simulate initial pong.
+            mockWebSocket.onmessage!(new MessageEvent('message', {
+                data: JSON.stringify({seq_reply: 1}),
+            }));
+
+            // Trigger next ping.
             jest.advanceTimersByTime(5000);
 
-            expect(sendSpy).toHaveBeenCalledWith(
-                JSON.stringify({
-                    action: 'ping',
-                    seq: 4,
-                }),
-            );
-            
             // Verify pendingPingSeq is set
             expect((client as any).waitingForPong).toBe(true);
-            expect((client as any).pendingPingSeq).toBe(4);
+            expect((client as any).pendingPingSeq).toBe(2);
         });
 
         it('should reconnect on ping timeout', () => {
             const closeSpy = jest.spyOn(mockWebSocket, 'close');
 
+            mockWebSocket.readyState = WebSocket.OPEN;
             mockWebSocket.onopen!(new Event('open'));
 
-            // Trigger first ping
+            // Simulate initial pong.
+            mockWebSocket.onmessage!(new MessageEvent('message', {
+                data: JSON.stringify({seq_reply: 1}),
+            }));
+
+            // Trigger second ping
             jest.advanceTimersByTime(5000);
-            
+
             // Verify we're waiting for pong
             expect((client as any).waitingForPong).toBe(true);
 

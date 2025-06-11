@@ -45,6 +45,7 @@ export class WebSocketClient extends EventEmitter {
     private closed = false;
     private pingInterval: ReturnType<typeof setInterval> | null = null;
     private waitingForPong = false;
+    private pendingPingSeq = 0;
 
     constructor(wsURL: string, authToken?: string) {
         super();
@@ -76,11 +77,11 @@ export class WebSocketClient extends EventEmitter {
                 this.emit('open', this.originalConnID, this.connID, true);
             }
 
-            // Send initial ping.
-            this.ping();
-
             // Start ping interval
             this.startPingInterval();
+
+            // Send initial ping.
+            this.ping();
         };
 
         this.ws.onerror = () => {
@@ -102,8 +103,9 @@ export class WebSocketClient extends EventEmitter {
             }
 
             // Handle pong response
-            if (msg?.seq_reply && this.waitingForPong) {
+            if (this.waitingForPong && msg?.seq_reply === this.pendingPingSeq) {
                 this.waitingForPong = false;
+                this.pendingPingSeq = 0;
                 return;
             }
 
@@ -120,6 +122,7 @@ export class WebSocketClient extends EventEmitter {
                     logDebug('ws: new conn id from server', msg.data.connection_id);
                     this.connID = msg.data.connection_id;
                     this.serverSeqNo = 0;
+                    this.seqNo = 1;
                     if (this.originalConnID === '') {
                         logDebug('ws: setting original conn id', this.connID);
                         this.originalConnID = this.connID;
@@ -170,6 +173,7 @@ export class WebSocketClient extends EventEmitter {
             seq: this.seqNo++,
             data,
         };
+
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             if (binary) {
                 this.ws.send(encode(msg));
@@ -188,6 +192,7 @@ export class WebSocketClient extends EventEmitter {
         this.ws = null;
         this.seqNo = 1;
         this.serverSeqNo = 0;
+        this.pendingPingSeq = 0;
         this.connID = '';
         this.originalConnID = '';
 
@@ -226,11 +231,15 @@ export class WebSocketClient extends EventEmitter {
     }
 
     private startPingInterval() {
-        this.stopPingInterval();
+        if (this.pingInterval) {
+            this.stopPingInterval();
+        }
+
+        logDebug('ws: starting ping interval', this.originalConnID);
+
         this.pingInterval = setInterval(() => {
             if (this.waitingForPong && this.ws) {
                 logWarn('ws: ping timeout, reconnecting', this.originalConnID);
-                this.stopPingInterval();
 
                 // We call the close handler directly since through ws.close() it could execute after a significant delay.
                 this.ws.onclose = null;
@@ -248,14 +257,18 @@ export class WebSocketClient extends EventEmitter {
 
     private stopPingInterval() {
         if (this.pingInterval) {
+            logDebug('ws: stopping ping interval', this.originalConnID);
             clearInterval(this.pingInterval);
             this.pingInterval = null;
+            this.waitingForPong = false;
+            this.pendingPingSeq = 0;
         }
     }
 
     private ping() {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.waitingForPong = true;
+            this.pendingPingSeq = this.seqNo;
             this.ws.send(JSON.stringify({
                 action: 'ping',
                 seq: this.seqNo++,
