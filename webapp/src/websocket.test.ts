@@ -219,7 +219,7 @@ describe('WebSocketClient', () => {
 
             // Verify waitingForPong state is cleared
             expect((client as any).waitingForPong).toBe(false);
-            expect((client as any).pendingPingSeq).toBe(0);
+            expect((client as any).expectedPongSeqNo).toBe(0);
         });
 
         it('should emit join event for plugin join messages', () => {
@@ -332,7 +332,7 @@ describe('WebSocketClient', () => {
 
             // Verify we're waiting for pong with seq 1
             expect((client as any).waitingForPong).toBe(true);
-            expect((client as any).pendingPingSeq).toBe(1);
+            expect((client as any).expectedPongSeqNo).toBe(1);
 
             // Simulate pong response with wrong seq_reply
             const wrongPongMessage = {
@@ -345,7 +345,7 @@ describe('WebSocketClient', () => {
 
             // Should still be waiting for correct pong
             expect((client as any).waitingForPong).toBe(true);
-            expect((client as any).pendingPingSeq).toBe(1);
+            expect((client as any).expectedPongSeqNo).toBe(1);
         });
 
         it('should send ping at regular intervals', () => {
@@ -362,9 +362,9 @@ describe('WebSocketClient', () => {
             // Trigger next ping.
             jest.advanceTimersByTime(5000);
 
-            // Verify pendingPingSeq is set
+            // Verify expectedPongSeqNo is set
             expect((client as any).waitingForPong).toBe(true);
-            expect((client as any).pendingPingSeq).toBe(2);
+            expect((client as any).expectedPongSeqNo).toBe(2);
         });
 
         it('should reconnect on ping timeout', () => {
@@ -476,7 +476,7 @@ describe('WebSocketClient', () => {
             expect((client as any).connID).toBe('');
             expect((client as any).originalConnID).toBe('');
             expect((client as any).closed).toBe(true);
-            expect((client as any).pendingPingSeq).toBe(0);
+            expect((client as any).expectedPongSeqNo).toBe(0);
         });
 
         it('should not attempt reconnection when closed', () => {

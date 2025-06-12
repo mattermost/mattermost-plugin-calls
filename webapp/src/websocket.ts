@@ -45,7 +45,7 @@ export class WebSocketClient extends EventEmitter {
     private closed = false;
     private pingInterval: ReturnType<typeof setInterval> | null = null;
     private waitingForPong = false;
-    private pendingPingSeq = 0;
+    private expectedPongSeqNo = 0;
 
     constructor(wsURL: string, authToken?: string) {
         super();
@@ -103,9 +103,9 @@ export class WebSocketClient extends EventEmitter {
             }
 
             // Handle pong response
-            if (this.waitingForPong && msg?.seq_reply === this.pendingPingSeq) {
+            if (this.waitingForPong && msg?.seq_reply === this.expectedPongSeqNo) {
                 this.waitingForPong = false;
-                this.pendingPingSeq = 0;
+                this.expectedPongSeqNo = 0;
                 return;
             }
 
@@ -192,7 +192,7 @@ export class WebSocketClient extends EventEmitter {
         this.ws = null;
         this.seqNo = 1;
         this.serverSeqNo = 0;
-        this.pendingPingSeq = 0;
+        this.expectedPongSeqNo = 0;
         this.connID = '';
         this.originalConnID = '';
 
@@ -261,14 +261,17 @@ export class WebSocketClient extends EventEmitter {
             clearInterval(this.pingInterval);
             this.pingInterval = null;
             this.waitingForPong = false;
-            this.pendingPingSeq = 0;
+            this.expectedPongSeqNo = 0;
         }
     }
 
     private ping() {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.waitingForPong = true;
-            this.pendingPingSeq = this.seqNo;
+
+            // This is used to track the expected pong response which should match the request's sequence number.
+            this.expectedPongSeqNo = this.seqNo;
+
             this.ws.send(JSON.stringify({
                 action: 'ping',
                 seq: this.seqNo++,
