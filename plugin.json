@@ -716,7 +716,7 @@
   "props": {
     "min_rtcd_version": "v0.17.0",
     "min_offloader_version": "v0.9.0",
-    "calls_recorder_version": "v0.8.4",
-    "calls_transcriber_version": "v0.6.2"
+    "calls_recorder_version": "v0.8.5",
+    "calls_transcriber_version": "v0.6.3"
   }
 }
