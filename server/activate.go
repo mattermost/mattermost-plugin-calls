@@ -250,10 +250,6 @@ func (p *Plugin) OnDeactivate() error {
 		p.LogError(err.Error())
 	}
 
-	if err := p.uninitTelemetry(); err != nil {
-		p.LogError(err.Error())
-	}
-
 	if p.botSession != nil {
 		if err := p.API.RevokeSession(p.botSession.Id); err != nil {
 			p.LogError(err.Error())

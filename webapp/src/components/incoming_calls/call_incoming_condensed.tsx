@@ -34,8 +34,8 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     const [callerName, others] = useGetCallerNameAndOthers(call, 10);
     const [showTooltip, setShowTooltip] = useState(false);
 
-    const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID, onWidget);
-    const onContainerClick = useOnChannelLinkClick(call, onWidget);
+    const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
+    const onContainerClick = useOnChannelLinkClick(call);
     useRingingAndNotification(call, onWidget);
 
     useEffect(() => {
