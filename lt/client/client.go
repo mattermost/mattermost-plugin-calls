@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -555,9 +556,13 @@ func (u *User) Connect(stopCh chan struct{}) error {
 	}
 	cancel()
 
-	if ok && appErr != nil && appErr.Id != "api.user.login.invalid_credentials_email_username" {
+	isInvalidCredentialsError := func(id string) bool {
+		return strings.Contains(id, "invalid_credentials")
+	}
+
+	if ok && appErr != nil && !isInvalidCredentialsError(appErr.Id) {
 		return fmt.Errorf("login failed: %w", err)
-	} else if ok && appErr != nil && appErr.Id == "api.user.login.invalid_credentials_email_username" {
+	} else if ok && appErr != nil && isInvalidCredentialsError(appErr.Id) {
 		if !u.cfg.Setup {
 			return fmt.Errorf("cannot register user with setup disabled")
 		}
