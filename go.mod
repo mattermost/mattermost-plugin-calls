@@ -22,7 +22,7 @@ require (
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.1.10
 	github.com/mattermost/morph v1.1.0
-	github.com/mattermost/rtcd v1.1.2-0.20250612135617-68c6077ca7a7
+	github.com/mattermost/rtcd v1.1.3-0.20250616193428-1f448152c6b4
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
