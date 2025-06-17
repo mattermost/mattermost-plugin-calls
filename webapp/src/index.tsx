@@ -470,7 +470,12 @@ export default class Plugin {
             }
         };
         this.unsubscribers.push(unregisterChannelHeaderMenuButton);
-        const ChannelHeaderIcon = () => (<CompassIcon icon='phone'/>);
+        const ChannelHeaderIcon = () => (
+            <CompassIcon
+                icon='phone'
+                style={{fontSize: '18px', lineHeight: '18px', color: 'rgba(var(--center-channel-color-rgb), 0.64)'}}
+            />
+        );
         const ChannelHeaderDropdownText = () => (<FormattedMessage defaultMessage='Start call'/>);
         const registerChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
