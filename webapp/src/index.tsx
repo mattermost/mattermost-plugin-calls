@@ -7,6 +7,10 @@ import {hasDCSignalingLockSupport} from '@mattermost/calls-common/lib/utils';
 import WebSocketClient from '@mattermost/client/websocket';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
+import {Channel} from '@mattermost/types/channels';
+import {FileInfo} from '@mattermost/types/files';
+import {CommandArgs} from '@mattermost/types/integrations';
+import {Post} from '@mattermost/types/posts';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
@@ -99,7 +103,7 @@ import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
-import {CallActions, CurrentCallData, CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
+import {CallActions, CurrentCallData, CurrentCallDataDefault, DesktopMessageType, RealNewPostMessageProps} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
 
 import {
@@ -388,7 +392,7 @@ export default class Plugin {
             ],
         });
 
-        registry.registerFilePreviewComponent((fi, post) => {
+        registry.registerFilePreviewComponent((fi: FileInfo, post?: Post) => {
             return String(post?.type) === CALL_RECORDING_POST_TYPE;
         }, RecordingsFilePreview);
 
@@ -396,11 +400,11 @@ export default class Plugin {
             return getTranslations(locale);
         });
 
-        registry.registerSlashCommandWillBePostedHook(async (message, args) => {
+        registry.registerSlashCommandWillBePostedHook(async (message: string, args: CommandArgs) => {
             return slashCommandsHandler(store, joinCall, message, args);
         });
 
-        registry.registerDesktopNotificationHook?.(async (post, msgProps, channel, teamId, args) => {
+        registry.registerDesktopNotificationHook?.(async (post: Post, msgProps: RealNewPostMessageProps, channel: Channel, teamId: string, args: DesktopNotificationArgs) => {
             return desktopNotificationHandler(store, post, msgProps, channel, args);
         });
 
@@ -477,7 +481,7 @@ export default class Plugin {
             channelHeaderMenuButtonID = registry.registerCallButtonAction(
                 ChannelHeaderButton,
                 ChannelHeaderDropdownButton,
-                async (channel) => {
+                async (channel: Channel) => {
                     joinCall(channel.id, channel.team_id);
                 },
             );
