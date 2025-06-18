@@ -61,7 +61,13 @@ export interface PluginRegistry {
         args?: DesktopNotificationArgs;
     }>)
 
-    registerCallButtonAction(button: React.ElementType, dropdownButton: React.ElementType, fn: (channel: Channel) => void);
+    registerCallButtonAction(
+        button: React.ElementType,
+        dropdownButton: React.ElementType,
+        fn: (channel: Channel) => void,
+        icon: React.ElementType,
+        dropdownText: React.ElementType,
+    );
 
     unregisterComponent(componentID: string);
 

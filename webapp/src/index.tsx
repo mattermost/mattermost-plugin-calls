@@ -18,7 +18,7 @@ import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selec
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import React, {useEffect} from 'react';
 import ReactDOM from 'react-dom';
-import {injectIntl, IntlProvider} from 'react-intl';
+import {FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {AnyAction} from 'redux';
 import {batchActions} from 'redux-batched-actions';
@@ -129,6 +129,7 @@ import ChannelLinkLabel from './components/channel_link_label';
 import PostType from './components/custom_post_types/post_type';
 import {PostTypeTranscription} from './components/custom_post_types/post_type_transcription';
 import ExpandedView from './components/expanded_view';
+import CompassIcon from './components/icons/compassIcon';
 import ScreenSourceModal from './components/screen_source_modal';
 import SwitchCallModal from './components/switch_call_modal';
 import {
@@ -491,6 +492,13 @@ export default class Plugin {
             }
         };
         this.unsubscribers.push(unregisterChannelHeaderMenuButton);
+        const ChannelHeaderIcon = () => (
+            <CompassIcon
+                icon='phone'
+                style={{fontSize: '18px', lineHeight: '18px', color: 'rgba(var(--center-channel-color-rgb), 0.64)'}}
+            />
+        );
+        const ChannelHeaderDropdownText = () => (<FormattedMessage defaultMessage='Start call'/>);
         const registerChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 return;
@@ -502,6 +510,8 @@ export default class Plugin {
                 async (channel) => {
                     joinCall(channel.id, channel.team_id);
                 },
+                ChannelHeaderIcon,
+                ChannelHeaderDropdownText,
             );
         };
 
