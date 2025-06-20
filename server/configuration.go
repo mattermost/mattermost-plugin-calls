@@ -593,11 +593,7 @@ func (p *Plugin) setConfiguration(configuration *configuration) error {
 // OnConfigurationChange is invoked when configuration changes may have been made.
 func (p *Plugin) OnConfigurationChange() error {
 	serverConfig := p.API.GetConfig()
-	if serverConfig != nil {
-		if err := p.initTelemetry(serverConfig.LogSettings.EnableDiagnostics); err != nil {
-			p.LogError(err.Error())
-		}
-	} else {
+	if serverConfig == nil {
 		p.LogError("OnConfigurationChange: failed to get server config")
 	}
 

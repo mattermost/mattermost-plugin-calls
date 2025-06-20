@@ -16,7 +16,6 @@ import {
     showScreenSourceModal,
     startCallRecording,
     stopCallRecording,
-    trackEvent,
 } from 'src/actions';
 import {
     allowScreenSharing,
@@ -96,7 +95,6 @@ const mapStateToProps = (state: GlobalState) => {
 const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     showExpandedView,
     showScreenSourceModal,
-    trackEvent,
     recordingPromptDismissedAt,
     selectRHSPost,
     startCallRecording,

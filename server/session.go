@@ -443,17 +443,10 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		setCallEnded(&state.Call)
 
 		defer func() {
-			dur, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))
+			_, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))
 			if err != nil {
 				p.LogError("failed to update call post ended", "err", err.Error(), "channelID", channelID)
 			}
-			p.track(evCallEnded, map[string]interface{}{
-				"ChannelID":      channelID,
-				"CallID":         state.Call.ID,
-				"Duration":       dur,
-				"Participants":   len(state.Call.Props.Participants),
-				"ScreenDuration": state.Call.Stats.ScreenDuration,
-			})
 		}()
 	}
 

@@ -11,7 +11,6 @@ import {
     displayGenericErrorModal,
     startCallRecording,
     stopCallRecording,
-    trackEvent,
 } from 'src/actions';
 import {
     EndCallConfirmation,
@@ -21,7 +20,6 @@ import {
     DisabledCallsErr,
     STORAGE_CALLS_CLIENT_STATS_KEY,
 } from 'src/constants';
-import * as Telemetry from 'src/types/telemetry';
 import {modals} from 'src/webapp_globals';
 
 import {getClientLogs, logDebug} from './log';
@@ -199,8 +197,6 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         const isHost = hostIDForCurrentCall(state) === getCurrentUserId(state);
 
         if (fields[2] === 'start') {
-            trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.SlashCommand)(store.dispatch, store.getState);
-
             if (!isHost) {
                 store.dispatch(displayGenericErrorModal(
                     startErrorTitle,
@@ -221,8 +217,6 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         if (fields[2] === 'stop') {
-            trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.SlashCommand)(store.dispatch, store.getState);
-
             if (!isHost) {
                 store.dispatch(displayGenericErrorModal(
                     stopErrorTitle,

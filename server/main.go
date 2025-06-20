@@ -14,10 +14,10 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 )
 
-var isDebug string
-var buildHash string
-var rudderWriteKey string
-var rudderDataplaneURL string
+var (
+	isDebug   string
+	buildHash string
+)
 
 // This value should be high enough to handle up to N events where N is the maximum
 // expected number of concurrent user sessions in calls handled by a single
