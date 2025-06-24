@@ -4,6 +4,7 @@
 import {Reaction} from '@mattermost/calls-common/lib/types';
 import React from 'react';
 import {useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge, HostBadge} from 'src/components/badge';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
@@ -16,6 +17,9 @@ import MutedIcon from 'src/components/icons/muted_icon';
 import {ThreeDotsButton} from 'src/components/icons/three_dots';
 import TranslateIcon from 'src/components/icons/translate';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import {
+    liveTranslationsEnabled,
+} from 'src/selectors';
 import styled, {css} from 'styled-components';
 
 export enum TileSize {
@@ -125,9 +129,11 @@ export default function CallParticipant({
     const {formatMessage} = useIntl();
     const {hoverOn, hoverOff, onOpenChange, hostControlsAvailable, showHostControls} = useHostControls(isYou, isHost, iAmHost);
 
+    const translationsEnabled = useSelector(liveTranslationsEnabled);
+
     // Allow host controls for translation even on self
-    const translationAvailable = isRecording && transcriptionsEnabled && recordingStarted;
-    const showHostControlsForTranslation = hostControlsAvailable || (iAmHost && isYou && translationAvailable);
+    const translationAvailable = isRecording && transcriptionsEnabled && recordingStarted && translationsEnabled;
+    const showHostControlsForTranslation = (hostControlsAvailable && translationsEnabled) || (iAmHost && isYou && translationAvailable);
 
     const getTranslationBadgeText = (languageCode: string) => {
         const language = TRANSLATION_LANGUAGES.find(lang => lang.code === languageCode);
