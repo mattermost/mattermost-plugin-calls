@@ -174,7 +174,9 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 			}
 		} else if state.Transcription != nil && state.Transcription.ID == jobID && state.Transcription.StartAt == 0 {
 			p.LogDebug("bot joined, transcribing job is starting", "jobID", jobID)
-			state.Transcription.Props.BotConnID = connID
+			if state.Transcription.Props.BotConnID == "" {
+				state.Transcription.Props.BotConnID = connID
+			}
 
 			if state.LiveCaptions != nil && state.LiveCaptions.StartAt == 0 {
 				p.LogDebug("bot joined, live captions job is starting", "jobID", state.LiveCaptions.ID, "trID", jobID)
@@ -456,6 +458,8 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			})
 		}()
 	}
+
+	delete(state.Call.Props.LiveTranslations, originalConnID)
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		return fmt.Errorf("failed to update call: %w", err)

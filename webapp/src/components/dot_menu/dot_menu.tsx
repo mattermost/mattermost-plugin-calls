@@ -202,7 +202,11 @@ export const DropdownMenuItem = (props: {
 }) => {
     return (
         <DropdownMenuItemStyled
-            onClick={props.onClick}
+            onClick={(e: MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                props.onClick?.();
+            }}
             className={props.className}
             role={'button'}
 

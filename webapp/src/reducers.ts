@@ -22,6 +22,7 @@ import {
     CALL_END,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
+    CALL_LIVE_TRANSLATIONS,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
     CALL_STATE,
@@ -38,6 +39,7 @@ import {
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
     LIVE_CAPTIONS_ENABLED,
+    LIVE_TRANSLATIONS_ENABLED,
     LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
@@ -51,6 +53,8 @@ import {
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
+    START_LIVE_TRANSLATION,
+    STOP_LIVE_TRANSLATION,
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
     UNINIT,
@@ -69,6 +73,39 @@ import {
     USER_VOICE_ON,
     USERS_STATES,
 } from './action_types';
+
+export type translationsState = {
+    [sessionID: string]: string;
+}
+
+type translationStateAction = {
+    type: string;
+    data: {
+        target_session_id: string;
+        target_language?: string;
+    } | translationsState;
+}
+
+const translations = (state: translationsState = {}, action: translationStateAction) => {
+    switch (action.type) {
+    case CALL_LIVE_TRANSLATIONS:
+        return {
+            ...action.data,
+        };
+    case START_LIVE_TRANSLATION:
+        return {
+            ...state,
+            [action.data.target_session_id]: action.data.target_language!,
+        };
+    case STOP_LIVE_TRANSLATION: {
+        const nextState = {...state};
+        delete nextState[action.data.target_session_id];
+        return nextState;
+    }
+    default:
+        return state;
+    }
+};
 
 type channelsState = {
     [channelID: string]: ChannelState;
@@ -778,6 +815,8 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: C
         return {...state, EnableTranscriptions: action.data};
     case LIVE_CAPTIONS_ENABLED:
         return {...state, EnableLiveCaptions: action.data};
+    case LIVE_TRANSLATIONS_ENABLED:
+        return {...state, EnableLiveTranslations: action.data};
     case TRANSCRIBE_API:
         return {...state, TranscribeAPI: action.data};
     default:
@@ -1039,4 +1078,5 @@ export default combineReducers({
     liveCaptions,
     clientConnecting,
     hostControlNotices,
+    translations,
 });

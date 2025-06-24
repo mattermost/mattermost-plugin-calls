@@ -27,6 +27,9 @@ export const LIVE_CAPTION = pluginId + '_live_caption';
 export const LIVE_CAPTION_TIMEOUT_EVENT = pluginId + '_live_caption_timeout_event';
 export const HOST_CONTROL_NOTICE = pluginId + '_host_control_notice';
 export const HOST_CONTROL_NOTICE_TIMEOUT_EVENT = pluginId + '_host_control_notice_timeout_event';
+export const CALL_LIVE_TRANSLATIONS = pluginId + 'call_live_translations';
+export const START_LIVE_TRANSLATION = pluginId + '_start_live_translation';
+export const STOP_LIVE_TRANSLATION = pluginId + '_stop_live_translation';
 
 export const SHOW_EXPANDED_VIEW = pluginId + '_show_expanded_view';
 export const HIDE_EXPANDED_VIEW = pluginId + '_hide_expanded_view';
@@ -55,6 +58,7 @@ export const RTCD_ENABLED = pluginId + '_rtcd_enabled';
 export const TRANSCRIBE_API = pluginId + '_transcribe_api';
 export const RECEIVED_CHANNEL_STATE = pluginId + 'received_channel_state';
 export const RECEIVED_CALLS_USER_PREFERENCES = pluginId + '_received_calls_user_preferences';
+export const LIVE_TRANSLATIONS_ENABLED = pluginId + '_live_translations_enabled';
 
 export const DESKTOP_WIDGET_CONNECTED = pluginId + '_desktop_widget_connected';
 

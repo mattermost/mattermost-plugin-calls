@@ -66,6 +66,8 @@ import {
     handleHostMute,
     handleHostRemoved,
     handleHostScreenOff,
+    handleStartLiveTranslation,
+    handleStopLiveTranslation,
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
@@ -311,6 +313,12 @@ export default async function init(cfg: InitConfig) {
             break;
         case 'user_removed':
             handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);
+            break;
+        case `custom_${pluginId}_start_live_translation`:
+            handleStartLiveTranslation(store, ev as WebSocketMessage<any>);
+            break;
+        case `custom_${pluginId}_stop_live_translation`:
+            handleStopLiveTranslation(store, ev as WebSocketMessage<any>);
             break;
         default:
         }

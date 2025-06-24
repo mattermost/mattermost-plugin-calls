@@ -5,7 +5,7 @@ import {Reaction} from '@mattermost/calls-common/lib/types';
 import React from 'react';
 import {useIntl} from 'react-intl';
 import Avatar from 'src/components/avatar/avatar';
-import {HostBadge} from 'src/components/badge';
+import {Badge, HostBadge} from 'src/components/badge';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
 import {Emoji} from 'src/components/emoji/emoji';
 import {useHostControls} from 'src/components/expanded_view/hooks';
@@ -14,6 +14,7 @@ import {HostControlsMenu} from 'src/components/host_controls_menu';
 import HandEmoji from 'src/components/icons/hand';
 import MutedIcon from 'src/components/icons/muted_icon';
 import {ThreeDotsButton} from 'src/components/icons/three_dots';
+import TranslateIcon from 'src/components/icons/translate';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import styled, {css} from 'styled-components';
 
@@ -40,6 +41,11 @@ export type Props = {
     sessionID: string,
     onRemove: () => void,
     isSharingScreen?: boolean,
+    currentTranslation?: string,
+    onTranslationChange?: (language: string | null) => void,
+    isRecording: boolean,
+    transcriptionsEnabled: boolean,
+    recordingStarted: boolean,
 }
 
 const tileSizePropsMap = {
@@ -85,6 +91,15 @@ const tileSizePropsMap = {
     },
 };
 
+const TRANSLATION_LANGUAGES = [
+    {code: 'en-US', name: 'English'},
+    {code: 'es-ES', name: 'Spanish'},
+    {code: 'fr-FR', name: 'French'},
+    {code: 'it-IT', name: 'Italian'},
+    {code: 'ar-SA', name: 'Arabic'},
+    {code: 'ja-JP', name: 'Japanese'},
+];
+
 export default function CallParticipant({
     name,
     size,
@@ -101,9 +116,23 @@ export default function CallParticipant({
     sessionID,
     onRemove,
     isSharingScreen = false,
+    currentTranslation,
+    onTranslationChange,
+    isRecording,
+    transcriptionsEnabled,
+    recordingStarted,
 }: Props) {
     const {formatMessage} = useIntl();
     const {hoverOn, hoverOff, onOpenChange, hostControlsAvailable, showHostControls} = useHostControls(isYou, isHost, iAmHost);
+
+    // Allow host controls for translation even on self
+    const translationAvailable = isRecording && transcriptionsEnabled && recordingStarted;
+    const showHostControlsForTranslation = hostControlsAvailable || (iAmHost && isYou && translationAvailable);
+
+    const getTranslationBadgeText = (languageCode: string) => {
+        const language = TRANSLATION_LANGUAGES.find(lang => lang.code === languageCode);
+        return language ? language.name.toUpperCase() : formatMessage({defaultMessage: 'TRANSLATING'});
+    };
 
     const MuteIcon = isMuted ? MutedIcon : UnmutedIcon;
 
@@ -164,11 +193,28 @@ export default function CallParticipant({
                 {name}
             </StyledName>
 
-            {isHost && <HostBadge data-testid={'host-badge'}/>}
+            <BadgeContainer>
+                {isHost && <HostBadge data-testid={'host-badge'}/>}
+                {currentTranslation && (
+                    <Badge
+                        id={'translation-badge'}
+                        text={getTranslationBadgeText(currentTranslation)}
+                        textSize={10}
+                        lineHeight={12}
+                        gap={4}
+                        margin={'0'}
+                        padding={'4px 6px'}
+                        icon={<TranslateIcon style={{width: '10px', height: '10px'}}/>}
+                        bgColor={'var(--button-bg)'}
+                        color={'white'}
+                        data-testid={'translation-badge'}
+                    />
+                )}
+            </BadgeContainer>
         </>
     );
 
-    if (hostControlsAvailable) {
+    if (showHostControlsForTranslation) {
         return (
             <Participant
                 onMouseEnter={hoverOn}
@@ -176,9 +222,9 @@ export default function CallParticipant({
                 $width={tileSizePropsMap[size].avatarSize + (tileSizePropsMap[size].padding * 2)}
                 $padding={tileSizePropsMap[size].padding}
                 $gap={tileSizePropsMap[size].gap}
-                $hover={showHostControls}
+                $hover={showHostControls || (iAmHost && isYou && translationAvailable)}
             >
-                {showHostControls &&
+                {(showHostControls || (iAmHost && isYou && translationAvailable)) &&
                     <StyledDotMenu
                         icon={
                             <StyledThreeDotsButton
@@ -202,7 +248,12 @@ export default function CallParticipant({
                             isSharingScreen={isSharingScreen}
                             isHandRaised={isHandRaised}
                             isHost={isHost}
+                            currentTranslation={currentTranslation}
                             onRemove={onRemove}
+                            onTranslationChange={onTranslationChange}
+                            isRecording={isRecording}
+                            transcriptionsEnabled={transcriptionsEnabled}
+                            recordingStarted={recordingStarted}
                         />
                     </StyledDotMenu>
                 }
@@ -307,4 +358,13 @@ const StyledDotMenu = styled(DotMenu)<{$pos: number}>`
     position: absolute;
     top: ${({$pos}) => $pos}px;
     right: ${({$pos}) => $pos}px;
+`;
+
+const BadgeContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-height: 48px;
+    justify-content: flex-start;
 `;

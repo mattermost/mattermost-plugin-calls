@@ -16,7 +16,7 @@ import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
-import {hostMuteOthers, hostRemove} from 'src/actions';
+import {hostMuteOthers, hostRemove, startLiveTranslation, stopLiveTranslation} from 'src/actions';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
@@ -124,6 +124,7 @@ interface Props extends RouteComponentProps {
     isAdmin: boolean,
     hostControlsAllowed: boolean,
     openModal: <P>(modalData: ModalData<P>) => void;
+    liveTranslations: Record<string, string>,
 }
 
 interface State {
@@ -132,6 +133,7 @@ interface State {
     showLiveCaptions: boolean,
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
+    hideScreenShare: boolean,
 }
 
 const StyledMediaController = styled(MediaController)`
@@ -282,6 +284,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             showLiveCaptions: false,
             alerts: CallAlertStatesDefault,
             removeConfirmation: null,
+            hideScreenShare: false,
         };
 
         if (window.opener) {
@@ -539,6 +542,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         });
     };
 
+    onHideScreenShareToggle = () => {
+        this.setState({
+            hideScreenShare: !this.state.hideScreenShare,
+        });
+    };
+
     onCloseViewClick = () => {
         this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
 
@@ -788,6 +797,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.setState({
             removeConfirmation: null,
         });
+    };
+
+    onTranslationChange = (sessionID: string, language: string | null) => {
+        if (language) {
+            logDebug('Starting live translation for participant', sessionID, language);
+            startLiveTranslation(this.props.channel?.id, sessionID, language);
+        } else {
+            logDebug('Stopping live translation for participant', sessionID);
+            stopLiveTranslation(this.props.channel?.id, sessionID);
+        }
     };
 
     shouldRenderAlertBanner = () => {
@@ -1078,6 +1097,45 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                         <div style={this.style.headerSpreader}/>
                         <ExpandedIncomingCallContainer/>
+                        {this.props.screenSharingSession &&
+                            <OverlayTrigger
+                                placement='bottom'
+                                key={'hide-screen-share'}
+                                overlay={
+                                    <Tooltip id='tooltip-hide-screen-share'>
+                                        {this.state.hideScreenShare ?
+                                            formatMessage({defaultMessage: 'Show screen share'}) :
+                                            formatMessage({defaultMessage: 'Show participants grid'})
+                                        }
+                                    </Tooltip>
+                                }
+                            >
+                                <HideScreenShareButton
+                                    className='style--none'
+                                    onClick={this.onHideScreenShareToggle}
+                                    aria-label={this.state.hideScreenShare ?
+                                        formatMessage({defaultMessage: 'Show screen share'}) :
+                                        formatMessage({defaultMessage: 'Show participants grid'})
+                                    }
+                                >
+                                    {this.state.hideScreenShare ? (
+                                        <ScreenIcon
+                                            style={{
+                                                width: '20px',
+                                                height: '20px',
+                                            }}
+                                        />
+                                    ) : (
+                                        <ParticipantsIcon
+                                            style={{
+                                                width: '20px',
+                                                height: '20px',
+                                            }}
+                                        />
+                                    )}
+                                </HideScreenShareButton>
+                            </OverlayTrigger>
+                        }
                         <OverlayTrigger
                             placement='bottom'
                             key={'close-window'}
@@ -1102,7 +1160,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </OverlayTrigger>
                     </div>
 
-                    {!this.props.screenSharingSession && this.props.currentSession && this.props.channel &&
+                    {(!this.props.screenSharingSession || this.state.hideScreenShare) && this.props.currentSession && this.props.channel &&
                     <ParticipantsGrid
                         callID={this.props.channel.id}
                         callHostID={this.props.callHostID}
@@ -1111,9 +1169,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         profiles={this.props.profiles}
                         sessions={this.props.sessions}
                         onParticipantRemove={this.onRemove}
+                        onTranslationChange={this.onTranslationChange}
+                        liveTranslations={this.props.liveTranslations}
+                        isRecording={this.props.isRecording}
+                        transcriptionsEnabled={this.props.transcriptionsEnabled}
+                        recordingStarted={Boolean(this.props.callRecording?.start_at)}
                     />
                     }
-                    {this.props.screenSharingSession && this.renderScreenSharingPlayer()}
+                    {this.props.screenSharingSession && !this.state.hideScreenShare && this.renderScreenSharingPlayer()}
 
                     {this.state.showLiveCaptions &&
                         <LiveCaptionsOverlay>
@@ -1535,4 +1598,33 @@ const LeaveCallButton = styled(DotMenuButton)`
 const StyledDropdownMenu = styled(DropdownMenu)`
     margin-bottom: 2px;
     border-radius: 8px;
+`;
+
+const HideScreenShareButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    padding: 10px;
+    border-radius: 4px;
+
+    svg {
+        fill: rgba(255, 255, 255, 0.64);
+    }
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.08);
+
+        svg {
+            fill: rgba(255, 255, 255, 0.72);
+        }
+    }
+
+    &:active {
+        background: rgba(255, 255, 255, 0.16);
+
+        svg {
+            fill: rgba(255, 255, 255, 0.80);
+        }
+    }
 `;

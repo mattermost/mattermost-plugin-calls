@@ -49,6 +49,7 @@ import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_
 import ICEServersConfigs from 'src/components/admin_console_settings/ice_servers_configs';
 import MaxCallParticipants from 'src/components/admin_console_settings/max_call_participants';
 import EnableLiveCaptions from 'src/components/admin_console_settings/recordings/enable_live_captions';
+import EnableLiveTranslations from 'src/components/admin_console_settings/recordings/enable_live_translations';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
 import EnableTranscriptions from 'src/components/admin_console_settings/recordings/enable_transcriptions';
 import JobServiceURL from 'src/components/admin_console_settings/recordings/job_service_url';
@@ -58,6 +59,7 @@ import LiveCaptionsNumThreadsPerTranscriber
     from 'src/components/admin_console_settings/recordings/live_captions_num_threads_per_transcriber';
 import LiveCaptionsNumTranscribers
     from 'src/components/admin_console_settings/recordings/live_captions_num_transcribers';
+import LiveTranslationsInputLanguage from 'src/components/admin_console_settings/recordings/live_translations_input_language';
 import MaxRecordingDuration from 'src/components/admin_console_settings/recordings/max_recording_duration';
 import RecordingQuality from 'src/components/admin_console_settings/recordings/recording_quality';
 import TranscribeAPI from 'src/components/admin_console_settings/recordings/transcriber_api';
@@ -67,6 +69,7 @@ import TranscriberModelSize from 'src/components/admin_console_settings/recordin
 import TranscriberNumThreads from 'src/components/admin_console_settings/recordings/transcriber_num_threads';
 import RTCDServiceURL from 'src/components/admin_console_settings/rtcd_service_url';
 import CallLiveCaptionsSection from 'src/components/admin_console_settings/sections/call_live_captions';
+import CallLiveTranslationsSection from 'src/components/admin_console_settings/sections/call_live_translations';
 import CallRecordingsSection from 'src/components/admin_console_settings/sections/call_recordings';
 import CallTranscriptionsSection from 'src/components/admin_console_settings/sections/call_transcriptions';
 import GeneralSettingsSection from 'src/components/admin_console_settings/sections/general_settings';
@@ -176,6 +179,8 @@ import {
     handleHostMute,
     handleHostRemoved,
     handleHostScreenOff,
+    handleStartLiveTranslation,
+    handleStopLiveTranslation,
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
@@ -310,6 +315,14 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_host_removed`, (ev) => {
             handleHostRemoved(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_start_live_translation`, (ev) => {
+            handleStartLiveTranslation(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_stop_live_translation`, (ev) => {
+            handleStopLiveTranslation(store, ev);
         });
     }
 
@@ -567,6 +580,13 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('LiveCaptionsNumTranscribers', LiveCaptionsNumTranscribers);
         registry.registerAdminConsoleCustomSetting('LiveCaptionsNumThreadsPerTranscriber', LiveCaptionsNumThreadsPerTranscriber);
         registry.registerAdminConsoleCustomSetting('LiveCaptionsLanguage', LiveCaptionsLanguage);
+
+        // Live Translations
+        if (registry.registerAdminConsoleCustomSection) {
+            registry.registerAdminConsoleCustomSection('CallLiveTranslations', CallLiveTranslationsSection);
+        }
+        registry.registerAdminConsoleCustomSetting('EnableLiveTranslations', EnableLiveTranslations);
+        registry.registerAdminConsoleCustomSetting('LiveTranslationsInputLanguage', LiveTranslationsInputLanguage);
 
         registry.registerSiteStatisticsHandler(async () => {
             let stats: Record<string, PluginAnalyticsRow> = {};

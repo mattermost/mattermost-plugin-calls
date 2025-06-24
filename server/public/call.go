@@ -71,6 +71,7 @@ type CallProps struct {
 	NodeID                 string              `json:"node_id,omitempty"`
 	Participants           map[string]struct{} `json:"participants,omitempty"`
 	HostLockedUserID       string              `json:"host_locked_user_id,omitempty"`
+	LiveTranslations       map[string]string   `json:"live_translations,omitempty"` // session_id -> target_language
 }
 
 type CallStats struct {

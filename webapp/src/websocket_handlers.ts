@@ -62,6 +62,8 @@ import {
     HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
+    START_LIVE_TRANSLATION,
+    STOP_LIVE_TRANSLATION,
     USER_JOINED,
     USER_JOINED_TIMEOUT,
     USER_LOWER_HAND,
@@ -608,4 +610,23 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControl
             },
         });
     }, HOST_CONTROL_NOTICE_TIMEOUT);
+}
+
+export function handleStartLiveTranslation(store: Store, ev: WebSocketMessage<any>) {
+    store.dispatch({
+        type: START_LIVE_TRANSLATION,
+        data: {
+            target_session_id: ev.data.target_session_id,
+            target_language: ev.data.target_language,
+        },
+    });
+}
+
+export function handleStopLiveTranslation(store: Store, ev: WebSocketMessage<any>) {
+    store.dispatch({
+        type: STOP_LIVE_TRANSLATION,
+        data: {
+            target_session_id: ev.data.target_session_id,
+        },
+    });
 }

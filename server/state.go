@@ -52,6 +52,12 @@ func (cs *callState) Clone() *callState {
 			csCopy.Props.Participants[k] = v
 		}
 	}
+	if cs.Props.LiveTranslations != nil {
+		csCopy.Props.LiveTranslations = make(map[string]string, len(cs.Call.Props.LiveTranslations))
+		for k, v := range cs.Call.Props.LiveTranslations {
+			csCopy.Props.LiveTranslations[k] = v
+		}
+	}
 
 	// Sessions
 	if cs.sessions != nil {
@@ -95,13 +101,14 @@ type CallStateClient struct {
 	ThreadID string `json:"thread_id"`
 	PostID   string `json:"post_id"`
 
-	ScreenSharingSessionID string          `json:"screen_sharing_session_id"`
-	OwnerID                string          `json:"owner_id"`
-	HostID                 string          `json:"host_id"`
-	Recording              *JobStateClient `json:"recording,omitempty"`
-	Transcription          *JobStateClient `json:"transcription,omitempty"`
-	LiveCaptions           *JobStateClient `json:"live_captions,omitempty"`
-	DismissedNotification  map[string]bool `json:"dismissed_notification,omitempty"`
+	ScreenSharingSessionID string            `json:"screen_sharing_session_id"`
+	OwnerID                string            `json:"owner_id"`
+	HostID                 string            `json:"host_id"`
+	Recording              *JobStateClient   `json:"recording,omitempty"`
+	Transcription          *JobStateClient   `json:"transcription,omitempty"`
+	LiveCaptions           *JobStateClient   `json:"live_captions,omitempty"`
+	DismissedNotification  map[string]bool   `json:"dismissed_notification,omitempty"`
+	LiveTranslations       map[string]string `json:"live_translations,omitempty"` // session_id -> target_language
 }
 
 type JobStateClient struct {
@@ -233,6 +240,7 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		Transcription:          getClientStateFromCallJob(cs.Transcription),
 		LiveCaptions:           getClientStateFromCallJob(cs.LiveCaptions),
 		DismissedNotification:  dismissed,
+		LiveTranslations:       cs.Props.LiveTranslations,
 	}
 }
 
@@ -402,4 +410,5 @@ func setCallEnded(call *public.Call) {
 	call.Props.NodeID = ""
 	call.Props.Hosts = nil
 	call.Props.Participants = nil
+	call.Props.LiveTranslations = nil
 }

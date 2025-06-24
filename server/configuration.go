@@ -90,6 +90,10 @@ type configuration struct {
 	// The language to be passed to the live captions transcriber.
 	LiveCaptionsLanguage string
 
+	// When set to true live translations will be enabled when starting transcription jobs.
+	EnableLiveTranslations        *bool
+	LiveTranslationsInputLanguage string
+
 	ClientConfig
 }
 
@@ -137,6 +141,8 @@ type ClientConfig struct {
 	GroupCallsAllowed bool
 	// When set to true it enables experimental support for using the data channel for signaling.
 	EnableDCSignaling *bool
+
+	EnableLiveTranslations *bool
 }
 
 const (
@@ -263,6 +269,12 @@ func (c *configuration) SetDefaults() {
 	if c.EnableDCSignaling == nil {
 		c.EnableDCSignaling = model.NewPointer(false)
 	}
+	if c.EnableLiveTranslations == nil {
+		c.EnableLiveTranslations = model.NewPointer(false)
+	}
+	if c.LiveTranslationsInputLanguage == "" {
+		c.LiveTranslationsInputLanguage = ""
+	}
 }
 
 func (c *configuration) IsValid() error {
@@ -341,6 +353,13 @@ func (c *configuration) IsValid() error {
 			return fmt.Errorf("LiveCaptionsLanguage is not valid: should be a 2-letter ISO 639 set 1 language code, or blank for default")
 		}
 	}
+
+	if c.liveTranslationsEnabled() {
+		if c.LiveTranslationsInputLanguage != "" && len(c.LiveTranslationsInputLanguage) != 4 {
+			return fmt.Errorf("LiveTranslationsInputLanguage is not valid: should be a 4-letter BCP-47 language code, or blank for default")
+		}
+	}
+
 	return nil
 }
 
@@ -361,6 +380,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.TranscribeAPIAzureSpeechRegion = c.TranscribeAPIAzureSpeechRegion
 	cfg.LiveCaptionsModelSize = c.LiveCaptionsModelSize
 	cfg.LiveCaptionsLanguage = c.LiveCaptionsLanguage
+	cfg.LiveTranslationsInputLanguage = c.LiveTranslationsInputLanguage
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = model.NewPointer(*c.UDPServerPort)
@@ -455,6 +475,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.EnableDCSignaling = model.NewPointer(*c.EnableDCSignaling)
 	}
 
+	if c.EnableLiveTranslations != nil {
+		cfg.EnableLiveTranslations = model.NewPointer(*c.EnableLiveTranslations)
+	}
+
 	return &cfg
 }
 
@@ -499,6 +523,14 @@ func (c *configuration) liveCaptionsEnabled() bool {
 	return false
 }
 
+func (c *configuration) liveTranslationsEnabled() bool {
+	if c.recordingsEnabled() && c.transcriptionsEnabled() && c.TranscribeAPI == transcriber.TranscribeAPIAzure &&
+		c.EnableLiveTranslations != nil && *c.EnableLiveTranslations {
+		return true
+	}
+	return false
+}
+
 func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 	skuShortName := "starter"
 	license := p.API.GetLicense()
@@ -507,24 +539,25 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 	}
 
 	return ClientConfig{
-		AllowEnableCalls:     model.NewPointer(true), // always true
-		DefaultEnabled:       c.DefaultEnabled,
-		ICEServers:           c.ICEServers,
-		ICEServersConfigs:    c.getICEServers(true),
-		MaxCallParticipants:  c.MaxCallParticipants,
-		NeedsTURNCredentials: model.NewPointer(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
-		AllowScreenSharing:   c.AllowScreenSharing,
-		EnableRecordings:     c.EnableRecordings,
-		EnableTranscriptions: c.EnableTranscriptions,
-		EnableLiveCaptions:   c.EnableLiveCaptions,
-		MaxRecordingDuration: c.MaxRecordingDuration,
-		EnableSimulcast:      c.EnableSimulcast,
-		EnableRinging:        c.EnableRinging,
-		SkuShortName:         skuShortName,
-		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
-		EnableAV1:            c.EnableAV1,
-		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
-		EnableDCSignaling:    c.EnableDCSignaling,
+		AllowEnableCalls:       model.NewPointer(true), // always true
+		DefaultEnabled:         c.DefaultEnabled,
+		ICEServers:             c.ICEServers,
+		ICEServersConfigs:      c.getICEServers(true),
+		MaxCallParticipants:    c.MaxCallParticipants,
+		NeedsTURNCredentials:   model.NewPointer(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
+		AllowScreenSharing:     c.AllowScreenSharing,
+		EnableRecordings:       c.EnableRecordings,
+		EnableTranscriptions:   c.EnableTranscriptions,
+		EnableLiveCaptions:     c.EnableLiveCaptions,
+		EnableLiveTranslations: c.EnableLiveTranslations,
+		MaxRecordingDuration:   c.MaxRecordingDuration,
+		EnableSimulcast:        c.EnableSimulcast,
+		EnableRinging:          c.EnableRinging,
+		SkuShortName:           skuShortName,
+		HostControlsAllowed:    p.licenseChecker.HostControlsAllowed(),
+		EnableAV1:              c.EnableAV1,
+		GroupCallsAllowed:      p.licenseChecker.GroupCallsAllowed(),
+		EnableDCSignaling:      c.EnableDCSignaling,
 	}
 }
 

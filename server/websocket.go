@@ -50,6 +50,8 @@ const (
 	wsEventHostScreenOff             = "host_screen_off"
 	wsEventHostLowerHand             = "host_lower_hand"
 	wsEventHostRemoved               = "host_removed"
+	wsEventStartLiveTranslation      = "start_live_translation"
+	wsEventStopLiveTranslation       = "stop_live_translation"
 
 	wsReconnectionTimeout = 10 * time.Second
 )
@@ -118,8 +120,11 @@ func (wsb *WebSocketBroadcast) ToModel() *model.WebsocketBroadcast {
 func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, broadcast *WebSocketBroadcast) {
 	botID := p.getBotID()
 	// We don't want to expose to clients that the bot is in a call.
-	if (ev == wsEventUserJoined || ev == wsEventUserLeft) && data["user_id"] == botID {
-		return
+	switch ev {
+	case wsEventUserJoined, wsEventUserLeft, wsEventUserMuted, wsEventUserUnmuted, wsEventUserVoiceOn, wsEventUserVoiceOff:
+		if data["user_id"] == botID || data["userID"] == botID {
+			return
+		}
 	}
 
 	// If broadcasting to a channel we need to also send to the bot since they

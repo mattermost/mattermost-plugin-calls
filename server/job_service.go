@@ -328,6 +328,9 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		transcriberConfig.LiveCaptionsNumThreadsPerTranscriber = *cfg.LiveCaptionsNumThreadsPerTranscriber
 		transcriberConfig.LiveCaptionsLanguage = cfg.LiveCaptionsLanguage
 
+		transcriberConfig.LiveTranslationsOn = cfg.liveTranslationsEnabled()
+		transcriberConfig.LiveTranslationsInputLanguage = cfg.LiveTranslationsInputLanguage
+
 		if err := transcriberConfig.IsValid(); err != nil {
 			return "", fmt.Errorf("transcriber config is not valid: %w", err)
 		}

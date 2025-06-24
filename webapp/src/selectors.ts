@@ -36,6 +36,7 @@ import {
     recentlyJoinedUsersState,
     screenSharingIDsState,
     sessionsState,
+    translationsState,
     usersReactionsState,
 } from 'src/reducers';
 import {
@@ -327,6 +328,10 @@ const liveCaptionsStateForCalls = (state: GlobalState): callsJobState => {
     return pluginState(state).callLiveCaptionsState;
 };
 
+export const liveTranslationsForCalls = (state: GlobalState): translationsState => {
+    return pluginState(state).translations;
+};
+
 export const liveCaptionsStateForCurrentCall: (state: GlobalState) => CallJobReduxState =
     createSelector(
         'liveCaptionsStateForCurrentCall',
@@ -451,6 +456,9 @@ export const transcriptionsEnabled = (state: GlobalState) =>
 
 export const liveCaptionsEnabled = (state: GlobalState) =>
     callsConfig(state).EnableLiveCaptions;
+
+export const liveTranslationsEnabled = (state: GlobalState) =>
+    callsConfig(state).EnableLiveTranslations;
 
 export const recordingMaxDuration = (state: GlobalState) =>
     callsConfig(state).MaxRecordingDuration;

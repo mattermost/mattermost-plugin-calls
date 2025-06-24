@@ -23,6 +23,7 @@ export const CallsConfigDefault: CallsConfig = {
     TranscribeAPI: TranscribeAPI.WhisperCPP,
     GroupCallsAllowed: false,
     EnableDCSignaling: false,
+    EnableLiveTranslations: false,
 };
 
 export type ChannelState = {

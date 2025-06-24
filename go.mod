@@ -22,7 +22,7 @@ require (
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
 	github.com/mattermost/mattermost/server/public v0.1.10
 	github.com/mattermost/morph v1.1.0
-	github.com/mattermost/rtcd v1.1.3-0.20250616193428-1f448152c6b4
+	github.com/mattermost/rtcd v1.1.4-0.20250619223938-b68bd4620315
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rudderlabs/analytics-go v3.3.3+incompatible
@@ -34,6 +34,8 @@ require (
 )
 
 replace github.com/pion/interceptor v0.1.37 => github.com/streamer45/interceptor v0.0.0-20250106110758-7e0fb613abef
+
+replace github.com/mattermost/calls-transcriber => ../calls-transcriber
 
 require (
 	dario.cat/mergo v1.0.1 // indirect

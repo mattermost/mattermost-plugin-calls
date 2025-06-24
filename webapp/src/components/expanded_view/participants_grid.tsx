@@ -20,6 +20,11 @@ type Props = {
     profiles: IDMappedObjects<UserProfile>,
     sessions: UserSessionState[],
     onParticipantRemove?: (sessionID: string, userID: string) => void,
+    onTranslationChange?: (sessionID: string, language: string | null) => void,
+    liveTranslations?: Record<string, string>,
+    isRecording: boolean,
+    transcriptionsEnabled: boolean,
+    recordingStarted: boolean,
 
     // Used by the recorder client.
     profileImages?: Record<string, string>,
@@ -52,6 +57,11 @@ export default function ParticipantsGrid({
     profiles,
     sessions,
     onParticipantRemove,
+    onTranslationChange,
+    liveTranslations,
+    isRecording,
+    transcriptionsEnabled,
+    recordingStarted,
     profileImages,
 }: Props) {
     const {formatMessage} = useIntl();
@@ -165,12 +175,20 @@ export default function ParticipantsGrid({
                     userID={session.user_id}
                     sessionID={session.session_id}
                     isSharingScreen={false}
+                    currentTranslation={liveTranslations?.[session.session_id]}
+                    isRecording={isRecording}
+                    transcriptionsEnabled={transcriptionsEnabled}
+                    recordingStarted={recordingStarted}
                     onRemove={() => {
                         if (onParticipantRemove) {
                             onParticipantRemove(session.session_id, session.user_id);
                         }
-                    }
-                    }
+                    }}
+                    onTranslationChange={(language) => {
+                        if (onTranslationChange) {
+                            onTranslationChange(session.session_id, language);
+                        }
+                    }}
                 />
             );
         });

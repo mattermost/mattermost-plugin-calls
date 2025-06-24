@@ -395,6 +395,29 @@
             "help_text": "The language passed to the live captions transcriber. Should be a 2-letter ISO 639 Set 1 language code, e.g. 'en'. If blank, will be set to English 'en' as default."
           }
         ]
+      },
+      {
+        "key": "CallLiveTranslations",
+        "title": "Live translations",
+        "subtitle": "Translates spoken words in real-time. Recordings and transcriptions must be enabled. The only supported transcriber API is Azure AI.",
+        "custom": true,
+        "fallback": true,
+        "settings": [
+          {
+            "key": "EnableLiveTranslations",
+            "display_name": "Enable live translations (Experimental)",
+            "type": "bool",
+            "default": false,
+            "help_text": "(Optional) When set to true, live translations are enabled."
+          },
+          {
+            "key": "LiveTranslationsInputLanguage",
+            "display_name": "Live translations input language",
+            "type": "text",
+            "default": "",
+            "help_text": "The language of the spoken words to be translated. Should be in BCP-47 format (e.g. 'en-US'). If left empty, automatic language detection will be used."
+          }
+        ]
       }
     ],
     "settings": [
@@ -717,6 +740,6 @@
     "min_rtcd_version": "v0.17.0",
     "min_offloader_version": "v0.9.0",
     "calls_recorder_version": "v0.8.5",
-    "calls_transcriber_version": "v0.6.3"
+    "calls_transcriber_version": "v0.7.0-dev1"
   }
 }

@@ -53,6 +53,7 @@ import {
     CALL_END,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
+    CALL_LIVE_TRANSLATIONS,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
     CALL_STATE,
@@ -63,6 +64,7 @@ import {
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
     LIVE_CAPTIONS_ENABLED,
+    LIVE_TRANSLATIONS_ENABLED,
     LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
@@ -617,6 +619,13 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
         },
     });
 
+    if (call.live_translations) {
+        actions.push({
+            type: CALL_LIVE_TRANSLATIONS,
+            data: call.live_translations,
+        });
+    }
+
     dispatch(batchActions(actions));
 };
 
@@ -720,5 +729,37 @@ export const localSessionClose = (channelID: string) => (dispatch: Dispatch) => 
         data: {
             channelID,
         },
+    });
+};
+
+export const startLiveTranslation = async (callID: string, sessionID: string, targetLang: string) => {
+    return RestClient.fetch(
+        `${getPluginPath()}/calls/${callID}/translation/start`,
+        {
+            method: 'post',
+            body: JSON.stringify({
+                session_id: sessionID,
+                target_language: targetLang,
+            }),
+        },
+    );
+};
+
+export const stopLiveTranslation = async (callID: string, sessionID: string) => {
+    return RestClient.fetch(
+        `${getPluginPath()}/calls/${callID}/translation/stop`,
+        {
+            method: 'post',
+            body: JSON.stringify({
+                session_id: sessionID,
+            }),
+        },
+    );
+};
+
+export const setLiveTranslationsEnabled = (enabled: boolean) => (dispatch: Dispatch) => {
+    dispatch({
+        type: LIVE_TRANSLATIONS_ENABLED,
+        data: enabled,
     });
 };

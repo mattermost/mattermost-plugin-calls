@@ -25,6 +25,7 @@ import {
     hostChangeAtForCurrentCall,
     hostIDForCurrentCall,
     isRecordingInCurrentCall,
+    liveTranslationsForCalls,
     profilesInCurrentCallMap,
     recordingForCurrentCall,
     recordingMaxDuration,
@@ -93,6 +94,7 @@ const mapStateToProps = (state: GlobalState) => {
         transcriptionsEnabled: transcriptionsEnabled(state),
         isAdmin: isCurrentUserSystemAdmin(state),
         hostControlsAllowed: areHostControlsAllowed(state),
+        liveTranslations: liveTranslationsForCalls(state),
     };
 };
 
