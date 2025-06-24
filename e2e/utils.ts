@@ -4,11 +4,10 @@
 /* eslint-disable no-process-env */
 import {chromium, Page, test} from '@playwright/test';
 import * as fs from 'fs';
+import {APIRequestContext} from 'playwright-core';
 
 import {baseURL, channelPrefix, defaultTeam, userPrefix} from './constants';
 import PlaywrightDevPage from './page';
-
-export const headers = {'X-Requested-With': 'XMLHttpRequest'};
 
 export function getChannelNamesForTest() {
     let idx = 0;
@@ -173,4 +172,10 @@ export function releaseLock(lockID: string) {
 
     // eslint-disable-next-line no-console
     console.log(test.info().title, 'lock released');
+}
+
+export async function getHTTPHeaders(context: APIRequestContext) {
+    return {
+        'X-CSRF-Token': (await context.storageState()).cookies[2].value,
+    };
 }
