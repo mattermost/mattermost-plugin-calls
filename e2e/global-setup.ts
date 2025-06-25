@@ -6,13 +6,12 @@ import {expect, FullConfig, request} from '@playwright/test';
 import {readFile} from 'fs/promises';
 
 import {adminState, baseURL, channelPrefix, defaultTeam, pluginID, userPassword, userPrefix} from './constants';
+import {getHTTPHeaders} from './utils';
 
 async function globalSetup(config: FullConfig) {
     const numUsers = config.workers * 3;
     const numChannels = config.workers * 3;
     const userIDs = [];
-
-    const headers = {'X-Requested-With': 'XMLHttpRequest'};
 
     const adminContext = await request.newContext({
         baseURL,
@@ -44,8 +43,12 @@ async function globalSetup(config: FullConfig) {
             login_id: adminState.username,
             password: adminState.password,
         },
-        headers,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        },
     });
+
+    const headers = await getHTTPHeaders(adminContext);
     await adminContext.storageState({path: adminState.storageStatePath});
 
     // create and log users in.
@@ -89,7 +92,9 @@ async function globalSetup(config: FullConfig) {
                 login_id: username,
                 password: userPassword,
             },
-            headers,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
         });
         const user = await resp.json();
         userIDs.push(user.id);
@@ -97,7 +102,7 @@ async function globalSetup(config: FullConfig) {
         await requestContext.dispose();
     }
 
-    let resp = await adminContext.get(`/api/v4/teams/name/${defaultTeam}`);
+    let resp = await adminContext.get(`/api/v4/teams/name/${defaultTeam}`, {headers});
     if (resp.status() >= 400) {
         // create team if missing.
         resp = await adminContext.post('/api/v4/teams', {
@@ -121,7 +126,7 @@ async function globalSetup(config: FullConfig) {
     ];
 
     // set admin preferences
-    resp = await adminContext.get('/api/v4/users/me');
+    resp = await adminContext.get('/api/v4/users/me', {headers});
     const adminUser = await resp.json();
     await adminContext.put(`/api/v4/users/${adminUser.id}/preferences`, {
         data: getPreferences(adminUser.id),
@@ -131,7 +136,7 @@ async function globalSetup(config: FullConfig) {
     // add users to team.
     for (let i = 0; i < numUsers; i++) {
         const username = `${userPrefix}${i}`;
-        resp = await adminContext.get(`/api/v4/users/username/${username}`);
+        resp = await adminContext.get(`/api/v4/users/username/${username}`, {headers});
         const user = await resp.json();
         await adminContext.post(`/api/v4/teams/${team.id}/members`, {
             data: {
@@ -178,7 +183,7 @@ async function globalSetup(config: FullConfig) {
 
     // add users to channels.
     for (const channelName of channels) {
-        resp = await adminContext.get(`/api/v4/teams/${team.id}/channels/name/${channelName}`);
+        resp = await adminContext.get(`/api/v4/teams/${team.id}/channels/name/${channelName}`, {headers});
         const channel = await resp.json();
         for (let i = 0; i < numUsers; i++) {
             const username = `${userPrefix}${i}`;
@@ -214,7 +219,7 @@ async function globalSetup(config: FullConfig) {
     });
 
     // enable calls for all channels, enable ringing
-    const serverConfig = await (await adminContext.get('/api/v4/config')).json();
+    const serverConfig = await (await adminContext.get('/api/v4/config', {headers})).json();
     serverConfig.PluginSettings.Plugins = {
         ...serverConfig.PluginSettings.Plugins,
         [`${pluginID}`]: {

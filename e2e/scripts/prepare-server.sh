@@ -85,6 +85,7 @@ echo "MM_SERVICESETTINGS_ENABLEDEVELOPER=true" >>${WORKSPACE}/dotenv/app.private
 echo "MM_SERVICESETTINGS_ENABLETESTING=true" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICESETTINGS_ALLOWCORSFROM=http://localhost:8065" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICESETTINGS_ENABLEONBOARDINGFLOW=false" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_SERVICESETTINGS_EXPERIMENTALSTRICTCSRFENFORCEMENT=true" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_PLUGINSETTINGS_ENABLE=true" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_PLUGINSETTINGS_ENABLEUPLOADS=true" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_PLUGINSETTINGS_AUTOMATICPREPACKAGEDPLUGINS=false" >>${WORKSPACE}/dotenv/app.private.env

@@ -5,14 +5,14 @@ import {expect} from '@playwright/test';
 import {APIRequestContext} from 'playwright-core';
 
 import {baseURL} from './constants';
-import {headers} from './utils';
+import {getHTTPHeaders} from './utils';
 
 export const apiPatchNotifyProps = async (request: APIRequestContext, newProps: Record<string, string>) => {
     let resp = await request.get(`${baseURL}/api/v4/users/me`);
     expect(resp.status()).toEqual(200);
     const notifyProps = (await resp.json()).notify_props;
     resp = await request.put(`${baseURL}/api/v4/users/me/patch`, {
-        headers,
+        headers: await getHTTPHeaders(request),
         data: {
             notify_props: {
                 ...notifyProps,
@@ -28,7 +28,7 @@ export const apiPutStatus = async (request: APIRequestContext, status: string) =
     expect(resp.status()).toEqual(200);
     const id = (await resp.json()).id;
     resp = await request.put(`${baseURL}/api/v4/users/${id}/status`, {
-        headers,
+        headers: await getHTTPHeaders(request),
         data: {
             user_id: id,
             status,

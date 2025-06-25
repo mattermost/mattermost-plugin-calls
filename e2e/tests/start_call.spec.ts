@@ -11,6 +11,7 @@ import PlaywrightDevPage from '../page';
 import {
     getChannelNamesForTest,
     getChannelURL,
+    getHTTPHeaders,
     getUserIDsForTest,
     getUserIdxForTest,
     getUsernamesForTest,
@@ -550,7 +551,7 @@ test.describe('permissions', () => {
         const adminContext = (await newUserPage(adminState.storageStatePath)).page.request;
         const channel = await apiGetChannelByName(adminContext, getChannelNamesForTest()[1]);
         let resp = await adminContext.delete(`${baseURL}/api/v4/channels/${channel.id}/members/${getUserIDsForTest()[0]}`, {
-            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            headers: await getHTTPHeaders(adminContext),
         });
         await expect(resp.status()).toEqual(200);
 
@@ -561,7 +562,7 @@ test.describe('permissions', () => {
 
         // Re-add user to channel
         resp = await adminContext.post(`${baseURL}/api/v4/channels/${channel.id}/members`, {
-            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            headers: await getHTTPHeaders(adminContext),
             data: {
                 channel_id: channel.id,
                 user_id: getUserIDsForTest()[0],

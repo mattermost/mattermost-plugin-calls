@@ -5,11 +5,11 @@ import {expect} from '@playwright/test';
 import {APIRequestContext} from 'playwright-core';
 
 import {baseURL, defaultTeam} from './constants';
-import {headers} from './utils';
+import {getHTTPHeaders} from './utils';
 
 export const apiCreateGroupChannel = async (request: APIRequestContext, userIDs: string[]) => {
     const resp = await request.post(`${baseURL}/api/v4/channels/group`, {
-        headers,
+        headers: await getHTTPHeaders(request),
         data: userIDs,
     });
     expect(resp.status()).toEqual(201);
@@ -19,7 +19,7 @@ export const apiCreateGroupChannel = async (request: APIRequestContext, userIDs:
 // Return first one found (that's all we need for now)
 export const apiGetGroupChannel = async (request: APIRequestContext, userName: string) => {
     const resp = await request.post(`${baseURL}/api/v4/channels/group/search`, {
-        headers,
+        headers: await getHTTPHeaders(request),
         data: {
             term: userName,
         },
@@ -34,7 +34,7 @@ export const apiGetGroupChannel = async (request: APIRequestContext, userName: s
 
 export const apiChannelNotifyProps = async (request: APIRequestContext, channelID: string, userID: string, newProps: Record<string, string>) => {
     const resp = await request.put(`${baseURL}/api/v4/channels/${channelID}/members/${userID}/notify_props`, {
-        headers,
+        headers: await getHTTPHeaders(request),
         data: {
             channel_id: channelID,
             user_id: userID,

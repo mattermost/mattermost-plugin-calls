@@ -4,6 +4,7 @@
 import {expect, request} from '@playwright/test';
 
 import {adminState, baseURL, pluginID} from './constants';
+import {getHTTPHeaders} from './utils';
 
 type CallsConfig = {
     enabletranscriptions?: boolean;
@@ -16,7 +17,8 @@ export const apiPatchConfig = async (cfg: CallsConfig) => {
         baseURL,
         storageState: adminState.storageStatePath,
     });
-    const serverConfig = await (await adminContext.get(`${baseURL}/api/v4/config`)).json();
+    const headers = await getHTTPHeaders(adminContext);
+    const serverConfig = await (await adminContext.get(`${baseURL}/api/v4/config`, {headers})).json();
 
     serverConfig.PluginSettings.Plugins = {
         ...serverConfig.PluginSettings.Plugins,
@@ -27,9 +29,10 @@ export const apiPatchConfig = async (cfg: CallsConfig) => {
     };
 
     const resp = await adminContext.put(`${baseURL}/api/v4/config`, {
-        headers: {'X-Requested-With': 'XMLHttpRequest'},
+        headers,
         data: serverConfig,
     });
+
     await expect(resp.status()).toEqual(200);
 };
 
