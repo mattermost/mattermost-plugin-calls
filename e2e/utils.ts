@@ -175,7 +175,14 @@ export function releaseLock(lockID: string) {
 }
 
 export async function getHTTPHeaders(context: APIRequestContext) {
+    const storageState = await context.storageState();
+    const csrfCookie = storageState.cookies.find(cookie => cookie.name === 'MMCSRF');
+
+    if (!csrfCookie) {
+        throw new Error('CSRF token cookie not found');
+    }
+
     return {
-        'X-CSRF-Token': (await context.storageState()).cookies[2].value,
+        'X-CSRF-Token': csrfCookie.value,
     };
 }
