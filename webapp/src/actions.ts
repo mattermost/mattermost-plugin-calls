@@ -11,7 +11,6 @@ import {bindClientFunc} from 'mattermost-redux/actions/helpers';
 import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
@@ -35,13 +34,11 @@ import {
     numSessionsInCallInChannel,
     ringingForCall,
 } from 'src/selectors';
-import * as Telemetry from 'src/types/telemetry';
 import {CallsStats, ChannelType} from 'src/types/types';
 import {
     getPluginPath,
     getSessionsMapFromSessions,
     getUserIDsForSessions,
-    isDesktopApp,
     isDMChannel,
     isGMChannel,
     notificationsStopRinging,
@@ -273,30 +270,6 @@ export const displayCallErrorModal = (err: Error, channelID?: string) => (dispat
             err,
         },
     }));
-};
-
-export const trackEvent = (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => {
-    return (_: DispatchFunc, getState: GetStateFunc) => {
-        const config = getConfig(getState());
-        if (config.DiagnosticsEnabled !== 'true') {
-            return;
-        }
-        if (!props) {
-            props = {};
-        }
-        const eventData = {
-            event,
-            clientType: isDesktopApp() ? 'desktop' : 'web',
-            source,
-            props,
-        };
-        RestClient.fetch(
-            `${getPluginPath()}/telemetry/track`,
-            {method: 'post', body: JSON.stringify(eventData)},
-        ).catch((e) => {
-            logErr(e);
-        });
-    };
 };
 
 export function prefetchThread(postId: string) {

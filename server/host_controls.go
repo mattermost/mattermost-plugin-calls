@@ -72,8 +72,6 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 		UserIDs:             getUserIDsFromSessions(state.sessions),
 	})
 
-	p.track(evHostChangeHost, nil)
-
 	return nil
 }
 
@@ -107,8 +105,6 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 		"session_id": sessionID,
 	}, &WebSocketBroadcast{UserID: ust.UserID, ReliableClusterSend: true})
 
-	p.track(evHostMuteParticipant, nil)
-
 	return nil
 }
 
@@ -138,8 +134,6 @@ func (p *Plugin) muteOthers(requesterID, channelID string) error {
 			}, &WebSocketBroadcast{UserID: s.UserID, ReliableClusterSend: true})
 		}
 	}
-
-	p.track(evHostMuteOthers, nil)
 
 	return nil
 }
@@ -173,8 +167,6 @@ func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 		"channel_id": channelID,
 		"session_id": sessionID,
 	}, &WebSocketBroadcast{UserID: ust.UserID, ReliableClusterSend: true})
-
-	p.track(evHostStopScreenshare, nil)
 
 	return nil
 }
@@ -210,8 +202,6 @@ func (p *Plugin) lowerHand(requesterID, channelID, sessionID string) error {
 		"session_id": sessionID,
 		"host_id":    requesterID,
 	}, &WebSocketBroadcast{UserID: ust.UserID, ReliableClusterSend: true})
-
-	p.track(evHostLowerHand, nil)
 
 	return nil
 }
@@ -249,8 +239,6 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 		ReliableClusterSend: true,
 		UserIDs:             getUserIDsFromSessions(state.sessions),
 	})
-
-	p.track(evHostRemoveParticipant, nil)
 
 	go func() {
 		// Wait a few seconds for the client to end their session cleanly. If they don't (like for an
@@ -327,8 +315,6 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 			p.LogError(err.Error())
 		}
 	}()
-
-	p.track(evHostEndCall, nil)
 
 	return nil
 }

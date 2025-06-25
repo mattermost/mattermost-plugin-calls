@@ -70,7 +70,6 @@ import {
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
 import {ModalData} from 'src/types/mattermost-webapp';
-import * as Telemetry from 'src/types/telemetry';
 import {
     CallAlertStates,
     CallAlertStatesDefault,
@@ -120,7 +119,6 @@ interface Props {
     show: boolean,
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
-    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     allowScreenSharing: boolean,
     global?: true,
@@ -348,13 +346,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.onMuteToggle();
             break;
         case RAISE_LOWER_HAND:
-            this.onRaiseHandToggle(true);
+            this.onRaiseHandToggle();
             break;
         case SHARE_UNSHARE_SCREEN:
-            this.onShareScreenToggle(true);
+            this.onShareScreenToggle();
             break;
         case PARTICIPANTS_LIST_TOGGLE:
-            this.onParticipantsButtonClick(true);
+            this.onParticipantsButtonClick();
             break;
         case LEAVE_CALL:
             this.onDisconnectClick();
@@ -840,10 +838,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     },
                 });
             }
-            this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.Widget, {initiator: 'button'});
         } else {
             await this.props.startCallRecording(this.props.channel.id);
-            this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.Widget, {initiator: 'button'});
         }
 
         this.setState({showMenu: false});
@@ -876,7 +872,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     };
 
-    onShareScreenToggle = async (fromShortcut?: boolean) => {
+    onShareScreenToggle = async () => {
         if (!this.props.allowScreenSharing) {
             return;
         }
@@ -886,7 +882,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             logDebug('CallWidget.onShareScreenToggle: stopping screen share (user toggled off)');
             window.callsClient?.unshareScreen();
             state.screenStream = null;
-            this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else if (!this.props.screenSharingSession) {
             logDebug('CallWidget.onShareScreenToggle: starting screen share (user toggled on)');
 
@@ -905,7 +900,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             } else {
                 await this.shareScreen('', shareAudioWithScreen());
             }
-            this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
 
         this.setState({
@@ -1002,10 +996,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
     };
 
-    onParticipantsButtonClick = (fromShortcut?: boolean) => {
-        const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
-        this.props.trackEvent(event, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
-
+    onParticipantsButtonClick = () => {
         // This is needed to prevent a conflict with the accessibility controller on buttons.
         if (document.activeElement instanceof HTMLElement) {
             document.activeElement.blur();
@@ -2173,8 +2164,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
-        this.props.trackEvent(Telemetry.Event.OpenExpandedView, Telemetry.Source.Widget, {initiator: 'button'});
-
         // TODO: remove this as soon as we support opening a window from desktop app.
         // Reminder: the first condition is for the old desktop app, pre-global widget. The else path is the webapp & global widget.
         if (window.desktop && !this.props.global) {
@@ -2196,7 +2185,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
 
             expandedViewWindow?.addEventListener('beforeunload', () => {
-                this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView);
                 if (!window.callsClient) {
                     return;
                 }
@@ -2209,7 +2197,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
-    onRaiseHandToggle = (fromShortcut?: boolean) => {
+    onRaiseHandToggle = () => {
         if (!window.callsClient) {
             return;
         }
@@ -2221,10 +2209,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (this.isHandRaised()) {
             window.callsClient.unraiseHand();
-            this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
             window.callsClient.raiseHand();
-            this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
     };
 
@@ -2242,7 +2228,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         } else {
             navigateToURL(this.props.channelURL);
         }
-        this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     };
 
     renderChannelName = () => {

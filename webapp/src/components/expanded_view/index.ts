@@ -13,7 +13,6 @@ import {
     recordingPromptDismissedAt,
     showScreenSourceModal,
     startCallRecording,
-    trackEvent,
 } from 'src/actions';
 import {
     allowScreenSharing,
@@ -106,7 +105,6 @@ const mapDispatchToProps = {
     closeRhs,
     selectRhsPost,
     prefetchThread,
-    trackEvent,
     startCallRecording,
     recordingPromptDismissedAt,
     openModal: modals.openModal,

@@ -151,9 +151,6 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	// TURN
 	router.HandleFunc("/turn-credentials", p.handleGetTURNCredentials).Methods("GET")
 
-	// Telemetry
-	router.HandleFunc("/telemetry/track", p.handleTrackEvent).Methods("POST")
-
 	// Cloud
 	router.HandleFunc("/cloud-notify-admins", func(w http.ResponseWriter, r *http.Request) {
 		// End user has requested to notify their admin about upgrading for calls

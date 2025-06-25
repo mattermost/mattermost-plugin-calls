@@ -67,7 +67,6 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 		Page:    0,
 		PerPage: maxAdminsToQueryForNotification,
 	})
-
 	if err != nil {
 		return errors.Wrap(err, "unable to find all admin users")
 	}
@@ -120,11 +119,6 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	p.track(evCallNotifyAdmin, map[string]interface{}{
-		"ActualUserID": userID,
-		"MessageType":  postType,
-	})
-
 	w.WriteHeader(http.StatusOK)
 	return nil
 }
@@ -134,7 +128,6 @@ func (p *Plugin) getSystemBotID() (string, error) {
 		Username:    model.BotSystemBotUsername,
 		DisplayName: "System",
 	})
-
 	if err != nil {
 		return "", errors.New("failed to ensure system bot")
 	}
@@ -199,8 +192,6 @@ func (p *Plugin) sendConcurrentSessionsWarning() error {
 	} else if len(admins) == 0 {
 		return fmt.Errorf("no admin user found")
 	}
-
-	p.track(evCallConcurrentSessionsWarning, nil)
 
 	botID := p.getBotID()
 
