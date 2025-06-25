@@ -10,6 +10,7 @@ import {apiPatchNotifyProps, apiPutStatus} from '../users';
 import {
     getChannelNamesForTest,
     getChannelURL,
+    getHTTPHeaders,
     getUserIDsForTest,
     getUserIdxForTest,
     getUsernamesForTest,
@@ -726,7 +727,7 @@ test.describe('notifications', () => {
         // set automatic replies setting (ooo) to true
         const adminContext = (await newUserPage(adminState.storageStatePath)).page.request;
         let resp = await adminContext.put(`${baseURL}/api/v4/config/patch`, {
-            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            headers: await getHTTPHeaders(adminContext),
             data: {
                 TeamSettings: {
                     ExperimentalEnableAutomaticReplies: true,
@@ -769,7 +770,7 @@ test.describe('notifications', () => {
         // cleanup
         await user1.leaveCall();
         resp = await adminContext.put(`${baseURL}/api/v4/config/patch`, {
-            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            headers: await getHTTPHeaders(adminContext),
             data: {
                 TeamSettings: {
                     ExperimentalEnableAutomaticReplies: false,
