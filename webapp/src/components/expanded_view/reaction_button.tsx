@@ -21,7 +21,6 @@ import {StyledTooltip} from 'src/components/shared';
 import Shortcut from 'src/components/shortcut';
 import {EmojiIndicesByAlias} from 'src/emojis/emoji';
 import {MAKE_REACTION, RAISE_LOWER_HAND, reverseKeyMappings} from 'src/shortcuts';
-import * as Telemetry from 'src/types/telemetry';
 import {getCallsClient} from 'src/utils';
 import styled, {css} from 'styled-components';
 
@@ -32,11 +31,10 @@ export type ReactionButtonRef = {
 };
 
 interface Props {
-    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
     isHandRaised: boolean,
 }
 
-export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref) => {
+export const ReactionButton = forwardRef(({isHandRaised}: Props, ref) => {
     const [showPicker, setShowPicker] = useState(false);
     const [showBar, setShowBar] = useState(false);
     const {formatMessage} = useIntl();
@@ -83,10 +81,8 @@ export const ReactionButton = forwardRef(({trackEvent, isHandRaised}: Props, ref
 
     const onRaiseHandToggle = () => {
         if (isHandRaised) {
-            trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.ExpandedView, {initiator: 'button'});
             callsClient?.unraiseHand();
         } else {
-            trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.ExpandedView, {initiator: 'button'});
             callsClient?.raiseHand();
         }
     };
