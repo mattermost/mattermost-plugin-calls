@@ -2488,7 +2488,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const HandIcon = this.isHandRaised() ? UnraisedHandIcon : RaisedHandIcon;
 
-        const MenuIcon = this.props.wider ? SettingsWheelIcon : HorizontalDotsIcon;
+        const MenuIcon = HorizontalDotsIcon;
 
         const VideoIcon = this.isVideoOn() || noVideoInputDevices || noVideoPermissions ? VideoOnIcon : VideoOffIcon;
         let videoTooltipText = this.isVideoOn() ? formatMessage({defaultMessage: 'Turn camera off'}) : formatMessage({defaultMessage: 'Turn camera on'});
@@ -2511,7 +2511,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const openPopOutLabel = formatMessage({defaultMessage: 'Open in new window'});
         const showParticipantsListLabel = this.state.showParticipantsList ?
             formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'});
-        const settingsButtonLabel = formatMessage({defaultMessage: 'Settings'});
+        const settingsButtonLabel = formatMessage({defaultMessage: 'More options'});
         const leaveMenuLabel = formatMessage({defaultMessage: 'Leave call'});
 
         // const shouldRenderVideoContainer = this.props.currentSession?.video || this.state.initializingSelfVideo || this.props.otherSessions.some((s) => s.video);
