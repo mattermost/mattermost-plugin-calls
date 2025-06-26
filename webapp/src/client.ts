@@ -85,6 +85,8 @@ export default class CallsClient extends EventEmitter {
         try {
             const devices = await navigator.mediaDevices.enumerateDevices();
 
+            logDebug('enumerated devices', devices);
+
             const inputs = devices.filter((device) => device.kind === 'audioinput');
             const outputs = devices.filter((device) => device.kind === 'audiooutput');
 
@@ -198,28 +200,46 @@ export default class CallsClient extends EventEmitter {
             };
         }
 
-        const selectedAudioInputDevice = this.getSelectedAudioDevice('input');
-        if (selectedAudioInputDevice) {
-            audioOptions.deviceId = {
-                exact: selectedAudioInputDevice.deviceId,
-            };
-            this.currentAudioInputDevice = selectedAudioInputDevice;
-        }
-
-        const selectedAudioOutputDevice = this.getSelectedAudioDevice('output');
-        if (selectedAudioOutputDevice) {
-            this.currentAudioOutputDevice = selectedAudioOutputDevice;
-        }
-
         try {
             this.stream = await navigator.mediaDevices.getUserMedia({
                 video: false,
                 audio: audioOptions,
             });
 
-            // updating the devices again cause some browsers (e.g Firefox) will
+            // If no deviceId is provided, we use the getUserMedia call purely to get permissions.
+            // This is because if permissions were missing upon joining, we may have not gotten the right device labels
+            // which would cause us to potentially fail to initialize a previously saved input device.
+            // Now that we have permission, we update the devices once more and try again to see if we can use the stored input device.
+            if (!deviceId) {
+                this.stream.getAudioTracks().forEach((track) => {
+                    track.stop();
+                    track.dispatchEvent(new Event('ended'));
+                });
+            }
+
+            // updating the devices again cause some browsers will
             // return empty labels unless permissions were previously granted.
             await this.updateDevices();
+
+            if (!deviceId) {
+                const selectedAudioInputDevice = this.getSelectedAudioDevice('input');
+                if (selectedAudioInputDevice) {
+                    audioOptions.deviceId = {
+                        exact: selectedAudioInputDevice.deviceId,
+                    };
+                    this.currentAudioInputDevice = selectedAudioInputDevice;
+                }
+
+                const selectedAudioOutputDevice = this.getSelectedAudioDevice('output');
+                if (selectedAudioOutputDevice) {
+                    this.currentAudioOutputDevice = selectedAudioOutputDevice;
+                }
+
+                this.stream = await navigator.mediaDevices.getUserMedia({
+                    video: false,
+                    audio: audioOptions,
+                });
+            }
 
             this.audioTrack = this.stream.getAudioTracks()[0];
             this.streams.push(this.stream);
