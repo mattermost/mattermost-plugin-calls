@@ -274,7 +274,7 @@ test.describe('screen sharing', () => {
             senderPage.joinCall(),
         ]);
 
-        await senderPage.page.locator('#calls-widget').getByLabel('Settings').click();
+        await senderPage.page.locator('#calls-widget').getByLabel('More options').click();
         await senderPage.page.getByText('Additional settings').click();
 
         // Verify that Calls Settings are open and visible.

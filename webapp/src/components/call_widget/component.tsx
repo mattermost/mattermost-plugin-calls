@@ -2126,7 +2126,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const HandIcon = this.isHandRaised() ? UnraisedHandIcon : RaisedHandIcon;
 
-        const MenuIcon = this.props.wider ? SettingsWheelIcon : HorizontalDotsIcon;
+        const MenuIcon = HorizontalDotsIcon;
 
         const handTooltipText = this.isHandRaised() ? formatMessage({defaultMessage: 'Lower hand'}) : formatMessage({defaultMessage: 'Raise hand'});
 
@@ -2136,7 +2136,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const openPopOutLabel = formatMessage({defaultMessage: 'Open in new window'});
         const showParticipantsListLabel = this.state.showParticipantsList ?
             formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'});
-        const settingsButtonLabel = formatMessage({defaultMessage: 'Settings'});
+        const settingsButtonLabel = formatMessage({defaultMessage: 'More options'});
         const leaveMenuLabel = formatMessage({defaultMessage: 'Leave call'});
 
         return (
