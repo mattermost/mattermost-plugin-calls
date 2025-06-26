@@ -510,7 +510,7 @@ test.describe('call post', () => {
             });
         });
 
-        await page.keyboard.press('Enter');
+        await page.locator(`#post_${postID}`).getByRole('button', {name: 'Save', exact: true}).click();
 
         expect((await postPatch).ok()).toBe(false);
 
