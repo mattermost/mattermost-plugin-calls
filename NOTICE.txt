@@ -7557,21 +7557,6 @@ SOFTWARE.
 
 ---
 
-## rudderlabs/analytics-go
-
-This product contains 'rudderlabs/analytics-go' by RudderStack.
-
-RudderStack is an open-source, warehouse-first Customer Data Pipeline and Segment-alternative. It collects and routes clickstream data and builds your customer data lake on your data warehouse.
-
-* HOMEPAGE:
-  * https://rudderstack.com
-
-* LICENSE: Other
-
-
-
----
-
 ## semver-parser
 
 This product contains 'semver-parser' by asamuzaK.
