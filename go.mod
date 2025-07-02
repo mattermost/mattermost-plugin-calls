@@ -32,7 +32,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/pion/interceptor v0.1.37 => github.com/streamer45/interceptor v0.0.0-20250317194950-ed17137a270a
+replace github.com/pion/interceptor v0.1.40 => github.com/streamer45/interceptor v0.0.0-20250701195358-9e4ca8111c7a
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
