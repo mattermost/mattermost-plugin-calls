@@ -377,12 +377,24 @@ func TestWSReader(t *testing.T) {
 		})
 
 		// MM-64737 bug, which shouldn't happen but somehow did.
-		t.Run("nil session but nil error, don't crash", func(_ *testing.T) {
+		t.Run("nil session but nil error, revoke session, don't crash", func(_ *testing.T) {
 			defer mockAPI.AssertExpectations(t)
+
+			us := newUserSession("userID", "channelID", "connID", "callID", false)
 
 			mockAPI.On("GetSession", "authSessionID").Return(nil, nil).Once()
 
-			us := newUserSession("userID", "channelID", "connID", "callID", false)
+			mockAPI.On("LogWarn", "no apErr and no session found",
+				"origin", mock.AnythingOfType("string"))
+
+			mockAPI.On("LogInfo", "invalid or expired session, closing RTC session",
+				"origin", mock.AnythingOfType("string"),
+				"channelID", us.channelID, "userID", us.userID, "connID", us.connID).Once()
+
+			mockAPI.On("LogDebug", "closeRTCSession",
+				"origin", mock.AnythingOfType("string"),
+				"userID", us.userID, "connID", us.connID, "channelID", us.channelID).Once()
+
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
