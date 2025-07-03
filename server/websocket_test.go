@@ -384,8 +384,9 @@ func TestWSReader(t *testing.T) {
 
 			mockAPI.On("GetSession", "authSessionID").Return(nil, nil).Once()
 
-			mockAPI.On("LogWarn", "no apErr and no session found",
-				"origin", mock.AnythingOfType("string"))
+			mockAPI.On("LogWarn", "no appErr and no session found",
+				"origin", mock.AnythingOfType("string"),
+				"channelID", us.channelID, "userID", us.userID, "connID", us.connID)
 
 			mockAPI.On("LogInfo", "invalid or expired session, closing RTC session",
 				"origin", mock.AnythingOfType("string"),

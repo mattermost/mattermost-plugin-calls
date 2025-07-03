@@ -516,7 +516,7 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 				}
 
 				if appErr == nil && s == nil {
-					p.LogWarn("no apErr and no session found")
+					p.LogWarn("no appErr and no session found", fields...)
 				} else if appErr != nil {
 					fields = append(fields, "err", appErr.Error())
 				} else {
