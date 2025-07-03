@@ -375,6 +375,26 @@ func TestWSReader(t *testing.T) {
 
 			wg.Wait()
 		})
+
+		// MM-64737 bug, which shouldn't happen but somehow did.
+		t.Run("nil session but nil error, don't crash", func(_ *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+
+			mockAPI.On("GetSession", "authSessionID").Return(nil, nil).Once()
+
+			us := newUserSession("userID", "channelID", "connID", "callID", false)
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				p.wsReader(us, "authSessionID", "handlerID")
+			}()
+
+			time.Sleep(time.Second)
+			close(us.wsCloseCh)
+
+			wg.Wait()
+		})
 	})
 }
 
