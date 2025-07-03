@@ -504,7 +504,8 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 				continue
 			}
 
-			if s, appErr := p.API.GetSession(authSessionID); appErr != nil || (s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt) {
+			s, appErr := p.API.GetSession(authSessionID)
+			if appErr != nil || s == nil || (s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt) {
 				fields := []any{
 					"channelID",
 					us.channelID,
@@ -514,7 +515,9 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 					us.connID,
 				}
 
-				if appErr != nil {
+				if appErr == nil && s == nil {
+					p.LogWarn("no appErr and no session found", fields...)
+				} else if appErr != nil {
 					fields = append(fields, "err", appErr.Error())
 				} else {
 					fields = append(fields, "sessionID", s.Id, "expiresAt", fmt.Sprintf("%d", s.ExpiresAt))
