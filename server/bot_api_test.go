@@ -216,3 +216,291 @@ func TestHandleBotGetProfileForSession(t *testing.T) {
 		require.Equal(t, user.Email, respUser.Email)
 	})
 }
+
+func TestHandleBotUploadData(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	mockMetrics := &serverMocks.MockMetrics{}
+
+	botUserID := model.NewId()
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		metrics: mockMetrics,
+		botSession: &model.Session{
+			UserId: botUserID,
+		},
+		callsClusterLocks: map[string]*cluster.Mutex{},
+	}
+
+	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
+
+	mockMetrics.On("Handler").Return(nil).Once()
+
+	// Audit log
+	mockAPI.On("LogDebug", "handleBotUploadData",
+		"origin", mock.AnythingOfType("string"), mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
+	apiRouter := p.newAPIRouter()
+
+	t.Run("upload session not found", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
+		uploadID := model.NewId()
+
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+		mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil).Once()
+		mockAPI.On("GetUploadSession", uploadID).Return(nil, &model.AppError{
+			Message:    "upload session not found",
+			StatusCode: http.StatusNotFound,
+		}).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/bot/uploads/"+uploadID, nil)
+		r.Header.Set("Mattermost-User-Id", botUserID)
+
+		apiRouter.ServeHTTP(w, r)
+
+		resp := w.Result()
+		require.Equal(t, http.StatusNotFound, resp.StatusCode)
+		var res httpResponse
+		err := json.NewDecoder(resp.Body).Decode(&res)
+		require.NoError(t, err)
+		require.Equal(t, "upload session not found", res.Msg)
+		require.Equal(t, 404, res.Code)
+	})
+
+	t.Run("invalid upload type", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
+		uploadID := model.NewId()
+		us := &model.UploadSession{
+			Id:     uploadID,
+			Type:   "invalid_type",
+			UserId: botUserID,
+		}
+
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+		mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil).Once()
+		mockAPI.On("GetUploadSession", uploadID).Return(us, nil).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/bot/uploads/"+uploadID, nil)
+		r.Header.Set("Mattermost-User-Id", botUserID)
+
+		apiRouter.ServeHTTP(w, r)
+
+		resp := w.Result()
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		var res httpResponse
+		err := json.NewDecoder(resp.Body).Decode(&res)
+		require.NoError(t, err)
+		require.Equal(t, "invalid upload type", res.Msg)
+		require.Equal(t, 400, res.Code)
+	})
+
+	t.Run("not allowed to upload for different user", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
+		uploadID := model.NewId()
+		otherUserID := model.NewId()
+		us := &model.UploadSession{
+			Id:     uploadID,
+			Type:   model.UploadTypeAttachment,
+			UserId: otherUserID,
+		}
+
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+		mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil).Once()
+		mockAPI.On("GetUploadSession", uploadID).Return(us, nil).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/bot/uploads/"+uploadID, nil)
+		r.Header.Set("Mattermost-User-Id", botUserID)
+
+		apiRouter.ServeHTTP(w, r)
+
+		resp := w.Result()
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		var res httpResponse
+		err := json.NewDecoder(resp.Body).Decode(&res)
+		require.NoError(t, err)
+		require.Equal(t, "not allowed to upload data for this session", res.Msg)
+		require.Equal(t, 403, res.Code)
+	})
+
+	t.Run("failed to get server configuration", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
+		uploadID := model.NewId()
+		us := &model.UploadSession{
+			Id:     uploadID,
+			Type:   model.UploadTypeAttachment,
+			UserId: botUserID,
+		}
+
+		mockAPI.On("GetConfig").Return(&model.Config{}).Once()
+		mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil).Once()
+		mockAPI.On("GetUploadSession", uploadID).Return(us, nil).Once()
+		mockAPI.On("GetConfig").Return(nil).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/bot/uploads/"+uploadID, nil)
+		r.Header.Set("Mattermost-User-Id", botUserID)
+
+		apiRouter.ServeHTTP(w, r)
+
+		resp := w.Result()
+		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+		var res httpResponse
+		err := json.NewDecoder(resp.Body).Decode(&res)
+		require.NoError(t, err)
+		require.Equal(t, "failed to get server configuration", res.Msg)
+		require.Equal(t, 500, res.Code)
+	})
+
+	t.Run("upload data error", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
+		uploadID := model.NewId()
+		us := &model.UploadSession{
+			Id:     uploadID,
+			Type:   model.UploadTypeAttachment,
+			UserId: botUserID,
+		}
+
+		maxFileSize := int64(1024 * 1024)
+		config := &model.Config{
+			FileSettings: model.FileSettings{
+				MaxFileSize: &maxFileSize,
+			},
+		}
+
+		mockAPI.On("GetConfig").Return(&model.Config{}).Once()
+		mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil).Once()
+		mockAPI.On("GetUploadSession", uploadID).Return(us, nil).Once()
+		mockAPI.On("GetConfig").Return(config).Once()
+		mockAPI.On("UploadData", us, mock.Anything).Return(nil, &model.AppError{
+			Message:    "upload failed",
+			StatusCode: http.StatusInternalServerError,
+		}).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/bot/uploads/"+uploadID, nil)
+		r.Header.Set("Mattermost-User-Id", botUserID)
+
+		apiRouter.ServeHTTP(w, r)
+
+		resp := w.Result()
+		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+		var res httpResponse
+		err := json.NewDecoder(resp.Body).Decode(&res)
+		require.NoError(t, err)
+		require.Equal(t, "upload failed", res.Msg)
+		require.Equal(t, 500, res.Code)
+	})
+
+	t.Run("upload incomplete", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
+		uploadID := model.NewId()
+		us := &model.UploadSession{
+			Id:     uploadID,
+			Type:   model.UploadTypeAttachment,
+			UserId: botUserID,
+		}
+
+		maxFileSize := int64(1024 * 1024)
+		config := &model.Config{
+			FileSettings: model.FileSettings{
+				MaxFileSize: &maxFileSize,
+			},
+		}
+
+		mockAPI.On("GetConfig").Return(&model.Config{}).Once()
+		mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil).Once()
+		mockAPI.On("GetUploadSession", uploadID).Return(us, nil).Once()
+		mockAPI.On("GetConfig").Return(config).Once()
+		mockAPI.On("UploadData", us, mock.Anything).Return(nil, nil).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/bot/uploads/"+uploadID, nil)
+		r.Header.Set("Mattermost-User-Id", botUserID)
+
+		apiRouter.ServeHTTP(w, r)
+
+		resp := w.Result()
+		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+
+		uploadID := model.NewId()
+		us := &model.UploadSession{
+			Id:     uploadID,
+			Type:   model.UploadTypeAttachment,
+			UserId: botUserID,
+		}
+
+		maxFileSize := int64(1024 * 1024)
+		config := &model.Config{
+			FileSettings: model.FileSettings{
+				MaxFileSize: &maxFileSize,
+			},
+		}
+
+		fileInfo := &model.FileInfo{
+			Id:   model.NewId(),
+			Name: "test.txt",
+			Size: 100,
+		}
+
+		mockAPI.On("GetConfig").Return(&model.Config{}).Once()
+		mockAPI.On("GetLicense").Return(&model.License{
+			SkuShortName: "enterprise",
+		}, nil).Once()
+		mockAPI.On("GetUploadSession", uploadID).Return(us, nil).Once()
+		mockAPI.On("GetConfig").Return(config).Once()
+		mockAPI.On("UploadData", us, mock.Anything).Return(fileInfo, nil).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/bot/uploads/"+uploadID, nil)
+		r.Header.Set("Mattermost-User-Id", botUserID)
+
+		apiRouter.ServeHTTP(w, r)
+
+		resp := w.Result()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var respFileInfo model.FileInfo
+		err := json.NewDecoder(resp.Body).Decode(&respFileInfo)
+		require.NoError(t, err)
+		require.Equal(t, fileInfo.Id, respFileInfo.Id)
+		require.Equal(t, fileInfo.Name, respFileInfo.Name)
+		require.Equal(t, fileInfo.Size, respFileInfo.Size)
+	})
+}
