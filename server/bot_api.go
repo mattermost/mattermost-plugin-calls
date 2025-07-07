@@ -103,6 +103,18 @@ func (p *Plugin) handleBotUploadData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if us.Type != model.UploadTypeAttachment {
+		res.Code = http.StatusBadRequest
+		res.Err = "invalid upload type"
+		return
+	}
+
+	if us.UserId != p.getBotID() {
+		res.Code = http.StatusForbidden
+		res.Err = "not allowed to upload data for this session"
+		return
+	}
+
 	serverCfg := p.API.GetConfig()
 	if serverCfg == nil {
 		res.Err = "failed to get server configuration"
