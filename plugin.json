@@ -160,7 +160,7 @@
             "key": "ICEHostOverride",
             "display_name": "ICE Host Override",
             "type": "text",
-            "help_text": "(Optional) The IP (or hostname) to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.",
+            "help_text": "(Optional) The IP address to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.",
             "default": "",
             "hosting": "on-prem"
           },
@@ -445,7 +445,7 @@
         "key": "ICEHostOverride",
         "display_name": "ICE Host Override",
         "type": "text",
-        "help_text": "(Optional) The IP (or hostname) to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.",
+        "help_text": "(Optional) The IP address to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.",
         "default": "",
         "hosting": "on-prem"
       },

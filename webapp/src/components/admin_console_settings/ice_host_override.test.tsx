@@ -57,7 +57,7 @@ describe('ICEHostOverride', () => {
         renderComponent();
 
         expect(screen.getByText('ICE Host Override')).toBeInTheDocument();
-        expect(screen.getByText('(Optional) The IP (or hostname) to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.')).toBeInTheDocument();
+        expect(screen.getByText('(Optional) The IP address to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.')).toBeInTheDocument();
 
         const input = screen.getByTestId('ICEHostOverrideinput');
         expect(input).toHaveValue('192.168.1.1');
