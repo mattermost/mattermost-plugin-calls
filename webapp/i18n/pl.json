@@ -328,6 +328,5 @@
   "yjQNKt": "Na tym kanale połączenia są wyłączone.",
   "yx0b7N": "{count, plural, =1 {# transkrypcja} other {# transkrypcje(i)}}",
   "zUH89x": "Nagranie rozmowy zostanie przetworzone i opublikowane w wątku rozmowy. Czy na pewno chcesz zatrzymać nagrywanie?",
-  "zx0myy": "Uczestnicy",
-  "zxBgWa": "(Opcjonalnie) Adres IP (lub nazwa hosta), który ma być używany jako kandydat na ICE hosta. Jeśli jest puste, domyślnie jest rozpoznawane przez STUN."
+  "zx0myy": "Uczestnicy"
 }

@@ -328,6 +328,5 @@
   "yjQNKt": "Gesprekken zijn uitgeschakeld in dit kanaal.",
   "yx0b7N": "{count, plural, =1 {# transcriptie} other {# transcripties}}",
   "zUH89x": "De gespreksopname wordt verwerkt en in de gespreksdraadje geplaatst. Weet je zeker dat je de opname wilt stoppen?",
-  "zx0myy": "Deelnemers",
-  "zxBgWa": "(Optioneel) Het IP (of hostnaam) dat gebruikt moet worden als host ICE kandidaat. Als deze leeg is, wordt dit standaard afgehandeld via STUN ."
+  "zx0myy": "Deelnemers"
 }

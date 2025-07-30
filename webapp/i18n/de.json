@@ -319,6 +319,5 @@
   "yjQNKt": "Anrufe sind in diesem Kanal deaktiviert.",
   "yx0b7N": "{count, plural, =1 {# Transkription} other {# Transkriptionen}}",
   "zUH89x": "Die Gesprächsaufzeichnung wird verarbeitet und in der Gesprächs-Unterhaltung gepostet. Bist du sicher, dass du die Aufzeichnung beenden willst?",
-  "zx0myy": "Teilnehmer",
-  "zxBgWa": "(Optional) Die IP (oder der Hostname), die/der als ICE-Hostkandidat verwendet werden soll. Wenn sie leer ist, wird sie standardmäßig über STUN aufgelöst."
+  "zx0myy": "Teilnehmer"
 }

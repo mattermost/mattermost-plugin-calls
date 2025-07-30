@@ -328,6 +328,5 @@
   "yjQNKt": "Hovory jsou v tomto kanálu zakázány.",
   "yx0b7N": "{count, plural, =1 {# přepis} other {# přepisů}}",
   "zUH89x": "Nahrávání hovoru bude zpracováno a zveřejněno ve vlákně hovoru. Jste si jisti, že chcete nahrávání zastavit?",
-  "zx0myy": "Účastníci",
-  "zxBgWa": "(Volitelné) IP adresa (nebo název hostitele), která bude použita jako hostitelský ICE kandidát. Pokud je pole prázdné, použije se výchozí řešení přes STUN."
+  "zx0myy": "Účastníci"
 }
