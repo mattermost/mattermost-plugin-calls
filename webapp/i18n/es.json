@@ -319,6 +319,5 @@
   "yjQNKt": "Las llamadas están desactivadas en este canal.",
   "yx0b7N": "{count, plural, =1 {# transcription} other {# transcriptions}}",
   "zUH89x": "La grabación de la llamada se procesará y se publicará en el hilo de la llamada. ¿Estás seguro de que quieres detener la grabación?",
-  "zx0myy": "Participantes",
-  "zxBgWa": "(Opcional) La IP (o nombre de host) que se utilizará como host candidato a ICE. Si está vacía, por defecto se resuelve mediante STUN."
+  "zx0myy": "Participantes"
 }

@@ -319,6 +319,5 @@
   "yjQNKt": "Samtal är avaktiverade i denna kanal.",
   "yx0b7N": "{count, plural, =1 {# transkription} other {# transkriptioner}}",
   "zUH89x": "Inspelningen av samtalet kommer att bearbetas och läggas upp i samtalstråden. Är du säker på att du vill stoppa inspelningen?",
-  "zx0myy": "Deltagare",
-  "zxBgWa": "(Valfritt) Den IP (eller det värdnamn) som ska användas som ICE-värd-kandidat. Om tomt används standardlösningen via STUN."
+  "zx0myy": "Deltagare"
 }

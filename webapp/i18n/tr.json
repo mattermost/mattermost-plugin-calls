@@ -319,6 +319,5 @@
   "yjQNKt": "Bu kanalda çağrılar devre dışı bırakılmış.",
   "yx0b7N": "{count, plural, =1 {# uyarlama} other {# uyarlama}}",
   "zUH89x": "Çağrı kaydetme işlenecek ve çağrı yazışmasına eklenecek. Kaydı durdurmak istediğinize emin misiniz?",
-  "zx0myy": "Katılımcılar",
-  "zxBgWa": "(İsteğe bağlı) Sunucu ICE adayı olarak kullanılacak IP adresi (ya da sunucu adı). Boş bırakılırsa, varsayılan olarak STUN ile çözümlenir."
+  "zx0myy": "Katılımcılar"
 }
