@@ -328,6 +328,5 @@
   "yjQNKt": "Samtaler er deaktivert i denne kanalen.",
   "yx0b7N": "{count, plural, =1 {# transcription} other {# transcriptions}}",
   "zUH89x": "Samtaleopptaket vil bli behandlet og lagt ut i samtaletråden. Er du sikker på at du vil stoppe opptaket?",
-  "zx0myy": "Deltakere",
-  "zxBgWa": "(Valgfritt) IP-en (eller vertsnavnet) som skal brukes som verts-ICE-kandidat. Hvis den er tom, løses den som standard via STUN."
+  "zx0myy": "Deltakere"
 }

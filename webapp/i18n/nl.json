@@ -50,6 +50,7 @@
   "7cVXct": "Deelnemers tonen",
   "7gVR9m": "Er is een interne fout opgetreden waardoor je niet aan de oproep kan deelnemen. Probeer het opnieuw.",
   "83mzYJ": "De gesprekskwaliteit kan afnemen door onstabiele netwerkomstandigheden.",
+  "85btzx": "(Optioneel) Het IP-adres dat gebruikt moet worden als host ICE kandidaat. Als het leeg is, wordt het standaard opgelost via STUN.",
   "8JGf6X": "Chatdraadje weergeven",
   "8isok9": "Deelnemer dempen",
   "94UiTg": "Opname is bezig",
@@ -328,6 +329,5 @@
   "yjQNKt": "Gesprekken zijn uitgeschakeld in dit kanaal.",
   "yx0b7N": "{count, plural, =1 {# transcriptie} other {# transcripties}}",
   "zUH89x": "De gespreksopname wordt verwerkt en in de gespreksdraadje geplaatst. Weet je zeker dat je de opname wilt stoppen?",
-  "zx0myy": "Deelnemers",
-  "zxBgWa": "(Optioneel) Het IP (of hostnaam) dat gebruikt moet worden als host ICE kandidaat. Als deze leeg is, wordt dit standaard afgehandeld via STUN ."
+  "zx0myy": "Deelnemers"
 }

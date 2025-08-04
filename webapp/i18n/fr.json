@@ -319,6 +319,5 @@
   "yjQNKt": "Les appels sont désactivés dans ce canal.",
   "yx0b7N": "{count, plural, =1 {# transcription} other {# transcriptions}}",
   "zUH89x": "L'enregistrement de l'appel sera traité et publié dans le fil de discussion de l'appel. Êtes-vous sûr de vouloir arrêter l'enregistrement ?",
-  "zx0myy": "Participants",
-  "zxBgWa": "(Optionnel) L'adresse IP (ou nom d'hôte) à utiliser en tant que candidat d'hôte ICE. Si vide, il sera résolu via STUN par défaut."
+  "zx0myy": "Participants"
 }

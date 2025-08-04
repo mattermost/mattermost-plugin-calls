@@ -50,6 +50,7 @@
   "7cVXct": "Ukázat účastníky",
   "7gVR9m": "Došlo k chybě, což znemožnilo připojit se k hovoru. Zkuste to prosím znovu.",
   "83mzYJ": "Kvalita hovoru může být zhoršena v důsledku nestabilních podmínek sítě.",
+  "85btzx": "(Volitelné) IP adresa, která má být použita jako hostitelský kandidát ICE. Pokud je prázdná, použije se výchozí zjištění pomocí STUN.",
   "8JGf6X": "Zobrazit vlákno chatu",
   "8isok9": "Ztlumení účastníka",
   "94UiTg": "Probíhá nahrávání",
@@ -328,6 +329,5 @@
   "yjQNKt": "Hovory jsou v tomto kanálu zakázány.",
   "yx0b7N": "{count, plural, =1 {# přepis} other {# přepisů}}",
   "zUH89x": "Nahrávání hovoru bude zpracováno a zveřejněno ve vlákně hovoru. Jste si jisti, že chcete nahrávání zastavit?",
-  "zx0myy": "Účastníci",
-  "zxBgWa": "(Volitelné) IP adresa (nebo název hostitele), která bude použita jako hostitelský ICE kandidát. Pokud je pole prázdné, použije se výchozí řešení přes STUN."
+  "zx0myy": "Účastníci"
 }
