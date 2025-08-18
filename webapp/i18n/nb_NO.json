@@ -50,6 +50,7 @@
   "7cVXct": "Vis deltakere",
   "7gVR9m": "Det oppstod en intern feil som forhindret deg i å bli med i samtalen. Vennligst prøv igjen.",
   "83mzYJ": "Samtalekvaliteten kan bli dårligere på grunn av ustabile nettverksforhold.",
+  "85btzx": "(Valgfritt) IP-adressen som skal brukes som host ICE-kandidat. Hvis den er tom, løses den som standard via STUN.",
   "8JGf6X": "Vis chattråd",
   "8isok9": "Demp deltaker",
   "94UiTg": "Opptaket pågår",
