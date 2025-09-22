@@ -46,12 +46,6 @@ docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 	${CONTAINER_SERVER}1 \
 	/mattermost/bin/mmctl auth login http://localhost:8065 --username sysadmin --name local --password-file /mattermost/pwd.txt
 
-# Install Playbooks
-echo "Installing playbooks ..."
-docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
-	${CONTAINER_SERVER}1 \
-	/mattermost/bin/mmctl plugin add /mattermost/prepackaged_plugins/mattermost-plugin-playbooks-v2.4.1-linux-amd64.tar.gz
-
 # Enable Playbooks
 echo "Enabling playbooks ..."
 docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
