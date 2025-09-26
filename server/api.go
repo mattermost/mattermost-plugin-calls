@@ -293,7 +293,8 @@ func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
 	// Allow desktop or recorder (which uses our custom recorder header)
 	isDesktopApp := strings.Contains(userAgent, "Mattermost") && strings.Contains(userAgent, "Electron")
 	hasRecorderHeader := r.Header.Get("X-Calls-Recorder") == "true"
-	needsReferrerCheck := !(isDesktopApp || hasRecorderHeader)
+	hasE2EHeader := r.Header.Get("X-Calls-E2E") == "true"
+	needsReferrerCheck := !(isDesktopApp || hasRecorderHeader || hasE2EHeader)
 	if needsReferrerCheck {
 		if referrer != "" {
 			// For web browsers, check referrer for CSRF protection
