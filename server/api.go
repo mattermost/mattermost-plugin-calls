@@ -290,7 +290,7 @@ func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
 	referrer := r.Header.Get("Referer")
 	userAgent := r.UserAgent()
 
-	// Allow desktop or recorder (which uses our custom recorder header)
+	// Allow desktop or recorder (which uses our custom recorder header), or E2E
 	isDesktopApp := strings.Contains(userAgent, "Mattermost") && strings.Contains(userAgent, "Electron")
 	hasRecorderHeader := r.Header.Get("X-Calls-Recorder") == "true"
 	hasE2EHeader := r.Header.Get("X-Calls-E2E") == "true"
@@ -301,13 +301,13 @@ func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
 			referrerURL, err := url.Parse(referrer)
 			if err != nil {
 				p.LogWarn("Serve standalone, BLOCKED: Invalid referrer", "err", err.Error())
-				http.Error(w, "Invalid referrer", http.StatusForbidden)
+				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
 
 			if referrerURL.Host != r.Host {
 				p.LogWarn("Serve standalone, BLOCKED: Cross-origin referrer", "from", referrerURL.Host, "to", r.Host)
-				http.Error(w, "Cross-origin request not allowed", http.StatusForbidden)
+				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
 
@@ -315,7 +315,7 @@ func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// No referrer - could be direct navigation (OK) or malicious site with referrer policy
 			p.LogWarn("Serve standalone, BLOCKED: no referrer")
-			http.Error(w, "Referrer required", http.StatusForbidden)
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 	}
