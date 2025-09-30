@@ -130,6 +130,9 @@ export default class PlaywrightDevPage {
         const resp = await this.page.request.get(`${baseURL}/api/v4/teams/name/${defaultTeam}/channels/name/${channelName}`);
         const channel = await resp.json();
 
+        await this.page.setExtraHTTPHeaders({
+            'X-Calls-E2E': 'true',
+        });
         await this.page.goto(`${baseURL}/plugins/${pluginID}/standalone/widget.html?call_id=${channel.id}`);
         await expect(this.page.locator('#calls-widget')).toBeVisible();
         await expect(this.page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
