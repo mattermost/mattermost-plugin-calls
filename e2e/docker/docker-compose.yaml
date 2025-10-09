@@ -1,7 +1,7 @@
 version: '2.4'
 services:
   postgres:
-    image: "postgres:13"
+    image: "postgres:14"
     restart: always
     tmpfs: /var/lib/postgresql/data
     networks:
