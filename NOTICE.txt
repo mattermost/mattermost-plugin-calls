@@ -354,11 +354,11 @@ This product contains 'core-js' by Denis Pushkarev.
 Standard library
 
 * HOMEPAGE:
-  * https://github.com/zloirock/core-js#readme
+  * https://core-js.io
 
 * LICENSE: MIT
 
-Copyright (c) 2014-2025 Denis Pushkarev
+Copyright (c) 2014-2025 Denis Pushkarev, 2025 CoreJS Company
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -388,11 +388,11 @@ This product contains 'core-js' by Denis Pushkarev.
 Standard library
 
 * HOMEPAGE:
-  * https://github.com/zloirock/core-js#readme
+  * https://core-js.io
 
 * LICENSE: MIT
 
-Copyright (c) 2014-2025 Denis Pushkarev
+Copyright (c) 2014-2025 Denis Pushkarev, 2025 CoreJS Company
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
