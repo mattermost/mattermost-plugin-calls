@@ -1089,6 +1089,14 @@ func (p *Plugin) handleCallStateRequest(channelID, userID, connID string) error 
 }
 
 func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model.WebSocketRequest) {
+	// Validate UTF-8 to prevent Prometheus panic
+	if !utf8.ValidString(req.Action) {
+		p.LogWarn("dropping malformed websocket action with invalid UTF-8", "connID", connID)
+		return
+	}
+	if !strings.HasPrefix(req.Action, wsActionPrefix) {
+		return
+	}
 	var msg clientMessage
 	msg.Type = strings.TrimPrefix(req.Action, wsActionPrefix)
 
