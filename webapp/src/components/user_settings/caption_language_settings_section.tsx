@@ -11,6 +11,7 @@ import {savePreferences} from 'mattermost-redux/actions/preferences';
 import {PreferenceType} from '@mattermost/types/preferences';
 import {PREFERENCE_CATEGORY_CALLS, PREFERENCE_NAME_CAPTION_LANGUAGE} from 'src/constants';
 import {loadCallsUserPreferences} from 'src/actions';
+import {liveCaptionsEnabled} from 'src/selectors';
 import {logErr} from 'src/log';
 import styled from 'styled-components';
 import {GlobalState} from '@mattermost/types/store';
@@ -68,6 +69,7 @@ export default function CaptionLanguageSettingsSection() {
     const dispatch = useDispatch();
     const currentUserId = useSelector(getCurrentUserId);
     const preferences = useSelector((state: GlobalState) => getMyPreferences(state));
+    const liveCaptionsOn = useSelector(liveCaptionsEnabled);
     
     const [active, setActive] = useState(false);
     const [selectedOption, setSelectedOption] = useState<SelectOption>(CAPTION_LANGUAGES[0]);
@@ -76,6 +78,11 @@ export default function CaptionLanguageSettingsSection() {
     const title = formatMessage({defaultMessage: 'Live captions language'});
     const description = formatMessage({defaultMessage: 'Select a language to automatically translate live captions when live captions are enabled.'});
     const editLabel = formatMessage({defaultMessage: 'Edit'});
+
+    // Don't render if live captions are not enabled in plugin config
+    if (!liveCaptionsOn) {
+        return null;
+    }
 
     // Load preference from Mattermost preferences on mount and when preferences change
     useEffect(() => {
