@@ -109,3 +109,44 @@ export const STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN = 'calls_share_audio_with_scr
 // Mattermost preferences keys
 export const PREFERENCE_CATEGORY_CALLS = 'calls';
 export const PREFERENCE_NAME_CAPTION_LANGUAGE = 'caption_language';
+
+// Caption language options
+export type CaptionLanguageOption = {
+    label: string;
+    value: string;
+};
+
+export const CAPTION_LANGUAGES: CaptionLanguageOption[] = [
+    {label: 'No translation (original)', value: ''},
+    {label: 'Arabic', value: 'ar'},
+    {label: 'Bengali', value: 'bn'},
+    {label: 'Chinese (Simplified)', value: 'zh'},
+    {label: 'Chinese (Traditional)', value: 'zh-TW'},
+    {label: 'Czech', value: 'cs'},
+    {label: 'Danish', value: 'da'},
+    {label: 'Dutch', value: 'nl'},
+    {label: 'English', value: 'en'},
+    {label: 'Finnish', value: 'fi'},
+    {label: 'French', value: 'fr'},
+    {label: 'German', value: 'de'},
+    {label: 'Greek', value: 'el'},
+    {label: 'Hebrew', value: 'he'},
+    {label: 'Hindi', value: 'hi'},
+    {label: 'Hungarian', value: 'hu'},
+    {label: 'Indonesian', value: 'id'},
+    {label: 'Italian', value: 'it'},
+    {label: 'Japanese', value: 'ja'},
+    {label: 'Korean', value: 'ko'},
+    {label: 'Norwegian', value: 'no'},
+    {label: 'Polish', value: 'pl'},
+    {label: 'Portuguese', value: 'pt'},
+    {label: 'Portuguese (Brazil)', value: 'pt-BR'},
+    {label: 'Romanian', value: 'ro'},
+    {label: 'Russian', value: 'ru'},
+    {label: 'Spanish', value: 'es'},
+    {label: 'Swedish', value: 'sv'},
+    {label: 'Thai', value: 'th'},
+    {label: 'Turkish', value: 'tr'},
+    {label: 'Ukrainian', value: 'uk'},
+    {label: 'Vietnamese', value: 'vi'},
+];

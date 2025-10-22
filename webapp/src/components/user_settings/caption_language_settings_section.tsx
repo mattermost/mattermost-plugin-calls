@@ -9,61 +9,13 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {getMyPreferences} from 'mattermost-redux/selectors/entities/preferences';
 import {savePreferences} from 'mattermost-redux/actions/preferences';
 import {PreferenceType} from '@mattermost/types/preferences';
-import {PREFERENCE_CATEGORY_CALLS, PREFERENCE_NAME_CAPTION_LANGUAGE} from 'src/constants';
+import {PREFERENCE_CATEGORY_CALLS, PREFERENCE_NAME_CAPTION_LANGUAGE, CAPTION_LANGUAGES, CaptionLanguageOption} from 'src/constants';
 import {loadCallsUserPreferences} from 'src/actions';
 import {liveCaptionsEnabled} from 'src/selectors';
 import {logErr} from 'src/log';
 import styled from 'styled-components';
 import {GlobalState} from '@mattermost/types/store';
 import translationService from 'src/translation_service';
-
-type SelectOption = {
-    label: string;
-    value: string;
-};
-
-// ISO 639-1 language codes with common languages for live captions translation
-const CAPTION_LANGUAGES: SelectOption[] = [
-    {label: 'No translation (original language)', value: ''},
-    {label: 'Arabic (ar)', value: 'ar'},
-    {label: 'Bengali (bn)', value: 'bn'},
-    {label: 'Bulgarian (bg)', value: 'bg'},
-    {label: 'Chinese (Simplified) (zh)', value: 'zh'},
-    {label: 'Chinese (Traditional) (zh-TW)', value: 'zh-TW'},
-    {label: 'Croatian (hr)', value: 'hr'},
-    {label: 'Czech (cs)', value: 'cs'},
-    {label: 'Danish (da)', value: 'da'},
-    {label: 'Dutch (nl)', value: 'nl'},
-    {label: 'English (en)', value: 'en'},
-    {label: 'Finnish (fi)', value: 'fi'},
-    {label: 'French (fr)', value: 'fr'},
-    {label: 'German (de)', value: 'de'},
-    {label: 'Greek (el)', value: 'el'},
-    {label: 'Hebrew (he)', value: 'he'},
-    {label: 'Hindi (hi)', value: 'hi'},
-    {label: 'Hungarian (hu)', value: 'hu'},
-    {label: 'Indonesian (id)', value: 'id'},
-    {label: 'Italian (it)', value: 'it'},
-    {label: 'Japanese (ja)', value: 'ja'},
-    {label: 'Korean (ko)', value: 'ko'},
-    {label: 'Latvian (lv)', value: 'lv'},
-    {label: 'Lithuanian (lt)', value: 'lt'},
-    {label: 'Norwegian (no)', value: 'no'},
-    {label: 'Polish (pl)', value: 'pl'},
-    {label: 'Portuguese (pt)', value: 'pt'},
-    {label: 'Portuguese (Brazil) (pt-BR)', value: 'pt-BR'},
-    {label: 'Romanian (ro)', value: 'ro'},
-    {label: 'Russian (ru)', value: 'ru'},
-    {label: 'Serbian (sr)', value: 'sr'},
-    {label: 'Slovak (sk)', value: 'sk'},
-    {label: 'Slovenian (sl)', value: 'sl'},
-    {label: 'Spanish (es)', value: 'es'},
-    {label: 'Swedish (sv)', value: 'sv'},
-    {label: 'Thai (th)', value: 'th'},
-    {label: 'Turkish (tr)', value: 'tr'},
-    {label: 'Ukrainian (uk)', value: 'uk'},
-    {label: 'Vietnamese (vi)', value: 'vi'},
-];
 
 export default function CaptionLanguageSettingsSection() {
     const {formatMessage} = useIntl();
@@ -73,47 +25,13 @@ export default function CaptionLanguageSettingsSection() {
     const liveCaptionsOn = useSelector(liveCaptionsEnabled);
     
     const [active, setActive] = useState(false);
-    const [selectedOption, setSelectedOption] = useState<SelectOption>(CAPTION_LANGUAGES[0]);
+    const [selectedOption, setSelectedOption] = useState<CaptionLanguageOption>(CAPTION_LANGUAGES[0]);
     const [saving, setSaving] = useState(false);
     const [browserSupported, setBrowserSupported] = useState<boolean | null>(null);
 
     const title = formatMessage({defaultMessage: 'Live captions language'});
     const description = formatMessage({defaultMessage: 'Select a language to automatically translate live captions when live captions are enabled.'});
     const editLabel = formatMessage({defaultMessage: 'Edit'});
-
-    // Check if browser supports translation on mount
-    useEffect(() => {
-        translationService.isSupported().then((supported) => {
-            setBrowserSupported(supported);
-        });
-    }, []);
-
-    // Don't render if live captions are not enabled in plugin config
-    if (!liveCaptionsOn) {
-        return null;
-    }
-
-    // Don't render if browser doesn't support translation API
-    if (browserSupported === false) {
-        return null;
-    }
-
-    // Don't render yet if we're still checking browser support
-    if (browserSupported === null) {
-        return null;
-    }
-
-    // Load preference from Mattermost preferences on mount and when preferences change
-    useEffect(() => {
-        loadCurrentPreference();
-    }, [preferences]);
-
-    // Reload preference when opening the settings panel
-    useEffect(() => {
-        if (active) {
-            loadCurrentPreference();
-        }
-    }, [active]);
 
     const loadCurrentPreference = () => {
         try {
@@ -146,6 +64,40 @@ export default function CaptionLanguageSettingsSection() {
             console.error('[Calls] Error loading caption language preference:', err);
         }
     };
+
+    // Check if browser supports translation on mount
+    useEffect(() => {
+        translationService.isSupported().then((supported) => {
+            setBrowserSupported(supported);
+        });
+    }, []);
+
+    // Load preference from Mattermost preferences on mount and when preferences change
+    useEffect(() => {
+        loadCurrentPreference();
+    }, [preferences]);
+
+    // Reload preference when opening the settings panel
+    useEffect(() => {
+        if (active) {
+            loadCurrentPreference();
+        }
+    }, [active]);
+
+    // Don't render if live captions are not enabled in plugin config
+    if (!liveCaptionsOn) {
+        return null;
+    }
+
+    // Don't render if browser doesn't support translation API
+    if (browserSupported === false) {
+        return null;
+    }
+
+    // Don't render yet if we're still checking browser support
+    if (browserSupported === null) {
+        return null;
+    }
 
     const handleSave = async () => {
         setSaving(true);
@@ -236,7 +188,7 @@ export default function CaptionLanguageSettingsSection() {
                                     isSearchable={true}
                                     components={{IndicatorSeparator: () => null}}
                                     value={selectedOption}
-                                    onChange={(opt: SelectOption | null) => opt && setSelectedOption(opt)}
+                                    onChange={(opt: CaptionLanguageOption | null) => opt && setSelectedOption(opt)}
                                 />
                             </SelectionWrapper>
                             <Description>{description}</Description>
