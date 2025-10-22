@@ -15,6 +15,7 @@ import {liveCaptionsEnabled} from 'src/selectors';
 import {logErr} from 'src/log';
 import styled from 'styled-components';
 import {GlobalState} from '@mattermost/types/store';
+import translationService from 'src/translation_service';
 
 type SelectOption = {
     label: string;
@@ -74,13 +75,31 @@ export default function CaptionLanguageSettingsSection() {
     const [active, setActive] = useState(false);
     const [selectedOption, setSelectedOption] = useState<SelectOption>(CAPTION_LANGUAGES[0]);
     const [saving, setSaving] = useState(false);
+    const [browserSupported, setBrowserSupported] = useState<boolean | null>(null);
 
     const title = formatMessage({defaultMessage: 'Live captions language'});
     const description = formatMessage({defaultMessage: 'Select a language to automatically translate live captions when live captions are enabled.'});
     const editLabel = formatMessage({defaultMessage: 'Edit'});
 
+    // Check if browser supports translation on mount
+    useEffect(() => {
+        translationService.isSupported().then((supported) => {
+            setBrowserSupported(supported);
+        });
+    }, []);
+
     // Don't render if live captions are not enabled in plugin config
     if (!liveCaptionsOn) {
+        return null;
+    }
+
+    // Don't render if browser doesn't support translation API
+    if (browserSupported === false) {
+        return null;
+    }
+
+    // Don't render yet if we're still checking browser support
+    if (browserSupported === null) {
         return null;
     }
 
