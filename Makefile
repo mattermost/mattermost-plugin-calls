@@ -319,7 +319,11 @@ ifneq ($(HAS_WEBAPP),)
 	mkdir dist/$(PLUGIN_ID)/standalone
 	cp -r standalone/dist dist/$(PLUGIN_ID)/standalone/dist
 endif
+ifeq ($(shell uname),Darwin)
+	cd dist && tar --disable-copyfile -cvzf $(BUNDLE_NAME) $(PLUGIN_ID)
+else
 	cd dist && tar -cvzf $(BUNDLE_NAME) $(PLUGIN_ID)
+endif
 
 	@echo plugin built at: dist/$(BUNDLE_NAME)
 
