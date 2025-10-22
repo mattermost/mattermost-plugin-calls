@@ -63,10 +63,12 @@ export type CallsClientStats = {
 
 export type CallsUserPreferences = {
     joinSoundParticipantsThreshold: number;
+    captionLanguage: string;
 }
 
 export const CallsUserPreferencesDefault = {
     joinSoundParticipantsThreshold: 8,
+    captionLanguage: '',
 };
 
 export enum CallAlertType {
