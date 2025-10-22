@@ -16,7 +16,7 @@ import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selec
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import React, {useEffect} from 'react';
 import ReactDOM from 'react-dom';
-import {injectIntl, IntlProvider} from 'react-intl';
+import {FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {AnyAction} from 'redux';
 import {batchActions} from 'redux-batched-actions';
@@ -97,6 +97,7 @@ import {IncomingCallContainer} from 'src/components/incoming_calls/call_containe
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import CaptionLanguageSettingsSection from 'src/components/user_settings/caption_language_settings_section';
+import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
@@ -125,6 +126,7 @@ import ChannelLinkLabel from './components/channel_link_label';
 import PostType from './components/custom_post_types/post_type';
 import {PostTypeTranscription} from './components/custom_post_types/post_type_transcription';
 import ExpandedView from './components/expanded_view';
+import CompassIcon from './components/icons/compassIcon';
 import ScreenSourceModal from './components/screen_source_modal';
 import SwitchCallModal from './components/switch_call_modal';
 import {
@@ -384,6 +386,10 @@ export default class Plugin {
                     component: AudioDevicesSettingsSection,
                 },
                 {
+                    title: 'Screen sharing settings',
+                    component: ScreenSharingSettingsSection,
+                },
+                {
                     title: 'Live captions language',
                     component: CaptionLanguageSettingsSection,
                 },
@@ -471,6 +477,13 @@ export default class Plugin {
             }
         };
         this.unsubscribers.push(unregisterChannelHeaderMenuButton);
+        const ChannelHeaderIcon = () => (
+            <CompassIcon
+                icon='phone'
+                style={{fontSize: '18px', lineHeight: '18px', color: 'rgba(var(--center-channel-color-rgb), 0.64)'}}
+            />
+        );
+        const ChannelHeaderDropdownText = () => (<FormattedMessage defaultMessage='Start call'/>);
         const registerChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 return;
@@ -482,6 +495,8 @@ export default class Plugin {
                 async (channel) => {
                     joinCall(channel.id, channel.team_id);
                 },
+                ChannelHeaderIcon,
+                ChannelHeaderDropdownText,
             );
         };
 
@@ -959,7 +974,12 @@ export default class Plugin {
 
             unsubscribeActivateListener();
 
-            await Promise.all([store.dispatch(getCallsConfig()), store.dispatch(getCallsVersionInfo()), store.dispatch(getCallsConfigEnvOverrides())]);
+            const requests = [store.dispatch(getCallsConfig()), store.dispatch(getCallsVersionInfo())];
+            if (isCurrentUserSystemAdmin(store.getState())) {
+                requests.push(store.dispatch(getCallsConfigEnvOverrides()));
+            }
+
+            await Promise.all(requests);
 
             // Load user preferences for calls
             store.dispatch(loadCallsUserPreferences());
@@ -1056,7 +1076,7 @@ export default class Plugin {
             switch (keyToAction('global', ev)) {
             case JOIN_CALL:
                 // We don't allow joining a new call from the pop-out window.
-                if (!window.opener) {
+                if (!isCallsPopOut()) {
                     joinCall(getCurrentChannelId(store.getState()), getCurrentTeamId(store.getState()));
                 }
                 break;

@@ -1,1 +1,10 @@
-[]
+[
+    {
+        "id": "app.call.ended_message",
+        "translation": "Cuộc gọi kết thúc"
+    },
+    {
+        "id": "app.call.new_recording_message",
+        "translation": "Đây là ghi âm cuộc gọi"
+    }
+]

@@ -63,13 +63,12 @@
   "APILK5": "Legendas ao vivo: Número de threads por transcritor",
   "APWZiG": "Considere informar a todos que esta reunião está sendo gravada.",
   "AYHboe": "Esta é uma função paga, que pode ser testada gratuitamente por 30 dias",
-  "Ap6DG5": "{contagem, plural, =1 {# gravação} outras {# gravações}}",
+  "Ap6DG5": "{count, plural, =1 {# recording} other {# recordings}}",
   "AxMhQr": "Alta",
   "Az0GQD": "<b>{participant}</b> juntou-se à chamada.",
   "BI2zH5": "Remover da chamada",
   "BzWJNo": "Você não tem permissão para interromper a gravação. Por favor, peça ao anfitrião da chamada para parar a gravação.",
   "Cbb/An": "Baixar a mão",
-  "D3idYv": "Configurações",
   "DKskNw": "Você não tem permissão para encerrar a chamada. Por favor, peça ao anfitrião da chamada para encerrá-la.",
   "DLokwF": "Para realizar chamadas, é preciso estar usando uma conexão HTTPS. Consulte a documentação para mais informações.",
   "Dnf29C": "Gravações de chamadas mensais",
@@ -164,7 +163,6 @@
   "Ug/N7H": "As chamadas não estão disponíveis em uma DM com um usuário desativado.",
   "Uv823M": "Tópicos de transcrição de chamadas",
   "Uys4Mj": "Desativar reações",
-  "VLwHR0": "Configurações de chamada",
   "VMXPVw": "O endereço IP local usado pelo servidor RTC para escutar as conexões UDP.",
   "VXdfVy": "O endereço IP local usado pelo servidor RTC para escutar as conexões TCP.",
   "Vc8/fR": "Total de sessões ativas",
@@ -321,6 +319,5 @@
   "yjQNKt": "As chamadas estão desabilitadas neste canal.",
   "yx0b7N": "{count, plural, =1 {# transcription} other {# transcriptions}}",
   "zUH89x": "A gravação da chamada será processada e publicada no tópico da chamada. Você tem certeza de que deseja interromper a gravação?",
-  "zx0myy": "Participantes",
-  "zxBgWa": "(Opcional) O IP (ou nome de host) a ser usado como candidato a ICE de host. Se estiver vazio, o padrão será a resolução via STUN."
+  "zx0myy": "Participantes"
 }

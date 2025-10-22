@@ -11,7 +11,6 @@ import {
     displayGenericErrorModal,
     startCallRecording,
     stopCallRecording,
-    trackEvent,
 } from 'src/actions';
 import {
     EndCallConfirmation,
@@ -20,9 +19,7 @@ import {
 import {
     DisabledCallsErr,
     STORAGE_CALLS_CLIENT_STATS_KEY,
-    STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY,
 } from 'src/constants';
-import * as Telemetry from 'src/types/telemetry';
 import {modals} from 'src/webapp_globals';
 
 import {getClientLogs, logDebug} from './log';
@@ -35,7 +32,7 @@ import {
     isRecordingInCurrentCall,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
-import {getCallsClient, getPersistentStorage, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
+import {getCallsClient, getCallsWindow, getPersistentStorage, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
 type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string) => void;
 
@@ -116,7 +113,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
     }
     case 'leave':
         if (connectedID && args.channel_id === connectedID) {
-            const win = window.opener || window;
+            const win = getCallsWindow();
             const callsClient = getCallsClient();
             if (callsClient) {
                 callsClient.disconnect();
@@ -165,18 +162,6 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         return {};
     case 'link':
         break;
-    case 'experimental':
-        if (fields.length < 3) {
-            break;
-        }
-        if (fields[2] === 'on') {
-            window.localStorage.setItem(STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY, 'on');
-            logDebug('experimental features enabled');
-        } else if (fields[2] === 'off') {
-            logDebug('experimental features disabled');
-            window.localStorage.removeItem(STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY);
-        }
-        break;
     case 'stats': {
         if (window.callsClient) {
             try {
@@ -212,8 +197,6 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         const isHost = hostIDForCurrentCall(state) === getCurrentUserId(state);
 
         if (fields[2] === 'start') {
-            trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.SlashCommand)(store.dispatch, store.getState);
-
             if (!isHost) {
                 store.dispatch(displayGenericErrorModal(
                     startErrorTitle,
@@ -234,8 +217,6 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         if (fields[2] === 'stop') {
-            trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.SlashCommand)(store.dispatch, store.getState);
-
             if (!isHost) {
                 store.dispatch(displayGenericErrorModal(
                     stopErrorTitle,

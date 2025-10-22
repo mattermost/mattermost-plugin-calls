@@ -18,7 +18,7 @@ const ICEHostOverride = (props: CustomComponentProps) => {
     const config = useSelector(callsConfig);
     const overrides = useSelector(callsConfigEnvOverrides);
     const overridden = 'ICEHostOverride' in overrides;
-    const helpText = useHelptext(formatMessage({defaultMessage: '(Optional) The IP (or hostname) to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.'}));
+    const helpText = useHelptext(formatMessage({defaultMessage: '(Optional) The IP address to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.'}));
 
     // Webapp doesn't pass the placeholder setting.
     const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'ICEHostOverride')?.placeholder || '';

@@ -504,7 +504,8 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 				continue
 			}
 
-			if s, appErr := p.API.GetSession(authSessionID); appErr != nil || (s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt) {
+			s, appErr := p.API.GetSession(authSessionID)
+			if appErr != nil || s == nil || (s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt) {
 				fields := []any{
 					"channelID",
 					us.channelID,
@@ -514,7 +515,9 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 					us.connID,
 				}
 
-				if appErr != nil {
+				if appErr == nil && s == nil {
+					p.LogWarn("no appErr and no session found", fields...)
+				} else if appErr != nil {
 					fields = append(fields, "err", appErr.Error())
 				} else {
 					fields = append(fields, "sessionID", s.Id, "expiresAt", fmt.Sprintf("%d", s.ExpiresAt))
@@ -626,12 +629,6 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID, handlerID s
 		p.LogError(err.Error())
 	}
 
-	p.track(evCallUserLeft, map[string]interface{}{
-		"ParticipantID": userID,
-		"ChannelID":     channelID,
-		"CallID":        us.callID,
-	})
-
 	return nil
 }
 
@@ -737,13 +734,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 				"owner_id":  state.Call.OwnerID,
 				"host_id":   state.Call.GetHostID(),
 			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
-
-			p.track(evCallStarted, map[string]interface{}{
-				"ParticipantID": userID,
-				"CallID":        state.Call.ID,
-				"ChannelID":     channelID,
-				"ChannelType":   channel.Type,
-			})
 		}
 
 		p.LogDebug("session has joined call",
@@ -874,11 +864,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		}
 
 		p.metrics.IncWebSocketConn()
-		p.track(evCallUserJoined, map[string]interface{}{
-			"ParticipantID": userID,
-			"ChannelID":     channelID,
-			"CallID":        state.Call.ID,
-		})
 
 		go func() {
 			defer p.metrics.DecWebSocketConn()
@@ -1106,6 +1091,11 @@ func (p *Plugin) handleCallStateRequest(channelID, userID, connID string) error 
 func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model.WebSocketRequest) {
 	var msg clientMessage
 	msg.Type = strings.TrimPrefix(req.Action, wsActionPrefix)
+
+	// This is the standard ping message handled by Mattermost server. Nothing to do here.
+	if msg.Type == "ping" {
+		return
+	}
 
 	p.mut.RLock()
 	us := p.sessions[connID]

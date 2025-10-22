@@ -74,6 +74,7 @@ export const CallsUserPreferencesDefault = {
 export enum CallAlertType {
     Error = 'error',
     Warning = 'warning',
+    Info = 'info'
 }
 
 export type CallAlertConfig = {
@@ -88,6 +89,7 @@ export type CallAlertConfig = {
 export type CallAlertState = {
     active: boolean;
     show: boolean;
+    args?: Record<string, string | React.ReactNode>;
 }
 
 export type CallAlertStates = {
@@ -108,6 +110,14 @@ export const CallAlertStatesDefault = {
         show: false,
     },
     degradedCallQuality: {
+        active: false,
+        show: false,
+    },
+    audioInputDeviceFallback: {
+        active: false,
+        show: false,
+    },
+    audioOutputDeviceFallback: {
         active: false,
         show: false,
     },

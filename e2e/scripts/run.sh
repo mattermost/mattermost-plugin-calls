@@ -35,25 +35,28 @@ mkdir -p "${WORKSPACE}/results"
 echo "Generating sysadmin ..."
 docker exec \
 	${CONTAINER_SERVER}1 \
-	sh -c "/mattermost/bin/mmctl --local user create --email sysadmin@example.com --username sysadmin --password 'Sys@dmin-sample1'"
+	/mattermost/bin/mmctl user create --email-verified --email sysadmin@sample.mattermost.com --username sysadmin --password Sys@dmin-sample1 --system-admin --local
+
+# Copy admin password file
+docker cp e2e/scripts/pwd.txt ${CONTAINER_SERVER}1:/mattermost
 
 # Auth mmctl
 echo "Authenticating mmctl ..."
-docker exec \
+docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 	${CONTAINER_SERVER}1 \
-	sh -c "echo 'Sys@dmin-sample1' > pwd.txt && /mattermost/bin/mmctl auth login http://localhost:8065 --username sysadmin --name local --password-file pwd.txt"
+	/mattermost/bin/mmctl auth login http://localhost:8065 --username sysadmin --name local --password-file /mattermost/pwd.txt
 
 # Install Playbooks
 echo "Installing playbooks ..."
-docker exec \
+docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 	${CONTAINER_SERVER}1 \
-	sh -c "/mattermost/bin/mmctl plugin add /mattermost/prepackaged_plugins/mattermost-plugin-playbooks-v2*.tar.gz"
+	/mattermost/bin/mmctl plugin marketplace install playbooks
 
 # Enable Playbooks
 echo "Enabling playbooks ..."
-docker exec \
+docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 	${CONTAINER_SERVER}1 \
-	sh -c "/mattermost/bin/mmctl plugin enable playbooks"
+	/mattermost/bin/mmctl plugin enable playbooks
 
 # Copy built plugin into server
 echo "Copying calls plugin into ${CONTAINER_SERVER}1 server container ..."
@@ -65,15 +68,24 @@ docker cp e2e/config-patch.json ${CONTAINER_SERVER}1:/mattermost
 
 # Install Calls
 echo "Installing calls ..."
-docker exec \
+docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 	${CONTAINER_SERVER}1 \
-	sh -c "/mattermost/bin/mmctl plugin add bin/calls && sleep 5"
+	/mattermost/bin/mmctl plugin add bin/calls
+sleep 5
 
 # Patch config
 echo "Patching calls config ..."
-docker exec \
+docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 	${CONTAINER_SERVER}1 \
-	sh -c "/mattermost/bin/mmctl plugin disable com.mattermost.calls && sleep 2 && /mattermost/bin/mmctl config patch /mattermost/config-patch.json && sleep 2 && /mattermost/bin/mmctl plugin enable com.mattermost.calls"
+	/mattermost/bin/mmctl plugin disable com.mattermost.calls
+sleep 2
+docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
+	${CONTAINER_SERVER}1 \
+	/mattermost/bin/mmctl config patch /mattermost/config-patch.json
+sleep 2
+docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
+	${CONTAINER_SERVER}1 \
+	/mattermost/bin/mmctl plugin enable com.mattermost.calls
 
 echo "Spawning playwright image ..."
 # run e2e

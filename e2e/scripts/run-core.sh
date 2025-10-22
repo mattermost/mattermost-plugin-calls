@@ -8,9 +8,17 @@ docker cp e2e/config-patch-core.json ${CONTAINER_SERVER}1:/mattermost
 
 # Patch config. Needed to disable rtcd.
 echo "Patching calls config ..."
-docker exec \
+docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 	${CONTAINER_SERVER}1 \
-	sh -c "/mattermost/bin/mmctl plugin disable com.mattermost.calls && sleep 2 && /mattermost/bin/mmctl config patch /mattermost/config-patch-core.json && sleep 2 && /mattermost/bin/mmctl plugin enable com.mattermost.calls"
+	/mattermost/bin/mmctl plugin disable com.mattermost.calls
+sleep 2
+docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
+	${CONTAINER_SERVER}1 \
+	/mattermost/bin/mmctl config patch /mattermost/config-patch-core.json
+sleep 2
+docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
+	${CONTAINER_SERVER}1 \
+	/mattermost/bin/mmctl plugin enable com.mattermost.calls
 
 echo "Spawning playwright image ..."
 # run e2e

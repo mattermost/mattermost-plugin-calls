@@ -56,7 +56,6 @@ import {
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
 import {ModalData} from 'src/types/mattermost-webapp';
-import * as Telemetry from 'src/types/telemetry';
 import {
     AudioDevices,
     CallAlertStates,
@@ -68,10 +67,10 @@ import {
     getCallsClient,
     getScreenStream,
     getUserDisplayName,
-    hasExperimentalFlag,
     isDMChannel,
     sendDesktopEvent,
     setCallsGlobalCSSVars,
+    shareAudioWithScreen,
     untranslatable,
 } from 'src/utils';
 import styled, {createGlobalStyle, css} from 'styled-components';
@@ -114,7 +113,6 @@ interface Props extends RouteComponentProps {
     threadUnreadReplies: number | undefined,
     threadUnreadMentions: number | undefined,
     rhsSelectedThreadID?: string,
-    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
     allowScreenSharing: boolean,
     recordingsEnabled: boolean,
     recordingMaxDuration: number,
@@ -394,22 +392,22 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.onMuteToggle();
             break;
         case RAISE_LOWER_HAND:
-            this.onRaiseHandToggle(true);
+            this.onRaiseHandToggle();
             break;
         case MAKE_REACTION:
             this.emojiButtonRef.current?.toggle();
             break;
         case SHARE_UNSHARE_SCREEN:
-            this.onShareScreenToggle(true);
+            this.onShareScreenToggle();
             break;
         case PARTICIPANTS_LIST_TOGGLE:
-            this.onParticipantsListToggle(true);
+            this.onParticipantsListToggle();
             break;
         case LEAVE_CALL:
             this.onDisconnectClick();
             break;
         case RECORDING_TOGGLE:
-            this.onRecordToggle(true);
+            this.onRecordToggle();
             break;
         }
     };
@@ -458,7 +456,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return this.props.currentSession ? this.props.currentSession.raised_hand > 0 : false;
     }
 
-    onRecordToggle = async (fromShortcut?: boolean) => {
+    onRecordToggle = async () => {
         if (!this.props.channel) {
             logErr('channel should be defined');
             return;
@@ -472,14 +470,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     channelID: this.props.channel.id,
                 },
             });
-            this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
             await this.props.startCallRecording(this.props.channel.id);
-            this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
     };
 
-    onShareScreenToggle = async (fromShortcut?: boolean) => {
+    onShareScreenToggle = async () => {
         if (!this.props.allowScreenSharing) {
             return;
         }
@@ -489,13 +485,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.setState({
                 screenStream: null,
             });
-            this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else if (!this.props.screenSharingSession) {
             if (window.desktopAPI?.openScreenShareModal) {
                 logDebug('desktopAPI.openScreenShareModal');
                 window.desktopAPI.openScreenShareModal();
             } else {
-                const stream = await getScreenStream('', hasExperimentalFlag());
+                const stream = await getScreenStream('', shareAudioWithScreen());
                 if (window.opener && stream) {
                     window.screenSharingTrackId = stream.getVideoTracks()[0].id;
                 }
@@ -508,40 +503,31 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     this.setMissingScreenPermissions(true, true);
                 }
             }
-            this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
     };
 
-    onRaiseHandToggle = (fromShortcut?: boolean) => {
+    onRaiseHandToggle = () => {
         const callsClient = getCallsClient();
         if (this.isHandRaised()) {
-            this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
             callsClient?.unraiseHand();
         } else {
-            this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
             callsClient?.raiseHand();
         }
     };
 
-    onParticipantsListToggle = (fromShortcut?: boolean) => {
-        const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
-        this.props.trackEvent(event, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
+    onParticipantsListToggle = () => {
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
         });
     };
 
-    onLiveCaptionsToggle = (fromShortcut?: boolean) => {
-        const event = this.state.showLiveCaptions ? Telemetry.Event.LiveCaptionsOff : Telemetry.Event.LiveCaptionsOn;
-        this.props.trackEvent(event, Telemetry.Source.ExpandedView, {initiator: fromShortcut ? 'shortcut' : 'button'});
+    onLiveCaptionsToggle = () => {
         this.setState({
             showLiveCaptions: !this.state.showLiveCaptions,
         });
     };
 
     onCloseViewClick = () => {
-        this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView, {initiator: 'button'});
-
         if (window.opener) {
             window.close();
             return;
@@ -628,6 +614,39 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         });
         callsClient.on('devicechange', this.setAudioDevices);
+
+        callsClient.on('devicefallback', (device: MediaDeviceInfo) => {
+            if (device.kind === 'audioinput') {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        audioInputDeviceFallback: {
+                            active: true,
+                            show: true,
+                            args: {
+                                deviceLabel: device.label,
+                                i: (text: string) => <i>{text}</i>,
+                            },
+                        },
+                    },
+                });
+            } else if (device.kind === 'audiooutput') {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        audioOutputDeviceFallback: {
+                            active: true,
+                            show: true,
+                            args: {
+                                deviceLabel: device.label,
+                                i: (text: string) => <i>{text}</i>,
+                            },
+                        },
+                    },
+                });
+            }
+        });
+
         callsClient.on('initaudio', () => {
             this.setState({
                 alerts: {
@@ -796,7 +815,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <GlobalBanner
                     {...alertConfig}
                     icon={alertConfig.icon}
-                    body={formatMessage(alertConfig.bannerText)}
+                    body={formatMessage(alertConfig.bannerText, alertState.args)}
                     onClose={onClose}
                 />
             );
@@ -1170,7 +1189,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                             <ReactionButton
                                 ref={this.emojiButtonRef}
-                                trackEvent={this.props.trackEvent}
                                 isHandRaised={this.isHandRaised()}
                             />
 

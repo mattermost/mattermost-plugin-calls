@@ -66,7 +66,6 @@ import {
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
 import {ModalData} from 'src/types/mattermost-webapp';
-import * as Telemetry from 'src/types/telemetry';
 import {
     AudioDevices,
     CallAlertStates,
@@ -79,12 +78,12 @@ import {
 import {
     getPopOutURL,
     getUserDisplayName,
-    hasExperimentalFlag,
     isDMChannel,
     isGMChannel,
     isPrivateChannel,
     isPublicChannel,
     sendDesktopEvent,
+    shareAudioWithScreen,
     untranslatable,
 } from 'src/utils';
 import styled from 'styled-components';
@@ -116,7 +115,6 @@ interface Props {
     show: boolean,
     showExpandedView: () => void,
     showScreenSourceModal: () => void,
-    trackEvent: (event: Telemetry.Event, source: Telemetry.Source, props?: Record<string, string>) => void,
     recordingPromptDismissedAt: (callID: string, dismissedAt: number) => void,
     allowScreenSharing: boolean,
     global?: true,
@@ -319,13 +317,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.onMuteToggle();
             break;
         case RAISE_LOWER_HAND:
-            this.onRaiseHandToggle(true);
+            this.onRaiseHandToggle();
             break;
         case SHARE_UNSHARE_SCREEN:
-            this.onShareScreenToggle(true);
+            this.onShareScreenToggle();
             break;
         case PARTICIPANTS_LIST_TOGGLE:
-            this.onParticipantsButtonClick(true);
+            this.onParticipantsButtonClick();
             break;
         case LEAVE_CALL:
             this.onDisconnectClick();
@@ -425,7 +423,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             if (window.desktopAPI?.onScreenShared && window.desktopAPI?.onCallsError) {
                 logDebug('registering desktopAPI.onScreenShared');
                 this.unsubscribers.push(window.desktopAPI.onScreenShared((sourceID: string, withAudio: boolean) => {
-                    logDebug('desktopAPI.onScreenShared');
+                    logDebug('desktopAPI.onScreenShared', sourceID, withAudio);
                     this.shareScreen(sourceID, withAudio);
                 }));
 
@@ -518,6 +516,38 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     },
                 },
             });
+        });
+
+        window.callsClient.on('devicefallback', (device: MediaDeviceInfo) => {
+            if (device.kind === 'audioinput') {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        audioInputDeviceFallback: {
+                            active: true,
+                            show: true,
+                            args: {
+                                deviceLabel: device.label,
+                                i: (text: string) => <i>{text}</i>,
+                            },
+                        },
+                    },
+                });
+            } else if (device.kind === 'audiooutput') {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        audioOutputDeviceFallback: {
+                            active: true,
+                            show: true,
+                            args: {
+                                deviceLabel: device.label,
+                                i: (text: string) => <i>{text}</i>,
+                            },
+                        },
+                    },
+                });
+            }
         });
 
         window.callsClient.on('connect', () => {
@@ -677,8 +707,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     };
 
-    private shareScreen = async (sourceID: string, _withAudio: boolean) => {
-        const stream = await window.callsClient?.shareScreen(sourceID, hasExperimentalFlag());
+    private shareScreen = async (sourceID: string, withAudio: boolean) => {
+        const stream = await window.callsClient?.shareScreen(sourceID, withAudio);
         if (stream) {
             this.setState({screenStream: stream});
             this.setMissingScreenPermissions(false, true);
@@ -726,10 +756,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     },
                 });
             }
-            this.props.trackEvent(Telemetry.Event.StopRecording, Telemetry.Source.Widget, {initiator: 'button'});
         } else {
             await this.props.startCallRecording(this.props.channel.id);
-            this.props.trackEvent(Telemetry.Event.StartRecording, Telemetry.Source.Widget, {initiator: 'button'});
         }
 
         this.setState({showMenu: false});
@@ -762,7 +790,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     };
 
-    onShareScreenToggle = async (fromShortcut?: boolean) => {
+    onShareScreenToggle = async () => {
         if (!this.props.allowScreenSharing) {
             return;
         }
@@ -771,7 +799,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (this.props.screenSharingSession?.session_id === this.props.currentSession?.session_id) {
             window.callsClient?.unshareScreen();
             state.screenStream = null;
-            this.props.trackEvent(Telemetry.Event.UnshareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else if (!this.props.screenSharingSession) {
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 if (this.props.global) {
@@ -786,9 +813,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     this.props.showScreenSourceModal();
                 }
             } else {
-                await this.shareScreen('', hasExperimentalFlag());
+                await this.shareScreen('', shareAudioWithScreen());
             }
-            this.props.trackEvent(Telemetry.Event.ShareScreen, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
 
         this.setState({
@@ -853,10 +879,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
     };
 
-    onParticipantsButtonClick = (fromShortcut?: boolean) => {
-        const event = this.state.showParticipantsList ? Telemetry.Event.CloseParticipantsList : Telemetry.Event.OpenParticipantsList;
-        this.props.trackEvent(event, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
-
+    onParticipantsButtonClick = () => {
         // This is needed to prevent a conflict with the accessibility controller on buttons.
         if (document.activeElement instanceof HTMLElement) {
             document.activeElement.blur();
@@ -1139,7 +1162,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <button
                         className='style--none'
                         style={{
-                            background: device.deviceId === currentDevice?.deviceId ? 'rgba(28, 88, 217, 0.08)' : '',
+                            background: device.deviceId === currentDevice?.deviceId || device.label === currentDevice?.label ? 'rgba(28, 88, 217, 0.08)' : '',
                             lineHeight: '20px',
                             padding: '8px 20px',
                             display: 'flex',
@@ -1808,7 +1831,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     id={'calls-widget-banner-alert'}
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
-                    header={formatMessage(alertConfig.bannerText)}
+                    header={formatMessage(alertConfig.bannerText, alertState.args)}
                     onLeftButtonClick={onClose}
                     onCloseButtonClick={onClose}
                 />
@@ -1972,8 +1995,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
-        this.props.trackEvent(Telemetry.Event.OpenExpandedView, Telemetry.Source.Widget, {initiator: 'button'});
-
         // TODO: remove this as soon as we support opening a window from desktop app.
         // Reminder: the first condition is for the old desktop app, pre-global widget. The else path is the webapp & global widget.
         if (window.desktop && !this.props.global) {
@@ -1995,7 +2016,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
 
             expandedViewWindow?.addEventListener('beforeunload', () => {
-                this.props.trackEvent(Telemetry.Event.CloseExpandedView, Telemetry.Source.ExpandedView);
                 if (!window.callsClient) {
                     return;
                 }
@@ -2008,7 +2028,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
-    onRaiseHandToggle = (fromShortcut?: boolean) => {
+    onRaiseHandToggle = () => {
         if (!window.callsClient) {
             return;
         }
@@ -2020,10 +2040,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         if (this.isHandRaised()) {
             window.callsClient.unraiseHand();
-            this.props.trackEvent(Telemetry.Event.LowerHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         } else {
             window.callsClient.raiseHand();
-            this.props.trackEvent(Telemetry.Event.RaiseHand, Telemetry.Source.Widget, {initiator: fromShortcut ? 'shortcut' : 'button'});
         }
     };
 
@@ -2041,7 +2059,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         } else {
             navigateToURL(this.props.channelURL);
         }
-        this.props.trackEvent(Telemetry.Event.OpenChannelLink, Telemetry.Source.Widget);
     };
 
     renderChannelName = () => {
@@ -2109,7 +2126,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const HandIcon = this.isHandRaised() ? UnraisedHandIcon : RaisedHandIcon;
 
-        const MenuIcon = this.props.wider ? SettingsWheelIcon : HorizontalDotsIcon;
+        const MenuIcon = HorizontalDotsIcon;
 
         const handTooltipText = this.isHandRaised() ? formatMessage({defaultMessage: 'Lower hand'}) : formatMessage({defaultMessage: 'Raise hand'});
 
@@ -2119,7 +2136,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const openPopOutLabel = formatMessage({defaultMessage: 'Open in new window'});
         const showParticipantsListLabel = this.state.showParticipantsList ?
             formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'});
-        const settingsButtonLabel = formatMessage({defaultMessage: 'Settings'});
+        const settingsButtonLabel = formatMessage({defaultMessage: 'More options'});
         const leaveMenuLabel = formatMessage({defaultMessage: 'Leave call'});
 
         return (

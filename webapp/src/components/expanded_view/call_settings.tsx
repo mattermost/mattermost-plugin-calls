@@ -6,6 +6,7 @@ import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {openCallsUserSettings} from 'src/actions';
 import CCIcon from 'src/components/icons/cc_icon';
+import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
 import SettingsWheelIcon from 'src/components/icons/settings_wheel';
 import ShowMoreIcon from 'src/components/icons/show_more';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
@@ -492,7 +493,7 @@ export function CallSettingsButton({onLiveCaptionsToggle, showLiveCaptions}: Cal
         setShowCallSettings(false);
     };
 
-    const toolTipText = formatMessage({defaultMessage: 'Call settings'});
+    const toolTipText = formatMessage({defaultMessage: 'More options'});
 
     return (
         <CallSettingsButtonWrapper
@@ -511,7 +512,7 @@ export function CallSettingsButton({onLiveCaptionsToggle, showLiveCaptions}: Cal
                 ariaExpanded={showCallSettings}
                 onToggle={() => setShowCallSettings(!showCallSettings)}
                 icon={
-                    <SettingsWheelIcon
+                    <HorizontalDotsIcon
                         style={{width: '20px', height: '20px'}}
                     />
                 }

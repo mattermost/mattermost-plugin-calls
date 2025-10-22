@@ -58,6 +58,18 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
         bannerText: defineMessage({defaultMessage: 'Call quality may be degraded due to unstable network conditions.'}),
         dismissable: true,
     },
+    audioInputDeviceFallback: {
+        type: CallAlertType.Info,
+        icon: 'microphone',
+        bannerText: defineMessage({defaultMessage: 'The audio input device has changed to <i>{deviceLabel}</i>.'}),
+        dismissable: true,
+    },
+    audioOutputDeviceFallback: {
+        type: CallAlertType.Info,
+        icon: 'speaker',
+        bannerText: defineMessage({defaultMessage: 'The audio output device has changed to <i>{deviceLabel}</i>.'}),
+        dismissable: true,
+    },
 };
 
 export const CallRecordingDisclaimerStrings: {[key: string]: {[key: string]: MessageDescriptor}} = {
@@ -92,6 +104,7 @@ export const STORAGE_CALLS_CLIENT_LOGS_KEY = 'calls_client_logs';
 export const STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY = 'calls_default_audio_input';
 export const STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY = 'calls_default_audio_output';
 export const STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY = 'calls_experimental_features';
+export const STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN = 'calls_share_audio_with_screen';
 
 // Mattermost preferences keys
 export const PREFERENCE_CATEGORY_CALLS = 'calls';

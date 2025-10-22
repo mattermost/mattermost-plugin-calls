@@ -17,7 +17,6 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
-	"github.com/mattermost/mattermost-plugin-calls/server/telemetry"
 
 	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
@@ -48,8 +47,7 @@ type Plugin struct {
 
 	apiRouter *mux.Router
 
-	metrics   interfaces.Metrics
-	telemetry *telemetry.Client
+	metrics interfaces.Metrics
 
 	mut         sync.RWMutex
 	nodeID      string // the node cluster id

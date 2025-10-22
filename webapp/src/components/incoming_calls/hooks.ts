@@ -4,6 +4,7 @@
 import {ChannelMembership} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
+import {getProfilesInChannel} from 'mattermost-redux/actions/users';
 import {NotificationLevel} from 'mattermost-redux/constants/channels';
 import {getChannel, getMyChannelMember} from 'mattermost-redux/selectors/entities/channels';
 import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
@@ -16,7 +17,7 @@ import {useEffect} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 import {DID_NOTIFY_FOR_CALL, DID_RING_FOR_CALL} from 'src/action_types';
-import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal, trackEvent} from 'src/actions';
+import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import {DEFAULT_RING_SOUND} from 'src/constants';
 import {logDebug, logWarn} from 'src/log';
@@ -29,7 +30,6 @@ import {
     ringingForCall,
     teamForCurrentCall,
 } from 'src/selectors';
-import * as Telemetry from 'src/types/telemetry';
 import {ChannelType, IncomingCallNotification, UserStatuses} from 'src/types/types';
 import {
     desktopGTE,
@@ -43,23 +43,20 @@ import {
 } from 'src/utils';
 import {sendDesktopNotificationToMe} from 'src/webapp_globals';
 
-export const useDismissJoin = (channelID: string, callID: string, onWidget = false) => {
+export const useDismissJoin = (channelID: string, callID: string) => {
     const store = useStore();
     const dispatch = useDispatch();
     const connectedID = useSelector(channelIDForCurrentCall) || '';
     const global = Boolean(isDesktopApp() && getCallsClient());
-    const source = telemetrySource(onWidget);
 
     const onDismiss = (ev: React.MouseEvent<HTMLElement>) => {
         ev.stopPropagation();
         dispatch(dismissIncomingCallNotification(channelID, callID));
-        dispatch(trackEvent(Telemetry.Event.NotificationDismiss, source));
     };
 
     const onJoin = (ev: React.MouseEvent<HTMLElement>) => {
         ev.stopPropagation();
         notificationsStopRinging(); // Stop ringing for _any_ incoming call.
-        dispatch(trackEvent(Telemetry.Event.NotificationJoin, source));
 
         if (connectedID) {
             // Note: notification will be dismissed from the SwitchCallModal
@@ -236,12 +233,19 @@ export const useNotification = (call: IncomingCallNotification) => {
 
 export const useGetCallerNameAndOthers = (call: IncomingCallNotification, splitAt: number) => {
     const {formatMessage, formatList} = useIntl();
+    const dispatch = useDispatch();
     const teammateNameDisplay = useSelector(getTeammateNameDisplaySetting);
     const caller = useSelector((state: GlobalState) => getUser(state, call.callerID));
     const currentUser = useSelector(getCurrentUser);
     const doGetProfilesInChannel = makeGetProfilesInChannel();
     const gmMembers = useSelector((state: GlobalState) => doGetProfilesInChannel(state, call.channelID));
     const callerName = displayUsername(caller, teammateNameDisplay, false);
+
+    useEffect(() => {
+        if (call.channelID) {
+            dispatch(getProfilesInChannel(call.channelID, 0));
+        }
+    }, [call.channelID]);
 
     let others = '';
     if (call.type === ChannelType.GM) {
@@ -258,13 +262,11 @@ export const useGetCallerNameAndOthers = (call: IncomingCallNotification, splitA
     return [callerName, others];
 };
 
-export const useOnChannelLinkClick = (call: IncomingCallNotification, onWidget = false) => {
-    const dispatch = useDispatch();
+export const useOnChannelLinkClick = (call: IncomingCallNotification) => {
     const global = Boolean(isDesktopApp() && getCallsClient());
     const defaultTeam = useSelector(teamForCurrentCall);
     const channel = useSelector((state: GlobalState) => getChannel(state, call.channelID));
     let channelURL = useSelector((state: GlobalState) => getChannelURL(state, channel, channel?.team_id));
-    const source = telemetrySource(onWidget);
 
     if (global && channelURL.startsWith('/channels')) {
         // The global widget isn't resolving the currentTeam if we're on a regular channel, so we need to add it manually.
@@ -274,7 +276,6 @@ export const useOnChannelLinkClick = (call: IncomingCallNotification, onWidget =
     if (global) {
         return () => {
             notificationsStopRinging(); // User interacted with notifications, so stop ringing for _any_ incoming call.
-            dispatch(trackEvent(Telemetry.Event.NotificationClickGotoChannel, source));
 
             if (window.desktopAPI?.openLinkFromCalls) {
                 logDebug('desktopAPI.openLinkFromCalls');
@@ -288,17 +289,6 @@ export const useOnChannelLinkClick = (call: IncomingCallNotification, onWidget =
 
     return () => {
         notificationsStopRinging();
-        dispatch(trackEvent(Telemetry.Event.NotificationClickGotoChannel, source));
         navigateToURL(channelURL);
     };
-};
-
-export const telemetrySource = (onWidget: boolean) => {
-    if (onWidget) {
-        return Telemetry.Source.Widget;
-    } else if (window.opener) {
-        return Telemetry.Source.ExpandedView;
-    }
-
-    return Telemetry.Source.Channels;
 };

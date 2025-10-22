@@ -69,7 +69,6 @@
   "BI2zH5": "Retirer de l'appel",
   "BzWJNo": "Vous n'avez pas la permission d'arrêter l'enregistrement. Veuillez demander à l'hôte de l'appel d'arrêter l'enregistrement.",
   "Cbb/An": "Baisser la main",
-  "D3idYv": "Paramètres",
   "DKskNw": "Vous n'avez pas la permission d'arrêter l'appel. Veuillez demander à l'initiateur de l'appel d'arrêter l'appel.",
   "DLokwF": "Vous devez utiliser une connexion HTTPS pour passer des appels. Consulter la documentation pour plus d'information.",
   "Dnf29C": "Enregistrements d'appel mensuel",
@@ -164,7 +163,6 @@
   "Ug/N7H": "Les appels ne sont pas disponibles en message direct avec un utilisateur désactivé.",
   "Uv823M": "Fils de discussion du transcripteur d'appel",
   "Uys4Mj": "Fermer les réactions",
-  "VLwHR0": "Paramètres d'appel",
   "VMXPVw": "L'adresse IP locale utilisée par le serveur RTC pour écouter les connexions UDP.",
   "VXdfVy": "L'adresse IP locale utilisée par le serveur RTC pour écouter les connexions TCP.",
   "Vc8/fR": "Sessions actives totales",
@@ -321,6 +319,5 @@
   "yjQNKt": "Les appels sont désactivés dans ce canal.",
   "yx0b7N": "{count, plural, =1 {# transcription} other {# transcriptions}}",
   "zUH89x": "L'enregistrement de l'appel sera traité et publié dans le fil de discussion de l'appel. Êtes-vous sûr de vouloir arrêter l'enregistrement ?",
-  "zx0myy": "Participants",
-  "zxBgWa": "(Optionnel) L'adresse IP (ou nom d'hôte) à utiliser en tant que candidat d'hôte ICE. Si vide, il sera résolu via STUN par défaut."
+  "zx0myy": "Participants"
 }

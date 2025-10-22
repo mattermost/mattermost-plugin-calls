@@ -34,8 +34,8 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     const [callerName, others] = useGetCallerNameAndOthers(call, 10);
     const [showTooltip, setShowTooltip] = useState(false);
 
-    const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID, onWidget);
-    const onContainerClick = useOnChannelLinkClick(call, onWidget);
+    const [onDismiss, onJoin] = useDismissJoin(call.channelID, call.callID);
+    const onContainerClick = useOnChannelLinkClick(call);
     useRingingAndNotification(call, onWidget);
 
     useEffect(() => {
@@ -43,19 +43,28 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
         setShowTooltip(show);
     }, [messageRef]);
 
-    const message = (
+    let message = (
         <FormattedMessage
-            defaultMessage={'Call from <b>{callerName}</b> with <b>{others}</b>'}
+            defaultMessage={'Call from <b>{callerName}</b>'}
             values={{
                 b: (text: string) => <b>{text}</b>,
                 callerName,
-                others,
             }}
         />
     );
-
     let tooltip = formatMessage({defaultMessage: 'Call from {callerName}'}, {callerName});
+
     if (call.type === ChannelType.GM) {
+        message = (
+            <FormattedMessage
+                defaultMessage={'Call from <b>{callerName}</b> with <b>{others}</b>'}
+                values={{
+                    b: (text: string) => <b>{text}</b>,
+                    callerName,
+                    others,
+                }}
+            />
+        );
         tooltip = formatMessage({defaultMessage: 'Call from {callerName} with {others}'}, {callerName, others});
     }
 
@@ -80,13 +89,15 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
                     }
                     trigger={showTooltip ? ['hover', 'focus'] : []}
                 >
-                    <Message ref={messageRef}>
+                    <Message
+                        ref={messageRef}
+                    >
                         {message}
                     </Message>
                 </OverlayTrigger>
                 <SmallJoinButton
                     data-testid={'call-incoming-condensed-join'}
-                    border={joinButtonBorder}
+                    $border={joinButtonBorder}
                     onClick={onJoin}
                 >
                     <CompassIcon icon={'phone-in-talk'}/>
@@ -103,7 +114,7 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
     );
 };
 
-const Container = styled.button`
+const Container = styled.div`
     border-radius: 8px;
     background-color: var(--online-indicator);
     padding: 0;
@@ -131,7 +142,7 @@ const Message = styled.div`
     margin-right: auto;
 `;
 
-const SmallJoinButton = styled(Button)<{ border: boolean }>`
+const SmallJoinButton = styled(Button)<{ $border: boolean }>`
     justify-content: center;
     height: 24px;
     padding: 4px 10px 4px 0;
@@ -141,7 +152,7 @@ const SmallJoinButton = styled(Button)<{ border: boolean }>`
     background-color: rgba(var(--button-color-rgb), 0.12);
     color: var(--button-color);
 
-    ${({border}) => border && css`
+    ${({$border}) => $border && css`
         background-color: transparent;
         border-radius: 4px;
         border: 1px solid var(--button-color);

@@ -19,7 +19,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 import CallsClient from 'src/client';
-import {STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY} from 'src/constants';
+import {STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
 import RestClient from 'src/rest_client';
 import {DesktopMessage} from 'src/types/types';
 import {notificationSounds} from 'src/webapp_globals';
@@ -85,7 +85,7 @@ export function getChannelURL(state: GlobalState, channel?: Channel, teamId?: st
 export function getCallsClient(): CallsClient | undefined {
     let callsClient;
     try {
-        callsClient = window.opener ? window.opener.callsClient : window.callsClient;
+        callsClient = getCallsWindow().callsClient;
     } catch (err) {
         logErr(err);
     }
@@ -108,19 +108,46 @@ export function isCallsPopOut(): boolean {
     try {
         return window.opener && window.opener.callsClient;
     } catch (err) {
+        // This can happen if the MM window already has an opener on a different origin (e.g. user clicked a link on a calendar app to open MM).
+        // In this case, we know we are not in the expanded view so we can directly return window.callsClient.
+        if (err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
+            // Avoid spamming the console with this error.
+            return false;
+        }
+
         logErr(err);
+
         return false;
     }
     return false;
 }
 
+export function getCallsWindow(): Window {
+    try {
+        if (window.opener && window.opener.callsClient) {
+            return window.opener;
+        }
+    } catch (err) {
+        // This can happen if the MM window already has an opener on a different origin (e.g. user clicked a link on a calendar app to open MM).
+        // In this case, we know we are not in the expanded view so we can directly return window.callsClient.
+        if (err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
+            // Avoid spamming the console with this error.
+            return window;
+        }
+
+        logErr(err);
+    }
+
+    return window;
+}
+
 export function shouldRenderCallsIncoming() {
     try {
-        const win = window.opener ? window.opener : window;
+        const win = getCallsWindow();
         const nonChannels = window.location.pathname.startsWith('/boards') || window.location.pathname.startsWith('/playbooks') || window.location.pathname.includes(`${pluginId}/expanded/`);
         if (win.desktop && nonChannels) {
-        // don't render when we're in desktop, or in boards or playbooks, or in the expanded view.
-        // (can be simplified, but this is clearer)
+            // don't render when we're in desktop, or in boards or playbooks, or in the expanded view.
+            // (can be simplified, but this is clearer)
             return false;
         }
         return true;
@@ -338,10 +365,6 @@ export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
     return sdp;
 }
 
-export function hasExperimentalFlag() {
-    return window.localStorage.getItem(STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY) === 'on';
-}
-
 export function split<T>(list: T[], i: number, pad = false): [list: T[], overflowed?: T[]] {
     if (list.length <= i + (pad ? 1 : 0)) {
         return [list];
@@ -396,7 +419,7 @@ export function shouldRenderDesktopWidget() {
 }
 
 export function desktopGTE(major: number, minor: number) {
-    const win = window.opener ? window.opener : window;
+    const win = getCallsWindow();
     if (!win.desktop) {
         return false;
     }
@@ -412,7 +435,7 @@ export function desktopGTE(major: number, minor: number) {
 
 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
 export function sendDesktopEvent(event: string, data?: Record<string, unknown>) {
-    const win = window.opener ? window.opener : window;
+    const win = getCallsWindow();
     win.postMessage(
         {
             type: event,
@@ -617,11 +640,10 @@ export function getCallRecordingPropsFromPost(post: Post): CallRecordingPostProp
 export function getWebappUtils() {
     let utils;
     try {
-        utils = window.opener ? window.opener.WebappUtils : window.WebappUtils;
+        utils = getCallsWindow().WebappUtils;
     } catch (err) {
         logErr(err);
     }
-
     return utils;
 }
 
@@ -634,4 +656,41 @@ export function sendDesktopMessage(msg: DesktopMessage) {
     const ch = new BroadcastChannel('calls_widget');
     ch.postMessage(msg);
     ch.close();
+}
+
+export function shareAudioWithScreen() {
+    return window.localStorage.getItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN) === 'on';
+}
+
+// Ported from mattermost-redux/src/utils/browser_info.ts
+export function getPlatformInfo() {
+    // Casting to undefined in case it is deprecated in any browser
+    const platform = window.navigator.platform as string | undefined;
+    const ua = window.navigator.userAgent.toLowerCase();
+
+    let platformName = 'Unknown';
+
+    // First try using platform
+    if (platform) {
+        if (platform.toLowerCase().includes('win')) {
+            platformName = 'Windows';
+        } else if (platform.toLowerCase().includes('mac')) {
+            platformName = 'MacOS';
+        } else if (platform.toLowerCase().includes('linux')) {
+            platformName = 'Linux';
+        }
+    }
+
+    // Fallback to userAgent if platform didn't work
+    if (platformName === 'Unknown') {
+        if (ua.includes('windows')) {
+            platformName = 'Windows';
+        } else if (ua.includes('mac os x')) {
+            platformName = 'MacOS';
+        } else if (ua.includes('linux')) {
+            platformName = 'Linux';
+        }
+    }
+
+    return platformName;
 }
