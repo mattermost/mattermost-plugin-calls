@@ -18,6 +18,7 @@ export const CallsConfigDefault: CallsConfig = {
     EnableRinging: true,
     EnableTranscriptions: false,
     EnableLiveCaptions: false,
+    LiveCaptionsLanguage: 'en',
     HostControlsAllowed: false,
     EnableAV1: false,
     TranscribeAPI: TranscribeAPI.WhisperCPP,

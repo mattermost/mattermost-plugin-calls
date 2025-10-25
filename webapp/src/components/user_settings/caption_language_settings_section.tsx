@@ -11,11 +11,12 @@ import {savePreferences} from 'mattermost-redux/actions/preferences';
 import {PreferenceType} from '@mattermost/types/preferences';
 import {PREFERENCE_CATEGORY_CALLS, PREFERENCE_NAME_CAPTION_LANGUAGE, CAPTION_LANGUAGES, CaptionLanguageOption} from 'src/constants';
 import {loadCallsUserPreferences} from 'src/actions';
-import {liveCaptionsEnabled} from 'src/selectors';
+import {liveCaptionsEnabled, liveCaptionsLanguage} from 'src/selectors';
 import {logErr} from 'src/log';
 import styled from 'styled-components';
 import {GlobalState} from '@mattermost/types/store';
 import translationService from 'src/translation_service';
+import {filterAvailableCaptionLanguages} from 'src/utils';
 
 export default function CaptionLanguageSettingsSection() {
     const {formatMessage} = useIntl();
@@ -23,11 +24,13 @@ export default function CaptionLanguageSettingsSection() {
     const currentUserId = useSelector(getCurrentUserId);
     const preferences = useSelector((state: GlobalState) => getMyPreferences(state));
     const liveCaptionsOn = useSelector(liveCaptionsEnabled);
+    const sourceLanguage = useSelector(liveCaptionsLanguage);
     
     const [active, setActive] = useState(false);
     const [selectedOption, setSelectedOption] = useState<CaptionLanguageOption>(CAPTION_LANGUAGES[0]);
     const [saving, setSaving] = useState(false);
     const [browserSupported, setBrowserSupported] = useState<boolean | null>(null);
+    const [filteredLanguages, setFilteredLanguages] = useState<CaptionLanguageOption[]>([]);
 
     const title = formatMessage({defaultMessage: 'Live captions language'});
     const description = formatMessage({defaultMessage: 'Select a language to automatically translate live captions when live captions are enabled.'});
@@ -45,7 +48,9 @@ export default function CaptionLanguageSettingsSection() {
             });
 
             if (captionLangPref && captionLangPref.value) {
-                const option = CAPTION_LANGUAGES.find((lang) => lang.value === captionLangPref.value);
+                // Try to find in filtered languages first, then fall back to all languages
+                const languagesToSearch = filteredLanguages.length > 0 ? filteredLanguages : CAPTION_LANGUAGES;
+                const option = languagesToSearch.find((lang) => lang.value === captionLangPref.value);
                 if (option) {
                     console.log('[Calls] Found matching language option:', option);
                     setSelectedOption(option);
@@ -65,17 +70,29 @@ export default function CaptionLanguageSettingsSection() {
         }
     };
 
-    // Check if browser supports translation on mount
+    // Check if browser supports translation and filter languages on mount and when source language changes
     useEffect(() => {
-        translationService.isSupported().then((supported) => {
+        const loadLanguages = async () => {
+            const supported = await translationService.isSupported();
             setBrowserSupported(supported);
-        });
-    }, []);
 
-    // Load preference from Mattermost preferences on mount and when preferences change
+            if (supported) {
+                const filtered = await filterAvailableCaptionLanguages(
+                    sourceLanguage,
+                    CAPTION_LANGUAGES,
+                    translationService,
+                );
+                setFilteredLanguages(filtered);
+            }
+        };
+
+        loadLanguages();
+    }, [sourceLanguage]);
+
+    // Load preference from Mattermost preferences on mount and when preferences or filtered languages change
     useEffect(() => {
         loadCurrentPreference();
-    }, [preferences]);
+    }, [preferences, filteredLanguages]);
 
     // Reload preference when opening the settings panel
     useEffect(() => {
@@ -129,7 +146,8 @@ export default function CaptionLanguageSettingsSection() {
     };
 
     if (!active) {
-        const currentSelection = CAPTION_LANGUAGES.find((lang) => lang.value === selectedOption.value) || CAPTION_LANGUAGES[0];
+        const languagesToSearch = filteredLanguages.length > 0 ? filteredLanguages : CAPTION_LANGUAGES;
+        const currentSelection = languagesToSearch.find((lang) => lang.value === selectedOption.value) || CAPTION_LANGUAGES[0];
         return (
             <div
                 className='section-min'
@@ -182,7 +200,7 @@ export default function CaptionLanguageSettingsSection() {
                                     aria-labelledby='captionLanguageLabel'
                                     className='react-select singleSelect'
                                     classNamePrefix='react-select'
-                                    options={CAPTION_LANGUAGES}
+                                    options={filteredLanguages.length > 0 ? filteredLanguages : CAPTION_LANGUAGES}
                                     clearable={false}
                                     isClearable={false}
                                     isSearchable={true}

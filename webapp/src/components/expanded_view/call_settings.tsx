@@ -15,13 +15,14 @@ import ShowMoreIcon from 'src/components/icons/show_more';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
 import TickIcon from 'src/components/icons/tick';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
-import {areLiveCaptionsAvailableInCurrentCall, captionLanguage} from 'src/selectors';
+import {areLiveCaptionsAvailableInCurrentCall, captionLanguage, liveCaptionsLanguage} from 'src/selectors';
 import type {
     AudioDevices,
 } from 'src/types/types';
-import {getCallsClient} from 'src/utils';
+import {getCallsClient, filterAvailableCaptionLanguages} from 'src/utils';
 import {logErr} from 'src/log';
 import styled from 'styled-components';
+import translationService from 'src/translation_service';
 
 import ControlsButton from './controls_button';
 
@@ -389,6 +390,22 @@ const CaptionLanguageSelector = ({isActive, onToggle, showLiveCaptions}: Caption
     const dispatch = useDispatch();
     const currentUserId = useSelector(getCurrentUserId);
     const userCaptionLanguage = useSelector(captionLanguage);
+    const sourceLanguage = useSelector(liveCaptionsLanguage);
+    const [filteredLanguages, setFilteredLanguages] = useState<CaptionLanguageOption[]>([]);
+
+    // Filter languages based on source language and browser support
+    useEffect(() => {
+        const loadLanguages = async () => {
+            const filtered = await filterAvailableCaptionLanguages(
+                sourceLanguage,
+                CAPTION_LANGUAGES,
+                translationService,
+            );
+            setFilteredLanguages(filtered);
+        };
+
+        loadLanguages();
+    }, [sourceLanguage]);
 
     // Don't show if live captions are not enabled
     if (!showLiveCaptions) {
@@ -419,7 +436,8 @@ const CaptionLanguageSelector = ({isActive, onToggle, showLiveCaptions}: Caption
         }
     };
 
-    const currentLanguageOption = CAPTION_LANGUAGES.find((lang) => lang.value === userCaptionLanguage) || CAPTION_LANGUAGES[0];
+    const languagesToUse = filteredLanguages.length > 0 ? filteredLanguages : CAPTION_LANGUAGES;
+    const currentLanguageOption = languagesToUse.find((lang) => lang.value === userCaptionLanguage) || CAPTION_LANGUAGES[0];
     const label = currentLanguageOption.label;
 
     const deviceTypeLabel = formatMessage({defaultMessage: 'Caption language'});
@@ -428,7 +446,7 @@ const CaptionLanguageSelector = ({isActive, onToggle, showLiveCaptions}: Caption
         <>
             {isActive &&
             <CaptionLanguageList
-                languages={CAPTION_LANGUAGES}
+                languages={languagesToUse}
                 currentLanguage={userCaptionLanguage}
                 onLanguageClick={handleLanguageClick}
             />
