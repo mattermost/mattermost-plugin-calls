@@ -695,6 +695,21 @@ func TestWebSocketMessageHasBeenPostedUTF8Validation(t *testing.T) {
 
 		p.WebSocketMessageHasBeenPosted(model.NewId(), model.NewId(), req)
 	})
+
+	t.Run("missing action prefix - returns early", func(_ *testing.T) {
+		// Action without the correct prefix should be ignored
+		req := &model.WebSocketRequest{
+			Action: "some_other_plugin_action",
+			Data: map[string]interface{}{
+				"channelID": model.NewId(),
+			},
+		}
+
+		// No mock expectations set - if any API methods are called, the test will fail
+		// This proves the function returned early without processing
+
+		p.WebSocketMessageHasBeenPosted(model.NewId(), model.NewId(), req)
+	})
 }
 
 func TestHandleJoin(t *testing.T) {
