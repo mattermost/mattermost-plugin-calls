@@ -696,7 +696,7 @@ func TestWebSocketMessageHasBeenPostedUTF8Validation(t *testing.T) {
 		p.WebSocketMessageHasBeenPosted(model.NewId(), model.NewId(), req)
 	})
 
-	t.Run("missing action prefix - returns early", func(_ *testing.T) {
+	t.Run("missing action prefix - returns early", func(t *testing.T) {
 		// Action without the correct prefix should be ignored
 		req := &model.WebSocketRequest{
 			Action: "some_other_plugin_action",
@@ -705,10 +705,12 @@ func TestWebSocketMessageHasBeenPostedUTF8Validation(t *testing.T) {
 			},
 		}
 
-		// No mock expectations set - if any API methods are called, the test will fail
-		// This proves the function returned early without processing
-
+		// Explicitly assert no API methods are called - proves early return
 		p.WebSocketMessageHasBeenPosted(model.NewId(), model.NewId(), req)
+
+		mockAPI.AssertNotCalled(t, "LogError")
+		mockAPI.AssertNotCalled(t, "LogDebug")
+		mockAPI.AssertNotCalled(t, "LogInfo")
 	})
 }
 
