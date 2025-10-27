@@ -680,7 +680,7 @@ func TestWebSocketMessageHasBeenPostedUTF8Validation(t *testing.T) {
 		},
 	}
 
-	t.Run("invalid UTF-8 in action", func(t *testing.T) {
+	t.Run("invalid UTF-8 in action", func(_ *testing.T) {
 		// Create action with invalid UTF-8 bytes (0xFF, 0xFE)
 		malformedAction := wsActionPrefix + "join" + string([]byte{0xFF, 0xFE})
 
