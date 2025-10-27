@@ -669,6 +669,34 @@ func TestPublishWebSocketEvent(t *testing.T) {
 	})
 }
 
+func TestWebSocketMessageHasBeenPostedUTF8Validation(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+
+	defer mockAPI.AssertExpectations(t)
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+	}
+
+	t.Run("invalid UTF-8 in action", func(t *testing.T) {
+		// Create action with invalid UTF-8 bytes (0xFF, 0xFE)
+		malformedAction := wsActionPrefix + "join" + string([]byte{0xFF, 0xFE})
+
+		req := &model.WebSocketRequest{
+			Action: malformedAction,
+			Data: map[string]interface{}{
+				"channelID": model.NewId(),
+			},
+		}
+
+		mockAPI.On("LogError", "invalid UTF-8 in action", "origin", mock.AnythingOfType("string")).Once()
+
+		p.WebSocketMessageHasBeenPosted(model.NewId(), model.NewId(), req)
+	})
+}
+
 func TestHandleJoin(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 	mockMetrics := &serverMocks.MockMetrics{}
