@@ -1100,6 +1100,12 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	var msg clientMessage
 	msg.Type = strings.TrimPrefix(req.Action, wsActionPrefix)
 
+	// Validate message type against known valid types
+	if !isValidClientMessageType(msg.Type) {
+		p.LogError("invalid message type", "type", msg.Type)
+		return
+	}
+
 	// This is the standard ping message handled by Mattermost server. Nothing to do here.
 	if msg.Type == "ping" {
 		return
