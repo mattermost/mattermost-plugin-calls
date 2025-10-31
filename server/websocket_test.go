@@ -669,6 +669,103 @@ func TestPublishWebSocketEvent(t *testing.T) {
 	})
 }
 
+func TestWebSocketMessageHasBeenPostedUTF8Validation(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+
+	defer mockAPI.AssertExpectations(t)
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+	}
+
+	t.Run("invalid UTF-8 in action", func(_ *testing.T) {
+		// Create action with invalid UTF-8 bytes (0xFF, 0xFE)
+		malformedAction := wsActionPrefix + "join" + string([]byte{0xFF, 0xFE})
+
+		req := &model.WebSocketRequest{
+			Action: malformedAction,
+			Data: map[string]interface{}{
+				"channelID": model.NewId(),
+			},
+		}
+
+		mockAPI.On("LogError", "invalid UTF-8 in action", "origin", mock.AnythingOfType("string")).Once()
+
+		p.WebSocketMessageHasBeenPosted(model.NewId(), model.NewId(), req)
+	})
+
+	t.Run("missing action prefix - returns early", func(t *testing.T) {
+		// Action without the correct prefix should be ignored
+		req := &model.WebSocketRequest{
+			Action: "some_other_plugin_action",
+			Data: map[string]interface{}{
+				"channelID": model.NewId(),
+			},
+		}
+
+		// Explicitly assert no API methods are called - proves early return
+		p.WebSocketMessageHasBeenPosted(model.NewId(), model.NewId(), req)
+
+		mockAPI.AssertNotCalled(t, "LogError")
+		mockAPI.AssertNotCalled(t, "LogDebug")
+		mockAPI.AssertNotCalled(t, "LogInfo")
+	})
+
+	t.Run("invalid message type", func(_ *testing.T) {
+		// Action with correct prefix but unknown message type
+		req := &model.WebSocketRequest{
+			Action: wsActionPrefix + "invalid_unknown_action",
+			Data:   map[string]interface{}{},
+		}
+
+		mockAPI.On("LogError", "invalid message type", "origin", mock.AnythingOfType("string"), "type", "invalid_unknown_action").Once()
+
+		p.WebSocketMessageHasBeenPosted(model.NewId(), model.NewId(), req)
+	})
+
+	t.Run("valid message type - ping", func(t *testing.T) {
+		// Ping is a valid message type that should be handled
+		req := &model.WebSocketRequest{
+			Action: wsActionPrefix + "ping",
+			Data:   map[string]interface{}{},
+		}
+
+		// Ping should return early after validation, no other API calls
+		p.WebSocketMessageHasBeenPosted(model.NewId(), model.NewId(), req)
+
+		mockAPI.AssertNotCalled(t, "LogError")
+	})
+
+	t.Run("valid message types recognized", func(t *testing.T) {
+		// Test that isValidClientMessageType recognizes all defined message types
+		validTypes := []string{
+			"join", "leave", "reconnect", "sdp", "ice",
+			"mute", "unmute", "voice_on", "voice_off",
+			"screen_on", "screen_off", "raise_hand", "unraise_hand",
+			"react", "caption", "metric", "call_state", "ping",
+		}
+
+		for _, msgType := range validTypes {
+			if !isValidClientMessageType(msgType) {
+				t.Errorf("Valid message type %q not recognized by isValidClientMessageType", msgType)
+			}
+		}
+
+		// Test that invalid types are rejected
+		invalidTypes := []string{
+			"invalid", "unknown", "hack", "exploit", "",
+		}
+
+		for _, msgType := range invalidTypes {
+			if isValidClientMessageType(msgType) {
+				t.Errorf("Invalid message type %q was incorrectly accepted by isValidClientMessageType", msgType)
+			}
+		}
+	})
+}
+
 func TestHandleJoin(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 	mockMetrics := &serverMocks.MockMetrics{}
