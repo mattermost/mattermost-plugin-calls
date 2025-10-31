@@ -39,3 +39,28 @@ func (m *clientMessage) ToJSON() ([]byte, error) {
 func (m *clientMessage) FromJSON(data []byte) error {
 	return json.Unmarshal(data, &m)
 }
+
+var validClientMessageTypes = map[string]bool{
+	clientMessageTypeJoin:        true,
+	clientMessageTypeLeave:       true,
+	clientMessageTypeReconnect:   true,
+	clientMessageTypeSDP:         true,
+	clientMessageTypeICE:         true,
+	clientMessageTypeMute:        true,
+	clientMessageTypeUnmute:      true,
+	clientMessageTypeVoiceOn:     true,
+	clientMessageTypeVoiceOff:    true,
+	clientMessageTypeScreenOn:    true,
+	clientMessageTypeScreenOff:   true,
+	clientMessageTypeRaiseHand:   true,
+	clientMessageTypeUnraiseHand: true,
+	clientMessageTypeReact:       true,
+	clientMessageTypeCaption:     true,
+	clientMessageTypeMetric:      true,
+	clientMessageTypeCallState:   true,
+	"ping":                       true, // Special case: standard ping message
+}
+
+func isValidClientMessageType(msgType string) bool {
+	return validClientMessageTypes[msgType]
+}

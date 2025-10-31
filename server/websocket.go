@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/batching"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
@@ -1089,8 +1090,21 @@ func (p *Plugin) handleCallStateRequest(channelID, userID, connID string) error 
 }
 
 func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model.WebSocketRequest) {
+	if !utf8.ValidString(req.Action) {
+		p.LogError("invalid UTF-8 in action")
+		return
+	}
+	if !strings.HasPrefix(req.Action, wsActionPrefix) {
+		return
+	}
 	var msg clientMessage
 	msg.Type = strings.TrimPrefix(req.Action, wsActionPrefix)
+
+	// Validate message type against known valid types
+	if !isValidClientMessageType(msg.Type) {
+		p.LogError("invalid message type", "type", msg.Type)
+		return
+	}
 
 	// This is the standard ping message handled by Mattermost server. Nothing to do here.
 	if msg.Type == "ping" {

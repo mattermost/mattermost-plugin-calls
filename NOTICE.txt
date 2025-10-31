@@ -354,11 +354,11 @@ This product contains 'core-js' by Denis Pushkarev.
 Standard library
 
 * HOMEPAGE:
-  * https://github.com/zloirock/core-js#readme
+  * https://core-js.io
 
 * LICENSE: MIT
 
-Copyright (c) 2014-2025 Denis Pushkarev
+Copyright (c) 2014-2025 Denis Pushkarev, 2025 CoreJS Company
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -388,11 +388,11 @@ This product contains 'core-js' by Denis Pushkarev.
 Standard library
 
 * HOMEPAGE:
-  * https://github.com/zloirock/core-js#readme
+  * https://core-js.io
 
 * LICENSE: MIT
 
-Copyright (c) 2014-2025 Denis Pushkarev
+Copyright (c) 2014-2025 Denis Pushkarev, 2025 CoreJS Company
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8206,7 +8206,7 @@ SOFTWARE.
 
 ## testcontainers/testcontainers-go
 
-This product contains 'testcontainers/testcontainers-go' by testcontainers.
+This product contains 'testcontainers/testcontainers-go' by Testcontainers.
 
 Testcontainers for Go is a Go package that makes it simple to create and clean up container-based dependencies for automated integration/smoke tests. The clean, easy-to-use API enables developers to programmatically define containers that should be run as part of a test and clean up those resources when the test is done.
 
@@ -8242,7 +8242,7 @@ SOFTWARE.
 
 ## testcontainers/testcontainers-go
 
-This product contains 'testcontainers/testcontainers-go' by testcontainers.
+This product contains 'testcontainers/testcontainers-go' by Testcontainers.
 
 Testcontainers for Go is a Go package that makes it simple to create and clean up container-based dependencies for automated integration/smoke tests. The clean, easy-to-use API enables developers to programmatically define containers that should be run as part of a test and clean up those resources when the test is done.
 
@@ -8278,7 +8278,7 @@ SOFTWARE.
 
 ## testcontainers/testcontainers-go
 
-This product contains 'testcontainers/testcontainers-go' by testcontainers.
+This product contains 'testcontainers/testcontainers-go' by Testcontainers.
 
 Testcontainers for Go is a Go package that makes it simple to create and clean up container-based dependencies for automated integration/smoke tests. The clean, easy-to-use API enables developers to programmatically define containers that should be run as part of a test and clean up those resources when the test is done.
 
