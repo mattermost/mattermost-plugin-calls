@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/time/rate"
 
@@ -284,6 +286,40 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 }
 
 func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
+	// Referrer-based CSRF protection
+	referrer := r.Header.Get("Referer")
+	userAgent := r.UserAgent()
+
+	// Allow desktop or recorder (which uses our custom recorder header), or E2E
+	isDesktopApp := strings.Contains(userAgent, "Mattermost") && strings.Contains(userAgent, "Electron")
+	hasRecorderHeader := r.Header.Get("X-Calls-Recorder") == "true"
+	hasE2EHeader := r.Header.Get("X-Calls-E2E") == "true"
+	needsReferrerCheck := !(isDesktopApp || hasRecorderHeader || hasE2EHeader)
+	if needsReferrerCheck {
+		if referrer != "" {
+			// For web browsers, check referrer for CSRF protection
+			referrerURL, err := url.Parse(referrer)
+			if err != nil {
+				p.LogWarn("Serve standalone, BLOCKED: Invalid referrer", "err", err.Error())
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			if referrerURL.Host != r.Host {
+				p.LogWarn("Serve standalone, BLOCKED: Cross-origin referrer", "from", referrerURL.Host, "to", r.Host)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			// Allow same-origin referrers
+		} else {
+			// No referrer - could be direct navigation (OK) or malicious site with referrer policy
+			p.LogWarn("Serve standalone, BLOCKED: no referrer")
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+	}
+
 	bundlePath, err := p.API.GetBundlePath()
 	if err != nil {
 		p.LogError(err.Error())
