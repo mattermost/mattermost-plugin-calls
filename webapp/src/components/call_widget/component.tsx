@@ -879,9 +879,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const state = {} as State;
 
         if (this.props.screenSharingSession?.session_id === this.props.currentSession?.session_id) {
+            logDebug('CallWidget.onShareScreenToggle: stopping screen share (user toggled off)');
             window.callsClient?.unshareScreen();
             state.screenStream = null;
         } else if (!this.props.screenSharingSession) {
+            logDebug('CallWidget.onShareScreenToggle: starting screen share (user toggled on)');
+
             if (window.desktop && compareSemVer(window.desktop.version, '5.1.0') >= 0) {
                 if (this.props.global) {
                     if (window.desktopAPI?.openScreenShareModal) {
@@ -916,8 +919,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         if (this.isMuted()) {
+            logDebug('CallWidget.onMicrophoneButtonClick: unmuting (user toggled on)');
             window.callsClient.unmute();
         } else {
+            logDebug('CallWidget.onMicrophoneButtonClick: muting (user toggled off)');
             window.callsClient.mute();
         }
     };
@@ -932,11 +937,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         if (this.isVideoOn()) {
+            logDebug('CallWidget.onVideoToggle: stopping video (user toggled off)');
             window.callsClient.stopVideo();
             this.setState({
                 selfVideoStream: null,
             });
         } else {
+            logDebug('CallWidget.onVideoToggle: starting video (user toggled on)');
             this.setState({
                 initializingSelfVideo: true,
             });
@@ -1003,6 +1010,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     onAudioInputDeviceClick = (device: MediaDeviceInfo) => {
         if (device.deviceId !== this.state.currentAudioInputDevice?.deviceId) {
+            logDebug('CallWidget.onAudioInputDeviceClick: changing audio input device', device.label, device.deviceId);
             window.callsClient?.setAudioInputDevice(device);
         }
         this.setState({showAudioInputDevicesMenu: false, currentAudioInputDevice: device});
@@ -1010,6 +1018,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     onVideoInputDeviceClick = (device: MediaDeviceInfo) => {
         if (device.deviceId !== this.state.currentVideoInputDevice?.deviceId) {
+            logDebug('CallWidget.onVideoInputDeviceClick: changing video input device', device.label, device.deviceId);
             window.callsClient?.setVideoInputDevice(device);
         }
         this.setState({showVideoInputDevicesMenu: false, currentVideoInputDevice: device});
@@ -1017,6 +1026,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     onAudioOutputDeviceClick = (device: MediaDeviceInfo) => {
         if (device.deviceId !== this.state.currentAudioOutputDevice?.deviceId) {
+            logDebug('CallWidget.onAudioOutputDeviceClick: changing audio output device', device.label, device.deviceId);
             window.callsClient?.setAudioOutputDevice(device);
             const ps = [];
             for (const audioEl of this.state.audioEls) {
