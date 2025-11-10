@@ -471,8 +471,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
         const callsClient = getCallsClient();
         if (this.isMuted()) {
+            logDebug('ExpandedView.onMuteToggle: unmuting (user toggled on)');
             callsClient?.unmute();
         } else {
+            logDebug('ExpandedView.onMuteToggle: muting (user toggled off)');
             callsClient?.mute();
         }
     };
@@ -480,8 +482,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     onVideoToggle = () => {
         const callsClient = getCallsClient();
         if (this.isVideoOn()) {
+            logDebug('ExpandedView.onVideoToggle: stopping video (user toggled off)');
             callsClient?.stopVideo();
         } else {
+            logDebug('ExpandedView.onVideoToggle: starting video (user toggled on)');
             callsClient?.startVideo();
         }
     };
