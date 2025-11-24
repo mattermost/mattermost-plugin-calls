@@ -1,7 +1,7 @@
 [
     {
         "id": "app.admin.concurrent_sessions_warning.enterprise",
-        "translation": "메인 Mattermost 서버의 성능, 확장성 및 안정성을 유지하기 위해 [RTCD 서비스 배포](https://mattermost.com/pl/calls-deployment-the-rtcd-service)를 통해 온라인 미팅(Calls) 전용 인스턴스로 오프로드하는 것을 적극 권장합니다."
+        "translation": "라이선스가 없는 서버에서의 통화는 DM에서만 사용할 수 있습니다."
     },
     {
         "id": "app.admin.concurrent_sessions_warning.intro",
@@ -13,15 +13,15 @@
     },
     {
         "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
-        "translation": "메인 Mattermost 서버의 성능, 확장성, 안정성을 유지하기 위해 [엔터프라이즈](https://mattermost.com/pricing/)로 업그레이드하고 [RTCD 서비스 배포](https://mattermost.com/pl/calls-deployment-the-rtcd-service)를 통해 온라인 미팅(Calls)을 전용 인스턴스로 오프로드하는 것을 적극 권장합니다."
+        "translation": "메인 Mattermost 서버의 성능, 확장성, 안정성을 유지하기 위해 [엔터프라이즈](https://mattermost.com/pricing/)로 업그레이드하고 [RTCD 서비스 배포](https://mattermost.com/pl/calls-deployment-the-rtcd-service)를 통해 통화 처리를 별도의 인스턴스로 오프로드하는 것을 적극 권장합니다."
     },
     {
         "id": "app.admin.concurrent_sessions_warning.team",
-        "translation": "메인 Mattermost 서버의 성능, 확장성, 안정성을 유지하기 위해 [매터모스트 엔터프라이즈 에디션](https://mattermost.com/pl/install-enterprise-install-upgrade) 및 [RTCD 서비스 배포](https://mattermost.com/pl/calls-deployment-the-rtcd-service)로 전환하여 온라인 미팅(Calls)를 전용 인스턴스로 오프로드할 것을 적극 권장합니다."
+        "translation": "Mattermost 메인 서버의 성능, 확장성, 안정성을 유지하기 위해 [Mattermost 엔터프라이즈 에디션](https://mattermost.com/pl/install-enterprise-install-upgrade) 및 [RTCD 서비스 배포](https://mattermost.com/pl/calls-deployment-the-rtcd-service)로 전환하여 통화 처리를 별도의 인스턴스로 오프로드할 것을 적극 권장합니다."
     },
     {
         "id": "app.call.new_recording_and_transcription_message",
-        "translation": "다음은 통화 녹음 내용입니다. 녹취 작업이 처리 중이며 준비되면 게시될 예정입니다."
+        "translation": "다음은 통화 녹음 내용입니다. 음성 녹취가 처리 중이며 준비되면 게시될 예정입니다."
     },
     {
         "id": "app.call.new_transcription_message",
@@ -29,23 +29,23 @@
     },
     {
         "id": "app.call.started_message",
-        "translation": "{{.Username}} 이(가) 음성 미팅을 시작했습니다"
+        "translation": "{{.Username}} 음성 통화 시작"
     },
     {
         "id": "app.call.started_message_fullname",
-        "translation": "{{.FirstName}} {{.LastName}} 이(가) 온라인 미팅 시작"
+        "translation": "{{.FirstName}} {{.LastName}} 통화 시작"
     },
     {
         "id": "app.save_config.error",
-        "translation": "설정을 저장하지 못했습니다."
+        "translation": "구성을 저장하지 못했습니다."
     },
     {
         "id": "app.push_notification.generic_message",
-        "translation": "온라인 미팅에 초대되었습니다"
+        "translation": "통화에 초대되었습니다"
     },
     {
         "id": "app.push_notification.inviting_message",
-        "translation": "{{.SenderName}} 이(가) 당신을 온라인 미팅에 초대했습니다"
+        "translation": "{{.SenderName}}님이 음성 통화에 초대하고 있습니다"
     },
     {
         "id": "app.call.ended_message",
