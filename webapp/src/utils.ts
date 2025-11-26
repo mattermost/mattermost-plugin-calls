@@ -694,3 +694,44 @@ export function getPlatformInfo() {
 
     return platformName;
 }
+
+/* 
+ * Filters the available caption languages based on the source language and the translation service.
+ * @param sourceLanguage - The source language to filter the available languages for.
+ * @param allLanguages - The available languages to filter.
+ * @param translationService - The translation service to use to check the availability of the languages.
+ * @returns The filtered available languages.
+ */export const filterAvailableCaptionLanguages = async (
+    sourceLanguage: string,
+    allLanguages: {label: string; value: string}[],
+    translationService: {isSupported: () => Promise<boolean>; checkAvailability: (src: string, tgt: string) => Promise<string>},
+): Promise<{label: string; value: string}[]> => {
+    // Always keep "No translation" option
+    const noTranslationOption = allLanguages.find((lang) => lang.value === '');
+
+    // Check browser support
+    const isSupported = await translationService.isSupported();
+    if (!isSupported) {
+        return noTranslationOption ? [noTranslationOption] : [];
+    }
+
+    // Filter languages: exclude source language and check availability
+    const filtered = await Promise.all(
+        allLanguages.
+            filter((lang) => lang.value !== '' && lang.value !== sourceLanguage).
+            map(async (lang) => {
+                const availability = await translationService.checkAvailability(
+                    sourceLanguage,
+                    lang.value,
+                );
+                return availability !== 'no' ? lang : null;
+            }),
+    );
+
+    const availableLanguages = filtered.filter((lang) => lang !== null) as {label: string; value: string}[];
+
+    return noTranslationOption ?
+        [noTranslationOption, ...availableLanguages] :
+        availableLanguages;
+};
+

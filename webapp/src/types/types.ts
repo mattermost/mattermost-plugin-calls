@@ -18,6 +18,7 @@ export const CallsConfigDefault: CallsConfig = {
     EnableRinging: true,
     EnableTranscriptions: false,
     EnableLiveCaptions: false,
+    LiveCaptionsLanguage: 'en',
     HostControlsAllowed: false,
     EnableAV1: false,
     TranscribeAPI: TranscribeAPI.WhisperCPP,
@@ -63,10 +64,12 @@ export type CallsClientStats = {
 
 export type CallsUserPreferences = {
     joinSoundParticipantsThreshold: number;
+    captionLanguage: string;
 }
 
 export const CallsUserPreferencesDefault = {
     joinSoundParticipantsThreshold: 8,
+    captionLanguage: '',
 };
 
 export enum CallAlertType {
