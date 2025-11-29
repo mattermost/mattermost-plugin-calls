@@ -54,6 +54,8 @@ var validClientMessageTypes = map[string]bool{
 	clientMessageTypeVoiceOff:    true,
 	clientMessageTypeScreenOn:    true,
 	clientMessageTypeScreenOff:   true,
+	clientMessageTypeVideoOn:     true,
+	clientMessageTypeVideoOff:    true,
 	clientMessageTypeRaiseHand:   true,
 	clientMessageTypeUnraiseHand: true,
 	clientMessageTypeReact:       true,
