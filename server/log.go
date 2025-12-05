@@ -68,18 +68,33 @@ func (p *Plugin) LogWarn(msg string, keyValuePairs ...interface{}) {
 }
 
 type logger struct {
-	p *Plugin
+	p      *Plugin
+	fields []logr.Field
 }
 
 func newLogger(p *Plugin) *logger {
 	return &logger{
-		p: p,
+		p:      p,
+		fields: nil,
 	}
 }
 
 func (l *logger) fieldsToArgs(fields []logr.Field) []interface{} {
 	var buf bytes.Buffer
 	args := []interface{}{"origin", getErrOrigin()}
+
+	// First add any fields stored in the logger (from .WithFields())
+	for _, field := range l.fields {
+		args = append(args, field.Key)
+		if err := field.ValueString(&buf, nil); err != nil {
+			l.p.LogError(err.Error())
+			continue
+		}
+		args = append(args, buf.String())
+		buf.Reset()
+	}
+
+	// Then add the fields passed to this specific log call
 	for _, field := range fields {
 		args = append(args, field.Key)
 		if err := field.ValueString(&buf, nil); err != nil {
@@ -145,6 +160,20 @@ func (l *logger) IsLevelEnabled(_ logr.Level) bool {
 	return false
 }
 
+// WithFields creates a new logger with additional fields, returning the proper interface type.
+func (l *logger) WithFields(fields ...logr.Field) mlog.LoggerIFace {
+	newLogger := &logger{
+		p:      l.p,
+		fields: make([]logr.Field, 0, len(l.fields)+len(fields)),
+	}
+	// Copy existing fields
+	newLogger.fields = append(newLogger.fields, l.fields...)
+	// Append new fields
+	newLogger.fields = append(newLogger.fields, fields...)
+	return newLogger
+}
+
 func (l *logger) With(_ ...logr.Field) *mlog.Logger {
-	return nil
+	// This method should never be called. use WithFields() instead.
+	panic("logger.With() should not be called; use WithFields() instead")
 }
