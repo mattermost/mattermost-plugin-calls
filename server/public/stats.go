@@ -20,6 +20,10 @@ type CallsStats struct {
 	AvgDuration int64 `json:"avg_duration" yaml:"avg_duration"`
 	// The average peak number of participants in calls.
 	AvgParticipants int64 `json:"avg_participants" yaml:"avg_participants"`
+	// The average video duration in seconds across all calls.
+	AvgVideoDuration int64 `json:"avg_video_duration" yaml:"avg_video_duration"`
+	// The total accumulated video duration in seconds across all calls.
+	TotalVideoDuration int64 `json:"total_video_duration" yaml:"total_video_duration"`
 	// The number of daily recording jobs in the last 30 days.
 	RecordingJobsByDay map[string]int64 `json:"recording_jobs_by_day" yaml:"-"`
 	// The number of monthly recording jobs in the last 12 months.

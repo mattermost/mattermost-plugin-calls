@@ -413,10 +413,32 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if session == nil {
 			return fmt.Errorf("user session is missing from call state")
 		}
-		session.Video = msg.Type == clientMessageTypeVideoOn
+
+		// Track video duration statistics
+		if msg.Type == clientMessageTypeVideoOn {
+			// Video turned on - record the start time
+			session.Video = true
+			if state.Call.Props.VideoStartAt == nil {
+				state.Call.Props.VideoStartAt = make(map[string]int64)
+			}
+			state.Call.Props.VideoStartAt[us.originalConnID] = time.Now().Unix()
+		} else {
+			// Video turned off - accumulate the duration
+			session.Video = false
+			if state.Call.Props.VideoStartAt != nil {
+				if startTime, exists := state.Call.Props.VideoStartAt[us.originalConnID]; exists && startTime > 0 {
+					state.Call.Stats.VideoDuration += secondsSinceTimestamp(startTime)
+					delete(state.Call.Props.VideoStartAt, us.originalConnID)
+				}
+			}
+		}
 
 		if err := p.store.UpdateCallSession(session); err != nil {
 			return fmt.Errorf("failed to update call session: %w", err)
+		}
+
+		if err := p.store.UpdateCall(&state.Call); err != nil {
+			return fmt.Errorf("failed to update call: %w", err)
 		}
 
 		evType := wsEventUserVideoOn

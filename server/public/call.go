@@ -71,8 +71,14 @@ type CallProps struct {
 	NodeID                 string              `json:"node_id,omitempty"`
 	Participants           map[string]struct{} `json:"participants,omitempty"`
 	HostLockedUserID       string              `json:"host_locked_user_id,omitempty"`
+	// VideoStartAt tracks when each session started video, keyed by session ID.
+	// Used to calculate accumulated video duration.
+	VideoStartAt map[string]int64 `json:"video_start_at,omitempty"`
 }
 
 type CallStats struct {
 	ScreenDuration int64 `json:"screen_duration,omitempty"`
+	// VideoDuration tracks the total time (in seconds) that any participant had video enabled.
+	// This is cumulative across all participants (e.g., if 2 users have video on for 10s each, this would be 20s).
+	VideoDuration int64 `json:"video_duration,omitempty"`
 }
