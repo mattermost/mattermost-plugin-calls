@@ -309,6 +309,83 @@ func (s *Store) GetRecordingJobsByDay() (map[string]int64, error) {
 	return s.getByDay(getByDayQueryBase(s.driverName, now).From("calls_jobs").Where(sq.Eq{"type": public.JobTypeRecording}), now)
 }
 
+func (s *Store) GetAvgVideoDuration() (int64, error) {
+	s.metrics.IncStoreOp("GetAvgVideoDuration")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetAvgVideoDuration", time.Since(start).Seconds())
+	}(time.Now())
+
+	var jsonPath string
+	if s.driverName == model.DatabaseDriverMysql {
+		jsonPath = "JSON_EXTRACT(stats, '$.video_duration')"
+	} else {
+		jsonPath = "(stats->>'video_duration')::bigint"
+	}
+
+	qb := getQueryBuilder(s.driverName).
+		Select(fmt.Sprintf("AVG(%s)", jsonPath)).
+		From("calls").
+		Where(sq.And{
+			sq.Expr("EndAt > StartAt"),
+			sq.Eq{"DeleteAt": 0},
+			sq.NotEq{jsonPath: nil},
+		})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var count *float64
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.rDBx.GetContext(ctx, &count, q, args...); err != nil {
+		return 0, fmt.Errorf("failed to get average video duration: %w", err)
+	}
+
+	if count == nil {
+		return 0, nil
+	}
+
+	return int64(math.Round(*count)), nil
+}
+
+func (s *Store) GetTotalVideoDuration() (int64, error) {
+	s.metrics.IncStoreOp("GetTotalVideoDuration")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetTotalVideoDuration", time.Since(start).Seconds())
+	}(time.Now())
+
+	var jsonPath string
+	if s.driverName == model.DatabaseDriverMysql {
+		jsonPath = "JSON_EXTRACT(stats, '$.video_duration')"
+	} else {
+		jsonPath = "(stats->>'video_duration')::bigint"
+	}
+
+	qb := getQueryBuilder(s.driverName).
+		Select(fmt.Sprintf("COALESCE(SUM(%s), 0)", jsonPath)).
+		From("calls").
+		Where(sq.And{
+			sq.Expr("EndAt > StartAt"),
+			sq.Eq{"DeleteAt": 0},
+		})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var total int64
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.rDBx.GetContext(ctx, &total, q, args...); err != nil {
+		return 0, fmt.Errorf("failed to get total video duration: %w", err)
+	}
+
+	return total, nil
+}
+
 func (s *Store) GetCallsStats() (*public.CallsStats, error) {
 	s.metrics.IncStoreOp("GetCallsStats")
 	defer func(start time.Time) {
@@ -354,6 +431,16 @@ func (s *Store) GetCallsStats() (*public.CallsStats, error) {
 	}
 
 	stats.AvgParticipants, err = s.GetAvgCallParticipants()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.AvgVideoDuration, err = s.GetAvgVideoDuration()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.TotalVideoDuration, err = s.GetTotalVideoDuration()
 	if err != nil {
 		return nil, err
 	}
