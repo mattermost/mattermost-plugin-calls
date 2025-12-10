@@ -229,7 +229,8 @@ export default class CallsClient extends EventEmitter {
         logDebug(`getSelectedAudioDevice: audio ${deviceType} device not found`, selectedDevice);
 
         return null;
-        
+    }
+
     private async initVideo(startVideo: boolean, deviceId?: string) {
         const videoOptions: MediaTrackConstraints = {
             ...this.defaultVideoTrackOptions,

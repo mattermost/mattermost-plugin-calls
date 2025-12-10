@@ -97,11 +97,8 @@ import {
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
-<<<<<<< HEAD
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
-=======
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
->>>>>>> 7463b33 (Calls video support)
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
@@ -712,11 +709,8 @@ export default class Plugin {
                     simulcast: callsConfig(state).EnableSimulcast,
                     enableAV1: callsConfig(state).EnableAV1,
                     dcSignaling: callsConfig(state).EnableDCSignaling,
-<<<<<<< HEAD
                     dcLocking: hasDCSignalingLockSupport(callsVersionInfo(state)),
-=======
                     enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
->>>>>>> 7463b33 (Calls video support)
                 });
                 window.currentCallData = CurrentCallDataDefault;
 
