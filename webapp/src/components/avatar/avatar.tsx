@@ -14,6 +14,7 @@ type Props = {
     icon?: string;
     border?: boolean;
     borderGlowWidth?: number;
+    borderGlowColor?: string;
 };
 
 type Attrs = HTMLAttributes<HTMLElement>;
@@ -29,6 +30,7 @@ const Avatar = ({
     icon,
     border = true,
     borderGlowWidth = 0,
+    borderGlowColor = 'rgba(61, 184, 135, 0.56)',
     ...attrs
 }: Props & Attrs) => {
     if (text) {
@@ -40,6 +42,7 @@ const Avatar = ({
                 $fontSize={fontSize}
                 $border={border}
                 $borderGlowWidth={borderGlowWidth}
+                $borderGlowColor={borderGlowColor}
             />
         );
     }
@@ -52,6 +55,7 @@ const Avatar = ({
                 $fontSize={fontSize}
                 $border={border}
                 $borderGlowWidth={borderGlowWidth}
+                $borderGlowColor={borderGlowColor}
             >
                 <CompassIcon icon={icon}/>
             </ProfilePlain>
@@ -68,6 +72,7 @@ const Avatar = ({
             $fontSize={fontSize}
             $border={border}
             $borderGlowWidth={borderGlowWidth}
+            $borderGlowColor={borderGlowColor}
         />
     );
 };
@@ -77,6 +82,7 @@ interface ProfileProps {
     $fontSize: number;
     $border?: boolean;
     $borderGlowWidth: number;
+    $borderGlowColor: string;
 }
 
 const Profile = styled.div<ProfileProps>`
@@ -106,7 +112,7 @@ const Profile = styled.div<ProfileProps>`
         margin-left: -${({$size}) => $size * 0.25}px;
     }
 
-    box-shadow: ${({$borderGlowWidth}) => $borderGlowWidth > 0 ? `0px 0px 0px ${$borderGlowWidth}px rgba(61, 184, 135, 0.56)` : 'none'};
+    box-shadow: ${({$borderGlowWidth, $borderGlowColor}) => $borderGlowWidth > 0 ? `0px 0px 0px ${$borderGlowWidth}px ${$borderGlowColor}` : 'none'};
 `;
 
 const ProfilePlain = styled(Profile)`
