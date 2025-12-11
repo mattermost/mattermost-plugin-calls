@@ -1,0 +1,16 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+
+# Ignore genproto module - self-replace needed to resolve ambiguous imports
+ignore:
+  'SNYK-GOLANG-GOOGLEGOLANGORGGENPROT*':
+    - '*':
+        reason: 'Self-replace directive needed to resolve ambiguous imports between old monolithic genproto and new split modules (googleapis/rpc)'
+        expires: 2026-12-31T00:00:00.000Z
+
+# Allow the pion/interceptor fork replacement
+ignore:
+  'SNYK-GOLANG-GITHUBCOMPIONINTERCEPTOR*':
+    - '*':
+        reason: 'Using streamer45 fork for required functionality'
+        expires: 2026-12-31T00:00:00.000Z

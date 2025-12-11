@@ -34,7 +34,9 @@ require (
 
 replace github.com/pion/interceptor v0.1.40 => github.com/streamer45/interceptor v0.0.0-20250701195358-9e4ca8111c7a
 
-// Force all old genproto imports to use the new split modules
+// Force all old genproto imports to use the new split modules.
+// This replaces the old monolithic google.golang.org/genproto with a newer version
+// to avoid ambiguous imports with the new split modules (googleapis/rpc).
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20241202173237-19429a94021a
 
 require (
