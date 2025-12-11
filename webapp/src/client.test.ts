@@ -29,6 +29,7 @@ describe('CallsClient', () => {
             authToken: 'test-token',
             iceServers: [],
             enableAV1: false,
+            enableVideo: false,
             dcSignaling: false,
             dcLocking: false,
         });
