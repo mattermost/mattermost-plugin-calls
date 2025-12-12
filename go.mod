@@ -29,6 +29,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/mysql v0.34.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.34.0
 	golang.org/x/time v0.7.0
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250124145028-65684f501c47
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -37,6 +38,8 @@ replace github.com/pion/interceptor v0.1.40 => github.com/streamer45/interceptor
 // Force all old genproto imports to use the new split modules.
 // This replaces the old monolithic google.golang.org/genproto with a newer version
 // to avoid ambiguous imports with the new split modules (googleapis/rpc).
+// NOTE: google.golang.org/genproto is manually added to the require block (line 153)
+// to satisfy Snyk CI requirements. Do not remove it even though go mod tidy will try to.
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20241202173237-19429a94021a
 
 require (
@@ -149,6 +152,7 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.26.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
+	google.golang.org/genproto v0.0.0-20241202173237-19429a94021a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250124145028-65684f501c47 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
 	google.golang.org/protobuf v1.36.4 // indirect
@@ -176,5 +180,4 @@ exclude (
 	github.com/RoaringBitmap/roaring v0.7.1
 	github.com/dyatlov/go-opengraph v0.0.0-20210112100619-dae8665a5b09
 	github.com/willf/bitset v1.2.0
-	google.golang.org/genproto v0.0.0-20210726143408-b02e89920bf0
 )
