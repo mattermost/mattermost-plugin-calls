@@ -1,4 +1,4 @@
-# Mattermost Calls!
+# Mattermost Calls
 
 ![calls_screen](https://user-images.githubusercontent.com/1832946/205749357-1f2d5af3-cfe7-4352-b1f2-953a31d91fca.png)
 
