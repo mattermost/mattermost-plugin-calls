@@ -965,7 +965,7 @@ export default class CallsClient extends EventEmitter {
             } catch (err) {
                 logErr('screenTrack.onended: failed to remove track', err);
             }
-            
+
             this.ws.send('screen_off');
         };
 
