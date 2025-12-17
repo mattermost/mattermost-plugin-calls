@@ -12,11 +12,10 @@ import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_ut
 import CallWidget from 'plugin/components/call_widget';
 import {
     logDebug,
-    logErr,
 } from 'plugin/log';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
-    fetchTranslationsFile,
+    getTranslations,
     playSound, sendDesktopError,
     sendDesktopEvent,
 } from 'plugin/utils';
@@ -50,22 +49,13 @@ async function initWidget({store, startingCall}: InitCbProps) {
 
     const locale = getCurrentUserLocale(store.getState()) || 'en';
 
-    let messages;
-    if (locale !== 'en') {
-        try {
-            messages = await fetchTranslationsFile(locale);
-        } catch (err) {
-            logErr('failed to fetch translations files', err);
-        }
-    }
-
     ReactDOM.render(
         <Provider store={store}>
             <IntlProvider
                 locale={locale}
                 key={locale}
                 defaultLocale='en'
-                messages={messages}
+                messages={getTranslations(locale)}
             >
                 <CallWidget
                     global={true}

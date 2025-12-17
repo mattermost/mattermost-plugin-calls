@@ -463,26 +463,6 @@ export function capitalize(input: string) {
     return input.charAt(0).toUpperCase() + input.slice(1);
 }
 
-export async function fetchTranslationsFile(locale: string) {
-    if (locale === 'en') {
-        return {};
-    }
-    try {
-        // eslint-disable-next-line global-require
-        const filename = require(`../i18n/${locale}.json`).default;
-        if (!filename) {
-            throw new Error(`translations file not found for locale '${locale}'`);
-        }
-        const res = await fetch(filename.indexOf('/') === 0 ? getPluginStaticPath() + filename : filename);
-        const translations = await res.json();
-        logDebug(`loaded i18n file for locale '${locale}'`);
-        return translations;
-    } catch (err) {
-        logWarn(`failed to load i18n file for locale '${locale}':`, err);
-        return {};
-    }
-}
-
 export function untranslatable(msg: string) {
     return msg;
 }
