@@ -204,7 +204,7 @@ func (c *configuration) SetDefaults() {
 		c.MaxCallParticipants = model.NewPointer(0) // unlimited
 	}
 	if c.TURNCredentialsExpirationMinutes == nil {
-		c.TURNCredentialsExpirationMinutes = model.NewPointer(1440)
+		c.TURNCredentialsExpirationMinutes = model.NewPointer(240)
 	}
 	if c.ServerSideTURN == nil {
 		c.ServerSideTURN = model.NewPointer(false)
