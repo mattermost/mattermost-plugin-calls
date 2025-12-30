@@ -121,6 +121,8 @@ type ClientConfig struct {
 	EnableTranscriptions *bool
 	// When set to true it enables the live captions functionality
 	EnableLiveCaptions *bool
+	// The language to be passed to the live captions transcriber.
+	LiveCaptionsLanguage string
 	// The maximum duration (in minutes) for call recordings.
 	MaxRecordingDuration *int
 	// When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.
@@ -517,6 +519,7 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		EnableRecordings:     c.EnableRecordings,
 		EnableTranscriptions: c.EnableTranscriptions,
 		EnableLiveCaptions:   c.EnableLiveCaptions,
+		LiveCaptionsLanguage: c.LiveCaptionsLanguage,
 		MaxRecordingDuration: c.MaxRecordingDuration,
 		EnableSimulcast:      c.EnableSimulcast,
 		EnableRinging:        c.EnableRinging,

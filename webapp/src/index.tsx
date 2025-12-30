@@ -29,6 +29,7 @@ import {
     getCallsStats,
     getCallsVersionInfo,
     incomingCallOnChannel,
+    loadCallsUserPreferences,
     loadProfilesByIdsIfMissing,
     localSessionClose,
     openCallsUserSettings,
@@ -37,6 +38,7 @@ import {
     showScreenSourceModal,
     showSwitchCallModal,
 } from 'src/actions';
+import translationService from 'src/translation_service';
 import {navigateToURL} from 'src/browser_routing';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
@@ -94,6 +96,7 @@ import {
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
+import CaptionLanguageSettingsSection from 'src/components/user_settings/caption_language_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
@@ -385,6 +388,10 @@ export default class Plugin {
                 {
                     title: 'Screen sharing settings',
                     component: ScreenSharingSettingsSection,
+                },
+                {
+                    title: 'Live captions language',
+                    component: CaptionLanguageSettingsSection,
                 },
             ],
         });
@@ -739,6 +746,9 @@ export default class Plugin {
                         delete window.currentCallData;
                         playSound('leave_self');
                     }
+
+                    // Cleanup translation service
+                    translationService.cleanup();
                 });
 
                 window.callsClient.on('mute', () => {
@@ -970,6 +980,9 @@ export default class Plugin {
             }
 
             await Promise.all(requests);
+
+            // Load user preferences for calls
+            store.dispatch(loadCallsUserPreferences());
 
             // We don't care about fetching other calls states in pop out.
             // Current call state will be requested over websocket

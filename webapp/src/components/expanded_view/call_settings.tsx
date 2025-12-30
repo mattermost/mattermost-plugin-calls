@@ -4,7 +4,10 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
-import {openCallsUserSettings} from 'src/actions';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {savePreferences} from 'mattermost-redux/actions/preferences';
+import {loadCallsUserPreferences, openCallsUserSettings} from 'src/actions';
+import {PREFERENCE_CATEGORY_CALLS, PREFERENCE_NAME_CAPTION_LANGUAGE, CAPTION_LANGUAGES, CaptionLanguageOption} from 'src/constants';
 import CCIcon from 'src/components/icons/cc_icon';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
 import SettingsWheelIcon from 'src/components/icons/settings_wheel';
@@ -12,12 +15,14 @@ import ShowMoreIcon from 'src/components/icons/show_more';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
 import TickIcon from 'src/components/icons/tick';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
-import {areLiveCaptionsAvailableInCurrentCall} from 'src/selectors';
+import {areLiveCaptionsAvailableInCurrentCall, captionLanguage, liveCaptionsLanguage} from 'src/selectors';
 import type {
     AudioDevices,
 } from 'src/types/types';
-import {getCallsClient} from 'src/utils';
+import {getCallsClient, filterAvailableCaptionLanguages} from 'src/utils';
+import {logErr} from 'src/log';
 import styled from 'styled-components';
+import translationService from 'src/translation_service';
 
 import ControlsButton from './controls_button';
 
@@ -325,6 +330,165 @@ const AudioDeviceTypeButton = styled.button<{$active: boolean, disabled: boolean
 }
 `;
 
+type CaptionLanguageListProps = {
+    languages: CaptionLanguageOption[];
+    currentLanguage: string;
+    onLanguageClick: (language: CaptionLanguageOption) => void;
+}
+
+const CaptionLanguageList = ({languages, currentLanguage, onLanguageClick}: CaptionLanguageListProps) => {
+    const list = languages.map((language) => {
+        const isCurrentLanguage = language.value === currentLanguage;
+        return (
+            <li
+                className='MenuItem'
+                key={`caption-language-${language.value}`}
+                role='menuitem'
+                aria-label={language.label}
+            >
+                <AudioDeviceButton
+                    className='style--none'
+                    onClick={() => onLanguageClick(language)}
+                    $isCurrentDevice={isCurrentLanguage}
+                >
+                    <AudioDeviceName>
+                        {language.label}
+                    </AudioDeviceName>
+                    { isCurrentLanguage &&
+                    <AudioDeviceSelectedIcon>
+                        <TickIcon/>
+                    </AudioDeviceSelectedIcon>
+                    }
+                </AudioDeviceButton>
+            </li>
+        );
+    });
+
+    return (
+        <div
+            className='Menu'
+            role='menu'
+        >
+            <DevicesList
+                id='calls-popout-caption-languages-menu'
+                className='Menu__content dropdown-menu'
+            >
+                {list}
+            </DevicesList>
+        </div>
+    );
+};
+
+type CaptionLanguageSelectorProps = {
+    isActive: boolean;
+    onToggle: () => void;
+    showLiveCaptions: boolean;
+}
+
+const CaptionLanguageSelector = ({isActive, onToggle, showLiveCaptions}: CaptionLanguageSelectorProps) => {
+    const {formatMessage} = useIntl();
+    const dispatch = useDispatch();
+    const currentUserId = useSelector(getCurrentUserId);
+    const userCaptionLanguage = useSelector(captionLanguage);
+    const sourceLanguage = useSelector(liveCaptionsLanguage);
+    const [filteredLanguages, setFilteredLanguages] = useState<CaptionLanguageOption[]>([]);
+
+    // Filter languages based on source language and browser support
+    useEffect(() => {
+        const loadLanguages = async () => {
+            const filtered = await filterAvailableCaptionLanguages(
+                sourceLanguage,
+                CAPTION_LANGUAGES,
+                translationService,
+            );
+            setFilteredLanguages(filtered);
+        };
+
+        loadLanguages();
+    }, [sourceLanguage]);
+
+    // Don't show if live captions are not enabled
+    if (!showLiveCaptions) {
+        return null;
+    }
+
+    const handleLanguageClick = async (language: CaptionLanguageOption) => {
+        try {
+            console.log('[Calls] Saving caption language from call settings:', language.value);
+            
+            // Save preference to Mattermost
+            await dispatch(savePreferences(currentUserId, [
+                {
+                    user_id: currentUserId,
+                    category: PREFERENCE_CATEGORY_CALLS,
+                    name: PREFERENCE_NAME_CAPTION_LANGUAGE,
+                    value: language.value,
+                },
+            ]));
+
+            // Reload plugin user preferences to update Redux state
+            dispatch(loadCallsUserPreferences());
+
+            // Close the menu
+            onToggle();
+        } catch (err) {
+            logErr('failed to save caption language preference from call settings', err);
+        }
+    };
+
+    const languagesToUse = filteredLanguages.length > 0 ? filteredLanguages : CAPTION_LANGUAGES;
+    const currentLanguageOption = languagesToUse.find((lang) => lang.value === userCaptionLanguage) || CAPTION_LANGUAGES[0];
+    const label = currentLanguageOption.label;
+
+    const deviceTypeLabel = formatMessage({defaultMessage: 'Caption language'});
+
+    return (
+        <>
+            {isActive &&
+            <CaptionLanguageList
+                languages={languagesToUse}
+                currentLanguage={userCaptionLanguage}
+                onLanguageClick={handleLanguageClick}
+            />
+            }
+            <li
+                className='MenuItem'
+                role='menuitem'
+                aria-label={deviceTypeLabel}
+            >
+                <AudioDeviceTypeButton
+                    id='calls-popout-caption-language-button'
+                    className='style--none'
+                    disabled={false}
+                    onClick={onToggle}
+                    $active={isActive}
+                    aria-controls='calls-popout-caption-languages-menu'
+                    aria-expanded={isActive}
+                >
+                    <AudioDeviceIcon $isDisabled={false}>
+                        <CCIcon/>
+                    </AudioDeviceIcon>
+
+                    <AudioDeviceTypeButtonBody>
+                        <AudioDeviceTypeLabel
+                            className='MenuItem__primary-text'
+                        >
+                            {deviceTypeLabel}
+                        </AudioDeviceTypeLabel>
+                        <AudioDeviceLabel $isDisabled={false}>
+                            {label}
+                        </AudioDeviceLabel>
+                    </AudioDeviceTypeButtonBody>
+
+                    <ShowDevicesIcon $isDisabled={false}>
+                        <ShowMoreIcon/>
+                    </ShowDevicesIcon>
+                </AudioDeviceTypeButton>
+            </li>
+        </>
+    );
+};
+
 type CallSettingsMenuButtonProps = {
     id: string;
     icon: React.ReactNode;
@@ -376,6 +540,7 @@ type CallSettingsProps = {
 export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSettingsProps) {
     const [showAudioInputs, setShowAudioInputs] = useState(false);
     const [showAudioOutputs, setShowAudioOutputs] = useState(false);
+    const [showLanguageSelector, setShowLanguageSelector] = useState(false);
     const showCCButton = useSelector(areLiveCaptionsAvailableInCurrentCall);
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
@@ -384,9 +549,15 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
         if (deviceType === 'input') {
             setShowAudioInputs(!showAudioInputs);
             setShowAudioOutputs(false);
-        } else {
+            setShowLanguageSelector(false);
+        } else if (deviceType === 'output') {
             setShowAudioOutputs(!showAudioOutputs);
             setShowAudioInputs(false);
+            setShowLanguageSelector(false);
+        } else if (deviceType === 'language') {
+            setShowLanguageSelector(!showLanguageSelector);
+            setShowAudioInputs(false);
+            setShowAudioOutputs(false);
         }
     };
 
@@ -415,6 +586,11 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
                     deviceType='input'
                     isActive={showAudioInputs}
                     onToggle={onToggle}
+                />
+                <CaptionLanguageSelector
+                    isActive={showLanguageSelector}
+                    onToggle={() => onToggle('language')}
+                    showLiveCaptions={showLiveCaptions}
                 />
 
                 { (showCCButton || showAdditionalSetttingsButton) && <li className='MenuGroup menu-divider'/>}

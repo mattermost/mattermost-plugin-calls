@@ -1403,11 +1403,15 @@ func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, t
 		return fmt.Errorf("user session for caption missing from call")
 	}
 
+	// Get the source language from the transcriber configuration
+	cfg := p.getConfiguration()
+
 	p.publishWebSocketEvent(wsEventCaption, map[string]interface{}{
 		"channel_id": channelID,
 		"user_id":    captionSession.UserID,
 		"session_id": captionSession.ID,
 		"text":       text,
+		"language":   cfg.LiveCaptionsLanguage, // Include source language in the caption event
 	}, &WebSocketBroadcast{
 		ChannelID:           channelID,
 		ReliableClusterSend: true,
