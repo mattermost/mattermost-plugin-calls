@@ -14,6 +14,7 @@ type CallSession struct {
 	JoinAt     int64  `json:"join_at"`
 	Unmuted    bool   `json:"unmuted"`
 	RaisedHand int64  `json:"raised_hand"`
+	Video      bool   `json:"video"`
 }
 
 func (s *CallSession) IsValid() error {

@@ -292,6 +292,8 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		return fmt.Errorf("session not found in call state")
 	}
 
+	us := state.sessions[originalConnID]
+
 	if err := p.store.DeleteCallSession(originalConnID); err != nil {
 		return fmt.Errorf("failed to delete call session: %w", err)
 	}
@@ -307,6 +309,20 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 		p.LogDebug("removed session was sharing, sending screen off event", "userID", userID, "connID", connID, "originalConnID", originalConnID)
 		p.publishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{}, &WebSocketBroadcast{
+			ChannelID:           channelID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
+	}
+
+	// Check if leaving session had video on.
+	if us.Video {
+		p.LogDebug("removed session had video on, sending video off event", "userID", userID, "connID", connID, "originalConnID", originalConnID)
+		// TODO: consider tracking some stats
+		p.publishWebSocketEvent(wsEventUserVideoOff, map[string]interface{}{
+			"userID":     userID,
+			"session_id": originalConnID,
+		}, &WebSocketBroadcast{
 			ChannelID:           channelID,
 			ReliableClusterSend: true,
 			UserIDs:             getUserIDsFromSessions(state.sessions),

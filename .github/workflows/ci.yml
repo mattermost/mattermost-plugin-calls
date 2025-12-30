@@ -16,7 +16,7 @@ jobs:
     uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@05547befaf1f79459a2cef959842f5d8bbc6343a
     with:
       golangci-lint-version: "v1.64.5"
-      golang-version: "1.23"
+      golang-version: "1.24"
     secrets: inherit
 
   code-coverage:

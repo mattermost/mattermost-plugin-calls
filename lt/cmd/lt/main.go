@@ -25,8 +25,10 @@ import (
 	"github.com/pion/webrtc/v4/pkg/rtcerr"
 )
 
-const pkgPrefix = "github.com/mattermost/mattermost-plugin-calls/lt/"
-const rtcdPkgPrefix = "github.com/mattermost/rtcd/"
+const (
+	pkgPrefix     = "github.com/mattermost/mattermost-plugin-calls/lt/"
+	rtcdPkgPrefix = "github.com/mattermost/rtcd/"
+)
 
 func slogReplaceAttr(_ []string, a slog.Attr) slog.Attr {
 	if a.Key == slog.SourceKey {
@@ -66,6 +68,7 @@ func main() {
 	var numRecordings int
 	var setup bool
 	var speechFile string
+	var numVideo int
 
 	flag.StringVar(&teamID, "team", "", "The team ID to start calls in")
 	flag.StringVar(&channelID, "channel", "", "The channel ID to start the call in")
@@ -84,6 +87,7 @@ func main() {
 	flag.StringVar(&adminPassword, "admin-password", "Sys@dmin-sample1", "The password of a system admin account")
 	flag.BoolVar(&setup, "setup", true, "Whether or not setup actions like creating users, channels, teams and/or members should be executed.")
 	flag.StringVar(&speechFile, "speech-file", "./samples/speech_0.ogg", "The path to a speech OGG file to read to simulate real voice samples")
+	flag.IntVar(&numVideo, "video", 0, "The number of users with video on per call")
 
 	flag.Parse()
 
@@ -123,6 +127,10 @@ func main() {
 
 	if numUnmuted > numUsersPerCall {
 		log.Fatalf("unmuted cannot be greater than the number of users per call")
+	}
+
+	if numVideo > numUsersPerCall {
+		log.Fatalf("video cannot be greater than the number of users per call")
 	}
 
 	if numScreenSharing > numCalls {
@@ -208,7 +216,7 @@ func main() {
 	for j := 0; j < numCalls; j++ {
 		logger.Debug("starting call in " + channels[j].DisplayName)
 		for i := 0; i < numUsersPerCall; i++ {
-			go func(idx int, channelID string, teamID string, unmuted, screenSharing, recording bool) {
+			go func(idx int, channelID string, teamID string, unmuted, screenSharing, recording, video bool) {
 				username := fmt.Sprintf("%s%d", userPrefix, idx)
 				userLogger := logger.With("username", username)
 				if unmuted {
@@ -235,6 +243,7 @@ func main() {
 					SiteURL:       siteURL,
 					Duration:      dur,
 					Unmuted:       unmuted,
+					Video:         video,
 					ScreenSharing: screenSharing,
 					Recording:     recording,
 					Setup:         setup,
@@ -253,7 +262,7 @@ func main() {
 					}
 					return
 				}
-			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, i < numUnmuted, i == 0 && j < numScreenSharing, j < numRecordings)
+			}((numUsersPerCall*j)+i+offset, channels[j].Id, channels[j].TeamId, i < numUnmuted, i == 0 && j < numScreenSharing, j < numRecordings, i < numVideo)
 		}
 	}
 

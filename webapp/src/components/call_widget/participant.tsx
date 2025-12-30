@@ -18,6 +18,7 @@ import MutedIcon from 'src/components/icons/muted_icon';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import {ThreeDotsButton} from 'src/components/icons/three_dots';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import VideoOnIcon from 'src/components/icons/video_on';
 import {getUserDisplayName} from 'src/utils';
 import styled, {css} from 'styled-components';
 
@@ -148,6 +149,13 @@ export const Participant = ({session, profile, isYou, isHost, iAmHost, isSharing
                             onRemove={onRemove}
                         />
                     </StyledDotMenu>
+                }
+
+                {session?.video &&
+                    <VideoOnIcon
+                        fill={'#3DB887'}
+                        style={{width: '14px', height: '14px'}}
+                    />
                 }
 
                 <MuteIcon
