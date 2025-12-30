@@ -97,7 +97,7 @@
   "H6F81N": "Het audio-uitgangsapparaat is gewijzigd naar <i>{deviceLabel}</i> .",
   "HB6L88": "Configureer je schermdelen-instellingen.",
   "HBa/E5": "Gastheer maken",
-  "HUMEKL": "Als dit is ingesteld op actief, kan de AV1 codec worden gebruikt om tracks voor schermdelen te coderen. Dit kan resulteren in een betere kwaliteit voor schermdelen voor clients die dit ondersteunen. Opmerking: deze instelling is niet van toepassing als EnableSimulcast actief is.",
+  "HUMEKL": "Als dit actief is, kan de AV1 codec worden gebruikt om tracks voor schermdelen te coderen. Dit kan resulteren in een betere kwaliteit voor schermdelen voor clients die dit ondersteunen. Opmerking: deze instelling is niet van toepassing als EnableSimulcast actief is.",
   "HV60d3": "Aantal gesprekken per dag",
   "He5vFp": "Sluit Pictogram",
   "Hl1L9U": "Er is al een gesprek bezig in het kanaal.",
