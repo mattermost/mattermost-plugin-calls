@@ -25,7 +25,7 @@
     },
     {
         "id": "app.call.started_message",
-        "translation": "{{.Username}} is een oproep begonnen"
+        "translation": "{{.Username}} begon een oproep"
     },
     {
         "id": "app.call.started_message_fullname",

@@ -1,10 +1,58 @@
 [
     {
         "id": "app.call.new_recording_message",
-        "translation": "這是通話錄音"
+        "translation": "以下為通話錄音"
     },
     {
         "id": "app.call.ended_message",
         "translation": "通話已結束"
+    },
+    {
+        "id": "app.add_user_session.group_calls_not_allowed_error",
+        "translation": "未授權伺服器的通話只能透過私訊提供。"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.enterprise",
+        "translation": "我們強烈建議 [部署RTCD服務](https://mattermost.com/pl/calls-deployment-the-rtcd-service)來將通話處理分發到獨立實例，以維持主伺服器的效能、可擴展性與可靠性。"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.intro",
+        "translation": "您的系統目前因 Mattermost Calls 使用量過高，可能對整體效能與回應速度造成負面影響。"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+        "translation": "我們強烈建議升級至 [企業版本](https://mattermost.com/pricing/)，並部署 RTCD 服務，將通話處理工作分發至獨立的服務實例，以維持主 Mattermost 伺服器的效能、可擴展性與可靠性。"
+    },
+    {
+        "id": "app.admin.concurrent_sessions_warning.team",
+        "translation": "我們強烈建議升級至 [[Mattermost Enterprise Edition](https://mattermost.com/pricing/)，並部署 RTCD 服務，將通話處理工作分發至獨立的服務實例，以維持主 Mattermost 伺服器的效能、可擴展性與可靠性。"
+    },
+    {
+        "id": "app.call.new_recording_and_transcription_message",
+        "translation": "以下為本次通話的錄音。逐字稿正在處理中，會在完成後發布。"
+    },
+    {
+        "id": "app.call.new_transcription_message",
+        "translation": "以下為通話逐字稿"
+    },
+    {
+        "id": "app.call.started_message",
+        "translation": "{{.Username}} 開始了一場通話"
+    },
+    {
+        "id": "app.call.started_message_fullname",
+        "translation": "{{.FirstName}} {{.LastName}} 開始了一場通話"
+    },
+    {
+        "id": "app.push_notification.generic_message",
+        "translation": "您已被邀請至一場通話"
+    },
+    {
+        "id": "app.push_notification.inviting_message",
+        "translation": "{{.SenderName}} 正在邀請您加入通話"
+    },
+    {
+        "id": "app.save_config.error",
+        "translation": "設定檔儲存失敗。"
     }
 ]
