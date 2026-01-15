@@ -14,6 +14,7 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getMyPreferences} from 'mattermost-redux/selectors/entities/preferences';
 import {ActionFunc, ActionFuncAsync, DispatchFunc, GetStateFunc} from 'mattermost-redux/types/actions';
 import {MessageDescriptor} from 'react-intl';
 import {AnyAction, Dispatch} from 'redux';
@@ -22,7 +23,7 @@ import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from
 import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
-import {RING_LENGTH} from 'src/constants';
+import {PREFERENCE_CATEGORY_CALLS, PREFERENCE_NAME_CAPTION_LANGUAGE, RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
 import RestClient from 'src/rest_client';
 import {
@@ -63,6 +64,7 @@ import {
     LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
+    RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CALLS_VERSION_INFO,
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
@@ -145,6 +147,25 @@ export const getCallsVersionInfo = (): ActionFuncAsync<CallsVersionInfo> => {
         ),
         onSuccess: [RECEIVED_CALLS_VERSION_INFO],
     });
+};
+
+export const loadCallsUserPreferences = (): ActionFunc => {
+    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const state = getState();
+        const preferences = getMyPreferences(state);
+        const prefKey = `${PREFERENCE_CATEGORY_CALLS}--${PREFERENCE_NAME_CAPTION_LANGUAGE}`;
+        const captionLangPref = preferences[prefKey];
+
+        dispatch({
+            type: RECEIVED_CALLS_USER_PREFERENCES,
+            data: {
+                joinSoundParticipantsThreshold: 8, // default value, can be extended later
+                captionLanguage: captionLangPref?.value || '',
+            },
+        });
+
+        return {data: true};
+    };
 };
 
 export const getCallActive = async (channelID: string) => {

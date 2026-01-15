@@ -570,6 +570,12 @@ export const callsUserPreferences = (state: GlobalState): CallsUserPreferences =
 export const shouldPlayJoinUserSound = (state: GlobalState): boolean =>
     profilesInCurrentCall(state).length < callsUserPreferences(state).joinSoundParticipantsThreshold;
 
+export const captionLanguage = (state: GlobalState): string =>
+    callsUserPreferences(state).captionLanguage;
+
+export const liveCaptionsLanguage = (state: GlobalState): string =>
+    callsConfig(state).LiveCaptionsLanguage || 'en';
+
 export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
     const license = getLicense(state);
     const enterprise = license.SkuShortName === LicenseSkus.Enterprise || license.SkuShortName === LicenseSkus.EntepriseAdvanced;
