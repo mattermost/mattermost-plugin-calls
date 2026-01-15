@@ -174,7 +174,6 @@
   "VMXPVw": "Het lokale IP-adres dat door de RTC-server wordt gebruikt om te luisteren naar UDP-verbindingen.",
   "VXdfVy": "Het lokale IP-adres dat door de RTC-server wordt gebruikt om te luisteren naar TCP-verbindingen.",
   "VXuUsJ": "Geluid delen met scherm",
-  "Vc8/fR": "Totaal aantal actieve sessies",
   "W9355R": "Dempen uitschakelen",
   "WUeQHK": "Het maximum aantal deelnemers dat kan deelnemen aan een gesprek. Als deze optie leeg wordt gelaten of op 0 wordt ingesteld, kan een onbeperkt aantal deelnemers deelnemen.",
   "WWqBr0": "Beëindigd op {endTime}",

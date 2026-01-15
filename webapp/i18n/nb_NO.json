@@ -174,7 +174,6 @@
   "VMXPVw": "Den lokale IP-adressen som brukes av RTC-serveren for å lytte etter UDP-tilkoblinger.",
   "VXdfVy": "Den lokale IP-adressen som brukes av RTC-serveren for å lytte etter TCP-tilkoblinger.",
   "VXuUsJ": "Del lyd med skjermen",
-  "Vc8/fR": "Totalt antall aktive sesjoner",
   "W9355R": "Slå av demping av lyd",
   "WUeQHK": "Maksimalt antall deltakere som kan bli med i en samtale. Hvis det står tomt, eller satt til 0, kan et ubegrenset antall deltakere bli med.",
   "WWqBr0": "Sluttet kl. {endTime}",

@@ -174,7 +174,6 @@
   "VMXPVw": "Místní IP adresa, kterou server RTC používá k naslouchání UDP připojením.",
   "VXdfVy": "Místní IP adresa, kterou server RTC používá k naslouchání TCP připojením.",
   "VXuUsJ": "Sdílet zvuk spolu s obrazovkou",
-  "Vc8/fR": "Celkový počet aktivních relací",
   "W9355R": "Zrušit ztlumení",
   "WUeQHK": "Maximální počet účastníků, kteří se mohou připojit k hovoru. Pokud je pole prázdné nebo nastaveno na 0, může se připojit neomezený počet účastníků.",
   "WWqBr0": "Ukončeno {endTime}",
