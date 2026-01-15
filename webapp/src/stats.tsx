@@ -28,7 +28,7 @@ export function convertStatsToPanels(data: CallsStats, serverVersion: string, tr
 
     stats.total_active_sessions = {
         visualizationType: AnalyticsVisualizationType.Count,
-        name: <FormattedMessage defaultMessage='Total Active Sessions'/>,
+        name: <FormattedMessage defaultMessage='Total Active Call Sessions'/>,
         icon: 'fa-desktop',
         id: 'total_active_sessions',
         value: data.total_active_sessions,
