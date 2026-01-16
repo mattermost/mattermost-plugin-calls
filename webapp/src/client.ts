@@ -4,12 +4,12 @@
 // eslint-disable max-lines
 // eslint-disable-next-line simple-import-sort/imports
 import {parseRTCStats, RTCMonitor, RTCPeer} from '@mattermost/calls-common';
-import type {EmojiData, CallsClientJoinData} from '@mattermost/calls-common/lib/types';
+import type {EmojiData, CallsClientJoinData, TrackInfo, RTPEncodingParameters} from '@mattermost/calls-common/lib/types';
 
 import {EventEmitter} from 'events';
 
 import {zlibSync, strToU8} from 'fflate';
-import {AudioDevices, CallsClientConfig, CallsClientStats, TrackInfo} from 'src/types/types';
+import {MediaDevices, CallsClientConfig, CallsClientStats, TrackMetadata} from 'src/types/types';
 
 import {logDebug, logErr, logInfo, logWarn, persistClientLogs} from './log';
 import {getScreenStream, getPersistentStorage} from './utils';
@@ -18,16 +18,34 @@ import {
     STORAGE_CALLS_CLIENT_STATS_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
+    STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY,
 } from 'src/constants';
+import {type BgBlurData, getBgBlurData} from 'src/local_storage';
+import Segmenter from 'src/segmenter';
 
 export const AudioInputPermissionsError = new Error('missing audio input permissions');
 export const AudioInputMissingError = new Error('no audio input available');
+export const VideoInputPermissionsError = new Error('missing video input permissions');
+export const VideoInputMissingError = new Error('no video input available');
 export const rtcPeerErr = new Error('rtc peer error');
 export const rtcPeerTimeoutErr = new Error('timed out waiting for rtc connection');
 export const rtcPeerCloseErr = new Error('rtc peer close');
 export const insecureContextErr = new Error('insecure context');
 export const userRemovedFromChannelErr = new Error('user was removed from channel');
 export const userLeftChannelErr = new Error('user has left channel');
+export const DefaultVideoTrackOptions: MediaTrackConstraints = {
+
+    // TODO: consider exposing in user preferences
+    frameRate: {
+        ideal: 30,
+    },
+    width: {
+        ideal: 640,
+    },
+    height: {
+        ideal: 360,
+    },
+};
 
 const rtcMonitorInterval = 10000;
 
@@ -37,14 +55,19 @@ export default class CallsClient extends EventEmitter {
     private peer: RTCPeer | null;
     public ws: WebSocketClient | null;
     private localScreenTrack: MediaStreamTrack | null = null;
+    public localVideoStream: MediaStream | null = null;
     private remoteScreenTrack: MediaStreamTrack | null = null;
     private remoteVoiceTracks: MediaStreamTrack[];
+    private remoteVideoTracks: MediaStreamTrack[];
     public currentAudioInputDevice: MediaDeviceInfo | null = null;
     public currentAudioOutputDevice: MediaDeviceInfo | null = null;
+    public currentVideoInputDevice: MediaDeviceInfo | null = null;
     private voiceTrackAdded: boolean;
+    private videoTrackAdded: boolean;
     private streams: MediaStream[];
     private stream: MediaStream | null;
-    private audioDevices: AudioDevices;
+    private audioDevices: MediaDevices;
+    private videoDevices: MediaDeviceInfo[];
     public audioTrack: MediaStreamTrack | null;
     private readonly onDeviceChange: () => void;
     private readonly onBeforeUnload: () => void;
@@ -53,6 +76,10 @@ export default class CallsClient extends EventEmitter {
     public initTime = Date.now();
     private rtcMonitor: RTCMonitor | null = null;
     private av1Codec: RTCRtpCodecCapability | null = null;
+    private defaultAudioTrackOptions: MediaTrackConstraints;
+    private defaultVideoTrackOptions: MediaTrackConstraints;
+    private defaultVideoTrackEncodings: RTPEncodingParameters[];
+    private segmenter: Segmenter | null = null;
 
     constructor(config: CallsClientConfig) {
         logDebug('creating new calls client', JSON.stringify(config));
@@ -62,13 +89,26 @@ export default class CallsClient extends EventEmitter {
         this.audioTrack = null;
         this.currentAudioInputDevice = null;
         this.currentAudioInputDevice = null;
+        this.currentVideoInputDevice = null;
         this.voiceTrackAdded = false;
+        this.videoTrackAdded = false;
         this.streams = [];
         this.remoteVoiceTracks = [];
+        this.remoteVideoTracks = [];
         this.stream = null;
         this.audioDevices = {inputs: [], outputs: []};
+        this.videoDevices = [];
         this.channelID = '';
         this.config = config;
+        this.defaultAudioTrackOptions = {
+            autoGainControl: true,
+            echoCancellation: true,
+            noiseSuppression: true,
+        };
+        this.defaultVideoTrackOptions = DefaultVideoTrackOptions;
+        this.defaultVideoTrackEncodings = [
+            {maxBitrate: 1000 * 1000, maxFramerate: 30, scaleResolutionDownBy: 1.0},
+        ];
         this.onDeviceChange = async () => {
             await this.updateDevices();
         };
@@ -95,6 +135,10 @@ export default class CallsClient extends EventEmitter {
                 outputs,
             };
 
+            if (this.config.enableVideo) {
+                this.videoDevices = devices.filter((device) => device.kind === 'videoinput');
+            }
+
             if (this.currentAudioInputDevice) {
                 await this.handleAudioDeviceFallback('input');
             }
@@ -103,7 +147,7 @@ export default class CallsClient extends EventEmitter {
                 await this.handleAudioDeviceFallback('output');
             }
 
-            this.emit('devicechange', this.audioDevices);
+            this.emit('devicechange', this.audioDevices, this.videoDevices);
         } catch (err) {
             logErr(err);
         }
@@ -187,11 +231,90 @@ export default class CallsClient extends EventEmitter {
         return null;
     }
 
+    private async initVideo(startVideo: boolean, deviceId?: string) {
+        const videoOptions: MediaTrackConstraints = {
+            ...this.defaultVideoTrackOptions,
+        };
+
+        if (deviceId) {
+            videoOptions.deviceId = {
+                exact: deviceId,
+            };
+        } else if (this.currentVideoInputDevice) {
+            videoOptions.deviceId = {
+                exact: this.currentVideoInputDevice.deviceId,
+            };
+        } else {
+            let defaultInputDevice: {deviceId: string; label?: string} = {
+                deviceId: '',
+            };
+            const defaultVideoInputData = window.localStorage.getItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY);
+            if (defaultVideoInputData) {
+                try {
+                    defaultInputDevice = JSON.parse(defaultVideoInputData);
+                } catch (err) {
+                    logErr('failed to parse default video input device', err);
+                }
+            }
+
+            if (defaultInputDevice.deviceId) {
+                let devices = this.videoDevices.filter((dev) => {
+                    return dev.deviceId === defaultInputDevice.deviceId || dev.label === defaultInputDevice.label;
+                });
+
+                if (devices.length > 1) {
+                // If there are multiple devices with the same label, we select the default device by ID.
+                    logInfo('multiple video input devices found with the same label, checking by id', devices);
+                    devices = devices.filter((dev) => dev.deviceId === defaultInputDevice.deviceId);
+                }
+
+                if (devices && devices.length === 1) {
+                    logDebug(`found default video input device to use: ${devices[0].label}`);
+                    videoOptions.deviceId = {
+                        exact: devices[0].deviceId,
+                    };
+                    this.currentVideoInputDevice = devices[0];
+                } else {
+                    logDebug('video input device not found');
+                    window.localStorage.removeItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY);
+                }
+            }
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: videoOptions,
+                audio: false,
+            });
+
+            // updating the devices again cause some browsers (e.g Firefox) will
+            // return empty labels unless permissions were previously granted.
+            await this.updateDevices();
+
+            // Video should be off by default (for now). We initialize it to ensure permissions are there but
+            // don't need to keep it active until the user explicitly starts it from UI.
+            if (startVideo) {
+                this.localVideoStream = stream;
+                this.streams.push(stream);
+                stream.getVideoTracks()[0].enabled = false;
+            } else {
+                stream.getVideoTracks()[0].stop();
+                stream.getVideoTracks()[0].dispatchEvent(new Event('ended'));
+            }
+
+            this.emit('initvideo');
+        } catch (err) {
+            logErr(err);
+            if (this.videoDevices.length > 0) {
+                throw VideoInputPermissionsError;
+            }
+            throw VideoInputMissingError;
+        }
+    }
+
     private async initAudio(deviceId?: string) {
         const audioOptions: MediaTrackConstraints = {
-            autoGainControl: true,
-            echoCancellation: true,
-            noiseSuppression: true,
+            ...this.defaultAudioTrackOptions,
         };
 
         if (deviceId) {
@@ -340,7 +463,13 @@ export default class CallsClient extends EventEmitter {
         navigator.mediaDevices.addEventListener('devicechange', this.onDeviceChange);
 
         try {
-            await this.initAudio();
+            const initializers = [this.initAudio()];
+            if (this.config.enableVideo) {
+                initializers.push(this.initVideo(false));
+            }
+
+            await Promise.all(initializers);
+
             if (this.closed) {
                 this.cleanup();
                 return;
@@ -444,8 +573,8 @@ export default class CallsClient extends EventEmitter {
                 }
             });
 
-            peer.on('stream', (remoteStream) => {
-                logDebug('new remote stream received', remoteStream.id);
+            peer.on('stream', (remoteStream: MediaStream, trackInfo: TrackInfo) => {
+                logDebug('new remote stream received', remoteStream.id, trackInfo);
                 for (const track of remoteStream.getTracks()) {
                     logDebug('remote track', track.kind, track.id);
                 }
@@ -456,8 +585,13 @@ export default class CallsClient extends EventEmitter {
                     this.emit('remoteVoiceStream', remoteStream);
                     this.remoteVoiceTracks.push(...remoteStream.getAudioTracks());
                 } else if (remoteStream.getVideoTracks().length > 0) {
-                    this.emit('remoteScreenStream', remoteStream);
-                    this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
+                    if (trackInfo?.type === 'video') {
+                        this.emit('remoteVideoStream', remoteStream);
+                        this.remoteVideoTracks.push(remoteStream.getVideoTracks()[0]);
+                    } else {
+                        this.emit('remoteScreenStream', remoteStream);
+                        this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
+                    }
                 }
             });
 
@@ -479,14 +613,18 @@ export default class CallsClient extends EventEmitter {
         });
 
         ws.on('message', async ({data}) => {
-            const msg = JSON.parse(data);
-            if (!msg) {
-                return;
-            }
-            if (msg.type === 'answer' || msg.type === 'offer' || msg.type === 'candidate') {
-                if (this.peer) {
-                    await this.peer.signal(data);
+            try {
+                const msg = JSON.parse(data);
+                if (!msg) {
+                    return;
                 }
+                if (msg.type === 'answer' || msg.type === 'offer' || msg.type === 'candidate') {
+                    if (this.peer) {
+                        await this.peer.signal(data);
+                    }
+                }
+            } catch (err) {
+                logErr('ws.on(message): failed to handle message', err, 'data:', data);
             }
         });
     }
@@ -497,17 +635,23 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('remoteVoiceStream');
         this.removeAllListeners('remoteScreenStream');
         this.removeAllListeners('localScreenStream');
+        this.removeAllListeners('localVideoStream');
         this.removeAllListeners('devicechange');
         this.removeAllListeners('devicefallback');
         this.removeAllListeners('error');
         this.removeAllListeners('initaudio');
+        this.removeAllListeners('initvideo');
         this.removeAllListeners('mute');
         this.removeAllListeners('unmute');
         this.removeAllListeners('raise_hand');
         this.removeAllListeners('lower_hand');
         this.removeAllListeners('mos');
+        this.removeAllListeners('video_on');
+        this.removeAllListeners('video_off');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
         navigator.mediaDevices?.removeEventListener('devicechange', this.onDeviceChange);
+        this.segmenter?.stop();
+        this.segmenter = null;
         persistClientLogs();
     }
 
@@ -522,7 +666,7 @@ export default class CallsClient extends EventEmitter {
         this.currentAudioInputDevice = device;
 
         // We emit this event so it's easier to keep state in sync between widget and pop out.
-        this.emit('devicechange', this.audioDevices);
+        this.emit('devicechange', this.audioDevices, this.videoDevices);
 
         // If no track/stream exists we need to initialize again.
         // This edge case can happen if the default input device failed
@@ -533,35 +677,108 @@ export default class CallsClient extends EventEmitter {
         }
 
         const isEnabled = this.audioTrack.enabled;
-        this.audioTrack.stop();
-        const newStream = await navigator.mediaDevices.getUserMedia({
-            video: false,
-            audio: {
-                deviceId: {
-                    exact: device.deviceId,
+        const oldTrack = this.audioTrack;
+
+        try {
+            const newStream = await navigator.mediaDevices.getUserMedia({
+                video: false,
+                audio: {
+                    ...this.defaultAudioTrackOptions,
+                    deviceId: {
+                        exact: device.deviceId,
+                    },
                 },
-                autoGainControl: true,
-                echoCancellation: true,
-                noiseSuppression: true,
-            },
-        });
-        this.streams.push(newStream);
-        const newTrack = newStream.getAudioTracks()[0];
-        this.stream.removeTrack(this.audioTrack);
-        this.stream.addTrack(newTrack);
-        newTrack.enabled = isEnabled;
-        if (isEnabled) {
-            if (this.voiceTrackAdded) {
+            });
+            this.streams.push(newStream);
+            const newTrack = newStream.getAudioTracks()[0];
+
+            // Stop old track only after successfully getting new track
+            oldTrack.stop();
+
+            this.stream.removeTrack(oldTrack);
+            this.stream.addTrack(newTrack);
+            newTrack.enabled = isEnabled;
+            if (isEnabled) {
+                // voiceTrackAdded must be true if the track is enabled.
                 logDebug('replacing track to peer', newTrack.id);
-                this.peer.replaceTrack(this.audioTrack.id, newTrack);
+                this.peer.replaceTrack(oldTrack.id, newTrack);
             } else {
-                logDebug('adding track to peer', newTrack.id, this.stream.id);
-                await this.peer.addTrack(newTrack, this.stream);
+                this.voiceTrackAdded = false;
             }
-        } else {
-            this.voiceTrackAdded = false;
+            this.audioTrack = newTrack;
+        } catch (err) {
+            logErr('setAudioInputDevice: failed to switch audio input device', device.deviceId, err);
+            throw err;
         }
-        this.audioTrack = newTrack;
+    }
+
+    public async setVideoInputDevice(device: MediaDeviceInfo) {
+        if (!this.peer) {
+            return;
+        }
+
+        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, JSON.stringify(device));
+        this.currentVideoInputDevice = device;
+
+        // We emit this event so it's easier to keep state in sync between widget and pop out.
+        this.emit('devicechange', this.audioDevices, this.videoDevices);
+
+        // If no track/stream exists we need to initialize again.
+        // This edge case can happen if the default input device failed
+        // but there are potentially more valid ones to choose (MM-48822).
+        if (!this.localVideoStream) {
+            await this.initVideo(false, device.deviceId);
+            return;
+        }
+
+        const videoTrack = this.localVideoStream.getVideoTracks()[0];
+        const isEnabled = videoTrack.enabled;
+        const oldSegmenter = this.segmenter;
+
+        try {
+            const newStream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                    ...this.defaultVideoTrackOptions,
+                    deviceId: {
+                        exact: device.deviceId,
+                    },
+                },
+            });
+            this.streams.push(newStream);
+
+            let newTrack = newStream.getVideoTracks()[0];
+
+            const bgBlurData = getBgBlurData();
+            if (bgBlurData.blurBackground && bgBlurData.blurIntensity > 0) {
+                logDebug('background blur enabled', bgBlurData);
+                newTrack = await this.initBgBackgroundTrack(newStream, bgBlurData);
+            }
+
+            // Stop old track and segmenter only after successfully getting and processing new track
+            videoTrack.stop();
+            videoTrack.dispatchEvent(new Event('ended'));
+            if (oldSegmenter) {
+                oldSegmenter.stop();
+            }
+
+            this.localVideoStream.removeTrack(videoTrack);
+            this.localVideoStream.addTrack(newTrack);
+            this.localVideoStream = newStream;
+
+            newTrack.enabled = isEnabled;
+            if (isEnabled) {
+                // videoTrackAdded must be true if the track is enabled.
+                logDebug('replacing track to peer', newTrack.id);
+                this.peer.replaceTrack(videoTrack.id, newTrack);
+                this.emit('localVideoStream', newStream);
+            } else {
+                this.videoTrackAdded = false;
+            }
+        } catch (err) {
+            logErr('setVideoInputDevice: failed to switch video input device', device.deviceId, err);
+            throw err;
+        }
     }
 
     public async setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true) {
@@ -575,7 +792,7 @@ export default class CallsClient extends EventEmitter {
         this.currentAudioOutputDevice = device;
 
         // We emit this event so it's easier to keep state in sync between widget and pop out.
-        this.emit('devicechange', this.audioDevices);
+        this.emit('devicechange', this.audioDevices, this.videoDevices);
     }
 
     public disconnect(err?: Error) {
@@ -693,6 +910,13 @@ export default class CallsClient extends EventEmitter {
         return new MediaStream([this.remoteScreenTrack]);
     }
 
+    public getRemoteVideoStream(): MediaStream|null {
+        if (this.remoteVideoTracks.length < 1 || this.remoteVideoTracks[this.remoteVideoTracks.length - 1].readyState !== 'live') {
+            return null;
+        }
+        return new MediaStream([this.remoteVideoTracks[this.remoteVideoTracks.length - 1]]);
+    }
+
     public getRemoteVoiceTracks(): MediaStreamTrack[] {
         const tracks = [];
         for (const track of this.remoteVoiceTracks) {
@@ -733,9 +957,13 @@ export default class CallsClient extends EventEmitter {
                 return;
             }
 
-            await this.peer.removeTrack(screenTrack.id);
-            if (screenAudioTrack) {
-                await this.peer.removeTrack(screenAudioTrack.id);
+            try {
+                await this.peer.removeTrack(screenTrack.id);
+                if (screenAudioTrack) {
+                    await this.peer.removeTrack(screenAudioTrack.id);
+                }
+            } catch (err) {
+                logErr('screenTrack.onended: failed to remove track', err);
             }
 
             this.ws.send('screen_off');
@@ -788,6 +1016,121 @@ export default class CallsClient extends EventEmitter {
         this.localScreenTrack = null;
     }
 
+    private async initBgBackgroundTrack(stream: MediaStream, bgBlurData: BgBlurData) {
+        const localVideoTrack = stream.getVideoTracks()[0];
+
+        if (this.segmenter) {
+            return localVideoTrack;
+        }
+
+        const canvas = document.createElement('canvas');
+        const video = document.createElement('video');
+        canvas.width = localVideoTrack.getSettings().width!;
+        canvas.height = localVideoTrack.getSettings().height!;
+        video.autoplay = true;
+        video.srcObject = new MediaStream([localVideoTrack]);
+
+        const outStream = canvas.captureStream(30);
+        this.streams.push(outStream);
+        const outTrack = outStream.getVideoTracks()[0];
+
+        stream.removeTrack(localVideoTrack);
+        stream.addTrack(outTrack);
+
+        outTrack.onended = () => {
+            localVideoTrack.stop();
+            localVideoTrack.dispatchEvent(new Event('ended'));
+            canvas.remove();
+            video.remove();
+        };
+
+        this.segmenter = new Segmenter({
+            inputVideo: video,
+            outputCanvas: canvas,
+        });
+        this.segmenter.setBlurIntensity(bgBlurData.blurIntensity);
+
+        return outTrack;
+    }
+
+    public async startVideo() {
+        if (!this.ws || !this.peer || !this.config.enableVideo) {
+            return null;
+        }
+
+        if (!this.localVideoStream) {
+            try {
+                logDebug('no local video stream, initializing');
+                await this.initVideo(true);
+            } catch (err) {
+                this.emit('error', err);
+                return null;
+            }
+        }
+
+        // NOTE: we purposely clear the monitor's stats cache upon starting video
+        // in order to skip some calculations since upon starting video we actually
+        // stop sending packets which would result in stats to be skewed as
+        // soon as we resume sending.
+        // This is not perfect but it avoids having to constantly send
+        // empty frames when the video is off.
+        this.rtcMonitor?.clearCache();
+
+        if (!this.localVideoStream) {
+            logWarn('no local video stream');
+            return null;
+        }
+
+        let localVideoTrack = this.localVideoStream.getVideoTracks()[0];
+        const localVideoTrackID = localVideoTrack.id;
+        localVideoTrack.enabled = true;
+
+        const bgBlurData = getBgBlurData();
+        if (bgBlurData.blurBackground && bgBlurData.blurIntensity > 0) {
+            logDebug('background blur enabled', bgBlurData);
+            localVideoTrack = await this.initBgBackgroundTrack(this.localVideoStream, bgBlurData);
+        }
+
+        if (this.videoTrackAdded) {
+            await this.peer.replaceTrack(localVideoTrackID, localVideoTrack);
+        } else {
+            await this.peer.addTrack(localVideoTrack, this.localVideoStream, {encodings: this.defaultVideoTrackEncodings});
+            if (this.config.enableAV1 && this.av1Codec) {
+                logDebug('AV1 supported, sending track', this.av1Codec);
+                await this.peer.addTrack(localVideoTrack, this.localVideoStream, {
+                    codec: this.av1Codec,
+                    encodings: this.defaultVideoTrackEncodings,
+                });
+            }
+            this.videoTrackAdded = true;
+        }
+
+        this.emit('localVideoStream', this.localVideoStream);
+
+        this.ws.send('video_on', {
+            data: JSON.stringify({
+                videoStreamID: this.localVideoStream.id,
+            }),
+        });
+        this.emit('video_on');
+
+        return this.localVideoStream;
+    }
+
+    public stopVideo() {
+        if (!this.ws || !this.peer || !this.localVideoStream) {
+            return;
+        }
+
+        const localVideoTrack = this.localVideoStream.getVideoTracks()[0];
+
+        // @ts-ignore: we actually mean (and need) to pass null here
+        this.peer.replaceTrack(localVideoTrack.id, null);
+        localVideoTrack.enabled = false;
+        this.emit('video_off');
+        this.ws.send('video_off');
+    }
+
     public raiseHand() {
         this.emit('raise_hand');
         this.ws?.send('raise_hand');
@@ -809,7 +1152,7 @@ export default class CallsClient extends EventEmitter {
             throw new Error('not connected');
         }
 
-        const tracksInfo : TrackInfo[] = [];
+        const tracksInfo : TrackMetadata[] = [];
         this.streams.forEach((stream) => {
             return stream.getTracks().forEach((track) => {
                 tracksInfo.push({
@@ -835,6 +1178,10 @@ export default class CallsClient extends EventEmitter {
 
     public getAudioDevices() {
         return this.audioDevices;
+    }
+
+    public getVideoDevices() {
+        return this.videoDevices;
     }
 
     public getSessionID() {
