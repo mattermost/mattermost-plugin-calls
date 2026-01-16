@@ -389,10 +389,6 @@ export function playSound(name: string) {
         return;
     }
 
-    if (src.indexOf('/') === 0) {
-        src = getPluginStaticPath() + src;
-    }
-
     const audio = new Audio(src);
     audio.play();
     audio.onended = () => {
@@ -473,7 +469,7 @@ export async function fetchTranslationsFile(locale: string) {
         if (!filename) {
             throw new Error(`translations file not found for locale '${locale}'`);
         }
-        const res = await fetch(filename.indexOf('/') === 0 ? getPluginStaticPath() + filename : filename);
+        const res = await fetch(filename);
         const translations = await res.json();
         logDebug(`loaded i18n file for locale '${locale}'`);
         return translations;

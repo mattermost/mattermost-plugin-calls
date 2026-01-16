@@ -27,6 +27,8 @@ export const LIVE_CAPTION = pluginId + '_live_caption';
 export const LIVE_CAPTION_TIMEOUT_EVENT = pluginId + '_live_caption_timeout_event';
 export const HOST_CONTROL_NOTICE = pluginId + '_host_control_notice';
 export const HOST_CONTROL_NOTICE_TIMEOUT_EVENT = pluginId + '_host_control_notice_timeout_event';
+export const USER_VIDEO_ON = pluginId + '_user_video_on';
+export const USER_VIDEO_OFF = pluginId + '_user_video_off';
 
 export const SHOW_EXPANDED_VIEW = pluginId + '_show_expanded_view';
 export const HIDE_EXPANDED_VIEW = pluginId + '_hide_expanded_view';

@@ -65,6 +65,8 @@ import {
     USER_SCREEN_OFF,
     USER_SCREEN_ON,
     USER_UNMUTED,
+    USER_VIDEO_OFF,
+    USER_VIDEO_ON,
     USER_VOICE_OFF,
     USER_VOICE_ON,
     USERS_STATES,
@@ -182,6 +184,7 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
                     user_id: action.data.userID,
                     unmuted: false,
                     voice: false,
+                    video: false,
                     raised_hand: 0,
                 },
             },
@@ -211,6 +214,7 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
                         user_id: action.data.userID,
                         unmuted: false,
                         voice: false,
+                        video: false,
                         raised_hand: 0,
                     },
                 },
@@ -236,6 +240,7 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
                         user_id: action.data.userID,
                         unmuted: true,
                         voice: false,
+                        video: false,
                         raised_hand: 0,
                     },
                 },
@@ -261,6 +266,7 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
                         user_id: action.data.userID,
                         unmuted: false,
                         voice: true,
+                        video: false,
                         raised_hand: 0,
                     },
                 },
@@ -286,6 +292,7 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
                         user_id: action.data.userID,
                         unmuted: false,
                         voice: false,
+                        video: false,
                         raised_hand: 0,
                     },
                 },
@@ -311,6 +318,7 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
                         user_id: action.data.userID,
                         unmuted: false,
                         voice: false,
+                        video: false,
                         raised_hand: action.data.raised_hand,
                     },
                 },
@@ -336,6 +344,7 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
                         user_id: action.data.userID,
                         voice: false,
                         unmuted: false,
+                        video: false,
                         raised_hand: action.data.raised_hand,
                     },
                 },
@@ -362,6 +371,7 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
                         voice: false,
                         unmuted: false,
                         raised_hand: 0,
+                        video: false,
                         reaction: action.data.reaction,
                     },
                 },
@@ -396,6 +406,58 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
             },
         };
     }
+    case USER_VIDEO_ON:
+        if (!state[action.data.channelID]) {
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    [action.data.session_id]: {
+                        session_id: action.data.session_id,
+                        user_id: action.data.userID,
+                        unmuted: false,
+                        voice: false,
+                        raised_hand: 0,
+                        video: true,
+                    },
+                },
+            };
+        }
+        return {
+            ...state,
+            [action.data.channelID]: {
+                ...state[action.data.channelID],
+                [action.data.session_id]: {
+                    ...state[action.data.channelID][action.data.session_id],
+                    video: true,
+                },
+            },
+        };
+    case USER_VIDEO_OFF:
+        if (!state[action.data.channelID]) {
+            return {
+                ...state,
+                [action.data.channelID]: {
+                    [action.data.session_id]: {
+                        session_id: action.data.session_id,
+                        user_id: action.data.userID,
+                        unmuted: true,
+                        voice: false,
+                        raised_hand: 0,
+                        video: false,
+                    },
+                },
+            };
+        }
+        return {
+            ...state,
+            [action.data.channelID]: {
+                ...state[action.data.channelID],
+                [action.data.session_id]: {
+                    ...state[action.data.channelID][action.data.session_id],
+                    video: false,
+                },
+            },
+        };
     default:
         return state;
     }

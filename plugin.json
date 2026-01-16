@@ -77,6 +77,13 @@
             "type": "bool",
             "default": false,
             "help_text": "When set to true, clients will use WebRTC data channels for signaling of new media tracks. This can result in a more efficient and less race-prone process, especially in case of frequent WebSocket disconnections."
+          },
+          {
+            "key": "EnableVideo",
+            "display_name": "Enable video calls in DMs (Experimental)",
+            "type": "bool",
+            "default": false,
+            "help_text": "When set to true, video calls are enabled in direct message channels."
           }
         ]
       },
@@ -712,6 +719,13 @@
         "type": "bool",
         "default": false,
         "help_text": "When set to true, clients will use WebRTC data channels for signaling of new media tracks. This can result in a more efficient and less race-prone process, especially in case of frequent WebSocket disconnections."
+      },
+      {
+        "key": "EnableVideo",
+        "display_name": "Enable video calls in DMs (Experimental)",
+        "type": "bool",
+        "default": false,
+        "help_text": "When set to true, video calls are enabled in direct message channels."
       }
     ]
   },
