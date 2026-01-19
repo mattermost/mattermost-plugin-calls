@@ -75,6 +75,21 @@ This product contains '@mattermost/compass-icons' by Mattermost.
 
 ---
 
+## @mediapipe/tasks-vision
+
+This product contains '@mediapipe/tasks-vision' by mediapipe@google.com.
+
+MediaPipe Vision Tasks
+
+* HOMEPAGE:
+  * http://mediapipe.dev
+
+* LICENSE: Apache-2.0
+
+
+
+---
+
 ## @msgpack/msgpack
 
 This product contains '@msgpack/msgpack' by The MessagePack community.
