@@ -173,7 +173,6 @@
   "VMXPVw": "La dirección IP local utilizada por el servidor RTC para escuchar las conexiones UDP.",
   "VXdfVy": "La dirección IP local utilizada por el servidor RTC para escuchar las conexiones TCP.",
   "VXuUsJ": "Comparte sonido con pantalla",
-  "Vc8/fR": "Total de sesiones activas",
   "W9355R": "Desactivar",
   "WUeQHK": "El número máximo de participantes que pueden unirse a una llamada. Si se deja vacío o se pone a 0, puede unirse un número ilimitado de participantes.",
   "WWqBr0": "Finalizado en {endTime}",
