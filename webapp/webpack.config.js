@@ -6,6 +6,7 @@
 const exec = require('child_process').exec;
 const path = require('path');
 
+const TerserPlugin = require('terser-webpack-plugin');
 const webpack = require('webpack');
 
 const PLUGIN_ID = require('../plugin.json').id;
@@ -130,4 +131,11 @@ module.exports = {
     devtool,
     mode,
     plugins,
+    optimization: {
+        minimizer: [
+            new TerserPlugin({
+                exclude: /@mediapipe/,
+            }),
+        ],
+    },
 };

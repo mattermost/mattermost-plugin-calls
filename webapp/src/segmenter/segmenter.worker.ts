@@ -83,7 +83,7 @@ self.onmessage = async ({data}) => {
             let j = 0;
             const mask = result.categoryMask.getAsFloat32Array();
             for (let i = 0; i < mask.length; i++) {
-                if (mask[i] > 0) {
+                if (mask[i] === 0) {
                     newImageData[j] = 0;
                     newImageData[j + 1] = 0;
                     newImageData[j + 2] = 0;
@@ -101,7 +101,7 @@ self.onmessage = async ({data}) => {
 
             outputCtx.drawImage(await createImageBitmap(dataNew), 0, 0);
         });
-    } else if (data.blurIntensity) {
+    } else if ('blurIntensity' in data) {
         blurIntensity = data.blurIntensity;
     }
 };

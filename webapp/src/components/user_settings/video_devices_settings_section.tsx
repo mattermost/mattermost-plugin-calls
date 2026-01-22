@@ -172,7 +172,7 @@ function VideoPreview(props: {
         if (segRef.current && props.blurBackground) {
             segRef.current.setBlurIntensity(props.blurIntensity);
         }
-    }, [props.blurIntensity]);
+    }, [props.blurIntensity, props.blurBackground]);
 
     useEffect(() => {
         if (videoRef.current) {
