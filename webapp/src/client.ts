@@ -760,6 +760,10 @@ export default class CallsClient extends EventEmitter {
             videoTrack.dispatchEvent(new Event('ended'));
             if (oldSegmenter) {
                 oldSegmenter.stop();
+                // Clear segmenter reference if blur is now disabled
+                if (!bgBlurData.blurBackground) {
+                    this.segmenter = null;
+                }
             }
 
             this.localVideoStream.removeTrack(videoTrack);
@@ -1142,14 +1146,15 @@ export default class CallsClient extends EventEmitter {
     }
 
     public async setBlurSettings(blurEnabled: boolean, blurIntensity: number) {
-        // If segmenter exists, update intensity
-        if (this.segmenter) {
+        // If segmenter exists and blur is still enabled, just update intensity
+        if (this.segmenter && blurEnabled) {
             this.segmenter.setBlurIntensity(blurIntensity);
+            return;
         }
 
-        // If blur is being enabled and video is active but no segmenter exists,
-        // we need to re-initialize the video track with blur
-        if (blurEnabled && !this.segmenter && this.localVideoStream) {
+        // If blur state is changing and video is active, re-initialize the video track
+        const blurStateChanging = (blurEnabled && !this.segmenter) || (!blurEnabled && this.segmenter);
+        if (blurStateChanging && this.localVideoStream) {
             let device = this.currentVideoInputDevice;
 
             // Fallback: get device from current track settings if not stored
