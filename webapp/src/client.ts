@@ -574,23 +574,47 @@ export default class CallsClient extends EventEmitter {
             });
 
             peer.on('stream', (remoteStream: MediaStream, trackInfo: TrackInfo) => {
-                logDebug('new remote stream received', remoteStream.id, trackInfo);
+                logDebug('new remote stream received', remoteStream.id, 'trackInfo:', trackInfo);
                 for (const track of remoteStream.getTracks()) {
-                    logDebug('remote track', track.kind, track.id);
+                    logDebug('remote track', track.kind, track.id, 'label:', track.label);
                 }
 
                 this.streams.push(remoteStream);
 
-                if (remoteStream.getAudioTracks().length > 0) {
-                    this.emit('remoteVoiceStream', remoteStream);
-                    this.remoteVoiceTracks.push(...remoteStream.getAudioTracks());
-                } else if (remoteStream.getVideoTracks().length > 0) {
-                    if (trackInfo?.type === 'video') {
-                        this.emit('remoteVideoStream', remoteStream);
-                        this.remoteVideoTracks.push(remoteStream.getVideoTracks()[0]);
+                const audioTracks = remoteStream.getAudioTracks();
+                const videoTracks = remoteStream.getVideoTracks();
+
+                logDebug('stream has', audioTracks.length, 'audio tracks and', videoTracks.length, 'video tracks');
+
+                // Handle audio tracks based on type
+                if (audioTracks.length > 0) {
+                    if (trackInfo?.type === 'screen-audio') {
+                        // Screen share audio - emit as voice stream so it gets played
+                        logDebug('received screen-audio track, emitting as remoteVoiceStream');
+                        this.emit('remoteVoiceStream', new MediaStream(audioTracks));
+                        this.remoteVoiceTracks.push(...audioTracks);
+                    } else if (trackInfo?.type === 'voice' || !trackInfo?.type) {
+                        // Regular voice audio
+                        logDebug('received voice track, emitting as remoteVoiceStream');
+                        this.emit('remoteVoiceStream', remoteStream);
+                        this.remoteVoiceTracks.push(...audioTracks);
                     } else {
+                        logDebug('unexpected audio track type:', trackInfo?.type);
+                    }
+                }
+
+                // Handle video tracks based on type
+                if (videoTracks.length > 0) {
+                    if (trackInfo?.type === 'video') {
+                        logDebug('received video track, emitting as remoteVideoStream');
+                        this.emit('remoteVideoStream', remoteStream);
+                        this.remoteVideoTracks.push(videoTracks[0]);
+                    } else if (trackInfo?.type === 'screen') {
+                        logDebug('received screen track, emitting as remoteScreenStream');
                         this.emit('remoteScreenStream', remoteStream);
-                        this.remoteScreenTrack = remoteStream.getVideoTracks()[0];
+                        this.remoteScreenTrack = videoTracks[0];
+                    } else {
+                        logDebug('unexpected video track type:', trackInfo?.type);
                     }
                 }
             });
@@ -938,9 +962,10 @@ export default class CallsClient extends EventEmitter {
         const screenAudioTrack = screenStream.getAudioTracks()[0];
 
         if (screenAudioTrack) {
-            logDebug('screen sharing with audio', screenAudioTrack);
+            logDebug(`screen sharing with audio - track id: ${screenAudioTrack.id}, kind: ${screenAudioTrack.kind}, label: ${screenAudioTrack.label}`);
             screenStream = new MediaStream([screenTrack, screenAudioTrack]);
         } else {
+            logDebug('screen sharing WITHOUT audio');
             screenStream = new MediaStream([screenTrack]);
         }
 
@@ -969,7 +994,7 @@ export default class CallsClient extends EventEmitter {
             this.ws.send('screen_off');
         };
 
-        logDebug('adding screen stream to peer', screenStream.id);
+        logDebug(`adding screen stream to peer: ${screenStream.id}`);
 
         this.emit('localScreenStream', screenStream);
 
@@ -983,7 +1008,7 @@ export default class CallsClient extends EventEmitter {
         await this.peer.addStream(screenStream);
 
         if (this.config.enableAV1 && this.av1Codec) {
-            logDebug('AV1 supported, sending track', this.av1Codec);
+            logDebug(`AV1 supported, sending track: ${this.av1Codec}`);
 
             await this.peer.addTrack(screenTrack, screenStream, {
                 codec: this.av1Codec,
