@@ -83,7 +83,7 @@ self.onmessage = async ({data}) => {
             let j = 0;
             const mask = result.categoryMask.getAsFloat32Array();
             for (let i = 0; i < mask.length; i++) {
-                if (mask[i] === 0) {
+                if (mask[i] > 0) {
                     newImageData[j] = 0;
                     newImageData[j + 1] = 0;
                     newImageData[j + 2] = 0;

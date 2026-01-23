@@ -1141,6 +1141,12 @@ export default class CallsClient extends EventEmitter {
         this.ws?.send('unraise_hand');
     }
 
+    public setBlurSettings(blurIntensity: number) {
+        if (this.segmenter) {
+            this.segmenter.setBlurIntensity(blurIntensity);
+        }
+    }
+
     public sendUserReaction(data: EmojiData) {
         this.ws?.send('react', {
             data: JSON.stringify(data),
