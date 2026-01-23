@@ -1141,9 +1141,29 @@ export default class CallsClient extends EventEmitter {
         this.ws?.send('unraise_hand');
     }
 
-    public setBlurSettings(blurIntensity: number) {
+    public async setBlurSettings(blurEnabled: boolean, blurIntensity: number) {
+        // If segmenter exists, update intensity
         if (this.segmenter) {
             this.segmenter.setBlurIntensity(blurIntensity);
+        }
+
+        // If blur is being enabled and video is active but no segmenter exists,
+        // we need to re-initialize the video track with blur
+        if (blurEnabled && !this.segmenter && this.localVideoStream) {
+            let device = this.currentVideoInputDevice;
+
+            // Fallback: get device from current track settings if not stored
+            if (!device) {
+                const track = this.localVideoStream.getVideoTracks()[0];
+                const settings = track?.getSettings();
+                if (settings?.deviceId) {
+                    device = {deviceId: settings.deviceId, label: ''} as MediaDeviceInfo;
+                }
+            }
+
+            if (device) {
+                await this.setVideoInputDevice(device, false);
+            }
         }
     }
 

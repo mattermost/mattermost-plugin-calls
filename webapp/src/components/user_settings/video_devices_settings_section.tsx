@@ -269,7 +269,7 @@ export default function VideoDevicesSettingsSection() {
         setBgBlurData({blurBackground, blurIntensity});
 
         // Update blur settings on active call if one exists
-        getCallsClient()?.setBlurSettings(blurIntensity);
+        getCallsClient()?.setBlurSettings(blurBackground, blurIntensity);
 
         setActive(false);
     };
