@@ -1024,6 +1024,10 @@ export default class Plugin {
                     title: 'Audio devices settings',
                     component: AudioDevicesSettingsSection,
                 },
+                {
+                    title: 'Screen sharing settings',
+                    component: ScreenSharingSettingsSection,
+                },
             ];
 
             if (callsConfig(store.getState()).EnableVideo) {
