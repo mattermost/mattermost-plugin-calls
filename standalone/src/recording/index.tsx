@@ -9,8 +9,8 @@ import {logErr, logInfo} from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
-    fetchTranslationsFile,
     getPluginPath,
+    getTranslations,
     getUserIDsForSessions,
     runWithRetry,
     setCallsGlobalCSSVars,
@@ -77,14 +77,6 @@ async function initRecording({store, theme}: InitCbProps) {
     setCallsGlobalCSSVars(theme.sidebarBg);
 
     const locale = getCurrentUserLocale(store.getState()) || 'en';
-    let messages;
-    if (locale !== 'en') {
-        try {
-            messages = await runWithRetry(() => fetchTranslationsFile(locale));
-        } catch (err) {
-            logErr('failed to fetch translations files', err);
-        }
-    }
 
     ReactDOM.render(
         <Provider store={store}>
@@ -92,7 +84,7 @@ async function initRecording({store, theme}: InitCbProps) {
                 locale={locale}
                 key={locale}
                 defaultLocale='en'
-                messages={messages}
+                messages={getTranslations(locale)}
             >
                 <RecordingView/>
             </IntlProvider>
