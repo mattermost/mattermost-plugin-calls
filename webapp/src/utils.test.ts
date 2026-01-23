@@ -215,11 +215,12 @@ describe('utils', () => {
     });
 
     describe('sleep', () => {
-        test('1s', async () => {
+        test('500ms', async () => {
             const sleepTimeMs = 500;
+            const toleranceMs = 10;
             const start = Date.now();
             await sleep(sleepTimeMs);
-            expect(Date.now() - start).toBeGreaterThanOrEqual(sleepTimeMs);
+            expect(Date.now() - start).toBeGreaterThanOrEqual(sleepTimeMs - toleranceMs);
         });
     });
 

@@ -174,7 +174,6 @@
   "VMXPVw": "Den lokala IP-adress som används av RTC-servern för att lyssna på UDP-anslutningar.",
   "VXdfVy": "Den lokala IP-adress som används av RTC-servern för att lyssna på TCP-anslutningar.",
   "VXuUsJ": "Dela ljud och skärmbild",
-  "Vc8/fR": "Totalt antal aktiva sessioner",
   "W9355R": "Avmjuta",
   "WUeQHK": "Maximala antalet deltagare som kan ansluta till ett samtal. Om det lämnas tomt eller sätts till 0 innebär obegränsat antal.",
   "WWqBr0": "Slutade {endTime}",

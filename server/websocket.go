@@ -34,6 +34,8 @@ const (
 	wsEventUserVoiceOff              = "user_voice_off"
 	wsEventUserScreenOn              = "user_screen_on"
 	wsEventUserScreenOff             = "user_screen_off"
+	wsEventUserVideoOn               = "user_video_on"
+	wsEventUserVideoOff              = "user_video_off"
 	wsEventCallStart                 = "call_start"
 	wsEventCallState                 = "call_state"
 	wsEventCallEnd                   = "call_end"
@@ -165,13 +167,6 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, handlerID string) error {
 	if cfg := p.getConfiguration(); cfg == nil || cfg.AllowScreenSharing == nil || !*cfg.AllowScreenSharing {
 		return fmt.Errorf("screen sharing is not allowed")
-	}
-
-	data := map[string]string{}
-	if msg.Type == clientMessageTypeScreenOn {
-		if err := json.Unmarshal(msg.Data, &data); err != nil {
-			return err
-		}
 	}
 
 	state, err := p.lockCallReturnState(us.channelID)
@@ -376,6 +371,66 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
 			return err
 		}
+	case clientMessageTypeVideoOn, clientMessageTypeVideoOff:
+		if handlerID != p.nodeID {
+			// need to relay track event.
+			if err := p.sendClusterMessage(clusterMessage{
+				ConnID:        us.originalConnID,
+				UserID:        us.userID,
+				ChannelID:     us.channelID,
+				CallID:        us.callID,
+				SenderID:      p.nodeID,
+				ClientMessage: msg,
+			}, clusterMessageTypeUserState, handlerID); err != nil {
+				return err
+			}
+		} else {
+			msgType := rtc.VideoOnMessage
+			if msg.Type == clientMessageTypeVideoOff {
+				msgType = rtc.VideoOffMessage
+			}
+
+			rtcMsg := rtc.Message{
+				SessionID: us.originalConnID,
+				Type:      msgType,
+				Data:      msg.Data,
+			}
+
+			if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
+				return fmt.Errorf("failed to send RTC message: %w", err)
+			}
+		}
+
+		state, err := p.lockCallReturnState(us.channelID)
+		if err != nil {
+			return fmt.Errorf("failed to lock call: %w", err)
+		}
+		defer p.unlockCall(us.channelID)
+		if state == nil {
+			return fmt.Errorf("channel state is missing from store")
+		}
+		session := state.sessions[us.originalConnID]
+		if session == nil {
+			return fmt.Errorf("user session is missing from call state")
+		}
+		session.Video = msg.Type == clientMessageTypeVideoOn
+
+		if err := p.store.UpdateCallSession(session); err != nil {
+			return fmt.Errorf("failed to update call session: %w", err)
+		}
+
+		evType := wsEventUserVideoOn
+		if msg.Type == clientMessageTypeVideoOff {
+			evType = wsEventUserVideoOff
+		}
+		p.publishWebSocketEvent(evType, map[string]interface{}{
+			"userID":     us.userID,
+			"session_id": us.originalConnID,
+		}, &WebSocketBroadcast{
+			ChannelID:           us.channelID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
 	case clientMessageTypeRaiseHand, clientMessageTypeUnraiseHand:
 		evType := wsEventUserUnraiseHand
 		if msg.Type == clientMessageTypeRaiseHand {
@@ -1246,7 +1301,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 		msg.Data = data
-	case clientMessageTypeICE, clientMessageTypeScreenOn:
+	case clientMessageTypeICE, clientMessageTypeScreenOn, clientMessageTypeVideoOn:
 		msgData, ok := req.Data["data"].(string)
 		if !ok {
 			p.LogError("invalid or missing data")

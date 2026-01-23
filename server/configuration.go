@@ -137,6 +137,8 @@ type ClientConfig struct {
 	GroupCallsAllowed bool
 	// When set to true it enables experimental support for using the data channel for signaling.
 	EnableDCSignaling *bool
+	// When set to try it enables video calls in direct message channels.
+	EnableVideo *bool
 }
 
 const (
@@ -204,7 +206,7 @@ func (c *configuration) SetDefaults() {
 		c.MaxCallParticipants = model.NewPointer(0) // unlimited
 	}
 	if c.TURNCredentialsExpirationMinutes == nil {
-		c.TURNCredentialsExpirationMinutes = model.NewPointer(1440)
+		c.TURNCredentialsExpirationMinutes = model.NewPointer(240)
 	}
 	if c.ServerSideTURN == nil {
 		c.ServerSideTURN = model.NewPointer(false)
@@ -262,6 +264,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.EnableDCSignaling == nil {
 		c.EnableDCSignaling = model.NewPointer(false)
+	}
+	if c.EnableVideo == nil {
+		c.EnableVideo = model.NewPointer(false)
 	}
 }
 
@@ -455,6 +460,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.EnableDCSignaling = model.NewPointer(*c.EnableDCSignaling)
 	}
 
+	if c.EnableVideo != nil {
+		cfg.EnableVideo = model.NewPointer(*c.EnableVideo)
+	}
+
 	return &cfg
 }
 
@@ -525,6 +534,7 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		EnableAV1:            c.EnableAV1,
 		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
 		EnableDCSignaling:    c.EnableDCSignaling,
+		EnableVideo:          c.EnableVideo,
 	}
 }
 

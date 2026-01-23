@@ -174,7 +174,6 @@
   "VMXPVw": "Die lokale IP-Adresse, die der RTC-Server verwendet, um auf UDP-Verbindungen zu warten.",
   "VXdfVy": "Die lokale IP-Adresse, die der RTC-Server verwendet, um auf TCP-Verbindungen zu warten.",
   "VXuUsJ": "Ton mit Bildschirm teilen",
-  "Vc8/fR": "Aktive Sitzungen insgesamt",
   "W9355R": "Stummschaltung aufheben",
   "WUeQHK": "Die maximale Anzahl der Teilnehmer, die an einem Anruf teilnehmen können. Wenn sie leer bleibt oder auf 0 gesetzt wird, kann eine unbegrenzte Anzahl von Teilnehmern teilnehmen.",
   "WWqBr0": "Beendet um {endTime}",

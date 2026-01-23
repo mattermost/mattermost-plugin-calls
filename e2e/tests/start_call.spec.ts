@@ -243,20 +243,20 @@ test.describe('setting audio input device', () => {
         await devPage.startCall();
 
         await page.locator('#calls-widget-toggle-menu-button').click();
-        await expect(page.locator('#calls-widget-audio-input-button')).toBeVisible();
-        await page.locator('#calls-widget-audio-input-button').click();
-        await expect(page.locator('#calls-widget-audio-inputs-menu')).toBeVisible();
+        await expect(page.locator('#calls-widget-audioinput-button')).toBeVisible();
+        await page.locator('#calls-widget-audioinput-button').click();
+        await expect(page.locator('#calls-widget-audioinputs-menu')).toBeVisible();
 
         const currentAudioInputDeviceID = await page.evaluate(() => {
-            return window.callsClient.currentInputAudioDevice?.deviceId;
+            return window.callsClient.currentAudioInputDevice?.deviceId;
         });
         if (currentAudioInputDeviceID) {
             test.fail();
             return;
         }
 
-        await page.locator('#calls-widget-audio-inputs-menu button:has-text("Fake Audio Input 1")').click();
-        await expect(page.locator('#calls-widget-audio-inputs-menu')).toBeHidden();
+        await page.locator('#calls-widget-audioinputs-menu button:has-text("Fake Audio Input 1")').click();
+        await expect(page.locator('#calls-widget-audioinputs-menu')).toBeHidden();
 
         const currentAudioInputDevice = await page.evaluate(() => {
             return window.callsClient.currentAudioInputDevice;
@@ -313,9 +313,9 @@ test.describe('setting audio output device', () => {
         await devPage.startCall();
 
         await page.locator('#calls-widget-toggle-menu-button').click();
-        await expect(page.locator('#calls-widget-audio-output-button')).toBeVisible();
-        await page.locator('#calls-widget-audio-output-button').click();
-        await expect(page.locator('#calls-widget-audio-outputs-menu')).toBeVisible();
+        await expect(page.locator('#calls-widget-audiooutput-button')).toBeVisible();
+        await page.locator('#calls-widget-audiooutput-button').click();
+        await expect(page.locator('#calls-widget-audiooutputs-menu')).toBeVisible();
 
         const currentAudioOutputDeviceID = await page.evaluate(() => {
             return window.callsClient.currentAudioOutputDevice?.deviceId;
@@ -325,8 +325,8 @@ test.describe('setting audio output device', () => {
             return;
         }
 
-        await page.locator('#calls-widget-audio-outputs-menu button:has-text("Fake Audio Output 1")').click();
-        await expect(page.locator('#calls-widget-audio-outputs-menu')).toBeHidden();
+        await page.locator('#calls-widget-audiooutputs-menu button:has-text("Fake Audio Output 1")').click();
+        await expect(page.locator('#calls-widget-audiooutputs-menu')).toBeHidden();
 
         const currentAudioOutputDevice = await page.evaluate(() => {
             return window.callsClient.currentAudioOutputDevice;
@@ -597,5 +597,79 @@ test.describe('widget menu', () => {
         await expect(page.locator('#rhsContainer').filter({has: page.getByText(`by ${usernames[0]}`)})).toBeVisible();
 
         await devPage.leaveCall();
+    });
+});
+
+test.describe('setting video input device', () => {
+    test.use({storageState: userStorages[0]});
+
+    test('no default', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+        await devPage.startCall();
+
+        const currentVideoInputDevice = await page.evaluate(() => {
+            return window.callsClient.currentVideoInputDevice?.deviceId;
+        });
+        if (currentVideoInputDevice) {
+            test.fail();
+            return;
+        }
+
+        await devPage.leaveCall();
+    });
+
+    test('setting default', async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+
+        // Video is only available in DMs
+        await devPage.gotoDM(usernames[1]);
+
+        await devPage.startCall();
+
+        await page.locator('#calls-widget-toggle-menu-button').click();
+        await expect(page.locator('#calls-widget-videoinput-button')).toBeVisible();
+        await page.locator('#calls-widget-videoinput-button').click();
+        await expect(page.locator('#calls-widget-videoinputs-menu')).toBeVisible();
+
+        const currentVideoInputDeviceID = await page.evaluate(() => {
+            return window.callsClient.currentVideoInputDevice?.deviceId;
+        });
+        if (currentVideoInputDeviceID) {
+            test.fail();
+            return;
+        }
+
+        await page.locator('#calls-widget-videoinputs-menu button:has-text("fake_device_0")').click();
+        await expect(page.locator('#calls-widget-videoinputs-menu')).toBeHidden();
+
+        const currentVideoInputDevice = await page.evaluate(() => {
+            return window.callsClient.currentVideoInputDevice;
+        });
+        if (currentVideoInputDevice.label !== 'fake_device_0') {
+            test.fail();
+            return;
+        }
+
+        await devPage.leaveCall();
+
+        await devPage.startCall();
+
+        const currentVideoInputDevice2 = await page.evaluate(() => {
+            return window.callsClient.currentVideoInputDevice?.deviceId;
+        });
+        if (currentVideoInputDevice2 !== currentVideoInputDevice.deviceId) {
+            test.fail();
+            return;
+        }
+
+        await devPage.leaveCall();
+
+        await page.reload();
+        const device = await page.evaluate(() => {
+            return JSON.parse(window.localStorage.getItem('calls_default_video_input')!);
+        });
+        if (!device || !device.deviceId || !device.label) {
+            test.fail();
+        }
     });
 });

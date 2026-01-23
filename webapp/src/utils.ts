@@ -389,10 +389,6 @@ export function playSound(name: string) {
         return;
     }
 
-    if (src.indexOf('/') === 0) {
-        src = getPluginStaticPath() + src;
-    }
-
     const audio = new Audio(src);
     audio.play();
     audio.onended = () => {

@@ -5,9 +5,10 @@ import {expect, test} from '@playwright/test';
 
 import {apiSetEnableAV1} from '../config';
 import PlaywrightDevPage from '../page';
-import {getUserStoragesForTest, startCall} from '../utils';
+import {getUsernamesForTest, getUserStoragesForTest, startCall, startDMWith} from '../utils';
 
 const userStorages = getUserStoragesForTest();
+const usernames = getUsernamesForTest();
 
 test.beforeEach(async ({page}) => {
     const devPage = new PlaywrightDevPage(page);
@@ -412,5 +413,250 @@ test.describe('sending voice', () => {
         await expect(page.getByTestId(voiceTrackID)).toHaveAttribute('autoplay', '');
 
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
+    });
+});
+
+test.describe('video calls', () => {
+    test.use({storageState: userStorages[0]});
+
+    test.describe('widget', () => {
+        test('self only', {
+            tag: '@core',
+        }, async ({page}) => {
+            const userAPage = new PlaywrightDevPage(page);
+            await userAPage.gotoDM(usernames[1]);
+            await userAPage.startCall();
+
+            // Start video
+            await userAPage.page.locator('#video-start-stop').click();
+
+            // Verify self view shows
+            await expect(userAPage.page.getByTestId('calls-widget-video-player-self')).toBeVisible();
+
+            // Verify video track is correctly set
+            const videoTrackID = await (await userAPage.page.waitForFunction(() => {
+                return window.callsClient.localVideoStream?.getVideoTracks()[0]?.id;
+            })).evaluate(() => {
+                return window.callsClient.localVideoStream?.getVideoTracks()[0]?.id;
+            });
+            expect(videoTrackID).toBeTruthy();
+
+            // Stop video
+            await page.locator('#video-start-stop').click();
+
+            // Verify self view is hidden
+            await expect(userAPage.page.getByTestId('calls-widget-video-player-self')).toBeHidden();
+
+            await userAPage.leaveCall();
+        });
+
+        test('1-1', {
+            tag: '@core',
+        }, async ({page}) => {
+            const userAPage = new PlaywrightDevPage(page);
+
+            const [_, userBPage] = await Promise.all([
+                userAPage.gotoDM(usernames[1]),
+                startDMWith(userStorages[1], usernames[0]),
+            ]);
+
+            await Promise.all([userBPage.startCall(), userAPage.joinCall()]);
+
+            // User A starts video
+            await userAPage.page.locator('#video-start-stop').click();
+
+            // Verify userA's video shows
+            await expect(userAPage.page.getByTestId('calls-widget-video-player-self')).toBeVisible();
+
+            // Verify placeholder with userB's avatar shows
+            await expect(userAPage.page.getByTestId('calls-widget-video-placeholder-other')).toBeVisible();
+
+            // Verify userA's video is visible on userB's side
+            await expect(userBPage.page.getByTestId('calls-widget-video-player-other')).toBeVisible();
+
+            // Verify remote video tracks are correctly set
+            let videoTrackID = await (await userBPage.page.waitForFunction(() => {
+                return window.callsClient.getRemoteVideoStream()?.getVideoTracks()[0]?.id;
+            })).evaluate(() => {
+                return window.callsClient.getRemoteVideoStream()?.getVideoTracks()[0]?.id;
+            });
+            expect(videoTrackID).toBeTruthy();
+
+            // User A stops video
+            await userAPage.page.locator('#video-start-stop').click();
+
+            // Verify video interface is not rendered on both sides
+            await expect(userAPage.page.getByTestId('calls-widget-video-player-self')).toBeHidden();
+            await expect(userAPage.page.getByTestId('calls-widget-video-player-other')).toBeHidden();
+            await expect(userAPage.page.getByTestId('calls-widget-video-placeholder-self')).toBeHidden();
+            await expect(userAPage.page.getByTestId('calls-widget-video-placeholder-other')).toBeHidden();
+
+            await expect(userBPage.page.getByTestId('calls-widget-video-player-self')).toBeHidden();
+            await expect(userBPage.page.getByTestId('calls-widget-video-player-other')).toBeHidden();
+            await expect(userBPage.page.getByTestId('calls-widget-video-placeholder-self')).toBeHidden();
+            await expect(userBPage.page.getByTestId('calls-widget-video-placeholder-other')).toBeHidden();
+
+            // User B starts video
+            await userBPage.page.locator('#video-start-stop').click();
+
+            // Verify placeholder with userB's avatar is hidden
+            await expect(userAPage.page.getByTestId('calls-widget-video-placeholder-self')).toBeVisible();
+            await expect(userAPage.page.getByTestId('calls-widget-video-placeholder-other')).toBeHidden();
+
+            // Verify userB's video shows
+            await expect(userAPage.page.getByTestId('calls-widget-video-player-other')).toBeVisible();
+            await expect(userBPage.page.getByTestId('calls-widget-video-player-self')).toBeVisible();
+
+            // Verify remote video tracks are correctly set
+            videoTrackID = await (await userAPage.page.waitForFunction(() => {
+                return window.callsClient.getRemoteVideoStream()?.getVideoTracks()[0]?.id;
+            })).evaluate(() => {
+                return window.callsClient.getRemoteVideoStream()?.getVideoTracks()[0]?.id;
+            });
+            expect(videoTrackID).toBeTruthy();
+
+            await Promise.all([userAPage.leaveCall(), userBPage.leaveCall()]);
+        });
+    });
+
+    test.describe('popout', () => {
+        test('self only', {
+            tag: '@core',
+        }, async ({page}) => {
+            const userAPage = new PlaywrightDevPage(page);
+            await userAPage.gotoDM(usernames[1]);
+            await userAPage.startCall();
+
+            const popOut = await userAPage.openPopout();
+
+            // Start video
+            await popOut.page.locator('#calls-popout-video-button').click();
+
+            // Verify self view shows
+            await expect(popOut.page.getByTestId('calls-popout-video-player-self')).toBeVisible();
+
+            // Verify video track is correctly set
+            const videoTrackID = await (await userAPage.page.waitForFunction(() => {
+                return window.callsClient.localVideoStream?.getVideoTracks()[0]?.id;
+            })).evaluate(() => {
+                return window.callsClient.localVideoStream?.getVideoTracks()[0]?.id;
+            });
+            expect(videoTrackID).toBeTruthy();
+
+            // Stop video
+            await popOut.page.locator('#calls-popout-video-button').click();
+
+            // Verify self view is hidden
+            await expect(popOut.page.getByTestId('calls-popout-video-player-self')).toBeHidden();
+
+            await userAPage.leaveCall();
+        });
+
+        test('1-1', {
+            tag: '@core',
+        }, async ({page}) => {
+            const userAPage = new PlaywrightDevPage(page);
+
+            const [_, userBPage] = await Promise.all([
+                userAPage.gotoDM(usernames[1]),
+                startDMWith(userStorages[1], usernames[0]),
+            ]);
+
+            await Promise.all([userBPage.startCall(), userAPage.joinCall()]);
+
+            const [popOutA, popOutB] = await Promise.all([userAPage.openPopout(), userBPage.openPopout()]);
+
+            // User A starts video
+            await popOutA.page.locator('#calls-popout-video-button').click();
+
+            // Verify userA's video shows
+            await expect(popOutA.page.getByTestId('calls-popout-video-player-self')).toBeVisible();
+
+            // Verify userA's video is visible on userB's side
+            await expect(popOutB.page.getByTestId('calls-popout-video-player-other')).toBeVisible();
+
+            // Verify remote video tracks are correctly set
+            let videoTrackID = await (await userBPage.page.waitForFunction(() => {
+                return window.callsClient.getRemoteVideoStream()?.getVideoTracks()[0]?.id;
+            })).evaluate(() => {
+                return window.callsClient.getRemoteVideoStream()?.getVideoTracks()[0]?.id;
+            });
+            expect(videoTrackID).toBeTruthy();
+
+            // User A stops video
+            await popOutA.page.locator('#calls-popout-video-button').click();
+
+            // Verify video is no longer visible
+            await expect(popOutA.page.getByTestId('calls-popout-video-player-self')).toBeHidden();
+            await expect(popOutB.page.getByTestId('calls-popout-video-player-other')).toBeHidden();
+
+            // User B starts video
+            await popOutB.page.locator('#calls-popout-video-button').click();
+
+            // Verify userB's video shows
+            await expect(popOutB.page.getByTestId('calls-popout-video-player-self')).toBeVisible();
+            await expect(popOutA.page.getByTestId('calls-popout-video-player-other')).toBeVisible();
+
+            // Verify remote video tracks are correctly set
+            videoTrackID = await (await userAPage.page.waitForFunction(() => {
+                return window.callsClient.getRemoteVideoStream()?.getVideoTracks()[0]?.id;
+            })).evaluate(() => {
+                return window.callsClient.getRemoteVideoStream()?.getVideoTracks()[0]?.id;
+            });
+            expect(videoTrackID).toBeTruthy();
+
+            await Promise.all([userAPage.leaveCall(), userBPage.leaveCall()]);
+        });
+
+        test('video + screen sharing', {
+            tag: '@core',
+        }, async ({page}) => {
+            const userAPage = new PlaywrightDevPage(page);
+
+            const [_, userBPage] = await Promise.all([
+                userAPage.gotoDM(usernames[1]),
+                startDMWith(userStorages[1], usernames[0]),
+            ]);
+
+            await Promise.all([userBPage.startCall(), userAPage.joinCall()]);
+
+            const [popOutA, popOutB] = await Promise.all([userAPage.openPopout(), userBPage.openPopout()]);
+
+            // User A and B start video
+            await popOutA.page.locator('#calls-popout-video-button').click();
+            await popOutB.page.locator('#calls-popout-video-button').click();
+
+            // Verify video shows on both sides
+            await expect(popOutA.page.getByTestId('calls-popout-video-player-self')).toBeVisible();
+            await expect(popOutA.page.getByTestId('calls-popout-video-player-other')).toBeVisible();
+            await expect(popOutB.page.getByTestId('calls-popout-video-player-self')).toBeVisible();
+            await expect(popOutB.page.getByTestId('calls-popout-video-player-other')).toBeVisible();
+
+            // User A starts screen sharing
+            await popOutA.page.locator('#calls-popout-screenshare-button').click();
+
+            // Verify screen player is visible
+            await expect(popOutA.page.locator('#screen-player')).toBeVisible();
+            await expect(popOutB.page.locator('#screen-player')).toBeVisible();
+
+            // Wait a second for the screen sharing to start.
+            await userAPage.wait(1000);
+
+            // Verify the player is actually showing something on both sides
+            let box = await popOutA.page.locator('#screen-player').boundingBox();
+            expect(box?.width).toBeGreaterThan(700);
+            expect(box?.height).toBeGreaterThan(300);
+            box = await popOutB.page.locator('#screen-player').boundingBox();
+            expect(box?.width).toBeGreaterThan(700);
+            expect(box?.height).toBeGreaterThan(300);
+
+            // Verify video still shows on both sides
+            await expect(popOutA.page.getByTestId('calls-popout-video-player-self')).toBeVisible();
+            await expect(popOutA.page.getByTestId('calls-popout-video-player-other')).toBeVisible();
+            await expect(popOutB.page.getByTestId('calls-popout-video-player-self')).toBeVisible();
+            await expect(popOutB.page.getByTestId('calls-popout-video-player-other')).toBeVisible();
+
+            await Promise.all([userAPage.leaveCall(), userBPage.leaveCall()]);
+        });
     });
 });

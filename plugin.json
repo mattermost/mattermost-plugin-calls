@@ -77,6 +77,13 @@
             "type": "bool",
             "default": false,
             "help_text": "When set to true, clients will use WebRTC data channels for signaling of new media tracks. This can result in a more efficient and less race-prone process, especially in case of frequent WebSocket disconnections."
+          },
+          {
+            "key": "EnableVideo",
+            "display_name": "Enable video calls in DMs (Experimental)",
+            "type": "bool",
+            "default": false,
+            "help_text": "When set to true, video calls are enabled in direct message channels."
           }
         ]
       },
@@ -175,6 +182,7 @@
             "key": "ICEServersConfigs",
             "display_name": "ICE Servers Configurations",
             "type": "longtext",
+            "secret": true,
             "help_text": "(Optional) A list of ICE servers (STUN/TURN) configurations to use. This field should contain a valid JSON array.",
             "default": "[{\"urls\":[\"stun:stun.global.calls.mattermost.com:3478\"]}]",
             "placeholder": "[{\n \"urls\":[\"turn:turnserver.example.org:3478\"],\n \"username\": \"webrtc\",\n \"credential\": \"turnpassword\"\n}]",
@@ -184,6 +192,7 @@
             "key": "TURNStaticAuthSecret",
             "display_name": "TURN Static Auth Secret",
             "type": "text",
+            "secret": true,
             "default": "",
             "help_text": "(Optional) The secret key used to generate TURN short-lived authentication credentials.",
             "hosting": "on-prem"
@@ -192,7 +201,7 @@
             "key": "TURNCredentialsExpirationMinutes",
             "display_name": "TURN Credentials Expiration (minutes)",
             "type": "number",
-            "default": 1440,
+            "default": 240,
             "help_text": "(Optional) The number of minutes that the generated TURN credentials will be valid for.",
             "hosting": "on-prem"
           },
@@ -493,7 +502,7 @@
         "key": "TURNCredentialsExpirationMinutes",
         "display_name": "TURN Credentials Expiration (minutes)",
         "type": "number",
-        "default": 1440,
+        "default": 240,
         "help_text": "(Optional) The number of minutes that the generated TURN credentials will be valid for.",
         "hosting": "on-prem"
       },
@@ -710,6 +719,13 @@
         "type": "bool",
         "default": false,
         "help_text": "When set to true, clients will use WebRTC data channels for signaling of new media tracks. This can result in a more efficient and less race-prone process, especially in case of frequent WebSocket disconnections."
+      },
+      {
+        "key": "EnableVideo",
+        "display_name": "Enable video calls in DMs (Experimental)",
+        "type": "bool",
+        "default": false,
+        "help_text": "When set to true, video calls are enabled in direct message channels."
       }
     ]
   },
