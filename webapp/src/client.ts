@@ -760,6 +760,7 @@ export default class CallsClient extends EventEmitter {
             videoTrack.dispatchEvent(new Event('ended'));
             if (oldSegmenter) {
                 oldSegmenter.stop();
+
                 // Clear segmenter reference if blur is now disabled
                 if (!bgBlurData.blurBackground) {
                     this.segmenter = null;
