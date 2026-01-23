@@ -93,6 +93,8 @@ type Config struct {
 	Recording     bool
 	Setup         bool
 	SpeechFile    string
+	VideoFile     string
+	ScreenFile    string
 	PollySession  *polly.Polly
 	PollyVoiceID  *string
 }
@@ -168,11 +170,29 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 	payloader = &codecs.VP8Payloader{
 		EnablePictureID: true,
 	}
-	filename := fmt.Sprintf("./samples/%s_%s.ivf", videoType, track.RID())
-	if track.Codec().MimeType == webrtc.MimeTypeAV1 {
-		u.log.Info("sending AV1 screen track")
-		payloader = &codecs.AV1Payloader{}
-		filename = fmt.Sprintf("./samples/%s_av1_%s.ivf", videoType, track.RID())
+
+	var filename string
+	if videoType == "screen" && u.cfg.ScreenFile != "" {
+		// Use custom screen file if provided
+		filename = u.cfg.ScreenFile
+	} else if videoType == "video" && u.cfg.VideoFile != "" {
+		// Use custom video file if provided
+		filename = u.cfg.VideoFile
+	} else {
+		// Fall back to default hardcoded paths
+		filename = fmt.Sprintf("./samples/%s_%s.ivf", videoType, track.RID())
+		if track.Codec().MimeType == webrtc.MimeTypeAV1 {
+			u.log.Info("sending AV1 screen track")
+			payloader = &codecs.AV1Payloader{}
+			filename = fmt.Sprintf("./samples/%s_av1_%s.ivf", videoType, track.RID())
+		}
+	}
+
+	// Detect codec for custom files
+	if (videoType == "screen" && u.cfg.ScreenFile != "") || (videoType == "video" && u.cfg.VideoFile != "") {
+		if track.Codec().MimeType == webrtc.MimeTypeAV1 {
+			payloader = &codecs.AV1Payloader{}
+		}
 	}
 
 	packetizer := rtp.NewPacketizer(

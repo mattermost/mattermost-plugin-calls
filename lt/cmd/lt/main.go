@@ -69,6 +69,8 @@ func main() {
 	var setup bool
 	var speechFile string
 	var numVideo int
+	var videoFile string
+	var screenFile string
 
 	flag.StringVar(&teamID, "team", "", "The team ID to start calls in")
 	flag.StringVar(&channelID, "channel", "", "The channel ID to start the call in")
@@ -88,6 +90,8 @@ func main() {
 	flag.BoolVar(&setup, "setup", true, "Whether or not setup actions like creating users, channels, teams and/or members should be executed.")
 	flag.StringVar(&speechFile, "speech-file", "./samples/speech_0.ogg", "The path to a speech OGG file to read to simulate real voice samples")
 	flag.IntVar(&numVideo, "video", 0, "The number of users with video on per call")
+	flag.StringVar(&videoFile, "video-file", "", "The path to a video IVF file (VP8 or AV1). If empty, uses default ./samples/video_h.ivf")
+	flag.StringVar(&screenFile, "screen-file", "", "The path to a screen share IVF file (VP8 or AV1). If empty, uses default ./samples/screen_h.ivf")
 
 	flag.Parse()
 
@@ -248,6 +252,8 @@ func main() {
 					Recording:     recording,
 					Setup:         setup,
 					SpeechFile:    speechFile,
+					VideoFile:     videoFile,
+					ScreenFile:    screenFile,
 				}
 
 				for {
