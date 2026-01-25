@@ -1168,7 +1168,7 @@ export default class CallsClient extends EventEmitter {
             }
 
             if (device) {
-                await this.setVideoInputDevice(device, false);
+                await this.setVideoInputDevice(device);
             }
         }
     }
