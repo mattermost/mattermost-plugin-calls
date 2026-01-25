@@ -301,6 +301,23 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		jobCfg.Runner = recorderJobRunner
 		jobCfg.MaxDurationSec = int64(*cfg.MaxRecordingDuration * 60)
 		jobCfg.InputData = baseRecorderCfg.ToMap()
+
+		// Pass through any MM_CALLS_RECORDER_* environment variables to the recorder job
+		// This allows flexible configuration without plugin code changes
+		// Example: MM_CALLS_RECORDER_EXTRA_CHROMIUM_ARGS="--ignore-certificate-errors"
+		//          becomes EXTRA_CHROMIUM_ARGS="--ignore-certificate-errors" in recorder container
+		for _, env := range os.Environ() {
+			if strings.HasPrefix(env, "MM_CALLS_RECORDER_") {
+				parts := strings.SplitN(env, "=", 2)
+				if len(parts) == 2 {
+					// Strip the MM_CALLS_RECORDER_ prefix
+					key := strings.TrimPrefix(parts[0], "MM_CALLS_RECORDER_")
+					// Convert to lowercase for InputData (will be uppercased again by offloader)
+					key = strings.ToLower(key)
+					jobCfg.InputData[key] = parts[1]
+				}
+			}
+		}
 	case job.TypeTranscribing:
 		var transcriberConfig transcriber.CallTranscriberConfig
 		transcriberConfig.SetDefaults()
