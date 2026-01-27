@@ -356,6 +356,23 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		// transcribe a 1 hour long call).
 		jobCfg.MaxDurationSec = int64(*cfg.MaxRecordingDuration*60) * 2
 		jobCfg.InputData = transcriberConfig.ToMap()
+
+		// Pass through any MM_CALLS_TRANSCRIBER_* environment variables to the transcriber job
+		// This allows flexible configuration without plugin code changes
+		// Example: MM_CALLS_TRANSCRIBER_TLS_CA_CERT_FILE="/certs/cert.pem"
+		//          becomes TLS_CA_CERT_FILE="/certs/cert.pem" in transcriber container
+		for _, env := range os.Environ() {
+			if strings.HasPrefix(env, "MM_CALLS_TRANSCRIBER_") {
+				parts := strings.SplitN(env, "=", 2)
+				if len(parts) == 2 {
+					// Strip the MM_CALLS_TRANSCRIBER_ prefix
+					key := strings.TrimPrefix(parts[0], "MM_CALLS_TRANSCRIBER_")
+					// Convert to lowercase for InputData (will be uppercased again by offloader)
+					key = strings.ToLower(key)
+					jobCfg.InputData[key] = parts[1]
+				}
+			}
+		}
 	}
 
 	jb, err := s.client.CreateJob(jobCfg)
