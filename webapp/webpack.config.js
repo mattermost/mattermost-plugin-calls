@@ -6,6 +6,7 @@
 const exec = require('child_process').exec;
 const path = require('path');
 
+const TerserPlugin = require('terser-webpack-plugin');
 const webpack = require('webpack');
 
 const PLUGIN_ID = require('../plugin.json').id;
@@ -56,6 +57,9 @@ module.exports = {
             '@mattermost/client': path.resolve(__dirname, './mattermost-webapp/webapp/platform/client/src/'),
             'mattermost-redux': path.resolve(__dirname, './mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/'),
             reselect: path.resolve(__dirname, './mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/selectors/create_selector/index'),
+
+            // Force CommonJS build to avoid ES module minification issues
+            '@mediapipe/tasks-vision': path.resolve(__dirname, './node_modules/@mediapipe/tasks-vision/vision_bundle.cjs'),
         },
         modules: [
             'src',
@@ -130,4 +134,9 @@ module.exports = {
     devtool,
     mode,
     plugins,
+    optimization: {
+        minimizer: [
+            new TerserPlugin(),
+        ],
+    },
 };

@@ -760,6 +760,11 @@ export default class CallsClient extends EventEmitter {
             videoTrack.dispatchEvent(new Event('ended'));
             if (oldSegmenter) {
                 oldSegmenter.stop();
+
+                // Clear segmenter reference if blur is now disabled
+                if (!bgBlurData.blurBackground) {
+                    this.segmenter = null;
+                }
             }
 
             this.localVideoStream.removeTrack(videoTrack);
@@ -1139,6 +1144,33 @@ export default class CallsClient extends EventEmitter {
     public unraiseHand() {
         this.emit('lower_hand');
         this.ws?.send('unraise_hand');
+    }
+
+    public async setBlurSettings(blurEnabled: boolean, blurIntensity: number) {
+        // If segmenter exists and blur is still enabled, just update intensity
+        if (this.segmenter && blurEnabled) {
+            this.segmenter.setBlurIntensity(blurIntensity);
+            return;
+        }
+
+        // If blur state is changing and video is active, re-initialize the video track
+        const blurStateChanging = (blurEnabled && !this.segmenter) || (!blurEnabled && this.segmenter);
+        if (blurStateChanging && this.localVideoStream) {
+            let device = this.currentVideoInputDevice;
+
+            // Fallback: get device from current track settings if not stored
+            if (!device) {
+                const track = this.localVideoStream.getVideoTracks()[0];
+                const settings = track?.getSettings();
+                if (settings?.deviceId) {
+                    device = {deviceId: settings.deviceId, label: ''} as MediaDeviceInfo;
+                }
+            }
+
+            if (device) {
+                await this.setVideoInputDevice(device);
+            }
+        }
     }
 
     public sendUserReaction(data: EmojiData) {
