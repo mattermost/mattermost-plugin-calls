@@ -1115,9 +1115,74 @@ export default class Plugin {
         this.registerWebSocketEvents(registry, store);
 
         let currChannelId = getCurrentChannelId(store.getState());
-        let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
+        let processedJoinCallUrl = '';
+
+        // Function to check and handle join_call parameter
+        const handleJoinCallParam = () => {
+            const currentChannelId = getCurrentChannelId(store.getState());
+            const currentUrl = window.location.href;
+            const joinCallParam = new URLSearchParams(window.location.search).get('join_call');
+
+            logDebug(`handleJoinCallParam: url=${currentUrl}, param=${joinCallParam}, channelId=${currentChannelId}, processed=${processedJoinCallUrl}`);
+
+            // Check join_call parameter - only process each unique URL once
+            // connectToCall handles whether we're already in a call
+            if (joinCallParam && currentChannelId && currentUrl !== processedJoinCallUrl) {
+                logDebug(`Attempting to join call via URL parameter for channel ${currentChannelId}`);
+                connectToCall(currentChannelId);
+                processedJoinCallUrl = currentUrl;
+            }
+        };
+
+        // Check immediately on initialization (for page loads with ?join_call=true)
+        logDebug('Calls plugin initialized, checking for join_call parameter');
+        handleJoinCallParam();
+
+        // Intercept clicks on links with join_call parameter BEFORE React Router handles them
+        const handleLinkClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            const link = target.closest('a');
+            if (!link) {
+                return;
+            }
+
+            const href = link.getAttribute('href');
+            if (!href) {
+                return;
+            }
+
+            // Check if link contains join_call parameter
+            if (href.includes('?join_call=true') || href.includes('&join_call=true')) {
+                logDebug(`Intercepted click on join_call link: ${href}`);
+
+                // Extract channel ID from URL
+                // URL format: /team-name/channels/channel-id?join_call=true
+                const channelMatch = href.match(/\/channels\/([a-z0-9]+)/);
+                if (channelMatch) {
+                    const targetChannelId = channelMatch[1];
+                    const currentChannelId = getCurrentChannelId(store.getState());
+
+                    logDebug(`Link targets channel ${targetChannelId}, current channel is ${currentChannelId}`);
+
+                    // If clicking link in same channel, prevent navigation and join directly
+                    if (targetChannelId === currentChannelId) {
+                        logDebug('Same channel - preventing navigation and joining call directly');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        connectToCall(targetChannelId);
+                        return;
+                    }
+                }
+            }
+        };
+        document.addEventListener('click', handleLinkClick, true);
+        this.unsubscribers.push(() => document.removeEventListener('click', handleLinkClick, true));
+
+        // Also check on Redux store updates (for navigation to different channels)
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
+
+            // Handle channel changes
             if (currChannelId !== currentChannelId) {
                 const firstLoad = !currChannelId;
                 currChannelId = currentChannelId;
@@ -1127,12 +1192,10 @@ export default class Plugin {
                 if (firstLoad) {
                     registerHeaderMenuComponentIfNeeded(currentChannelId);
                 }
-
-                if (currChannelId && Boolean(joinCallParam) && !channelIDForCurrentCall(store.getState())) {
-                    connectCall(currChannelId);
-                }
-                joinCallParam = '';
             }
+
+            // Check for join_call parameter on any state update
+            handleJoinCallParam();
         }));
 
         const handleKBShortcuts = (ev: KeyboardEvent) => {
