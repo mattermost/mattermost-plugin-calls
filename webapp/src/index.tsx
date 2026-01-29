@@ -110,6 +110,7 @@ import {
     CALL_STATE,
     DISMISS_CALL,
     RECEIVED_CHANNEL_STATE,
+    SHOW_SWITCH_CALL_MODAL,
     UNINIT,
     USER_LOWER_HAND,
     USER_MUTED,
@@ -428,7 +429,13 @@ export default class Plugin {
         });
 
         const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
-            if (!channelIDForCurrentCall(store.getState())) {
+            const currentCallChannelId = channelIDForCurrentCall(store.getState());
+            // Also check window.callsClient for active call (handles race condition during page load)
+            const hasActiveClient = Boolean(window.callsClient);
+            const activeClientChannel = window.callsClient?.channelID;
+
+            if (!currentCallChannelId && !hasActiveClient) {
+                // Not in any call - join the new one
                 connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
@@ -436,9 +443,16 @@ export default class Plugin {
                 if (channelHasCall(store.getState(), channelId)) {
                     followThread(store, channelId, teamId);
                 }
-            } else if (channelIDForCurrentCall(store.getState()) !== channelId) {
-                store.dispatch(showSwitchCallModal(channelId));
+            } else if ((currentCallChannelId && currentCallChannelId !== channelId) || (activeClientChannel && activeClientChannel !== channelId)) {
+                // In a different call - show switch modal
+                store.dispatch({
+                    type: SHOW_SWITCH_CALL_MODAL,
+                    data: {
+                        targetID: channelId,
+                    },
+                });
             }
+            // If already in this call, do nothing
         };
 
         const joinCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
@@ -1116,6 +1130,12 @@ export default class Plugin {
 
         let currChannelId = getCurrentChannelId(store.getState());
         let processedJoinCallUrl = '';
+        let pendingJoinChannelId = '';
+        let lastCheckedUrl = '';
+
+        // Capture join_call parameter immediately at initialization, before React Router can strip it
+        // This is essential for pasted URLs where the channel ID isn't loaded in Redux yet
+        let initialJoinCallParam = new URLSearchParams(window.location.search).get('join_call');
 
         // Function to check and handle join_call parameter
         const handleJoinCallParam = () => {
@@ -1123,20 +1143,13 @@ export default class Plugin {
             const currentUrl = window.location.href;
             const joinCallParam = new URLSearchParams(window.location.search).get('join_call');
 
-            logDebug(`handleJoinCallParam: url=${currentUrl}, param=${joinCallParam}, channelId=${currentChannelId}, processed=${processedJoinCallUrl}`);
-
             // Check join_call parameter - only process each unique URL once
-            // connectToCall handles whether we're already in a call
             if (joinCallParam && currentChannelId && currentUrl !== processedJoinCallUrl) {
-                logDebug(`Attempting to join call via URL parameter for channel ${currentChannelId}`);
                 connectToCall(currentChannelId);
                 processedJoinCallUrl = currentUrl;
+                initialJoinCallParam = null; // Clear captured param since we processed it
             }
         };
-
-        // Check immediately on initialization (for page loads with ?join_call=true)
-        logDebug('Calls plugin initialized, checking for join_call parameter');
-        handleJoinCallParam();
 
         // Intercept clicks on links with join_call parameter BEFORE React Router handles them
         const handleLinkClick = (e: MouseEvent) => {
@@ -1153,8 +1166,6 @@ export default class Plugin {
 
             // Check if link contains join_call parameter
             if (href.includes('?join_call=true') || href.includes('&join_call=true')) {
-                logDebug(`Intercepted click on join_call link: ${href}`);
-
                 // Extract channel ID from URL
                 // URL format: /team-name/channels/channel-id?join_call=true
                 const channelMatch = href.match(/\/channels\/([a-z0-9]+)/);
@@ -1162,16 +1173,22 @@ export default class Plugin {
                     const targetChannelId = channelMatch[1];
                     const currentChannelId = getCurrentChannelId(store.getState());
 
-                    logDebug(`Link targets channel ${targetChannelId}, current channel is ${currentChannelId}`);
-
                     // If clicking link in same channel, prevent navigation and join directly
                     if (targetChannelId === currentChannelId) {
-                        logDebug('Same channel - preventing navigation and joining call directly');
                         e.preventDefault();
                         e.stopPropagation();
-                        connectToCall(targetChannelId);
+                        e.stopImmediatePropagation();
+                        // Defer connectToCall to next tick to avoid modal's closeOnBlur handler
+                        // catching the same click event that triggered showing the modal
+                        setTimeout(() => {
+                            connectToCall(targetChannelId);
+                        }, 0);
                         return;
                     }
+
+                    // Different channel - set pending join and let navigation happen
+                    // React Router will strip the query param, so we track it here
+                    pendingJoinChannelId = targetChannelId;
                 }
             }
         };
@@ -1191,11 +1208,30 @@ export default class Plugin {
                 // on every channel switch.
                 if (firstLoad) {
                     registerHeaderMenuComponentIfNeeded(currentChannelId);
+
+                    // On first load, if we captured a join_call parameter, process it now
+                    // This handles pasted URLs where the parameter is captured before channel loads
+                    if (initialJoinCallParam && currentChannelId) {
+                        initialJoinCallParam = null; // Clear it so we don't process again
+                        connectToCall(currentChannelId);
+                    }
+                }
+
+                // Check if we navigated to a pending join channel
+                if (pendingJoinChannelId && pendingJoinChannelId === currentChannelId) {
+                    // Clear the flag immediately - connectToCall() will handle the rest
+                    // (including showing switch modal if already in a call)
+                    pendingJoinChannelId = '';
+                    connectToCall(currentChannelId);
                 }
             }
 
-            // Check for join_call parameter on any state update
-            handleJoinCallParam();
+            // Check for join_call parameter only when URL changes (optimization)
+            const currentUrl = window.location.href;
+            if (currentUrl !== lastCheckedUrl) {
+                lastCheckedUrl = currentUrl;
+                handleJoinCallParam();
+            }
         }));
 
         const handleKBShortcuts = (ev: KeyboardEvent) => {
