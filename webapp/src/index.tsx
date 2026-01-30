@@ -430,6 +430,7 @@ export default class Plugin {
 
         const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
             const currentCallChannelId = channelIDForCurrentCall(store.getState());
+
             // Also check window.callsClient for active call (handles race condition during page load)
             const hasActiveClient = Boolean(window.callsClient);
             const activeClientChannel = window.callsClient?.channelID;
@@ -452,6 +453,7 @@ export default class Plugin {
                     },
                 });
             }
+
             // If already in this call, do nothing
         };
 
@@ -1178,6 +1180,7 @@ export default class Plugin {
                         e.preventDefault();
                         e.stopPropagation();
                         e.stopImmediatePropagation();
+
                         // Defer connectToCall to next tick to avoid modal's closeOnBlur handler
                         // catching the same click event that triggered showing the modal
                         setTimeout(() => {
