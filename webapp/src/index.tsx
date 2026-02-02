@@ -110,7 +110,6 @@ import {
     CALL_STATE,
     DISMISS_CALL,
     RECEIVED_CHANNEL_STATE,
-    SHOW_SWITCH_CALL_MODAL,
     UNINIT,
     USER_LOWER_HAND,
     USER_MUTED,
@@ -446,12 +445,7 @@ export default class Plugin {
                 }
             } else if ((currentCallChannelId && currentCallChannelId !== channelId) || (activeClientChannel && activeClientChannel !== channelId)) {
                 // In a different call - show switch modal
-                store.dispatch({
-                    type: SHOW_SWITCH_CALL_MODAL,
-                    data: {
-                        targetID: channelId,
-                    },
-                });
+                store.dispatch(showSwitchCallModal(channelId));
             }
 
             // If already in this call, do nothing
