@@ -184,6 +184,11 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 		state.Call.Props.ScreenSharingSessionID = us.originalConnID
 		state.Call.Props.ScreenStartAt = time.Now().Unix()
+
+		// Mark that this call has used screen sharing (only set once per call)
+		if !state.Call.Stats.HasUsedScreenShare {
+			state.Call.Stats.HasUsedScreenShare = true
+		}
 	} else {
 		if state.Call.Props.ScreenSharingSessionID != us.originalConnID {
 			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: connID=%s", state.Call.Props.ScreenSharingSessionID)
@@ -422,6 +427,11 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 				state.Call.Props.VideoStartAt = make(map[string]int64)
 			}
 			state.Call.Props.VideoStartAt[us.originalConnID] = time.Now().Unix()
+
+			// Mark that this call has used video (only set once per call)
+			if !state.Call.Stats.HasUsedVideo {
+				state.Call.Stats.HasUsedVideo = true
+			}
 		} else {
 			// Video turned off - accumulate the duration
 			session.Video = false

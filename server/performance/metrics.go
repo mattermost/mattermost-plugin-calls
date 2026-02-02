@@ -377,6 +377,8 @@ func (m *Metrics) UpdateHistoricalMetrics(stats *public.CallsStats, callsByDay, 
 	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "avg_participants"}).Set(float64(stats.AvgParticipants))
 	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "avg_video_duration_seconds"}).Set(float64(stats.AvgVideoDuration))
 	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "total_video_duration_seconds"}).Set(float64(stats.TotalVideoDuration))
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "total_video_calls"}).Set(float64(stats.TotalVideoCalls))
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "total_screen_share_calls"}).Set(float64(stats.TotalScreenShareCalls))
 }
 
 func channelTypeToLabel(t string) string {

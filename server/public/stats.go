@@ -24,6 +24,10 @@ type CallsStats struct {
 	AvgVideoDuration int64 `json:"avg_video_duration" yaml:"avg_video_duration"`
 	// The total accumulated video duration in seconds across all calls.
 	TotalVideoDuration int64 `json:"total_video_duration" yaml:"total_video_duration"`
+	// The total number of calls that had video enabled at least once.
+	TotalVideoCalls int64 `json:"total_video_calls" yaml:"total_video_calls"`
+	// The total number of calls that had screen sharing enabled at least once.
+	TotalScreenShareCalls int64 `json:"total_screen_share_calls" yaml:"total_screen_share_calls"`
 	// The number of daily recording jobs in the last 30 days.
 	RecordingJobsByDay map[string]int64 `json:"recording_jobs_by_day" yaml:"-"`
 	// The number of monthly recording jobs in the last 12 months.

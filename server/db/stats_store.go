@@ -386,6 +386,78 @@ func (s *Store) GetTotalVideoDuration() (int64, error) {
 	return total, nil
 }
 
+func (s *Store) GetTotalCallsWithVideo() (int64, error) {
+	s.metrics.IncStoreOp("GetTotalCallsWithVideo")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetTotalCallsWithVideo", time.Since(start).Seconds())
+	}(time.Now())
+
+	var jsonPath string
+	if s.driverName == model.DatabaseDriverMysql {
+		jsonPath = "JSON_EXTRACT(stats, '$.has_used_video')"
+	} else {
+		jsonPath = "(stats->>'has_used_video')::bool"
+	}
+
+	qb := getQueryBuilder(s.driverName).
+		Select("COUNT(*)").
+		From("calls").
+		Where(sq.And{
+			sq.Eq{"DeleteAt": 0},
+			sq.Eq{jsonPath: true},
+		})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var count int64
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.rDBx.GetContext(ctx, &count, q, args...); err != nil {
+		return 0, fmt.Errorf("failed to get total calls with video: %w", err)
+	}
+
+	return count, nil
+}
+
+func (s *Store) GetTotalCallsWithScreenShare() (int64, error) {
+	s.metrics.IncStoreOp("GetTotalCallsWithScreenShare")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetTotalCallsWithScreenShare", time.Since(start).Seconds())
+	}(time.Now())
+
+	var jsonPath string
+	if s.driverName == model.DatabaseDriverMysql {
+		jsonPath = "JSON_EXTRACT(stats, '$.has_used_screen_share')"
+	} else {
+		jsonPath = "(stats->>'has_used_screen_share')::bool"
+	}
+
+	qb := getQueryBuilder(s.driverName).
+		Select("COUNT(*)").
+		From("calls").
+		Where(sq.And{
+			sq.Eq{"DeleteAt": 0},
+			sq.Eq{jsonPath: true},
+		})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var count int64
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.rDBx.GetContext(ctx, &count, q, args...); err != nil {
+		return 0, fmt.Errorf("failed to get total calls with screen share: %w", err)
+	}
+
+	return count, nil
+}
+
 func (s *Store) GetCallsStats() (*public.CallsStats, error) {
 	s.metrics.IncStoreOp("GetCallsStats")
 	defer func(start time.Time) {
@@ -441,6 +513,16 @@ func (s *Store) GetCallsStats() (*public.CallsStats, error) {
 	}
 
 	stats.TotalVideoDuration, err = s.GetTotalVideoDuration()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.TotalVideoCalls, err = s.GetTotalCallsWithVideo()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.TotalScreenShareCalls, err = s.GetTotalCallsWithScreenShare()
 	if err != nil {
 		return nil, err
 	}

@@ -81,4 +81,12 @@ type CallStats struct {
 	// VideoDuration tracks the total time (in seconds) that any participant had video enabled.
 	// This is cumulative across all participants (e.g., if 2 users have video on for 10s each, this would be 20s).
 	VideoDuration int64 `json:"video_duration,omitempty"`
+	// HasUsedVideo indicates if video was enabled at least once during this call.
+	// This flag is set to true the first time any participant enables video, and remains true
+	// even if video is subsequently disabled. Used for counting calls with video usage.
+	HasUsedVideo bool `json:"has_used_video,omitempty"`
+	// HasUsedScreenShare indicates if screen sharing was enabled at least once during this call.
+	// This flag is set to true the first time any participant enables screen sharing, and remains true
+	// even if screen sharing is subsequently disabled. Used for counting calls with screen sharing usage.
+	HasUsedScreenShare bool `json:"has_used_screen_share,omitempty"`
 }
