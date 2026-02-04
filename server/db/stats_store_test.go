@@ -376,10 +376,10 @@ func testGetVideoStats(t *testing.T, store *Store) {
 		stats, err := store.GetCallsStats()
 		require.NoError(t, err)
 
-		require.Equal(t, int64(2), stats.TotalVideoCalls)        // Calls 1 and 2
-		require.Equal(t, int64(2), stats.TotalScreenShareCalls)  // Calls 1 and 3
-		require.Equal(t, int64(150), stats.AvgVideoDuration)     // (100 + 200) / 2
-		require.Equal(t, int64(300), stats.TotalVideoDuration)   // 100 + 200
+		require.Equal(t, int64(2), stats.TotalVideoCalls)       // Calls 1 and 2
+		require.Equal(t, int64(2), stats.TotalScreenShareCalls) // Calls 1 and 3
+		require.Equal(t, int64(150), stats.AvgVideoDuration)    // (100 + 200) / 2
+		require.Equal(t, int64(300), stats.TotalVideoDuration)  // 100 + 200
 	})
 
 	t.Run("person-seconds accumulation", func(t *testing.T) {
