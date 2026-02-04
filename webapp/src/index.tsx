@@ -1161,32 +1161,38 @@ export default class Plugin {
             }
 
             // Check if link contains join_call parameter
-            if (href.includes('?join_call=true') || href.includes('&join_call=true')) {
-                // Extract channel ID from URL
-                // URL format: /team-name/channels/channel-id?join_call=true
-                const channelMatch = href.match(/\/channels\/([a-z0-9]+)/);
-                if (channelMatch) {
-                    const targetChannelId = channelMatch[1];
-                    const currentChannelId = getCurrentChannelId(store.getState());
+            try {
+                const url = new URL(href, window.location.origin);
+                if (url.searchParams.get('join_call') === 'true') {
+                    // Extract channel ID from URL
+                    // URL format: /team-name/channels/channel-id?join_call=true
+                    const channelMatch = url.pathname.match(/\/channels\/([a-z0-9]+)/i);
+                    if (channelMatch) {
+                        const targetChannelId = channelMatch[1];
+                        const currentChannelId = getCurrentChannelId(store.getState());
 
-                    // If clicking link in same channel, prevent navigation and join directly
-                    if (targetChannelId === currentChannelId) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        e.stopImmediatePropagation();
+                        // If clicking link in same channel, prevent navigation and join directly
+                        if (targetChannelId === currentChannelId) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
 
-                        // Defer connectToCall to next tick to avoid modal's closeOnBlur handler
-                        // catching the same click event that triggered showing the modal
-                        setTimeout(() => {
-                            connectToCall(targetChannelId);
-                        }, 0);
-                        return;
+                            // Defer connectToCall to next tick to avoid the modal's closeOnBlur handler
+                            // catching the same click event that triggered showing the modal, which would
+                            // immediately hide the modal that was just shown
+                            setTimeout(() => {
+                                connectToCall(targetChannelId);
+                            }, 0);
+                            return;
+                        }
+
+                        // Different channel - set pending join and let navigation happen
+                        // React Router will strip the query param, so we track it here
+                        pendingJoinChannelId = targetChannelId;
                     }
-
-                    // Different channel - set pending join and let navigation happen
-                    // React Router will strip the query param, so we track it here
-                    pendingJoinChannelId = targetChannelId;
                 }
+            } catch {
+                // Invalid URL, ignore
             }
         };
         document.addEventListener('click', handleLinkClick, true);
