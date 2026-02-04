@@ -78,8 +78,10 @@ type CallProps struct {
 
 type CallStats struct {
 	ScreenDuration int64 `json:"screen_duration,omitempty"`
-	// VideoDuration tracks the total time (in seconds) that any participant had video enabled.
-	// This is cumulative across all participants (e.g., if 2 users have video on for 10s each, this would be 20s).
+	// VideoDuration tracks the cumulative participant-seconds of video usage across all participants.
+	// This is a "person-seconds" metric that sums individual video time for capacity planning.
+	// Example: 3 participants with video on for 10 seconds each = 30 seconds total.
+	// Example: 8 participants on video for a 30-minute call = 14,400 seconds (240 participant-minutes).
 	VideoDuration int64 `json:"video_duration,omitempty"`
 	// HasUsedVideo indicates if video was enabled at least once during this call.
 	// This flag is set to true the first time any participant enables video, and remains true

@@ -369,6 +369,7 @@ func (s *Store) GetTotalVideoDuration() (int64, error) {
 		Where(sq.And{
 			sq.Expr("EndAt > StartAt"),
 			sq.Eq{"DeleteAt": 0},
+			sq.NotEq{jsonPath: nil},
 		})
 
 	q, args, err := qb.ToSql()
@@ -392,11 +393,13 @@ func (s *Store) GetTotalCallsWithVideo() (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetTotalCallsWithVideo", time.Since(start).Seconds())
 	}(time.Now())
 
-	var jsonPath string
+	var condition sq.Sqlizer
 	if s.driverName == model.DatabaseDriverMysql {
-		jsonPath = "JSON_EXTRACT(stats, '$.has_used_video')"
+		// MySQL: Cast JSON boolean to unsigned int (1 for true, 0 for false)
+		condition = sq.Eq{"CAST(JSON_EXTRACT(stats, '$.has_used_video') AS UNSIGNED)": 1}
 	} else {
-		jsonPath = "(stats->>'has_used_video')::bool"
+		// PostgreSQL: Cast to boolean
+		condition = sq.Eq{"(stats->>'has_used_video')::bool": true}
 	}
 
 	qb := getQueryBuilder(s.driverName).
@@ -404,7 +407,7 @@ func (s *Store) GetTotalCallsWithVideo() (int64, error) {
 		From("calls").
 		Where(sq.And{
 			sq.Eq{"DeleteAt": 0},
-			sq.Eq{jsonPath: true},
+			condition,
 		})
 
 	q, args, err := qb.ToSql()
@@ -428,11 +431,13 @@ func (s *Store) GetTotalCallsWithScreenShare() (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetTotalCallsWithScreenShare", time.Since(start).Seconds())
 	}(time.Now())
 
-	var jsonPath string
+	var condition sq.Sqlizer
 	if s.driverName == model.DatabaseDriverMysql {
-		jsonPath = "JSON_EXTRACT(stats, '$.has_used_screen_share')"
+		// MySQL: Cast JSON boolean to unsigned int (1 for true, 0 for false)
+		condition = sq.Eq{"CAST(JSON_EXTRACT(stats, '$.has_used_screen_share') AS UNSIGNED)": 1}
 	} else {
-		jsonPath = "(stats->>'has_used_screen_share')::bool"
+		// PostgreSQL: Cast to boolean
+		condition = sq.Eq{"(stats->>'has_used_screen_share')::bool": true}
 	}
 
 	qb := getQueryBuilder(s.driverName).
@@ -440,7 +445,7 @@ func (s *Store) GetTotalCallsWithScreenShare() (int64, error) {
 		From("calls").
 		Where(sq.And{
 			sq.Eq{"DeleteAt": 0},
-			sq.Eq{jsonPath: true},
+			condition,
 		})
 
 	q, args, err := qb.ToSql()

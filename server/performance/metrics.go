@@ -345,22 +345,14 @@ func (m *Metrics) UpdateHistoricalMetrics(stats *public.CallsStats, callsByDay, 
 	m.HistoricalDailyCallsGauge.Reset()
 	m.HistoricalMonthlyCallsGauge.Reset()
 
-	// Update daily metrics (last 30 days) - shorten date format from YYYY-MM-DD to MM-DD
+	// Update daily metrics (last 30 days)
 	for date, count := range callsByDay {
-		shortDate := date
-		if len(date) == 10 && date[4] == '-' {
-			shortDate = date[5:] // Extract MM-DD from YYYY-MM-DD
-		}
-		m.HistoricalDailyCallsGauge.With(prometheus.Labels{"date": shortDate}).Set(float64(count))
+		m.HistoricalDailyCallsGauge.With(prometheus.Labels{"date": date}).Set(float64(count))
 	}
 
-	// Update monthly metrics - shorten from YYYY-MM to MM
+	// Update monthly metrics
 	for month, count := range callsByMonth {
-		shortMonth := month
-		if len(month) == 7 && month[4] == '-' {
-			shortMonth = month[5:] // Extract MM from YYYY-MM
-		}
-		m.HistoricalMonthlyCallsGauge.With(prometheus.Labels{"month": shortMonth}).Set(float64(count))
+		m.HistoricalMonthlyCallsGauge.With(prometheus.Labels{"month": month}).Set(float64(count))
 	}
 
 	// Update channel type distribution

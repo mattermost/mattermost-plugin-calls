@@ -20,9 +20,11 @@ type CallsStats struct {
 	AvgDuration int64 `json:"avg_duration" yaml:"avg_duration"`
 	// The average peak number of participants in calls.
 	AvgParticipants int64 `json:"avg_participants" yaml:"avg_participants"`
-	// The average video duration in seconds across all calls.
+	// The average participant-seconds of video usage per call (person-seconds metric).
+	// This represents average video capacity consumed per call.
 	AvgVideoDuration int64 `json:"avg_video_duration" yaml:"avg_video_duration"`
-	// The total accumulated video duration in seconds across all calls.
+	// The total accumulated participant-seconds of video usage across all calls (person-seconds metric).
+	// This represents total video capacity consumed across the platform.
 	TotalVideoDuration int64 `json:"total_video_duration" yaml:"total_video_duration"`
 	// The total number of calls that had video enabled at least once.
 	TotalVideoCalls int64 `json:"total_video_calls" yaml:"total_video_calls"`

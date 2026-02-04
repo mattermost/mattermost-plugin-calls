@@ -200,9 +200,8 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 	}
 
-	if err := p.store.UpdateCall(&state.Call); err != nil {
-		return fmt.Errorf("failed to update call: %w", err)
-	}
+	// Note: Screen sharing stats are persisted when users leave or call ends,
+	// no need to write to DB on every toggle for performance.
 
 	msgType := rtc.ScreenOnMessage
 	wsMsgType := wsEventUserScreenOn
@@ -447,9 +446,8 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			return fmt.Errorf("failed to update call session: %w", err)
 		}
 
-		if err := p.store.UpdateCall(&state.Call); err != nil {
-			return fmt.Errorf("failed to update call: %w", err)
-		}
+		// Note: Video stats are persisted when users leave or call ends,
+		// no need to write to DB on every toggle for performance.
 
 		evType := wsEventUserVideoOn
 		if msg.Type == clientMessageTypeVideoOff {
