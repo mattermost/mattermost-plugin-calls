@@ -3,6 +3,7 @@
 
 import {CommandArgs} from '@mattermost/types/integrations';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
+import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionResult} from 'mattermost-redux/types/actions';
@@ -19,10 +20,11 @@ import {
 import {
     DisabledCallsErr,
     STORAGE_CALLS_CLIENT_STATS_KEY,
+    MAX_INLINE_LOG_POST_SIZE,
 } from 'src/constants';
 import {modals} from 'src/webapp_globals';
 
-import {getClientLogs, logDebug} from './log';
+import {getClientLogs, logDebug, flushLogsToAccumulated} from './log';
 import {
     areGroupCallsAllowed,
     channelHasCall,
@@ -175,7 +177,48 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         return {message: `/call stats ${btoa(data)}`, args};
     }
     case 'logs': {
-        return {message: `/call logs ${btoa(getClientLogs())}`, args};
+        // Flush current session first
+        flushLogsToAccumulated();
+
+        // Get all accumulated logs
+        const allLogs = getClientLogs();
+
+        if (!allLogs || allLogs.trim().length === 0) {
+            return {error: {message: 'No call logs available'}};
+        }
+
+        // Choose: inline post or file upload
+        if (allLogs.length < MAX_INLINE_LOG_POST_SIZE) {
+            // Small enough - post inline (existing behavior)
+            return {message: `/call logs ${btoa(allLogs)}`, args};
+        }
+
+        // Too large - upload as file
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `call_logs_${timestamp}.txt`;
+        const sizeKB = (allLogs.length / 1024).toFixed(1);
+
+        const blob = new Blob([allLogs], {type: 'text/plain'});
+        const file = new File([blob], filename, {type: 'text/plain'});
+
+        const formData = new FormData();
+        formData.append('files', file);
+        formData.append('channel_id', args.channel_id);
+
+        try {
+            const fileUploadResp = await Client4.uploadFile(formData);
+            const fileId = fileUploadResp.file_infos[0].id;
+
+            await Client4.createPost({
+                channel_id: args.channel_id,
+                message: `📋 Call logs (${sizeKB} KB)`,
+                file_ids: [fileId],
+            } as any);
+
+            return {};
+        } catch (err) {
+            return {error: {message: `Failed to upload logs: ${(err as Error).message}`}};
+        }
     }
     case 'recording': {
         if (fields.length < 3 || (fields[2] !== 'start' && fields[2] !== 'stop')) {

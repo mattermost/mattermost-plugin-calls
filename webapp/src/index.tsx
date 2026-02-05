@@ -135,7 +135,7 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
-import {logDebug, logErr, logWarn} from './log';
+import {logDebug, logErr, logWarn, logInfo, flushLogsToAccumulated, startPeriodicLogCleanup} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
@@ -344,6 +344,9 @@ export default class Plugin {
 
         const theme = getTheme(store.getState());
         setCallsGlobalCSSVars(theme.sidebarBg);
+
+        // Start periodic cleanup of accumulated background logs
+        startPeriodicLogCleanup();
 
         // Register root DOM element for Calls. This is where the widget will render.
         if (!document.getElementById('calls')) {
@@ -662,6 +665,16 @@ export default class Plugin {
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             const channel = getChannel(store.getState(), channelID);
+
+            // Flush any pending logs from previous call
+            flushLogsToAccumulated();
+
+            // Log separator for new call
+            const isStarting = !channelHasCall(store.getState(), channelID);
+            logInfo(`=== ${isStarting ? 'starting' : 'joining'} call at ${new Date().toISOString()}`);
+
+            // Flush separator immediately (ensures desktop clients capture it)
+            flushLogsToAccumulated();
 
             // Desktop handler
             const payload = {
