@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {STORAGE_CALLS_CLIENT_LOGS_KEY, MAX_ACCUMULATED_LOG_SIZE} from 'src/constants';
+import {MAX_ACCUMULATED_LOG_SIZE, STORAGE_CALLS_CLIENT_LOGS_KEY} from 'src/constants';
 import type {CallsClientStats} from 'src/types/types';
 
 import {flushLogsToAccumulated, getClientLogs, logDebug, logErr, logInfo, logWarn} from './log';
@@ -22,7 +22,7 @@ jest.mock('./utils', () => ({
 }));
 
 describe('log', () => {
-    // Suppress console output during tests
+    /* eslint-disable no-console */
     const originalConsole = {
         error: console.error,
         warn: console.warn,
@@ -43,6 +43,7 @@ describe('log', () => {
         console.info = originalConsole.info;
         console.debug = originalConsole.debug;
     });
+    /* eslint-enable no-console */
 
     beforeEach(() => {
         flushLogsToAccumulated();

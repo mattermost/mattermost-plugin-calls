@@ -844,6 +844,7 @@ export default class CallsClient extends EventEmitter {
                 getPersistentStorage().setItem(STORAGE_CALLS_CLIENT_STATS_KEY, JSON.stringify(stats));
             }).catch((statsErr) => {
                 logErr(statsErr);
+
                 // Still flush logs even if stats failed
                 flushLogsToAccumulated();
             });

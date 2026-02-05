@@ -3,7 +3,7 @@
 
 /* eslint-disable no-console */
 
-import {STORAGE_CALLS_CLIENT_LOGS_KEY, MAX_ACCUMULATED_LOG_SIZE} from 'src/constants';
+import {MAX_ACCUMULATED_LOG_SIZE, STORAGE_CALLS_CLIENT_LOGS_KEY} from 'src/constants';
 import type {CallsClientStats} from 'src/types/types';
 import {getPersistentStorage} from 'src/utils';
 

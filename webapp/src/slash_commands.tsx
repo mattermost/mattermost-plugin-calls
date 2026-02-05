@@ -19,12 +19,12 @@ import {
 } from 'src/components/call_widget/end_call_confirmation';
 import {
     DisabledCallsErr,
-    STORAGE_CALLS_CLIENT_STATS_KEY,
     MAX_INLINE_LOG_POST_SIZE,
+    STORAGE_CALLS_CLIENT_STATS_KEY,
 } from 'src/constants';
 import {modals} from 'src/webapp_globals';
 
-import {getClientLogs, logDebug, flushLogsToAccumulated} from './log';
+import {flushLogsToAccumulated, getClientLogs, logDebug} from './log';
 import {
     areGroupCallsAllowed,
     channelHasCall,

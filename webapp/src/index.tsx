@@ -135,7 +135,7 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
-import {logDebug, logErr, logWarn, logInfo, flushLogsToAccumulated, startPeriodicLogCleanup} from './log';
+import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn, startPeriodicLogCleanup} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
