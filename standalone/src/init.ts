@@ -190,6 +190,7 @@ export default async function init(cfg: InitConfig) {
 
     const joinData = {
         channelID,
+        callID: getCallID() || undefined,
         title: getCallTitle(),
         threadID: getRootID(),
         jobID: getJobID(),

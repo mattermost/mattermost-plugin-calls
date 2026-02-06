@@ -58,6 +58,7 @@ export type TrackMetadata = {
 
 export type CallsClientStats = {
     initTime: number;
+    callID: string;
     channelID: string;
     tracksInfo: TrackMetadata[];
     rtcStats: RTCStats | null;
