@@ -77,7 +77,6 @@ describe('log', () => {
         test('should append stats when provided', () => {
             const stats: CallsClientStats = {
                 initTime: 123456,
-                callID: 'test-call',
                 channelID: 'test-channel',
                 tracksInfo: [],
                 rtcStats: {
@@ -198,7 +197,6 @@ describe('log', () => {
 
             const stats: CallsClientStats = {
                 initTime: 123456,
-                callID: 'test-call',
                 channelID: 'test-channel',
                 tracksInfo: [],
                 rtcStats: {

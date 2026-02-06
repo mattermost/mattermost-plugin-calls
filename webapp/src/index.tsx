@@ -139,7 +139,6 @@ import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn, startPeriodi
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
-    calls,
     callsConfig,
     callsExplicitlyDisabled,
     callsExplicitlyEnabled,
@@ -667,9 +666,6 @@ export default class Plugin {
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             const channel = getChannel(store.getState(), channelID);
 
-            // Get the callID from Redux state
-            const callID = calls(store.getState())[channelID]?.ID || '';
-
             // Flush any pending logs from previous call
             flushLogsToAccumulated();
 
@@ -682,7 +678,7 @@ export default class Plugin {
 
             // Desktop handler
             const payload = {
-                callID: callID || channelID, // use actual callID if available, fallback to channelID for compatibility
+                callID: channelID,
                 title: title || '',
                 channelURL: getChannelURL(store.getState(), channel, getCurrentTeamId(store.getState())),
                 rootID: rootId || '',
@@ -853,7 +849,6 @@ export default class Plugin {
 
                 window.callsClient.init({
                     channelID,
-                    callID,
                     title,
                     threadID: rootId,
                 }).catch((err: Error) => {

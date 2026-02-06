@@ -51,7 +51,6 @@ const rtcMonitorInterval = 10000;
 
 export default class CallsClient extends EventEmitter {
     public channelID: string;
-    public callID: string;
     private readonly config: CallsClientConfig;
     private peer: RTCPeer | null;
     public ws: WebSocketClient | null;
@@ -100,7 +99,6 @@ export default class CallsClient extends EventEmitter {
         this.audioDevices = {inputs: [], outputs: []};
         this.videoDevices = [];
         this.channelID = '';
-        this.callID = '';
         this.config = config;
         this.defaultAudioTrackOptions = {
             autoGainControl: true,
@@ -441,7 +439,6 @@ export default class CallsClient extends EventEmitter {
 
     public async init(joinData: CallsClientJoinData) {
         this.channelID = joinData.channelID;
-        this.callID = joinData.callID || ''; // keep empty if not provided
 
         if (this.config.enableAV1 && !this.config.simulcast) {
             this.av1Codec = await RTCPeer.getVideoCodec('video/AV1');
@@ -1237,7 +1234,6 @@ export default class CallsClient extends EventEmitter {
 
         return {
             initTime: this.initTime,
-            callID: this.callID,
             channelID: this.channelID,
             tracksInfo,
             rtcStats: stats ? parseRTCStats(stats) : null,
