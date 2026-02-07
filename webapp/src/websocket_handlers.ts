@@ -78,7 +78,7 @@ import {
     USER_VOICE_OFF,
     USER_VOICE_ON,
 } from './action_types';
-import {logErr} from './log';
+import {logErr, logInfo} from './log';
 import {
     calls,
     channelIDForCurrentCall,
@@ -118,6 +118,10 @@ export function handleCallState(store: Store, ev: WebSocketMessage<CallStateData
 // state mutating operations.
 export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
+    const callID = ev.data.id;
+
+    // Log the callID for debugging
+    logInfo(`call_start: callID=${callID}, channelID=${channelID}`);
 
     // Clear the old recording and live captions state (if any).
     store.dispatch({
@@ -138,7 +142,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
     store.dispatch({
         type: CALL_STATE,
         data: {
-            ID: ev.data.id,
+            ID: callID,
             channelID,
             startAt: ev.data.start_at,
             ownerID: ev.data.owner_id,
@@ -162,7 +166,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         }
     } else if (ringingEnabled(store.getState())) {
         // the call that started is not the call we're currently in.
-        store.dispatch(incomingCallOnChannel(channelID, ev.data.id, ev.data.owner_id, ev.data.start_at));
+        store.dispatch(incomingCallOnChannel(channelID, callID, ev.data.owner_id, ev.data.start_at));
     }
 }
 
@@ -190,10 +194,15 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
         }
     }
 
-    if (ringingEnabled(store.getState()) && userID === currentUserID) {
+    if (userID === currentUserID) {
+        // Log when current user joins (for debugging)
         const callID = calls(store.getState())[channelID]?.ID || '';
-        store.dispatch(removeIncomingCallNotification(callID));
-        notificationsStopRinging(); // And stop ringing for _any_ incoming call.
+        logInfo(`user_joined (self): sessionID=${sessionID}, channelID=${channelID}, callID=${callID}`);
+
+        if (ringingEnabled(store.getState())) {
+            store.dispatch(removeIncomingCallNotification(callID));
+            notificationsStopRinging(); // And stop ringing for _any_ incoming call.
+        }
     }
 
     // This is async, which is expected as we are okay with setting the state while we wait
