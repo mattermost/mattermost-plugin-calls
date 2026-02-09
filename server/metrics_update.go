@@ -13,8 +13,13 @@ func (p *Plugin) runMetricsUpdateJob() {
 	p.updateHistoricalMetrics()
 
 	// Then run periodically
-	for range p.metricsUpdateTicker.C {
-		p.updateHistoricalMetrics()
+	for {
+		select {
+		case <-p.metricsUpdateTicker.C:
+			p.updateHistoricalMetrics()
+		case <-p.stopCh:
+			return
+		}
 	}
 }
 
