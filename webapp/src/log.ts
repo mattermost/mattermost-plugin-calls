@@ -80,13 +80,3 @@ export function logDebug(...args: unknown[]) {
     console.debug(`${pluginId}:`, ...args);
     appendClientLog('debug', ...args);
 }
-
-// Start periodic cleanup of in-memory logs when not in a call
-export function startPeriodicLogCleanup() {
-    // Clear accumulated background noise once per day if not in a call
-    setInterval(() => {
-        if (!window.callsClient) {
-            clientLogs = '';
-        }
-    }, 24 * 60 * 60 * 1000); // 24 hours
-}

@@ -135,7 +135,7 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
-import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn, startPeriodicLogCleanup} from './log';
+import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
@@ -344,9 +344,6 @@ export default class Plugin {
 
         const theme = getTheme(store.getState());
         setCallsGlobalCSSVars(theme.sidebarBg);
-
-        // Start periodic cleanup of accumulated background logs
-        startPeriodicLogCleanup();
 
         // Register root DOM element for Calls. This is where the widget will render.
         if (!document.getElementById('calls')) {
