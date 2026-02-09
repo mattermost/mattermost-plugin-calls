@@ -3,7 +3,6 @@
 
 import {CommandArgs} from '@mattermost/types/integrations';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
-import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionResult} from 'mattermost-redux/types/actions';
@@ -19,9 +18,9 @@ import {
 } from 'src/components/call_widget/end_call_confirmation';
 import {
     DisabledCallsErr,
-    MAX_INLINE_LOG_POST_SIZE,
     STORAGE_CALLS_CLIENT_STATS_KEY,
 } from 'src/constants';
+import RestClient from 'src/rest_client';
 import {modals} from 'src/webapp_globals';
 
 import {flushLogsToAccumulated, getClientLogs, logDebug} from './log';
@@ -34,7 +33,7 @@ import {
     isRecordingInCurrentCall,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
-import {getCallsClient, getCallsWindow, getPersistentStorage, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
+import {getCallsClient, getCallsWindow, getPersistentStorage, getPluginPath, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
 type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string) => void;
 
@@ -187,35 +186,30 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             return {error: {message: 'No call logs available'}};
         }
 
-        // Choose: inline post or file upload
-        if (allLogs.length < MAX_INLINE_LOG_POST_SIZE) {
-            // Small enough - post inline (existing behavior)
-            return {message: `/call logs ${btoa(allLogs)}`, args};
-        }
-
-        // Too large - upload as file
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        // Generate timestamp for filename
+        const now = new Date();
+        const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5); // 2026-02-09T14-30-45
         const filename = `call_logs_${timestamp}.txt`;
         const sizeKB = (allLogs.length / 1024).toFixed(1);
 
-        const blob = new Blob([allLogs], {type: 'text/plain'});
-        const file = new File([blob], filename, {type: 'text/plain'});
-
-        const formData = new FormData();
-        formData.append('files', file);
-        formData.append('channel_id', args.channel_id);
-
+        // Upload to bot DM channel via server endpoint
         try {
-            const fileUploadResp = await Client4.uploadFile(formData);
-            const fileId = fileUploadResp.file_infos[0].id;
+            const response = await RestClient.fetch<{url: string; filename: string}>(
+                `${getPluginPath()}/logs/upload`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify({logs: allLogs, filename}),
+                    headers: {'Content-Type': 'application/json'},
+                },
+            );
 
-            await Client4.createPost({
-                channel_id: args.channel_id,
-                message: `📋 Call logs (${sizeKB} KB)`,
-                file_ids: [fileId],
-            } as any);
+            const payload = {
+                url: response.url,
+                filename: response.filename,
+                size_kb: sizeKB,
+            };
 
-            return {};
+            return {message: `/call logs ${btoa(JSON.stringify(payload))}`, args};
         } catch (err) {
             return {error: {message: `Failed to upload logs: ${(err as Error).message}`}};
         }

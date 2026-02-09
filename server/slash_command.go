@@ -140,14 +140,30 @@ func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
 		return nil, fmt.Errorf("Empty logs")
 	}
 
-	logs, err := base64.StdEncoding.DecodeString(fields[2])
+	// Decode the JSON payload
+	jsonData, err := base64.StdEncoding.DecodeString(fields[2])
 	if err != nil {
 		return nil, fmt.Errorf("Failed to decode payload: %w", err)
 	}
 
+	var payload map[string]string
+	if err := json.Unmarshal(jsonData, &payload); err != nil {
+		return nil, fmt.Errorf("Failed to parse payload: %w", err)
+	}
+
+	url := payload["url"]
+	filename := payload["filename"]
+	sizeKB := payload["size_kb"]
+
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
-		Text:         fmt.Sprintf("```\n%s\n```", logs),
+		Text: fmt.Sprintf(
+			"✅ **Call Logs Uploaded**\n\n"+
+				"📁 [Download %s](%s) (%s KB)\n\n"+
+				"Click the link above to download the file.\n"+
+				"You can also share this link directly with support teams.",
+			filename, url, sizeKB,
+		),
 	}, nil
 }
 

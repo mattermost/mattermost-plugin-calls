@@ -572,3 +572,98 @@ func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 
 	return nil
 }
+
+func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-Id")
+	if userID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		Logs     string `json:"logs"`
+		Filename string `json:"filename"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Get bot user ID
+	if p.botSession == nil {
+		http.Error(w, "Bot user not available", http.StatusInternalServerError)
+		return
+	}
+	botID := p.botSession.UserId
+
+	// Get or create DM channel with bot
+	channel, appErr := p.API.GetDirectChannel(userID, botID)
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to get DM channel: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Upload file to bot DM channel
+	fileInfo, appErr := p.API.UploadFile(
+		[]byte(req.Logs),
+		channel.Id,
+		req.Filename,
+	)
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to upload file: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Get site URL to construct download link
+	siteURL := p.API.GetConfig().ServiceSettings.SiteURL
+	if siteURL == nil || *siteURL == "" {
+		http.Error(w, "Site URL not configured", http.StatusInternalServerError)
+		return
+	}
+
+	// Construct plugin download URL (proxies the file to avoid webapp interception)
+	// Format: {siteURL}/plugins/{pluginId}/logs/download/{fileId}
+	fileURL := fmt.Sprintf("%s/plugins/%s/logs/download/%s", *siteURL, manifest.Id, fileInfo.Id)
+
+	// Return response
+	resp := map[string]string{
+		"url":      fileURL,
+		"filename": req.Filename,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (p *Plugin) handleDownloadLogsFile(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	fileID := vars["fileId"]
+
+	if fileID == "" {
+		http.Error(w, "File ID required", http.StatusBadRequest)
+		return
+	}
+
+	// Get the file content from Mattermost
+	fileData, appErr := p.API.GetFile(fileID)
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to get file: %s", appErr.Error()), http.StatusNotFound)
+		return
+	}
+
+	// Get file info for the filename
+	fileInfo, appErr := p.API.GetFileInfo(fileID)
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to get file info: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Serve the file with proper headers to force download
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileInfo.Name))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(fileData)))
+	w.Write(fileData)
+}
