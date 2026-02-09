@@ -665,5 +665,7 @@ func (p *Plugin) handleDownloadLogsFile(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileInfo.Name))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(fileData)))
-	w.Write(fileData)
+	if _, err := w.Write(fileData); err != nil {
+		p.API.LogError("Failed to write file data to response", "error", err.Error())
+	}
 }
