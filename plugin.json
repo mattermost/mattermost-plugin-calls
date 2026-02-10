@@ -332,6 +332,7 @@
             "key": "TranscribeAPIAzureSpeechKey",
             "display_name": "Azure API Key",
             "type": "text",
+            "secret": true,
             "help_text": "The API key for Azure Speech Services",
             "default": "",
             "hosting": "on-prem"
@@ -485,6 +486,7 @@
         "key": "ICEServersConfigs",
         "display_name": "ICE Servers Configurations",
         "type": "longtext",
+        "secret": true,
         "help_text": "(Optional) A list of ICE servers (STUN/TURN) configurations to use. This field should contain a valid JSON array.",
         "default": "[{\"urls\":[\"stun:stun.global.calls.mattermost.com:3478\"]}]",
         "placeholder": "[{\n \"urls\":[\"turn:turnserver.example.org:3478\"],\n \"username\": \"webrtc\",\n \"credential\": \"turnpassword\"\n}]",
@@ -494,6 +496,7 @@
         "key": "TURNStaticAuthSecret",
         "display_name": "TURN Static Auth Secret",
         "type": "text",
+        "secret": true,
         "default": "",
         "help_text": "(Optional) The secret key used to generate TURN short-lived authentication credentials.",
         "hosting": "on-prem"
@@ -622,6 +625,7 @@
         "key": "TranscribeAPIAzureSpeechKey",
         "display_name": "Azure Speech Services API Key",
         "type": "text",
+        "secret": true,
         "help_text": "The API key for Azure Speech Services",
         "default": "",
         "hosting": "on-prem"
