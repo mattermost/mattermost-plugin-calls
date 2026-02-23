@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"testing"
 
 	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
@@ -12,6 +13,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -255,4 +257,87 @@ func TestGetClientConfig(t *testing.T) {
 	// admin config
 	adminClientCfg := p.getAdminClientConfig(p.getConfiguration())
 	require.Equal(t, transcriber.TranscribeAPI(transcriber.TranscribeAPIWhisperCPP), adminClientCfg.TranscribeAPI)
+}
+
+func TestConfigurationWillBeSaved(t *testing.T) {
+	setup := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI) {
+		t.Helper()
+		mockAPI := &pluginMocks.MockAPI{}
+		p := &Plugin{
+			MattermostPlugin: plugin.MattermostPlugin{
+				API: mockAPI,
+			},
+		}
+		return p, mockAPI
+	}
+
+	pluginCfg := func(data map[string]interface{}) *model.Config {
+		return &model.Config{
+			PluginSettings: model.PluginSettings{
+				Plugins: map[string]map[string]interface{}{
+					manifest.Id: data,
+				},
+			},
+		}
+	}
+
+	t.Run("nil config", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		mockAPI.On("LogDebug", "ConfigurationWillBeSaved", "origin", mock.AnythingOfType("string")).Return()
+		mockAPI.On("LogWarn", "newCfg should not be nil", "origin", mock.AnythingOfType("string")).Return()
+
+		retCfg, err := p.ConfigurationWillBeSaved(nil)
+		require.Nil(t, retCfg)
+		require.NoError(t, err)
+	})
+
+	t.Run("valid empty config", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		mockAPI.On("LogDebug", "ConfigurationWillBeSaved", "origin", mock.AnythingOfType("string")).Return()
+
+		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{}))
+		require.Nil(t, retCfg)
+		require.NoError(t, err)
+	})
+
+	t.Run("valid config with non-secret parameter", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		mockAPI.On("LogDebug", "ConfigurationWillBeSaved", "origin", mock.AnythingOfType("string")).Return()
+
+		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{
+			"udpserverport": float64(8443),
+		}))
+		require.Nil(t, retCfg)
+		require.NoError(t, err)
+	})
+
+	t.Run("sanitized secret field", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		mockAPI.On("LogDebug", "ConfigurationWillBeSaved", "origin", mock.AnythingOfType("string")).Return()
+
+		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{
+			"turnstaticauthsecret": model.FakeSetting,
+		}))
+		require.Nil(t, retCfg)
+		require.NoError(t, err)
+	})
+
+	t.Run("invalid UDPServerPort", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		mockAPI.On("LogDebug", "ConfigurationWillBeSaved", "origin", mock.AnythingOfType("string")).Return()
+
+		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{
+			"udpserverport": float64(45),
+		}))
+		require.Nil(t, retCfg)
+		require.Error(t, err)
+		var appErr *model.AppError
+		require.True(t, errors.As(err, &appErr))
+		require.Contains(t, appErr.Message, "UDPServerPort is not valid")
+	})
 }
