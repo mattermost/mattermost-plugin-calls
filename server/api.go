@@ -615,15 +615,24 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get site URL to construct download link
+	// Create a post with the file attached. This makes it visible in the bot DM
+	// and is required for GetFileLink (which requires PostId != "").
+	post := &model.Post{
+		UserId:    botID,
+		ChannelId: channel.Id,
+		FileIds:   []string{fileInfo.Id},
+	}
+	if _, appErr = p.API.CreatePost(post); appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to create post: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
 	siteURL := p.API.GetConfig().ServiceSettings.SiteURL
 	if siteURL == nil || *siteURL == "" {
 		http.Error(w, "Site URL not configured", http.StatusInternalServerError)
 		return
 	}
 
-	// Construct plugin download URL (proxies the file to avoid webapp interception)
-	// Format: {siteURL}/plugins/{pluginId}/logs/download/{fileId}
 	fileURL := fmt.Sprintf("%s/plugins/%s/logs/download/%s", *siteURL, manifest.Id, fileInfo.Id)
 
 	// Return response
@@ -639,33 +648,44 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) handleDownloadLogsFile(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	fileID := vars["fileId"]
-
-	if fileID == "" {
-		http.Error(w, "File ID required", http.StatusBadRequest)
+	userID := r.Header.Get("Mattermost-User-Id")
+	if userID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	// Get the file content from Mattermost
-	fileData, appErr := p.API.GetFile(fileID)
-	if appErr != nil {
-		http.Error(w, fmt.Sprintf("Failed to get file: %s", appErr.Error()), http.StatusNotFound)
+	if p.botSession == nil {
+		http.Error(w, "Bot user not available", http.StatusInternalServerError)
 		return
 	}
 
-	// Get file info for the filename
+	fileID := mux.Vars(r)["fileId"]
+
 	fileInfo, appErr := p.API.GetFileInfo(fileID)
 	if appErr != nil {
-		http.Error(w, fmt.Sprintf("Failed to get file info: %s", appErr.Error()), http.StatusInternalServerError)
+		http.Error(w, "File not found", http.StatusNotFound)
 		return
 	}
 
-	// Serve the file with proper headers to force download
+	// Verify the file belongs to this user's DM with the bot. This scopes the
+	// endpoint to only files explicitly uploaded for the requesting user,
+	// preventing IDOR access to arbitrary files by known ID.
+	dmChannel, appErr := p.API.GetDirectChannel(userID, p.botSession.UserId)
+	if appErr != nil || fileInfo.ChannelId != dmChannel.Id {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	fileData, appErr := p.API.GetFile(fileID)
+	if appErr != nil {
+		http.Error(w, "Failed to get file", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileInfo.Name))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(fileData)))
 	if _, err := w.Write(fileData); err != nil {
-		p.API.LogError("Failed to write file data to response", "error", err.Error())
+		p.API.LogError("Failed to write log file to response", "error", err.Error())
 	}
 }

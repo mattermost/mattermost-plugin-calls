@@ -158,10 +158,7 @@ func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
 		Text: fmt.Sprintf(
-			"✅ **Call Logs Uploaded**\n\n"+
-				"📁 [Download %s](%s) (%s KB)\n\n"+
-				"Click the link above to download the file.\n"+
-				"You can also share this link directly with support teams.",
+			"Call logs uploaded. [Click here to download %s](%s) (%s KB)",
 			filename, url, sizeKB,
 		),
 	}, nil
