@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"net/http"
 	"os"
@@ -648,13 +649,11 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 	// Mattermost before being passed to this hook. Work on a copy with those fields removed
 	// so they are skipped during unmarshal and validation without mutating newCfg (which
 	// the server will save). The fields were already valid when originally saved.
-	configDataForValidation := make(map[string]interface{}, len(configData))
-	for k, v := range configData {
-		configDataForValidation[k] = v
-	}
-	for _, secretField := range []string{"ICEServersConfigs", "TURNStaticAuthSecret"} {
-		if v, ok := configDataForValidation[secretField]; ok && v == model.FakeSetting {
-			delete(configDataForValidation, secretField)
+	configDataForValidation := make(map[string]any, len(configData))
+	maps.Copy(configDataForValidation, configData)
+	for k, v := range configDataForValidation {
+		if v == model.FakeSetting {
+			delete(configDataForValidation, k)
 		}
 	}
 
