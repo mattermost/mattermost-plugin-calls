@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"net/http"
 	"os"
@@ -644,7 +645,19 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 	appErr := model.NewAppError("saveConfig", "app.save_config.error", nil, "", http.StatusBadRequest)
 	appErr.SkipTranslation = true
 
-	js, err := json.Marshal(configData)
+	// Fields marked "secret": true in plugin.json are sanitized to model.FakeSetting by
+	// Mattermost before being passed to this hook. Work on a copy with those fields removed
+	// so they are skipped during unmarshal and validation without mutating newCfg (which
+	// the server will save). The fields were already valid when originally saved.
+	configDataForValidation := make(map[string]any, len(configData))
+	maps.Copy(configDataForValidation, configData)
+	for k, v := range configDataForValidation {
+		if v == model.FakeSetting {
+			delete(configDataForValidation, k)
+		}
+	}
+
+	js, err := json.Marshal(configDataForValidation)
 	if err != nil {
 		err = fmt.Errorf("failed to marshal config data: %w", err)
 		p.LogError(err.Error())
