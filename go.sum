@@ -811,6 +811,8 @@ github.com/mattermost/mattermost/server/public v0.1.10 h1:gp3XHxqj5KDkz3venimqqN
 github.com/mattermost/mattermost/server/public v0.1.10/go.mod h1:hu2sIyXm024PGIGhACqmCxvp3atrwRzXGgAzCvs6zJs=
 github.com/mattermost/morph v1.1.0 h1:Q9vrJbeM3s2jfweGheq12EFIzdNp9a/6IovcbvOQ6Cw=
 github.com/mattermost/morph v1.1.0/go.mod h1:gD+EaqX2UMyyuzmF4PFh4r33XneQ8Nzi+0E8nXjMa3A=
+github.com/mattermost/rtcd v1.2.5 h1:edhYO5Fv82q1V5py5ZHnipEUD2ZoCXj+34VTw8ZAk7s=
+github.com/mattermost/rtcd v1.2.5/go.mod h1:u58OGqE0LFI8eUB3q8eFXO1hKvQwV8LsdxhUyjpe0ZU=
 github.com/mattermost/squirrel v0.2.0 h1:8ZWeyf+MWQ2cL7hu9REZgLtz2IJi51qqZEovI3T3TT8=
 github.com/mattermost/squirrel v0.2.0/go.mod h1:NPPtk+CdpWre4GxMGoOpzEVFVc0ZoEFyJBZGCtn9nSU=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
