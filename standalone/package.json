@@ -21,7 +21,7 @@
     "@mattermost/calls-common": "github:mattermost/calls-common#af309ceb0571ce43cc47ccc754fdb7bbeaf3da83",
     "@mattermost/compass-icons": "0.1.31",
     "@msgpack/msgpack": "2.7.1",
-    "bootstrap": "3.4.1",
+    "bootstrap": "4.0.0",
     "core-js": "3.26.1",
     "luxon": "3.3.0",
     "react": "17.0.2",
