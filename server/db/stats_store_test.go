@@ -16,7 +16,8 @@ import (
 
 func TestStatsStore(t *testing.T) {
 	testStore(t, map[string]func(t *testing.T, store *Store){
-		"TestGetStats": testGetStats,
+		"TestGetStats":      testGetStats,
+		"TestGetVideoStats": testGetVideoStats,
 	})
 }
 
@@ -240,5 +241,205 @@ func testGetStats(t *testing.T, store *Store) {
 
 			require.Equal(t, int64(jobsInMonth), stats.RecordingJobsByMonth[d.Format("2006-01")])
 		}
+	})
+}
+
+func testGetVideoStats(t *testing.T, store *Store) {
+	// Helper to create a call with video statistics
+	createCallWithVideo := func(startAt time.Time, videoDuration int64, hasUsedVideo, hasUsedScreenShare bool) {
+		call := &public.Call{
+			ID:           model.NewId(),
+			CreateAt:     startAt.UnixMilli(),
+			ChannelID:    model.NewId(),
+			StartAt:      startAt.UnixMilli(),
+			EndAt:        startAt.Add(time.Hour).UnixMilli(),
+			PostID:       model.NewId(),
+			ThreadID:     model.NewId(),
+			OwnerID:      model.NewId(),
+			Participants: []string{model.NewId()},
+			Stats: public.CallStats{
+				VideoDuration:      videoDuration,
+				HasUsedVideo:       hasUsedVideo,
+				HasUsedScreenShare: hasUsedScreenShare,
+			},
+		}
+		err := store.CreateCall(call)
+		require.NoError(t, err)
+	}
+
+	t.Run("empty tables", func(t *testing.T) {
+		stats, err := store.GetCallsStats()
+		require.NoError(t, err)
+
+		require.Zero(t, stats.AvgVideoDuration)
+		require.Zero(t, stats.TotalVideoDuration)
+		require.Zero(t, stats.TotalVideoCalls)
+		require.Zero(t, stats.TotalScreenShareCalls)
+	})
+
+	t.Run("average video duration", func(t *testing.T) {
+		defer resetStore(t, store)
+
+		now := time.Now()
+
+		// Create 3 calls with video: 10s, 20s, 30s
+		createCallWithVideo(now.AddDate(0, 0, -1), 10, true, false)
+		createCallWithVideo(now.AddDate(0, 0, -2), 20, true, false)
+		createCallWithVideo(now.AddDate(0, 0, -3), 30, true, false)
+
+		stats, err := store.GetCallsStats()
+		require.NoError(t, err)
+
+		// Average should be (10 + 20 + 30) / 3 = 20
+		require.Equal(t, int64(20), stats.AvgVideoDuration)
+	})
+
+	t.Run("total video duration", func(t *testing.T) {
+		defer resetStore(t, store)
+
+		now := time.Now()
+
+		// Create calls with various video durations
+		createCallWithVideo(now.AddDate(0, 0, -1), 100, true, false)
+		createCallWithVideo(now.AddDate(0, 0, -2), 200, true, false)
+		createCallWithVideo(now.AddDate(0, 0, -3), 300, true, false)
+
+		stats, err := store.GetCallsStats()
+		require.NoError(t, err)
+
+		// Total should be 100 + 200 + 300 = 600
+		require.Equal(t, int64(600), stats.TotalVideoDuration)
+	})
+
+	t.Run("excludes calls without video", func(t *testing.T) {
+		defer resetStore(t, store)
+
+		now := time.Now()
+
+		// 2 calls with video
+		createCallWithVideo(now.AddDate(0, 0, -1), 10, true, false)
+		createCallWithVideo(now.AddDate(0, 0, -2), 20, true, false)
+
+		// 3 calls without video (HasUsedVideo = false, VideoDuration = 0)
+		createCallWithVideo(now.AddDate(0, 0, -3), 0, false, false)
+		createCallWithVideo(now.AddDate(0, 0, -4), 0, false, false)
+		createCallWithVideo(now.AddDate(0, 0, -5), 0, false, false)
+
+		stats, err := store.GetCallsStats()
+		require.NoError(t, err)
+
+		// Only 2 calls had video
+		require.Equal(t, int64(2), stats.TotalVideoCalls)
+		// Average only considers calls with video: (10 + 20) / 2 = 15
+		require.Equal(t, int64(15), stats.AvgVideoDuration)
+		// Total: 10 + 20 = 30
+		require.Equal(t, int64(30), stats.TotalVideoDuration)
+	})
+
+	t.Run("screen share statistics", func(t *testing.T) {
+		defer resetStore(t, store)
+
+		now := time.Now()
+
+		// 3 calls with screen share
+		createCallWithVideo(now.AddDate(0, 0, -1), 0, false, true)
+		createCallWithVideo(now.AddDate(0, 0, -2), 0, false, true)
+		createCallWithVideo(now.AddDate(0, 0, -3), 0, false, true)
+
+		// 2 calls without screen share
+		createCallWithVideo(now.AddDate(0, 0, -4), 0, false, false)
+		createCallWithVideo(now.AddDate(0, 0, -5), 0, false, false)
+
+		stats, err := store.GetCallsStats()
+		require.NoError(t, err)
+
+		require.Equal(t, int64(3), stats.TotalScreenShareCalls)
+	})
+
+	t.Run("mixed video and screen share", func(t *testing.T) {
+		defer resetStore(t, store)
+
+		now := time.Now()
+
+		// Call with both video and screen share
+		createCallWithVideo(now.AddDate(0, 0, -1), 100, true, true)
+
+		// Call with only video
+		createCallWithVideo(now.AddDate(0, 0, -2), 200, true, false)
+
+		// Call with only screen share
+		createCallWithVideo(now.AddDate(0, 0, -3), 0, false, true)
+
+		// Call with neither
+		createCallWithVideo(now.AddDate(0, 0, -4), 0, false, false)
+
+		stats, err := store.GetCallsStats()
+		require.NoError(t, err)
+
+		require.Equal(t, int64(2), stats.TotalVideoCalls)       // Calls 1 and 2
+		require.Equal(t, int64(2), stats.TotalScreenShareCalls) // Calls 1 and 3
+		require.Equal(t, int64(150), stats.AvgVideoDuration)    // (100 + 200) / 2
+		require.Equal(t, int64(300), stats.TotalVideoDuration)  // 100 + 200
+	})
+
+	t.Run("person-seconds accumulation", func(t *testing.T) {
+		defer resetStore(t, store)
+
+		now := time.Now()
+
+		// Simulate a call where multiple participants had video on
+		// If 3 users had video on for 10 seconds each, total = 30 participant-seconds
+		createCallWithVideo(now.AddDate(0, 0, -1), 30, true, false)
+
+		// Another call with 2 users × 20 seconds = 40 participant-seconds
+		createCallWithVideo(now.AddDate(0, 0, -2), 40, true, false)
+
+		stats, err := store.GetCallsStats()
+		require.NoError(t, err)
+
+		// Average: (30 + 40) / 2 = 35 participant-seconds
+		require.Equal(t, int64(35), stats.AvgVideoDuration)
+		// Total: 30 + 40 = 70 participant-seconds
+		require.Equal(t, int64(70), stats.TotalVideoDuration)
+	})
+
+	t.Run("handles zero and null values", func(t *testing.T) {
+		defer resetStore(t, store)
+
+		now := time.Now()
+
+		// Mix of calls with video and without
+		createCallWithVideo(now.AddDate(0, 0, -1), 100, true, false)
+		createCallWithVideo(now.AddDate(0, 0, -2), 0, false, false)
+		createCallWithVideo(now.AddDate(0, 0, -3), 50, true, false)
+
+		stats, err := store.GetCallsStats()
+		require.NoError(t, err)
+
+		// Should only average over calls with video (100 + 50) / 2 = 75
+		require.Equal(t, int64(75), stats.AvgVideoDuration)
+		// Total: 100 + 50 = 150 (zero excluded due to NULL filter)
+		require.Equal(t, int64(150), stats.TotalVideoDuration)
+		require.Equal(t, int64(2), stats.TotalVideoCalls)
+	})
+
+	t.Run("large participant-seconds values", func(t *testing.T) {
+		defer resetStore(t, store)
+
+		now := time.Now()
+
+		// Simulate a large call: 100 participants × 3600 seconds (1 hour) = 360,000 participant-seconds
+		createCallWithVideo(now.AddDate(0, 0, -1), 360000, true, false)
+
+		// Smaller call: 10 participants × 600 seconds (10 min) = 6,000 participant-seconds
+		createCallWithVideo(now.AddDate(0, 0, -2), 6000, true, false)
+
+		stats, err := store.GetCallsStats()
+		require.NoError(t, err)
+
+		// Average: (360,000 + 6,000) / 2 = 183,000
+		require.Equal(t, int64(183000), stats.AvgVideoDuration)
+		// Total: 360,000 + 6,000 = 366,000
+		require.Equal(t, int64(366000), stats.TotalVideoDuration)
 	})
 }

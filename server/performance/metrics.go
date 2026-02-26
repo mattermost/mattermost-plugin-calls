@@ -53,6 +53,12 @@ type Metrics struct {
 	LiveCaptionsPktPayloadChBufFullCounter prometheus.Counter
 
 	ClientICECandidatePairsCounter *prometheus.CounterVec
+
+	// Historical statistics gauges
+	HistoricalDailyCallsGauge   *prometheus.GaugeVec
+	HistoricalMonthlyCallsGauge *prometheus.GaugeVec
+	CallsByChannelTypeGauge     *prometheus.GaugeVec
+	AggregateStatsGauges        *prometheus.GaugeVec
 }
 
 func NewMetrics() *Metrics {
@@ -209,6 +215,47 @@ func NewMetrics() *Metrics {
 	)
 	m.registry.MustRegister(m.ClientICECandidatePairsCounter)
 
+	// Historical statistics gauges
+	m.HistoricalDailyCallsGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: metricsNamespace,
+			Name:      "daily_calls_total",
+			Help:      "Total number of calls per day (last 30 days)",
+		},
+		[]string{"date"},
+	)
+	m.registry.MustRegister(m.HistoricalDailyCallsGauge)
+
+	m.HistoricalMonthlyCallsGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: metricsNamespace,
+			Name:      "monthly_calls_total",
+			Help:      "Total number of calls per month",
+		},
+		[]string{"month"},
+	)
+	m.registry.MustRegister(m.HistoricalMonthlyCallsGauge)
+
+	m.CallsByChannelTypeGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: metricsNamespace,
+			Name:      "calls_by_channel_type",
+			Help:      "Total calls by channel type (public, private, direct, group)",
+		},
+		[]string{"type"},
+	)
+	m.registry.MustRegister(m.CallsByChannelTypeGauge)
+
+	m.AggregateStatsGauges = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: metricsNamespace,
+			Name:      "aggregate_stats",
+			Help:      "Aggregate statistics (avg_duration, avg_participants, etc)",
+		},
+		[]string{"stat"},
+	)
+	m.registry.MustRegister(m.AggregateStatsGauges)
+
 	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
 
 	return &m
@@ -290,4 +337,53 @@ func (m *Metrics) IncClientICECandidatePairs(p public.ClientICECandidatePairMetr
 		"remote_type":     p.Remote.Type,
 		"remote_protocol": p.Remote.Protocol,
 	}).Inc()
+}
+
+// UpdateHistoricalMetrics updates the historical statistics gauges with data from the database
+func (m *Metrics) UpdateHistoricalMetrics(stats *public.CallsStats, callsByDay, callsByMonth map[string]int64) {
+	// Reset gauges before updating to remove old dates
+	m.HistoricalDailyCallsGauge.Reset()
+	m.HistoricalMonthlyCallsGauge.Reset()
+
+	// Update daily metrics (last 30 days)
+	for date, count := range callsByDay {
+		m.HistoricalDailyCallsGauge.With(prometheus.Labels{"date": date}).Set(float64(count))
+	}
+
+	// Update monthly metrics
+	for month, count := range callsByMonth {
+		m.HistoricalMonthlyCallsGauge.With(prometheus.Labels{"month": month}).Set(float64(count))
+	}
+
+	// Update channel type distribution
+	for channelType, count := range stats.CallsByChannelType {
+		typeLabel := channelTypeToLabel(channelType)
+		m.CallsByChannelTypeGauge.With(prometheus.Labels{"type": typeLabel}).Set(float64(count))
+	}
+
+	// Update aggregate stats
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "total_calls"}).Set(float64(stats.TotalCalls))
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "total_active_calls"}).Set(float64(stats.TotalActiveCalls))
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "total_active_sessions"}).Set(float64(stats.TotalActiveSessions))
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "avg_duration_seconds"}).Set(float64(stats.AvgDuration))
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "avg_participants"}).Set(float64(stats.AvgParticipants))
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "avg_video_duration_seconds"}).Set(float64(stats.AvgVideoDuration))
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "total_video_duration_seconds"}).Set(float64(stats.TotalVideoDuration))
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "total_video_calls"}).Set(float64(stats.TotalVideoCalls))
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "total_screen_share_calls"}).Set(float64(stats.TotalScreenShareCalls))
+}
+
+func channelTypeToLabel(t string) string {
+	switch t {
+	case "O":
+		return "public"
+	case "P":
+		return "private"
+	case "D":
+		return "direct"
+	case "G":
+		return "group"
+	default:
+		return "unknown"
+	}
 }
