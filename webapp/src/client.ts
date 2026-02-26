@@ -11,7 +11,7 @@ import {EventEmitter} from 'events';
 import {zlibSync, strToU8} from 'fflate';
 import {MediaDevices, CallsClientConfig, CallsClientStats, TrackMetadata} from 'src/types/types';
 
-import {logDebug, logErr, logInfo, logWarn, persistClientLogs} from './log';
+import {logDebug, logErr, logInfo, logWarn, persistClientLogs, flushLogsToAccumulated} from './log';
 import {getScreenStream, getPersistentStorage} from './utils';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
 import {
@@ -837,9 +837,16 @@ export default class CallsClient extends EventEmitter {
         this.closed = true;
         if (this.peer) {
             this.getStats().then((stats) => {
+                // Flush logs with stats to accumulated buffer
+                flushLogsToAccumulated(stats);
+
+                // Also save to stats storage for backwards compatibility
                 getPersistentStorage().setItem(STORAGE_CALLS_CLIENT_STATS_KEY, JSON.stringify(stats));
             }).catch((statsErr) => {
                 logErr(statsErr);
+
+                // Still flush logs even if stats failed
+                flushLogsToAccumulated();
             });
             this.peer.destroy();
             this.peer = null;
@@ -1227,7 +1234,7 @@ export default class CallsClient extends EventEmitter {
 
         return {
             initTime: this.initTime,
-            callID: this.channelID,
+            channelID: this.channelID,
             tracksInfo,
             rtcStats: stats ? parseRTCStats(stats) : null,
         };

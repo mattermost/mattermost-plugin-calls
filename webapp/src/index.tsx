@@ -135,7 +135,7 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
-import {logDebug, logErr, logWarn} from './log';
+import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
@@ -662,6 +662,16 @@ export default class Plugin {
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             const channel = getChannel(store.getState(), channelID);
+
+            // Flush any pending logs from previous call
+            flushLogsToAccumulated();
+
+            // Log separator for new call
+            const isStarting = !channelHasCall(store.getState(), channelID);
+            logInfo(`=== ${isStarting ? 'starting' : 'joining'} call at ${new Date().toISOString()}`);
+
+            // Flush separator immediately (ensures desktop clients capture it)
+            flushLogsToAccumulated();
 
             // Desktop handler
             const payload = {
