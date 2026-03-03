@@ -8,6 +8,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -140,14 +142,43 @@ func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
 		return nil, fmt.Errorf("Empty logs")
 	}
 
-	logs, err := base64.StdEncoding.DecodeString(fields[2])
+	// Decode the JSON payload
+	jsonData, err := base64.StdEncoding.DecodeString(fields[2])
 	if err != nil {
 		return nil, fmt.Errorf("Failed to decode payload: %w", err)
 	}
 
+	var payload map[string]string
+	if err := json.Unmarshal(jsonData, &payload); err != nil {
+		return nil, fmt.Errorf("Failed to parse payload: %w", err)
+	}
+
+	fileURL := payload["url"]
+	filename := payload["filename"]
+	sizeKB := payload["size_kb"]
+
+	// Validate URL scheme to prevent javascript: or other malicious schemes
+	// from being rendered as a link in the client.
+	parsedURL, err := url.Parse(fileURL)
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+		return nil, fmt.Errorf("Invalid URL in payload")
+	}
+
+	// Validate size_kb is numeric so arbitrary text can't be injected.
+	if _, err := strconv.ParseFloat(sizeKB, 64); err != nil {
+		return nil, fmt.Errorf("Invalid size in payload")
+	}
+
+	// Strip markdown link-breaking characters from the filename so it can
+	// be safely embedded in link text.
+	filename = strings.NewReplacer("[", "", "]", "", "(", "", ")", "").Replace(filename)
+
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
-		Text:         fmt.Sprintf("```\n%s\n```", logs),
+		Text: fmt.Sprintf(
+			"Call logs uploaded. [Click here to download %s](%s) (%s KB)",
+			filename, fileURL, sizeKB,
+		),
 	}, nil
 }
 
