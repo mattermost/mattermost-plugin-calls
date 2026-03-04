@@ -8,38 +8,85 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
-	"path/filepath"
-	"strings"
+	"time"
 
 	"golang.org/x/time/rate"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
-	"github.com/mattermost/rtcd/service/rtc"
-
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/gorilla/mux"
+
+	"github.com/livekit/protocol/auth"
 )
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
 func (p *Plugin) handleGetVersion(w http.ResponseWriter, _ *http.Request) {
-	p.mut.RLock()
-	defer p.mut.RUnlock()
-
 	info := public.VersionInfo{
-		Version:     manifest.Version,
-		Build:       buildHash,
-		RTCDVersion: p.rtcdVersionInfo.BuildVersion,
-		RTCDBuild:   p.rtcdVersionInfo.BuildHash,
+		Version: manifest.Version,
+		Build:   buildHash,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(info); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
+func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleGetLiveKitToken", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := r.URL.Query().Get("channel_id")
+
+	if channelID == "" {
+		res.Err = "missing channel_id parameter"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	// Verify user has channel access
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+		res.Err = "Forbidden"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	cfg := p.getConfiguration()
+
+	// Generate LiveKit token
+	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
+	grant := &auth.VideoGrant{
+		RoomJoin: true,
+		Room:     channelID,
+	}
+	at.SetVideoGrant(grant).
+		SetIdentity(userID).
+		SetValidFor(24 * time.Hour)
+
+	// Get user info for display name
+	user, appErr := p.API.GetUser(userID)
+	if appErr == nil {
+		at.SetName(user.GetDisplayName(model.ShowNicknameFullName))
+	}
+
+	token, err := at.ToJWT()
+	if err != nil {
+		res.Err = fmt.Errorf("failed to generate token: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"token": token,
+		"url":   cfg.LiveKitURL,
+	}); err != nil {
 		p.LogError(err.Error())
 	}
 }
@@ -49,8 +96,6 @@ func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Reques
 	userID := r.Header.Get("Mattermost-User-Id")
 	channelID := mux.Vars(r)["channel_id"]
 
-	// We should go through only if the user has permissions to the requested channel
-	// or if the user is the Calls bot.
 	if !(p.isBotSession(r) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
@@ -94,8 +139,6 @@ func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Here we need to keep backwards compatibility so we send both
-	// channel info and current call state, as expected by our older clients.
 	data := map[string]any{}
 	data["channel_id"] = channel.ChannelID
 	data["enabled"] = channel.Enabled
@@ -111,8 +154,6 @@ func (p *Plugin) handleGetCallActive(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
 	channelID := mux.Vars(r)["channel_id"]
 
-	// We should go through only if the user has permissions to the requested channel
-	// or if the user is the Calls bot.
 	if !(p.isBotSession(r) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
@@ -155,7 +196,6 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 	var page int
 	perPage := 200
 
-	// getting all channel members for the asking user.
 	for {
 		cms, appErr := p.API.GetChannelMembersForUser("", userID, page, perPage)
 		if appErr != nil {
@@ -188,14 +228,12 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 
 	callsMap := make(map[string]*public.Call)
 	for _, call := range calls {
-		// only include calls user has access to
 		if p.hasPermissionToChannel(channelMembers[call.ChannelID], model.PermissionReadChannel) {
 			callsMap[call.ChannelID] = call
 		}
 	}
 
 	data := []any{}
-	// loop on channels to check membership/permissions
 	for _, ch := range channels {
 		if !p.hasPermissionToChannel(channelMembers[ch.ChannelID], model.PermissionReadChannel) {
 			continue
@@ -216,13 +254,9 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 			delete(callsMap, ch.ChannelID)
 		}
 
-		// Here we need to keep backwards compatibility so we send both
-		// channel info and current call state, as expected by our older clients.
 		data = append(data, channelData)
 	}
 
-	// We also need to include any active calls that may not have an explicit entry in
-	// calls_channels
 	for _, call := range callsMap {
 		cs, err := p.getCallStateFromCall(call, false)
 		if err != nil {
@@ -275,7 +309,6 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// For now, only send to the user that dismissed the notification. May change in the future.
 	p.publishWebSocketEvent(wsEventUserDismissedNotification, map[string]interface{}{
 		"userID": userID,
 		"callID": state.Call.ID,
@@ -285,71 +318,16 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 	res.Msg = "success"
 }
 
-func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
-	// Referrer-based CSRF protection
-	referrer := r.Header.Get("Referer")
-	userAgent := r.UserAgent()
-
-	// Allow desktop or recorder (which uses our custom recorder header), or E2E
-	isDesktopApp := strings.Contains(userAgent, "Mattermost") && strings.Contains(userAgent, "Electron")
-	hasRecorderHeader := r.Header.Get("X-Calls-Recorder") == "true"
-	hasE2EHeader := r.Header.Get("X-Calls-E2E") == "true"
-	needsReferrerCheck := !(isDesktopApp || hasRecorderHeader || hasE2EHeader)
-	if needsReferrerCheck {
-		if referrer != "" {
-			// For web browsers, check referrer for CSRF protection
-			referrerURL, err := url.Parse(referrer)
-			if err != nil {
-				p.LogWarn("Serve standalone, BLOCKED: Invalid referrer", "err", err.Error())
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
-
-			if referrerURL.Host != r.Host {
-				p.LogWarn("Serve standalone, BLOCKED: Cross-origin referrer", "from", referrerURL.Host, "to", r.Host)
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
-
-			// Allow same-origin referrers
-		} else {
-			// No referrer - could be direct navigation (OK) or malicious site with referrer policy
-			p.LogWarn("Serve standalone, BLOCKED: no referrer")
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-	}
-
-	bundlePath, err := p.API.GetBundlePath()
-	if err != nil {
-		p.LogError(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	standalonePath := filepath.Join(bundlePath, "standalone/dist/")
-
-	http.StripPrefix("/standalone/", http.FileServer(http.Dir(standalonePath))).ServeHTTP(w, r)
-}
-
 func (p *Plugin) permissionToEnableDisableChannel(userID, channelID string) (bool, *model.AppError) {
-	// If TestMode (DefaultEnabled=false): only sysadmins can modify
-	// If LiveMode (DefaultEnabled=true): channel, team, sysadmin, DM/GM participants can modify
-
-	// Sysadmin has permission regardless
 	if p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
 		return true, nil
 	}
 
-	// if DefaultEnabled=false, no-one else has permissions
 	cfg := p.getConfiguration()
 	if cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled {
 		return false, nil
 	}
 
-	// Must be live mode.
-
-	// Channel admin?
 	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
 		return false, appErr
@@ -362,12 +340,10 @@ func (p *Plugin) permissionToEnableDisableChannel(userID, channelID string) (boo
 		return true, nil
 	}
 
-	// Team admin?
 	if p.API.HasPermissionToTeam(userID, channel.TeamId, model.PermissionManageTeam) {
 		return true, nil
 	}
 
-	// DM/GM participant
 	switch channel.Type {
 	case model.ChannelTypeDirect, model.ChannelTypeGroup:
 		if p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
@@ -449,46 +425,7 @@ func (p *Plugin) handlePostCallsChannel(w http.ResponseWriter, r *http.Request) 
 	p.publishWebSocketEvent(evType, nil, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 }
 
-func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request) {
-	var res httpResponse
-	defer p.httpAudit("handleGetTURNCredentials", &res, w, r)
-
-	cfg := p.getConfiguration()
-	if cfg.TURNStaticAuthSecret == "" {
-		res.Err = "TURNStaticAuthSecret should be set"
-		res.Code = http.StatusForbidden
-		return
-	}
-
-	turnServers := cfg.ICEServersConfigs.getTURNConfigsForCredentials()
-	if len(turnServers) == 0 {
-		res.Err = "No TURN server was configured"
-		res.Code = http.StatusForbidden
-		return
-	}
-
-	user, appErr := p.API.GetUser(r.Header.Get("Mattermost-User-Id"))
-	if appErr != nil {
-		res.Err = appErr.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
-	configs, err := rtc.GenTURNConfigs(turnServers, user.Username, cfg.TURNStaticAuthSecret, *cfg.TURNCredentialsExpirationMinutes)
-	if err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(configs); err != nil {
-		p.LogError(err.Error())
-	}
-}
-
-// handleConfig returns the client configuration, and cloud license information
-// that isn't exposed to clients yet on the webapp
+// handleConfig returns the client configuration
 func (p *Plugin) handleConfig(w http.ResponseWriter, r *http.Request) error {
 	userID := r.Header.Get("Mattermost-User-Id")
 	isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
@@ -562,8 +499,6 @@ func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 	if err != nil {
 		return fmt.Errorf("failed to get stats from store: %w", err)
 	}
-
-	// TODO (MM-58565): consider implementing some caching for heaviest queries.
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(stats); err != nil {

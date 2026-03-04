@@ -15,16 +15,14 @@ import (
 )
 
 const (
-	rootCommandTrigger      = "call"
-	startCommandTrigger     = "start"
-	joinCommandTrigger      = "join"
-	leaveCommandTrigger     = "leave"
-	linkCommandTrigger      = "link"
-	statsCommandTrigger     = "stats"
-	endCommandTrigger       = "end"
-	recordingCommandTrigger = "recording"
-	hostCommandTrigger      = "host"
-	logsCommandTrigger      = "logs"
+	rootCommandTrigger  = "call"
+	startCommandTrigger = "start"
+	joinCommandTrigger  = "join"
+	leaveCommandTrigger = "leave"
+	linkCommandTrigger  = "link"
+	statsCommandTrigger = "stats"
+	endCommandTrigger   = "end"
+	logsCommandTrigger  = "logs"
 )
 
 var subCommands = []string{
@@ -34,7 +32,6 @@ var subCommands = []string{
 	linkCommandTrigger,
 	endCommandTrigger,
 	statsCommandTrigger,
-	recordingCommandTrigger,
 	logsCommandTrigger,
 }
 
@@ -50,17 +47,6 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Show client-generated statistics about the call."))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately."))
 	data.AddCommand(model.NewAutocompleteData(logsCommandTrigger, "", "Show client logs."))
-
-	recordingCmdData := model.NewAutocompleteData(recordingCommandTrigger, "", "Manage calls recordings")
-	recordingCmdData.AddTextArgument("Available options: start, stop", "", "start|stop")
-	data.AddCommand(recordingCmdData)
-
-	if p.licenseChecker.HostControlsAllowed() {
-		subCommands = append(subCommands, hostCommandTrigger)
-		hostCmdData := model.NewAutocompleteData(hostCommandTrigger, "", "Change the host (system admins only).")
-		hostCmdData.AddTextArgument("@username", "", "@*")
-		data.AddCommand(hostCmdData)
-	}
 
 	return data
 }
@@ -155,37 +141,6 @@ func (p *Plugin) handleEndCallCommand() (*model.CommandResponse, error) {
 	return &model.CommandResponse{}, nil
 }
 
-func (p *Plugin) handleRecordingCommand(fields []string) (*model.CommandResponse, error) {
-	if len(fields) != 3 {
-		return nil, fmt.Errorf("Invalid number of arguments provided")
-	}
-
-	if subCmd := fields[2]; subCmd != "start" && subCmd != "stop" {
-		return nil, fmt.Errorf("Invalid subcommand %q", subCmd)
-	}
-
-	return &model.CommandResponse{}, nil
-}
-
-func (p *Plugin) handleHostCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
-	if len(fields) != 3 {
-		return nil, fmt.Errorf("Invalid number of arguments provided")
-	}
-
-	newHostUsername := strings.TrimPrefix(fields[2], "@")
-
-	newHost, appErr := p.API.GetUserByUsername(newHostUsername)
-	if appErr != nil {
-		return nil, fmt.Errorf("Could not find user `%s`", newHostUsername)
-	}
-
-	if err := p.changeHost(args.UserId, args.ChannelId, newHost.Id); err != nil {
-		return nil, err
-	}
-
-	return &model.CommandResponse{}, nil
-}
-
 func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 
@@ -230,14 +185,6 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == endCommandTrigger {
 		return buildCommandResponse(p.handleEndCallCommand())
-	}
-
-	if subCmd == recordingCommandTrigger {
-		return buildCommandResponse(p.handleRecordingCommand(fields))
-	}
-
-	if subCmd == hostCommandTrigger && p.licenseChecker.HostControlsAllowed() {
-		return buildCommandResponse(p.handleHostCommand(args, fields))
 	}
 
 	for _, cmd := range subCommands {

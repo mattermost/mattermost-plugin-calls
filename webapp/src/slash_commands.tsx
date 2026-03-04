@@ -163,14 +163,6 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
     case 'link':
         break;
     case 'stats': {
-        if (window.callsClient) {
-            try {
-                const stats = await window.callsClient.getStats();
-                return {message: `/call stats ${btoa(JSON.stringify(stats))}`, args};
-            } catch (err) {
-                return {error: {message: err}};
-            }
-        }
         const data = getPersistentStorage().getItem(STORAGE_CALLS_CLIENT_STATS_KEY) || '{}';
         return {message: `/call stats ${btoa(data)}`, args};
     }

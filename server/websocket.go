@@ -13,86 +13,45 @@ import (
 	"unicode/utf8"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/batching"
-	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
-
-	rtcd "github.com/mattermost/rtcd/service"
-	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
 const (
-	wsEventSignal = "signal"
-
 	wsEventUserJoined                = "user_joined"
 	wsEventUserLeft                  = "user_left"
 	wsEventUserMuted                 = "user_muted"
 	wsEventUserUnmuted               = "user_unmuted"
-	wsEventUserVoiceOn               = "user_voice_on"
-	wsEventUserVoiceOff              = "user_voice_off"
-	wsEventUserScreenOn              = "user_screen_on"
-	wsEventUserScreenOff             = "user_screen_off"
-	wsEventUserVideoOn               = "user_video_on"
-	wsEventUserVideoOff              = "user_video_off"
 	wsEventCallStart                 = "call_start"
 	wsEventCallState                 = "call_state"
 	wsEventCallEnd                   = "call_end"
-	wsEventUserRaiseHand             = "user_raise_hand"
-	wsEventUserUnraiseHand           = "user_unraise_hand"
-	wsEventUserReacted               = "user_reacted"
 	wsEventJoin                      = "join"
 	wsEventError                     = "error"
 	wsEventCallHostChanged           = "call_host_changed"
-	wsEventCallJobState              = "call_job_state"
 	wsEventUserDismissedNotification = "user_dismissed_notification"
-	wsEventJobStop                   = "job_stop"
-	wsEventCaption                   = "caption"
-	wsEventHostMute                  = "host_mute"
-	wsEventHostScreenOff             = "host_screen_off"
-	wsEventHostLowerHand             = "host_lower_hand"
-	wsEventHostRemoved               = "host_removed"
 
 	wsReconnectionTimeout = 10 * time.Second
 )
 
 var (
 	minMembersCountForBatching = 100
-	// This is a reasonable upper bound which should match our official
-	// target for max supported participants in a single call.
-	// It's meant to handle the worst case scenario of everyone joining or leaving at the same exact time.
-	maxJoinLeaveOpsBatchSize = 1000
+	maxJoinLeaveOpsBatchSize   = 1000
 
-	// TODO: consider making this dynamic. Higher interval values will make the batching more efficient
-	// at the cost of added latency when joining. Maybe we could make it a function of the members count.
-	// One step further could be an adaptive algorithm but it may be a little overcomplicating.
 	joinLeaveBatchingInterval = time.Second
 
-	// This indirection is needed as it makes it possible to mock in tests
 	newBatcher = batching.NewBatcher
 )
-
-var sessionAuthCheckInterval = 10 * time.Second
 
 type CallsClientJoinData struct {
 	ChannelID string
 	Title     string
 	ThreadID  string
-
-	AV1Support  bool
-	DCSignaling bool
-
-	// JobID is the id of the job tight to the bot connection to
-	// a call (e.g. recording, transcription). It's a parameter reserved to the
-	// Calls bot only.
-	JobID string
 }
 
 type callsJoinData struct {
 	CallsClientJoinData
-	remoteAddr string
-	xff        string
 }
 
 type WebSocketBroadcast struct {
@@ -146,13 +105,9 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 
 	p.metrics.IncWebSocketEvent("out", ev)
 
-	// If userIDs is set we broadcast the event only to the specified users (e.g.
-	// call participants).
 	if broadcast != nil && len(broadcast.UserIDs) > 0 {
 		for _, userID := range broadcast.UserIDs {
 			if userID == botID {
-				// Bot user is a special case handled above. We don't want to send events twice
-				// as setting broadcast.UserID will override any broadcast.OmitUsers entry.
 				continue
 			}
 			broadcast.UserID = userID
@@ -164,179 +119,10 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 	p.API.PublishWebSocketEvent(ev, data, broadcast.ToModel())
 }
 
-func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, handlerID string) error {
-	if cfg := p.getConfiguration(); cfg == nil || cfg.AllowScreenSharing == nil || !*cfg.AllowScreenSharing {
-		return fmt.Errorf("screen sharing is not allowed")
-	}
-
-	state, err := p.lockCallReturnState(us.channelID)
-	if err != nil {
-		return fmt.Errorf("failed to lock call: %w", err)
-	}
-	defer p.unlockCall(us.channelID)
-	if state == nil {
-		return fmt.Errorf("no call ongoing")
-	}
-
-	if msg.Type == clientMessageTypeScreenOn {
-		if state.Call.Props.ScreenSharingSessionID != "" {
-			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: connID=%s", state.Call.Props.ScreenSharingSessionID)
-		}
-		state.Call.Props.ScreenSharingSessionID = us.originalConnID
-		state.Call.Props.ScreenStartAt = time.Now().Unix()
-	} else {
-		if state.Call.Props.ScreenSharingSessionID != us.originalConnID {
-			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: connID=%s", state.Call.Props.ScreenSharingSessionID)
-		}
-		state.Call.Props.ScreenSharingSessionID = ""
-		if state.Call.Props.ScreenStartAt > 0 {
-			state.Call.Stats.ScreenDuration = secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
-			state.Call.Props.ScreenStartAt = 0
-		}
-	}
-
-	if err := p.store.UpdateCall(&state.Call); err != nil {
-		return fmt.Errorf("failed to update call: %w", err)
-	}
-
-	msgType := rtc.ScreenOnMessage
-	wsMsgType := wsEventUserScreenOn
-	if msg.Type == clientMessageTypeScreenOff {
-		msgType = rtc.ScreenOffMessage
-		wsMsgType = wsEventUserScreenOff
-	}
-
-	if handlerID != p.nodeID {
-		if err := p.sendClusterMessage(clusterMessage{
-			ConnID:        us.originalConnID,
-			UserID:        us.userID,
-			ChannelID:     us.channelID,
-			CallID:        us.callID,
-			SenderID:      p.nodeID,
-			ClientMessage: msg,
-		}, clusterMessageTypeUserState, handlerID); err != nil {
-			return err
-		}
-	} else {
-		rtcMsg := rtc.Message{
-			SessionID: us.originalConnID,
-			Type:      msgType,
-			Data:      msg.Data,
-		}
-
-		if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
-			p.LogError("failed to send RTC message", "error", err)
-		}
-	}
-
-	p.publishWebSocketEvent(wsMsgType, map[string]interface{}{
-		"userID":     us.userID,
-		"session_id": us.originalConnID,
-	}, &WebSocketBroadcast{ChannelID: us.channelID, ReliableClusterSend: true, UserIDs: getUserIDsFromSessions(state.sessions)})
-
-	return nil
-}
-
-type EmojiData struct {
-	Name    string `json:"name"`
-	Skin    string `json:"skin,omitempty"`
-	Unified string `json:"unified"`
-	Literal string `json:"literal,omitempty"`
-}
-
-func (ed EmojiData) toMap() map[string]interface{} {
-	return map[string]interface{}{
-		"name":    ed.Name,
-		"skin":    ed.Skin,
-		"unified": ed.Unified,
-		"literal": ed.Literal,
-	}
-}
-
-func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID string) error {
+func (p *Plugin) handleClientMsg(us *session, msg clientMessage) error {
 	p.metrics.IncWebSocketEvent("in", msg.Type)
 	switch msg.Type {
-	case clientMessageTypeSDP:
-		p.LogDebug("received sdp", "connID", us.connID, "originalConnID", us.originalConnID, "userID", us.userID)
-		// if I am not the handler for this we relay the signaling message.
-		if handlerID != p.nodeID {
-			// need to relay signaling.
-			if err := p.sendClusterMessage(clusterMessage{
-				ConnID:        us.originalConnID,
-				UserID:        us.userID,
-				ChannelID:     us.channelID,
-				CallID:        us.callID,
-				SenderID:      p.nodeID,
-				ClientMessage: msg,
-			}, clusterMessageTypeSignaling, handlerID); err != nil {
-				return err
-			}
-		} else {
-			rtcMsg := rtc.Message{
-				SessionID: us.originalConnID,
-				Type:      rtc.SDPMessage,
-				Data:      msg.Data,
-			}
-
-			if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
-				return fmt.Errorf("failed to send RTC message: %w", err)
-			}
-		}
-	case clientMessageTypeICE:
-		p.LogDebug("received ice candidate", "connID", us.connID, "originalConnID", us.originalConnID, "userID", us.userID)
-		if handlerID == p.nodeID {
-			rtcMsg := rtc.Message{
-				SessionID: us.originalConnID,
-				Type:      rtc.ICEMessage,
-				Data:      msg.Data,
-			}
-
-			if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
-				return fmt.Errorf("failed to send RTC message: %w", err)
-			}
-		} else {
-			// need to relay signaling.
-			if err := p.sendClusterMessage(clusterMessage{
-				ConnID:        us.originalConnID,
-				UserID:        us.userID,
-				ChannelID:     us.channelID,
-				CallID:        us.callID,
-				SenderID:      p.nodeID,
-				ClientMessage: msg,
-			}, clusterMessageTypeSignaling, handlerID); err != nil {
-				return err
-			}
-		}
 	case clientMessageTypeMute, clientMessageTypeUnmute:
-		if handlerID != p.nodeID {
-			// need to relay track event.
-			if err := p.sendClusterMessage(clusterMessage{
-				ConnID:        us.originalConnID,
-				UserID:        us.userID,
-				ChannelID:     us.channelID,
-				CallID:        us.callID,
-				SenderID:      p.nodeID,
-				ClientMessage: msg,
-			}, clusterMessageTypeUserState, handlerID); err != nil {
-				return err
-			}
-		} else {
-			msgType := rtc.UnmuteMessage
-			if msg.Type == clientMessageTypeMute {
-				msgType = rtc.MuteMessage
-			}
-
-			rtcMsg := rtc.Message{
-				SessionID: us.originalConnID,
-				Type:      msgType,
-				Data:      msg.Data,
-			}
-
-			if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
-				return fmt.Errorf("failed to send RTC message: %w", err)
-			}
-		}
-
 		state, err := p.lockCallReturnState(us.channelID)
 		if err != nil {
 			return fmt.Errorf("failed to lock call: %w", err)
@@ -367,131 +153,6 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			ReliableClusterSend: true,
 			UserIDs:             getUserIDsFromSessions(state.sessions),
 		})
-	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
-		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
-			return err
-		}
-	case clientMessageTypeVideoOn, clientMessageTypeVideoOff:
-		if handlerID != p.nodeID {
-			// need to relay track event.
-			if err := p.sendClusterMessage(clusterMessage{
-				ConnID:        us.originalConnID,
-				UserID:        us.userID,
-				ChannelID:     us.channelID,
-				CallID:        us.callID,
-				SenderID:      p.nodeID,
-				ClientMessage: msg,
-			}, clusterMessageTypeUserState, handlerID); err != nil {
-				return err
-			}
-		} else {
-			msgType := rtc.VideoOnMessage
-			if msg.Type == clientMessageTypeVideoOff {
-				msgType = rtc.VideoOffMessage
-			}
-
-			rtcMsg := rtc.Message{
-				SessionID: us.originalConnID,
-				Type:      msgType,
-				Data:      msg.Data,
-			}
-
-			if err := p.sendRTCMessage(rtcMsg, us.callID); err != nil {
-				return fmt.Errorf("failed to send RTC message: %w", err)
-			}
-		}
-
-		state, err := p.lockCallReturnState(us.channelID)
-		if err != nil {
-			return fmt.Errorf("failed to lock call: %w", err)
-		}
-		defer p.unlockCall(us.channelID)
-		if state == nil {
-			return fmt.Errorf("channel state is missing from store")
-		}
-		session := state.sessions[us.originalConnID]
-		if session == nil {
-			return fmt.Errorf("user session is missing from call state")
-		}
-		session.Video = msg.Type == clientMessageTypeVideoOn
-
-		if err := p.store.UpdateCallSession(session); err != nil {
-			return fmt.Errorf("failed to update call session: %w", err)
-		}
-
-		evType := wsEventUserVideoOn
-		if msg.Type == clientMessageTypeVideoOff {
-			evType = wsEventUserVideoOff
-		}
-		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID":     us.userID,
-			"session_id": us.originalConnID,
-		}, &WebSocketBroadcast{
-			ChannelID:           us.channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
-	case clientMessageTypeRaiseHand, clientMessageTypeUnraiseHand:
-		evType := wsEventUserUnraiseHand
-		if msg.Type == clientMessageTypeRaiseHand {
-			evType = wsEventUserRaiseHand
-		}
-
-		state, err := p.lockCallReturnState(us.channelID)
-		if err != nil {
-			return fmt.Errorf("failed to lock call: %w", err)
-		}
-		defer p.unlockCall(us.channelID)
-		if state == nil {
-			return fmt.Errorf("no call ongoing")
-		}
-
-		session := state.sessions[us.originalConnID]
-		if session == nil {
-			return fmt.Errorf("user session is missing from call state")
-		}
-
-		if msg.Type == clientMessageTypeRaiseHand {
-			session.RaisedHand = time.Now().UnixMilli()
-		} else {
-			session.RaisedHand = 0
-		}
-
-		if err := p.store.UpdateCallSession(session); err != nil {
-			return fmt.Errorf("failed to update call session: %w", err)
-		}
-
-		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID":      us.userID,
-			"session_id":  us.originalConnID,
-			"raised_hand": session.RaisedHand,
-		}, &WebSocketBroadcast{
-			ChannelID:           us.channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
-	case clientMessageTypeReact:
-		evType := wsEventUserReacted
-
-		var emoji EmojiData
-		if err := json.Unmarshal(msg.Data, &emoji); err != nil {
-			return fmt.Errorf("failed to unmarshal emoji data: %w", err)
-		}
-
-		sessions, err := p.store.GetCallSessions(us.callID, db.GetCallSessionOpts{})
-		if err != nil {
-			return fmt.Errorf("failed to get call sessions: %w", err)
-		}
-
-		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"user_id":    us.userID,
-			"session_id": us.originalConnID,
-			"emoji":      emoji.toMap(),
-			"timestamp":  time.Now().UnixMilli(),
-		}, &WebSocketBroadcast{
-			ChannelID: us.channelID,
-			UserIDs:   getUserIDsFromSessions(sessions),
-		})
 	default:
 		return fmt.Errorf("invalid client message type %q", msg.Type)
 	}
@@ -511,174 +172,46 @@ func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 		if atomic.CompareAndSwapInt32(&us.wsClosed, 0, 1) {
 			p.LogDebug("closing ws channel for session", "userID", userID, "connID", connID, "channelID", us.channelID)
 			close(us.wsCloseCh)
-		} else {
-			p.LogError("ws channel already closed", "userID", userID, "connID", connID, "channelID", us.channelID)
 		}
-	} else {
-		// If we don't find the session it's usually an expected case as this hook tracks all MM connections, not just Calls ones.
-		// However, there's a small chance the session has yet to be created (a race with handleJoin).
-		// To work around this edge case, we check again after a few seconds to unblock any potentially stuck wsReader goroutines.
-		go func() {
-			time.Sleep(wsReconnectionTimeout)
-			p.mut.RLock()
-			us := p.sessions[connID]
-			p.mut.RUnlock()
-			if us != nil && atomic.CompareAndSwapInt32(&us.wsClosed, 0, 1) {
-				p.LogDebug("race: closing ws channel for session", "userID", userID, "connID", connID, "channelID", us.channelID)
-				close(us.wsCloseCh)
-			}
-		}()
 	}
 }
 
-func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
-	sessionAuthTicker := time.NewTicker(sessionAuthCheckInterval)
-	defer sessionAuthTicker.Stop()
-
+func (p *Plugin) wsReader(us *session) {
 	for {
 		select {
 		case msg, ok := <-us.wsMsgCh:
 			if !ok {
 				return
 			}
-			if err := p.handleClientMsg(us, msg, handlerID); err != nil {
+			if err := p.handleClientMsg(us, msg); err != nil {
 				p.LogError("handleClientMsg failed", "err", err.Error(), "connID", us.connID)
 			}
-		case <-us.wsReconnectCh:
-			return
 		case <-us.leaveCh:
 			return
 		case <-us.wsCloseCh:
 			return
-		case <-us.rtcCloseCh:
-			return
-		case <-sessionAuthTicker.C:
-			// Server versions prior to MM v9.5 won't have the session ID set so we
-			// cannot go ahead with this check.
-			// Should be removed as soon as we bump the minimum supported version.
-			if authSessionID == "" {
-				continue
-			}
-
-			s, appErr := p.API.GetSession(authSessionID)
-			if appErr != nil || s == nil || (s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt) {
-				fields := []any{
-					"channelID",
-					us.channelID,
-					"userID",
-					us.userID,
-					"connID",
-					us.connID,
-				}
-
-				if appErr == nil && s == nil {
-					p.LogWarn("no appErr and no session found", fields...)
-				} else if appErr != nil {
-					fields = append(fields, "err", appErr.Error())
-				} else {
-					fields = append(fields, "sessionID", s.Id, "expiresAt", fmt.Sprintf("%d", s.ExpiresAt))
-				}
-
-				p.LogInfo("invalid or expired session, closing RTC session", fields...)
-
-				// We forcefully disconnect any session that has been revoked or expired.
-				if err := p.closeRTCSession(us.userID, us.connID, us.channelID, handlerID, us.callID); err != nil {
-					p.LogError("failed to close RTC session", append(fields[:5], "err", err.Error()))
-				}
-
-				return
-			}
 		}
 	}
 }
 
-func (p *Plugin) sendRTCMessage(msg rtc.Message, callID string) error {
-	if p.rtcdManager != nil {
-		cm := rtcd.ClientMessage{
-			Type: rtcd.ClientMessageRTC,
-			Data: msg,
-		}
-		host, err := p.store.GetRTCDHostForCall(callID, db.GetCallOpts{})
-		if err != nil {
-			return fmt.Errorf("failed to get RTCD host for call: %w", err)
-		}
-		return p.rtcdManager.Send(cm, host)
-	}
-
-	return p.rtcServer.Send(msg)
-}
-
-func (p *Plugin) wsWriter() {
-	for {
-		select {
-		case msg, ok := <-p.rtcServer.ReceiveCh():
-			if !ok {
-				return
-			}
-
-			us := p.getSessionByOriginalID(msg.SessionID)
-			if us == nil {
-				p.LogError("failed to get session by originalConnID", "originalConnID", msg.SessionID)
-				continue
-			}
-
-			if msg.Type == rtc.VoiceOnMessage || msg.Type == rtc.VoiceOffMessage {
-				evType := wsEventUserVoiceOff
-				if msg.Type == rtc.VoiceOnMessage {
-					evType = wsEventUserVoiceOn
-				}
-
-				sessions, err := p.store.GetCallSessions(us.callID, db.GetCallSessionOpts{})
-				if err != nil {
-					p.LogError("failed to get call sessions", "err", err.Error())
-					continue
-				}
-
-				p.publishWebSocketEvent(evType, map[string]interface{}{
-					"userID":     us.userID,
-					"session_id": us.originalConnID,
-				}, &WebSocketBroadcast{ChannelID: us.channelID, UserIDs: getUserIDsFromSessions(sessions)})
-
-				continue
-			}
-
-			p.publishWebSocketEvent(wsEventSignal, map[string]interface{}{
-				"data":   string(msg.Data),
-				"connID": msg.SessionID,
-			}, &WebSocketBroadcast{ConnectionID: us.connID, ReliableClusterSend: true})
-		case <-p.stopCh:
-			return
-		}
-	}
-}
-
-func (p *Plugin) handleLeave(us *session, userID, connID, channelID, handlerID string) error {
+func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) error {
 	p.LogDebug("handleLeave", "userID", userID, "connID", connID, "channelID", channelID)
 
 	select {
-	case <-us.wsReconnectCh:
-		p.LogDebug("reconnected, returning", "userID", userID, "connID", connID, "channelID", channelID)
-
-		// Clearing the previous session since it gets copied over after
-		// successful reconnect.
-		p.mut.Lock()
-		if p.sessions[connID] == us && !us.rtc {
-			p.LogDebug("clearing non-RTC session after reconnect", "userID", userID, "connID", connID, "channelID", channelID)
-			delete(p.sessions, connID)
-		}
-		p.mut.Unlock()
-		return nil
 	case <-us.leaveCh:
 		p.LogDebug("user left call", "userID", userID, "connID", connID, "channelID", us.channelID)
-	case <-us.rtcCloseCh:
-		p.LogDebug("rtc connection was closed", "userID", userID, "connID", connID, "channelID", us.channelID)
-		return nil
-	case <-time.After(wsReconnectionTimeout):
-		p.LogDebug("timeout waiting for reconnection", "userID", userID, "connID", connID, "channelID", channelID)
-	}
-
-	if err := p.closeRTCSession(userID, us.originalConnID, channelID, handlerID, us.callID); err != nil {
-		p.LogError(err.Error())
+	case <-us.wsCloseCh:
+		// Wait for potential reconnection
+		select {
+		case <-us.wsReconnectCh:
+			p.LogDebug("reconnected, returning", "userID", userID, "connID", connID, "channelID", channelID)
+			p.mut.Lock()
+			delete(p.sessions, connID)
+			p.mut.Unlock()
+			return nil
+		case <-time.After(wsReconnectionTimeout):
+			p.LogDebug("timeout waiting for reconnection", "userID", userID, "connID", connID, "channelID", channelID)
+		}
 	}
 
 	if err := p.removeSession(us); err != nil {
@@ -688,18 +221,13 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID, handlerID s
 	return nil
 }
 
-func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData callsJoinData) (retErr error) {
+func (p *Plugin) handleJoin(userID, connID string, joinData callsJoinData) (retErr error) {
 	channelID := joinData.ChannelID
 	p.LogDebug("handleJoin", "userID", userID, "connID", connID, "channelID", channelID)
 
-	// We should go through only if the user has permissions to the requested channel
-	// or if the user is the Calls bot.
+	// Verify channel permission
 	if !(p.isBot(userID) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost)) {
 		return fmt.Errorf("forbidden")
-	}
-
-	if userID == p.getBotID() && joinData.JobID == "" {
-		return fmt.Errorf("JobID should not be empty for bot connections")
 	}
 
 	channel, appErr := p.API.GetChannel(channelID)
@@ -745,7 +273,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	addSessionToCall := func(state *callState) *callState {
 		var err error
 
-		state, err = p.addUserSession(state, callsEnabled, userID, connID, channelID, joinData.JobID, channel.Type)
+		state, err = p.addUserSession(state, callsEnabled, userID, connID, channelID, channel.Type)
 		if err != nil {
 			p.LogError("failed to add user session", "err", err.Error())
 			p.publishWebSocketEvent(wsEventError, map[string]interface{}{
@@ -755,8 +283,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			return state
 		} else if len(state.sessions) == 1 {
 			// new call has started
-
-			// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
 			if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
 				p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
 				p.API.SendEphemeralPost(
@@ -780,7 +306,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 				p.LogError(err.Error())
 			}
 
-			// TODO: send all the info attached to a call.
 			p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
 				"id":        state.Call.ID,
 				"channelID": channelID,
@@ -794,99 +319,12 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 
 		p.LogDebug("session has joined call",
 			"userID", userID, "sessionID", connID, "channelID", channelID, "callID", state.Call.ID,
-			"remoteAddr", joinData.remoteAddr, "xForwardedFor", joinData.xff,
 		)
 
-		handlerID := state.Call.Props.NodeID
-		p.LogDebug("got handlerID", "handlerID", handlerID)
-
-		us := newUserSession(userID, channelID, connID, state.Call.ID, p.rtcdManager == nil && handlerID == p.nodeID)
+		us := newUserSession(userID, channelID, connID, state.Call.ID)
 		p.mut.Lock()
 		p.sessions[connID] = us
 		p.mut.Unlock()
-
-		if p.rtcdManager != nil {
-			msg := rtcd.ClientMessage{
-				Type: rtcd.ClientMessageJoin,
-				Data: map[string]any{
-					"callID":      us.callID,
-					"userID":      userID,
-					"sessionID":   connID,
-					"channelID":   channelID,
-					"av1Support":  joinData.AV1Support,
-					"dcSignaling": joinData.DCSignaling,
-				},
-			}
-			if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
-				p.LogError("failed to send client join message", "err", err.Error())
-				go func() {
-					if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
-						p.LogError(err.Error())
-					}
-				}()
-				return state
-			}
-		} else {
-			if ok, err := p.shouldSendConcurrentSessionsWarning(getConcurrentSessionsThreshold(),
-				getConcurrentSessionsWarningBackoffTime()); err != nil {
-				p.LogError("shouldSendConcurrentSessionsWarning failed", "err", err.Error())
-			} else if ok {
-				if err := p.sendConcurrentSessionsWarning(); err != nil {
-					p.LogError("sendConcurrentSessionsWarning failed", "err", err.Error())
-				}
-			}
-
-			if handlerID == p.nodeID {
-				cfg := rtc.SessionConfig{
-					GroupID:   "default",
-					CallID:    us.callID,
-					UserID:    userID,
-					SessionID: connID,
-					Props: rtc.SessionProps{
-						"channelID":   channelID,
-						"av1Support":  joinData.AV1Support,
-						"dcSignaling": joinData.DCSignaling,
-					},
-				}
-				p.LogDebug("initializing RTC session", "userID", userID, "connID", connID, "channelID", channelID, "callID", us.callID)
-				if err = p.rtcServer.InitSession(cfg, func() error {
-					if atomic.CompareAndSwapInt32(&us.rtcClosed, 0, 1) {
-						close(us.rtcCloseCh)
-						return p.removeSession(us)
-					}
-					return nil
-				}); err != nil {
-					p.LogError("failed to init session", "err", err.Error())
-					go func() {
-						if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
-							p.LogError(err.Error())
-						}
-					}()
-					return state
-				}
-			} else {
-				if err := p.sendClusterMessage(clusterMessage{
-					ConnID:    connID,
-					UserID:    userID,
-					ChannelID: channelID,
-					CallID:    us.callID,
-					SenderID:  p.nodeID,
-					SessionProps: rtc.SessionProps{
-						"channelID":   channelID,
-						"av1Support":  joinData.AV1Support,
-						"dcSignaling": joinData.DCSignaling,
-					},
-				}, clusterMessageTypeConnect, handlerID); err != nil {
-					p.LogError("failed to send connect message", "err", err.Error())
-					go func() {
-						if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
-							p.LogError(err.Error())
-						}
-					}()
-					return state
-				}
-			}
-		}
 
 		// send successful join response
 		p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
@@ -897,17 +335,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			"user_id":    userID,
 			"session_id": connID,
 		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
-
-		if userID == p.getBotID() && state.Recording != nil {
-			p.publishWebSocketEvent(wsEventCallJobState, map[string]interface{}{
-				"callID":   channelID,
-				"jobState": getClientStateFromCallJob(state.Recording).toMap(),
-			}, &WebSocketBroadcast{
-				ChannelID:           channelID,
-				ReliableClusterSend: true,
-				UserIDs:             getUserIDsFromSessions(state.sessions),
-			})
-		}
 
 		clientStateData, err := json.Marshal(state.getClientState(p.getBotID(), userID))
 		if err != nil {
@@ -923,8 +350,8 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 
 		go func() {
 			defer p.metrics.DecWebSocketConn()
-			p.wsReader(us, authSessionID, handlerID)
-			if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
+			p.wsReader(us)
+			if err := p.handleLeave(us, userID, connID, channelID); err != nil {
 				p.LogError(err.Error())
 			}
 		}()
@@ -935,10 +362,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	p.mut.Lock()
 	batcher := p.addSessionsBatchers[channelID]
 
-	// It's not worth the overhead of batching join operations in small calls.
-	// Of course we need to make an assumption that the members count of a channel
-	// reasonably maps to the expected participants count.
-	// In the future we could think of more accurate estimates such as looking at statistics from previous calls.
 	shouldBatch := batcher != nil || int(channelStats.MemberCount) >= minMembersCountForBatching
 
 	if shouldBatch {
@@ -951,13 +374,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 
 		if batcher == nil {
 			batchMaxSize := min(int(channelStats.MemberCount), maxJoinLeaveOpsBatchSize)
-			p.LogDebug("creating new addSessionsBatcher for call", "channelID", channelID, "batchMaxSize", batchMaxSize)
 			batcher, err = newBatcher(batching.Config{
 				Interval: joinLeaveBatchingInterval,
 				Size:     batchMaxSize,
 				PreRunCb: func(ctx batching.Context) error {
-					p.LogDebug("performing addSessionToCall batch", "channelID", channelID, "batchSize", ctx[batching.ContextBatchSizeKey])
-
 					state, err := p.lockCallReturnState(channelID)
 					if err != nil {
 						return fmt.Errorf("failed to lock call: %w", err)
@@ -990,137 +410,21 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	// Non-batching case
 	p.mut.Unlock()
 
-	p.LogDebug("no need to batch sessions joining operations",
-		"channelID", channelID,
-		"membersCount", channelStats.MemberCount,
-		"threshold", minMembersCountForBatching,
-	)
-
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
 	addSessionToCall(state)
-
 	p.unlockCall(channelID)
 
 	return nil
 }
 
-func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prevConnID, authSessionID string) error {
-	p.LogDebug("handleReconnect", "userID", userID, "connID", connID, "channelID", channelID,
-		"originalConnID", originalConnID, "prevConnID", prevConnID)
-
-	if !p.isBot(userID) && !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
-		return fmt.Errorf("forbidden")
-	}
-
-	state, err := p.getCallState(channelID, false)
-	if err != nil {
-		return err
-	} else if state == nil {
-		return fmt.Errorf("no call ongoing")
-	} else if state, ok := state.sessions[originalConnID]; !ok || state.UserID != userID {
-		return fmt.Errorf("session not found in call state")
-	}
-
-	var rtc bool
-	p.mut.Lock()
-	us := p.sessions[connID]
-
-	// Covering the edge case of a client getting a new connection ID even if reconnecting
-	// to the same instance/node. In such case we need to use the previous connection ID
-	// to find the existing session.
-	if us == nil {
-		us = p.sessions[prevConnID]
-	}
-
-	if us != nil {
-		rtc = us.rtc
-		if atomic.CompareAndSwapInt32(&us.wsReconnected, 0, 1) {
-			p.LogDebug("closing reconnectCh", "userID", userID, "connID", connID, "channelID", channelID,
-				"originalConnID", originalConnID)
-			close(us.wsReconnectCh)
-		} else {
-			p.mut.Unlock()
-			return fmt.Errorf("session already reconnected")
-		}
-	} else {
-		if p.isHA() {
-			// If we are running in HA this case can be expected as it's likely the
-			// reconnect happened on a different node which is not storing the
-			// original session.
-			p.LogDebug("session not found", "userID", userID, "connID", connID, "channelID", channelID,
-				"originalConnID", originalConnID)
-		} else {
-			// If not running in HA, this should not happen.
-			p.LogError("session not found", "userID", userID, "connID", connID, "channelID", channelID,
-				"originalConnID", originalConnID)
-		}
-	}
-
-	// Handle bot reconnection. This is needed to update the bot connection
-	// IDs for any potentially running jobs.
-	if p.isBot(userID) {
-		if err := p.handleBotWSReconnect(connID, prevConnID, originalConnID, channelID); err != nil {
-			p.mut.Unlock()
-			return fmt.Errorf("handleBotWSReconnect failed: %w", err)
-		}
-	}
-
-	us = newUserSession(userID, channelID, connID, state.Call.ID, rtc)
-	us.originalConnID = originalConnID
-	if p.sessions[originalConnID] != nil {
-		// We need to ensure to clear the original session to avoid potentially tracking it twice in case the ID has changed
-		// and we are the node handling it's RTC counterpart.
-		p.LogDebug("clearing original session after reconnect", "userID", userID, "connID", connID, "originalConnID", originalConnID, "channelID", channelID)
-		delete(p.sessions, originalConnID)
-	}
-	p.sessions[connID] = us
-	p.mut.Unlock()
-
-	if err := p.sendClusterMessage(clusterMessage{
-		ConnID:    prevConnID,
-		NewConnID: connID,
-		UserID:    userID,
-		CallID:    state.Call.ID,
-		SenderID:  p.nodeID,
-	}, clusterMessageTypeReconnect, ""); err != nil {
-		p.LogError(err.Error())
-	}
-
-	if p.rtcdManager != nil {
-		msg := rtcd.ClientMessage{
-			Type: rtcd.ClientMessageReconnect,
-			Data: map[string]string{
-				"sessionID": originalConnID,
-			},
-		}
-		if err := p.rtcdManager.Send(msg, state.Call.Props.RTCDHost); err != nil {
-			return fmt.Errorf("failed to send client reconnect message: %w", err)
-		}
-	}
-
-	p.wsReader(us, authSessionID, state.Call.Props.NodeID)
-
-	if err := p.handleLeave(us, userID, connID, channelID, state.Call.Props.NodeID); err != nil {
-		p.LogError(err.Error())
-	}
-
-	return nil
-}
-
 func (p *Plugin) handleCallStateRequest(channelID, userID, connID string) error {
-	// We should go through only if the user has permissions to the requested channel
-	// or if the user is the Calls bot.
 	if !(p.isBot(userID) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
 		return fmt.Errorf("forbidden")
 	}
 
-	// Locking is not ideal but it's the only way to guarantee a race free
-	// sequence and a consistent state.
-	// On the client we should make sure to make this request only when strictly
-	// necessary (i.e first load, joining call, reconnecting).
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
@@ -1155,13 +459,11 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	var msg clientMessage
 	msg.Type = strings.TrimPrefix(req.Action, wsActionPrefix)
 
-	// Validate message type against known valid types
 	if !isValidClientMessageType(msg.Type) {
 		p.LogError("invalid message type", "type", msg.Type)
 		return
 	}
 
-	// This is the standard ping message handled by Mattermost server. Nothing to do here.
 	if msg.Type == "ping" {
 		return
 	}
@@ -1171,10 +473,8 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	p.mut.RUnlock()
 
 	if us == nil {
-		// Only a few events don't require a user session to exist. For anything else
-		// we should return.
 		switch msg.Type {
-		case clientMessageTypeJoin, clientMessageTypeLeave, clientMessageTypeReconnect, clientMessageTypeCallState:
+		case clientMessageTypeJoin, clientMessageTypeLeave, clientMessageTypeCallState:
 		default:
 			return
 		}
@@ -1193,39 +493,19 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 
-		// Title is optional, so if it's not present,
-		// it will be an empty string.
 		title, _ := req.Data["title"].(string)
-
-		// ThreadID is optional, so if it's not present,
-		// it will be an empty string.
 		threadID, _ := req.Data["threadID"].(string)
-
-		// JobID is optional, so if it's not present,
-		// it will be an empty string.
-		jobID, _ := req.Data["jobID"].(string)
-
-		av1Support, _ := req.Data["av1Support"].(bool)
-		dcSignaling, _ := req.Data["dcSignaling"].(bool)
-
-		remoteAddr, _ := req.Data[model.WebSocketRemoteAddr].(string)
-		xff, _ := req.Data[model.WebSocketXForwardedFor].(string)
 
 		joinData := callsJoinData{
 			CallsClientJoinData{
-				ChannelID:   channelID,
-				Title:       title,
-				ThreadID:    threadID,
-				AV1Support:  av1Support,
-				DCSignaling: dcSignaling,
-				JobID:       jobID,
+				ChannelID: channelID,
+				Title:     title,
+				ThreadID:  threadID,
 			},
-			remoteAddr,
-			xff,
 		}
 
 		go func() {
-			if err := p.handleJoin(userID, connID, req.Session.Id, joinData); err != nil {
+			if err := p.handleJoin(userID, connID, joinData); err != nil {
 				p.LogWarn(err.Error(), "userID", userID, "connID", connID, "channelID", channelID)
 				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
 					"data":   err.Error(),
@@ -1235,44 +515,12 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			}
 		}()
 		return
-	case clientMessageTypeReconnect:
-		channelID, _ := req.Data["channelID"].(string)
-		if channelID == "" {
-			p.LogError("missing channelID")
-			return
-		}
-		originalConnID, _ := req.Data["originalConnID"].(string)
-		if originalConnID == "" {
-			p.LogError("missing originalConnID")
-			return
-		}
-		prevConnID, _ := req.Data["prevConnID"].(string)
-		if prevConnID == "" {
-			p.LogError("missing prevConnID")
-			return
-		}
-
-		go func() {
-			if err := p.handleReconnect(userID, connID, channelID, originalConnID, prevConnID, req.Session.Id); err != nil {
-				p.LogWarn(err.Error(), "userID", userID, "connID", connID,
-					"originalConnID", originalConnID, "prevConnID", prevConnID, "channelID", channelID)
-			}
-		}()
-		return
 	case clientMessageTypeLeave:
 		p.metrics.IncWebSocketEvent("in", "leave")
 		p.LogDebug("leave message", "userID", userID, "connID", connID)
 
 		if us != nil && atomic.CompareAndSwapInt32(&us.left, 0, 1) {
 			close(us.leaveCh)
-		}
-
-		if err := p.sendClusterMessage(clusterMessage{
-			ConnID:   connID,
-			UserID:   userID,
-			SenderID: p.nodeID,
-		}, clusterMessageTypeLeave, ""); err != nil {
-			p.LogError(err.Error())
 		}
 
 		return
@@ -1289,72 +537,6 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			p.LogError("handleCallStateRequest failed", "err", err.Error(), "userID", userID, "connID", connID)
 		}
 		return
-	case clientMessageTypeSDP:
-		msgData, ok := req.Data["data"].([]byte)
-		if !ok {
-			p.LogError("invalid or missing sdp data")
-			return
-		}
-		data, err := unpackSDPData(msgData)
-		if err != nil {
-			p.LogError(err.Error())
-			return
-		}
-		msg.Data = data
-	case clientMessageTypeICE, clientMessageTypeScreenOn, clientMessageTypeVideoOn:
-		msgData, ok := req.Data["data"].(string)
-		if !ok {
-			p.LogError("invalid or missing data")
-			return
-		}
-		msg.Data = []byte(msgData)
-	case clientMessageTypeReact:
-		msgData, ok := req.Data["data"].(string)
-		if !ok {
-			p.LogError("invalid or missing reaction data")
-			return
-		}
-		msg.Data = []byte(msgData)
-	case clientMessageTypeCaption:
-		// Sent from the transcriber.
-		p.metrics.IncWebSocketEvent("in", msg.Type)
-		if us.userID != p.getBotID() {
-			p.LogWarn("unexpected caption message not coming from bot")
-			return
-		}
-		sessionID, ok := req.Data["session_id"].(string)
-		if !ok {
-			p.LogError("invalid or missing session_id in caption ws message")
-			return
-		}
-		text, ok := req.Data["text"].(string)
-		if !ok {
-			p.LogError("invalid or missing text in caption ws message")
-			return
-		}
-		newAudioLenMs, ok := req.Data["new_audio_len_ms"].(float64)
-		if !ok {
-			p.LogError("invalid or missing new_audio_len_ms in caption ws message")
-			return
-		}
-		if err := p.handleCaptionMessage(us.callID, us.channelID, sessionID, text, newAudioLenMs); err != nil {
-			p.LogError("handleCaptionMessage failed", "err", err.Error(), "userID", userID, "connID", connID)
-			return
-		}
-		return
-	case clientMessageTypeMetric:
-		// Sent from the transcriber.
-		p.metrics.IncWebSocketEvent("in", msg.Type)
-		metricName, ok := req.Data["metric_name"].(string)
-		if !ok {
-			p.LogError("invalid or missing metric_name in metric ws message")
-			return
-		}
-		if err := p.handleMetricMessage(public.MetricName(metricName), userID, req.Data["data"]); err != nil {
-			p.LogError("handleMetricMessage failed", "err", err.Error())
-			return
-		}
-		return
 	}
 
 	select {
@@ -1363,152 +545,4 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		p.LogError("chan is full, dropping ws msg", "type", msg.Type)
 		return
 	}
-}
-
-func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID, callID string) error {
-	p.LogDebug("closeRTCSession", "userID", userID, "connID", connID, "channelID", channelID)
-	if p.rtcServer != nil {
-		if handlerID == p.nodeID {
-			if err := p.rtcServer.CloseSession(connID); err != nil {
-				return err
-			}
-		} else {
-			if err := p.sendClusterMessage(clusterMessage{
-				ConnID:    connID,
-				UserID:    userID,
-				ChannelID: channelID,
-				CallID:    callID,
-				SenderID:  p.nodeID,
-			}, clusterMessageTypeDisconnect, handlerID); err != nil {
-				return err
-			}
-		}
-	} else if p.rtcdManager != nil {
-		msg := rtcd.ClientMessage{
-			Type: rtcd.ClientMessageLeave,
-			Data: map[string]string{
-				"sessionID": connID,
-			},
-		}
-
-		host, err := p.store.GetRTCDHostForCall(callID, db.GetCallOpts{})
-		if err != nil {
-			return fmt.Errorf("failed to get RTCD host for call: %w", err)
-		}
-
-		if err := p.rtcdManager.Send(msg, host); err != nil {
-			return fmt.Errorf("failed to send client message: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channelID string) error {
-	p.LogDebug("bot ws reconnection", "connID", connID, "prevConnID", prevConnID, "originalConnID", originalConnID, "channelID", channelID)
-
-	state, err := p.lockCallReturnState(channelID)
-	if err != nil {
-		return fmt.Errorf("failed to lock call: %w", err)
-	}
-	defer p.unlockCall(channelID)
-
-	if state != nil && state.Recording != nil && state.Recording.Props.BotConnID == prevConnID {
-		p.LogDebug("updating bot conn ID for recording job",
-			"recID", state.Recording.ID,
-			"recJobID", state.Recording.Props.JobID,
-			"botOriginalConnID", originalConnID,
-			"botConnID", connID,
-		)
-		state.Recording.Props.BotConnID = connID
-
-		if err := p.store.UpdateCallJob(state.Recording); err != nil {
-			return fmt.Errorf("failed to update call job: %w", err)
-		}
-	} else if state != nil && state.Transcription != nil && state.Transcription.Props.BotConnID == prevConnID {
-		p.LogDebug("updating bot conn ID for transcribing job",
-			"trID", state.Transcription.ID,
-			"trJobID", state.Transcription.Props.JobID,
-			"botOriginalConnID", originalConnID,
-			"botConnID", connID,
-		)
-		state.Transcription.Props.BotConnID = connID
-		if err := p.store.UpdateCallJob(state.Transcription); err != nil {
-			return fmt.Errorf("failed to update call job: %w", err)
-		}
-		if state.LiveCaptions != nil && state.LiveCaptions.Props.BotConnID == prevConnID {
-			state.LiveCaptions.Props.BotConnID = connID
-			if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
-				return fmt.Errorf("failed to update call job: %w", err)
-			}
-		}
-	}
-
-	return nil
-}
-
-func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, text string, newAudioLenMs float64) error {
-	sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})
-	if err != nil {
-		return fmt.Errorf("failed to get call sessions: %w", err)
-	}
-
-	captionSession, ok := sessions[captionFromSessionID]
-	if !ok {
-		return fmt.Errorf("user session for caption missing from call")
-	}
-
-	p.publishWebSocketEvent(wsEventCaption, map[string]interface{}{
-		"channel_id": channelID,
-		"user_id":    captionSession.UserID,
-		"session_id": captionSession.ID,
-		"text":       text,
-	}, &WebSocketBroadcast{
-		ChannelID:           channelID,
-		ReliableClusterSend: true,
-		UserIDs:             getUserIDsFromSessions(sessions),
-	})
-
-	p.metrics.ObserveLiveCaptionsAudioLen(newAudioLenMs)
-
-	return nil
-}
-
-func (p *Plugin) handleMetricMessage(metricName public.MetricName, userID string, payload any) error {
-	// Bot only metrics
-	if userID == p.getBotID() {
-		switch metricName {
-		case public.MetricLiveCaptionsWindowDropped:
-			p.metrics.IncLiveCaptionsWindowDropped()
-		case public.MetricLiveCaptionsTranscriberBufFull:
-			p.metrics.IncLiveCaptionsTranscriberBufFull()
-		case public.MetricLiveCaptionsPktPayloadChBufFull:
-			p.metrics.IncLiveCaptionsPktPayloadChBufFull()
-		}
-
-		return nil
-	}
-
-	// User client metrics
-	switch metricName {
-	case public.MetricClientICECandidatePair:
-		data, ok := payload.(string)
-		if !ok {
-			return fmt.Errorf("invalid payload found in metric message")
-		}
-
-		var payload public.ClientICECandidatePairMetricPayload
-
-		if err := json.Unmarshal([]byte(data), &payload); err != nil {
-			return fmt.Errorf("failed to unmarshal payload: %w", err)
-		}
-
-		if err := payload.IsValid(); err != nil {
-			return fmt.Errorf("failed to validate payload: %w", err)
-		}
-
-		p.metrics.IncClientICECandidatePairs(payload)
-	}
-
-	return nil
 }

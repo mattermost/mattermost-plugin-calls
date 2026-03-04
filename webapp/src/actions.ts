@@ -418,7 +418,7 @@ export const userLeft = (channelID: string, userID: string, sessionID: string) =
 export const callEnd = (channelID: string) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
         if (channelIDForCurrentCall(getState()) === channelID) {
-            window.callsClient?.disconnect();
+            window.livekitRoom?.disconnect();
         }
 
         const callID = calls(getState())[channelID]?.ID || '';

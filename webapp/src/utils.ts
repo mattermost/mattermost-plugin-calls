@@ -82,43 +82,23 @@ export function getChannelURL(state: GlobalState, channel?: Channel, teamId?: st
     return channelURL;
 }
 
-export function getCallsClient(): CallsClient | undefined {
-    let callsClient;
-    try {
-        callsClient = getCallsWindow().callsClient;
-    } catch (err) {
-        logErr(err);
-    }
-    return callsClient;
+export function getCallsClient(): any {
+    return window.livekitRoom || undefined;
 }
 
 export function getCallsClientChannelID(): string {
-    return getCallsClient()?.channelID || '';
+    return window.livekitChannelID || '';
 }
 
 export function getCallsClientSessionID(): string {
-    return getCallsClient()?.getSessionID() || '';
+    return window.livekitRoom?.localParticipant?.sid || '';
 }
 
 export function getCallsClientInitTime(): number {
-    return getCallsClient()?.initTime || 0;
+    return 0;
 }
 
 export function isCallsPopOut(): boolean {
-    try {
-        return window.opener && window.opener.callsClient;
-    } catch (err) {
-        // This can happen if the MM window already has an opener on a different origin (e.g. user clicked a link on a calendar app to open MM).
-        // In this case, we know we are not in the expanded view so we can directly return window.callsClient.
-        if (err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
-            // Avoid spamming the console with this error.
-            return false;
-        }
-
-        logErr(err);
-
-        return false;
-    }
     return false;
 }
 
