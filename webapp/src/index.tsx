@@ -17,10 +17,11 @@ import {FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {AnyAction} from 'redux';
 import {batchActions} from 'redux-batched-actions';
-import {Room} from 'livekit-client';
+import {DisconnectReason, Room, RoomEvent} from 'livekit-client';
 import {
     displayCallsTestModeUser,
     displayFreeTrial,
+    displayGenericErrorModal,
     getCallsConfig,
     getCallsConfigEnvOverrides,
     getCallsVersionInfo,
@@ -238,6 +239,10 @@ export default class Plugin {
                     });
                 }
 
+                // Track the channel ID immediately so that disconnectCall()
+                // can send a leave message even if the LiveKit connection fails.
+                window.livekitChannelID = channelID;
+
                 // 2. Fetch LiveKit token from plugin API
                 const resp = await RestClient.fetch<{token: string; url: string}>(
                     `${getPluginPath()}/livekit-token?channel_id=${channelID}`,
@@ -252,7 +257,18 @@ export default class Plugin {
 
                 await room.connect(resp.url, resp.token);
                 window.livekitRoom = room;
-                window.livekitChannelID = channelID;
+
+                // Handle unexpected LiveKit disconnection (server goes down, network loss, etc.)
+                room.on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
+                    logWarn('LiveKit room disconnected unexpectedly', reason);
+                    disconnectCall();
+                    if (reason !== DisconnectReason.CLIENT_INITIATED) {
+                        store.dispatch(displayGenericErrorModal(
+                            {id: 'calls.error.call_disconnected_title', defaultMessage: 'Call disconnected'},
+                            {id: 'calls.error.call_disconnected_message', defaultMessage: 'You were disconnected from the call. This may be due to a network issue or the call server becoming unavailable.'},
+                        ));
+                    }
+                });
 
                 // 4. Start with mic muted
                 await room.localParticipant.setMicrophoneEnabled(false);
@@ -284,6 +300,11 @@ export default class Plugin {
                 logErr(err);
                 store.dispatch(setClientConnecting(false));
                 disconnectCall();
+                const errMsg = err instanceof Error ? err.message : String(err);
+                store.dispatch(displayGenericErrorModal(
+                    {id: 'calls.error.call_failed_title', defaultMessage: 'Call failed'},
+                    {id: 'calls.error.call_failed_message', defaultMessage: `Failed to connect to the call server: ${errMsg}`},
+                ));
             }
         };
 
