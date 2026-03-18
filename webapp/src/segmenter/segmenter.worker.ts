@@ -19,15 +19,30 @@ self.onmessage = async ({data}) => {
                 `${data.assetsPath}/mediapipe/tasks-vision/wasm`,
             );
 
-            segmenter = await ImageSegmenter.createFromOptions(vision, {
-                baseOptions: {
-                    modelAssetPath: `${data.assetsPath}/mediapipe/tasks-vision/selfie_segmenter_landscape.tflite`,
-                    delegate: 'GPU',
-                },
+            const segmenterOptions = {
                 outputCategoryMask: true,
                 outputConfidenceMasks: false,
-                runningMode: 'VIDEO',
-            });
+                runningMode: 'VIDEO' as const,
+            };
+
+            try {
+                segmenter = await ImageSegmenter.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: `${data.assetsPath}/mediapipe/tasks-vision/selfie_segmenter_landscape.tflite`,
+                        delegate: 'GPU',
+                    },
+                    ...segmenterOptions,
+                });
+            } catch (gpuErr) {
+                console.error('segmeneter.worker: GPU delegate failed, falling back to CPU', gpuErr);
+                segmenter = await ImageSegmenter.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: `${data.assetsPath}/mediapipe/tasks-vision/selfie_segmenter_landscape.tflite`,
+                        delegate: 'CPU',
+                    },
+                    ...segmenterOptions,
+                });
+            }
         } catch (err) {
             console.error('segmeneter.worker: failed to initialize segmenter', err);
         }

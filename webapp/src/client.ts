@@ -231,7 +231,7 @@ export default class CallsClient extends EventEmitter {
         return null;
     }
 
-    private async initVideo(startVideo: boolean, deviceId?: string) {
+    private async initVideo(deviceId?: string) {
         const videoOptions: MediaTrackConstraints = {
             ...this.defaultVideoTrackOptions,
         };
@@ -291,16 +291,14 @@ export default class CallsClient extends EventEmitter {
             // return empty labels unless permissions were previously granted.
             await this.updateDevices();
 
-            // Video should be off by default (for now). We initialize it to ensure permissions are there but
-            // don't need to keep it active until the user explicitly starts it from UI.
-            if (startVideo) {
-                this.localVideoStream = stream;
-                this.streams.push(stream);
-                stream.getVideoTracks()[0].enabled = false;
-            } else {
-                stream.getVideoTracks()[0].stop();
-                stream.getVideoTracks()[0].dispatchEvent(new Event('ended'));
-            }
+            // Keep the stream ready for when the user enables video, but start with track
+            // disabled so no video is transmitted until the user explicitly enables it.
+            // Previously this stopped the track entirely to release the camera, but re-acquiring
+            // the camera via a second getUserMedia call can produce black frames on some platforms
+            // (notably macOS + Electron), so we keep the track alive but disabled instead.
+            this.localVideoStream = stream;
+            this.streams.push(stream);
+            stream.getVideoTracks()[0].enabled = false;
 
             this.emit('initvideo');
         } catch (err) {
@@ -465,7 +463,7 @@ export default class CallsClient extends EventEmitter {
         try {
             const initializers = [this.initAudio()];
             if (this.config.enableVideo) {
-                initializers.push(this.initVideo(false));
+                initializers.push(this.initVideo());
             }
 
             await Promise.all(initializers);
@@ -751,7 +749,7 @@ export default class CallsClient extends EventEmitter {
         // This edge case can happen if the default input device failed
         // but there are potentially more valid ones to choose (MM-48822).
         if (!this.localVideoStream) {
-            await this.initVideo(false, device.deviceId);
+            await this.initVideo(device.deviceId);
             return;
         }
 
@@ -1091,7 +1089,7 @@ export default class CallsClient extends EventEmitter {
         if (!this.localVideoStream) {
             try {
                 logDebug('no local video stream, initializing');
-                await this.initVideo(true);
+                await this.initVideo();
             } catch (err) {
                 this.emit('error', err);
                 return null;
