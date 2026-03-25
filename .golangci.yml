@@ -33,15 +33,15 @@ linters:
     - whitespace      # Checks for unnecessary newlines at the start and end of functions
   settings:
     govet:
+      enable-all: true
       disable:
         - fieldalignment
         - shadow
-      enable-all: true
     staticcheck:
       checks:
-        - "all"
-        - "-QF1008" # Don’t warn about embedded fields from selector expression
-        - "-QF1001" # Don’t warn about De Morgan’s law
+        - "all"     # Enable all checks
+        - "-QF1008" # Exclude: could remove embedded field from selector
+        - "-QF1001" # Exclude: could apply De Morgan’s law
   exclusions:
     generated: lax
     presets:
@@ -51,4 +51,3 @@ linters:
       - webapp
       - standalone
       - lt
-
