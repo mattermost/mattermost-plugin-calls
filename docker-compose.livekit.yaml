@@ -1,0 +1,15 @@
+services:
+  livekit-dev:
+    image: livekit/livekit-server
+    restart: unless-stopped
+    ports:
+      - "7880:7880"       # Signaling (HTTP/WebSocket)
+      - "7881:7881"       # TURN/TCP fallback
+      - "7882:7882/udp"   # WebRTC/UDP media
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+    command: >
+      --config /etc/livekit.yaml
+      --node-ip=${LIVEKIT_NODE_IP}
+    environment:
+      - LIVEKIT_NODE_IP=${LIVEKIT_NODE_IP}
