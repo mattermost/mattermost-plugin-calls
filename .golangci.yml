@@ -1,38 +1,45 @@
+version: "2"
 run:
-  timeout: 5m
   modules-download-mode: readonly
 
-linters-settings:
-  gofmt:
-    simplify: true
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-      - shadow
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+  exclusions:
+    generated: lax
+    paths:
+      - webapp
+      - standalone
+      - lt
 
 linters:
-  disable-all: true
+  default: none
   enable:
-    - typecheck     # This is to improve error reporting
-    - gofmt         # Checks whether code was gofmt-ed
-    - revive        # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint
-    - gosimple      # Linter for Go source code that specializes in simplifying a code
-    - govet         # Examines Go source code and reports suspicious constructs, such as Printf calls whose arguments do not align with the format string
-    - ineffassign   # Detects when assignments to existing variables are not used
-    - unconvert     # Removes unnecessary type conversions
-    - unused        # Checks Go code for unused constants, variables, functions and types
-    - copyloopvar   # Checks for pointers to enclosing loop variables
-    - errcheck      # Detects unchecked errors
-    - misspell      # Finds commonly misspelled English words
-    - goimports     # Check import statements are formatted according to the 'goimports' command
-    - makezero      # Finds slice declarations with non-zero initial length
-    - whitespace    # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc
-    - staticcheck   # It's a set of rules from staticcheck
-
-issues:
-  exclude-dirs:
-    - webapp
-    - standalone
-    - lt
+    - copyloopvar     # Checks for pointers to enclosing loop variables
+    - errcheck        # Detects unchecked errors
+    - govet           # Examines Go source code and reports suspicious constructs
+    - ineffassign     # Detects when assignments to existing variables are not used
+    - makezero        # Finds slice declarations with non-zero initial length
+    - misspell        # Finds commonly misspelled English words
+    - revive          # Drop-in replacement of golint
+    - staticcheck     # Set of rules from staticcheck
+    - unconvert       # Removes unnecessary type conversions
+    - unused          # Checks Go code for unused constants, variables, functions and types
+    - whitespace      # Checks for unnecessary newlines at the start and end of functions
+  settings:
+    govet:
+      disable:
+        - fieldalignment
+        - shadow
+      enable-all: true
+  exclusions:
+    generated: lax
+    paths:
+      - webapp
+      - standalone
+      - lt
 
