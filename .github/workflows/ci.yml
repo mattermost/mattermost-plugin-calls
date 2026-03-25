@@ -64,6 +64,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.11.4
+          args: --timeout 5m
           working-directory: ./lt
       - name: mattermost-govet
         shell: bash
