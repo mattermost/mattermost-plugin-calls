@@ -598,14 +598,15 @@ func (m *rtcdClientManager) registerRTCDClient(cfg rtcd.ClientConfig, reconnectC
 }
 
 func (m *rtcdClientManager) handleClientMsg(msg rtcd.ClientMessage) error {
-	if msg.Type == rtcd.ClientMessageHello {
+	switch msg.Type {
+	case rtcd.ClientMessageHello:
 		msgData, ok := msg.Data.(map[string]string)
 		if !ok {
 			return fmt.Errorf("unexpected data type %T", msg.Data)
 		}
 		m.ctx.LogDebug("received hello message from rtcd", "connID", msgData["connID"])
 		return nil
-	} else if msg.Type == rtcd.ClientMessageClose {
+	case rtcd.ClientMessageClose:
 		msgData, ok := msg.Data.(map[string]string)
 		if !ok {
 			return fmt.Errorf("unexpected data type %T", msg.Data)
