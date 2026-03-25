@@ -10,7 +10,7 @@
     "@babel/eslint-parser": "7.19.1",
     "@mattermost/types": "6.7.0-0",
     "@playwright/test": "^1.51.1",
-    "@types/node": "^20.10.4",
+    "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "5.49.0",
     "eslint": "8.33.0",
     "eslint-plugin-formatjs": "4.13.0",
