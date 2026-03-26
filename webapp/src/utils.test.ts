@@ -121,9 +121,9 @@ describe('utils', () => {
                 expected: '1 minute',
             },
             {
-                description: '4 mins, 45 secs',
+                description: '4 min, 45 sec',
                 input: Duration.fromObject({minutes: 4, seconds: 45}),
-                expected: '4 mins, 45 secs',
+                expected: '4 min, 45 sec',
                 opts: {unitDisplay: 'short'},
             },
             {
@@ -132,9 +132,9 @@ describe('utils', () => {
                 expected: '4 minutes, 45 seconds',
             },
             {
-                description: '1 hr, 22 mins, and 59 secs',
+                description: '1 hr, 22 min, 59 sec',
                 input: Duration.fromObject({hours: 1, minutes: 22, seconds: 59}),
-                expected: '1 hr, 22 mins, and 59 secs',
+                expected: '1 hr, 22 min, 59 sec',
                 opts: {unitDisplay: 'short'},
             },
             {
