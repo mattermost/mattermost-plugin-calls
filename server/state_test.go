@@ -15,7 +15,6 @@ import (
 	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 
-	rtcdMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	serverMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
 
@@ -732,7 +731,7 @@ func TestCleanUpState(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			mockRTCDClient := &rtcdMocks.MockRTCDClient{}
+			mockRTCDClient := &serverMocks.MockRTCDClient{}
 			defer mockRTCDClient.AssertExpectations(t)
 
 			p.rtcdManager = &rtcdClientManager{
@@ -827,7 +826,7 @@ func TestCleanUpState(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			mockRTCDClient := &rtcdMocks.MockRTCDClient{}
+			mockRTCDClient := &serverMocks.MockRTCDClient{}
 			defer mockRTCDClient.AssertExpectations(t)
 
 			p.rtcdManager = &rtcdClientManager{
@@ -922,7 +921,7 @@ func TestCleanUpState(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			mockRTCDClient := &rtcdMocks.MockRTCDClient{}
+			mockRTCDClient := &serverMocks.MockRTCDClient{}
 			defer mockRTCDClient.AssertExpectations(t)
 
 			p.rtcdManager = &rtcdClientManager{
@@ -1015,7 +1014,7 @@ func TestCleanUpState(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			mockRTCDClient := &rtcdMocks.MockRTCDClient{}
+			mockRTCDClient := &serverMocks.MockRTCDClient{}
 			defer mockRTCDClient.AssertExpectations(t)
 
 			p.rtcdManager = &rtcdClientManager{
