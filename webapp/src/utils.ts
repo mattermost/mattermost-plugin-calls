@@ -252,9 +252,11 @@ export function stateSortSessions(presenterID: string, considerReaction = false)
 }
 
 export async function getScreenStream(sourceID?: string, withAudio?: boolean): Promise<MediaStream | null> {
+    logDebug(`getScreenStream called with sourceID: ${sourceID}, withAudio: ${withAudio}`);
     let screenStream: MediaStream | null = null;
 
     if (window.desktop) {
+        logDebug('getScreenStream: using Electron getUserMedia');
         try {
             // electron
             const options = {
@@ -270,18 +272,20 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
                 audio: withAudio ? {mandatory: options} as Record<string, unknown> : false,
             });
         } catch (err) {
-            logErr(err);
+            logErr('getScreenStream error:', err);
             return null;
         }
     } else {
         // browser
+        logDebug(`getScreenStream: using browser getDisplayMedia with audio: ${Boolean(withAudio)}`);
         try {
             screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: true,
                 audio: Boolean(withAudio),
             });
+            logDebug(`getScreenStream: received stream with ${screenStream?.getVideoTracks().length} video tracks and ${screenStream?.getAudioTracks().length} audio tracks`);
         } catch (err) {
-            logErr(err);
+            logErr('getScreenStream error:', err);
         }
     }
 

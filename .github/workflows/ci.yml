@@ -15,7 +15,7 @@ jobs:
   plugin-ci:
     uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@05547befaf1f79459a2cef959842f5d8bbc6343a
     with:
-      golangci-lint-version: "v1.64.5"
+      golangci-lint-version: "v2.11.4"
       golang-version: "1.24"
     secrets: inherit
 
@@ -61,9 +61,10 @@ jobs:
         with:
           go-version-file: go.mod
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v1.64.5
+          version: v2.11.4
+          args: --timeout 5m
           working-directory: ./lt
       - name: mattermost-govet
         shell: bash

@@ -101,7 +101,7 @@ self.onmessage = async ({data}) => {
 
             outputCtx.drawImage(await createImageBitmap(dataNew), 0, 0);
         });
-    } else if (data.blurIntensity) {
+    } else if ('blurIntensity' in data) {
         blurIntensity = data.blurIntensity;
     }
 };

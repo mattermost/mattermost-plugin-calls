@@ -15,7 +15,7 @@ import {
 import {getBgBlurData, setBgBlurData} from 'src/local_storage';
 import {logErr} from 'src/log';
 import Segmenter from 'src/segmenter';
-import {untranslatable} from 'src/utils';
+import {getCallsClient, untranslatable} from 'src/utils';
 import styled, {css} from 'styled-components';
 
 const VideoDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectionProps>(({devices, onSelectionChange}: DevicesSelectionProps, ref) => {
@@ -172,7 +172,7 @@ function VideoPreview(props: {
         if (segRef.current && props.blurBackground) {
             segRef.current.setBlurIntensity(props.blurIntensity);
         }
-    }, [props.blurIntensity]);
+    }, [props.blurIntensity, props.blurBackground]);
 
     useEffect(() => {
         if (videoRef.current) {
@@ -267,6 +267,9 @@ export default function VideoDevicesSettingsSection() {
 
         window.localStorage.setItem(STORAGE_CALLS_MIRROR_VIDEO_KEY, String(mirrorVideo));
         setBgBlurData({blurBackground, blurIntensity});
+
+        // Update blur settings on active call if one exists
+        getCallsClient()?.setBlurSettings(blurBackground, blurIntensity);
 
         setActive(false);
     };

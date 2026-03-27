@@ -108,25 +108,25 @@ func (p *Plugin) handleLinkCommand(args *model.CommandArgs) (*model.CommandRespo
 
 func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 	if len(fields) != 3 {
-		return nil, fmt.Errorf("Invalid number of arguments provided")
+		return nil, fmt.Errorf("invalid number of arguments provided")
 	}
 
 	js, err := base64.StdEncoding.DecodeString(fields[2])
 	if err != nil {
-		return nil, fmt.Errorf("Failed to decode payload: %w", err)
+		return nil, fmt.Errorf("failed to decode payload: %w", err)
 	}
 
 	if len(js) < 2 {
-		return nil, fmt.Errorf("Invalid stats object")
+		return nil, fmt.Errorf("invalid stats object")
 	}
 
 	if string(js) == "{}" {
-		return nil, fmt.Errorf("Empty stats object")
+		return nil, fmt.Errorf("empty stats object")
 	}
 
 	var buf bytes.Buffer
 	if err := json.Indent(&buf, js, "", " "); err != nil {
-		return nil, fmt.Errorf("Failed to indent JSON: %w", err)
+		return nil, fmt.Errorf("failed to indent JSON: %w", err)
 	}
 
 	return &model.CommandResponse{
@@ -137,12 +137,12 @@ func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 
 func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
 	if len(fields) < 3 {
-		return nil, fmt.Errorf("Empty logs")
+		return nil, fmt.Errorf("empty logs")
 	}
 
 	logs, err := base64.StdEncoding.DecodeString(fields[2])
 	if err != nil {
-		return nil, fmt.Errorf("Failed to decode payload: %w", err)
+		return nil, fmt.Errorf("failed to decode payload: %w", err)
 	}
 
 	return &model.CommandResponse{
@@ -157,11 +157,11 @@ func (p *Plugin) handleEndCallCommand() (*model.CommandResponse, error) {
 
 func (p *Plugin) handleRecordingCommand(fields []string) (*model.CommandResponse, error) {
 	if len(fields) != 3 {
-		return nil, fmt.Errorf("Invalid number of arguments provided")
+		return nil, fmt.Errorf("invalid number of arguments provided")
 	}
 
 	if subCmd := fields[2]; subCmd != "start" && subCmd != "stop" {
-		return nil, fmt.Errorf("Invalid subcommand %q", subCmd)
+		return nil, fmt.Errorf("invalid subcommand %q", subCmd)
 	}
 
 	return &model.CommandResponse{}, nil
@@ -169,14 +169,14 @@ func (p *Plugin) handleRecordingCommand(fields []string) (*model.CommandResponse
 
 func (p *Plugin) handleHostCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
 	if len(fields) != 3 {
-		return nil, fmt.Errorf("Invalid number of arguments provided")
+		return nil, fmt.Errorf("invalid number of arguments provided")
 	}
 
 	newHostUsername := strings.TrimPrefix(fields[2], "@")
 
 	newHost, appErr := p.API.GetUserByUsername(newHostUsername)
 	if appErr != nil {
-		return nil, fmt.Errorf("Could not find user `%s`", newHostUsername)
+		return nil, fmt.Errorf("could not find user %q", newHostUsername)
 	}
 
 	if err := p.changeHost(args.UserId, args.ChannelId, newHost.Id); err != nil {
