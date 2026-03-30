@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-calls/lt
 
-go 1.24.13
+go 1.25.0
 
 require (
 	github.com/aws/aws-sdk-go v1.50.3
@@ -61,7 +61,7 @@ require (
 	github.com/wiggin77/srslog v1.0.1 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
