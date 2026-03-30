@@ -12,8 +12,12 @@ require (
 	gopkg.in/hraban/opus.v2 v2.0.0-20230925203106-0188a62cb302
 )
 
+// Mattermost fork of pion/interceptor with custom modifications required for calls.
+// Should be upstreamed or removed when equivalent changes are accepted by pion.
 replace github.com/pion/interceptor v0.1.44 => github.com/bgardner8008/interceptor v0.1.44-mm-mods
 
+// Mattermost fork of pion/ice/v4 with a fix for ICE role conflicts that can cause
+// call connection failures. Should be upstreamed or removed when fixed in pion/ice.
 replace github.com/pion/ice/v4 => github.com/bgardner8008/ice/v4 v4.2.0-role-conflict-fix-v4
 
 require (
