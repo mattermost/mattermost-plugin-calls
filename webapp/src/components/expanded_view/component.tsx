@@ -674,7 +674,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             show: true,
                             args: {
                                 deviceLabel: device.label,
-                                i: (text: string) => <i>{text}</i>,
+                                i: (text: React.ReactNode) => <i>{text}</i>,
                             },
                         },
                     },
@@ -688,7 +688,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             show: true,
                             args: {
                                 deviceLabel: device.label,
-                                i: (text: string) => <i>{text}</i>,
+                                i: (text: React.ReactNode) => <i>{text}</i>,
                             },
                         },
                     },

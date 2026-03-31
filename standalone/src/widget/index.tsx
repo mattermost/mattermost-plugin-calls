@@ -27,11 +27,13 @@ import {
     sendDesktopEvent,
 } from 'plugin/utils';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import {createRoot, Root} from 'react-dom/client';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 
 import init, {InitCbProps} from '../init';
+
+let widgetRoot: Root | null = null;
 
 async function initWidget({store, startingCall}: InitCbProps) {
     if (window.desktopAPI?.getAppInfo) {
@@ -100,23 +102,26 @@ async function initWidget({store, startingCall}: InitCbProps) {
         });
     });
 
-    ReactDOM.render(
-        <Provider store={store}>
-            <IntlProvider
-                locale={locale}
-                key={locale}
-                defaultLocale='en'
-                messages={getTranslations(locale)}
-            >
-                <CallWidget
-                    global={true}
-                    startingCall={startingCall}
-                    position={{bottom: 4, left: 2}}
-                />
-            </IntlProvider>
-        </Provider>,
-        document.getElementById('root'),
-    );
+    const rootEl = document.getElementById('root');
+    if (rootEl) {
+        widgetRoot = createRoot(rootEl);
+        widgetRoot.render(
+            <Provider store={store}>
+                <IntlProvider
+                    locale={locale}
+                    key={locale}
+                    defaultLocale='en'
+                    messages={getTranslations(locale)}
+                >
+                    <CallWidget
+                        global={true}
+                        startingCall={startingCall}
+                        position={{bottom: 4, left: 2}}
+                    />
+                </IntlProvider>
+            </Provider>,
+        );
+    }
 }
 
 async function initStoreWidget(store: Store, channelID: string) {
@@ -155,9 +160,9 @@ function deinitWidget(err?: Error) {
     setTimeout(() => {
         window.callsClient?.destroy();
         delete window.callsClient;
-        const el = document.getElementById('root');
-        if (el) {
-            ReactDOM.unmountComponentAtNode(el);
+        if (widgetRoot) {
+            widgetRoot.unmount();
+            widgetRoot = null;
         }
 
         if (window.desktopAPI?.leaveCall) {
