@@ -16,7 +16,7 @@ jobs:
     uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@05547befaf1f79459a2cef959842f5d8bbc6343a
     with:
       golangci-lint-version: "v2.11.4"
-      go-version-file: lt/go.mod
+      golang-version: "1.24"
     secrets: inherit
 
   code-coverage:
@@ -59,7 +59,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: lt/go.mod
+          go-version-file: go.mod
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
