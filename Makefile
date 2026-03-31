@@ -415,23 +415,23 @@ test:
 
 ifeq ($(CI),true)
 test: setup-go-work apply webapp/node_modules standalone/node_modules gotestsum
-ifneq ($(HAS_SERVER),)
-	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./server/... ./server/public/... $(COVERAGE_FLAG)
-endif
-ifneq ($(HAS_WEBAPP),)
-	cd webapp && $(NPM) run test-ci;
-endif
+	ifneq ($(HAS_SERVER),)
+		@$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./server/... ./server/public/... $(COVERAGE_FLAG)
+  	endif
+	ifneq ($(HAS_WEBAPP),)
+		cd webapp && $(NPM) run test-ci;
+  	endif
 else
 test: setup-go-work apply webapp/node_modules standalone/node_modules gotestsum
-ifneq ($(HAS_SERVER),)
-	$(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/... ./server/public/... ./lt/...
-endif
-ifneq ($(HAS_WEBAPP),)
-	cd webapp && $(NPM) run test;
-endif
-ifneq ($(wildcard ./build/sync/plan/.),)
-	cd ./build/sync && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
-endif
+	ifneq ($(HAS_SERVER),)
+		@$(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/... ./server/public/... ./lt/...
+  	endif
+  	ifneq ($(HAS_WEBAPP),)
+		cd webapp && $(NPM) run test;
+  	endif
+  	ifneq ($(wildcard ./build/sync/plan/.),)
+		cd ./build/sync && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
+  	endif
 endif
 
 ## Creates a coverage report for the server code.
@@ -497,6 +497,7 @@ endif
 ifneq ($(HAS_WEBAPP),)
 	rm -fr webapp/junit.xml
 	rm -fr webapp/dist
+	rm -fr webapp/coverage
 	rm -fr webapp/node_modules
 	rm -fr standalone/dist
 	rm -fr standalone/node_modules
