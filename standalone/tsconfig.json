@@ -51,6 +51,7 @@
     "./**/*",
     "../webapp/src/types/semver-parser/*",
     "../webapp/src/types/static/*",
+    "../webapp/src/types/react-bootstrap.d.ts",
   ],
   "exclude": [
     "dist",

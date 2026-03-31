@@ -59,7 +59,7 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                         'View all features in our <documentationLink>documentation</documentationLink>.'}
                     values={{
                         trialExpirationDate: trialEndDate,
-                        recordingsDocsLink: (text: string) => (
+                        recordingsDocsLink: (text: React.ReactNode) => (
                             <a
                                 href='https://mattermost.com/pl/calls-deployment-recordings?utm_source=mattermost&utm_medium=in-product&utm_content=calls_start_trial_form_modal'
                                 target='_blank'
@@ -68,7 +68,7 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                                 {text}
                             </a>
                         ),
-                        rtcdDocsLink: (text: string) => (
+                        rtcdDocsLink: (text: React.ReactNode) => (
                             <a
                                 href='https://mattermost.com/pl/calls-deployment-the-rtcd-service?utm_source=mattermost&utm_medium=in-product&utm_content=calls_start_trial_form_modal'
                                 target='_blank'
@@ -77,28 +77,28 @@ export const OnPremTrialSuccess = (modalProps: Props) => {
                                 {text}
                             </a>
                         ),
-                        guestAccountsLink: (text: string) => (
+                        guestAccountsLink: (text: React.ReactNode) => (
                             <NavLink
                                 to='/admin_console/authentication/guest_access'
                             >
                                 {text}
                             </NavLink>
                         ),
-                        autoComplianceReportsLink: (text: string) => (
+                        autoComplianceReportsLink: (text: React.ReactNode) => (
                             <NavLink
                                 to='/admin_console/compliance/export'
                             >
                                 {text}
                             </NavLink>
                         ),
-                        mobileSecureNotificationsLink: (text: string) => (
+                        mobileSecureNotificationsLink: (text: React.ReactNode) => (
                             <NavLink
                                 to='/admin_console/environment/push_notification_server'
                             >
                                 {text}
                             </NavLink>
                         ),
-                        documentationLink: (text: string) => (
+                        documentationLink: (text: React.ReactNode) => (
                             <a
                                 href='https://mattermost.com/pl/calls-deployment?utm_source=mattermost&utm_medium=in-product&utm_content=calls_start_trial_form_modal'
                                 target='_blank'
@@ -135,7 +135,7 @@ export const OnPremTrialError = (modalProps: Props) => {
                     defaultMessage={'It looks like something went wrong with your Enterprise trial request. ' +
                         'You can try again later or <supportLink>contact Support</supportLink> if the error persists.'}
                     values={{
-                        supportLink: (text: string) => (
+                        supportLink: (text: React.ReactNode) => (
                             <a
                                 href='https://mattermost.com/support/'
                                 target='_blank'

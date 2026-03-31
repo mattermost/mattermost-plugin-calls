@@ -16,7 +16,7 @@ import {
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import {createRoot} from 'react-dom/client';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {getJobID} from 'src/common';
@@ -78,19 +78,21 @@ async function initRecording({store, theme}: InitCbProps) {
 
     const locale = getCurrentUserLocale(store.getState()) || 'en';
 
-    ReactDOM.render(
-        <Provider store={store}>
-            <IntlProvider
-                locale={locale}
-                key={locale}
-                defaultLocale='en'
-                messages={getTranslations(locale)}
-            >
-                <RecordingView/>
-            </IntlProvider>
-        </Provider>,
-        document.getElementById('root'),
-    );
+    const rootEl = document.getElementById('root');
+    if (rootEl) {
+        createRoot(rootEl).render(
+            <Provider store={store}>
+                <IntlProvider
+                    locale={locale}
+                    key={locale}
+                    defaultLocale='en'
+                    messages={getTranslations(locale)}
+                >
+                    <RecordingView/>
+                </IntlProvider>
+            </Provider>,
+        );
+    }
 }
 
 function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventData>) {
