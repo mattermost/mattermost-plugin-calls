@@ -8,6 +8,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -140,14 +142,45 @@ func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
 		return nil, fmt.Errorf("empty logs")
 	}
 
-	logs, err := base64.StdEncoding.DecodeString(fields[2])
+	// Decode the JSON payload
+	jsonData, err := base64.StdEncoding.DecodeString(fields[2])
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode payload: %w", err)
 	}
 
+	var payload map[string]string
+	if err := json.Unmarshal(jsonData, &payload); err != nil {
+		return nil, fmt.Errorf("failed to parse payload: %w", err)
+	}
+
+	fileURL := payload["url"]
+	filename := payload["filename"]
+	sizeKB := payload["size_kb"]
+
+	// Validate that the URL points to our own plugin download endpoint.
+	// This prevents arbitrary URLs from being injected into the response.
+	expectedPathPrefix := fmt.Sprintf("/plugins/%s/logs/download/", manifest.Id)
+	parsedURL, err := url.Parse(fileURL)
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") ||
+		!strings.HasPrefix(parsedURL.Path, expectedPathPrefix) {
+		return nil, fmt.Errorf("invalid URL in payload")
+	}
+
+	// Validate size_kb is numeric so arbitrary text can't be injected.
+	if _, err := strconv.ParseFloat(sizeKB, 64); err != nil {
+		return nil, fmt.Errorf("invalid size in payload")
+	}
+
+	// Sanitize filename: only allow alphanumeric, dash, underscore, dot, and space
+	// to prevent Markdown/HTML injection when embedded in link text.
+	filename = sanitizeFilename(filename)
+
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
-		Text:         fmt.Sprintf("```\n%s\n```", logs),
+		Text: fmt.Sprintf(
+			"Call logs uploaded. [Click here to download %s](%s) (%s KB)",
+			filename, fileURL, sizeKB,
+		),
 	}, nil
 }
 
