@@ -11,8 +11,25 @@ import {pluginId} from './manifest';
 
 let clientLogs = '';
 
+const maxArgLength = 256;
+
+function formatArg(a: unknown): string {
+    if (a instanceof Error) {
+        return a.message;
+    }
+    if (typeof a === 'object' && a !== null) {
+        try {
+            const s = JSON.stringify(a);
+            return s.length > maxArgLength ? s.slice(0, maxArgLength) + '...' : s;
+        } catch {
+            return String(a);
+        }
+    }
+    return String(a);
+}
+
 function appendClientLog(level: string, ...args: unknown[]) {
-    clientLogs += `${level} [${new Date().toISOString()}] ${args}\n`;
+    clientLogs += `${level} [${new Date().toISOString()}] ${args.map(formatArg).join(' ')}\n`;
 }
 
 export function flushLogsToAccumulated(stats?: CallsClientStats | null) {

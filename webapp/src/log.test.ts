@@ -285,7 +285,7 @@ describe('log', () => {
 
             const accumulated = getClientLogs();
             expect(accumulated).toContain('object:');
-            expect(accumulated).toContain('[object Object]');
+            expect(accumulated).toContain('{"foo":"bar","nested":{"value":123}}');
         });
     });
 
