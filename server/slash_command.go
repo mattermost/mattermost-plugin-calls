@@ -157,10 +157,12 @@ func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
 	filename := payload["filename"]
 	sizeKB := payload["size_kb"]
 
-	// Validate URL scheme to prevent javascript: or other malicious schemes
-	// from being rendered as a link in the client.
+	// Validate that the URL points to our own plugin download endpoint.
+	// This prevents arbitrary URLs from being injected into the response.
+	expectedPathPrefix := fmt.Sprintf("/plugins/%s/logs/download/", manifest.Id)
 	parsedURL, err := url.Parse(fileURL)
-	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") ||
+		!strings.HasPrefix(parsedURL.Path, expectedPathPrefix) {
 		return nil, fmt.Errorf("invalid URL in payload")
 	}
 
