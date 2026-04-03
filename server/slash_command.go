@@ -115,7 +115,7 @@ func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 
 	js, err := base64.StdEncoding.DecodeString(fields[2])
 	if err != nil {
-		return nil, fmt.Errorf("Failed to decode payload: %w", err)
+		return nil, fmt.Errorf("failed to decode payload: %w", err)
 	}
 
 	if len(js) < 2 {
@@ -139,18 +139,18 @@ func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 
 func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
 	if len(fields) < 3 {
-		return nil, fmt.Errorf("Empty logs")
+		return nil, fmt.Errorf("empty logs")
 	}
 
 	// Decode the JSON payload
 	jsonData, err := base64.StdEncoding.DecodeString(fields[2])
 	if err != nil {
-		return nil, fmt.Errorf("Failed to decode payload: %w", err)
+		return nil, fmt.Errorf("failed to decode payload: %w", err)
 	}
 
 	var payload map[string]string
 	if err := json.Unmarshal(jsonData, &payload); err != nil {
-		return nil, fmt.Errorf("Failed to parse payload: %w", err)
+		return nil, fmt.Errorf("failed to parse payload: %w", err)
 	}
 
 	fileURL := payload["url"]
@@ -161,17 +161,17 @@ func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
 	// from being rendered as a link in the client.
 	parsedURL, err := url.Parse(fileURL)
 	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
-		return nil, fmt.Errorf("Invalid URL in payload")
+		return nil, fmt.Errorf("invalid URL in payload")
 	}
 
 	// Validate size_kb is numeric so arbitrary text can't be injected.
 	if _, err := strconv.ParseFloat(sizeKB, 64); err != nil {
-		return nil, fmt.Errorf("Invalid size in payload")
+		return nil, fmt.Errorf("invalid size in payload")
 	}
 
-	// Strip markdown link-breaking characters from the filename so it can
-	// be safely embedded in link text.
-	filename = strings.NewReplacer("[", "", "]", "", "(", "", ")", "").Replace(filename)
+	// Sanitize filename: only allow alphanumeric, dash, underscore, dot, and space
+	// to prevent Markdown/HTML injection when embedded in link text.
+	filename = sanitizeFilename(filename)
 
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,

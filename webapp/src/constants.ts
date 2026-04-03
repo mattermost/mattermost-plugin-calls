@@ -125,6 +125,5 @@ export const STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY = 'calls_experimental_featu
 export const STORAGE_CALLS_MIRROR_VIDEO_KEY = 'calls_mirror_video';
 export const STORAGE_CALLS_BLUR_BACKGROUND_KEY = 'calls_blur_background';
 
-// Log buffer size limits
+// Log buffer size limit
 export const MAX_ACCUMULATED_LOG_SIZE = 1024 * 1024; // 1 MB
-export const MAX_INLINE_LOG_POST_SIZE = 200 * 1024; // 200 KB

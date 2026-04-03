@@ -585,7 +585,7 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 		Logs     string `json:"logs"`
 		Filename string `json:"filename"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
