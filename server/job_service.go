@@ -301,6 +301,8 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		jobCfg.Runner = recorderJobRunner
 		jobCfg.MaxDurationSec = int64(*cfg.MaxRecordingDuration * 60)
 		jobCfg.InputData = baseRecorderCfg.ToMap()
+
+		applyEnvOverrides(jobCfg.InputData, "MM_CALLS_RECORDER_")
 	case job.TypeTranscribing:
 		var transcriberConfig transcriber.CallTranscriberConfig
 		transcriberConfig.SetDefaults()
@@ -339,6 +341,8 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 		// transcribe a 1 hour long call).
 		jobCfg.MaxDurationSec = int64(*cfg.MaxRecordingDuration*60) * 2
 		jobCfg.InputData = transcriberConfig.ToMap()
+
+		applyEnvOverrides(jobCfg.InputData, "MM_CALLS_TRANSCRIBER_")
 	}
 
 	jb, err := s.client.CreateJob(jobCfg)
@@ -347,6 +351,20 @@ func (s *jobService) RunJob(jobType job.Type, callID, postID, jobID, authToken s
 	}
 
 	return jb.ID, nil
+}
+
+// applyEnvOverrides reads environment variables with the given prefix and merges
+// them into inputData, stripping the prefix and lowercasing the key.
+// The offloader will uppercase the keys again when setting container env vars.
+func applyEnvOverrides(inputData job.InputData, prefix string) {
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, prefix) {
+			if parts := strings.SplitN(env, "=", 2); len(parts) == 2 {
+				key := strings.ToLower(strings.TrimPrefix(parts[0], prefix))
+				inputData[key] = parts[1]
+			}
+		}
+	}
 }
 
 func (s *jobService) Close() error {
