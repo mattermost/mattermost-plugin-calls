@@ -1,0 +1,11 @@
+port: 7880
+bind_addresses:
+  - "0.0.0.0"
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_ice_lite: true
+keys:
+  devkey: secret
+logging:
+  level: info
