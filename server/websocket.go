@@ -315,6 +315,8 @@ func (p *Plugin) handleJoin(userID, connID string, joinData callsJoinData) (retE
 				"owner_id":  state.Call.OwnerID,
 				"host_id":   state.Call.GetHostID(),
 			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+
+			go p.createSIPDispatchRule(channelID)
 		}
 
 		p.LogDebug("session has joined call",

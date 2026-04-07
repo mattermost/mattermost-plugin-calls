@@ -249,6 +249,8 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	if len(state.sessions) == 0 {
 		setCallEnded(&state.Call)
 
+		go p.deleteSIPDispatchRule(channelID)
+
 		defer func() {
 			_, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))
 			if err != nil {

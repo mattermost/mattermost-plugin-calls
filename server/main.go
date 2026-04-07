@@ -34,6 +34,7 @@ func main() {
 		callsClusterLocks:      map[string]*cluster.Mutex{},
 		addSessionsBatchers:    map[string]*batching.Batcher{},
 		removeSessionsBatchers: map[string]*batching.Batcher{},
+		sipDispatchRules:       map[string]string{},
 	}
 	p.apiRouter = p.newAPIRouter()
 	plugin.ClientMain(p)

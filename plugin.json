@@ -64,6 +64,20 @@
         "default": "secret",
         "secret": true,
         "help_text": "API secret for LiveKit server authentication."
+      },
+      {
+        "key": "LiveKitSIPPIN",
+        "display_name": "SIP Inbound PIN",
+        "type": "text",
+        "default": "",
+        "help_text": "PIN that inbound SIP callers must enter to join a call. Leave empty to disable SIP dispatch rules."
+      },
+      {
+        "key": "LiveKitSIPTrunkID",
+        "display_name": "SIP Trunk ID",
+        "type": "text",
+        "default": "",
+        "help_text": "LiveKit SIP trunk or phone number ID (e.g., ST_xxx or PN_xxx). Leave empty to match any trunk."
       }
     ]
   }

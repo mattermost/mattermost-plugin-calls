@@ -64,6 +64,8 @@ func (p *Plugin) handleEnd(w http.ResponseWriter, r *http.Request) {
 	// Ask clients to disconnect themselves.
 	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{ChannelID: callID, ReliableClusterSend: true})
 
+	go p.deleteSIPDispatchRule(callID)
+
 	callIDValue := state.Call.ID
 
 	go func() {

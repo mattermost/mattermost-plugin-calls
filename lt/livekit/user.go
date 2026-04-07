@@ -193,9 +193,8 @@ func (p *loopingIVFProvider) NextSample(_ context.Context) (media.Sample, error)
 	if err != nil {
 		return media.Sample{}, err
 	}
-	delta := header.Timestamp - p.lastTimestamp
 	p.lastTimestamp = header.Timestamp
-	duration := time.Duration(p.ivfTimebase*float64(delta)*1000) * time.Millisecond
+	duration := 33 * time.Millisecond
 	return media.Sample{Data: frame, Duration: duration}, nil
 }
 

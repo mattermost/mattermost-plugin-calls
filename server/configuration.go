@@ -30,6 +30,10 @@ type configuration struct {
 	LiveKitAPIKey string
 	// LiveKit API secret for JWT token generation
 	LiveKitAPISecret string
+	// PIN required for inbound SIP callers. Empty disables SIP dispatch rule creation.
+	LiveKitSIPPIN string
+	// SIP trunk ID for inbound calls (e.g., ST_xxx or PN_xxx). Empty means wildcard (any trunk).
+	LiveKitSIPTrunkID string
 
 	ClientConfig
 }
@@ -104,6 +108,8 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveKitURL = c.LiveKitURL
 	cfg.LiveKitAPIKey = c.LiveKitAPIKey
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
+	cfg.LiveKitSIPPIN = c.LiveKitSIPPIN
+	cfg.LiveKitSIPTrunkID = c.LiveKitSIPTrunkID
 
 	// AllowEnableCalls is always true
 	cfg.AllowEnableCalls = model.NewPointer(true)
@@ -300,6 +306,8 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.LiveKitURL = strings.TrimSpace(cfg.LiveKitURL)
 	cfg.LiveKitAPIKey = strings.TrimSpace(cfg.LiveKitAPIKey)
 	cfg.LiveKitAPISecret = strings.TrimSpace(cfg.LiveKitAPISecret)
+	cfg.LiveKitSIPPIN = strings.TrimSpace(cfg.LiveKitSIPPIN)
+	cfg.LiveKitSIPTrunkID = strings.TrimSpace(cfg.LiveKitSIPTrunkID)
 }
 
 func (p *Plugin) isSingleHandler() bool {
