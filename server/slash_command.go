@@ -168,7 +168,7 @@ func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
 	relativePath := parsedURL.Path
 
 	// Validate size_kb is numeric so arbitrary text can't be injected.
-	if _, err := strconv.ParseFloat(sizeKB, 64); err != nil {
+	if size, err := strconv.ParseFloat(sizeKB, 64); err != nil || size < 0 {
 		return nil, fmt.Errorf("invalid size in payload")
 	}
 
