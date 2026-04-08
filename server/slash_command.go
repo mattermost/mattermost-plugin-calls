@@ -158,13 +158,14 @@ func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
 	sizeKB := payload["size_kb"]
 
 	// Validate that the URL points to our own plugin download endpoint.
-	// This prevents arbitrary URLs from being injected into the response.
+	// Use only the path portion as a relative URL so the browser resolves it
+	// against the current origin, preventing host-based URL injection.
 	expectedPathPrefix := fmt.Sprintf("/plugins/%s/logs/download/", manifest.Id)
 	parsedURL, err := url.Parse(fileURL)
-	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") ||
-		!strings.HasPrefix(parsedURL.Path, expectedPathPrefix) {
+	if err != nil || !strings.HasPrefix(parsedURL.Path, expectedPathPrefix) {
 		return nil, fmt.Errorf("invalid URL in payload")
 	}
+	relativePath := parsedURL.Path
 
 	// Validate size_kb is numeric so arbitrary text can't be injected.
 	if _, err := strconv.ParseFloat(sizeKB, 64); err != nil {
@@ -179,7 +180,7 @@ func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
 		ResponseType: model.CommandResponseTypeEphemeral,
 		Text: fmt.Sprintf(
 			"Call logs uploaded. [Click here to download %s](%s) (%s KB)",
-			filename, fileURL, sizeKB,
+			filename, relativePath, sizeKB,
 		),
 	}, nil
 }
