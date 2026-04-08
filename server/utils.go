@@ -31,7 +31,7 @@ const (
 
 // filenameSanitizationRE matches any character NOT in the allowlist.
 // This prevents Markdown/HTML injection when filenames are embedded in Markdown.
-var filenameSanitizationRE = regexp.MustCompile(`[^a-zA-Z0-9._\- ]`)
+var filenameSanitizationRE = regexp.MustCompile(`[^a-zA-Z0-9._\-]`)
 
 func (p *Plugin) getNotificationNameFormat(userID string) string {
 	config := p.API.GetConfig()
