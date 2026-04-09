@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/time/rate"
 
@@ -528,7 +529,8 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 	}
 	at.SetVideoGrant(grant).
 		SetIdentity(userID).
-		SetName(user.GetDisplayName(model.ShowFullName))
+		SetName(user.GetDisplayName(model.ShowFullName)).
+		SetValidFor(time.Hour)
 
 	token, err := at.ToJWT()
 	if err != nil {
