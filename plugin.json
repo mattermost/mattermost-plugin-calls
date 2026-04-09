@@ -105,6 +105,41 @@
         ]
       },
       {
+        "key": "LiveKitService",
+        "title": "LiveKit Service",
+        "subtitle": "Configure a LiveKit server for WebRTC media routing",
+        "custom": true,
+        "fallback": true,
+        "settings": [
+          {
+            "key": "LiveKitURL",
+            "display_name": "LiveKit server URL",
+            "type": "text",
+            "help_text": "(Optional) The URL of a LiveKit server instance to use for call media routing (e.g. wss://livekit.example.com).",
+            "placeholder": "wss://livekit.example.com",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "LiveKitAPIKey",
+            "display_name": "LiveKit API key",
+            "type": "text",
+            "help_text": "The API key used to authenticate with the LiveKit server.",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "LiveKitAPISecret",
+            "display_name": "LiveKit API secret",
+            "type": "text",
+            "secret": true,
+            "help_text": "The API secret used to authenticate with the LiveKit server.",
+            "default": "",
+            "hosting": "on-prem"
+          }
+        ]
+      },
+      {
         "key": "RTCServer",
         "title": "RTC Server",
         "subtitle": "Network configuration for the integrated RTC server",
@@ -471,6 +506,31 @@
         "type": "text",
         "help_text": "(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
         "placeholder": "https://rtcd.example.com",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "LiveKitURL",
+        "display_name": "LiveKit server URL",
+        "type": "text",
+        "help_text": "(Optional) The URL of a LiveKit server instance to use for call media routing (e.g. wss://livekit.example.com).",
+        "placeholder": "wss://livekit.example.com",
+        "default": "",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "LiveKitAPIKey",
+        "display_name": "LiveKit API key",
+        "type": "text",
+        "help_text": "The API key used to authenticate with the LiveKit server.",
+        "default": "",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "LiveKitAPISecret",
+        "display_name": "LiveKit API secret",
+        "type": "text",
+        "help_text": "The API secret used to authenticate with the LiveKit server.",
+        "default": "",
         "hosting": "on-prem"
       },
       {
