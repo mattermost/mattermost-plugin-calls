@@ -151,6 +151,9 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	// TURN
 	router.HandleFunc("/turn-credentials", p.handleGetTURNCredentials).Methods("GET")
 
+	// LiveKit
+	router.HandleFunc("/livekit-token", p.handleGetLiveKitToken).Methods("GET")
+
 	// Cloud
 	router.HandleFunc("/cloud-notify-admins", func(w http.ResponseWriter, r *http.Request) {
 		// End user has requested to notify their admin about upgrading for calls
