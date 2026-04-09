@@ -80,6 +80,12 @@ type configuration struct {
 	TranscribeAPIAzureSpeechRegion string
 	// The number of threads to use to transcriber calls.
 	TranscriberNumThreads *int
+	// The URL of the LiveKit server (e.g. wss://livekit.example.com).
+	LiveKitURL string
+	// The API key used to authenticate with the LiveKit server.
+	LiveKitAPIKey string
+	// The API secret used to authenticate with the LiveKit server.
+	LiveKitAPISecret string
 	// When set to true live captions will be enabled when starting transcription jobs.
 	EnableLiveCaptions *bool
 	// The speech-to-text model size to use to transcribe live captions.
@@ -367,6 +373,9 @@ func (c *configuration) Clone() *configuration {
 	cfg.TranscribeAPIAzureSpeechRegion = c.TranscribeAPIAzureSpeechRegion
 	cfg.LiveCaptionsModelSize = c.LiveCaptionsModelSize
 	cfg.LiveCaptionsLanguage = c.LiveCaptionsLanguage
+	cfg.LiveKitURL = c.LiveKitURL
+	cfg.LiveKitAPIKey = c.LiveKitAPIKey
+	cfg.LiveKitAPISecret = c.LiveKitAPISecret
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = model.NewPointer(*c.UDPServerPort)
@@ -478,6 +487,13 @@ func (c *configuration) getRTCDURL() string {
 		return url
 	}
 	return c.RTCDServiceURL
+}
+
+func (c *configuration) getLiveKitURL() string {
+	if url := os.Getenv("MM_CALLS_LIVEKIT_URL"); url != "" {
+		return url
+	}
+	return c.LiveKitURL
 }
 
 func (c *configuration) getJobServiceURL() string {
@@ -721,6 +737,7 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.TCPServerAddress = strings.TrimSpace(cfg.TCPServerAddress)
 	cfg.RTCDServiceURL = strings.TrimSpace(cfg.RTCDServiceURL)
 	cfg.JobServiceURL = strings.TrimSpace(cfg.JobServiceURL)
+	cfg.LiveKitURL = strings.TrimSpace(cfg.LiveKitURL)
 }
 
 func (p *Plugin) isSingleHandler() bool {
