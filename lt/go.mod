@@ -1,16 +1,24 @@
 module github.com/mattermost/mattermost-plugin-calls/lt
 
-go 1.23.6
+go 1.24.13
 
 require (
 	github.com/aws/aws-sdk-go v1.50.3
 	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/mattermost/mattermost/server/public v0.1.10
 	github.com/mattermost/rtcd v1.2.2
-	github.com/pion/rtp v1.8.21
-	github.com/pion/webrtc/v4 v4.1.3
+	github.com/pion/rtp v1.10.1
+	github.com/pion/webrtc/v4 v4.2.6
 	gopkg.in/hraban/opus.v2 v2.0.0-20230925203106-0188a62cb302
 )
+
+// Mattermost fork of pion/interceptor with custom modifications required for calls.
+// Should be upstreamed or removed when equivalent changes are accepted by pion.
+replace github.com/pion/interceptor v0.1.44 => github.com/bgardner8008/interceptor v0.1.44-mm-mods
+
+// Mattermost fork of pion/ice/v4 with a fix for ICE role conflicts that can cause
+// call connection failures. Should be upstreamed or removed when fixed in pion/ice.
+replace github.com/pion/ice/v4 => github.com/bgardner8008/ice/v4 v4.2.0-role-conflict-fix-v4
 
 require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
@@ -35,20 +43,20 @@ require (
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
-	github.com/pion/datachannel v1.5.10 // indirect
-	github.com/pion/dtls/v3 v3.0.6 // indirect
-	github.com/pion/ice/v4 v4.0.10 // indirect
-	github.com/pion/interceptor v0.1.40 // indirect
+	github.com/pion/datachannel v1.6.0 // indirect
+	github.com/pion/dtls/v3 v3.1.2 // indirect
+	github.com/pion/ice/v4 v4.2.0 // indirect
+	github.com/pion/interceptor v0.1.44 // indirect
 	github.com/pion/logging v0.2.4 // indirect
-	github.com/pion/mdns/v2 v2.0.7 // indirect
+	github.com/pion/mdns/v2 v2.1.0 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
-	github.com/pion/rtcp v1.2.15 // indirect
-	github.com/pion/sctp v1.8.39 // indirect
-	github.com/pion/sdp/v3 v3.0.14 // indirect
-	github.com/pion/srtp/v3 v3.0.6 // indirect
-	github.com/pion/stun/v3 v3.0.0 // indirect
-	github.com/pion/transport/v3 v3.0.7 // indirect
-	github.com/pion/turn/v4 v4.0.2 // indirect
+	github.com/pion/rtcp v1.2.16 // indirect
+	github.com/pion/sctp v1.9.2 // indirect
+	github.com/pion/sdp/v3 v3.0.17 // indirect
+	github.com/pion/srtp/v3 v3.0.10 // indirect
+	github.com/pion/stun/v3 v3.1.1 // indirect
+	github.com/pion/transport/v4 v4.0.1 // indirect
+	github.com/pion/turn/v4 v4.1.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
@@ -56,10 +64,11 @@ require (
 	github.com/wiggin77/merror v1.0.5 // indirect
 	github.com/wiggin77/srslog v1.0.1 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/net v0.41.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/time v0.10.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250124145028-65684f501c47 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
 	google.golang.org/protobuf v1.36.4 // indirect
