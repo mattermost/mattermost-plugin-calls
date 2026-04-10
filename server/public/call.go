@@ -71,8 +71,24 @@ type CallProps struct {
 	NodeID                 string              `json:"node_id,omitempty"`
 	Participants           map[string]struct{} `json:"participants,omitempty"`
 	HostLockedUserID       string              `json:"host_locked_user_id,omitempty"`
+	// VideoStartAt tracks when each session started video, keyed by session ID.
+	// Used to calculate accumulated video duration.
+	VideoStartAt map[string]int64 `json:"video_start_at,omitempty"`
 }
 
 type CallStats struct {
 	ScreenDuration int64 `json:"screen_duration,omitempty"`
+	// VideoDuration tracks the cumulative participant-seconds of video usage across all participants.
+	// This is a "person-seconds" metric that sums individual video time for capacity planning.
+	// Example: 3 participants with video on for 10 seconds each = 30 seconds total.
+	// Example: 8 participants on video for a 30-minute call = 14,400 seconds (240 participant-minutes).
+	VideoDuration int64 `json:"video_duration,omitempty"`
+	// HasUsedVideo indicates if video was enabled at least once during this call.
+	// This flag is set to true the first time any participant enables video, and remains true
+	// even if video is subsequently disabled. Used for counting calls with video usage.
+	HasUsedVideo bool `json:"has_used_video,omitempty"`
+	// HasUsedScreenShare indicates if screen sharing was enabled at least once during this call.
+	// This flag is set to true the first time any participant enables screen sharing, and remains true
+	// even if screen sharing is subsequently disabled. Used for counting calls with screen sharing usage.
+	HasUsedScreenShare bool `json:"has_used_screen_share,omitempty"`
 }
