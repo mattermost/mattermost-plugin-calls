@@ -47,6 +47,17 @@ const plugins = [
         },
         chunks: ['recording'],
     }),
+    new HtmlWebpackPlugin({
+        title: 'Calls',
+        template: path.join(__dirname, '/src/call/index.html'),
+        filename: 'call.html',
+        publicPath: '',
+        inject: 'head',
+        meta: {
+            'Content-Security-Policy': {'http-equiv': 'Content-Security-Policy', content: contentSecurity},
+        },
+        chunks: ['call'],
+    }),
 ];
 
 if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
@@ -74,6 +85,7 @@ module.exports = {
     entry: {
         widget: './src/widget/index.tsx',
         recording: './src/recording/index.tsx',
+        call: './src/call/index.tsx',
     },
     output: {
         devtoolNamespace: PLUGIN_ID,

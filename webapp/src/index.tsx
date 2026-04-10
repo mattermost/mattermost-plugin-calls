@@ -6,18 +6,14 @@ import WebSocketClient from '@mattermost/client/websocket';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import React, {useEffect} from 'react';
-import ReactDOM from 'react-dom';
-import {FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
-import {Provider} from 'react-redux';
+import {FormattedMessage, injectIntl} from 'react-intl';
 import {AnyAction} from 'redux';
 import {batchActions} from 'redux-batched-actions';
-import {DisconnectReason, Room, RoomEvent} from 'livekit-client';
 import {
     displayCallsTestModeUser,
     displayFreeTrial,
@@ -48,7 +44,6 @@ import ChannelHeaderDropdownButton from './components/channel_header_dropdown_bu
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import ChannelLinkLabel from './components/channel_link_label';
 import PostType from './components/custom_post_types/post_type';
-import LiveKitCallView from './components/livekit_call_view';
 import CompassIcon from './components/icons/compassIcon';
 import {IncomingCallContainer} from './components/incoming_calls/call_container';
 import SwitchCallModal from './components/switch_call_modal';
@@ -172,16 +167,6 @@ export default class Plugin {
         const theme = getTheme(store.getState());
         setCallsGlobalCSSVars(theme.sidebarBg);
 
-        // Register root DOM element for Calls. This is where the call view will render.
-        if (!document.getElementById('calls')) {
-            const callsRoot = document.createElement('div');
-            callsRoot.setAttribute('id', 'calls');
-            document.body.appendChild(callsRoot);
-        }
-        this.unsubscribers.push(() => {
-            document.getElementById('calls')?.remove();
-        });
-
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
@@ -198,11 +183,28 @@ export default class Plugin {
             return slashCommandsHandler(store, joinCall, message, args);
         });
 
-        const disconnectCall = () => {
-            if (window.livekitRoom) {
-                window.livekitRoom.disconnect();
-                delete window.livekitRoom;
+        const BROADCAST_CHANNEL_NAME = 'calls_livekit';
+        let callPopup: Window | null = null;
+        let callBroadcastChannel: BroadcastChannel | null = null;
+        let popupPollInterval: ReturnType<typeof setInterval> | null = null;
+
+        const cleanupPopup = () => {
+            if (popupPollInterval) {
+                clearInterval(popupPollInterval);
+                popupPollInterval = null;
             }
+            if (callBroadcastChannel) {
+                callBroadcastChannel.close();
+                callBroadcastChannel = null;
+            }
+            if (callPopup && !callPopup.closed) {
+                callPopup.close();
+            }
+            callPopup = null;
+        };
+
+        const disconnectCall = () => {
+            cleanupPopup();
 
             const channelID = window.livekitChannelID;
             if (channelID) {
@@ -213,24 +215,27 @@ export default class Plugin {
                 delete window.livekitChannelID;
             }
 
-            const callsRoot = document.getElementById('calls');
-            if (callsRoot) {
-                ReactDOM.unmountComponentAtNode(callsRoot);
-            }
-
             playSound('leave_self');
         };
 
         const connectCall = async (channelID: string, title?: string, rootId?: string) => {
             try {
-                if (window.livekitRoom) {
-                    logErr('LiveKit room is already connected');
+                if (callPopup && !callPopup.closed) {
+                    logErr('Call popup is already open');
                     return;
                 }
 
                 store.dispatch(setClientConnecting(true));
 
-                // 1. Send join message to Mattermost server (via Mattermost WS)
+                // 1. Open popup window immediately, before any async work,
+                // so it stays in the user-gesture call stack and isn't blocked.
+                const popupUrl = `${window.basename || ''}/plugins/${pluginId}/public/standalone/call.html`;
+                callPopup = window.open(popupUrl, 'CallsPopup', 'width=960,height=640,resizable=yes');
+                if (!callPopup) {
+                    throw new Error('Popup blocked by browser. Please allow popups for this site.');
+                }
+
+                // 2. Send join message to Mattermost server (via Mattermost WS)
                 if (this.wsClient) {
                     this.wsClient.sendMessage(`custom_${pluginId}_join`, {
                         channelID,
@@ -240,60 +245,43 @@ export default class Plugin {
                 }
 
                 // Track the channel ID immediately so that disconnectCall()
-                // can send a leave message even if the LiveKit connection fails.
+                // can send a leave message even if the token fetch fails.
                 window.livekitChannelID = channelID;
 
-                // 2. Fetch LiveKit token from plugin API
+                // 3. Fetch LiveKit token from plugin API
                 const resp = await RestClient.fetch<{token: string; url: string}>(
                     `${getPluginPath()}/livekit-token?channel_id=${channelID}`,
                     {method: 'get'},
                 );
 
-                // 3. Create and connect LiveKit Room
-                const room = new Room({
-                    adaptiveStream: true,
-                    dynacast: true,
-                });
-
-                await room.connect(resp.url, resp.token);
-                window.livekitRoom = room;
-
-                // Handle unexpected LiveKit disconnection (server goes down, network loss, etc.)
-                room.on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
-                    logWarn('LiveKit room disconnected unexpectedly', reason);
-                    disconnectCall();
-                    if (reason !== DisconnectReason.CLIENT_INITIATED) {
-                        store.dispatch(displayGenericErrorModal(
-                            {id: 'calls.error.call_disconnected_title', defaultMessage: 'Call disconnected'},
-                            {id: 'calls.error.call_disconnected_message', defaultMessage: 'You were disconnected from the call. This may be due to a network issue or the call server becoming unavailable.'},
-                        ));
-                    }
-                });
-
-                // 4. Start with mic muted
-                await room.localParticipant.setMicrophoneEnabled(false);
-
-                // 5. Render the LiveKit call view
+                // 4. Set up BroadcastChannel communication with popup
                 const channel = getChannel(store.getState(), channelID);
-                const locale = getCurrentUserLocale(store.getState()) || 'en';
+                const channelName = channel?.display_name || channelID;
 
-                ReactDOM.render(
-                    <Provider store={store}>
-                        <IntlProvider
-                            locale={locale}
-                            key={locale}
-                            defaultLocale='en'
-                            messages={getTranslations(locale)}
-                        >
-                            <LiveKitCallView
-                                channelID={channelID}
-                                channelName={channel?.display_name || channelID}
-                                onLeave={disconnectCall}
-                            />
-                        </IntlProvider>
-                    </Provider>,
-                    document.getElementById('calls'),
-                );
+                callBroadcastChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+
+                callBroadcastChannel.onmessage = (ev: MessageEvent) => {
+                    if (ev.data?.type === 'ready') {
+                        // Popup is loaded and ready — send connection details
+                        callBroadcastChannel?.postMessage({
+                            type: 'connect',
+                            channelID,
+                            channelName,
+                            token: resp.token,
+                            url: resp.url,
+                        });
+                    } else if (ev.data?.type === 'leave') {
+                        // Popup signaled that the call ended
+                        disconnectCall();
+                    }
+                };
+
+                // 5. Poll for popup being closed without sending leave (e.g. browser crash)
+                popupPollInterval = setInterval(() => {
+                    if (callPopup?.closed) {
+                        disconnectCall();
+                    }
+                }, 1000);
 
                 store.dispatch(setClientConnecting(false));
             } catch (err) {
@@ -532,11 +520,8 @@ export default class Plugin {
         };
 
         this.unsubscribers.push(() => {
-            if (window.livekitRoom) {
-                window.livekitRoom.disconnect();
-                delete window.livekitRoom;
-                delete window.livekitChannelID;
-            }
+            cleanupPopup();
+            delete window.livekitChannelID;
             logDebug('resetting state');
             store.dispatch({
                 type: UNINIT,
@@ -552,7 +537,7 @@ export default class Plugin {
                 logDebug('registering ws reconnect handler');
                 this.registerReconnectHandler(registry, store, () => {
                     logDebug('websocket reconnect handler');
-                    if (!window.livekitRoom) {
+                    if (!callPopup || callPopup.closed) {
                         logDebug('resetting state');
                         store.dispatch({
                             type: UNINIT,
@@ -622,7 +607,6 @@ declare global {
     interface Window {
         registerPlugin(id: string, plugin: Plugin): void,
 
-        livekitRoom?: Room,
         livekitChannelID?: string,
         webkitAudioContext: AudioContext,
         basename: string,

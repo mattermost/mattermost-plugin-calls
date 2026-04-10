@@ -83,7 +83,7 @@ export function getChannelURL(state: GlobalState, channel?: Channel, teamId?: st
 }
 
 export function getCallsClient(): any {
-    return window.livekitRoom || undefined;
+    return undefined;
 }
 
 export function getCallsClientChannelID(): string {
@@ -91,7 +91,7 @@ export function getCallsClientChannelID(): string {
 }
 
 export function getCallsClientSessionID(): string {
-    return window.livekitRoom?.localParticipant?.sid || '';
+    return '';
 }
 
 export function getCallsClientInitTime(): number {

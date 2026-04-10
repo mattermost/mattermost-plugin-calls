@@ -88,7 +88,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         },
     });
 
-    if (window.livekitRoom && window.livekitChannelID === channelID) {
+    if (window.livekitChannelID === channelID) {
         const channel = getChannel(store.getState(), channelID);
         if (channel) {
             followThread(store, channel.id, channel.team_id);
@@ -109,10 +109,10 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
     const currentUserID = getCurrentUserId(store.getState());
     const sessionID = ev.data.session_id;
 
-    if (window.livekitRoom && window.livekitChannelID === channelID) {
-        if (sessionID === getCallsClientSessionID()) {
+    if (window.livekitChannelID === channelID) {
+        if (userID === currentUserID) {
             playSound('join_self');
-        } else if (userID !== currentUserID && shouldPlayJoinUserSound(store.getState())) {
+        } else if (shouldPlayJoinUserSound(store.getState())) {
             playSound('join_user');
         }
     }
@@ -202,8 +202,9 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
     const removedUserID = ev.data.user_id || ev.broadcast.user_id;
 
     if (removedUserID === currentUserID && channelID === channelIDForCurrentCall(store.getState())) {
-        if (window.livekitRoom) {
-            window.livekitRoom.disconnect();
-        }
+        // Signal the popup to disconnect via BroadcastChannel
+        const bc = new BroadcastChannel('calls_livekit');
+        bc.postMessage({type: 'disconnect'});
+        bc.close();
     }
 }

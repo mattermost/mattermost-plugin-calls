@@ -418,7 +418,10 @@ export const userLeft = (channelID: string, userID: string, sessionID: string) =
 export const callEnd = (channelID: string) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
         if (channelIDForCurrentCall(getState()) === channelID) {
-            window.livekitRoom?.disconnect();
+            // Signal the popup to disconnect via BroadcastChannel
+            const bc = new BroadcastChannel('calls_livekit');
+            bc.postMessage({type: 'disconnect'});
+            bc.close();
         }
 
         const callID = calls(getState())[channelID]?.ID || '';
