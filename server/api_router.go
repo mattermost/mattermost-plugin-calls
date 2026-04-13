@@ -25,6 +25,9 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	// Guest join (public, no auth required)
 	guestJoinRoute := router.HandleFunc("/guest/join", p.handleGuestJoin).Methods("POST")
 
+	// LiveKit webhook (public, verified via LiveKit signature)
+	livekitWebhookRoute := router.HandleFunc("/livekit/webhook", p.handleLiveKitWebhook).Methods("POST")
+
 	// Authenticated API handlers (user session required)
 
 	// Auth middleware
@@ -41,6 +44,11 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 			}
 
 			if guestJoinRoute.Match(r, &mux.RouteMatch{}) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if livekitWebhookRoute.Match(r, &mux.RouteMatch{}) {
 				next.ServeHTTP(w, r)
 				return
 			}

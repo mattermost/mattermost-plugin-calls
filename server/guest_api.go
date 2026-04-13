@@ -493,8 +493,6 @@ func (p *Plugin) startCallFromGuest(channelID, guestDisplayName string) error {
 		"host_id":   state.Call.GetHostID(),
 	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
-	go p.createSIPDispatchRule(channelID)
-
 	p.LogDebug("call started by guest", "channelID", channelID, "guestName", guestDisplayName)
 
 	return nil

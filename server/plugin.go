@@ -71,8 +71,6 @@ type Plugin struct {
 	addSessionsBatchers    map[string]*batching.Batcher
 	removeSessionsBatchers map[string]*batching.Batcher
 
-	// SIP dispatch rule IDs keyed by channelID
-	sipDispatchRules map[string]string
 }
 
 func (p *Plugin) OnPluginClusterEvent(_ *plugin.Context, ev model.PluginClusterEvent) {

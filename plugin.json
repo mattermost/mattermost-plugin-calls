@@ -87,18 +87,18 @@
         "help_text": "Time-to-live in hours for LiveKit tokens issued to guest participants."
       },
       {
-        "key": "LiveKitSIPPIN",
-        "display_name": "SIP Inbound PIN",
-        "type": "text",
-        "default": "",
-        "help_text": "PIN that inbound SIP callers must enter to join a call. Leave empty to disable SIP dispatch rules."
-      },
-      {
         "key": "LiveKitSIPTrunkID",
         "display_name": "SIP Trunk ID",
         "type": "text",
         "default": "",
         "help_text": "LiveKit SIP trunk or phone number ID (e.g., ST_xxx or PN_xxx). Leave empty to match any trunk."
+      },
+      {
+        "key": "SIPPINLength",
+        "display_name": "SIP PIN length",
+        "type": "number",
+        "default": 9,
+        "help_text": "Number of digits for generated SIP PINs (4-16). Use 4 for testing, 9 for production."
       }
     ]
   }

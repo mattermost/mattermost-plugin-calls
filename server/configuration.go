@@ -30,10 +30,10 @@ type configuration struct {
 	LiveKitAPIKey string
 	// LiveKit API secret for JWT token generation
 	LiveKitAPISecret string
-	// PIN required for inbound SIP callers. Empty disables SIP dispatch rule creation.
-	LiveKitSIPPIN string
 	// SIP trunk ID for inbound calls (e.g., ST_xxx or PN_xxx). Empty means wildcard (any trunk).
 	LiveKitSIPTrunkID string
+	// Number of digits for generated SIP PINs (4-16, default 9).
+	SIPPINLength *int
 	// Enable guest access via shareable links.
 	GuestAccessEnabled *bool
 	// Default expiry in hours for new guest links. 0 means no expiry.
@@ -85,6 +85,9 @@ func (c *configuration) SetDefaults() {
 	if c.LiveKitAPISecret == "" {
 		c.LiveKitAPISecret = "secret"
 	}
+	if c.SIPPINLength == nil {
+		c.SIPPINLength = model.NewPointer(9)
+	}
 	if c.GuestAccessEnabled == nil {
 		c.GuestAccessEnabled = model.NewPointer(false)
 	}
@@ -113,6 +116,10 @@ func (c *configuration) IsValid() error {
 		return fmt.Errorf("LiveKitAPISecret should not be empty")
 	}
 
+	if c.SIPPINLength != nil && (*c.SIPPINLength < 4 || *c.SIPPINLength > 16) {
+		return fmt.Errorf("SIPPINLength must be between 4 and 16")
+	}
+
 	return nil
 }
 
@@ -123,8 +130,10 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveKitURL = c.LiveKitURL
 	cfg.LiveKitAPIKey = c.LiveKitAPIKey
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
-	cfg.LiveKitSIPPIN = c.LiveKitSIPPIN
 	cfg.LiveKitSIPTrunkID = c.LiveKitSIPTrunkID
+	if c.SIPPINLength != nil {
+		cfg.SIPPINLength = model.NewPointer(*c.SIPPINLength)
+	}
 
 	if c.GuestAccessEnabled != nil {
 		cfg.GuestAccessEnabled = model.NewPointer(*c.GuestAccessEnabled)
@@ -331,7 +340,6 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.LiveKitURL = strings.TrimSpace(cfg.LiveKitURL)
 	cfg.LiveKitAPIKey = strings.TrimSpace(cfg.LiveKitAPIKey)
 	cfg.LiveKitAPISecret = strings.TrimSpace(cfg.LiveKitAPISecret)
-	cfg.LiveKitSIPPIN = strings.TrimSpace(cfg.LiveKitSIPPIN)
 	cfg.LiveKitSIPTrunkID = strings.TrimSpace(cfg.LiveKitSIPTrunkID)
 }
 

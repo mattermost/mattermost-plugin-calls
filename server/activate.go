@@ -140,6 +140,9 @@ func (p *Plugin) OnActivate() (retErr error) {
 	// Cluster events handler (kept for plugin framework compatibility)
 	go p.clusterEventsHandler()
 
+	// Reconcile SIP guest link dispatch rules with LiveKit.
+	go p.reconcileSIPDispatchRules()
+
 	p.LogDebug("activated (LiveKit PoC mode)", "ClusterID", status.ClusterId)
 
 	return nil

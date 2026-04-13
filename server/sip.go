@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
+
 	"github.com/livekit/protocol/auth"
 	"github.com/livekit/protocol/livekit"
 	"github.com/twitchtv/twirp"
@@ -33,21 +35,17 @@ func newSIPAdminToken(apiKey, apiSecret string) (string, error) {
 	return at.ToJWT()
 }
 
-// createSIPDispatchRule creates a direct dispatch rule that routes inbound SIP
-// calls to the given room (channelID) with a PIN prompt. It returns the rule ID.
-func (p *Plugin) createSIPDispatchRule(channelID string) {
+// createPersistentSIPDispatchRule creates a dispatch rule for a guest SIP invite.
+// Unlike createSIPDispatchRule (which is tied to call lifecycle), this rule persists
+// until the guest link is revoked.
+func (p *Plugin) createPersistentSIPDispatchRule(channelID, pin, trunkID string) (string, error) {
 	cfg := p.getConfiguration()
-	if cfg.LiveKitSIPPIN == "" {
-		return
-	}
-
 	httpURL := livekitHTTPURL(cfg.LiveKitURL)
 	sipClient := livekit.NewSIPProtobufClient(httpURL, &http.Client{})
 
 	token, err := newSIPAdminToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 	if err != nil {
-		p.LogError("failed to create SIP admin token", "err", err.Error())
-		return
+		return "", fmt.Errorf("failed to create SIP admin token: %w", err)
 	}
 
 	ctx := context.Background()
@@ -55,8 +53,7 @@ func (p *Plugin) createSIPDispatchRule(channelID string) {
 	header.Set("Authorization", "Bearer "+token)
 	ctx, err = twirp.WithHTTPRequestHeaders(ctx, header)
 	if err != nil {
-		p.LogError("failed to set twirp headers", "err", err.Error())
-		return
+		return "", fmt.Errorf("failed to set twirp headers: %w", err)
 	}
 
 	req := &livekit.CreateSIPDispatchRuleRequest{
@@ -64,87 +61,29 @@ func (p *Plugin) createSIPDispatchRule(channelID string) {
 			Rule: &livekit.SIPDispatchRule_DispatchRuleDirect{
 				DispatchRuleDirect: &livekit.SIPDispatchRuleDirect{
 					RoomName: channelID,
-					Pin:      cfg.LiveKitSIPPIN,
+					Pin:      pin,
 				},
 			},
 		},
-		Name: fmt.Sprintf("calls-%s", channelID),
+		Name: fmt.Sprintf("calls-guest-%s", channelID),
 	}
-	if cfg.LiveKitSIPTrunkID != "" {
-		req.TrunkIds = []string{cfg.LiveKitSIPTrunkID}
+	if trunkID != "" {
+		req.TrunkIds = []string{trunkID}
 	}
 
 	resp, err := sipClient.CreateSIPDispatchRule(ctx, req)
 	if err != nil {
-		p.LogError("failed to create SIP dispatch rule", "err", err.Error(), "channelID", channelID)
-		return
+		return "", fmt.Errorf("failed to create SIP dispatch rule: %w", err)
 	}
 
-	p.LogDebug("created SIP dispatch rule", "ruleID", resp.SipDispatchRuleId, "channelID", channelID)
+	p.LogDebug("created persistent SIP dispatch rule",
+		"ruleID", resp.SipDispatchRuleId, "channelID", channelID)
 
-	p.mut.Lock()
-	p.sipDispatchRules[channelID] = resp.SipDispatchRuleId
-	p.mut.Unlock()
-
-	p.logSIPDiagnostics(sipClient, ctx)
+	return resp.SipDispatchRuleId, nil
 }
 
-// logSIPDiagnostics lists all inbound trunks and dispatch rules from the LiveKit
-// server and logs them for debugging.
-func (p *Plugin) logSIPDiagnostics(sipClient livekit.SIP, ctx context.Context) {
-	trunksResp, err := sipClient.ListSIPInboundTrunk(ctx, &livekit.ListSIPInboundTrunkRequest{})
-	if err != nil {
-		p.LogError("SIP diagnostics: failed to list inbound trunks", "err", err.Error())
-	} else {
-		p.LogDebug("SIP diagnostics: inbound trunks", "count", len(trunksResp.Items))
-		for _, t := range trunksResp.Items {
-			p.LogDebug("SIP trunk",
-				"id", t.GetSipTrunkId(),
-				"name", t.GetName(),
-				"numbers", fmt.Sprintf("%v", t.GetNumbers()),
-				"allowedAddresses", fmt.Sprintf("%v", t.GetAllowedAddresses()),
-				"allowedNumbers", fmt.Sprintf("%v", t.GetAllowedNumbers()),
-			)
-		}
-	}
-
-	rulesResp, err := sipClient.ListSIPDispatchRule(ctx, &livekit.ListSIPDispatchRuleRequest{})
-	if err != nil {
-		p.LogError("SIP diagnostics: failed to list dispatch rules", "err", err.Error())
-	} else {
-		p.LogDebug("SIP diagnostics: dispatch rules", "count", len(rulesResp.Items))
-		for _, r := range rulesResp.Items {
-			var roomName, pin string
-			if rule := r.GetRule(); rule != nil {
-				if d := rule.GetDispatchRuleDirect(); d != nil {
-					roomName = d.GetRoomName()
-					pin = d.GetPin()
-				}
-			}
-			p.LogDebug("SIP dispatch rule",
-				"id", r.GetSipDispatchRuleId(),
-				"name", r.GetName(),
-				"trunkIds", fmt.Sprintf("%v", r.GetTrunkIds()),
-				"roomName", roomName,
-				"hasPin", pin != "",
-			)
-		}
-	}
-}
-
-// deleteSIPDispatchRule deletes the dispatch rule associated with the given channel.
-func (p *Plugin) deleteSIPDispatchRule(channelID string) {
-	p.mut.Lock()
-	ruleID, ok := p.sipDispatchRules[channelID]
-	if ok {
-		delete(p.sipDispatchRules, channelID)
-	}
-	p.mut.Unlock()
-
-	if !ok {
-		return
-	}
-
+// deleteSIPDispatchRuleByID deletes a specific dispatch rule by its ID.
+func (p *Plugin) deleteSIPDispatchRuleByID(ruleID string) {
 	cfg := p.getConfiguration()
 	httpURL := livekitHTTPURL(cfg.LiveKitURL)
 	sipClient := livekit.NewSIPProtobufClient(httpURL, &http.Client{})
@@ -168,9 +107,98 @@ func (p *Plugin) deleteSIPDispatchRule(channelID string) {
 		SipDispatchRuleId: ruleID,
 	})
 	if err != nil {
-		p.LogError("failed to delete SIP dispatch rule", "err", err.Error(), "ruleID", ruleID, "channelID", channelID)
+		p.LogError("failed to delete SIP dispatch rule", "err", err.Error(), "ruleID", ruleID)
 		return
 	}
 
-	p.LogDebug("deleted SIP dispatch rule", "ruleID", ruleID, "channelID", channelID)
+	p.LogDebug("deleted SIP dispatch rule", "ruleID", ruleID)
+}
+
+
+
+// reconcileSIPDispatchRules ensures that all active SIP guest links in the DB
+// have corresponding dispatch rules in LiveKit, and removes orphaned rules.
+func (p *Plugin) reconcileSIPDispatchRules() {
+	cfg := p.getConfiguration()
+	if cfg.LiveKitSIPTrunkID == "" {
+		return
+	}
+
+	links, err := p.store.GetAllActiveSIPGuestLinks(db.GetGuestLinkOpts{})
+	if err != nil {
+		p.LogError("reconcileSIPDispatchRules: failed to get active SIP links", "err", err.Error())
+		return
+	}
+
+	if len(links) == 0 {
+		p.LogDebug("reconcileSIPDispatchRules: no active SIP guest links")
+		return
+	}
+
+	httpURL := livekitHTTPURL(cfg.LiveKitURL)
+	sipClient := livekit.NewSIPProtobufClient(httpURL, &http.Client{})
+
+	token, err := newSIPAdminToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
+	if err != nil {
+		p.LogError("reconcileSIPDispatchRules: failed to create SIP admin token", "err", err.Error())
+		return
+	}
+
+	ctx := context.Background()
+	header := http.Header{}
+	header.Set("Authorization", "Bearer "+token)
+	ctx, err = twirp.WithHTTPRequestHeaders(ctx, header)
+	if err != nil {
+		p.LogError("reconcileSIPDispatchRules: failed to set twirp headers", "err", err.Error())
+		return
+	}
+
+	// Get existing rules from LiveKit.
+	rulesResp, err := sipClient.ListSIPDispatchRule(ctx, &livekit.ListSIPDispatchRuleRequest{})
+	if err != nil {
+		p.LogError("reconcileSIPDispatchRules: failed to list dispatch rules", "err", err.Error())
+		return
+	}
+
+	existingRules := make(map[string]string) // roomName -> ruleID for calls-guest-* rules
+	for _, r := range rulesResp.Items {
+		if strings.HasPrefix(r.GetName(), "calls-guest-") {
+			if d := r.GetRule().GetDispatchRuleDirect(); d != nil {
+				existingRules[d.GetRoomName()] = r.GetSipDispatchRuleId()
+			}
+		}
+	}
+
+	// Re-create missing dispatch rules for active links.
+	for _, link := range links {
+		if _, exists := existingRules[link.ChannelID]; exists {
+			p.LogDebug("reconcileSIPDispatchRules: dispatch rule exists",
+				"channelID", link.ChannelID, "linkID", link.ID)
+			delete(existingRules, link.ChannelID)
+			continue
+		}
+
+		trunkID := cfg.LiveKitSIPTrunkID
+		if link.TrunkID != nil && *link.TrunkID != "" {
+			trunkID = *link.TrunkID
+		}
+
+		ruleID, err := p.createPersistentSIPDispatchRule(link.ChannelID, link.Secret, trunkID)
+		if err != nil {
+			p.LogError("reconcileSIPDispatchRules: failed to re-create dispatch rule",
+				"err", err.Error(), "channelID", link.ChannelID, "linkID", link.ID)
+			continue
+		}
+		p.LogDebug("reconcileSIPDispatchRules: re-created dispatch rule",
+			"channelID", link.ChannelID, "linkID", link.ID, "ruleID", ruleID)
+	}
+
+	// Delete orphaned rules (rules in LiveKit with no matching active link).
+	for roomName, ruleID := range existingRules {
+		p.LogDebug("reconcileSIPDispatchRules: deleting orphaned dispatch rule",
+			"roomName", roomName, "ruleID", ruleID)
+		p.deleteSIPDispatchRuleByID(ruleID)
+	}
+
+	p.LogDebug("reconcileSIPDispatchRules: completed", "activeLinks", len(links))
 }

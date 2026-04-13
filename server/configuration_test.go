@@ -71,6 +71,26 @@ func TestConfigurationIsValid(t *testing.T) {
 			err: "LiveKitAPISecret should not be empty",
 		},
 		{
+			name: "SIPPINLength too low",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.SIPPINLength = model.NewPointer(3)
+				return cfg
+			}(),
+			err: "SIPPINLength must be between 4 and 16",
+		},
+		{
+			name: "SIPPINLength too high",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.SIPPINLength = model.NewPointer(17)
+				return cfg
+			}(),
+			err: "SIPPINLength must be between 4 and 16",
+		},
+		{
 			name:  "defaults",
 			input: defaultConfig,
 		},
@@ -102,6 +122,7 @@ func TestSetDefaults(t *testing.T) {
 	require.Equal(t, model.NewPointer(false), cfg.GuestAccessEnabled)
 	require.Equal(t, model.NewPointer(0), cfg.GuestLinkDefaultExpiryHours)
 	require.Equal(t, model.NewPointer(4), cfg.LiveKitGuestTokenTTLHours)
+	require.Equal(t, model.NewPointer(9), cfg.SIPPINLength)
 }
 
 func TestClone(t *testing.T) {

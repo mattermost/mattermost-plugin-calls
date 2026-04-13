@@ -416,6 +416,36 @@ func TestClientIP(t *testing.T) {
 	})
 }
 
+func TestGeneratePIN(t *testing.T) {
+	t.Run("default length", func(t *testing.T) {
+		pin, err := generatePIN(9)
+		require.NoError(t, err)
+		require.Len(t, pin, 9)
+		for _, c := range pin {
+			require.True(t, c >= '0' && c <= '9', "expected digit, got %c", c)
+		}
+	})
+
+	t.Run("uniqueness", func(t *testing.T) {
+		pin1, _ := generatePIN(9)
+		pin2, _ := generatePIN(9)
+		require.NotEqual(t, pin1, pin2)
+	})
+
+	t.Run("zero length defaults to 9", func(t *testing.T) {
+		pin, err := generatePIN(0)
+		require.NoError(t, err)
+		require.Len(t, pin, 9)
+	})
+}
+
+func TestFormatPIN(t *testing.T) {
+	require.Equal(t, "123-456-789", formatPIN("123456789"))
+	require.Equal(t, "123-45", formatPIN("12345"))
+	require.Equal(t, "123", formatPIN("123"))
+	require.Equal(t, "1", formatPIN("1"))
+}
+
 func TestGenerateSecret(t *testing.T) {
 	s1, err := generateSecret()
 	require.NoError(t, err)

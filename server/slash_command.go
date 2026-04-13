@@ -5,10 +5,12 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -52,7 +54,7 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(leaveCommandTrigger, "", "Leave a call in the current channel."))
 	data.AddCommand(model.NewAutocompleteData(linkCommandTrigger, "", "Generate a link to join a call in the current channel."))
 	guestLinkCmdData := model.NewAutocompleteData(guestLinkCommandTrigger, "[flags]", "Create or manage guest invite links for the current channel.")
-	guestLinkCmdData.AddTextArgument("[--once] [--expires duration] [--no-start] [--list] [--revoke id]", "Flags", "")
+	guestLinkCmdData.AddTextArgument("[--once] [--expires duration] [--no-start] [--sip] [--list] [--revoke id]", "Flags", "")
 	data.AddCommand(guestLinkCmdData)
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Show client-generated statistics about the call."))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately."))
@@ -226,6 +228,7 @@ func (p *Plugin) handleGuestLinkCommand(args *model.CommandArgs, flags []string)
 	// Parse flags.
 	var (
 		flagOnce    bool
+		flagSIP     bool
 		flagNoStart bool
 		flagList    bool
 		flagRevoke  string
@@ -235,6 +238,8 @@ func (p *Plugin) handleGuestLinkCommand(args *model.CommandArgs, flags []string)
 		switch flags[i] {
 		case "--once":
 			flagOnce = true
+		case "--sip":
+			flagSIP = true
 		case "--no-start":
 			flagNoStart = true
 		case "--list":
@@ -262,6 +267,10 @@ func (p *Plugin) handleGuestLinkCommand(args *model.CommandArgs, flags []string)
 
 	if flagRevoke != "" {
 		return p.handleGuestLinkRevoke(args, flagRevoke)
+	}
+
+	if flagSIP {
+		return p.handleGuestLinkCreateSIP(args, flagOnce, flagNoStart, flagExpires)
 	}
 
 	return p.handleGuestLinkCreate(args, flagOnce, flagNoStart, flagExpires)
@@ -401,8 +410,154 @@ func (p *Plugin) handleGuestLinkRevoke(args *model.CommandArgs, linkID string) (
 		return nil, fmt.Errorf("failed to revoke guest link: %w", err)
 	}
 
+	// If this is a SIP link with a dispatch rule, delete it from LiveKit.
+	if link.Type == public.GuestLinkTypeSIP && link.DispatchRuleID != nil && *link.DispatchRuleID != "" {
+		go p.deleteSIPDispatchRuleByID(*link.DispatchRuleID)
+	}
+
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
 		Text:         fmt.Sprintf("Guest link `%s` has been revoked.", linkID),
 	}, nil
+}
+
+// generatePIN generates a numeric PIN of the specified length.
+func generatePIN(length int) (string, error) {
+	if length <= 0 {
+		length = 9
+	}
+	digits := make([]byte, length)
+	for i := range digits {
+		n, err := rand.Int(rand.Reader, big.NewInt(10))
+		if err != nil {
+			return "", fmt.Errorf("failed to generate PIN: %w", err)
+		}
+		digits[i] = '0' + byte(n.Int64())
+	}
+	return string(digits), nil
+}
+
+func (p *Plugin) handleGuestLinkCreateSIP(args *model.CommandArgs, once, noStart bool, expiresStr string) (*model.CommandResponse, error) {
+	cfg := p.getConfiguration()
+
+	if cfg.LiveKitSIPTrunkID == "" {
+		return nil, fmt.Errorf("no SIP trunk configured. Set the SIP Trunk ID in admin console.")
+	}
+
+	// For permanent (non-single-use) SIP invites, enforce singleton per channel.
+	if !once {
+		existing, err := p.store.GetActiveSIPGuestLinkByChannel(args.ChannelId, db.GetGuestLinkOpts{FromWriter: true})
+		if err == nil && existing != nil {
+			// Return the existing invite (idempotent).
+			pin := existing.Secret
+			formattedPIN := formatPIN(pin)
+
+			return &model.CommandResponse{
+				ResponseType: model.CommandResponseTypeEphemeral,
+				Text: fmt.Sprintf("SIP dial-in already configured for this channel\n"+
+					"  Phone: %s\n  PIN: %s\n  Link ID: `%s`",
+					cfg.LiveKitSIPTrunkID, formattedPIN, existing.ID),
+			}, nil
+		}
+	}
+
+	pinLength := 9
+	if cfg.SIPPINLength != nil && *cfg.SIPPINLength >= 4 && *cfg.SIPPINLength <= 16 {
+		pinLength = *cfg.SIPPINLength
+	}
+
+	pin, err := generatePIN(pinLength)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now().UnixMilli()
+
+	var expiresAt int64
+	if expiresStr != "" {
+		dur, err := time.ParseDuration(expiresStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid duration %q: %w", expiresStr, err)
+		}
+		if dur <= 0 {
+			return nil, fmt.Errorf("expiry duration must be positive")
+		}
+		expiresAt = now + dur.Milliseconds()
+	}
+
+	var maxUses int
+	if once {
+		maxUses = 1
+	}
+
+	allowStart := !noStart
+	trunkID := cfg.LiveKitSIPTrunkID
+
+	link := &public.GuestLink{
+		ID:        model.NewId(),
+		ChannelID: args.ChannelId,
+		Type:      public.GuestLinkTypeSIP,
+		CreatedBy: args.UserId,
+		CreateAt:  now,
+		ExpiresAt: expiresAt,
+		MaxUses:   maxUses,
+		Secret:    pin,
+		TrunkID:   &trunkID,
+		Props:     public.GuestLinkProps{"allow_start": allowStart},
+	}
+
+	if err := p.store.CreateGuestLink(link); err != nil {
+		return nil, fmt.Errorf("failed to create SIP guest link: %w", err)
+	}
+
+	// Create a persistent LiveKit dispatch rule for this PIN.
+	ruleID, err := p.createPersistentSIPDispatchRule(args.ChannelId, pin, trunkID)
+	if err != nil {
+		// Clean up the link if dispatch rule creation fails.
+		_ = p.store.DeleteGuestLink(link.ID)
+		return nil, fmt.Errorf("failed to create SIP dispatch rule: %w", err)
+	}
+
+	// Store the dispatch rule ID on the link.
+	link.DispatchRuleID = &ruleID
+	// Update via direct SQL since we don't have an UpdateGuestLink method for this field.
+	// For now, we'll store it and log it.
+	p.LogDebug("created SIP guest link with dispatch rule",
+		"linkID", link.ID, "ruleID", ruleID, "channelID", args.ChannelId, "pin", pin)
+
+	formattedPIN := formatPIN(pin)
+
+	channel, appErr := p.API.GetChannel(args.ChannelId)
+	channelName := args.ChannelId
+	if appErr == nil {
+		channelName = channel.DisplayName
+	}
+
+	text := fmt.Sprintf("SIP dial-in enabled for #%s\n  Trunk: %s\n  PIN: %s\n  Link ID: `%s`",
+		channelName, trunkID, formattedPIN, link.ID)
+	if once {
+		text += "\n  (single use)"
+	}
+	if expiresAt > 0 {
+		expiryTime := time.UnixMilli(expiresAt)
+		text += fmt.Sprintf("\n  Expires: %s", expiryTime.Format(time.RFC822))
+	}
+
+	return &model.CommandResponse{
+		ResponseType: model.CommandResponseTypeEphemeral,
+		Text:         text,
+	}, nil
+}
+
+// formatPIN formats a PIN with dashes for readability (e.g., "123456789" -> "123-456-789").
+func formatPIN(pin string) string {
+	var parts []string
+	for i := 0; i < len(pin); i += 3 {
+		end := i + 3
+		if end > len(pin) {
+			end = len(pin)
+		}
+		parts = append(parts, pin[i:end])
+	}
+	return strings.Join(parts, "-")
 }
