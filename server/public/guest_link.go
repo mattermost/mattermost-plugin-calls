@@ -73,3 +73,18 @@ func (l *GuestLink) IsRevoked() bool {
 func (l *GuestLink) IsExhausted() bool {
 	return l.MaxUses > 0 && l.UseCount >= l.MaxUses
 }
+
+func (l *GuestLink) GetAllowStart() bool {
+	if l.Props == nil {
+		return true
+	}
+	v, ok := l.Props["allow_start"]
+	if !ok {
+		return true
+	}
+	b, ok := v.(bool)
+	if !ok {
+		return true
+	}
+	return b
+}

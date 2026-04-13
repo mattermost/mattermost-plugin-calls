@@ -26,9 +26,10 @@ import (
 )
 
 type createGuestLinkRequest struct {
-	ChannelID string `json:"channel_id"`
-	MaxUses   int    `json:"max_uses"`
-	ExpiresIn int64  `json:"expires_in"` // duration in milliseconds from now
+	ChannelID  string `json:"channel_id"`
+	MaxUses    int    `json:"max_uses"`
+	ExpiresIn  int64  `json:"expires_in"`  // duration in milliseconds from now
+	AllowStart *bool  `json:"allow_start"` // whether guests can start a call (default true)
 }
 
 type guestLinkResponse struct {
@@ -116,6 +117,11 @@ func (p *Plugin) handleCreateGuestLink(w http.ResponseWriter, r *http.Request) {
 		expiresAt = now + int64(*cfg.GuestLinkDefaultExpiryHours)*int64(time.Hour/time.Millisecond)
 	}
 
+	allowStart := true
+	if req.AllowStart != nil {
+		allowStart = *req.AllowStart
+	}
+
 	link := &public.GuestLink{
 		ID:        model.NewId(),
 		ChannelID: req.ChannelID,
@@ -125,7 +131,7 @@ func (p *Plugin) handleCreateGuestLink(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt: expiresAt,
 		MaxUses:   req.MaxUses,
 		Secret:    secret,
-		Props:     public.GuestLinkProps{},
+		Props:     public.GuestLinkProps{"allow_start": allowStart},
 	}
 
 	if err := p.store.CreateGuestLink(link); err != nil {
@@ -350,7 +356,7 @@ func (p *Plugin) handleGuestJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify call is active on this channel.
+	// Check if call is active; if not, optionally start one.
 	active, err := p.store.GetCallActive(link.ChannelID, db.GetCallOpts{FromWriter: true})
 	if err != nil {
 		res.Err = "failed to check call status"
@@ -359,9 +365,18 @@ func (p *Plugin) handleGuestJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !active {
-		res.Err = "no active call in this channel"
-		res.Code = http.StatusConflict
-		return
+		if !link.GetAllowStart() {
+			res.Err = "no active call in this channel"
+			res.Code = http.StatusConflict
+			return
+		}
+
+		if err := p.startCallFromGuest(link.ChannelID, req.DisplayName); err != nil {
+			res.Err = "failed to start call"
+			res.Code = http.StatusInternalServerError
+			p.LogError("handleGuestJoin: failed to start call from guest", "err", err.Error())
+			return
+		}
 	}
 
 	// Atomically increment use count.
@@ -432,4 +447,55 @@ func (p *Plugin) handleGuestJoin(w http.ResponseWriter, r *http.Request) {
 	}); err != nil {
 		p.LogError(err.Error())
 	}
+}
+
+// startCallFromGuest creates a new call in the channel initiated by a guest.
+// The call is owned by the bot user since guests don't have Mattermost accounts.
+func (p *Plugin) startCallFromGuest(channelID, guestDisplayName string) error {
+	now := time.Now().UnixMilli()
+
+	state := &callState{
+		Call: public.Call{
+			ID:        model.NewId(),
+			CreateAt:  now,
+			StartAt:   now,
+			OwnerID:   p.getBotID(),
+			ChannelID: channelID,
+			Props: public.CallProps{
+				NodeID: p.nodeID,
+			},
+		},
+		sessions: map[string]*public.CallSession{},
+	}
+
+	if err := p.store.CreateCall(&state.Call); err != nil {
+		return fmt.Errorf("failed to create call: %w", err)
+	}
+
+	postID, threadID, err := p.createCallStartedPost(state, p.getBotID(), channelID, "", "")
+	if err != nil {
+		p.LogError("startCallFromGuest: failed to create call started post", "err", err.Error())
+	} else {
+		state.Call.PostID = postID
+		state.Call.ThreadID = threadID
+		if err := p.store.UpdateCall(&state.Call); err != nil {
+			p.LogError("startCallFromGuest: failed to update call", "err", err.Error())
+		}
+	}
+
+	p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
+		"id":        state.Call.ID,
+		"channelID": channelID,
+		"start_at":  state.Call.StartAt,
+		"thread_id": state.Call.ThreadID,
+		"post_id":   state.Call.PostID,
+		"owner_id":  state.Call.OwnerID,
+		"host_id":   state.Call.GetHostID(),
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+
+	go p.createSIPDispatchRule(channelID)
+
+	p.LogDebug("call started by guest", "channelID", channelID, "guestName", guestDisplayName)
+
+	return nil
 }

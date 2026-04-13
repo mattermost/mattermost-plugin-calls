@@ -52,7 +52,7 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(leaveCommandTrigger, "", "Leave a call in the current channel."))
 	data.AddCommand(model.NewAutocompleteData(linkCommandTrigger, "", "Generate a link to join a call in the current channel."))
 	guestLinkCmdData := model.NewAutocompleteData(guestLinkCommandTrigger, "[flags]", "Create or manage guest invite links for the current channel.")
-	guestLinkCmdData.AddTextArgument("[--once] [--expires duration] [--list] [--revoke id]", "Flags", "")
+	guestLinkCmdData.AddTextArgument("[--once] [--expires duration] [--no-start] [--list] [--revoke id]", "Flags", "")
 	data.AddCommand(guestLinkCmdData)
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Show client-generated statistics about the call."))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately."))
@@ -226,6 +226,7 @@ func (p *Plugin) handleGuestLinkCommand(args *model.CommandArgs, flags []string)
 	// Parse flags.
 	var (
 		flagOnce    bool
+		flagNoStart bool
 		flagList    bool
 		flagRevoke  string
 		flagExpires string
@@ -234,6 +235,8 @@ func (p *Plugin) handleGuestLinkCommand(args *model.CommandArgs, flags []string)
 		switch flags[i] {
 		case "--once":
 			flagOnce = true
+		case "--no-start":
+			flagNoStart = true
 		case "--list":
 			flagList = true
 		case "--revoke":
@@ -261,10 +264,10 @@ func (p *Plugin) handleGuestLinkCommand(args *model.CommandArgs, flags []string)
 		return p.handleGuestLinkRevoke(args, flagRevoke)
 	}
 
-	return p.handleGuestLinkCreate(args, flagOnce, flagExpires)
+	return p.handleGuestLinkCreate(args, flagOnce, flagNoStart, flagExpires)
 }
 
-func (p *Plugin) handleGuestLinkCreate(args *model.CommandArgs, once bool, expiresStr string) (*model.CommandResponse, error) {
+func (p *Plugin) handleGuestLinkCreate(args *model.CommandArgs, once, noStart bool, expiresStr string) (*model.CommandResponse, error) {
 	cfg := p.getConfiguration()
 
 	secret, err := generateSecret()
@@ -293,6 +296,8 @@ func (p *Plugin) handleGuestLinkCreate(args *model.CommandArgs, once bool, expir
 		maxUses = 1
 	}
 
+	allowStart := !noStart
+
 	link := &public.GuestLink{
 		ID:        model.NewId(),
 		ChannelID: args.ChannelId,
@@ -302,7 +307,7 @@ func (p *Plugin) handleGuestLinkCreate(args *model.CommandArgs, once bool, expir
 		ExpiresAt: expiresAt,
 		MaxUses:   maxUses,
 		Secret:    secret,
-		Props:     public.GuestLinkProps{},
+		Props:     public.GuestLinkProps{"allow_start": allowStart},
 	}
 
 	if err := p.store.CreateGuestLink(link); err != nil {

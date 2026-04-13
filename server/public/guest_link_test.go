@@ -87,6 +87,33 @@ func TestGuestLinkIsRevoked(t *testing.T) {
 	})
 }
 
+func TestGuestLinkGetAllowStart(t *testing.T) {
+	t.Run("nil props", func(t *testing.T) {
+		l := &GuestLink{Props: nil}
+		require.True(t, l.GetAllowStart())
+	})
+
+	t.Run("empty props", func(t *testing.T) {
+		l := &GuestLink{Props: GuestLinkProps{}}
+		require.True(t, l.GetAllowStart())
+	})
+
+	t.Run("allow_start true", func(t *testing.T) {
+		l := &GuestLink{Props: GuestLinkProps{"allow_start": true}}
+		require.True(t, l.GetAllowStart())
+	})
+
+	t.Run("allow_start false", func(t *testing.T) {
+		l := &GuestLink{Props: GuestLinkProps{"allow_start": false}}
+		require.False(t, l.GetAllowStart())
+	})
+
+	t.Run("allow_start wrong type", func(t *testing.T) {
+		l := &GuestLink{Props: GuestLinkProps{"allow_start": "yes"}}
+		require.True(t, l.GetAllowStart())
+	})
+}
+
 func TestGuestLinkIsExhausted(t *testing.T) {
 	t.Run("unlimited", func(t *testing.T) {
 		require.False(t, (&GuestLink{MaxUses: 0, UseCount: 100}).IsExhausted())
