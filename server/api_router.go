@@ -73,6 +73,11 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	// LiveKit token endpoint
 	router.HandleFunc("/livekit-token", p.handleGetLiveKitToken).Methods("GET")
 
+	// Guest links
+	router.HandleFunc("/guest-links", p.handleCreateGuestLink).Methods("POST")
+	router.HandleFunc("/guest-links/{channel_id:[a-z0-9]{26}}", p.handleGetGuestLinks).Methods("GET")
+	router.HandleFunc("/guest-links/{link_id:[a-z0-9]{26}}", p.handleRevokeGuestLink).Methods("DELETE")
+
 	// Stats
 	router.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
 		if userID := r.Header.Get("Mattermost-User-Id"); !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {

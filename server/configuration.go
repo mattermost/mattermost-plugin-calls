@@ -34,6 +34,12 @@ type configuration struct {
 	LiveKitSIPPIN string
 	// SIP trunk ID for inbound calls (e.g., ST_xxx or PN_xxx). Empty means wildcard (any trunk).
 	LiveKitSIPTrunkID string
+	// Enable guest access via shareable links.
+	GuestAccessEnabled *bool
+	// Default expiry in hours for new guest links. 0 means no expiry.
+	GuestLinkDefaultExpiryHours *int
+	// TTL in hours for generated LiveKit guest tokens. Default 4.
+	LiveKitGuestTokenTTLHours *int
 
 	ClientConfig
 }
@@ -79,6 +85,15 @@ func (c *configuration) SetDefaults() {
 	if c.LiveKitAPISecret == "" {
 		c.LiveKitAPISecret = "secret"
 	}
+	if c.GuestAccessEnabled == nil {
+		c.GuestAccessEnabled = model.NewPointer(false)
+	}
+	if c.GuestLinkDefaultExpiryHours == nil {
+		c.GuestLinkDefaultExpiryHours = model.NewPointer(0)
+	}
+	if c.LiveKitGuestTokenTTLHours == nil {
+		c.LiveKitGuestTokenTTLHours = model.NewPointer(4)
+	}
 }
 
 func (c *configuration) IsValid() error {
@@ -110,6 +125,16 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
 	cfg.LiveKitSIPPIN = c.LiveKitSIPPIN
 	cfg.LiveKitSIPTrunkID = c.LiveKitSIPTrunkID
+
+	if c.GuestAccessEnabled != nil {
+		cfg.GuestAccessEnabled = model.NewPointer(*c.GuestAccessEnabled)
+	}
+	if c.GuestLinkDefaultExpiryHours != nil {
+		cfg.GuestLinkDefaultExpiryHours = model.NewPointer(*c.GuestLinkDefaultExpiryHours)
+	}
+	if c.LiveKitGuestTokenTTLHours != nil {
+		cfg.LiveKitGuestTokenTTLHours = model.NewPointer(*c.LiveKitGuestTokenTTLHours)
+	}
 
 	// AllowEnableCalls is always true
 	cfg.AllowEnableCalls = model.NewPointer(true)

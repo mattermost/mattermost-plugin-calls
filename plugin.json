@@ -66,6 +66,27 @@
         "help_text": "API secret for LiveKit server authentication."
       },
       {
+        "key": "GuestAccessEnabled",
+        "display_name": "Enable guest access",
+        "type": "bool",
+        "default": false,
+        "help_text": "When enabled, users can create shareable links that allow external participants to join calls without a Mattermost account."
+      },
+      {
+        "key": "GuestLinkDefaultExpiryHours",
+        "display_name": "Default guest link expiry (hours)",
+        "type": "number",
+        "default": 0,
+        "help_text": "Default expiry in hours for new guest links. Set to 0 for no expiry."
+      },
+      {
+        "key": "LiveKitGuestTokenTTLHours",
+        "display_name": "Guest token TTL (hours)",
+        "type": "number",
+        "default": 4,
+        "help_text": "Time-to-live in hours for LiveKit tokens issued to guest participants."
+      },
+      {
         "key": "LiveKitSIPPIN",
         "display_name": "SIP Inbound PIN",
         "type": "text",
