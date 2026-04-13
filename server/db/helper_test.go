@@ -215,6 +215,10 @@ func resetStore(t *testing.T, store *Store) {
 	require.NoError(t, err)
 	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_sessions`)
 	require.NoError(t, err)
+	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_guest_links`)
+	require.NoError(t, err)
+	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_guest_sessions`)
+	require.NoError(t, err)
 	_, err = store.wDB.Exec(`TRUNCATE TABLE Channels`)
 	require.NoError(t, err)
 }
