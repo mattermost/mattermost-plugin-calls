@@ -58,6 +58,17 @@ const plugins = [
         },
         chunks: ['call'],
     }),
+    new HtmlWebpackPlugin({
+        title: 'Join Call',
+        template: path.join(__dirname, '/src/guest/index.html'),
+        filename: 'guest.html',
+        publicPath: '',
+        inject: 'head',
+        meta: {
+            'Content-Security-Policy': {'http-equiv': 'Content-Security-Policy', content: contentSecurity},
+        },
+        chunks: ['guest'],
+    }),
 ];
 
 if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
@@ -86,6 +97,7 @@ module.exports = {
         widget: './src/widget/index.tsx',
         recording: './src/recording/index.tsx',
         call: './src/call/index.tsx',
+        guest: './src/guest/index.tsx',
     },
     output: {
         devtoolNamespace: PLUGIN_ID,

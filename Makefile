@@ -319,6 +319,8 @@ ifneq ($(HAS_WEBAPP),)
 	mkdir -p dist/$(PLUGIN_ID)/public/standalone
 	cp standalone/dist/call.html dist/$(PLUGIN_ID)/public/standalone/ 2>/dev/null || true
 	cp standalone/dist/call.*.js dist/$(PLUGIN_ID)/public/standalone/ 2>/dev/null || true
+	cp standalone/dist/guest.html dist/$(PLUGIN_ID)/public/standalone/ 2>/dev/null || true
+	cp standalone/dist/guest.*.js dist/$(PLUGIN_ID)/public/standalone/ 2>/dev/null || true
 endif
 ifeq ($(shell uname),Darwin)
 	cd dist && tar --disable-copyfile -cvzf $(BUNDLE_NAME) $(PLUGIN_ID)
