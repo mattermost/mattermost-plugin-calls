@@ -4,7 +4,6 @@
 package main
 
 import (
-	"encoding/json"
 	"os"
 	"reflect"
 	"testing"
@@ -12,7 +11,6 @@ import (
 	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/mattermost/mattermost/server/public/plugin"
-	"github.com/mattermost/rtcd/service/rtc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -36,13 +34,13 @@ func TestFieldNameToEnvKey(t *testing.T) {
 		},
 		{
 			name:     "acronyms",
-			input:    "RTCDServiceURL",
-			expected: "RTCD_SERVICE_URL",
+			input:    "LiveKitURL",
+			expected: "LIVE_KIT_URL",
 		},
 		{
 			name:     "mixed",
-			input:    "ICEHostPortOverride",
-			expected: "ICE_HOST_PORT_OVERRIDE",
+			input:    "LiveKitAPIKey",
+			expected: "LIVE_KIT_API_KEY",
 		},
 	}
 
@@ -55,7 +53,6 @@ func TestFieldNameToEnvKey(t *testing.T) {
 }
 
 func TestApplyEnvOverrides(t *testing.T) {
-	// Setup
 	mockAPI := &pluginMocks.MockAPI{}
 	mockAPI.On("LogError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
@@ -65,7 +62,7 @@ func TestApplyEnvOverrides(t *testing.T) {
 		},
 	}
 
-	// Save original environment and restore after test
+	// Save original environment and restore after test.
 	originalEnv := os.Environ()
 	defer func() {
 		os.Clearenv()
@@ -75,68 +72,32 @@ func TestApplyEnvOverrides(t *testing.T) {
 		}
 	}()
 
-	// Clear environment and set test values
 	os.Clearenv()
-	os.Setenv("MM_CALLS_RTCD_SERVICE_URL", "https://rtcd.example.com")
-	os.Setenv("MM_CALLS_JOB_SERVICE_URL", "https://jobs.example.com")
-	os.Setenv("MM_CALLS_UDP_SERVER_PORT", "8443")
-	os.Setenv("MM_CALLS_TCP_SERVER_PORT", "8444")
+	os.Setenv("MM_CALLS_LIVE_KIT_URL", "wss://lk.example.com")
+	os.Setenv("MM_CALLS_LIVE_KIT_API_KEY", "testkey")
+	os.Setenv("MM_CALLS_LIVE_KIT_API_SECRET", "testsecret")
 	os.Setenv("MM_CALLS_MAX_CALL_PARTICIPANTS", "25")
-	os.Setenv("MM_CALLS_ENABLE_RECORDINGS", "true")
-	os.Setenv("MM_CALLS_ENABLE_TRANSCRIPTIONS", "true")
 	os.Setenv("MM_CALLS_ENABLE_RINGING", "true")
 
-	// Test ICEServersConfigs JSON parsing
-	iceServers := []rtc.ICEServerConfig{
-		{
-			URLs: []string{"stun:stun.example.com:3478"},
-		},
-		{
-			URLs:       []string{"turn:turn.example.com:3478"},
-			Username:   "user",
-			Credential: "pass",
-		},
-	}
-	iceServersJSON, err := json.Marshal(iceServers)
-	require.NoError(t, err)
-	os.Setenv("MM_CALLS_ICE_SERVERS_CONFIGS", string(iceServersJSON))
-
-	// Create real config
 	cfg := &configuration{}
-	cfg.SetDefaults() // Initialize with defaults
+	cfg.SetDefaults()
 
-	// Apply overrides
 	overrides := p.applyEnvOverrides(cfg, "MM_CALLS")
 
-	// Verify results
-	assert.Equal(t, "https://rtcd.example.com", cfg.RTCDServiceURL)
-	assert.Equal(t, "https://jobs.example.com", cfg.JobServiceURL)
-	assert.Equal(t, 8443, *cfg.UDPServerPort)
-	assert.Equal(t, 8444, *cfg.TCPServerPort)
+	assert.Equal(t, "wss://lk.example.com", cfg.LiveKitURL)
+	assert.Equal(t, "testkey", cfg.LiveKitAPIKey)
+	assert.Equal(t, "testsecret", cfg.LiveKitAPISecret)
 	assert.Equal(t, 25, *cfg.MaxCallParticipants)
-	assert.Equal(t, true, *cfg.EnableRecordings)
-	assert.Equal(t, true, *cfg.EnableTranscriptions)
 	assert.Equal(t, true, *cfg.EnableRinging)
-	assert.Equal(t, 2, len(cfg.ICEServersConfigs))
-	assert.Equal(t, "stun:stun.example.com:3478", cfg.ICEServersConfigs[0].URLs[0])
-	assert.Equal(t, "turn:turn.example.com:3478", cfg.ICEServersConfigs[1].URLs[0])
-	assert.Equal(t, "user", cfg.ICEServersConfigs[1].Username)
-	assert.Equal(t, "pass", cfg.ICEServersConfigs[1].Credential)
 
-	// Verify overrides map
-	assert.Equal(t, "https://rtcd.example.com", overrides["RTCDServiceURL"])
-	assert.Equal(t, "https://jobs.example.com", overrides["JobServiceURL"])
-	assert.Equal(t, "8443", overrides["UDPServerPort"])
-	assert.Equal(t, "8444", overrides["TCPServerPort"])
+	assert.Equal(t, "wss://lk.example.com", overrides["LiveKitURL"])
+	assert.Equal(t, "testkey", overrides["LiveKitAPIKey"])
+	assert.Equal(t, "testsecret", overrides["LiveKitAPISecret"])
 	assert.Equal(t, "25", overrides["MaxCallParticipants"])
-	assert.Equal(t, "true", overrides["EnableRecordings"])
-	assert.Equal(t, "true", overrides["EnableTranscriptions"])
 	assert.Equal(t, "true", overrides["EnableRinging"])
-	assert.Equal(t, string(iceServersJSON), overrides["ICEServersConfigs"])
 }
 
 func TestSetFieldFromEnv(t *testing.T) {
-	// Setup
 	mockAPI := &pluginMocks.MockAPI{}
 	mockAPI.On("LogError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
@@ -148,7 +109,7 @@ func TestSetFieldFromEnv(t *testing.T) {
 
 	t.Run("invalid values", func(t *testing.T) {
 		cfg := &configuration{}
-		cfg.SetDefaults() // Initialize with defaults
+		cfg.SetDefaults()
 
 		// Test invalid bool
 		initialEnableRinging := *cfg.EnableRinging
@@ -157,14 +118,10 @@ func TestSetFieldFromEnv(t *testing.T) {
 		assert.Equal(t, initialEnableRinging, *cfg.EnableRinging)
 
 		// Test invalid int
-		initialUDPPort := *cfg.UDPServerPort
-		result = p.setFieldFromEnv(getField(cfg, "UDPServerPort"), "not-an-int")
+		initialMaxPart := *cfg.MaxCallParticipants
+		result = p.setFieldFromEnv(getField(cfg, "MaxCallParticipants"), "not-an-int")
 		assert.False(t, result)
-		assert.Equal(t, initialUDPPort, *cfg.UDPServerPort)
-
-		// Test invalid JSON for ICEServersConfigs
-		result = p.setFieldFromEnv(getField(cfg, "ICEServersConfigs"), "{invalid-json")
-		assert.False(t, result)
+		assert.Equal(t, initialMaxPart, *cfg.MaxCallParticipants)
 	})
 
 	t.Run("pointer fields", func(t *testing.T) {
@@ -173,7 +130,6 @@ func TestSetFieldFromEnv(t *testing.T) {
 		// Set EnableRinging to nil to test pointer initialization
 		cfg.EnableRinging = nil
 
-		// Test setting nil pointer field
 		result := p.setFieldFromEnv(getField(cfg, "EnableRinging"), "true")
 		assert.True(t, result)
 		require.NotNil(t, cfg.EnableRinging)
@@ -185,6 +141,15 @@ func TestSetFieldFromEnv(t *testing.T) {
 		assert.True(t, result)
 		require.NotNil(t, cfg.MaxCallParticipants)
 		assert.Equal(t, 42, *cfg.MaxCallParticipants)
+	})
+
+	t.Run("string fields", func(t *testing.T) {
+		cfg := &configuration{}
+		cfg.SetDefaults()
+
+		result := p.setFieldFromEnv(getField(cfg, "LiveKitURL"), "wss://custom.lk")
+		assert.True(t, result)
+		assert.Equal(t, "wss://custom.lk", cfg.LiveKitURL)
 	})
 }
 
