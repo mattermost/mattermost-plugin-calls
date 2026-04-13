@@ -127,6 +127,10 @@ func ResetTestStore(t *testing.T, store *db.Store) {
 	require.NoError(t, err)
 	_, err = store.WriterDB().Exec(`TRUNCATE TABLE calls_sessions`)
 	require.NoError(t, err)
+	_, err = store.WriterDB().Exec(`TRUNCATE TABLE calls_guest_links`)
+	require.NoError(t, err)
+	_, err = store.WriterDB().Exec(`TRUNCATE TABLE calls_guest_sessions`)
+	require.NoError(t, err)
 	_, err = store.WriterDB().Exec(`TRUNCATE TABLE posts`)
 	require.NoError(t, err)
 }

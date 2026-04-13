@@ -22,6 +22,9 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 		metricsRoute = router.Handle("/metrics", p.metrics.Handler()).Methods("GET")
 	}
 
+	// Guest join (public, no auth required)
+	guestJoinRoute := router.HandleFunc("/guest/join", p.handleGuestJoin).Methods("POST")
+
 	// Authenticated API handlers (user session required)
 
 	// Auth middleware
@@ -33,6 +36,11 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 			}
 
 			if metricsRoute != nil && metricsRoute.Match(r, &mux.RouteMatch{}) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if guestJoinRoute.Match(r, &mux.RouteMatch{}) {
 				next.ServeHTTP(w, r)
 				return
 			}

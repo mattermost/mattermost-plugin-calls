@@ -31,6 +31,7 @@ func main() {
 		sessions:               map[string]*session{},
 		metrics:                performance.NewMetrics(),
 		apiLimiters:            map[string]*rate.Limiter{},
+		guestAPILimiters:       map[string]*rate.Limiter{},
 		callsClusterLocks:      map[string]*cluster.Mutex{},
 		addSessionsBatchers:    map[string]*batching.Batcher{},
 		removeSessionsBatchers: map[string]*batching.Batcher{},

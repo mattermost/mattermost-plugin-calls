@@ -10,7 +10,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
+
+	"golang.org/x/time/rate"
+
+	"github.com/livekit/protocol/auth"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
@@ -227,4 +232,204 @@ func (p *Plugin) handleRevokeGuestLink(w http.ResponseWriter, r *http.Request) {
 
 	res.Code = http.StatusOK
 	res.Msg = "guest link revoked"
+}
+
+type guestJoinRequest struct {
+	Secret      string `json:"secret"`
+	DisplayName string `json:"display_name"`
+}
+
+type guestJoinResponse struct {
+	LiveKitToken string `json:"livekit_token"`
+	LiveKitURL   string `json:"livekit_url"`
+	CallTitle    string `json:"call_title"`
+	SessionID    string `json:"session_id"`
+}
+
+func (p *Plugin) checkGuestRateLimit(ip string) error {
+	p.guestAPILimitersMut.RLock()
+	limiter := p.guestAPILimiters[ip]
+	p.guestAPILimitersMut.RUnlock()
+	if limiter == nil {
+		// 5 requests per minute, burst of 5.
+		limiter = rate.NewLimiter(rate.Every(12*time.Second), 5)
+		p.guestAPILimitersMut.Lock()
+		p.guestAPILimiters[ip] = limiter
+		p.guestAPILimitersMut.Unlock()
+	}
+
+	if !limiter.Allow() {
+		return fmt.Errorf("too many requests")
+	}
+
+	return nil
+}
+
+func clientIP(r *http.Request) string {
+	// Check X-Forwarded-For first (set by reverse proxies).
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if ip, _, ok := strings.Cut(xff, ","); ok {
+			return strings.TrimSpace(ip)
+		}
+		return strings.TrimSpace(xff)
+	}
+	// Fall back to RemoteAddr.
+	if ip, _, ok := strings.Cut(r.RemoteAddr, ":"); ok {
+		return ip
+	}
+	return r.RemoteAddr
+}
+
+func (p *Plugin) handleGuestJoin(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleGuestJoin", &res, w, r)
+
+	cfg := p.getConfiguration()
+	if cfg.GuestAccessEnabled == nil || !*cfg.GuestAccessEnabled {
+		res.Err = "guest access is not enabled"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	ip := clientIP(r)
+	if err := p.checkGuestRateLimit(ip); err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusTooManyRequests
+		return
+	}
+
+	var req guestJoinRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&req); err != nil {
+		res.Err = "invalid request body"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if req.Secret == "" {
+		res.Err = "missing secret"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if req.DisplayName == "" {
+		res.Err = "missing display_name"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	// Look up link by secret, using writer for consistency after increment.
+	link, err := p.store.GetGuestLinkBySecret(req.Secret, db.GetGuestLinkOpts{FromWriter: true})
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			res.Err = "invalid or expired link"
+			res.Code = http.StatusNotFound
+			return
+		}
+		res.Err = "failed to validate link"
+		res.Code = http.StatusInternalServerError
+		p.LogError("handleGuestJoin: failed to get link by secret", "err", err.Error())
+		return
+	}
+
+	now := time.Now().UnixMilli()
+
+	// Validate link state.
+	if link.IsRevoked() {
+		res.Err = "this link has been revoked"
+		res.Code = http.StatusGone
+		return
+	}
+	if link.IsExpired(now) {
+		res.Err = "this link has expired"
+		res.Code = http.StatusGone
+		return
+	}
+	if link.IsExhausted() {
+		res.Err = "this link has reached its usage limit"
+		res.Code = http.StatusGone
+		return
+	}
+
+	// Verify call is active on this channel.
+	active, err := p.store.GetCallActive(link.ChannelID, db.GetCallOpts{FromWriter: true})
+	if err != nil {
+		res.Err = "failed to check call status"
+		res.Code = http.StatusInternalServerError
+		p.LogError("handleGuestJoin: failed to check call active", "err", err.Error())
+		return
+	}
+	if !active {
+		res.Err = "no active call in this channel"
+		res.Code = http.StatusConflict
+		return
+	}
+
+	// Atomically increment use count.
+	if err := p.store.IncrementGuestLinkUseCount(link.ID); err != nil {
+		res.Err = "failed to process link"
+		res.Code = http.StatusInternalServerError
+		p.LogError("handleGuestJoin: failed to increment use count", "err", err.Error())
+		return
+	}
+
+	// Create guest session.
+	sessionID := model.NewId()
+	guestSession := &public.GuestSession{
+		ID:          sessionID,
+		LinkID:      link.ID,
+		Type:        link.Type,
+		ChannelID:   link.ChannelID,
+		DisplayName: req.DisplayName,
+		CreateAt:    now,
+		IPAddress:   ip,
+		Props:       public.GuestSessionProps{},
+	}
+
+	if err := p.store.CreateGuestSession(guestSession); err != nil {
+		res.Err = "failed to create session"
+		res.Code = http.StatusInternalServerError
+		p.LogError("handleGuestJoin: failed to create guest session", "err", err.Error())
+		return
+	}
+
+	// Generate scoped LiveKit token.
+	ttlHours := 4
+	if cfg.LiveKitGuestTokenTTLHours != nil && *cfg.LiveKitGuestTokenTTLHours > 0 {
+		ttlHours = *cfg.LiveKitGuestTokenTTLHours
+	}
+
+	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
+	grant := &auth.VideoGrant{
+		RoomJoin: true,
+		Room:     link.ChannelID,
+	}
+	at.SetVideoGrant(grant).
+		SetIdentity("guest:" + sessionID).
+		SetName(req.DisplayName).
+		SetValidFor(time.Duration(ttlHours) * time.Hour)
+
+	token, err := at.ToJWT()
+	if err != nil {
+		res.Err = "failed to generate token"
+		res.Code = http.StatusInternalServerError
+		p.LogError("handleGuestJoin: failed to generate LiveKit token", "err", err.Error())
+		return
+	}
+
+	// Get call title if available.
+	var callTitle string
+	channel, appErr := p.API.GetChannel(link.ChannelID)
+	if appErr == nil {
+		callTitle = channel.DisplayName
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(guestJoinResponse{
+		LiveKitToken: token,
+		LiveKitURL:   cfg.LiveKitURL,
+		CallTitle:    callTitle,
+		SessionID:    sessionID,
+	}); err != nil {
+		p.LogError(err.Error())
+	}
 }

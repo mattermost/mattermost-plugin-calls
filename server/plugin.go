@@ -53,6 +53,10 @@ type Plugin struct {
 	apiLimiters    map[string]*rate.Limiter
 	apiLimitersMut sync.RWMutex
 
+	// A map of IP -> limiter for guest join endpoint rate-limiting.
+	guestAPILimiters    map[string]*rate.Limiter
+	guestAPILimitersMut sync.RWMutex
+
 	botSession *model.Session
 
 	// A map of callID -> *cluster.Mutex to guarantee atomicity of call state
