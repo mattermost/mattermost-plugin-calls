@@ -499,6 +499,8 @@ ifneq ($(HAS_WEBAPP),)
 	rm -fr webapp/dist
 	rm -fr webapp/coverage
 	rm -fr webapp/node_modules
+	rm -fr webapp/.eslintcache
+	rm -fr standalone/.eslintcache
 	rm -fr standalone/dist
 	rm -fr standalone/node_modules
 	rm -fr e2e/node_modules

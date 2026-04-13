@@ -1,3 +1,5 @@
 mattermost-webapp/*
-
 src/manifest.*
+node_modules/
+dist/
+lib/
