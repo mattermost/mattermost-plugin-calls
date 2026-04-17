@@ -24,7 +24,11 @@ export default function CallDuration(props: Props) {
     // future and the raw duration would be negative. Capture an adjusted
     // start time on mount so the timer counts up from 0:00 immediately
     // rather than displaying negative values or sticking at 0.
-    const [adjustedStartAt] = useState(() => Math.min(props.startAt, Date.now()));
+    // Re-sync if the prop changes (e.g. after a WebSocket reconnect).
+    const [adjustedStartAt, setAdjustedStartAt] = useState(() => Math.min(props.startAt, Date.now()));
+    useEffect(() => {
+        setAdjustedStartAt(Math.min(props.startAt, Date.now()));
+    }, [props.startAt]);
 
     // This is needed to force a re-render to periodically update
     // the time displayed.
