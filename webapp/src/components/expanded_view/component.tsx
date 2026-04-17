@@ -18,7 +18,6 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
-import {serverDismissedAt} from 'src/utils/clock_skew';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
@@ -80,6 +79,7 @@ import {
     shareAudioWithScreen,
     untranslatable,
 } from 'src/utils';
+import {serverDismissedAt} from 'src/utils/clock_skew';
 import styled, {createGlobalStyle, css} from 'styled-components';
 
 import {CallSettingsButton} from './call_settings';

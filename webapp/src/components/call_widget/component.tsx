@@ -60,7 +60,6 @@ import {
     STORAGE_CALLS_MIRROR_VIDEO_KEY,
 } from 'src/constants';
 import {logDebug, logErr} from 'src/log';
-import {serverDismissedAt} from 'src/utils/clock_skew';
 import {
     keyToAction,
     LEAVE_CALL,
@@ -91,6 +90,7 @@ import {
     shareAudioWithScreen,
     untranslatable,
 } from 'src/utils';
+import {serverDismissedAt} from 'src/utils/clock_skew';
 import styled, {css} from 'styled-components';
 
 import CallDuration from './call_duration';
@@ -1414,8 +1414,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         };
 
-        let devices = deviceType === 'audioinput' ? this.state.devices.inputs?.filter((device) => device.deviceId && device.label) :
-            this.state.devices.outputs?.filter((device) => device.deviceId && device.label);
+        let devices = deviceType === 'audioinput' ? this.state.devices.inputs?.filter((device) => device.deviceId && device.label) : this.state.devices.outputs?.filter((device) => device.deviceId && device.label);
         if (deviceType === 'videoinput' && this.state.videoDevices) {
             devices = this.state.videoDevices.filter((device) => device.deviceId && device.label);
         }
@@ -1437,8 +1436,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showSubMenu = devices.length > 0;
         }
 
-        let deviceTypeLabel = deviceType === 'audioinput' ?
-            formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio output'});
+        let deviceTypeLabel = deviceType === 'audioinput' ? formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio output'});
         if (deviceType === 'videoinput') {
             deviceTypeLabel = formatMessage({defaultMessage: 'Camera'});
         }
@@ -1622,8 +1620,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const RecordIcon = this.props.isRecording ? RecordSquareIcon : RecordCircleIcon;
 
-        const recordingActionLabel = this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) :
-            formatMessage({defaultMessage: 'Record call'});
+        const recordingActionLabel = this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
 
         return (
             <React.Fragment>
@@ -1671,8 +1668,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const noPermissions = this.state.alerts.missingScreenPermissions.active;
 
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
-        const screenSharingActionLabel = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) :
-            formatMessage({defaultMessage: 'Start presenting'});
+        const screenSharingActionLabel = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'});
 
         return (
             <React.Fragment>
@@ -2515,8 +2511,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const showLeaveMenuShim = !(this.state.showMenu || this.state.showParticipantsList || this.props.screenSharingSession) && this.state.leaveMenuOpen;
 
         const openPopOutLabel = formatMessage({defaultMessage: 'Open in new window'});
-        const showParticipantsListLabel = this.state.showParticipantsList ?
-            formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'});
+        const showParticipantsListLabel = this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'});
         const settingsButtonLabel = formatMessage({defaultMessage: 'More options'});
         const leaveMenuLabel = formatMessage({defaultMessage: 'Leave call'});
 

@@ -6,7 +6,8 @@ import {CallJobReduxState} from 'src/types/types';
 import {serverDismissedAt} from './clock_skew';
 
 describe('serverDismissedAt', () => {
-    it('should return 1 when recording is undefined', () => {
+    it('should return 1 when recording is not provided', () => {
+        // eslint-disable-next-line no-undefined
         expect(serverDismissedAt(undefined, 0)).toBe(1);
     });
 
