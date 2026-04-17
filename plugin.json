@@ -94,6 +94,13 @@
         "help_text": "LiveKit SIP trunk or phone number ID (e.g., ST_xxx or PN_xxx). Leave empty to match any trunk."
       },
       {
+        "key": "LiveKitSIPPhoneNumber",
+        "display_name": "SIP Inbound Phone Number",
+        "type": "text",
+        "default": "",
+        "help_text": "The inbound telephone number associated with the SIP trunk (e.g., +15551234567). Displayed in SIP invite messages."
+      },
+      {
         "key": "SIPPINLength",
         "display_name": "SIP PIN length",
         "type": "number",

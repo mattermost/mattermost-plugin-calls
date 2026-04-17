@@ -440,10 +440,21 @@ func TestGeneratePIN(t *testing.T) {
 }
 
 func TestFormatPIN(t *testing.T) {
-	require.Equal(t, "123-456-789", formatPIN("123456789"))
-	require.Equal(t, "123-45", formatPIN("12345"))
-	require.Equal(t, "123", formatPIN("123"))
+	// Single group (no dashes) for 5 or fewer digits.
 	require.Equal(t, "1", formatPIN("1"))
+	require.Equal(t, "123", formatPIN("123"))
+	require.Equal(t, "1234", formatPIN("1234"))
+	require.Equal(t, "12345", formatPIN("12345"))
+
+	// 6+ digits: groups of 3 from the front, final group is 3, 4, or 5.
+	require.Equal(t, "123-456", formatPIN("123456"))
+	require.Equal(t, "123-4567", formatPIN("1234567"))
+	require.Equal(t, "123-45678", formatPIN("12345678"))
+	require.Equal(t, "123-456-789", formatPIN("123456789"))
+	require.Equal(t, "123-456-7890", formatPIN("1234567890"))
+	require.Equal(t, "123-456-78901", formatPIN("12345678901"))
+	require.Equal(t, "123-456-789-012", formatPIN("123456789012"))
+	require.Equal(t, "123-456-789-0123", formatPIN("1234567890123"))
 }
 
 func TestGenerateSecret(t *testing.T) {

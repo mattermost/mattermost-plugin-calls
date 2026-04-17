@@ -360,6 +360,7 @@ func (p *Plugin) handleGuestLinkList(args *model.CommandArgs) (*model.CommandRes
 		}, nil
 	}
 
+	cfg := p.getConfiguration()
 	siteURL := args.SiteURL
 	var buf strings.Builder
 	buf.WriteString(fmt.Sprintf("Active guest links (%d):\n", len(links)))
@@ -368,6 +369,12 @@ func (p *Plugin) handleGuestLinkList(args *model.CommandArgs) (*model.CommandRes
 		buf.WriteString(fmt.Sprintf("\n**%s** (ID: `%s`)\n", link.Type, link.ID))
 		if link.Type == public.GuestLinkTypeURL {
 			buf.WriteString(fmt.Sprintf("  Link: %s/plugins/%s/public/standalone/guest.html?token=%s\n", siteURL, manifest.Id, link.Secret))
+		}
+		if link.Type == public.GuestLinkTypeSIP {
+			buf.WriteString(fmt.Sprintf("  PIN: %s\n", formatPIN(link.Secret)))
+			if cfg.LiveKitSIPPhoneNumber != "" {
+				buf.WriteString(fmt.Sprintf("  Phone: %s\n", cfg.LiveKitSIPPhoneNumber))
+			}
 		}
 		if link.MaxUses > 0 {
 			buf.WriteString(fmt.Sprintf("  Uses: %d/%d\n", link.UseCount, link.MaxUses))
@@ -452,11 +459,16 @@ func (p *Plugin) handleGuestLinkCreateSIP(args *model.CommandArgs, once, noStart
 			pin := existing.Secret
 			formattedPIN := formatPIN(pin)
 
+			text := fmt.Sprintf("SIP dial-in already configured for this channel\n"+
+				"  PIN: %s\n  Link ID: `%s`", formattedPIN, existing.ID)
+			if cfg.LiveKitSIPPhoneNumber != "" {
+				text = fmt.Sprintf("SIP dial-in already configured for this channel\n"+
+					"  Phone: %s\n  PIN: %s\n  Link ID: `%s`",
+					cfg.LiveKitSIPPhoneNumber, formattedPIN, existing.ID)
+			}
 			return &model.CommandResponse{
 				ResponseType: model.CommandResponseTypeEphemeral,
-				Text: fmt.Sprintf("SIP dial-in already configured for this channel\n"+
-					"  Phone: %s\n  PIN: %s\n  Link ID: `%s`",
-					cfg.LiveKitSIPTrunkID, formattedPIN, existing.ID),
+				Text:         text,
 			}, nil
 		}
 	}
@@ -533,8 +545,12 @@ func (p *Plugin) handleGuestLinkCreateSIP(args *model.CommandArgs, once, noStart
 		channelName = channel.DisplayName
 	}
 
-	text := fmt.Sprintf("SIP dial-in enabled for #%s\n  Trunk: %s\n  PIN: %s\n  Link ID: `%s`",
-		channelName, trunkID, formattedPIN, link.ID)
+	text := fmt.Sprintf("SIP dial-in enabled for #%s\n  PIN: %s\n  Link ID: `%s`",
+		channelName, formattedPIN, link.ID)
+	if cfg.LiveKitSIPPhoneNumber != "" {
+		text = fmt.Sprintf("SIP dial-in enabled for #%s\n  Phone: %s\n  PIN: %s\n  Link ID: `%s`",
+			channelName, cfg.LiveKitSIPPhoneNumber, formattedPIN, link.ID)
+	}
 	if once {
 		text += "\n  (single use)"
 	}
@@ -549,15 +565,32 @@ func (p *Plugin) handleGuestLinkCreateSIP(args *model.CommandArgs, once, noStart
 	}, nil
 }
 
-// formatPIN formats a PIN with dashes for readability (e.g., "123456789" -> "123-456-789").
+// formatPIN formats a PIN with dashes for readability.
+// Groups of 3 digits from the front, with the final group being 3, 4, or 5 digits.
+// Examples: "1234" -> "1234", "123456" -> "123-456", "1234567" -> "123-4567",
+// "12345678" -> "123-45678", "123456789" -> "123-456-789".
 func formatPIN(pin string) string {
-	var parts []string
-	for i := 0; i < len(pin); i += 3 {
-		end := i + 3
-		if end > len(pin) {
-			end = len(pin)
-		}
-		parts = append(parts, pin[i:end])
+	n := len(pin)
+	if n <= 5 {
+		return pin
 	}
+
+	// The final group absorbs the remainder so it's 3, 4, or 5 digits.
+	var lastGroupSize int
+	switch n % 3 {
+	case 0:
+		lastGroupSize = 3
+	case 1:
+		lastGroupSize = 4
+	case 2:
+		lastGroupSize = 5
+	}
+
+	leadingLen := n - lastGroupSize
+	var parts []string
+	for i := 0; i < leadingLen; i += 3 {
+		parts = append(parts, pin[i:i+3])
+	}
+	parts = append(parts, pin[leadingLen:])
 	return strings.Join(parts, "-")
 }
