@@ -808,11 +808,24 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
+        // Use the latest server-side timestamp rather than Date.now() so that
+        // the dismissed-at value is in the same clock domain as start_at,
+        // end_at, hostChangeAt, and error_at. This avoids issues when the
+        // client and server clocks are out of sync (e.g. air-gapped
+        // environments without NTP).
+        const rec = this.props.callRecording;
+        const dismissedAt = Math.max(
+            rec?.start_at || 0,
+            rec?.end_at || 0,
+            rec?.error_at || 0,
+            this.props.callHostChangeAt || 0,
+        ) + 1;
+
         // Dismiss our prompt.
-        this.props.recordingPromptDismissedAt(this.props.channel.id, Date.now());
+        this.props.recordingPromptDismissedAt(this.props.channel.id, dismissedAt);
 
         // Dismiss the expanded window's prompt.
-        this.state.expandedViewWindow?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
+        this.state.expandedViewWindow?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, dismissedAt);
     };
 
     onRecordToggle = async () => {
