@@ -32,4 +32,19 @@ describe('CallDuration', () => {
         const text = container.textContent || '';
         expect(text).toMatch(/^01:02:0\d$/);
     });
+
+    it('should re-sync when startAt prop changes', () => {
+        // Start with a future timestamp (server clock ahead).
+        const futureStartAt = Date.now() + 60_000;
+        const {container, rerender} = render(<CallDuration startAt={futureStartAt}/>);
+        expect(container.textContent).toBe('00:00');
+        expect(container.textContent).not.toMatch(/-/);
+
+        // Rerender with a past timestamp (e.g. reconnect with corrected time).
+        const pastStartAt = Date.now() - 90_000;
+        rerender(<CallDuration startAt={pastStartAt}/>);
+        const text = container.textContent || '';
+        expect(text).toMatch(/^01:3\d$/);
+        expect(text).not.toMatch(/-/);
+    });
 });
