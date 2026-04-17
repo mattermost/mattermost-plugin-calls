@@ -18,6 +18,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
+import {serverDismissedAt} from 'src/utils/clock_skew';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
@@ -831,18 +832,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return;
         }
 
-        // Use the latest server-side timestamp rather than Date.now() so that
-        // the dismissed-at value is in the same clock domain as start_at,
-        // end_at, hostChangeAt, and error_at. This avoids issues when the
-        // client and server clocks are out of sync (e.g. air-gapped
-        // environments without NTP).
-        const rec = this.props.callRecording;
-        const dismissedAt = Math.max(
-            rec?.start_at || 0,
-            rec?.end_at || 0,
-            rec?.error_at || 0,
-            this.props.callHostChangeAt || 0,
-        ) + 1;
+        const dismissedAt = serverDismissedAt(this.props.callRecording, this.props.callHostChangeAt);
 
         // Dismiss our prompt.
         this.props.recordingPromptDismissedAt(this.props.channel.id, dismissedAt);
