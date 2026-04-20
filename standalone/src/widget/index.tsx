@@ -160,10 +160,8 @@ function deinitWidget(err?: Error) {
     setTimeout(() => {
         window.callsClient?.destroy();
         delete window.callsClient;
-        if (widgetRoot) {
-            widgetRoot.unmount();
-            widgetRoot = null;
-        }
+        widgetRoot?.unmount();
+        widgetRoot = null;
 
         if (window.desktopAPI?.leaveCall) {
             logDebug('desktopAPI.leaveCall');
