@@ -43,7 +43,6 @@
   "devDependencies": {
     "@babel/core": "7.29.0",
     "@babel/eslint-parser": "7.28.6",
-    "@babel/plugin-proposal-class-properties": "7.16.0",
     "@babel/plugin-proposal-object-rest-spread": "7.16.0",
     "@babel/plugin-proposal-optional-chaining": "7.14.5",
     "@babel/plugin-syntax-dynamic-import": "7.8.3",
@@ -52,7 +51,7 @@
     "@babel/preset-typescript": "7.28.5",
     "@formatjs/cli": "5.0.7",
     "@mattermost/client": "file:mattermost-webapp/webapp/platform/client",
-    "@mattermost/desktop-api": "5.10.0-1",
+    "@mattermost/desktop-api": "6.0.0-1",
     "@mattermost/eslint-plugin": "1.1.0-0",
     "@mattermost/types": "file:mattermost-webapp/webapp/platform/types",
     "@testing-library/jest-dom": "5.16.4",
