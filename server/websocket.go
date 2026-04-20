@@ -184,6 +184,11 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 		state.Call.Props.ScreenSharingSessionID = us.originalConnID
 		state.Call.Props.ScreenStartAt = time.Now().Unix()
+
+		// Mark that this call has used screen sharing (only set once per call)
+		if !state.Call.Stats.HasUsedScreenShare {
+			state.Call.Stats.HasUsedScreenShare = true
+		}
 	} else {
 		if state.Call.Props.ScreenSharingSessionID != us.originalConnID {
 			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: connID=%s", state.Call.Props.ScreenSharingSessionID)
@@ -195,9 +200,8 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 	}
 
-	if err := p.store.UpdateCall(&state.Call); err != nil {
-		return fmt.Errorf("failed to update call: %w", err)
-	}
+	// Note: Screen sharing stats are persisted when users leave or call ends,
+	// no need to write to DB on every toggle for performance.
 
 	msgType := rtc.ScreenOnMessage
 	wsMsgType := wsEventUserScreenOn
@@ -413,11 +417,37 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 		if session == nil {
 			return fmt.Errorf("user session is missing from call state")
 		}
-		session.Video = msg.Type == clientMessageTypeVideoOn
+
+		// Track video duration statistics
+		if msg.Type == clientMessageTypeVideoOn {
+			// Video turned on - record the start time
+			session.Video = true
+			if state.Call.Props.VideoStartAt == nil {
+				state.Call.Props.VideoStartAt = make(map[string]int64)
+			}
+			state.Call.Props.VideoStartAt[us.originalConnID] = time.Now().Unix()
+
+			// Mark that this call has used video (only set once per call)
+			if !state.Call.Stats.HasUsedVideo {
+				state.Call.Stats.HasUsedVideo = true
+			}
+		} else {
+			// Video turned off - accumulate the duration
+			session.Video = false
+			if state.Call.Props.VideoStartAt != nil {
+				if startTime, exists := state.Call.Props.VideoStartAt[us.originalConnID]; exists && startTime > 0 {
+					state.Call.Stats.VideoDuration += secondsSinceTimestamp(startTime)
+					delete(state.Call.Props.VideoStartAt, us.originalConnID)
+				}
+			}
+		}
 
 		if err := p.store.UpdateCallSession(session); err != nil {
 			return fmt.Errorf("failed to update call session: %w", err)
 		}
+
+		// Note: Video stats are persisted when users leave or call ends,
+		// no need to write to DB on every toggle for performance.
 
 		evType := wsEventUserVideoOn
 		if msg.Type == clientMessageTypeVideoOff {

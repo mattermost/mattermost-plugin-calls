@@ -318,7 +318,13 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// Check if leaving session had video on.
 	if us.Video {
 		p.LogDebug("removed session had video on, sending video off event", "userID", userID, "connID", connID, "originalConnID", originalConnID)
-		// TODO: consider tracking some stats
+		// Accumulate video duration if user left with video still on
+		if state.Call.Props.VideoStartAt != nil {
+			if startTime, exists := state.Call.Props.VideoStartAt[originalConnID]; exists && startTime > 0 {
+				state.Call.Stats.VideoDuration += secondsSinceTimestamp(startTime)
+				delete(state.Call.Props.VideoStartAt, originalConnID)
+			}
+		}
 		p.publishWebSocketEvent(wsEventUserVideoOff, map[string]interface{}{
 			"userID":     userID,
 			"session_id": originalConnID,
@@ -455,6 +461,17 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	if len(state.sessions) == 0 {
 		if state.Call.Props.ScreenStartAt > 0 {
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
+		}
+		// Finalize any ongoing video durations
+		if state.Call.Props.VideoStartAt != nil {
+			for sessionID, startTime := range state.Call.Props.VideoStartAt {
+				if startTime > 0 {
+					state.Call.Stats.VideoDuration += secondsSinceTimestamp(startTime)
+					p.LogDebug("finalized video duration for session at call end", "sessionID", sessionID, "startTime", startTime)
+				}
+			}
+			// Clear the map since call is ending
+			state.Call.Props.VideoStartAt = nil
 		}
 		setCallEnded(&state.Call)
 
