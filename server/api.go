@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/time/rate"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/gorilla/mux"
+	"github.com/livekit/protocol/auth"
 )
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
@@ -483,6 +485,65 @@ func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(configs); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
+func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleGetLiveKitToken", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := r.URL.Query().Get("channel_id")
+	if channelID == "" {
+		res.Err = "channel_id is required"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+		res.Err = "Forbidden"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	cfg := p.getConfiguration()
+	lkURL := cfg.getLiveKitURL()
+	if lkURL == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
+		res.Err = "LiveKit is not configured"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	user, appErr := p.API.GetUser(userID)
+	if appErr != nil {
+		res.Err = appErr.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
+	grant := &auth.VideoGrant{
+		RoomJoin: true,
+		Room:     channelID,
+	}
+	at.SetVideoGrant(grant).
+		SetIdentity(userID).
+		SetName(user.GetDisplayName(model.ShowFullName)).
+		SetValidFor(time.Hour)
+
+	token, err := at.ToJWT()
+	if err != nil {
+		res.Err = fmt.Sprintf("failed to generate LiveKit token: %s", err.Error())
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"token": token,
+		"url":   lkURL,
+	}); err != nil {
 		p.LogError(err.Error())
 	}
 }
