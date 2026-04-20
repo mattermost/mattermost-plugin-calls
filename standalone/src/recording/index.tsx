@@ -16,7 +16,7 @@ import {
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
 import React from 'react';
-import {createRoot} from 'react-dom/client';
+import {createRoot, Root} from 'react-dom/client';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {getJobID} from 'src/common';
@@ -28,6 +28,8 @@ import {
     RECEIVED_CALL_PROFILE_IMAGES,
 } from './action_types';
 import RecordingView from './components/recording_view';
+
+let recordingRoot: Root | null = null;
 
 async function fetchProfileImages(ids: string[]) {
     const profileImages: {[userID: string]: string} = {};
@@ -80,7 +82,8 @@ async function initRecording({store, theme}: InitCbProps) {
 
     const rootEl = document.getElementById('root');
     if (rootEl) {
-        createRoot(rootEl).render(
+        recordingRoot ??= createRoot(rootEl);
+        recordingRoot.render(
             <Provider store={store}>
                 <IntlProvider
                     locale={locale}
@@ -154,6 +157,8 @@ function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventDat
 }
 
 function deinitRecording() {
+    recordingRoot?.unmount();
+    recordingRoot = null;
     window.callsClient?.destroy();
     delete window.callsClient;
 }
