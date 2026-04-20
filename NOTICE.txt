@@ -8066,7 +8066,7 @@ SOFTWARE.
 
 This product contains 'styled-components' by Glen Maddern.
 
-CSS for the <Component> Age. Style components your way with speed, strong typing, and flexibility.
+Fast, expressive styling for React.
 
 * HOMEPAGE:
   * https://styled-components.com
@@ -8102,7 +8102,7 @@ SOFTWARE.
 
 This product contains 'styled-components' by Glen Maddern.
 
-CSS for the <Component> Age. Style components your way with speed, strong typing, and flexibility.
+Fast, expressive styling for React.
 
 * HOMEPAGE:
   * https://styled-components.com
