@@ -186,15 +186,13 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             return {error: {message: 'No call logs available'}};
         }
 
-        // Generate timestamp for filename
+        // Generate UTC timestamp for filename
         const now = new Date();
-        const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5); // 2026-02-09T14-30-45
+        const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5) + 'Z'; // 2026-02-09T14-30-45Z
         const filename = `call_logs_${timestamp}.txt`;
-        const sizeKB = (allLogs.length / 1024).toFixed(1);
 
-        // Upload to bot DM channel via server endpoint
         try {
-            const response = await RestClient.fetch<{url: string; filename: string}>(
+            const response = await RestClient.fetch<{post_id: string}>(
                 `${getPluginPath()}/logs/upload`,
                 {
                     method: 'POST',
@@ -203,13 +201,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
                 },
             );
 
-            const payload = {
-                url: response.url,
-                filename: response.filename,
-                size_kb: sizeKB,
-            };
-
-            return {message: `/call logs ${btoa(JSON.stringify(payload))}`, args};
+            return {message: `/call logs ${btoa(JSON.stringify({post_id: response.post_id}))}`, args};
         } catch (err) {
             return {error: {message: `Failed to upload logs: ${(err as Error).message}`}};
         }

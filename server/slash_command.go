@@ -8,8 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -137,51 +135,52 @@ func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 	}, nil
 }
 
-func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
+func (p *Plugin) handleLogsCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
 	if len(fields) < 3 {
 		return nil, fmt.Errorf("empty logs")
 	}
 
-	// Decode the JSON payload
 	jsonData, err := base64.StdEncoding.DecodeString(fields[2])
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode payload: %w", err)
 	}
 
-	var payload map[string]string
+	var payload struct {
+		PostID string `json:"post_id"`
+	}
 	if err := json.Unmarshal(jsonData, &payload); err != nil {
 		return nil, fmt.Errorf("failed to parse payload: %w", err)
 	}
 
-	fileURL := payload["url"]
-	filename := payload["filename"]
-	sizeKB := payload["size_kb"]
-
-	// Validate that the URL points to our own plugin download endpoint.
-	// Use only the path portion as a relative URL so the browser resolves it
-	// against the current origin, preventing host-based URL injection.
-	expectedPathPrefix := fmt.Sprintf("/plugins/%s/logs/download/", manifest.Id)
-	parsedURL, err := url.Parse(fileURL)
-	if err != nil || !strings.HasPrefix(parsedURL.Path, expectedPathPrefix) {
-		return nil, fmt.Errorf("invalid URL in payload")
-	}
-	relativePath := parsedURL.Path
-
-	// Validate size_kb is numeric so arbitrary text can't be injected.
-	if size, err := strconv.ParseFloat(sizeKB, 64); err != nil || size < 0 {
-		return nil, fmt.Errorf("invalid size in payload")
+	if !model.IsValidId(payload.PostID) {
+		return nil, fmt.Errorf("invalid post id in payload")
 	}
 
-	// Sanitize filename: only allow alphanumeric, dash, underscore, dot, and space
-	// to prevent Markdown/HTML injection when embedded in link text.
-	filename = sanitizeFilename(filename)
+	// Verify the referenced post lives in the caller's DM with the calls bot.
+	// This ensures the permalink only resolves to posts this plugin created on
+	// behalf of the calling user.
+	if p.botSession == nil {
+		return nil, fmt.Errorf("bot user not available")
+	}
+	post, appErr := p.API.GetPost(payload.PostID)
+	if appErr != nil {
+		return nil, fmt.Errorf("post not found")
+	}
+	dmChannel, appErr := p.API.GetDirectChannel(args.UserId, p.botSession.UserId)
+	if appErr != nil || post.ChannelId != dmChannel.Id {
+		return nil, fmt.Errorf("invalid post id in payload")
+	}
+
+	team, appErr := p.API.GetTeam(args.TeamId)
+	if appErr != nil {
+		return nil, fmt.Errorf("failed to get team: %w", appErr)
+	}
+
+	permalink := fmt.Sprintf("%s/%s/pl/%s", args.SiteURL, team.Name, payload.PostID)
 
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
-		Text: fmt.Sprintf(
-			"Call logs uploaded. [Click here to download %s](%s) (%s KB)",
-			filename, relativePath, sizeKB,
-		),
+		Text:         fmt.Sprintf("Call logs uploaded — [view in your @calls DM](%s)", permalink),
 	}, nil
 }
 
@@ -259,7 +258,7 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if subCmd == logsCommandTrigger {
-		return buildCommandResponse(handleLogsCommand(fields))
+		return buildCommandResponse(p.handleLogsCommand(args, fields))
 	}
 
 	if subCmd == endCommandTrigger {

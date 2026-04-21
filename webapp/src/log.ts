@@ -20,7 +20,7 @@ function formatArg(a: unknown): string {
     if (typeof a === 'object' && a !== null) {
         try {
             const s = JSON.stringify(a);
-            return s.length > maxArgLength ? s.slice(0, maxArgLength) + '...' : s;
+            return s.length > maxArgLength ? s.slice(0, maxArgLength - 3) + '...' : s;
         } catch {
             return String(a);
         }

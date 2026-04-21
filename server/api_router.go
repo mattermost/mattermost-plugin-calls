@@ -112,7 +112,6 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 
 	// Logs
 	router.HandleFunc("/logs/upload", p.handleUploadLogsToBot).Methods("POST")
-	router.HandleFunc("/logs/download/{fileId:[a-zA-Z0-9]{26}}", p.handleDownloadLogsFile).Methods("GET")
 
 	// Host Controls
 	hostCtrlRouter := router.PathPrefix("/calls/{call_id:[a-z0-9]{26}}/host").Subrouter()
