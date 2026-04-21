@@ -34,134 +34,78 @@ func TestShouldSendConcurrentSessionsWarning(t *testing.T) {
 	t.Cleanup(tearDown)
 	p.store = store
 
-	t.Run("rtcd in use", func(t *testing.T) {
-		defer mockAPI.AssertExpectations(t)
-		defer mockMetrics.AssertExpectations(t)
-
-		p.rtcdManager = &rtcdClientManager{}
-
-		t.Run("no sessions", func(t *testing.T) {
-			ok, err := p.shouldSendConcurrentSessionsWarning(1, time.Second)
-			require.NoError(t, err)
-			require.False(t, ok)
-		})
-
-		t.Run("sessions above threshold", func(t *testing.T) {
-			defer ResetTestStore(t, p.store)
-
-			call := &public.Call{
-				ID:        model.NewId(),
-				CreateAt:  time.Now().UnixMilli(),
-				ChannelID: model.NewId(),
-				StartAt:   time.Now().UnixMilli(),
-				PostID:    model.NewId(),
-				ThreadID:  model.NewId(),
-				OwnerID:   model.NewId(),
-			}
-			err := p.store.CreateCall(call)
-			require.NoError(t, err)
-
-			err = p.store.CreateCallSession(&public.CallSession{
-				ID:     "connA",
-				CallID: call.ID,
-				UserID: "userA",
-				JoinAt: time.Now().UnixMilli(),
-			})
-			require.NoError(t, err)
-
-			err = p.store.CreateCallSession(&public.CallSession{
-				ID:     "connB",
-				CallID: call.ID,
-				UserID: "userB",
-				JoinAt: time.Now().UnixMilli(),
-			})
-			require.NoError(t, err)
-
-			ok, err := p.shouldSendConcurrentSessionsWarning(1, time.Second)
-			require.NoError(t, err)
-			require.False(t, ok)
-		})
+	t.Run("no sessions", func(t *testing.T) {
+		ok, err := p.shouldSendConcurrentSessionsWarning(1, time.Second)
+		require.NoError(t, err)
+		require.False(t, ok)
 	})
 
-	t.Run("no rtcd", func(t *testing.T) {
-		defer mockAPI.AssertExpectations(t)
-		defer mockMetrics.AssertExpectations(t)
+	t.Run("sessions above threshold", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
 
-		p.rtcdManager = nil
+		mockAPI.On("KVSetWithOptions", "concurrent_sessions_warning", mock.Anything, mock.Anything).Return(true, nil).Once()
 
-		t.Run("no sessions", func(t *testing.T) {
-			ok, err := p.shouldSendConcurrentSessionsWarning(1, time.Second)
-			require.NoError(t, err)
-			require.False(t, ok)
+		call := &public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			ChannelID: model.NewId(),
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  model.NewId(),
+			OwnerID:   model.NewId(),
+		}
+		err := p.store.CreateCall(call)
+		require.NoError(t, err)
+
+		err = p.store.CreateCallSession(&public.CallSession{
+			ID:     "connA",
+			CallID: call.ID,
+			UserID: "userA",
+			JoinAt: time.Now().UnixMilli(),
 		})
+		require.NoError(t, err)
 
-		t.Run("sessions above threshold", func(t *testing.T) {
-			defer ResetTestStore(t, p.store)
-
-			mockAPI.On("KVSetWithOptions", "concurrent_sessions_warning", mock.Anything, mock.Anything).Return(true, nil).Once()
-
-			call := &public.Call{
-				ID:        model.NewId(),
-				CreateAt:  time.Now().UnixMilli(),
-				ChannelID: model.NewId(),
-				StartAt:   time.Now().UnixMilli(),
-				PostID:    model.NewId(),
-				ThreadID:  model.NewId(),
-				OwnerID:   model.NewId(),
-			}
-			err := p.store.CreateCall(call)
-			require.NoError(t, err)
-
-			err = p.store.CreateCallSession(&public.CallSession{
-				ID:     "connA",
-				CallID: call.ID,
-				UserID: "userA",
-				JoinAt: time.Now().UnixMilli(),
-			})
-			require.NoError(t, err)
-
-			err = p.store.CreateCallSession(&public.CallSession{
-				ID:     "connB",
-				CallID: call.ID,
-				UserID: "userB",
-				JoinAt: time.Now().UnixMilli(),
-			})
-			require.NoError(t, err)
-
-			ok, err := p.shouldSendConcurrentSessionsWarning(1, time.Second)
-			require.NoError(t, err)
-			require.True(t, ok)
+		err = p.store.CreateCallSession(&public.CallSession{
+			ID:     "connB",
+			CallID: call.ID,
+			UserID: "userB",
+			JoinAt: time.Now().UnixMilli(),
 		})
+		require.NoError(t, err)
 
-		t.Run("backoff", func(t *testing.T) {
-			defer ResetTestStore(t, p.store)
+		ok, err := p.shouldSendConcurrentSessionsWarning(1, time.Second)
+		require.NoError(t, err)
+		require.True(t, ok)
+	})
 
-			mockAPI.On("KVSetWithOptions", "concurrent_sessions_warning", mock.Anything, mock.Anything).Return(false, nil).Once()
+	t.Run("backoff", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
 
-			call := &public.Call{
-				ID:        model.NewId(),
-				CreateAt:  time.Now().UnixMilli(),
-				ChannelID: model.NewId(),
-				StartAt:   time.Now().UnixMilli(),
-				PostID:    model.NewId(),
-				ThreadID:  model.NewId(),
-				OwnerID:   model.NewId(),
-			}
-			err := p.store.CreateCall(call)
-			require.NoError(t, err)
+		mockAPI.On("KVSetWithOptions", "concurrent_sessions_warning", mock.Anything, mock.Anything).Return(false, nil).Once()
 
-			err = p.store.CreateCallSession(&public.CallSession{
-				ID:     "connA",
-				CallID: call.ID,
-				UserID: "userA",
-				JoinAt: time.Now().UnixMilli(),
-			})
-			require.NoError(t, err)
+		call := &public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			ChannelID: model.NewId(),
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  model.NewId(),
+			OwnerID:   model.NewId(),
+		}
+		err := p.store.CreateCall(call)
+		require.NoError(t, err)
 
-			ok, err := p.shouldSendConcurrentSessionsWarning(1, time.Second)
-			require.NoError(t, err)
-			require.False(t, ok)
+		err = p.store.CreateCallSession(&public.CallSession{
+			ID:     "connA",
+			CallID: call.ID,
+			UserID: "userA",
+			JoinAt: time.Now().UnixMilli(),
 		})
+		require.NoError(t, err)
+
+		ok, err := p.shouldSendConcurrentSessionsWarning(1, time.Second)
+		require.NoError(t, err)
+		require.False(t, ok)
 	})
 }
 

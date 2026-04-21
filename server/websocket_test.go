@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -19,12 +18,8 @@ import (
 
 	serverMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
-	rtcMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/rtcd/service/rtc"
-
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
-
-	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -769,7 +764,6 @@ func TestWebSocketMessageHasBeenPostedUTF8Validation(t *testing.T) {
 func TestHandleJoin(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 	mockMetrics := &serverMocks.MockMetrics{}
-	mockRTCMetrics := &rtcMocks.MockMetrics{}
 
 	p := Plugin{
 		MattermostPlugin: plugin.MattermostPlugin{
@@ -789,7 +783,6 @@ func TestHandleJoin(t *testing.T) {
 
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
 
-	mockMetrics.On("RTCMetrics").Return(mockRTCMetrics).Once()
 	mockAPI.On("LogDebug", mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
@@ -804,26 +797,6 @@ func TestHandleJoin(t *testing.T) {
 		"xForwardedFor", mock.AnythingOfType("string"),
 	)
 
-	mockAPI.On("LogInfo", mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-
-	rtcServer, err := rtc.NewServer(rtc.ServerConfig{
-		ICEPortUDP:      33443,
-		ICEPortTCP:      33443,
-		UDPSocketsCount: runtime.NumCPU(),
-	}, newLogger(&p), p.metrics.RTCMetrics())
-	require.NoError(t, err)
-
-	err = rtcServer.Start()
-	require.NoError(t, err)
-
-	p.rtcServer = rtcServer
-	defer func() {
-		err := p.rtcServer.Stop()
-		require.NoError(t, err)
-	}()
-
 	store, tearDown := NewTestStore(t)
 	t.Cleanup(tearDown)
 	p.store = store
@@ -835,7 +808,6 @@ func TestHandleJoin(t *testing.T) {
 	t.Run("no batching", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)
-		defer mockRTCMetrics.AssertExpectations(t)
 
 		channelID := model.NewId()
 		userID := model.NewId()
@@ -881,7 +853,6 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
-		mockRTCMetrics.On("IncRTCSessions", "default").Once()
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
@@ -930,8 +901,6 @@ func TestHandleJoin(t *testing.T) {
 		p.mut.RUnlock()
 
 		mockMetrics.On("DecWebSocketConn").Once()
-		mockRTCMetrics.On("DecRTCSessions", "default").Once()
-		mockRTCMetrics.On("IncRTCConnState", "closed").Once()
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
@@ -964,7 +933,6 @@ func TestHandleJoin(t *testing.T) {
 	t.Run("batching", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)
-		defer mockRTCMetrics.AssertExpectations(t)
 
 		channelID := model.NewId()
 		postID := model.NewId()
@@ -1021,7 +989,6 @@ func TestHandleJoin(t *testing.T) {
 				SkuShortName: "enterprise",
 			}, nil)
 
-			mockRTCMetrics.On("IncRTCSessions", "default").Once()
 
 			mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Once()
 			mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
@@ -1069,8 +1036,6 @@ func TestHandleJoin(t *testing.T) {
 		// Session leaving call path
 
 		mockMetrics.On("DecWebSocketConn").Times(10)
-		mockRTCMetrics.On("DecRTCSessions", "default").Times(10)
-		mockRTCMetrics.On("IncRTCConnState", "closed").Times(10)
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Times(10)
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
@@ -1119,7 +1084,6 @@ func TestHandleJoin(t *testing.T) {
 	t.Run("batching - concurrent join and leave", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)
-		defer mockRTCMetrics.AssertExpectations(t)
 
 		channelID := model.NewId()
 		postID := model.NewId()
@@ -1165,8 +1129,6 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("GetLicense").Return(&model.License{
 			SkuShortName: "enterprise",
 		}, nil)
-		mockRTCMetrics.On("IncRTCSessions", "default")
-		defer mockRTCMetrics.On("IncRTCSessions", "default").Unset()
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin)
 		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventJoin, mock.Anything, mock.Anything)
@@ -1187,10 +1149,6 @@ func TestHandleJoin(t *testing.T) {
 		// Session leaving call path
 		mockMetrics.On("DecWebSocketConn")
 		defer mockMetrics.On("DecWebSocketConn").Unset()
-		mockRTCMetrics.On("DecRTCSessions", "default")
-		defer mockRTCMetrics.On("DecRTCSessions", "default").Unset()
-		mockRTCMetrics.On("IncRTCConnState", "closed")
-		defer mockRTCMetrics.On("IncRTCConnState", "closed").Unset()
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft)
 		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
@@ -1321,7 +1279,6 @@ func TestHandleJoin(t *testing.T) {
 	t.Run("admin warning", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)
-		defer mockRTCMetrics.AssertExpectations(t)
 
 		channelID := model.NewId()
 		userID := model.NewId()
@@ -1385,7 +1342,6 @@ func TestHandleJoin(t *testing.T) {
 			Message:   ":warning: app.admin.concurrent_sessions_warning.intro\r\n\r\napp.admin.concurrent_sessions_warning.team",
 		}).Return(&model.Post{Id: "postID"}, nil).Once()
 
-		mockRTCMetrics.On("IncRTCSessions", "default").Once()
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
@@ -1416,8 +1372,6 @@ func TestHandleJoin(t *testing.T) {
 		require.NoError(t, err)
 
 		mockMetrics.On("DecWebSocketConn").Once()
-		mockRTCMetrics.On("DecRTCSessions", "default").Once()
-		mockRTCMetrics.On("IncRTCConnState", "closed").Once()
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},

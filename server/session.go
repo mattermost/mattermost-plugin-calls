@@ -131,14 +131,6 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 			sessions: map[string]*public.CallSession{},
 		}
 
-		if p.rtcdManager != nil {
-			host, err := p.rtcdManager.GetHostForNewCall()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get rtcd host: %w", err)
-			}
-			p.LogDebug("rtcd host has been assigned to call", "host", host)
-			state.Call.Props.RTCDHost = host
-		}
 	}
 
 	if state.Call.EndAt > 0 {

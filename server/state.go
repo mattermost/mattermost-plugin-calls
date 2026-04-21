@@ -334,13 +334,6 @@ func (p *Plugin) cleanUpState() error {
 			continue
 		}
 
-		// If a call has a RTCD host assigned, we want to check with the RTCD side whether the call is still ongoing or not before
-		// cleaning up the state.
-		if p.rtcdManager != nil && call.Props.RTCDHost != "" && !p.rtcdManager.hasCallEnded(call) {
-			p.unlockCall(call.ChannelID)
-			continue
-		}
-
 		if err := p.cleanCallState(call); err != nil {
 			p.unlockCall(call.ChannelID)
 			return fmt.Errorf("failed to clean up state: %w", err)

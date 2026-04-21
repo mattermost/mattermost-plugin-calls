@@ -8,13 +8,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/license"
-
-	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/i18n"
@@ -147,72 +144,13 @@ func (p *Plugin) OnActivate() (retErr error) {
 		}()
 	}
 
-	// rtcServer and rtcdManager are mutually exclusive throughout the entire lifetime of the plugin.
-	// Which one is used is decided here, during activation.
-	// We first check if RTCD is configured and allowed by the license. If so
-	// we try to initialize its connection and fail to start the plugin if that errors.
-	if rtcdURL := cfg.getRTCDURL(); rtcdURL != "" && p.licenseChecker.RTCDAllowed() {
-		rtcdManager, err := p.newRTCDClientManager(rtcdURL)
-		if err != nil {
-			err = fmt.Errorf("failed to create rtcd manager: %w", err)
-			p.LogError(err.Error())
-			return err
-		}
-
-		p.LogDebug("rtcd client manager initialized successfully")
-
-		p.rtcdManager = rtcdManager
-
-		if err := p.cleanUpState(); err != nil {
-			p.LogError("failed to cleanup state", "err", err.Error())
-		}
-	} else {
-		rtcServerConfig := rtc.ServerConfig{
-			ICEAddressUDP:   rtc.ICEAddress(cfg.UDPServerAddress),
-			ICEAddressTCP:   rtc.ICEAddress(cfg.TCPServerAddress),
-			ICEPortUDP:      *cfg.UDPServerPort,
-			ICEPortTCP:      *cfg.TCPServerPort,
-			ICEHostOverride: cfg.ICEHostOverride,
-			ICEServers:      rtc.ICEServers(cfg.getICEServers(false)),
-			TURNConfig: rtc.TURNConfig{
-				CredentialsExpirationMinutes: *cfg.TURNCredentialsExpirationMinutes,
-			},
-			EnableIPv6:      *cfg.EnableIPv6,
-			UDPSocketsCount: runtime.NumCPU(),
-		}
-		if *cfg.ServerSideTURN {
-			rtcServerConfig.TURNConfig.StaticAuthSecret = cfg.TURNStaticAuthSecret
-		}
-		if cfg.ICEHostPortOverride != nil {
-			rtcServerConfig.ICEHostPortOverride = rtc.ICEHostPortOverride(fmt.Sprintf("%d", *cfg.ICEHostPortOverride))
-		}
-		rtcServer, err := rtc.NewServer(rtcServerConfig, newLogger(p), p.metrics.RTCMetrics())
-		if err != nil {
-			p.LogError(err.Error())
-			return err
-		}
-
-		if err := rtcServer.Start(); err != nil {
-			p.LogError(err.Error())
-			return err
-		}
-
-		// NodeID is set only when using the embedded service (no RTCD) since it's used to track which node is hosting
-		// a call and coordinate between nodes they may own the WS connection for other sessions in that same call.
-		// When RTCD is in place, there isn't a node hosting a call since this task is completely delegated to the RTCD side.
-		// Hence, in that case this field should be left empty.
-		p.nodeID = status.ClusterId
-
-		p.rtcServer = rtcServer
-
-		// The wsWriter routine is only necessary when running the embedded RTC server since
-		// it's a listener on rtcServer.ReceiveCh used to forward RTC messages (e.g. signaling)
-		// back to the client through the WS connection. The RTCD handler has a separate way to
-		// do this (see clientReader method).
-		go p.wsWriter()
+	// Validate LiveKit configuration
+	if lkURL := cfg.getLiveKitURL(); lkURL != "" {
+		p.LogDebug("LiveKit URL configured", "url", lkURL)
 	}
 
-	// Cluster events need to be handled regardless of whether the embedded RTC service or RTCD are in use.
+	p.nodeID = status.ClusterId
+
 	go p.clusterEventsHandler()
 
 	p.LogDebug("activated", "ClusterID", status.ClusterId)
@@ -226,18 +164,6 @@ func (p *Plugin) OnDeactivate() error {
 
 	if err := p.store.Close(); err != nil {
 		p.LogError(err.Error())
-	}
-
-	if p.rtcdManager != nil {
-		if err := p.rtcdManager.Close(); err != nil {
-			p.LogError(err.Error())
-		}
-	}
-
-	if p.rtcServer != nil {
-		if err := p.rtcServer.Stop(); err != nil {
-			p.LogError(err.Error())
-		}
 	}
 
 	if p.isSingleHandler() {
