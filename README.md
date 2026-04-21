@@ -44,6 +44,57 @@ Without this flag, the build only produces binaries for Linux, FreeBSD, and Open
 
 For more details on how to develop a plugin refer to the official [documentation](https://developers.mattermost.com/extend/plugins/).
 
+### Testing the RTC client against a local LiveKit server
+
+The `RTCClient` wrapper in `webapp/src/rtc_client/` connects to a LiveKit room using a JWT fetched from the plugin's `/livekit-token` endpoint. For local development you can run LiveKit in Docker and point the plugin at it — the rest of the flow (token minting, channel permission check, wrapper connect) is exercised end-to-end with no code changes.
+
+#### 1. Start LiveKit in Docker
+
+From the repo root:
+
+```bash
+export LIVEKIT_NODE_IP=127.0.0.1
+docker compose -f docker-compose.livekit.yaml up
+```
+
+This brings up `livekit/livekit-server` using `livekit.yaml`:
+- Signaling URL: `ws://localhost:7880`
+- API key: `devkey`
+- API secret: `secret`
+
+#### 2. Configure the plugin to use it
+
+In the Mattermost System Console (**Plugins → Calls**), or directly in `config.json` under `PluginSettings.Plugins["com.mattermost.calls"]`, set:
+
+| Field | Value |
+|---|---|
+| LiveKit URL | `ws://localhost:7880` |
+| LiveKit API Key | `devkey` |
+| LiveKit API Secret | `secret` |
+
+#### 3. Build and deploy the plugin
+
+```bash
+MM_SERVICESETTINGS_ENABLEDEVELOPER=true make deploy
+```
+
+#### 4. Exercise the wrapper
+
+With both LiveKit Docker and the plugin running, the `RTCClient` wrapper will fetch a token from `/livekit-token` and connect to the Docker LiveKit server. From the browser console on a logged-in Mattermost tab:
+
+```js
+const { default: RTCClient } = await import('/static/plugins/com.mattermost.calls/.../rtc_client'); // path depends on bundler output
+const client = new RTCClient();
+client.on('connect', () => console.log('connected'));
+client.on('close', (reason) => console.log('disconnected', reason));
+client.on('error', (err) => console.error('rtc error', err));
+await client.connect('<channel-id>');
+```
+
+Open a second browser/tab as a different user in the same channel and repeat — both clients will land in the same LiveKit room (room name = channel ID) and see each other as remote participants on `client.room`.
+
+> **Note:** `devkey`/`secret` from `livekit.yaml` are for local development only. Never use these credentials with a LiveKit server exposed to the internet.
+
 ## How to Release
 
 Use `make dist` to build a release bundle.
