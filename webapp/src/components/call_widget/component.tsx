@@ -583,7 +583,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             show: true,
                             args: {
                                 deviceLabel: device.label,
-                                i: (text: string) => <i>{text}</i>,
+                                i: (text: React.ReactNode) => <i>{text}</i>,
                             },
                         },
                     },
@@ -597,7 +597,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             show: true,
                             args: {
                                 deviceLabel: device.label,
-                                i: (text: string) => <i>{text}</i>,
+                                i: (text: React.ReactNode) => <i>{text}</i>,
                             },
                         },
                     },
@@ -2043,7 +2043,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         <FormattedMessage
                             defaultMessage={'<b>{participant}</b> has joined the call.'}
                             values={{
-                                b: (text: string) => <b>{text}</b>,
+                                b: (text: React.ReactNode) => <b>{text}</b>,
                                 participant: getUserDisplayName(profile),
                             }}
                         />
