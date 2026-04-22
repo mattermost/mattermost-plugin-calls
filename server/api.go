@@ -590,6 +590,14 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Sanitize the filename against an allowlist so the rendered FileAttachment
+	// can't embed Markdown/HTML from a crafted client payload.
+	req.Filename = sanitizeFilename(req.Filename)
+	if req.Filename == "" {
+		http.Error(w, "Invalid filename", http.StatusBadRequest)
+		return
+	}
+
 	// Get bot user ID
 	if p.botSession == nil {
 		http.Error(w, "Bot user not available", http.StatusInternalServerError)
