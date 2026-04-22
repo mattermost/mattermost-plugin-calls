@@ -135,19 +135,52 @@ func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 	}, nil
 }
 
-func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
+func (p *Plugin) handleLogsCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
 	if len(fields) < 3 {
 		return nil, fmt.Errorf("empty logs")
 	}
 
-	logs, err := base64.StdEncoding.DecodeString(fields[2])
+	jsonData, err := base64.StdEncoding.DecodeString(fields[2])
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode payload: %w", err)
 	}
 
+	var payload struct {
+		PostID string `json:"post_id"`
+	}
+	if err := json.Unmarshal(jsonData, &payload); err != nil {
+		return nil, fmt.Errorf("failed to parse payload: %w", err)
+	}
+
+	if !model.IsValidId(payload.PostID) {
+		return nil, fmt.Errorf("invalid post id in payload")
+	}
+
+	// Verify the referenced post lives in the caller's DM with the calls bot.
+	// This ensures the permalink only resolves to posts this plugin created on
+	// behalf of the calling user.
+	if p.botSession == nil {
+		return nil, fmt.Errorf("bot user not available")
+	}
+	post, appErr := p.API.GetPost(payload.PostID)
+	if appErr != nil {
+		return nil, fmt.Errorf("post not found")
+	}
+	dmChannel, appErr := p.API.GetDirectChannel(args.UserId, p.botSession.UserId)
+	if appErr != nil || post.ChannelId != dmChannel.Id {
+		return nil, fmt.Errorf("invalid post id in payload")
+	}
+
+	team, appErr := p.API.GetTeam(args.TeamId)
+	if appErr != nil {
+		return nil, fmt.Errorf("failed to get team: %w", appErr)
+	}
+
+	permalink := fmt.Sprintf("%s/%s/pl/%s", args.SiteURL, team.Name, payload.PostID)
+
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
-		Text:         fmt.Sprintf("```\n%s\n```", logs),
+		Text:         fmt.Sprintf("Call logs uploaded — [view in your @calls DM](%s)", permalink),
 	}, nil
 }
 
@@ -225,7 +258,7 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if subCmd == logsCommandTrigger {
-		return buildCommandResponse(handleLogsCommand(fields))
+		return buildCommandResponse(p.handleLogsCommand(args, fields))
 	}
 
 	if subCmd == endCommandTrigger {

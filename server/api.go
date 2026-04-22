@@ -572,3 +572,76 @@ func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 
 	return nil
 }
+
+func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-Id")
+	if userID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		Logs     string `json:"logs"`
+		Filename string `json:"filename"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Sanitize the filename against an allowlist so the rendered FileAttachment
+	// can't embed Markdown/HTML from a crafted client payload.
+	req.Filename = sanitizeFilename(req.Filename)
+	if req.Filename == "" {
+		http.Error(w, "Invalid filename", http.StatusBadRequest)
+		return
+	}
+
+	// Get bot user ID
+	if p.botSession == nil {
+		http.Error(w, "Bot user not available", http.StatusInternalServerError)
+		return
+	}
+	botID := p.botSession.UserId
+
+	// Get or create DM channel with bot
+	channel, appErr := p.API.GetDirectChannel(userID, botID)
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to get DM channel: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Upload file to bot DM channel
+	fileInfo, appErr := p.API.UploadFile(
+		[]byte(req.Logs),
+		channel.Id,
+		req.Filename,
+	)
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to upload file: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Create a post with the file attached in the bot DM. The slash command
+	// handler will emit a permalink to this post so the user can view and
+	// download the file via the standard FileAttachment UI.
+	post, appErr := p.API.CreatePost(&model.Post{
+		UserId:    botID,
+		ChannelId: channel.Id,
+		FileIds:   []string{fileInfo.Id},
+	})
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to create post: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	resp := map[string]string{
+		"post_id": post.Id,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
