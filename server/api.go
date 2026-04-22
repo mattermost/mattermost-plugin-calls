@@ -637,4 +637,3 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
