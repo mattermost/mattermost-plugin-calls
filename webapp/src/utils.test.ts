@@ -4,8 +4,8 @@
 import {Post} from '@mattermost/types/posts';
 import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
+import CallsClient from 'src/clients/calls';
 
-import CallsClient from './client';
 import {pluginId} from './manifest';
 import {
     callStartedTimestampFn,

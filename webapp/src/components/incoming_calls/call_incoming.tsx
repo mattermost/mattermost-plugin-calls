@@ -8,6 +8,7 @@ import {
 import React from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
+import RestClient from 'src/clients/rest';
 import Avatar from 'src/components/avatar/avatar';
 import {Button} from 'src/components/buttons';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -17,7 +18,6 @@ import {
     useOnChannelLinkClick,
     useRingingAndNotification,
 } from 'src/components/incoming_calls/hooks';
-import RestClient from 'src/rest_client';
 import {ChannelType, IncomingCallNotification} from 'src/types/types';
 import styled from 'styled-components';
 

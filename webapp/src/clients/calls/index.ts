@@ -2,18 +2,12 @@
 // See LICENSE.txt for license information.
 
 // eslint-disable max-lines
-// eslint-disable-next-line simple-import-sort/imports
+
 import {parseRTCStats, RTCMonitor, RTCPeer} from '@mattermost/calls-common';
-import type {EmojiData, CallsClientJoinData, TrackInfo, RTPEncodingParameters} from '@mattermost/calls-common/lib/types';
-
+import type {CallsClientJoinData, EmojiData, RTPEncodingParameters, TrackInfo} from '@mattermost/calls-common/lib/types';
 import {EventEmitter} from 'events';
-
-import {zlibSync, strToU8} from 'fflate';
-import {MediaDevices, CallsClientConfig, CallsClientStats, TrackMetadata} from 'src/types/types';
-
-import {logDebug, logErr, logInfo, logWarn, persistClientLogs} from './log';
-import {getScreenStream, getPersistentStorage} from './utils';
-import {WebSocketClient, WebSocketError, WebSocketErrorType} from './websocket';
+import {strToU8, zlibSync} from 'fflate';
+import {WebSocketClient, WebSocketError, WebSocketErrorType} from 'src/clients/websocket';
 import {
     STORAGE_CALLS_CLIENT_STATS_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
@@ -21,7 +15,10 @@ import {
     STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY,
 } from 'src/constants';
 import {type BgBlurData, getBgBlurData} from 'src/local_storage';
+import {logDebug, logErr, logInfo, logWarn, persistClientLogs} from 'src/log';
 import Segmenter from 'src/segmenter';
+import {CallsClientConfig, CallsClientStats, MediaDevices, TrackMetadata} from 'src/types/types';
+import {getPersistentStorage, getScreenStream} from 'src/utils';
 
 export const AudioInputPermissionsError = new Error('missing audio input permissions');
 export const AudioInputMissingError = new Error('no audio input available');
@@ -75,7 +72,7 @@ export default class CallsClient extends EventEmitter {
     private connected = false;
     public initTime = Date.now();
     private rtcMonitor: RTCMonitor | null = null;
-    private av1Codec: RTCRtpCodecCapability | null = null;
+    private av1Codec: Awaited<ReturnType<typeof RTCPeer.getVideoCodec>> = null;
     private defaultAudioTrackOptions: MediaTrackConstraints;
     private defaultVideoTrackOptions: MediaTrackConstraints;
     private defaultVideoTrackEncodings: RTPEncodingParameters[];
@@ -156,7 +153,7 @@ export default class CallsClient extends EventEmitter {
     private async handleAudioDeviceFallback(deviceType: string) {
         const currentDevice = deviceType === 'input' ? this.currentAudioInputDevice : this.currentAudioOutputDevice;
         const devices = deviceType === 'input' ? this.audioDevices.inputs : this.audioDevices.outputs;
-        const missingCurrentDevice = !devices.some(device => currentDevice?.deviceId === device.deviceId);
+        const missingCurrentDevice = !devices.some((device) => currentDevice?.deviceId === device.deviceId);
 
         // Fallback to the system default device if the current one is not available.
         if (missingCurrentDevice && devices.length > 0) {
