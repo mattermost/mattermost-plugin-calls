@@ -256,7 +256,7 @@ func TestWSReader(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				p.wsReader(us, "", "handlerID")
+				p.wsReader(us, "")
 			}()
 
 			time.Sleep(1500 * time.Millisecond)
@@ -278,7 +278,7 @@ func TestWSReader(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				p.wsReader(us, "authSessionID", "handlerID")
+				p.wsReader(us, "authSessionID")
 			}()
 
 			time.Sleep(1500 * time.Millisecond)
@@ -299,7 +299,7 @@ func TestWSReader(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				p.wsReader(us, "authSessionID", "handlerID")
+				p.wsReader(us, "authSessionID")
 			}()
 
 			time.Sleep(1500 * time.Millisecond)
@@ -332,7 +332,7 @@ func TestWSReader(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				p.wsReader(us, "authSessionID", "handlerID")
+				p.wsReader(us, "authSessionID")
 			}()
 
 			time.Sleep(2 * time.Second)
@@ -362,7 +362,7 @@ func TestWSReader(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				p.wsReader(us, "authSessionID", "handlerID")
+				p.wsReader(us, "authSessionID")
 			}()
 
 			time.Sleep(time.Second * 2)
@@ -395,7 +395,7 @@ func TestWSReader(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				p.wsReader(us, "authSessionID", "handlerID")
+				p.wsReader(us, "authSessionID")
 			}()
 
 			time.Sleep(1500 * time.Millisecond)
@@ -853,7 +853,6 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
-
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
 			&model.WebsocketBroadcast{ConnectionId: connID, ReliableClusterSend: true}).Once()
@@ -988,7 +987,6 @@ func TestHandleJoin(t *testing.T) {
 			mockAPI.On("GetLicense").Return(&model.License{
 				SkuShortName: "enterprise",
 			}, nil)
-
 
 			mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Once()
 			mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},
@@ -1341,7 +1339,6 @@ func TestHandleJoin(t *testing.T) {
 			ChannelId: "channelID",
 			Message:   ":warning: app.admin.concurrent_sessions_warning.intro\r\n\r\napp.admin.concurrent_sessions_warning.team",
 		}).Return(&model.Post{Id: "postID"}, nil).Once()
-
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventJoin).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventJoin, map[string]any{"connID": connID},

@@ -21,8 +21,6 @@ import (
 )
 
 const (
-	wsEventSignal = "signal"
-
 	wsEventUserJoined                = "user_joined"
 	wsEventUserLeft                  = "user_left"
 	wsEventUserMuted                 = "user_muted"
@@ -161,7 +159,7 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 	p.API.PublishWebSocketEvent(ev, data, broadcast.ToModel())
 }
 
-func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, handlerID string) error {
+func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage) error {
 	if cfg := p.getConfiguration(); cfg == nil || cfg.AllowScreenSharing == nil || !*cfg.AllowScreenSharing {
 		return fmt.Errorf("screen sharing is not allowed")
 	}
@@ -225,7 +223,7 @@ func (ed EmojiData) toMap() map[string]interface{} {
 	}
 }
 
-func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID string) error {
+func (p *Plugin) handleClientMsg(us *session, msg clientMessage) error {
 	p.metrics.IncWebSocketEvent("in", msg.Type)
 	switch msg.Type {
 	case clientMessageTypeSDP:
@@ -268,7 +266,7 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			UserIDs:             getUserIDsFromSessions(state.sessions),
 		})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
-		if err := p.handleClientMessageTypeScreen(us, msg, handlerID); err != nil {
+		if err := p.handleClientMessageTypeScreen(us, msg); err != nil {
 			return err
 		}
 	case clientMessageTypeVideoOn, clientMessageTypeVideoOff:
@@ -404,7 +402,7 @@ func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 	}
 }
 
-func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
+func (p *Plugin) wsReader(us *session, authSessionID string) {
 	sessionAuthTicker := time.NewTicker(sessionAuthCheckInterval)
 	defer sessionAuthTicker.Stop()
 
@@ -414,7 +412,7 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 			if !ok {
 				return
 			}
-			if err := p.handleClientMsg(us, msg, handlerID); err != nil {
+			if err := p.handleClientMsg(us, msg); err != nil {
 				p.LogError("handleClientMsg failed", "err", err.Error(), "connID", us.connID)
 			}
 		case <-us.wsReconnectCh:
@@ -455,7 +453,7 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 				p.LogInfo("invalid or expired session, closing RTC session", fields...)
 
 				// We forcefully disconnect any session that has been revoked or expired.
-				if err := p.closeRTCSession(us.userID, us.connID, us.channelID, handlerID, us.callID); err != nil {
+				if err := p.closeRTCSession(us.userID, us.connID, us.channelID); err != nil {
 					p.LogError("failed to close RTC session", append(fields[:5], "err", err.Error()))
 				}
 
@@ -465,7 +463,7 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 	}
 }
 
-func (p *Plugin) handleLeave(us *session, userID, connID, channelID, handlerID string) error {
+func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) error {
 	p.LogDebug("handleLeave", "userID", userID, "connID", connID, "channelID", channelID)
 
 	select {
@@ -600,9 +598,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			"remoteAddr", joinData.remoteAddr, "xForwardedFor", joinData.xff,
 		)
 
-		handlerID := state.Call.Props.NodeID
-		p.LogDebug("got handlerID", "handlerID", handlerID)
-
 		us := newUserSession(userID, channelID, connID, state.Call.ID, false)
 		p.mut.Lock()
 		p.sessions[connID] = us
@@ -655,8 +650,8 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 
 		go func() {
 			defer p.metrics.DecWebSocketConn()
-			p.wsReader(us, authSessionID, handlerID)
-			if err := p.handleLeave(us, userID, connID, channelID, handlerID); err != nil {
+			p.wsReader(us, authSessionID)
+			if err := p.handleLeave(us, userID, connID, channelID); err != nil {
 				p.LogError(err.Error())
 			}
 		}()
@@ -818,9 +813,9 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		p.LogError(err.Error())
 	}
 
-	p.wsReader(us, authSessionID, state.Call.Props.NodeID)
+	p.wsReader(us, authSessionID)
 
-	if err := p.handleLeave(us, userID, connID, channelID, state.Call.Props.NodeID); err != nil {
+	if err := p.handleLeave(us, userID, connID, channelID); err != nil {
 		p.LogError(err.Error())
 	}
 
@@ -1084,7 +1079,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 
 // closeRTCSession is a no-op in the LiveKit architecture.
 // LiveKit manages media session cleanup directly when participants disconnect.
-func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID, callID string) error {
+func (p *Plugin) closeRTCSession(userID, connID, channelID string) error {
 	p.LogDebug("closeRTCSession", "userID", userID, "connID", connID, "channelID", channelID)
 	return nil
 }

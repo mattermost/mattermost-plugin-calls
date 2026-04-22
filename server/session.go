@@ -46,7 +46,6 @@ type session struct {
 
 	// to notify of rtc session disconnect.
 	rtcCloseCh chan struct{}
-	rtcClosed  int32
 	// rtc indicates whether or not the session is also handling the WebRTC
 	// connection.
 	rtc bool
@@ -130,7 +129,6 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 			},
 			sessions: map[string]*public.CallSession{},
 		}
-
 	}
 
 	if state.Call.EndAt > 0 {
