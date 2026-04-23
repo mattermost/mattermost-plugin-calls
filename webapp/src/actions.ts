@@ -18,13 +18,13 @@ import {ActionFunc, ActionFuncAsync, DispatchFunc, GetStateFunc} from 'mattermos
 import {MessageDescriptor} from 'react-intl';
 import {AnyAction, Dispatch} from 'redux';
 import {batchActions} from 'redux-batched-actions';
+import RestClient from 'src/clients/rest';
 import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from 'src/cloud_pricing/modals';
 import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
-import RestClient from 'src/rest_client';
 import {
     callDismissedNotification,
     calls, channelIDForCurrentCall,

@@ -38,7 +38,7 @@ import {
     removeIncomingCallNotification,
     userLeft,
 } from 'src/actions';
-import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/client';
+import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/clients/calls';
 import {hostRemovedMsg} from 'src/components/call_error_modal';
 import {
     HOST_CONTROL_NOTICE_TIMEOUT,

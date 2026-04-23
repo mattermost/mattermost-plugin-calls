@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import CallsClient from './client';
+import CallsClient from './index';
 
 describe('CallsClient', () => {
     let client: CallsClient;

@@ -1,10 +1,10 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {WebSocketClient, WebSocketErrorType} from './websocket';
+import {WebSocketClient, WebSocketErrorType} from './index';
 
 // Mock the manifest
-jest.mock('./manifest', () => ({
+jest.mock('src/manifest', () => ({
     pluginId: 'com.mattermost.calls',
 }));
 
