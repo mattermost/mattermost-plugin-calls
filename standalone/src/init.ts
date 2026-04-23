@@ -43,14 +43,14 @@ import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import {getCallActive, getCallsConfig, getCallsVersionInfo, localSessionClose, setClientConnecting} from 'plugin/actions';
-import CallsClient from 'plugin/client';
+import CallsClient from 'plugin/clients/calls';
+import RestClient from 'plugin/clients/rest';
 import {
     logDebug,
     logErr,
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
-import RestClient from 'plugin/rest_client';
 import {callsConfig, callsVersionInfo, iceServers, needsTURNCredentials} from 'plugin/selectors';
 import {DesktopNotificationArgs, Store, WebAppUtils} from 'plugin/types/mattermost-webapp';
 import {

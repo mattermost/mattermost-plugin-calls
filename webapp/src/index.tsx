@@ -40,6 +40,8 @@ import {
     showSwitchCallModal,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
+import CallsClient from 'src/clients/calls';
+import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
 import EnableDCSignaling from 'src/components/admin_console_settings/enable_dc_signaling';
@@ -101,7 +103,6 @@ import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sh
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
-import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
 import {CallActions, CurrentCallData, CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
@@ -119,7 +120,6 @@ import {
     USER_VIDEO_ON,
     USERS_STATES,
 } from './action_types';
-import CallsClient from './client';
 import CallWidget from './components/call_widget';
 import ChannelCallToast from './components/channel_call_toast';
 import ChannelHeaderButton from './components/channel_header_button';

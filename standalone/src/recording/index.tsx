@@ -19,9 +19,9 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
+import RestClient from 'src/clients/rest';
 import {getJobID} from 'src/common';
 import recordingReducer from 'src/recording/reducers';
-import RestClient from 'src/rest_client';
 
 import init, {InitCbProps} from '../init';
 import {

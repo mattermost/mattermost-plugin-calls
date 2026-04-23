@@ -10,7 +10,7 @@ import {
     rtcPeerTimeoutErr,
     userLeftChannelErr,
     userRemovedFromChannelErr,
-} from 'src/client';
+} from 'src/clients/calls';
 import {
     ColumnContainer,
     FooterContainer,
