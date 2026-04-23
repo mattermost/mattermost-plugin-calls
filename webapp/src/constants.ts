@@ -127,3 +127,12 @@ export const STORAGE_CALLS_BLUR_BACKGROUND_KEY = 'calls_blur_background';
 
 // Plugin RTC API routes
 export const RTC_TOKEN_API_PATH = 'livekit-token';
+
+// RtcClient public event names — emitted via EventEmitter, subscribed to by UI consumers.
+export const RTC_EVENT = {
+    CONNECTED: 'connected',
+    DISCONNECTED: 'disconnected',
+    RECONNECTING: 'reconnecting',
+    RECONNECTED: 'reconnected',
+    ERROR: 'error',
+} as const;
