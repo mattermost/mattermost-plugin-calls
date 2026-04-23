@@ -2,12 +2,12 @@
 // See LICENSE.txt for license information.
 
 import {DisconnectReason, RoomEvent} from 'livekit-client';
+import RestClient from 'src/clients/rest';
 import {RTC_EVENT} from 'src/constants';
-import RestClient from 'src/rest_client';
 
 import RtcClient from './index';
 
-jest.mock('src/rest_client', () => ({
+jest.mock('src/clients/rest', () => ({
     __esModule: true,
     default: {
         fetch: jest.fn(),

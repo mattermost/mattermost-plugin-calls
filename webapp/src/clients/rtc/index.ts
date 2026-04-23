@@ -3,9 +3,9 @@
 
 import {EventEmitter} from 'events';
 import {ConnectionState, DisconnectReason, Room, RoomEvent} from 'livekit-client';
+import RestClient from 'src/clients/rest';
 import {RTC_EVENT, RTC_TOKEN_API_PATH} from 'src/constants';
 import {logDebug, logErr, logInfo} from 'src/log';
-import RestClient from 'src/rest_client';
 import {getPluginPath} from 'src/utils';
 
 export type RtcTokenResponse = {
