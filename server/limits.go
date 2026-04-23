@@ -136,11 +136,6 @@ func (p *Plugin) getSystemBotID() (string, error) {
 }
 
 func (p *Plugin) shouldSendConcurrentSessionsWarning(threshold int64, backoff time.Duration) (bool, error) {
-	// Nothing to do if rtcd is being used.
-	if p.rtcdManager != nil {
-		return false, nil
-	}
-
 	// Get the global number of active call sessions.
 	count, err := p.store.GetTotalActiveSessions()
 	if err != nil {
