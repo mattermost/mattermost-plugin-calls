@@ -4,65 +4,65 @@
 import {EventEmitter} from 'events';
 import {ConnectionState, DisconnectReason, Room, RoomEvent} from 'livekit-client';
 import RestClient from 'src/clients/rest';
-import {RTC_EVENT, RTC_TOKEN_API_PATH} from 'src/constants';
+import {CALL_EVENT, CALL_TOKEN_API_PATH} from 'src/constants';
 import {logDebug, logErr, logInfo} from 'src/log';
 import {getPluginPath} from 'src/utils';
 
-export type RtcTokenResponse = {
+export type CallTokenResponse = {
     token: string;
     url: string;
 };
 
-export async function fetchRtcToken(channelID: string): Promise<RtcTokenResponse> {
-    const url = `${getPluginPath()}/${RTC_TOKEN_API_PATH}?channel_id=${encodeURIComponent(channelID)}`;
-    return RestClient.fetch<RtcTokenResponse>(url, {method: 'GET'});
+export async function fetchCallToken(channelID: string): Promise<CallTokenResponse> {
+    const url = `${getPluginPath()}/${CALL_TOKEN_API_PATH}?channel_id=${encodeURIComponent(channelID)}`;
+    return RestClient.fetch<CallTokenResponse>(url, {method: 'GET'});
 }
 
-export default class RtcClient extends EventEmitter {
+export default class CallClient extends EventEmitter {
     public channelID = '';
     public room: Room | null = null;
     private closed = false;
 
     private handleConnected() {
-        logInfo('rtc client: connected to room');
-        this.emit(RTC_EVENT.CONNECTED);
+        logInfo('call client: connected to room');
+        this.emit(CALL_EVENT.CONNECTED);
     }
 
     private handleConnectionStateChanged(state: ConnectionState) {
-        logDebug('rtc client: connection state changed', state);
+        logDebug('call client: connection state changed', state);
     }
 
     private handleReconnecting() {
-        logInfo('rtc client: reconnecting to room');
-        this.emit(RTC_EVENT.RECONNECTING);
+        logInfo('call client: reconnecting to room');
+        this.emit(CALL_EVENT.RECONNECTING);
     }
 
     private handleReconnected() {
-        logInfo('rtc client: reconnected to room');
-        this.emit(RTC_EVENT.RECONNECTED);
+        logInfo('call client: reconnected to room');
+        this.emit(CALL_EVENT.RECONNECTED);
     }
 
     private handleDisconnected(reason?: DisconnectReason) {
-        logInfo('rtc client: disconnected from room', reason);
-        this.emit(RTC_EVENT.DISCONNECTED, reason);
+        logInfo('call client: disconnected from room', reason);
+        this.emit(CALL_EVENT.DISCONNECTED, reason);
     }
 
     public async connect(channelID: string): Promise<void> {
         if (this.room) {
-            throw new Error('rtc client: room already connected');
+            throw new Error('call client: room already connected');
         }
 
         this.channelID = channelID;
 
-        const response = await fetchRtcToken(channelID);
+        const response = await fetchCallToken(channelID);
 
         const token = response?.token ?? '';
         const url = response?.url ?? '';
         if (!token || !url) {
-            throw new Error('rtc client: either token or url were not received from token API');
+            throw new Error('call client: either token or url were not received from token API');
         }
 
-        logInfo(`rtc client: trying to connect to ${url} for channel ${channelID} with valid token`);
+        logInfo(`call client: trying to connect to ${url} for channel ${channelID} with valid token`);
 
         const room = new Room();
         this.room = room;
@@ -76,9 +76,9 @@ export default class RtcClient extends EventEmitter {
         try {
             await room.connect(url, token);
         } catch (err) {
-            logErr(`rtc client: failed to connect to room ${url}`, err);
+            logErr(`call client: failed to connect to room ${url}`, err);
             this.room = null;
-            this.emit(RTC_EVENT.ERROR, err);
+            this.emit(CALL_EVENT.ERROR, err);
             throw err;
         }
     }
@@ -93,7 +93,7 @@ export default class RtcClient extends EventEmitter {
             try {
                 await this.room.disconnect();
             } catch (err) {
-                logErr('rtc client: error during disconnect', err);
+                logErr('call client: error during disconnect', err);
             } finally {
                 this.room = null;
             }
