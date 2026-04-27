@@ -11,7 +11,7 @@ export type Props = {
     icon: string | React.ReactNode;
     iconFill?: string;
     iconColor?: string;
-    body: string;
+    body: React.ReactNode;
     error?: string;
     header: string;
     leftText?: string;

@@ -41,7 +41,7 @@ export const CallIncoming = ({call}: Props) => {
             <FormattedMessage
                 defaultMessage={'<b>{callerName}</b> is inviting you to a call'}
                 values={{
-                    b: (text: string) => <b>{text}</b>,
+                    b: (text: React.ReactNode) => <b>{text}</b>,
                     callerName,
                 }}
             />
@@ -51,7 +51,7 @@ export const CallIncoming = ({call}: Props) => {
             <FormattedMessage
                 defaultMessage={'<b>{callerName}</b> is inviting you to a call with <b>{others}</b>'}
                 values={{
-                    b: (text: string) => <b>{text}</b>,
+                    b: (text: React.ReactNode) => <b>{text}</b>,
                     callerName,
                     others,
                 }}

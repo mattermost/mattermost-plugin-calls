@@ -74,7 +74,7 @@ const RecordingView = () => {
         }
     }, [screenStream, screenPlayerNode]);
 
-    const screenRefCb = useCallback((node) => {
+    const screenRefCb = useCallback((node: HTMLVideoElement | null) => {
         setScreenPlayerNode(node);
     }, []);
 

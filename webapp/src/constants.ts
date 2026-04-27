@@ -125,11 +125,11 @@ export const STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY = 'calls_experimental_featu
 export const STORAGE_CALLS_MIRROR_VIDEO_KEY = 'calls_mirror_video';
 export const STORAGE_CALLS_BLUR_BACKGROUND_KEY = 'calls_blur_background';
 
-// Plugin Rtc API routes
-export const RTC_TOKEN_API_PATH = 'livekit-token';
+// Plugin call API routes
+export const CALL_TOKEN_API_PATH = 'livekit-token';
 
-// RtcClient emitted public event names
-export const RTC_EVENT = {
+// CallClient emitted public event names
+export const CALL_EVENT = {
     CONNECTED: 'connected',
     DISCONNECTED: 'disconnected',
     RECONNECTING: 'reconnecting',
