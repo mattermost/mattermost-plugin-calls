@@ -89,7 +89,7 @@ export type CallAlertConfig = {
 export type CallAlertState = {
     active: boolean;
     show: boolean;
-    args?: Record<string, string | React.ReactNode>;
+    args?: Record<string, string | React.ReactNode | ((text: React.ReactNode) => React.JSX.Element)>;
 }
 
 export type CallAlertStates = {

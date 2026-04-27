@@ -44,7 +44,7 @@ import {
 import {sendDesktopNotificationToMe} from 'src/webapp_globals';
 
 export const useDismissJoin = (channelID: string, callID: string) => {
-    const store = useStore();
+    const store = useStore<GlobalState>();
     const dispatch = useDispatch();
     const connectedID = useSelector(channelIDForCurrentCall) || '';
     const global = Boolean(isDesktopApp() && getCallsClient());

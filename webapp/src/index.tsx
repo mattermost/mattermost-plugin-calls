@@ -17,7 +17,7 @@ import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import React, {useEffect} from 'react';
-import ReactDOM from 'react-dom';
+import {createRoot, Root} from 'react-dom/client';
 import {FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {AnyAction} from 'redux';
@@ -716,23 +716,27 @@ export default class Plugin {
 
                 const locale = getCurrentUserLocale(state) || 'en';
 
-                ReactDOM.render(
-                    <Provider store={store}>
-                        <IntlProvider
-                            locale={locale}
-                            key={locale}
-                            defaultLocale='en'
-                            messages={getTranslations(locale)}
-                        >
-                            <CallWidget/>
-                        </IntlProvider>
-                    </Provider>,
-                    document.getElementById('calls'),
-                );
+                let callWidgetRoot: Root | null = null;
+                const callsRootEl = document.getElementById('calls');
+                if (callsRootEl) {
+                    callWidgetRoot = createRoot(callsRootEl);
+                    callWidgetRoot.render(
+                        <Provider store={store}>
+                            <IntlProvider
+                                locale={locale}
+                                key={locale}
+                                defaultLocale='en'
+                                messages={getTranslations(locale)}
+                            >
+                                <CallWidget/>
+                            </IntlProvider>
+                        </Provider>,
+                    );
+                }
                 const unmountCallWidget = () => {
-                    const callsRoot = document.getElementById('calls');
-                    if (callsRoot) {
-                        ReactDOM.unmountComponentAtNode(callsRoot);
+                    if (callWidgetRoot) {
+                        callWidgetRoot.unmount();
+                        callWidgetRoot = null;
                     }
                 };
 

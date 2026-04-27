@@ -75,7 +75,7 @@ export const CallErrorModal = (props: Props) => {
                     defaultMessage: 'Check the <troubleShootingLink>troubleshooting section</troubleShootingLink> if the problem persists.',
                 },
                 {
-                    troubleShootingLink: (text: string) => (
+                    troubleShootingLink: (text: React.ReactNode) => (
                         <a
                             href='https://mattermost.com/pl/calls-make-troubleshooting?utm_source=mattermost&utm_medium=in-product&utm_content=calls_error_modal'
                             onClick={onTroubleShootingClick}
@@ -111,7 +111,7 @@ export const CallErrorModal = (props: Props) => {
             <span>
                 {/*@ts-ignore*/}
                 {formatMessage({defaultMessage: 'We couldn\'t join the call because the connection timed out. Please check your network connection and try again.'}, {
-                    joinLink: (text: string) => (
+                    joinLink: (text: React.ReactNode) => (
                         <a
                             href=''
                             onClick={onRejoinClick}
@@ -132,7 +132,7 @@ export const CallErrorModal = (props: Props) => {
             <span>
                 {/*@ts-ignore*/}
                 {formatMessage({defaultMessage: 'There was an error with the connection to the call. Try to <joinLink>re-join</joinLink> the call.'}, {
-                    joinLink: (text: string) => (
+                    joinLink: (text: React.ReactNode) => (
                         <a
                             href=''
                             onClick={onRejoinClick}
