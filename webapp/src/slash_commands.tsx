@@ -20,9 +20,10 @@ import {
     DisabledCallsErr,
     STORAGE_CALLS_CLIENT_STATS_KEY,
 } from 'src/constants';
+import RestClient from 'src/rest_client';
 import {modals} from 'src/webapp_globals';
 
-import {getClientLogs, logDebug} from './log';
+import {flushLogsToAccumulated, getClientLogs, logDebug} from './log';
 import {
     areGroupCallsAllowed,
     channelHasCall,
@@ -32,7 +33,7 @@ import {
     isRecordingInCurrentCall,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
-import {getCallsClient, getCallsWindow, getPersistentStorage, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
+import {getCallsClient, getCallsWindow, getPersistentStorage, getPluginPath, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
 type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string) => void;
 
@@ -175,7 +176,35 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         return {message: `/call stats ${btoa(data)}`, args};
     }
     case 'logs': {
-        return {message: `/call logs ${btoa(getClientLogs())}`, args};
+        // Flush current session first
+        flushLogsToAccumulated();
+
+        // Get all accumulated logs
+        const allLogs = getClientLogs();
+
+        if (!allLogs || allLogs.trim().length === 0) {
+            return {error: {message: 'No call logs available'}};
+        }
+
+        // Generate UTC timestamp for filename
+        const now = new Date();
+        const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5) + 'Z'; // 2026-02-09T14-30-45Z
+        const filename = `call_logs_${timestamp}.txt`;
+
+        try {
+            const response = await RestClient.fetch<{post_id: string}>(
+                `${getPluginPath()}/logs/upload`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify({logs: allLogs, filename}),
+                    headers: {'Content-Type': 'application/json'},
+                },
+            );
+
+            return {message: `/call logs ${btoa(JSON.stringify({post_id: response.post_id}))}`, args};
+        } catch (err) {
+            return {error: {message: `Failed to upload logs: ${(err as Error).message}`}};
+        }
     }
     case 'recording': {
         if (fields.length < 3 || (fields[2] !== 'start' && fields[2] !== 'stop')) {
