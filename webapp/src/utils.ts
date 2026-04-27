@@ -18,7 +18,7 @@ import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-r
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
-import CallClient from 'src/clients/call/call_client';
+import type CallClient from 'src/clients/call';
 import RestClient from 'src/clients/rest';
 import {STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
 import {DesktopMessage} from 'src/types/types';
