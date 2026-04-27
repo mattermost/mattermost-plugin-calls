@@ -4,7 +4,7 @@
 import {Post} from '@mattermost/types/posts';
 import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
-import CallClient from 'src/clients/call/call_client';
+import type CallClient from 'src/clients/call';
 
 import {pluginId} from './manifest';
 import {
