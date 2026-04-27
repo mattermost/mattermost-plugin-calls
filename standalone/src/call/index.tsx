@@ -19,6 +19,7 @@ type ConnectionInfo = {
     channelName: string;
     token: string;
     url: string;
+    skipPreJoin: boolean;
 };
 
 function sendLeave(channelID: string) {
@@ -40,9 +41,9 @@ function App() {
                 return;
             }
             if (ev.data?.type === 'connect') {
-                const {channelID, channelName, token, url} = ev.data;
-                setConnectionInfo({channelID, channelName, token, url});
-                document.title = `Join - ${channelName}`;
+                const {channelID, channelName, token, url, skipPreJoin} = ev.data;
+                setConnectionInfo({channelID, channelName, token, url, skipPreJoin: skipPreJoin || false});
+                document.title = skipPreJoin ? `Call - ${channelName}` : `Join - ${channelName}`;
             }
         };
         bc.onmessage = handler;
@@ -62,6 +63,23 @@ function App() {
             <div style={styles.loading}>
                 <span>{'Connecting...'}</span>
             </div>
+        );
+    }
+
+    // Skip pre-join for phone calls: go directly to active room with mic on, camera off.
+    if (connectionInfo.skipPreJoin) {
+        const phoneCallDefaults: LocalUserChoices = {
+            videoEnabled: false,
+            audioEnabled: true,
+            videoDeviceId: '',
+            audioDeviceId: '',
+            username: '',
+        };
+        return (
+            <ActiveRoom
+                connectionInfo={connectionInfo}
+                userChoices={phoneCallDefaults}
+            />
         );
     }
 

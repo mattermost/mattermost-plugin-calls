@@ -34,6 +34,8 @@ type configuration struct {
 	LiveKitSIPTrunkID string
 	// Inbound telephone number associated with the SIP trunk (e.g., +15551234567).
 	LiveKitSIPPhoneNumber string
+	// SIP outbound trunk ID for outbound calls (e.g., ST_xxx). Empty disables outbound dialing.
+	LiveKitSIPOutboundTrunkID string
 	// Number of digits for generated SIP PINs (4-16, default 9).
 	SIPPINLength *int
 	// Enable guest access via shareable links.
@@ -134,6 +136,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
 	cfg.LiveKitSIPTrunkID = c.LiveKitSIPTrunkID
 	cfg.LiveKitSIPPhoneNumber = c.LiveKitSIPPhoneNumber
+	cfg.LiveKitSIPOutboundTrunkID = c.LiveKitSIPOutboundTrunkID
 	if c.SIPPINLength != nil {
 		cfg.SIPPINLength = model.NewPointer(*c.SIPPINLength)
 	}
@@ -345,6 +348,7 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.LiveKitAPISecret = strings.TrimSpace(cfg.LiveKitAPISecret)
 	cfg.LiveKitSIPTrunkID = strings.TrimSpace(cfg.LiveKitSIPTrunkID)
 	cfg.LiveKitSIPPhoneNumber = strings.TrimSpace(cfg.LiveKitSIPPhoneNumber)
+	cfg.LiveKitSIPOutboundTrunkID = strings.TrimSpace(cfg.LiveKitSIPOutboundTrunkID)
 }
 
 func (p *Plugin) isSingleHandler() bool {

@@ -23,6 +23,7 @@ import {
 import {modals} from 'src/webapp_globals';
 
 import {getClientLogs, logDebug} from './log';
+import RestClient from './rest_client';
 import {
     areGroupCallsAllowed,
     channelHasCall,
@@ -32,9 +33,9 @@ import {
     isRecordingInCurrentCall,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
-import {getCallsClient, getCallsWindow, getPersistentStorage, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
+import {getCallsClient, getCallsWindow, getPersistentStorage, getPluginPath, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
-type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string) => void;
+type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string, skipPreJoin?: boolean) => void;
 
 export default async function slashCommandsHandler(store: Store, joinCall: joinCallFn, message: string, args: CommandArgs) {
     const fullCmd = message.trim();
@@ -160,6 +161,48 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }));
 
         return {};
+    case 'dial': {
+        if (fields.length < 3) {
+            store.dispatch(displayGenericErrorModal(
+                defineMessage({defaultMessage: 'Unable to dial'}),
+                defineMessage({defaultMessage: 'Please provide a phone number. Usage: /call dial [number]'}),
+            ));
+            return {};
+        }
+
+        if (connectedID) {
+            store.dispatch(displayGenericErrorModal(
+                defineMessage({defaultMessage: 'Unable to dial'}),
+                defineMessage({defaultMessage: 'You\'re already connected to a call. Please leave the current call first.'}),
+            ));
+            return {};
+        }
+
+        const phoneNumber = fields.slice(2).join(' ');
+
+        try {
+            // Call the phone-call API which creates the call on the bot DM and dials out.
+            // This is an async call, so joinCall (which opens a popup) will happen after
+            // the await and may be popup-blocked. The user may need to allow popups for
+            // this site, or use the browser's popup-blocked indicator to open it.
+            const resp = await RestClient.fetch<{channel_id: string; call_id: string}>(
+                `${getPluginPath()}/phone-call`,
+                {method: 'post', body: JSON.stringify({number: phoneNumber})},
+            );
+
+            // Join the call on the bot DM channel, skipping pre-join.
+            // NOTE: This may trigger a popup blocker since we're past the user gesture.
+            // The user will see a "popup blocked" indicator and can allow it.
+            await joinCall(resp.channel_id, undefined, undefined, undefined, true);
+        } catch (e) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            store.dispatch(displayGenericErrorModal(
+                defineMessage({defaultMessage: 'Unable to dial'}),
+                {id: 'calls.error.dial_failed', defaultMessage: `Failed to initiate phone call: ${errMsg}`},
+            ));
+        }
+        return {};
+    }
     case 'link':
         break;
     case 'stats': {

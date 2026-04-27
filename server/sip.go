@@ -116,6 +116,50 @@ func (p *Plugin) deleteSIPDispatchRuleByID(ruleID string) {
 
 
 
+// createSIPParticipant dials an outbound phone number and adds the SIP participant to a LiveKit room.
+func (p *Plugin) createSIPParticipant(trunkID, phoneNumber, roomName, displayName string) error {
+	cfg := p.getConfiguration()
+	httpURL := livekitHTTPURL(cfg.LiveKitURL)
+	sipClient := livekit.NewSIPProtobufClient(httpURL, &http.Client{})
+
+	// CreateSIPParticipant requires both SIP and video admin grants.
+	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
+	at.SetSIPGrant(&auth.SIPGrant{Admin: true, Call: true}).
+		SetVideoGrant(&auth.VideoGrant{RoomAdmin: true, RoomCreate: true}).
+		SetValidFor(30 * time.Second)
+	token, err := at.ToJWT()
+	if err != nil {
+		return fmt.Errorf("failed to create SIP token: %w", err)
+	}
+
+	ctx := context.Background()
+	header := http.Header{}
+	header.Set("Authorization", "Bearer "+token)
+	ctx, err = twirp.WithHTTPRequestHeaders(ctx, header)
+	if err != nil {
+		return fmt.Errorf("failed to set twirp headers: %w", err)
+	}
+
+	req := &livekit.CreateSIPParticipantRequest{
+		SipTrunkId:          trunkID,
+		SipCallTo:           phoneNumber,
+		RoomName:            roomName,
+		ParticipantIdentity: "sip:" + phoneNumber,
+		ParticipantName:     displayName,
+		PlayDialtone:        true,
+	}
+
+	resp, err := sipClient.CreateSIPParticipant(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to create SIP participant: %w", err)
+	}
+
+	p.LogDebug("created SIP participant for outbound call",
+		"participantID", resp.ParticipantId, "phoneNumber", phoneNumber, "room", roomName)
+
+	return nil
+}
+
 // reconcileSIPDispatchRules ensures that all active SIP guest links in the DB
 // have corresponding dispatch rules in LiveKit, and removes orphaned rules.
 func (p *Plugin) reconcileSIPDispatchRules() {

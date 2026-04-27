@@ -28,6 +28,7 @@ const (
 	leaveCommandTrigger     = "leave"
 	linkCommandTrigger      = "link"
 	guestLinkCommandTrigger = "guest-link"
+	dialCommandTrigger      = "dial"
 	statsCommandTrigger     = "stats"
 	endCommandTrigger       = "end"
 	logsCommandTrigger      = "logs"
@@ -39,6 +40,7 @@ var subCommands = []string{
 	leaveCommandTrigger,
 	linkCommandTrigger,
 	guestLinkCommandTrigger,
+	dialCommandTrigger,
 	endCommandTrigger,
 	statsCommandTrigger,
 	logsCommandTrigger,
@@ -56,6 +58,9 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	guestLinkCmdData := model.NewAutocompleteData(guestLinkCommandTrigger, "[flags]", "Create or manage guest invite links for the current channel.")
 	guestLinkCmdData.AddTextArgument("[--once] [--expires duration] [--no-start] [--sip] [--list] [--revoke id]", "Flags", "")
 	data.AddCommand(guestLinkCmdData)
+	dialCmdData := model.NewAutocompleteData(dialCommandTrigger, "[phone number]", "Dial an outbound phone number.")
+	dialCmdData.AddTextArgument("[phone number]", "Phone number to dial", "")
+	data.AddCommand(dialCmdData)
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Show client-generated statistics about the call."))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately."))
 	data.AddCommand(model.NewAutocompleteData(logsCommandTrigger, "", "Show client logs."))
@@ -201,6 +206,15 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == endCommandTrigger {
 		return buildCommandResponse(p.handleEndCallCommand())
+	}
+
+	if subCmd == dialCommandTrigger {
+		// The webapp handles this command client-side. If we get here,
+		// it means the webapp didn't intercept it (e.g., mobile client).
+		return &model.CommandResponse{
+			ResponseType: model.CommandResponseTypeEphemeral,
+			Text:         "Outbound dialing is only supported in the web/desktop app.",
+		}, nil
 	}
 
 	for _, cmd := range subCommands {

@@ -172,6 +172,15 @@ func (p *Plugin) handleWebhookParticipantLeft(event *livekit.WebhookEvent) {
 		"identity", identity, "channelID", channelID,
 		"remainingParticipants", room.GetNumParticipants())
 
+	// For outbound phone calls (bot DM channels), end the call when the last
+	// SIP participant hangs up. We use the room's remaining participant count
+	// to determine this: if only 1 remains (the MM user), no SIP participants
+	// are left. This also handles future multi-SIP-participant conferencing.
+	if isSIPParticipant(participant) {
+		remaining := int(room.GetNumParticipants())
+		go p.handleSIPParticipantLeftPhoneCall(channelID, remaining)
+	}
+
 	// If the room is now empty, the room_finished event will handle call cleanup.
 }
 
@@ -232,6 +241,83 @@ func (p *Plugin) handleWebhookRoomFinished(event *livekit.WebhookEvent) {
 			ReliableClusterSend: true,
 		})
 	}
+}
+
+// handleSIPParticipantLeftPhoneCall ends an outbound phone call when the last
+// SIP participant hangs up. It checks whether the channel is a DM with the Calls
+// bot (i.e., a phone call, not a regular channel with SIP dial-in). If so, and
+// no other SIP participants remain, it ends the call and notifies the MM user.
+// remainingParticipants is the room participant count after this participant left.
+func (p *Plugin) handleSIPParticipantLeftPhoneCall(channelID string, remainingParticipants int) {
+	// If more than 1 participant remains, there are still other SIP participants
+	// in the call (the 1 is the MM user). Don't end the call yet.
+	if remainingParticipants > 1 {
+		p.LogDebug("SIP participant left but others remain",
+			"channelID", channelID, "remaining", remainingParticipants)
+		return
+	}
+
+	// Check if this is a bot DM channel (phone call container).
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.LogError("handleSIPParticipantLeftPhoneCall: failed to get channel", "err", appErr.Error())
+		return
+	}
+
+	if channel.Type != model.ChannelTypeDirect {
+		return
+	}
+
+	// Check if the bot is one of the DM members.
+	botID := p.getBotID()
+	if botID == "" {
+		return
+	}
+
+	members, appErr := p.API.GetChannelMembers(channelID, 0, 10)
+	if appErr != nil {
+		p.LogError("handleSIPParticipantLeftPhoneCall: failed to get channel members", "err", appErr.Error())
+		return
+	}
+
+	isBotDM := false
+	for _, m := range members {
+		if m.UserId == botID {
+			isBotDM = true
+			break
+		}
+	}
+
+	if !isBotDM {
+		return
+	}
+
+	p.LogDebug("SIP participant left phone call (bot DM), ending call", "channelID", channelID)
+
+	// End the call.
+	now := time.Now().UnixMilli()
+
+	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
+	if err != nil {
+		p.LogError("handleSIPParticipantLeftPhoneCall: failed to get active call", "err", err.Error())
+		return
+	}
+
+	call.EndAt = now
+	if err := p.store.UpdateCall(call); err != nil {
+		p.LogError("handleSIPParticipantLeftPhoneCall: failed to end call", "err", err.Error())
+		return
+	}
+
+	if _, err := p.updateCallPostEnded(call.PostID, mapKeys(call.Props.Participants)); err != nil {
+		p.LogError("handleSIPParticipantLeftPhoneCall: failed to update call post", "err", err.Error())
+	}
+
+	// Notify clients to disconnect.
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
+		ChannelID:           channelID,
+		ReliableClusterSend: true,
+	})
 }
 
 // isGuestIdentity returns true if the participant identity has a "guest:" prefix.

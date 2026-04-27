@@ -11,7 +11,7 @@ import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import React, {useEffect} from 'react';
-import {FormattedMessage, injectIntl} from 'react-intl';
+import {FormattedMessage, defineMessage, injectIntl} from 'react-intl';
 import {AnyAction} from 'redux';
 import {batchActions} from 'redux-batched-actions';
 import {
@@ -218,7 +218,7 @@ export default class Plugin {
             playSound('leave_self');
         };
 
-        const connectCall = async (channelID: string, title?: string, rootId?: string) => {
+        const connectCall = async (channelID: string, title?: string, rootId?: string, skipPreJoin?: boolean) => {
             try {
                 if (callPopup && !callPopup.closed) {
                     logErr('Call popup is already open');
@@ -269,6 +269,7 @@ export default class Plugin {
                             channelName,
                             token: resp.token,
                             url: resp.url,
+                            skipPreJoin: skipPreJoin || false,
                         });
                     } else if (ev.data?.type === 'leave') {
                         // Popup signaled that the call ended
@@ -296,9 +297,9 @@ export default class Plugin {
             }
         };
 
-        const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
+        const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string, skipPreJoin?: boolean) => {
             if (!channelIDForCurrentCall(store.getState())) {
-                connectCall(channelId, title, rootId);
+                connectCall(channelId, title, rootId, skipPreJoin);
 
                 // following the thread only on join. On call start
                 // this is done in the call_start ws event handler.
@@ -310,7 +311,7 @@ export default class Plugin {
             }
         };
 
-        const joinCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
+        const joinCall = async (channelId: string, teamId?: string, title?: string, rootId?: string, skipPreJoin?: boolean) => {
             const explicitlyEnabled = callsExplicitlyEnabled(store.getState(), channelId);
             const explicitlyDisabled = callsExplicitlyDisabled(store.getState(), channelId);
 
@@ -323,7 +324,7 @@ export default class Plugin {
                     return;
                 }
 
-                await connectToCall(channelId, teamId, title, rootId);
+                await connectToCall(channelId, teamId, title, rootId, skipPreJoin);
                 return;
             }
 
@@ -333,11 +334,53 @@ export default class Plugin {
 
             // We are in TestMode (DefaultEnabled=false)
             if (isCurrentUserSystemAdmin(store.getState())) {
-                await connectToCall(channelId, teamId, title, rootId);
+                await connectToCall(channelId, teamId, title, rootId, skipPreJoin);
             } else {
                 store.dispatch(displayCallsTestModeUser());
             }
         };
+
+        // Intercept tel: links to make outbound calls via the plugin
+        // instead of letting the OS handle them.
+        const dialPhoneNumber = async (number: string) => {
+            const connectedID = channelIDForCurrentCall(store.getState());
+            if (connectedID) {
+                store.dispatch(displayGenericErrorModal(
+                    defineMessage({defaultMessage: 'Unable to dial'}),
+                    defineMessage({defaultMessage: 'You\'re already connected to a call. Please leave the current call first.'}),
+                ));
+                return;
+            }
+
+            try {
+                const resp = await RestClient.fetch<{channel_id: string}>(
+                    `${getPluginPath()}/phone-call`,
+                    {method: 'post', body: JSON.stringify({number})},
+                );
+                await joinCall(resp.channel_id, undefined, undefined, undefined, true);
+            } catch (e) {
+                const errMsg = e instanceof Error ? e.message : String(e);
+                store.dispatch(displayGenericErrorModal(
+                    defineMessage({defaultMessage: 'Unable to dial'}),
+                    {id: 'calls.error.dial_failed', defaultMessage: `Failed to initiate phone call: ${errMsg}`},
+                ));
+            }
+        };
+
+        const telLinkHandler = (e: MouseEvent) => {
+            const link = (e.target as HTMLElement).closest?.('a[href^="tel:"]');
+            if (link) {
+                e.preventDefault();
+                e.stopPropagation();
+                const href = link.getAttribute('href');
+                const number = href?.replace('tel:', '');
+                if (number) {
+                    dialPhoneNumber(number);
+                }
+            }
+        };
+        document.addEventListener('click', telLinkHandler, true);
+        this.unsubscribers.push(() => document.removeEventListener('click', telLinkHandler, true));
 
         let channelHeaderMenuButtonID: string;
         const unregisterChannelHeaderMenuButton = () => {

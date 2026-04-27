@@ -106,6 +106,13 @@
         "type": "number",
         "default": 9,
         "help_text": "Number of digits for generated SIP PINs (4-16). Use 4 for testing, 9 for production."
+      },
+      {
+        "key": "LiveKitSIPOutboundTrunkID",
+        "display_name": "SIP Outbound Trunk ID",
+        "type": "text",
+        "default": "",
+        "help_text": "LiveKit outbound SIP trunk ID (e.g., ST_xxx). The trunk is created in LiveKit (via CLI or Cloud dashboard) with the SIP provider address and credentials. Leave empty to disable outbound dialing."
       }
     ]
   }

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -494,6 +495,74 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	p.apiRouter.ServeHTTP(w, r)
 }
 
+func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handlePhoneCall", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	var req struct {
+		Number string `json:"number"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&req); err != nil {
+		res.Err = "invalid request body"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	// Normalize the phone number: strip everything except digits and leading +.
+	number := normalizePhoneNumber(req.Number)
+
+	if number == "" {
+		res.Err = "number is required"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	// Check that outbound dialing is configured.
+	cfg := p.getConfiguration()
+	trunkID := cfg.LiveKitSIPOutboundTrunkID
+
+	if trunkID == "" {
+		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in admin console."
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	// Find or create DM channel between user and Calls bot.
+	botID := p.getBotID()
+	if botID == "" {
+		res.Err = "bot not initialized"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	dmChannel, appErr := p.API.GetDirectChannel(userID, botID)
+	if appErr != nil {
+		res.Err = fmt.Errorf("failed to get/create bot DM channel: %w", appErr).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	channelID := dmChannel.Id
+
+	// Dial the outbound number via SIP. LiveKit auto-creates the room on demand,
+	// so we don't need to wait for the user's join flow to create it first.
+	go func() {
+		if err := p.createSIPParticipant(trunkID, number, channelID, req.Number); err != nil {
+			p.LogError("handlePhoneCall: failed to create SIP participant",
+				"err", err.Error(), "number", number, "channelID", channelID)
+		}
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"channel_id": channelID,
+	}); err != nil {
+		p.LogError(err.Error())
+	}
+}
+
 func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 	stats, err := p.store.GetCallsStats()
 	if err != nil {
@@ -506,4 +575,35 @@ func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 	}
 
 	return nil
+}
+
+// normalizePhoneNumber strips formatting from a phone number, keeping only
+// digits and a leading '+'. Examples:
+//
+//	"1-781-307-8753"    -> "17813078753"
+//	"+1 (555) 123-4567" -> "+15551234567"
+//	"tel:+17813078753"  -> "+17813078753"
+func normalizePhoneNumber(raw string) string {
+	// Strip tel: prefix if present.
+	s := strings.TrimPrefix(raw, "tel:")
+	s = strings.TrimSpace(s)
+
+	var result []byte
+	for i, c := range s {
+		if c == '+' && i == 0 {
+			result = append(result, '+')
+		} else if c >= '0' && c <= '9' {
+			result = append(result, byte(c))
+		}
+	}
+
+	num := string(result)
+
+	// If the number has no '+' prefix and is long enough to be an international
+	// number (>= 10 digits), prepend '+' for E.164 format.
+	if len(num) >= 10 && num[0] != '+' {
+		num = "+" + num
+	}
+
+	return num
 }
