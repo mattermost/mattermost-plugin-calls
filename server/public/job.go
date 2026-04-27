@@ -117,7 +117,7 @@ func (i TranscribingJobInfo) IsValid() error {
 
 func (t Transcription) IsValid() error {
 	if t.Language == "" {
-		return fmt.Errorf("Language should not be empty")
+		return fmt.Errorf("language should not be empty")
 	}
 
 	if len(t.FileIDs) < 2 {

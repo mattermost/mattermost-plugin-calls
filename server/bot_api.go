@@ -483,7 +483,8 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if status.Status == public.JobStatusTypeFailed {
+	switch status.Status {
+	case public.JobStatusTypeFailed:
 		p.LogDebug("job has failed", "jobID", jobID, "jobType", status.JobType)
 		jb.EndAt = time.Now().UnixMilli()
 		jb.Props.Err = status.Error
@@ -497,7 +498,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 				p.LogError("failed to stop recording job", "callID", callID, "err", err.Error())
 			}
 		}
-	} else if status.Status == public.JobStatusTypeStarted {
+	case public.JobStatusTypeStarted:
 		if jb.StartAt > 0 {
 			res.Err = "job has already started"
 			res.Code = http.StatusBadRequest
@@ -517,7 +518,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 				return
 			}
 		}
-	} else {
+	default:
 		res.Err = "unsupported status type"
 		res.Code = http.StatusBadRequest
 		return

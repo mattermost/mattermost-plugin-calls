@@ -432,21 +432,6 @@ THE SOFTWARE.
 
 ---
 
-## css-vars-ponyfill
-
-This product contains 'css-vars-ponyfill' by John Hildenbiddle.
-
-Client-side support for CSS custom properties (aka "CSS variables") in legacy and modern browsers
-
-* HOMEPAGE:
-  * https://jhildenbiddle.github.io/css-vars-ponyfill/
-
-* LICENSE: MIT
-
-
-
----
-
 ## emoji-picker-react
 
 This product contains 'emoji-picker-react' by ealush.
@@ -8081,7 +8066,7 @@ SOFTWARE.
 
 This product contains 'styled-components' by Glen Maddern.
 
-CSS for the <Component> Age. Style components your way with speed, strong typing, and flexibility.
+Fast, expressive styling for React.
 
 * HOMEPAGE:
   * https://styled-components.com
@@ -8117,7 +8102,7 @@ SOFTWARE.
 
 This product contains 'styled-components' by Glen Maddern.
 
-CSS for the <Component> Age. Style components your way with speed, strong typing, and flexibility.
+Fast, expressive styling for React.
 
 * HOMEPAGE:
   * https://styled-components.com

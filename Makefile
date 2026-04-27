@@ -197,8 +197,8 @@ ifneq ($(HAS_SERVER),)
 	fi; \
 
 	@echo Running golangci-lint
-	golangci-lint run ./server/...
-	cd server/public && golangci-lint run ./...
+	golangci-lint run --timeout 5m ./server/...
+	cd server/public && golangci-lint run --timeout 5m ./...
 
 	$(GO) install github.com/mattermost/mattermost-govet/v2@3f08281c344327ac09364f196b15f9a81c7eff08
 	$(GO) vet -vettool=$(GOBIN)/mattermost-govet -license -license.year=2020 ./server/...
@@ -419,7 +419,7 @@ ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./server/... ./server/public/... $(COVERAGE_FLAG)
 endif
 ifneq ($(HAS_WEBAPP),)
-	cd webapp && $(NPM) run test;
+	cd webapp && $(NPM) run test-ci;
 endif
 else
 test: setup-go-work apply webapp/node_modules standalone/node_modules gotestsum
@@ -497,7 +497,10 @@ endif
 ifneq ($(HAS_WEBAPP),)
 	rm -fr webapp/junit.xml
 	rm -fr webapp/dist
+	rm -fr webapp/coverage
 	rm -fr webapp/node_modules
+	rm -fr webapp/.eslintcache
+	rm -fr standalone/.eslintcache
 	rm -fr standalone/dist
 	rm -fr standalone/node_modules
 	rm -fr e2e/node_modules
