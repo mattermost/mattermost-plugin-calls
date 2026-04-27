@@ -499,9 +499,13 @@ ifneq ($(HAS_WEBAPP),)
 	rm -fr webapp/dist
 	rm -fr webapp/coverage
 	rm -fr webapp/node_modules
+	rm -fr webapp/.eslintcache
+	rm -fr webapp/mattermost-webapp
+	rm -fr standalone/.eslintcache
 	rm -fr standalone/dist
 	rm -fr standalone/node_modules
 	rm -fr e2e/node_modules
+	rm -fr e2e/.eslintcache
 endif
 	rm -fr build/bin/
 	rm -fr e2e/tests-results/

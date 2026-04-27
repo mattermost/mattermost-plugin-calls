@@ -18,8 +18,6 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
-	"github.com/mattermost/rtcd/service/rtc"
-
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
@@ -34,10 +32,8 @@ func (p *Plugin) handleGetVersion(w http.ResponseWriter, _ *http.Request) {
 	defer p.mut.RUnlock()
 
 	info := public.VersionInfo{
-		Version:     manifest.Version,
-		Build:       buildHash,
-		RTCDVersion: p.rtcdVersionInfo.BuildVersion,
-		RTCDBuild:   p.rtcdVersionInfo.BuildHash,
+		Version: manifest.Version,
+		Build:   buildHash,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -449,44 +445,6 @@ func (p *Plugin) handlePostCallsChannel(w http.ResponseWriter, r *http.Request) 
 	}
 
 	p.publishWebSocketEvent(evType, nil, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
-}
-
-func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request) {
-	var res httpResponse
-	defer p.httpAudit("handleGetTURNCredentials", &res, w, r)
-
-	cfg := p.getConfiguration()
-	if cfg.TURNStaticAuthSecret == "" {
-		res.Err = "TURNStaticAuthSecret should be set"
-		res.Code = http.StatusForbidden
-		return
-	}
-
-	turnServers := cfg.ICEServersConfigs.getTURNConfigsForCredentials()
-	if len(turnServers) == 0 {
-		res.Err = "No TURN server was configured"
-		res.Code = http.StatusForbidden
-		return
-	}
-
-	user, appErr := p.API.GetUser(r.Header.Get("Mattermost-User-Id"))
-	if appErr != nil {
-		res.Err = appErr.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
-	configs, err := rtc.GenTURNConfigs(turnServers, user.Username, cfg.TURNStaticAuthSecret, *cfg.TURNCredentialsExpirationMinutes)
-	if err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(configs); err != nil {
-		p.LogError(err.Error())
-	}
 }
 
 func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {

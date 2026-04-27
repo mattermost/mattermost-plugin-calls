@@ -148,9 +148,6 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	botRouter.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/transcriptions", p.handleBotPostTranscriptions).Methods("POST")
 	botRouter.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/jobs/{job_id:[a-z0-9]{26}}/status", p.handleBotPostJobsStatus).Methods("POST")
 
-	// TURN
-	router.HandleFunc("/turn-credentials", p.handleGetTURNCredentials).Methods("GET")
-
 	// LiveKit
 	router.HandleFunc("/livekit-token", p.handleGetLiveKitToken).Methods("GET")
 

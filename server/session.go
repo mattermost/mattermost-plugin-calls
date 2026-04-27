@@ -46,7 +46,6 @@ type session struct {
 
 	// to notify of rtc session disconnect.
 	rtcCloseCh chan struct{}
-	rtcClosed  int32
 	// rtc indicates whether or not the session is also handling the WebRTC
 	// connection.
 	rtc bool
@@ -129,15 +128,6 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 				},
 			},
 			sessions: map[string]*public.CallSession{},
-		}
-
-		if p.rtcdManager != nil {
-			host, err := p.rtcdManager.GetHostForNewCall()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get rtcd host: %w", err)
-			}
-			p.LogDebug("rtcd host has been assigned to call", "host", host)
-			state.Call.Props.RTCDHost = host
 		}
 	}
 

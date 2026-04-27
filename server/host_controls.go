@@ -259,7 +259,7 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 			return
 		}
 
-		if err := p.closeRTCSession(ust.UserID, sessionID, channelID, state.Call.Props.NodeID, state.Call.ID); err != nil {
+		if err := p.closeRTCSession(ust.UserID, sessionID, channelID); err != nil {
 			p.LogError("hostRemoveSession: failed to close RTC session", "err", err.Error())
 		}
 	}()
@@ -288,7 +288,6 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 
 	callID := state.Call.ID
-	nodeID := state.Call.Props.NodeID
 
 	go func() {
 		// We wait a few seconds for the call to end cleanly. If this doesn't
@@ -306,7 +305,7 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 		}
 
 		for _, session := range sessions {
-			if err := p.closeRTCSession(session.UserID, session.ID, channelID, nodeID, callID); err != nil {
+			if err := p.closeRTCSession(session.UserID, session.ID, channelID); err != nil {
 				p.LogError(err.Error())
 			}
 		}
