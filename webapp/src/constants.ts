@@ -124,3 +124,15 @@ export const STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY = 'calls_default_video_input'
 export const STORAGE_CALLS_EXPERIMENTAL_FEATURES_KEY = 'calls_experimental_features';
 export const STORAGE_CALLS_MIRROR_VIDEO_KEY = 'calls_mirror_video';
 export const STORAGE_CALLS_BLUR_BACKGROUND_KEY = 'calls_blur_background';
+
+// Plugin call API routes
+export const CALL_TOKEN_API_PATH = 'livekit-token';
+
+// CallClient emitted public event names
+export const CALL_EVENT = {
+    CONNECTED: 'connected',
+    DISCONNECTED: 'disconnected',
+    RECONNECTING: 'reconnecting',
+    RECONNECTED: 'reconnected',
+    ERROR: 'error',
+} as const;
