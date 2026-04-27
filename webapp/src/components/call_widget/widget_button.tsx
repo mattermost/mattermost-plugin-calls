@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {CSSProperties, useRef, useState} from 'react';
-import {Overlay} from 'react-bootstrap';
+import {Overlay, OverlayProps} from 'react-bootstrap';
 import {StyledTooltip} from 'src/components/shared';
 import Shortcut from 'src/components/shortcut';
 import styled, {css} from 'styled-components';
@@ -16,7 +16,7 @@ export type Props = {
     bgColorHover?: string,
     tooltipText?: string,
     tooltipSubtext?: string,
-    tooltipPosition?: string,
+    tooltipPosition?: OverlayProps['placement'],
     onToggle?: () => void,
     unavailable?: boolean,
     disabled?: boolean,

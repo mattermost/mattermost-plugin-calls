@@ -78,7 +78,7 @@ export default function CallRecordingsSection(props: {settingsList: React.ReactN
                                 <FormattedMessage
                                     defaultMessage={'Allow call hosts to record meeting video and audio in the cloud. Recording include the entire call window view along with participants\' audio track and any shared screen video. <featureLink>Learn more about this feature</featureLink>.'}
                                     values={{
-                                        featureLink: (text: string) => (
+                                        featureLink: (text: React.ReactNode) => (
                                             <a
                                                 href='https://mattermost.com/pl/calls-deployment-recordings?utm_source=mattermost&utm_medium=in-product&utm_content=calls_recordings_feature_discovery'
                                                 target='_blank'
@@ -101,8 +101,8 @@ export default function CallRecordingsSection(props: {settingsList: React.ReactN
                                     <FormattedMessage
                                         defaultMessage={'By selecting <b>Try free for 30 days</b>, I agree to the <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>Privacy Policy</linkPrivacy>, and receiving product emails.'}
                                         values={{
-                                            b: (text: string) => <b>{text}</b>,
-                                            linkEvaluation: (text: string) => (
+                                            b: (text: React.ReactNode) => <b>{text}</b>,
+                                            linkEvaluation: (text: React.ReactNode) => (
                                                 <a
                                                     href='https://mattermost.com/software-evaluation-agreement'
                                                     target='_blank'
@@ -111,7 +111,7 @@ export default function CallRecordingsSection(props: {settingsList: React.ReactN
                                                     {text}
                                                 </a>
                                             ),
-                                            linkPrivacy: (text: string) => (
+                                            linkPrivacy: (text: React.ReactNode) => (
                                                 <a
                                                     href='https://mattermost.com/privacy-policy/'
                                                     target='_blank'
