@@ -4,7 +4,7 @@
 import {Post} from '@mattermost/types/posts';
 import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
-import CallsClient from 'src/clients/calls';
+import CallClient from 'src/clients/call/call_client';
 
 import {pluginId} from './manifest';
 import {
@@ -525,7 +525,7 @@ describe('utils', () => {
         test('window.callsClient defined', () => {
             window.callsClient = {
                 channelID: 'channelID',
-            } as CallsClient;
+            } as CallClient;
             const callsClient = getCallsClient();
             expect(callsClient).toEqual(window.callsClient);
         });
@@ -534,7 +534,7 @@ describe('utils', () => {
             global.window.opener = {
                 callsClient: {
                     channelID: 'channelID',
-                } as CallsClient,
+                } as CallClient,
             };
             const callsClient = getCallsClient();
             expect(callsClient).toEqual(window.opener.callsClient);

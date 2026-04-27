@@ -3,19 +3,16 @@
 
 /* eslint-disable max-lines */
 import {CallChannelState} from '@mattermost/calls-common/lib/types';
-import {hasDCSignalingLockSupport} from '@mattermost/calls-common/lib/utils';
 import WebSocketClient from '@mattermost/client/websocket';
-import type {DesktopAPI} from '@mattermost/desktop-api';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
+import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
-import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import React, {useEffect} from 'react';
 import ReactDOM from 'react-dom';
 import {FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
@@ -40,7 +37,7 @@ import {
     showSwitchCallModal,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import CallsClient from 'src/clients/calls';
+import CallClient from 'src/clients/call';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
@@ -104,7 +101,7 @@ import VideoDevicesSettingsSection from 'src/components/user_settings/video_devi
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
-import {CallActions, CurrentCallData, CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
+import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
 
 import {
@@ -116,8 +113,6 @@ import {
     USER_MUTED,
     USER_RAISE_HAND,
     USER_UNMUTED,
-    USER_VIDEO_OFF,
-    USER_VIDEO_ON,
     USERS_STATES,
 } from './action_types';
 import CallWidget from './components/call_widget';
@@ -143,7 +138,6 @@ import {
     callsExplicitlyDisabled,
     callsExplicitlyEnabled,
     callStartAtForCallInChannel,
-    callsVersionInfo,
     channelHasCall,
     channelIDForCurrentCall,
     defaultEnabled,
@@ -157,7 +151,7 @@ import {
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {convertStatsToPanels} from './stats';
-import {DesktopNotificationArgs, PluginRegistry, Store, WebAppUtils} from './types/mattermost-webapp';
+import {PluginRegistry, Store} from './types/mattermost-webapp';
 import {
     followThread,
     getCallsClient,
@@ -166,9 +160,7 @@ import {
     getSessionsMapFromSessions,
     getTranslations,
     getUserIDsForSessions,
-    getWSConnectionURL,
     isCallsPopOut,
-    isDMChannel,
     playSound,
     sendDesktopEvent,
     setCallsGlobalCSSVars,
@@ -703,15 +695,7 @@ export default class Plugin {
                     }
                 }
 
-                window.callsClient = new CallsClient({
-                    wsURL: getWSConnectionURL(getConfig(state)),
-                    iceServers: iceConfigs,
-                    simulcast: callsConfig(state).EnableSimulcast,
-                    enableAV1: callsConfig(state).EnableAV1,
-                    dcSignaling: callsConfig(state).EnableDCSignaling,
-                    dcLocking: hasDCSignalingLockSupport(callsVersionInfo(state)),
-                    enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
-                });
+                window.callsClient = new CallClient();
                 window.currentCallData = CurrentCallDataDefault;
 
                 const locale = getCurrentUserLocale(state) || 'en';
@@ -804,28 +788,6 @@ export default class Plugin {
                 window.callsClient.on('lower_hand', () => {
                     store.dispatch({
                         type: USER_LOWER_HAND,
-                        data: {
-                            channelID: window.callsClient?.channelID,
-                            userID: getCurrentUserId(store.getState()),
-                            session_id: window.callsClient?.getSessionID(),
-                        },
-                    });
-                });
-
-                window.callsClient.on('video_on', () => {
-                    store.dispatch({
-                        type: USER_VIDEO_ON,
-                        data: {
-                            channelID: window.callsClient?.channelID,
-                            userID: getCurrentUserId(store.getState()),
-                            session_id: window.callsClient?.getSessionID(),
-                        },
-                    });
-                });
-
-                window.callsClient.on('video_off', () => {
-                    store.dispatch({
-                        type: USER_VIDEO_OFF,
                         data: {
                             channelID: window.callsClient?.channelID,
                             userID: getCurrentUserId(store.getState()),
@@ -1156,55 +1118,6 @@ export default class Plugin {
             unsubscribe();
         });
         this.unsubscribers = [];
-    }
-}
-
-declare global {
-    interface Window {
-        registerPlugin(id: string, plugin: Plugin): void,
-
-        callsClient?: CallsClient,
-        webkitAudioContext: AudioContext,
-        basename: string,
-
-        desktop?: {
-            version?: string | null;
-        },
-        desktopAPI?: DesktopAPI;
-        screenSharingTrackId: string,
-        currentCallData?: CurrentCallData,
-        callActions?: CallActions,
-        e2eDesktopNotificationsRejected?: DesktopNotificationArgs[],
-        e2eDesktopNotificationsSent?: string[],
-        e2eNotificationsSoundedAt?: number[],
-        e2eNotificationsSoundStoppedAt?: number[],
-        e2eRingLength?: number,
-        WebappUtils: WebAppUtils,
-
-        ProductApi: {
-            useWebSocketClient: () => WebSocketClient,
-            WebSocketProvider: React.Context<WebSocketClient>,
-            selectRhsPost: (postId: string) => ActionFuncAsync,
-        };
-    }
-
-    interface HTMLVideoElement {
-        webkitRequestFullscreen: () => void,
-        msRequestFullscreen: () => void,
-        mozRequestFullscreen: () => void,
-    }
-
-    interface CanvasRenderingContext2D {
-        webkitBackingStorePixelRatio: number,
-        mozBackingStorePixelRatio: number,
-        msBackingStorePixelRatio: number,
-        oBackingStorePixelRatio: number,
-        backingStorePixelRatio: number,
-    }
-
-    // fix for a type problem in webapp as of 6dcac2
-    type DeepPartial<T> = {
-        [P in keyof T]?: DeepPartial<T[P]>;
     }
 }
 

@@ -5,7 +5,7 @@ import {DisconnectReason, RoomEvent} from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {RTC_EVENT} from 'src/constants';
 
-import RtcClient from './index';
+import CallClient from './call_client';
 
 jest.mock('src/clients/rest', () => ({
     __esModule: true,
@@ -55,13 +55,12 @@ jest.mock('livekit-client', () => {
 
 const mockedFetch = RestClient.fetch as jest.Mock;
 
-describe('RtcClient', () => {
-    let client: RtcClient;
+describe('CallClient', () => {
+    let client: CallClient;
 
     beforeEach(() => {
         mockedFetch.mockResolvedValue({token: 'jwt', url: 'ws://localhost:7880'});
-        client = new RtcClient();
-        client.emit = jest.fn();
+        client = new CallClient();
     });
 
     describe('connect', () => {
@@ -76,35 +75,56 @@ describe('RtcClient', () => {
 
         it('throws if already connected', async () => {
             await client.connect('channel-1');
-            await expect(client.connect('channel-2')).rejects.toThrow('rtc client: room already connected');
+            await expect(client.connect('channel-2')).rejects.toThrow('call client: room already connected');
         });
 
-        it('emits CONNECTED when the room fires RoomEvent.Connected', async () => {
+        it('emits CONNECTED and stamps initTime on RoomEvent.Connected', async () => {
+            const listener = jest.fn();
+            client.on(RTC_EVENT.CONNECTED, listener);
+
             await client.connect('channel-1');
+            const before = Date.now();
             client.room!.emit(RoomEvent.Connected);
-            expect(client.emit).toHaveBeenCalledWith(RTC_EVENT.CONNECTED);
+
+            expect(listener).toHaveBeenCalledTimes(1);
+            expect(client.initTime).toBeGreaterThanOrEqual(before);
         });
 
-        it('emits DISCONNECTED with reason when the room fires RoomEvent.Disconnected', async () => {
-            const reason = DisconnectReason.SERVER_SHUTDOWN;
+        it('emits DISCONNECTED with reason on RoomEvent.Disconnected', async () => {
+            const listener = jest.fn();
+            client.on(RTC_EVENT.DISCONNECTED, listener);
+
             await client.connect('channel-1');
+            const reason = DisconnectReason.SERVER_SHUTDOWN;
             client.room!.emit(RoomEvent.Disconnected, reason);
-            expect(client.emit).toHaveBeenCalledWith(RTC_EVENT.DISCONNECTED, reason);
+
+            expect(listener).toHaveBeenCalledWith(reason);
         });
 
-        it('emits RECONNECTING when the room fires RoomEvent.Reconnecting', async () => {
+        it('emits RECONNECTING on RoomEvent.Reconnecting', async () => {
+            const listener = jest.fn();
+            client.on(RTC_EVENT.RECONNECTING, listener);
+
             await client.connect('channel-1');
             client.room!.emit(RoomEvent.Reconnecting);
-            expect(client.emit).toHaveBeenCalledWith(RTC_EVENT.RECONNECTING);
+
+            expect(listener).toHaveBeenCalledTimes(1);
         });
 
-        it('emits RECONNECTED when the room fires RoomEvent.Reconnected', async () => {
+        it('emits RECONNECTED on RoomEvent.Reconnected', async () => {
+            const listener = jest.fn();
+            client.on(RTC_EVENT.RECONNECTED, listener);
+
             await client.connect('channel-1');
             client.room!.emit(RoomEvent.Reconnected);
-            expect(client.emit).toHaveBeenCalledWith(RTC_EVENT.RECONNECTED);
+
+            expect(listener).toHaveBeenCalledTimes(1);
         });
 
         it('emits ERROR and clears room when room.connect rejects', async () => {
+            const listener = jest.fn();
+            client.on(RTC_EVENT.ERROR, listener);
+
             const failure = new Error('connection refused');
 
             // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -112,7 +132,7 @@ describe('RtcClient', () => {
             (Room.prototype.connect as jest.Mock).mockRejectedValueOnce(failure);
 
             await expect(client.connect('channel-1')).rejects.toThrow('connection refused');
-            expect(client.emit).toHaveBeenCalledWith(RTC_EVENT.ERROR, failure);
+            expect(listener).toHaveBeenCalledWith(failure);
             expect(client.room).toBeNull();
         });
     });
@@ -144,6 +164,18 @@ describe('RtcClient', () => {
 
             await expect(client.disconnect()).resolves.toBeUndefined();
             expect(client.room).toBeNull();
+        });
+
+        it('emits ERROR when given an error before tearing down', async () => {
+            const listener = jest.fn();
+            client.on(RTC_EVENT.ERROR, listener);
+
+            await client.connect('channel-1');
+            const err = new Error('removed-by-host');
+
+            await client.disconnect(err);
+
+            expect(listener).toHaveBeenCalledWith(err);
         });
 
         it('is a no-op when never connected', async () => {
