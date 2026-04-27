@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-/* eslint-disable-file max-lines */
+/* eslint-disable max-lines */
 
 import {mosThreshold} from '@mattermost/calls-common';
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
@@ -173,6 +173,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private callQualityBannerLocked = false;
 
     static contextType = window.ProductApi.WebSocketProvider;
+    declare context: React.ContextType<typeof window.ProductApi.WebSocketProvider>;
 
     #unlockNavigation?: () => void;
 
@@ -642,7 +643,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return;
         }
 
-        if (this.context?.conn?.readyState === WebSocket.OPEN) {
+        // TODO: remove this type casting once MM repo make conn property not private
+        if ((this.context as unknown as {conn?: WebSocket})?.conn?.readyState === WebSocket.OPEN) {
             this.requestCallState();
         } else {
             logDebug('ws not connected still, adding listener');
@@ -675,7 +677,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             show: true,
                             args: {
                                 deviceLabel: device.label,
-                                i: (text: string) => <i>{text}</i>,
+                                i: (text: React.ReactNode) => <i>{text}</i>,
                             },
                         },
                     },
@@ -689,7 +691,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             show: true,
                             args: {
                                 deviceLabel: device.label,
-                                i: (text: string) => <i>{text}</i>,
+                                i: (text: React.ReactNode) => <i>{text}</i>,
                             },
                         },
                     },
