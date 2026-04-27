@@ -11,8 +11,6 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
-	"github.com/mattermost/mattermost/server/public/model"
-
 	sq "github.com/mattermost/squirrel"
 )
 
@@ -275,36 +273,4 @@ func (s *Store) GetAllActiveCalls(opts GetCallOpts) ([]*public.Call, error) {
 	}
 
 	return calls, nil
-}
-
-func (s *Store) GetRTCDHostForCall(callID string, opts GetCallOpts) (string, error) {
-	s.metrics.IncStoreOp("GetRTCDHostForCall")
-	defer func(start time.Time) {
-		s.metrics.ObserveStoreMethodsTime("GetRTCDHostForCall", time.Since(start).Seconds())
-	}(time.Now())
-
-	selectProp := "COALESCE(props->>'rtcd_host', '')"
-	if s.driverName == model.DatabaseDriverMysql {
-		selectProp = `COALESCE(Props->>"$.rtcd_host", '')`
-	}
-
-	qb := getQueryBuilder(s.driverName).Select(selectProp).
-		From("calls").
-		Where(sq.Eq{"ID": callID}).OrderBy("StartAt DESC, ID").Limit(1)
-
-	q, args, err := qb.ToSql()
-	if err != nil {
-		return "", fmt.Errorf("failed to prepare query: %w", err)
-	}
-
-	var rtcdHost string
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
-	defer cancel()
-	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &rtcdHost, q, args...); err == sql.ErrNoRows {
-		return "", fmt.Errorf("call %w", ErrNotFound)
-	} else if err != nil {
-		return "", fmt.Errorf("failed to get rtcdHost for call: %w", err)
-	}
-
-	return rtcdHost, nil
 }

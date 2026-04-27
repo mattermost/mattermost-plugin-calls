@@ -36,11 +36,6 @@ func (e *LicenseChecker) isAtLeastProfessionalLicensed() bool {
 	return license.IsMinimumProfessionalLicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
 }
 
-// RTCDAllowed returns true if the license allows use of an external rtcd service.
-func (e *LicenseChecker) RTCDAllowed() bool {
-	return e.isAtLeastEnterpriseLicensed() || license.IsCloud(e.api.GetLicense())
-}
-
 // RecordingsAllowed returns true if the license allows use of
 // the call recordings functionality.
 func (e *LicenseChecker) RecordingsAllowed() bool {

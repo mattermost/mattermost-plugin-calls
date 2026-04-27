@@ -25,8 +25,6 @@ const (
 	wsEventUserLeft                  = "user_left"
 	wsEventUserMuted                 = "user_muted"
 	wsEventUserUnmuted               = "user_unmuted"
-	wsEventUserVoiceOn               = "user_voice_on"
-	wsEventUserVoiceOff              = "user_voice_off"
 	wsEventUserScreenOn              = "user_screen_on"
 	wsEventUserScreenOff             = "user_screen_off"
 	wsEventUserVideoOn               = "user_video_on"
@@ -421,8 +419,6 @@ func (p *Plugin) wsReader(us *session, authSessionID string) {
 			return
 		case <-us.wsCloseCh:
 			return
-		case <-us.rtcCloseCh:
-			return
 		case <-sessionAuthTicker.C:
 			// Server versions prior to MM v9.5 won't have the session ID set so we
 			// cannot go ahead with this check.
@@ -598,13 +594,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			"remoteAddr", joinData.remoteAddr, "xForwardedFor", joinData.xff,
 		)
 
-		us := newUserSession(userID, channelID, connID, state.Call.ID, false)
+		us := newUserSession(userID, channelID, connID, state.Call.ID)
 		p.mut.Lock()
 		p.sessions[connID] = us
 		p.mut.Unlock()
-
-		// LiveKit handles media sessions directly — no RTC initialization needed.
-		// The client will connect to LiveKit using the token from the /livekit-token endpoint.
 
 		if ok, err := p.shouldSendConcurrentSessionsWarning(getConcurrentSessionsThreshold(),
 			getConcurrentSessionsWarningBackoffTime()); err != nil {
@@ -793,7 +786,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		}
 	}
 
-	us = newUserSession(userID, channelID, connID, state.Call.ID, false)
+	us = newUserSession(userID, channelID, connID, state.Call.ID)
 	us.originalConnID = originalConnID
 	if p.sessions[originalConnID] != nil {
 		// We need to ensure to clear the original session to avoid potentially tracking it twice in case the ID has changed.
@@ -1154,7 +1147,7 @@ func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, t
 	return nil
 }
 
-func (p *Plugin) handleMetricMessage(metricName public.MetricName, userID string, payload any) error {
+func (p *Plugin) handleMetricMessage(metricName public.MetricName, userID string, _ any) error {
 	// Bot only metrics
 	if userID == p.getBotID() {
 		switch metricName {
@@ -1165,29 +1158,6 @@ func (p *Plugin) handleMetricMessage(metricName public.MetricName, userID string
 		case public.MetricLiveCaptionsPktPayloadChBufFull:
 			p.metrics.IncLiveCaptionsPktPayloadChBufFull()
 		}
-
-		return nil
-	}
-
-	// User client metrics
-	switch metricName {
-	case public.MetricClientICECandidatePair:
-		data, ok := payload.(string)
-		if !ok {
-			return fmt.Errorf("invalid payload found in metric message")
-		}
-
-		var payload public.ClientICECandidatePairMetricPayload
-
-		if err := json.Unmarshal([]byte(data), &payload); err != nil {
-			return fmt.Errorf("failed to unmarshal payload: %w", err)
-		}
-
-		if err := payload.IsValid(); err != nil {
-			return fmt.Errorf("failed to validate payload: %w", err)
-		}
-
-		p.metrics.IncClientICECandidatePairs(payload)
 	}
 
 	return nil

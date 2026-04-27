@@ -22,7 +22,6 @@ func TestCallsStore(t *testing.T) {
 		"TestUpdateCall":               testUpdateCall,
 		"TestGetCall":                  testGetCall,
 		"TestGetActiveCallByChannelID": testGetActiveCallByChannelID,
-		"TestGetRTCDHostForCall":       testGetRTCDHostForCall,
 		"TestGetAllActiveCalls":        testGetAllActiveCalls,
 		"TestGetCallActive":            testGetCallActive,
 		"TestCallsTableColumnAddition": testCallsTableColumnAddition,
@@ -476,67 +475,6 @@ func testGetActiveCallByChannelID(t *testing.T, store *Store) {
 		gotCall, err = store.GetActiveCallByChannelID(call.ChannelID, GetCallOpts{FromWriter: true})
 		require.EqualError(t, err, "call not found")
 		require.Nil(t, gotCall)
-	})
-}
-
-func testGetRTCDHostForCall(t *testing.T, store *Store) {
-	t.Run("missing", func(t *testing.T) {
-		host, err := store.GetRTCDHostForCall("callID", GetCallOpts{})
-		require.EqualError(t, err, "call not found")
-		require.Empty(t, host)
-	})
-
-	t.Run("unset", func(t *testing.T) {
-		call := &public.Call{
-			ID:           model.NewId(),
-			CreateAt:     time.Now().UnixMilli(),
-			ChannelID:    model.NewId(),
-			StartAt:      time.Now().UnixMilli(),
-			PostID:       model.NewId(),
-			ThreadID:     model.NewId(),
-			OwnerID:      model.NewId(),
-			Participants: []string{model.NewId(), model.NewId()},
-			Stats: public.CallStats{
-				ScreenDuration: 45,
-			},
-			Props: public.CallProps{
-				Hosts: []string{"userA", "userB"},
-			},
-		}
-
-		err := store.CreateCall(call)
-		require.NoError(t, err)
-
-		host, err := store.GetRTCDHostForCall(call.ID, GetCallOpts{})
-		require.NoError(t, err)
-		require.Empty(t, host)
-	})
-
-	t.Run("set", func(t *testing.T) {
-		call := &public.Call{
-			ID:           model.NewId(),
-			CreateAt:     time.Now().UnixMilli(),
-			ChannelID:    model.NewId(),
-			StartAt:      time.Now().UnixMilli(),
-			PostID:       model.NewId(),
-			ThreadID:     model.NewId(),
-			OwnerID:      model.NewId(),
-			Participants: []string{model.NewId(), model.NewId()},
-			Stats: public.CallStats{
-				ScreenDuration: 45,
-			},
-			Props: public.CallProps{
-				Hosts:    []string{"userA", "userB"},
-				RTCDHost: "192.168.1.1",
-			},
-		}
-
-		err := store.CreateCall(call)
-		require.NoError(t, err)
-
-		host, err := store.GetRTCDHostForCall(call.ID, GetCallOpts{})
-		require.NoError(t, err)
-		require.Equal(t, call.Props.RTCDHost, host)
 	})
 }
 
