@@ -5,7 +5,7 @@ import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {EventEmitter} from 'events';
 import {ConnectionState, DisconnectReason, Room, RoomEvent} from 'livekit-client';
 import RestClient from 'src/clients/rest';
-import {RTC_EVENT, RTC_TOKEN_API_PATH} from 'src/constants';
+import {CALL_EVENT, CALL_TOKEN_API_PATH} from 'src/constants';
 import {logDebug, logErr, logInfo} from 'src/log';
 import {CallsClientStats, MediaDevices} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
@@ -16,7 +16,7 @@ export type RtcTokenResponse = {
 };
 
 export async function fetchRtcToken(channelID: string): Promise<RtcTokenResponse> {
-    const url = `${getPluginPath()}/${RTC_TOKEN_API_PATH}?channel_id=${encodeURIComponent(channelID)}`;
+    const url = `${getPluginPath()}/${CALL_TOKEN_API_PATH}?channel_id=${encodeURIComponent(channelID)}`;
     return RestClient.fetch<RtcTokenResponse>(url, {method: 'GET'});
 }
 
@@ -39,7 +39,7 @@ export default class CallClient extends EventEmitter {
     private handleConnected() {
         this.initTime = Date.now();
         logInfo('call client: connected to room');
-        this.emit(RTC_EVENT.CONNECTED);
+        this.emit(CALL_EVENT.CONNECTED);
     }
 
     private handleConnectionStateChanged(state: ConnectionState) {
@@ -48,17 +48,17 @@ export default class CallClient extends EventEmitter {
 
     private handleReconnecting() {
         logInfo('call client: reconnecting to room');
-        this.emit(RTC_EVENT.RECONNECTING);
+        this.emit(CALL_EVENT.RECONNECTING);
     }
 
     private handleReconnected() {
         logInfo('call client: reconnected to room');
-        this.emit(RTC_EVENT.RECONNECTED);
+        this.emit(CALL_EVENT.RECONNECTED);
     }
 
     private handleDisconnected(reason?: DisconnectReason) {
         logInfo('call client: disconnected from room', reason);
-        this.emit(RTC_EVENT.DISCONNECTED, reason);
+        this.emit(CALL_EVENT.DISCONNECTED, reason);
     }
 
     public async connect(channelID: string): Promise<void> {
@@ -91,7 +91,7 @@ export default class CallClient extends EventEmitter {
         } catch (err) {
             logErr(`call client: failed to connect to room ${url}`, err);
             this.room = null;
-            this.emit(RTC_EVENT.ERROR, err);
+            this.emit(CALL_EVENT.ERROR, err);
             throw err;
         }
     }
@@ -103,7 +103,7 @@ export default class CallClient extends EventEmitter {
         this.closed = true;
 
         if (err) {
-            this.emit(RTC_EVENT.ERROR, err);
+            this.emit(CALL_EVENT.ERROR, err);
         }
 
         if (this.room) {
