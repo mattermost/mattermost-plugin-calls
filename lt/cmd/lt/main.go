@@ -117,12 +117,12 @@ func main() {
 
 	dur, err := time.ParseDuration(duration)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	joinDur, err := time.ParseDuration(joinDuration)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	if numUnmuted > numUsersPerCall {
