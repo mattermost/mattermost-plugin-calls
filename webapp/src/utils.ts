@@ -18,7 +18,7 @@ import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-r
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
-import CallsClient from 'src/clients/calls';
+import type CallClient from 'src/clients/call';
 import RestClient from 'src/clients/rest';
 import {STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
 import {DesktopMessage} from 'src/types/types';
@@ -82,7 +82,7 @@ export function getChannelURL(state: GlobalState, channel?: Channel, teamId?: st
     return channelURL;
 }
 
-export function getCallsClient(): CallsClient | undefined {
+export function getCallsClient(): CallClient | undefined {
     let callsClient;
     try {
         callsClient = getCallsWindow().callsClient;

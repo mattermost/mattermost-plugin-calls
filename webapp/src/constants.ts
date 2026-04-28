@@ -135,4 +135,7 @@ export const CALL_EVENT = {
     RECONNECTING: 'reconnecting',
     RECONNECTED: 'reconnected',
     ERROR: 'error',
+    MUTE: 'mute',
+    UNMUTE: 'unmute',
+    REMOTE_VOICE_STREAM: 'remoteVoiceStream',
 } as const;
