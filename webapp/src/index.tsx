@@ -98,7 +98,7 @@ import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
-import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
+import {CALL_EVENT, CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
 import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
@@ -109,9 +109,7 @@ import {
     DISMISS_CALL,
     RECEIVED_CHANNEL_STATE,
     UNINIT,
-    USER_LOWER_HAND,
     USER_MUTED,
-    USER_RAISE_HAND,
     USER_UNMUTED,
     USERS_STATES,
 } from './action_types';
@@ -142,10 +140,8 @@ import {
     channelIDForCurrentCall,
     defaultEnabled,
     hasPermissionsToEnableCalls,
-    iceServers,
     isCloudStarter,
     isLimitRestricted,
-    needsTURNCredentials,
     ringingEnabled,
     sessionsInCurrentCall,
 } from './selectors';
@@ -685,15 +681,6 @@ export default class Plugin {
                 }
 
                 const state = store.getState();
-                const iceConfigs = [...iceServers(state)];
-                if (needsTURNCredentials(state)) {
-                    logDebug('turn credentials needed');
-                    try {
-                        iceConfigs.push(...await RestClient.fetch<RTCIceServer[]>(`${getPluginPath()}/turn-credentials`, {method: 'get'}));
-                    } catch (err) {
-                        logErr(err);
-                    }
-                }
 
                 window.callsClient = new CallClient();
                 window.currentCallData = CurrentCallDataDefault;
@@ -734,9 +721,9 @@ export default class Plugin {
                     rootComponentID = registry.registerRootComponent(injectIntl(ExpandedView));
                 }
 
-                window.callsClient.on('connect', () => store.dispatch(setClientConnecting(false)));
+                window.callsClient.on(CALL_EVENT.CONNECTED, () => store.dispatch(setClientConnecting(false)));
 
-                window.callsClient.on('close', (err?: Error) => {
+                window.callsClient.on(CALL_EVENT.DISCONNECTED, () => {
                     store.dispatch(setClientConnecting(false));
 
                     unmountCallWidget();
@@ -744,9 +731,6 @@ export default class Plugin {
                         registry.unregisterComponent(rootComponentID);
                     }
                     if (window.callsClient) {
-                        if (err) {
-                            store.dispatch(displayCallErrorModal(err, window.callsClient.channelID));
-                        }
                         store.dispatch(localSessionClose(window.callsClient.channelID));
                         window.callsClient.destroy();
                         delete window.callsClient;
@@ -755,7 +739,13 @@ export default class Plugin {
                     }
                 });
 
-                window.callsClient.on('mute', () => {
+                window.callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
+                    if (window.callsClient) {
+                        store.dispatch(displayCallErrorModal(err, window.callsClient.channelID));
+                    }
+                });
+
+                window.callsClient.on(CALL_EVENT.MUTE, () => {
                     store.dispatch({
                         type: USER_MUTED,
                         data: {
@@ -766,7 +756,7 @@ export default class Plugin {
                     });
                 });
 
-                window.callsClient.on('unmute', () => {
+                window.callsClient.on(CALL_EVENT.UNMUTE, () => {
                     store.dispatch({
                         type: USER_UNMUTED,
                         data: {
@@ -777,34 +767,7 @@ export default class Plugin {
                     });
                 });
 
-                window.callsClient.on('raise_hand', () => {
-                    store.dispatch({
-                        type: USER_RAISE_HAND,
-                        data: {
-                            channelID: window.callsClient?.channelID,
-                            userID: getCurrentUserId(store.getState()),
-                            raised_hand: Date.now(),
-                            session_id: window.callsClient?.getSessionID(),
-                        },
-                    });
-                });
-
-                window.callsClient.on('lower_hand', () => {
-                    store.dispatch({
-                        type: USER_LOWER_HAND,
-                        data: {
-                            channelID: window.callsClient?.channelID,
-                            userID: getCurrentUserId(store.getState()),
-                            session_id: window.callsClient?.getSessionID(),
-                        },
-                    });
-                });
-
-                window.callsClient.init({
-                    channelID,
-                    title,
-                    threadID: rootId,
-                }).catch((err: Error) => {
+                window.callsClient.connect(channelID).catch((err: Error) => {
                     store.dispatch(setClientConnecting(false));
 
                     logErr(err);

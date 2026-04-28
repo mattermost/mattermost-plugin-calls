@@ -3,7 +3,7 @@
 
 import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {EventEmitter} from 'events';
-import {ConnectionState, DisconnectReason, Room, RoomEvent} from 'livekit-client';
+import {ConnectionState, DisconnectReason, RemoteParticipant, RemoteTrack, RemoteTrackPublication, Room, RoomEvent, Track} from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {CALL_EVENT, CALL_TOKEN_API_PATH} from 'src/constants';
 import {logDebug, logErr, logInfo} from 'src/log';
@@ -36,9 +36,24 @@ export default class CallClient extends EventEmitter {
 
     private closed = false;
 
-    private handleConnected() {
+    private async handleConnected() {
         this.initTime = Date.now();
         logInfo('call client: connected to room');
+
+        // Request mic permission upfront, then immediately mute. The user
+        // always starts muted, but unmute clicks are instant (no permission
+        // dialog delay).
+        try {
+            await this.room?.localParticipant.setMicrophoneEnabled(true);
+            await this.room?.localParticipant.setMicrophoneEnabled(false);
+            const pub = this.room?.localParticipant.getTrackPublication(Track.Source.Microphone);
+            this.audioTrack = pub?.track?.mediaStreamTrack ?? null;
+        } catch (err) {
+            logErr('call client: failed to acquire microphone', err);
+            this.emit(CALL_EVENT.ERROR, err);
+        }
+
+        this.emit(CALL_EVENT.MUTE);
         this.emit(CALL_EVENT.CONNECTED);
     }
 
@@ -59,6 +74,18 @@ export default class CallClient extends EventEmitter {
     private handleDisconnected(reason?: DisconnectReason) {
         logInfo('call client: disconnected from room', reason);
         this.emit(CALL_EVENT.DISCONNECTED, reason);
+    }
+
+    private handleTrackSubscribed(
+        track: RemoteTrack,
+        _pub: RemoteTrackPublication,
+        participant: RemoteParticipant,
+    ) {
+        if (track.source === Track.Source.Microphone) {
+            const stream = new MediaStream([track.mediaStreamTrack]);
+            logInfo(`call client: subscribed to remote voice from ${participant.identity}`);
+            this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, stream, participant.identity);
+        }
     }
 
     public async connect(channelID: string): Promise<void> {
@@ -85,6 +112,7 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.Reconnecting, this.handleReconnecting.bind(this));
         room.on(RoomEvent.Reconnected, this.handleReconnected.bind(this));
         room.on(RoomEvent.Disconnected, this.handleDisconnected.bind(this));
+        room.on(RoomEvent.TrackSubscribed, this.handleTrackSubscribed.bind(this));
 
         try {
             await room.connect(url, token);
@@ -125,12 +153,42 @@ export default class CallClient extends EventEmitter {
         return this.room?.localParticipant?.sid ?? '';
     }
 
-    public mute(): void {
-        throw new Error('CallClient.mute: not yet implemented');
+    public async mute(): Promise<void> {
+        if (!this.room) {
+            return;
+        }
+        await this.room.localParticipant.setMicrophoneEnabled(false);
+        this.emit(CALL_EVENT.MUTE);
     }
 
     public async unmute(): Promise<void> {
-        throw new Error('CallClient.unmute: not yet implemented');
+        if (!this.room) {
+            return;
+        }
+        await this.room.localParticipant.setMicrophoneEnabled(true);
+        const pub = this.room.localParticipant.getTrackPublication(Track.Source.Microphone);
+        this.audioTrack = pub?.track?.mediaStreamTrack ?? null;
+        this.emit(CALL_EVENT.UNMUTE);
+    }
+
+    public async startVideo(): Promise<MediaStream | null> {
+        throw new Error('CallClient.startVideo: not yet implemented');
+    }
+
+    public stopVideo(): void {
+        throw new Error('CallClient.stopVideo: not yet implemented');
+    }
+
+    public async setVideoInputDevice(_device: MediaDeviceInfo): Promise<void> {
+        throw new Error('CallClient.setVideoInputDevice: not yet implemented');
+    }
+
+    public getVideoDevices(): MediaDeviceInfo[] {
+        return [];
+    }
+
+    public getRemoteVideoStream(): MediaStream | null {
+        return null;
     }
 
     public raiseHand(): void {
@@ -165,39 +223,30 @@ export default class CallClient extends EventEmitter {
         throw new Error('CallClient.setAudioOutputDevice: not yet implemented');
     }
 
-    public async setVideoInputDevice(_device: MediaDeviceInfo): Promise<void> {
-        throw new Error('CallClient.setVideoInputDevice: not yet implemented');
-    }
-
     public sendUserReaction(_data: EmojiData): void {
         throw new Error('CallClient.sendUserReaction: not yet implemented');
     }
 
+    // Getters return safe defaults rather than throwing — they're called from
+    // component lifecycle (componentDidMount), not user gestures, so they
+    // must always be safe to invoke regardless of feature implementation state.
     public getAudioDevices(): MediaDevices {
-        throw new Error('CallClient.getAudioDevices: not yet implemented');
-    }
-
-    public getVideoDevices(): MediaDeviceInfo[] {
-        throw new Error('CallClient.getVideoDevices: not yet implemented');
+        return {inputs: [], outputs: []};
     }
 
     public getLocalScreenStream(): MediaStream | null {
-        throw new Error('CallClient.getLocalScreenStream: not yet implemented');
+        return null;
     }
 
     public getRemoteScreenStream(): MediaStream | null {
-        throw new Error('CallClient.getRemoteScreenStream: not yet implemented');
-    }
-
-    public getRemoteVideoStream(): MediaStream | null {
-        throw new Error('CallClient.getRemoteVideoStream: not yet implemented');
+        return null;
     }
 
     public getRemoteVoiceTracks(): MediaStreamTrack[] {
-        throw new Error('CallClient.getRemoteVoiceTracks: not yet implemented');
+        return [];
     }
 
     public async getStats(): Promise<CallsClientStats | null> {
-        throw notImplemented('getStats');
+        return null;
     }
 }
