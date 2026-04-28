@@ -12,11 +12,27 @@ permissions:
   id-token: write
 
 jobs:
+  # Reads .go-version once and exposes it as a job output so downstream jobs
+  # can consume a single source of truth. Checkout is required: .go-version is a
+  # repo file, not available until the workspace is populated.
+  go-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Read Go version
+        id: read
+        shell: bash
+        run: echo "version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+
   plugin-ci:
+    needs: go-version
     uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@05547befaf1f79459a2cef959842f5d8bbc6343a
     with:
       golangci-lint-version: "v2.11.4"
-      golang-version: "1.25"
+      golang-version: ${{ needs.go-version.outputs.version }}
     secrets: inherit
 
   code-coverage:
@@ -29,7 +45,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -59,7 +75,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
