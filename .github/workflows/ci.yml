@@ -13,10 +13,10 @@ permissions:
 
 jobs:
   plugin-ci:
-    uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@05547befaf1f79459a2cef959842f5d8bbc6343a
+    uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@6e3b523f38c8286c412fe5bef5261841e82f9dc7
     with:
       golangci-lint-version: "v2.11.4"
-      golang-version: "1.25"
+      go-version-file: .go-version
     secrets: inherit
 
   code-coverage:
@@ -29,7 +29,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -59,7 +59,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
