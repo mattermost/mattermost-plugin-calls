@@ -25,7 +25,7 @@ This plugin demands some network configuration changes to allow audio/video comm
 ### Requirements
 
 #### GoLang
-Check `go.mod` for the required GoLang version.
+Check `.go-version` for the required GoLang version. It is recommended to use [goenv](https://github.com/go-nv/goenv) for Go version management. Run `goenv install` in the project root once to install the required version.
 
 #### Node.js
 Check `.nvmrc` for the required Node.js version. It is recommended to use [nvm](https://github.com/nvm-sh/nvm) for Node version management. Run `nvm use` in the project root to automatically switch to the required version.
