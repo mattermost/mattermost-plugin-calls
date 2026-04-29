@@ -392,7 +392,6 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 func setCallEnded(call *public.Call) {
 	call.EndAt = time.Now().UnixMilli()
 	call.Participants = mapKeys(call.Props.Participants)
-	call.Props.RTCDHost = ""
 	call.Props.DismissedNotification = nil
 	call.Props.NodeID = ""
 	call.Props.Hosts = nil

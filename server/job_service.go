@@ -5,6 +5,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,14 +16,20 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost/server/public/model"
 
-	"github.com/mattermost/rtcd/service/random"
-
 	offloader "github.com/mattermost/calls-offloader/public"
 	"github.com/mattermost/calls-offloader/public/job"
 
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
 )
+
+func newSecureString(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
 
 const (
 	jobServiceConfigKey             = "jobservice_config"
@@ -141,7 +149,7 @@ func (p *Plugin) getJobServiceClientConfig(serviceURL string) (offloader.ClientC
 		cfg.AuthKey = storedCfg.AuthKey
 	} else {
 		p.LogDebug("auth key missing from job service config, generating a new one")
-		cfg.AuthKey, err = random.NewSecureString(32)
+		cfg.AuthKey, err = newSecureString(32)
 		if err != nil {
 			return cfg, fmt.Errorf("failed to generate auth key: %w", err)
 		}

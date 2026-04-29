@@ -7,10 +7,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	public "github.com/mattermost/mattermost-plugin-calls/server/public"
-
-	rtc "github.com/mattermost/rtcd/service/rtc"
-
 	sql "database/sql"
 )
 
@@ -103,39 +99,6 @@ func (_c *MockMetrics_Handler_Call) Return(_a0 http.Handler) *MockMetrics_Handle
 
 func (_c *MockMetrics_Handler_Call) RunAndReturn(run func() http.Handler) *MockMetrics_Handler_Call {
 	_c.Call.Return(run)
-	return _c
-}
-
-// IncClientICECandidatePairs provides a mock function with given fields: p
-func (_m *MockMetrics) IncClientICECandidatePairs(p public.ClientICECandidatePairMetricPayload) {
-	_m.Called(p)
-}
-
-// MockMetrics_IncClientICECandidatePairs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncClientICECandidatePairs'
-type MockMetrics_IncClientICECandidatePairs_Call struct {
-	*mock.Call
-}
-
-// IncClientICECandidatePairs is a helper method to define mock.On call
-//   - p public.ClientICECandidatePairMetricPayload
-func (_e *MockMetrics_Expecter) IncClientICECandidatePairs(p interface{}) *MockMetrics_IncClientICECandidatePairs_Call {
-	return &MockMetrics_IncClientICECandidatePairs_Call{Call: _e.mock.On("IncClientICECandidatePairs", p)}
-}
-
-func (_c *MockMetrics_IncClientICECandidatePairs_Call) Run(run func(p public.ClientICECandidatePairMetricPayload)) *MockMetrics_IncClientICECandidatePairs_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(public.ClientICECandidatePairMetricPayload))
-	})
-	return _c
-}
-
-func (_c *MockMetrics_IncClientICECandidatePairs_Call) Return() *MockMetrics_IncClientICECandidatePairs_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockMetrics_IncClientICECandidatePairs_Call) RunAndReturn(run func(public.ClientICECandidatePairMetricPayload)) *MockMetrics_IncClientICECandidatePairs_Call {
-	_c.Run(run)
 	return _c
 }
 
@@ -566,53 +529,6 @@ func (_c *MockMetrics_ObserveStoreMethodsTime_Call) Return() *MockMetrics_Observ
 
 func (_c *MockMetrics_ObserveStoreMethodsTime_Call) RunAndReturn(run func(string, float64)) *MockMetrics_ObserveStoreMethodsTime_Call {
 	_c.Run(run)
-	return _c
-}
-
-// RTCMetrics provides a mock function with no fields
-func (_m *MockMetrics) RTCMetrics() rtc.Metrics {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for RTCMetrics")
-	}
-
-	var r0 rtc.Metrics
-	if rf, ok := ret.Get(0).(func() rtc.Metrics); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(rtc.Metrics)
-		}
-	}
-
-	return r0
-}
-
-// MockMetrics_RTCMetrics_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RTCMetrics'
-type MockMetrics_RTCMetrics_Call struct {
-	*mock.Call
-}
-
-// RTCMetrics is a helper method to define mock.On call
-func (_e *MockMetrics_Expecter) RTCMetrics() *MockMetrics_RTCMetrics_Call {
-	return &MockMetrics_RTCMetrics_Call{Call: _e.mock.On("RTCMetrics")}
-}
-
-func (_c *MockMetrics_RTCMetrics_Call) Run(run func()) *MockMetrics_RTCMetrics_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockMetrics_RTCMetrics_Call) Return(_a0 rtc.Metrics) *MockMetrics_RTCMetrics_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockMetrics_RTCMetrics_Call) RunAndReturn(run func() rtc.Metrics) *MockMetrics_RTCMetrics_Call {
-	_c.Call.Return(run)
 	return _c
 }
 

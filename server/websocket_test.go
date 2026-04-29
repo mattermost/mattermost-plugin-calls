@@ -251,7 +251,7 @@ func TestWSReader(t *testing.T) {
 		sessionAuthCheckInterval = time.Second
 
 		t.Run("empty session ID", func(_ *testing.T) {
-			us := newUserSession("userID", "channelID", "connID", "callID", false)
+			us := newUserSession("userID", "channelID", "connID", "callID")
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
@@ -273,7 +273,7 @@ func TestWSReader(t *testing.T) {
 				ExpiresAt: time.Now().UnixMilli() + 60000,
 			}, nil).Once()
 
-			us := newUserSession("userID", "channelID", "connID", "callID", false)
+			us := newUserSession("userID", "channelID", "connID", "callID")
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
@@ -294,7 +294,7 @@ func TestWSReader(t *testing.T) {
 				Id: "authSessionID",
 			}, nil).Once()
 
-			us := newUserSession("userID", "channelID", "connID", "callID", false)
+			us := newUserSession("userID", "channelID", "connID", "callID")
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
@@ -312,7 +312,7 @@ func TestWSReader(t *testing.T) {
 			defer mockAPI.AssertExpectations(t)
 
 			expiresAt := time.Now().UnixMilli()
-			us := newUserSession("userID", "channelID", "connID", "callID", false)
+			us := newUserSession("userID", "channelID", "connID", "callID")
 
 			mockAPI.On("GetSession", "authSessionID").Return(&model.Session{
 				Id:        "authSessionID",
@@ -344,7 +344,7 @@ func TestWSReader(t *testing.T) {
 		t.Run("revoked session", func(_ *testing.T) {
 			defer mockAPI.AssertExpectations(t)
 
-			us := newUserSession("userID", "channelID", "connID", "callID", false)
+			us := newUserSession("userID", "channelID", "connID", "callID")
 
 			mockAPI.On("GetSession", "authSessionID").Return(nil,
 				model.NewAppError("GetSessionById", "We encountered an error finding the session.", nil, "", http.StatusUnauthorized)).Once()
@@ -375,7 +375,7 @@ func TestWSReader(t *testing.T) {
 		t.Run("nil session but nil error, revoke session, don't crash", func(_ *testing.T) {
 			defer mockAPI.AssertExpectations(t)
 
-			us := newUserSession("userID", "channelID", "connID", "callID", false)
+			us := newUserSession("userID", "channelID", "connID", "callID")
 
 			mockAPI.On("GetSession", "authSessionID").Return(nil, nil).Once()
 

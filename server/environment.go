@@ -4,23 +4,20 @@
 package main
 
 import (
-	"encoding/json"
 	"os"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/mattermost/rtcd/service/rtc"
 )
 
 // applyEnvOverrides takes a config struct and a prefix string, then looks for
 // environment variables that match the pattern PREFIX_FIELD_NAME and applies
 // those values to the corresponding fields in the config.
 //
-// Example: With prefix "MM_CALLS" and config field "RTCDServiceURL",
-// it will look for env var "MM_CALLS_RTCD_SERVICE_URL"
+// Example: With prefix "MM_CALLS" and config field "JobServiceURL",
+// it will look for env var "MM_CALLS_JOB_SERVICE_URL"
 //
 // The function handles various field types including strings, booleans, integers,
 // floats, and durations. It also supports embedded structs, treating their fields
@@ -107,13 +104,7 @@ func (p *Plugin) processStructFields(val reflect.Value, prefix, fieldPath string
 
 			// Check if environment variable exists
 			if envValue, exists := os.LookupEnv(envVar); exists {
-				// Special handling for ICEServersConfigs to store the raw JSON
-				if field.Type().String() == "main.ICEServersConfigs" ||
-					(field.Kind() == reflect.Ptr && field.Type().Elem().String() == "main.ICEServersConfigs") {
-					if p.setFieldFromEnv(field, envValue) {
-						overrideMap[fullFieldPath] = envValue // Store the raw JSON string
-					}
-				} else if p.setFieldFromEnv(field, envValue) {
+				if p.setFieldFromEnv(field, envValue) {
 					overrideMap[fullFieldPath] = envValue
 				}
 			}
@@ -135,7 +126,7 @@ var (
 
 // fieldNameToEnvKey converts a camelCase or PascalCase field name to an
 // uppercase environment variable key with underscores.
-// Example: RTCDServiceURL -> RTCD_SERVICE_URL
+// Example: JobServiceURL -> JOB_SERVICE_URL
 func fieldNameToEnvKey(fieldName string) string {
 	// Apply the pre-compiled regular expressions
 	s := reFieldLowerToUpper.ReplaceAllString(fieldName, "${1}_${2}")
@@ -216,20 +207,6 @@ func (p *Plugin) setFieldFromEnv(field reflect.Value, envValue string) bool {
 		}
 		p.LogError("Failed to parse float from environment variable", "error", err.Error(), "value", envValue)
 	case reflect.Slice:
-		// Handle ICEServersConfigs specially as JSON
-		if field.Type().String() == "main.ICEServersConfigs" {
-			var configs []rtc.ICEServerConfig
-			err := json.Unmarshal([]byte(envValue), &configs)
-			if err == nil {
-				field.Set(reflect.ValueOf(configs))
-				return true
-			}
-
-			// Log error
-			p.LogError("Failed to unmarshal ICEServersConfigs from environment variable", "error", err.Error(), "value", envValue)
-			return false
-		}
-
 		// Handle string slices by splitting on commas
 		if field.Type().Elem().Kind() == reflect.String {
 			values := strings.Split(envValue, ",")

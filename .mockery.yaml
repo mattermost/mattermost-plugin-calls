@@ -7,7 +7,6 @@ packages:
         interfaces:
             Metrics:
             Store:
-            RTCDClient:
     github.com/mattermost/mattermost/server/public/plugin:
         config:
         interfaces:
@@ -16,7 +15,3 @@ packages:
         config:
         interfaces:
             LoggerIFace:
-    github.com/mattermost/rtcd/service/rtc:
-        config:
-        interfaces:
-            Metrics:

@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"net"
 	"net/http"
 	"os"
 	"reflect"
@@ -18,7 +17,6 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/license"
 
 	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
-	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/mattermost/mattermost/server/public/model"
 )
@@ -35,38 +33,10 @@ import (
 // If you add non-reference types to your configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
 type configuration struct {
-	// The IP (or hostname) to be used as the host ICE candidate.
-	ICEHostOverride string
-	// An optional port number to override the one used in ICE host candidates
-	// in place of the one used to listen on.
-	ICEHostPortOverride *int
-	// The local IP address used by the RTC server to listen on for UDP
-	// connections.
-	UDPServerAddress string
-	// The local IP address used by the RTC server to listen on for TCP
-	// connections.
-	TCPServerAddress string
-	// UDP port used by the RTC server to listen to.
-	UDPServerPort *int
-	// TCP port used by the RTC server to listen to.
-	TCPServerPort *int
-	// The URL to a running RTCD service instance that should host the calls.
-	// When set (non empty) all calls will be handled by the external service.
-	RTCDServiceURL string
-	// The secret key used to generate TURN short-lived authentication credentials
-	TURNStaticAuthSecret string
-	// The number of minutes that the generated TURN credentials will be valid for.
-	TURNCredentialsExpirationMinutes *int
-	// When set to true it will pass and use configured TURN candidates to server
-	// initiated connections.
-	ServerSideTURN *bool
 	// The URL to a running calls-offloader job service instance.
 	JobServiceURL string
 	// The audio and video quality of call recordings.
 	RecordingQuality string
-	// When set to true the RTC service will work in dual-stack mode, listening for IPv6
-	// connections and generating candidates in addition to IPv4 ones.
-	EnableIPv6 *bool
 	// Ringing is default off (for now -- 8.0), allow sysadmins to turn it on.
 	// When set to true it enables ringing for DM/GM channels.
 	EnableRinging *bool
@@ -101,11 +71,6 @@ type configuration struct {
 }
 
 type ClientConfig struct {
-	// **DEPRECATED: use ICEServersConfigs** A comma separated list of ICE servers URLs (STUN/TURN) to use.
-	ICEServers ICEServers
-
-	// A list of ICE server configurations to use.
-	ICEServersConfigs ICEServersConfigs
 	// AllowEnableCalls is always true. DO NOT REMOVE; needed for mobile backward compatibility.
 	// It allows channel admins to enable or disable calls in their channels.
 	// It also allows participants of DMs/GMs to enable or disable calls.
@@ -118,8 +83,6 @@ type ClientConfig struct {
 	// The maximum number of participants that can join a call. The zero value
 	// means unlimited.
 	MaxCallParticipants *int
-	// Used to signal the client whether or not to generate TURN credentials. This is a client only option, generated server side.
-	NeedsTURNCredentials *bool
 	// When set to true it allows call participants to share their screen.
 	AllowScreenSharing *bool
 	// When set to true it enables the call recordings functionality
@@ -152,58 +115,9 @@ const (
 	defaultRecDurationMinutes = 60
 	minRecDurationMinutes     = 15
 	maxRecDurationMinutes     = 180
-	minAllowedPort            = 80
-	maxAllowedPort            = 49151
 )
-
-type (
-	ICEServers        []string
-	ICEServersConfigs rtc.ICEServers
-)
-
-func (cfgs *ICEServersConfigs) UnmarshalJSON(data []byte) error {
-	if len(data) == 0 {
-		return nil
-	}
-	unquoted, err := strconv.Unquote(string(data))
-	if err != nil {
-		return err
-	}
-	if unquoted == "" {
-		return nil
-	}
-
-	var dst []rtc.ICEServerConfig
-	err = json.Unmarshal([]byte(unquoted), &dst)
-	*cfgs = dst
-
-	return err
-}
-
-func (is *ICEServers) UnmarshalJSON(data []byte) error {
-	*is = []string{}
-	if len(data) == 0 {
-		return nil
-	}
-	unquoted, err := strconv.Unquote(string(data))
-	if err != nil {
-		return err
-	}
-	if unquoted == "" {
-		return nil
-	}
-	*is = strings.Split(strings.TrimSpace(unquoted), ",")
-	return nil
-}
 
 func (c *configuration) SetDefaults() {
-	if c.UDPServerPort == nil {
-		c.UDPServerPort = model.NewPointer(8443)
-	}
-	if c.TCPServerPort == nil {
-		c.TCPServerPort = model.NewPointer(8443)
-	}
-
 	c.AllowEnableCalls = model.NewPointer(true)
 
 	if c.DefaultEnabled == nil {
@@ -211,12 +125,6 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.MaxCallParticipants == nil {
 		c.MaxCallParticipants = model.NewPointer(0) // unlimited
-	}
-	if c.TURNCredentialsExpirationMinutes == nil {
-		c.TURNCredentialsExpirationMinutes = model.NewPointer(240)
-	}
-	if c.ServerSideTURN == nil {
-		c.ServerSideTURN = model.NewPointer(false)
 	}
 	if c.AllowScreenSharing == nil {
 		c.AllowScreenSharing = model.NewPointer(true)
@@ -238,9 +146,6 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.EnableSimulcast == nil {
 		c.EnableSimulcast = model.NewPointer(false)
-	}
-	if c.EnableIPv6 == nil {
-		c.EnableIPv6 = model.NewPointer(false)
 	}
 	if c.EnableRinging == nil {
 		c.EnableRinging = model.NewPointer(false)
@@ -278,36 +183,8 @@ func (c *configuration) SetDefaults() {
 }
 
 func (c *configuration) IsValid() error {
-	if c.UDPServerAddress != "" && net.ParseIP(c.UDPServerAddress) == nil {
-		return fmt.Errorf("UDPServerAddress parsing failed")
-	}
-
-	if c.TCPServerAddress != "" && net.ParseIP(c.TCPServerAddress) == nil {
-		return fmt.Errorf("TCPServerAddress parsing failed")
-	}
-
-	if c.UDPServerPort == nil {
-		return fmt.Errorf("UDPServerPort should not be nil")
-	}
-
-	if c.TCPServerPort == nil {
-		return fmt.Errorf("TCPServerPort should not be nil")
-	}
-
-	if *c.UDPServerPort < minAllowedPort || *c.UDPServerPort > maxAllowedPort {
-		return fmt.Errorf("UDPServerPort is not valid: %d is not in allowed range [%d, %d]", *c.UDPServerPort, minAllowedPort, maxAllowedPort)
-	}
-
-	if *c.TCPServerPort < minAllowedPort || *c.TCPServerPort > maxAllowedPort {
-		return fmt.Errorf("TCPServerPort is not valid: %d is not in allowed range [%d, %d]", *c.TCPServerPort, minAllowedPort, maxAllowedPort)
-	}
-
 	if c.MaxCallParticipants == nil || *c.MaxCallParticipants < 0 {
 		return fmt.Errorf("MaxCallParticipants is not valid")
-	}
-
-	if c.TURNCredentialsExpirationMinutes != nil && *c.TURNCredentialsExpirationMinutes < 0 {
-		return fmt.Errorf("TURNCredentialsExpirationMinutes is not valid")
 	}
 
 	if c.MaxRecordingDuration == nil || *c.MaxRecordingDuration < minRecDurationMinutes || *c.MaxRecordingDuration > maxRecDurationMinutes {
@@ -330,10 +207,6 @@ func (c *configuration) IsValid() error {
 		if c.TranscriberNumThreads == nil || *c.TranscriberNumThreads <= 0 {
 			return fmt.Errorf("TranscriberNumThreads is not valid: should be greater than 0")
 		}
-	}
-
-	if c.ICEHostPortOverride != nil && *c.ICEHostPortOverride != 0 && (*c.ICEHostPortOverride < minAllowedPort || *c.ICEHostPortOverride > maxAllowedPort) {
-		return fmt.Errorf("ICEHostPortOverride is not valid: %d is not in allowed range [%d, %d]", *c.ICEHostPortOverride, minAllowedPort, maxAllowedPort)
 	}
 
 	if c.liveCaptionsEnabled() {
@@ -360,12 +233,7 @@ func (c *configuration) IsValid() error {
 func (c *configuration) Clone() *configuration {
 	var cfg configuration
 
-	cfg.UDPServerAddress = c.UDPServerAddress
-	cfg.TCPServerAddress = c.TCPServerAddress
-	cfg.ICEHostOverride = c.ICEHostOverride
-	cfg.RTCDServiceURL = c.RTCDServiceURL
 	cfg.JobServiceURL = c.JobServiceURL
-	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
 	cfg.RecordingQuality = c.RecordingQuality
 	cfg.TranscriberModelSize = c.TranscriberModelSize
 	cfg.TranscribeAPI = c.TranscribeAPI
@@ -377,14 +245,6 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveKitAPIKey = c.LiveKitAPIKey
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
 
-	if c.UDPServerPort != nil {
-		cfg.UDPServerPort = model.NewPointer(*c.UDPServerPort)
-	}
-
-	if c.TCPServerPort != nil {
-		cfg.TCPServerPort = model.NewPointer(*c.TCPServerPort)
-	}
-
 	// AllowEnableCalls is always true
 	cfg.AllowEnableCalls = model.NewPointer(true)
 
@@ -392,26 +252,8 @@ func (c *configuration) Clone() *configuration {
 		cfg.DefaultEnabled = model.NewPointer(*c.DefaultEnabled)
 	}
 
-	if c.ICEServers != nil {
-		cfg.ICEServers = make(ICEServers, len(c.ICEServers))
-		copy(cfg.ICEServers, c.ICEServers)
-	}
-
-	if c.ICEServersConfigs != nil {
-		cfg.ICEServersConfigs = make([]rtc.ICEServerConfig, len(c.ICEServersConfigs))
-		copy(cfg.ICEServersConfigs, c.ICEServersConfigs)
-	}
-
 	if c.MaxCallParticipants != nil {
 		cfg.MaxCallParticipants = model.NewPointer(*c.MaxCallParticipants)
-	}
-
-	if c.TURNCredentialsExpirationMinutes != nil {
-		cfg.TURNCredentialsExpirationMinutes = model.NewPointer(*c.TURNCredentialsExpirationMinutes)
-	}
-
-	if c.ServerSideTURN != nil {
-		cfg.ServerSideTURN = model.NewPointer(*c.ServerSideTURN)
 	}
 
 	if c.AllowScreenSharing != nil {
@@ -442,16 +284,8 @@ func (c *configuration) Clone() *configuration {
 		cfg.EnableSimulcast = model.NewPointer(*c.EnableSimulcast)
 	}
 
-	if c.EnableIPv6 != nil {
-		cfg.EnableIPv6 = model.NewPointer(*c.EnableIPv6)
-	}
-
 	if c.EnableRinging != nil {
 		cfg.EnableRinging = model.NewPointer(*c.EnableRinging)
-	}
-
-	if c.ICEHostPortOverride != nil {
-		cfg.ICEHostPortOverride = model.NewPointer(*c.ICEHostPortOverride)
 	}
 
 	if c.LiveCaptionsNumTranscribers != nil {
@@ -475,18 +309,6 @@ func (c *configuration) Clone() *configuration {
 	}
 
 	return &cfg
-}
-
-func (c *configuration) getRTCDURL() string {
-	if url := os.Getenv("MM_CALLS_RTCD_SERVICE_URL"); url != "" {
-		return url
-	}
-
-	// v1.8.0 (MM-62732) MM_CALLS_RTCD_URL is DEPRECATED in favor of MM_CALLS_RTCD_SERVICE_URL.
-	if url := os.Getenv("MM_CALLS_RTCD_URL"); url != "" {
-		return url
-	}
-	return c.RTCDServiceURL
 }
 
 func (c *configuration) getLiveKitURL() string {
@@ -535,10 +357,7 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 	return ClientConfig{
 		AllowEnableCalls:     model.NewPointer(true), // always true
 		DefaultEnabled:       c.DefaultEnabled,
-		ICEServers:           c.ICEServers,
-		ICEServersConfigs:    c.getICEServers(true),
 		MaxCallParticipants:  c.MaxCallParticipants,
-		NeedsTURNCredentials: model.NewPointer(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
 		AllowScreenSharing:   c.AllowScreenSharing,
 		EnableRecordings:     c.EnableRecordings,
 		EnableTranscriptions: c.EnableTranscriptions,
@@ -732,10 +551,6 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 		}
 	}
 
-	cfg.ICEHostOverride = strings.TrimSpace(cfg.ICEHostOverride)
-	cfg.UDPServerAddress = strings.TrimSpace(cfg.UDPServerAddress)
-	cfg.TCPServerAddress = strings.TrimSpace(cfg.TCPServerAddress)
-	cfg.RTCDServiceURL = strings.TrimSpace(cfg.RTCDServiceURL)
 	cfg.JobServiceURL = strings.TrimSpace(cfg.JobServiceURL)
 	cfg.LiveKitURL = strings.TrimSpace(cfg.LiveKitURL)
 }
@@ -745,13 +560,6 @@ func (p *Plugin) isSingleHandler() bool {
 	pluginCfg := p.getConfiguration()
 
 	if cfg == nil || pluginCfg == nil || p.licenseChecker == nil {
-		return false
-	}
-
-	rtcdURL := pluginCfg.getRTCDURL()
-	hasRTCD := rtcdURL != "" && p.licenseChecker.RTCDAllowed()
-
-	if hasRTCD {
 		return false
 	}
 
@@ -766,33 +574,4 @@ func (p *Plugin) isHA() bool {
 	}
 
 	return cfg.ClusterSettings.Enable != nil && *cfg.ClusterSettings.Enable
-}
-
-func (c *configuration) getICEServers(forClient bool) ICEServersConfigs {
-	var iceServers ICEServersConfigs
-
-	for _, cfg := range c.ICEServersConfigs {
-		if forClient && cfg.IsTURN() && cfg.Username == "" && cfg.Credential == "" {
-			continue
-		}
-		iceServers = append(iceServers, cfg)
-	}
-
-	if len(c.ICEServers) > 0 {
-		iceServers = append(iceServers, rtc.ICEServerConfig{
-			URLs: c.ICEServers,
-		})
-	}
-
-	return iceServers
-}
-
-func (cfgs ICEServersConfigs) getTURNConfigsForCredentials() []rtc.ICEServerConfig {
-	var configs []rtc.ICEServerConfig
-	for _, cfg := range cfgs {
-		if cfg.IsTURN() && cfg.Username == "" && cfg.Credential == "" {
-			configs = append(configs, cfg)
-		}
-	}
-	return configs
 }
