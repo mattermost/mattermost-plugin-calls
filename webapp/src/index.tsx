@@ -13,7 +13,7 @@ import {getChannel, getCurrentChannel, getCurrentChannelId} from 'mattermost-red
 import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getCurrentTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import React, {useEffect} from 'react';
@@ -1141,8 +1141,19 @@ export default class Plugin {
         // those clicks here. Cross-channel clicks fall through to React Router
         // and are handled by JoinCallWatcher after navigation.
         const handleSameChannelLinkClick = (e: MouseEvent) => {
+            // Preserve normal browser behavior for non-primary clicks, modified
+            // clicks (Cmd/Ctrl-click → new tab, Shift-click → new window), and
+            // links that explicitly open elsewhere.
+            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+                return;
+            }
+
             const link = (e.target as HTMLElement | null)?.closest('a');
-            const href = link?.getAttribute('href');
+            if (!link || (link.target && link.target !== '_self')) {
+                return;
+            }
+
+            const href = link.getAttribute('href');
             if (!href) {
                 return;
             }
@@ -1153,15 +1164,26 @@ export default class Plugin {
             } catch {
                 return;
             }
+            if (url.origin !== window.location.origin) {
+                return;
+            }
             if (url.searchParams.get('join_call') !== 'true') {
                 return;
             }
 
-            const targetMatch = url.pathname.match(/\/channels\/([^/]+)/);
+            // Match the team segment too — a cross-team link like
+            // /other-team/channels/<name> would otherwise mis-resolve against
+            // the current channel's name in the current team.
+            const targetMatch = url.pathname.match(/^\/([^/]+)\/channels\/([^/]+)/);
             if (!targetMatch) {
                 return;
             }
-            const target = targetMatch[1];
+            const [, teamName, target] = targetMatch;
+
+            const currentTeamName = getCurrentTeam(store.getState())?.name;
+            if (!currentTeamName || teamName !== currentTeamName) {
+                return;
+            }
 
             const currentChannelId = getCurrentChannelId(store.getState());
             const currentChannelName = getCurrentChannel(store.getState())?.name;

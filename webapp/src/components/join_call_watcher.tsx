@@ -3,6 +3,7 @@
 
 import {GlobalState} from '@mattermost/types/store';
 import {getChannelsNameMapInCurrentTeam} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
 import {useEffect} from 'react';
 import {useSelector} from 'react-redux';
 import {useLocation} from 'react-router-dom';
@@ -23,6 +24,7 @@ const JoinCallWatcher = ({onJoinCall}: Props) => {
     const joinCall = new URLSearchParams(location.search).get('join_call');
     const channelsById = useSelector((state: GlobalState) => state.entities.channels.channels);
     const channelsByName = useSelector(getChannelsNameMapInCurrentTeam);
+    const currentTeamName = useSelector(getCurrentTeam)?.name;
 
     useEffect(() => {
         if (joinCall !== 'true') {
@@ -35,11 +37,20 @@ const JoinCallWatcher = ({onJoinCall}: Props) => {
         // Resolving via Redux directly (rather than gating on currentChannelId)
         // is essential — currentChannelId lags the URL during cross-channel nav,
         // and canonicalization strips the param before Redux catches up.
-        const match = location.pathname.match(/\/channels\/([^/]+)/);
+        //
+        // The team segment must match the current team. channelsByName is
+        // scoped to the current team, so a cross-team link like
+        // /other-team/channels/town-square would otherwise mis-resolve to the
+        // current team's town-square. DM/GM URLs (/messages/...) are not
+        // handled — see open work in feature doc.
+        const match = location.pathname.match(/^\/([^/]+)\/channels\/([^/]+)/);
         if (!match) {
             return;
         }
-        const idOrName = match[1];
+        const [, teamName, idOrName] = match;
+        if (!currentTeamName || teamName !== currentTeamName) {
+            return;
+        }
 
         const channel = channelsById[idOrName] || channelsByName[idOrName];
         if (!channel) {
@@ -47,7 +58,7 @@ const JoinCallWatcher = ({onJoinCall}: Props) => {
         }
 
         onJoinCall(channel.id);
-    }, [joinCall, location.pathname, channelsById, channelsByName, onJoinCall]);
+    }, [joinCall, location.pathname, channelsById, channelsByName, currentTeamName, onJoinCall]);
 
     return null;
 };
