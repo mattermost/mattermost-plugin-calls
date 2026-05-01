@@ -1103,9 +1103,11 @@ export default class Plugin {
         // Watch the URL for ?join_call=true and trigger a join when it appears.
         // Handles cross-channel link clicks and pasted URLs. Same-channel
         // clicks are handled by the click handler below since the URL never
-        // changes in that case.
+        // changes in that case. Routes through joinCall (not connectToCall)
+        // so URL-driven joins go through the same enabled/disabled, limit,
+        // and test-mode gating as the regular UI buttons.
         registry.registerRootComponent(() => (
-            <JoinCallWatcher onJoinCall={connectToCall}/>
+            <JoinCallWatcher onJoinCall={joinCall}/>
         ));
 
         // A dummy React component so we can access webapp's
@@ -1208,7 +1210,7 @@ export default class Plugin {
             // before the switch modal might be shown — the modal's closeOnBlur
             // handler is registered in capture phase and would otherwise catch
             // this same click and immediately hide the modal.
-            setTimeout(() => connectToCall(currentChannelId), 0);
+            setTimeout(() => joinCall(currentChannelId), 0);
         };
         document.addEventListener('click', handleSameChannelLinkClick, true);
         this.unsubscribers.push(() => document.removeEventListener('click', handleSameChannelLinkClick, true));
