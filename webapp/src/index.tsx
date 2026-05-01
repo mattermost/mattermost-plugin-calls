@@ -1171,10 +1171,19 @@ export default class Plugin {
                 return;
             }
 
+            // On subpath deployments, url.pathname is /<basename>/<team>/...
+            // — strip the basename so the regex matches the team segment
+            // correctly. JoinCallWatcher doesn't need this because React
+            // Router's history is configured with basename and useLocation
+            // already returns paths relative to it.
+            const pathname = window.basename && url.pathname.startsWith(window.basename) ?
+                url.pathname.slice(window.basename.length) :
+                url.pathname;
+
             // Match the team segment too — a cross-team link like
             // /other-team/channels/<name> would otherwise mis-resolve against
             // the current channel's name in the current team.
-            const targetMatch = url.pathname.match(/^\/([^/]+)\/channels\/([^/]+)/);
+            const targetMatch = pathname.match(/^\/([^/]+)\/channels\/([^/]+)/);
             if (!targetMatch) {
                 return;
             }
