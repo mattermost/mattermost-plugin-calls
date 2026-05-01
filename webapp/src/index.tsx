@@ -9,7 +9,7 @@ import type {DesktopAPI} from '@mattermost/desktop-api';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
-import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getChannel, getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
@@ -95,6 +95,7 @@ import {
     StopRecordingConfirmation,
 } from 'src/components/expanded_view/stop_recording_confirmation';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
+import JoinCallWatcher from 'src/components/join_call_watcher';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
@@ -1099,6 +1100,14 @@ export default class Plugin {
             });
         });
 
+        // Watch the URL for ?join_call=true and trigger a join when it appears.
+        // Handles cross-channel link clicks and pasted URLs. Same-channel
+        // clicks are handled by the click handler below since the URL never
+        // changes in that case.
+        registry.registerRootComponent(() => (
+            <JoinCallWatcher onJoinCall={connectToCall}/>
+        ));
+
         // A dummy React component so we can access webapp's
         // WebSocket client through the provided hook. Just lovely.
         registry.registerGlobalComponent(() => {
@@ -1125,115 +1134,65 @@ export default class Plugin {
         this.registerWebSocketEvents(registry, store);
 
         let currChannelId = getCurrentChannelId(store.getState());
-        let processedJoinCallUrl = '';
-        let pendingJoinChannelId = '';
-        let lastCheckedUrl = '';
 
-        // Capture join_call parameter immediately at initialization, before React Router can strip it
-        // This is essential for pasted URLs where the channel ID isn't loaded in Redux yet
-        let initialJoinCallParam = new URLSearchParams(window.location.search).get('join_call');
-
-        // Function to check and handle join_call parameter
-        const handleJoinCallParam = () => {
-            const currentChannelId = getCurrentChannelId(store.getState());
-            const currentUrl = window.location.href;
-            const joinCallParam = new URLSearchParams(window.location.search).get('join_call');
-
-            // Check join_call parameter - only process each unique URL once
-            if (joinCallParam && currentChannelId && currentUrl !== processedJoinCallUrl) {
-                connectToCall(currentChannelId);
-                processedJoinCallUrl = currentUrl;
-                initialJoinCallParam = null; // Clear captured param since we processed it
-            }
-        };
-
-        // Intercept clicks on links with join_call parameter BEFORE React Router handles them
-        const handleLinkClick = (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            const link = target.closest('a');
-            if (!link) {
-                return;
-            }
-
-            const href = link.getAttribute('href');
+        // Same-channel join_call links: when the link target is the channel
+        // we're already viewing, the webapp short-circuits navigation entirely
+        // and the URL never updates — so JoinCallWatcher can't see it. Catch
+        // those clicks here. Cross-channel clicks fall through to React Router
+        // and are handled by JoinCallWatcher after navigation.
+        const handleSameChannelLinkClick = (e: MouseEvent) => {
+            const link = (e.target as HTMLElement | null)?.closest('a');
+            const href = link?.getAttribute('href');
             if (!href) {
                 return;
             }
 
-            // Check if link contains join_call parameter
+            let url: URL;
             try {
-                const url = new URL(href, window.location.origin);
-                if (url.searchParams.get('join_call') === 'true') {
-                    // Extract channel ID from URL
-                    // URL format: /team-name/channels/channel-id?join_call=true
-                    const channelMatch = url.pathname.match(/\/channels\/([a-z0-9]+)/i);
-                    if (channelMatch) {
-                        const targetChannelId = channelMatch[1];
-                        const currentChannelId = getCurrentChannelId(store.getState());
-
-                        // If clicking link in same channel, prevent navigation and join directly
-                        if (targetChannelId === currentChannelId) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            e.stopImmediatePropagation();
-
-                            // Defer connectToCall to next tick to avoid the modal's closeOnBlur handler
-                            // catching the same click event that triggered showing the modal, which would
-                            // immediately hide the modal that was just shown
-                            setTimeout(() => {
-                                connectToCall(targetChannelId);
-                            }, 0);
-                            return;
-                        }
-
-                        // Different channel - set pending join and let navigation happen
-                        // React Router will strip the query param, so we track it here
-                        pendingJoinChannelId = targetChannelId;
-                    }
-                }
+                url = new URL(href, window.location.origin);
             } catch {
-                // Invalid URL, ignore
+                return;
             }
-        };
-        document.addEventListener('click', handleLinkClick, true);
-        this.unsubscribers.push(() => document.removeEventListener('click', handleLinkClick, true));
+            if (url.searchParams.get('join_call') !== 'true') {
+                return;
+            }
 
-        // Also check on Redux store updates (for navigation to different channels)
+            const targetMatch = url.pathname.match(/\/channels\/([^/]+)/);
+            if (!targetMatch) {
+                return;
+            }
+            const target = targetMatch[1];
+
+            const currentChannelId = getCurrentChannelId(store.getState());
+            const currentChannelName = getCurrentChannel(store.getState())?.name;
+            if (target !== currentChannelId && target !== currentChannelName) {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            // Defer to the next tick so the click event finishes propagating
+            // before the switch modal might be shown — the modal's closeOnBlur
+            // handler is registered in capture phase and would otherwise catch
+            // this same click and immediately hide the modal.
+            setTimeout(() => connectToCall(currentChannelId), 0);
+        };
+        document.addEventListener('click', handleSameChannelLinkClick, true);
+        this.unsubscribers.push(() => document.removeEventListener('click', handleSameChannelLinkClick, true));
+
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
 
-            // Handle channel changes
+            // We only want to register the header menu component on first load
+            // and not on every channel switch.
             if (currChannelId !== currentChannelId) {
                 const firstLoad = !currChannelId;
                 currChannelId = currentChannelId;
-
-                // We only want to register the header menu component on first load and not
-                // on every channel switch.
                 if (firstLoad) {
                     registerHeaderMenuComponentIfNeeded(currentChannelId);
-
-                    // On first load, if we captured a join_call parameter, process it now
-                    // This handles pasted URLs where the parameter is captured before channel loads
-                    if (initialJoinCallParam && currentChannelId) {
-                        initialJoinCallParam = null; // Clear it so we don't process again
-                        connectToCall(currentChannelId);
-                    }
                 }
-
-                // Check if we navigated to a pending join channel
-                if (pendingJoinChannelId && pendingJoinChannelId === currentChannelId) {
-                    // Clear the flag immediately - connectToCall() will handle the rest
-                    // (including showing switch modal if already in a call)
-                    pendingJoinChannelId = '';
-                    connectToCall(currentChannelId);
-                }
-            }
-
-            // Check for join_call parameter only when URL changes (optimization)
-            const currentUrl = window.location.href;
-            if (currentUrl !== lastCheckedUrl) {
-                lastCheckedUrl = currentUrl;
-                handleJoinCallParam();
             }
         }));
 
