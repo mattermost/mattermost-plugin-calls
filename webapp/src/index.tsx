@@ -9,11 +9,11 @@ import type {DesktopAPI} from '@mattermost/desktop-api';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
-import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getChannel, getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getCurrentTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import React, {useEffect} from 'react';
@@ -95,6 +95,7 @@ import {
     StopRecordingConfirmation,
 } from 'src/components/expanded_view/stop_recording_confirmation';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
+import JoinCallWatcher from 'src/components/join_call_watcher';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
@@ -428,7 +429,14 @@ export default class Plugin {
         });
 
         const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
-            if (!channelIDForCurrentCall(store.getState())) {
+            const currentCallChannelId = channelIDForCurrentCall(store.getState());
+
+            // Also check window.callsClient for active call (handles race condition during page load)
+            const hasActiveClient = Boolean(window.callsClient);
+            const activeClientChannel = window.callsClient?.channelID;
+
+            if (!currentCallChannelId && !hasActiveClient) {
+                // Not in any call - join the new one
                 connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
@@ -436,9 +444,12 @@ export default class Plugin {
                 if (channelHasCall(store.getState(), channelId)) {
                     followThread(store, channelId, teamId);
                 }
-            } else if (channelIDForCurrentCall(store.getState()) !== channelId) {
+            } else if ((currentCallChannelId && currentCallChannelId !== channelId) || (activeClientChannel && activeClientChannel !== channelId)) {
+                // In a different call - show switch modal
                 store.dispatch(showSwitchCallModal(channelId));
             }
+
+            // If already in this call, do nothing
         };
 
         const joinCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
@@ -1093,6 +1104,16 @@ export default class Plugin {
             });
         });
 
+        // Watch the URL for ?join_call=true and trigger a join when it appears.
+        // Handles cross-channel link clicks and pasted URLs. Same-channel
+        // clicks are handled by the click handler below since the URL never
+        // changes in that case. Routes through joinCall (not connectToCall)
+        // so URL-driven joins go through the same enabled/disabled, limit,
+        // and test-mode gating as the regular UI buttons.
+        registry.registerRootComponent(() => (
+            <JoinCallWatcher onJoinCall={joinCall}/>
+        ));
+
         // A dummy React component so we can access webapp's
         // WebSocket client through the provided hook. Just lovely.
         registry.registerGlobalComponent(() => {
@@ -1119,23 +1140,96 @@ export default class Plugin {
         this.registerWebSocketEvents(registry, store);
 
         let currChannelId = getCurrentChannelId(store.getState());
-        let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
+
+        // Same-channel join_call links: when the link target is the channel
+        // we're already viewing, the webapp short-circuits navigation entirely
+        // and the URL never updates — so JoinCallWatcher can't see it. Catch
+        // those clicks here. Cross-channel clicks fall through to React Router
+        // and are handled by JoinCallWatcher after navigation.
+        const handleSameChannelLinkClick = (e: MouseEvent) => {
+            // Preserve normal browser behavior for non-primary clicks, modified
+            // clicks (Cmd/Ctrl-click → new tab, Shift-click → new window), and
+            // links that explicitly open elsewhere.
+            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+                return;
+            }
+
+            const link = (e.target as HTMLElement | null)?.closest('a');
+            if (!link || (link.target && link.target !== '_self')) {
+                return;
+            }
+
+            const href = link.getAttribute('href');
+            if (!href) {
+                return;
+            }
+
+            let url: URL;
+            try {
+                url = new URL(href, window.location.origin);
+            } catch {
+                return;
+            }
+            if (url.origin !== window.location.origin) {
+                return;
+            }
+            if (url.searchParams.get('join_call') !== 'true') {
+                return;
+            }
+
+            // On subpath deployments, url.pathname is /<basename>/<team>/...
+            // — strip the basename so the regex matches the team segment
+            // correctly. JoinCallWatcher doesn't need this because React
+            // Router's history is configured with basename and useLocation
+            // already returns paths relative to it.
+            const pathname = window.basename && url.pathname.startsWith(window.basename) ?
+                url.pathname.slice(window.basename.length) :
+                url.pathname;
+
+            // Match the team segment too — a cross-team link like
+            // /other-team/channels/<name> would otherwise mis-resolve against
+            // the current channel's name in the current team.
+            const targetMatch = pathname.match(/^\/([^/]+)\/channels\/([^/]+)/);
+            if (!targetMatch) {
+                return;
+            }
+            const [, teamName, target] = targetMatch;
+
+            const currentTeamName = getCurrentTeam(store.getState())?.name;
+            if (!currentTeamName || teamName !== currentTeamName) {
+                return;
+            }
+
+            const currentChannelId = getCurrentChannelId(store.getState());
+            const currentChannelName = getCurrentChannel(store.getState())?.name;
+            if (target !== currentChannelId && target !== currentChannelName) {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            // Defer to the next tick so the click event finishes propagating
+            // before the switch modal might be shown — the modal's closeOnBlur
+            // handler is registered in capture phase and would otherwise catch
+            // this same click and immediately hide the modal.
+            setTimeout(() => joinCall(currentChannelId), 0);
+        };
+        document.addEventListener('click', handleSameChannelLinkClick, true);
+        this.unsubscribers.push(() => document.removeEventListener('click', handleSameChannelLinkClick, true));
+
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
+
+            // We only want to register the header menu component on first load
+            // and not on every channel switch.
             if (currChannelId !== currentChannelId) {
                 const firstLoad = !currChannelId;
                 currChannelId = currentChannelId;
-
-                // We only want to register the header menu component on first load and not
-                // on every channel switch.
                 if (firstLoad) {
                     registerHeaderMenuComponentIfNeeded(currentChannelId);
                 }
-
-                if (currChannelId && Boolean(joinCallParam) && !channelIDForCurrentCall(store.getState())) {
-                    connectCall(currChannelId);
-                }
-                joinCallParam = '';
             }
         }));
 
