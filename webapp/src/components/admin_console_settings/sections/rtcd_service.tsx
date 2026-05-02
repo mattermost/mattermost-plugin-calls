@@ -73,7 +73,7 @@ export default function RTCDServiceSection(props: {settingsList: React.ReactNode
                                 <FormattedMessage
                                     defaultMessage={'Real-time communication daemon is a service built to offload calls onto your own WebRTC services and efficiently support scalable and secure deployments. <featureLink>Learn more about this feature</featureLink>.'}
                                     values={{
-                                        featureLink: (text: string) => (
+                                        featureLink: (text: React.ReactNode) => (
                                             <a
                                                 href='https://mattermost.com/pl/calls-deployment-the-rtcd-service?utm_source=mattermost&utm_medium=in-product&utm_content=calls_rtcd_feature_discovery'
                                                 target='_blank'
@@ -96,8 +96,8 @@ export default function RTCDServiceSection(props: {settingsList: React.ReactNode
                                     <FormattedMessage
                                         defaultMessage={'By selecting <b>Try free for 30 days</b>, I agree to the <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>Privacy Policy</linkPrivacy>, and receiving product emails.'}
                                         values={{
-                                            b: (text: string) => <b>{text}</b>,
-                                            linkEvaluation: (text: string) => (
+                                            b: (text: React.ReactNode) => <b>{text}</b>,
+                                            linkEvaluation: (text: React.ReactNode) => (
                                                 <a
                                                     href='https://mattermost.com/software-evaluation-agreement'
                                                     target='_blank'
@@ -106,7 +106,7 @@ export default function RTCDServiceSection(props: {settingsList: React.ReactNode
                                                     {text}
                                                 </a>
                                             ),
-                                            linkPrivacy: (text: string) => (
+                                            linkPrivacy: (text: React.ReactNode) => (
                                                 <a
                                                     href='https://mattermost.com/privacy-policy/'
                                                     target='_blank'

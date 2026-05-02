@@ -7961,7 +7961,7 @@ This product contains 'stretchr/testify' by Stretchr, Inc..
 A toolkit with common assertions and mocks that plays nicely with the standard library
 
 * HOMEPAGE:
-  * https://github.com/stretchr/testify
+  * https://pkg.go.dev/github.com/stretchr/testify
 
 * LICENSE: MIT License
 
@@ -7997,7 +7997,7 @@ This product contains 'stretchr/testify' by Stretchr, Inc..
 A toolkit with common assertions and mocks that plays nicely with the standard library
 
 * HOMEPAGE:
-  * https://github.com/stretchr/testify
+  * https://pkg.go.dev/github.com/stretchr/testify
 
 * LICENSE: MIT License
 
@@ -8033,7 +8033,7 @@ This product contains 'stretchr/testify' by Stretchr, Inc..
 A toolkit with common assertions and mocks that plays nicely with the standard library
 
 * HOMEPAGE:
-  * https://github.com/stretchr/testify
+  * https://pkg.go.dev/github.com/stretchr/testify
 
 * LICENSE: MIT License
 
