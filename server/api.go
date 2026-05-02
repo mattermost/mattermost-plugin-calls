@@ -454,31 +454,49 @@ func (p *Plugin) handleGetTURNCredentials(w http.ResponseWriter, r *http.Request
 	defer p.httpAudit("handleGetTURNCredentials", &res, w, r)
 
 	cfg := p.getConfiguration()
-	if cfg.TURNStaticAuthSecret == "" {
-		res.Err = "TURNStaticAuthSecret should be set"
-		res.Code = http.StatusForbidden
-		return
+
+	var staticConfigs []rtc.ICEServerConfig
+	var dynamicConfigs []rtc.ICEServerConfig
+	for _, iceServerConfig := range cfg.ICEServersConfigs {
+		if !iceServerConfig.IsTURN() {
+			continue
+		}
+		if iceServerConfig.Username != "" || iceServerConfig.Credential != "" {
+			staticConfigs = append(staticConfigs, iceServerConfig)
+		} else {
+			dynamicConfigs = append(dynamicConfigs, iceServerConfig)
+		}
 	}
 
-	turnServers := cfg.ICEServersConfigs.getTURNConfigsForCredentials()
-	if len(turnServers) == 0 {
+	if len(staticConfigs) == 0 && len(dynamicConfigs) == 0 {
 		res.Err = "No TURN server was configured"
-		res.Code = http.StatusForbidden
+		res.Code = http.StatusNotFound
 		return
 	}
 
-	user, appErr := p.API.GetUser(r.Header.Get("Mattermost-User-Id"))
-	if appErr != nil {
-		res.Err = appErr.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
+	configs := staticConfigs
 
-	configs, err := rtc.GenTURNConfigs(turnServers, user.Username, cfg.TURNStaticAuthSecret, *cfg.TURNCredentialsExpirationMinutes)
-	if err != nil {
-		res.Err = err.Error()
-		res.Code = http.StatusInternalServerError
-		return
+	if len(dynamicConfigs) > 0 {
+		if cfg.TURNStaticAuthSecret == "" {
+			res.Err = "TURNStaticAuthSecret should be set"
+			res.Code = http.StatusInternalServerError
+			return
+		}
+
+		user, appErr := p.API.GetUser(r.Header.Get("Mattermost-User-Id"))
+		if appErr != nil {
+			res.Err = appErr.Error()
+			res.Code = http.StatusInternalServerError
+			return
+		}
+
+		generatedConfigs, err := rtc.GenTURNConfigs(dynamicConfigs, user.Username, cfg.TURNStaticAuthSecret, *cfg.TURNCredentialsExpirationMinutes)
+		if err != nil {
+			res.Err = err.Error()
+			res.Code = http.StatusInternalServerError
+			return
+		}
+		configs = append(configs, generatedConfigs...)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
