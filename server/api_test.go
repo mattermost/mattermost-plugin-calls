@@ -20,33 +20,38 @@ import (
 )
 
 func TestHandleGetTURNCredentials(t *testing.T) {
-	mockAPI := &pluginMocks.MockAPI{}
+	setupFixture := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI, http.Handler) {
+		t.Helper()
+
+		mockAPI := &pluginMocks.MockAPI{}
+
+		p := &Plugin{
+			MattermostPlugin: plugin.MattermostPlugin{
+				API: mockAPI,
+			},
+			apiLimiters: map[string]*rate.Limiter{},
+		}
+		_ = p.getConfiguration()
+
+		// Audit log
+		mockAPI.On("LogDebug", "handleGetTURNCredentials",
+			"origin", mock.AnythingOfType("string"), mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything).Maybe()
+		mockAPI.On("LogDebug", "handleGetTURNCredentials",
+			"origin", mock.AnythingOfType("string"), mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+
+		return p, mockAPI, p.newAPIRouter()
+	}
 
 	userID := model.NewId()
 
-	p := &Plugin{
-		MattermostPlugin: plugin.MattermostPlugin{
-			API: mockAPI,
-		},
-		apiLimiters: map[string]*rate.Limiter{},
-	}
-	_ = p.getConfiguration()
-
-	// Audit log
-	mockAPI.On("LogDebug", "handleGetTURNCredentials",
-		"origin", mock.AnythingOfType("string"), mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything).Maybe()
-	mockAPI.On("LogDebug", "handleGetTURNCredentials",
-		"origin", mock.AnythingOfType("string"), mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
-
-	apiRouter := p.newAPIRouter()
-
 	t.Run("no TURN configured returns 404", func(t *testing.T) {
+		p, mockAPI, apiRouter := setupFixture(t)
 		defer mockAPI.AssertExpectations(t)
 
 		p.configuration.ICEServersConfigs = ICEServersConfigs{
@@ -70,6 +75,7 @@ func TestHandleGetTURNCredentials(t *testing.T) {
 	})
 
 	t.Run("dynamic TURN without TURNStaticAuthSecret returns 500", func(t *testing.T) {
+		p, mockAPI, apiRouter := setupFixture(t)
 		defer mockAPI.AssertExpectations(t)
 
 		p.configuration.ICEServersConfigs = ICEServersConfigs{
@@ -93,6 +99,7 @@ func TestHandleGetTURNCredentials(t *testing.T) {
 	})
 
 	t.Run("static TURN only passes through without TURNStaticAuthSecret", func(t *testing.T) {
+		p, mockAPI, apiRouter := setupFixture(t)
 		defer mockAPI.AssertExpectations(t)
 
 		p.configuration.ICEServersConfigs = ICEServersConfigs{
@@ -119,6 +126,7 @@ func TestHandleGetTURNCredentials(t *testing.T) {
 	})
 
 	t.Run("static + dynamic TURN returns both", func(t *testing.T) {
+		p, mockAPI, apiRouter := setupFixture(t)
 		defer mockAPI.AssertExpectations(t)
 
 		p.configuration.ICEServersConfigs = ICEServersConfigs{
