@@ -522,7 +522,7 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		ICEServers:           c.ICEServers,
 		ICEServersConfigs:    c.getICEServers(true),
 		MaxCallParticipants:  c.MaxCallParticipants,
-		NeedsTURNCredentials: model.NewPointer(c.TURNStaticAuthSecret != "" && len(c.ICEServersConfigs.getTURNConfigsForCredentials()) > 0),
+		NeedsTURNCredentials: model.NewPointer(c.ICEServersConfigs.hasTURN()),
 		AllowScreenSharing:   c.AllowScreenSharing,
 		EnableRecordings:     c.EnableRecordings,
 		EnableTranscriptions: c.EnableTranscriptions,
@@ -545,6 +545,9 @@ func (p *Plugin) getAdminClientConfig(c *configuration) configuration {
 
 	cfg := p.configuration.Clone()
 	cfg.ClientConfig = p.getClientConfig(c)
+
+	// These were removed for non-admins, so restore them.
+	cfg.ICEServersConfigs = c.ICEServersConfigs
 
 	return *cfg
 }
@@ -755,7 +758,7 @@ func (c *configuration) getICEServers(forClient bool) ICEServersConfigs {
 	var iceServers ICEServersConfigs
 
 	for _, cfg := range c.ICEServersConfigs {
-		if forClient && cfg.IsTURN() && cfg.Username == "" && cfg.Credential == "" {
+		if forClient && cfg.IsTURN() {
 			continue
 		}
 		iceServers = append(iceServers, cfg)
@@ -770,12 +773,11 @@ func (c *configuration) getICEServers(forClient bool) ICEServersConfigs {
 	return iceServers
 }
 
-func (cfgs ICEServersConfigs) getTURNConfigsForCredentials() []rtc.ICEServerConfig {
-	var configs []rtc.ICEServerConfig
+func (cfgs ICEServersConfigs) hasTURN() bool {
 	for _, cfg := range cfgs {
-		if cfg.IsTURN() && cfg.Username == "" && cfg.Credential == "" {
-			configs = append(configs, cfg)
+		if cfg.IsTURN() {
+			return true
 		}
 	}
-	return configs
+	return false
 }

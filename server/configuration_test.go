@@ -254,9 +254,28 @@ func TestGetClientConfig(t *testing.T) {
 	clientCfg = p.getClientConfig(p.getConfiguration())
 	require.Equal(t, true, clientCfg.HostControlsAllowed)
 
+	// set TURN entries
+	p.configuration.ICEServersConfigs = ICEServersConfigs{
+		{URLs: []string{"stun:stun.example.com:3478"}},
+		{URLs: []string{"turn:static.example.com:3478"}, Username: "oneone", Credential: "OneIsOne"},
+	}
+
+	// non-admin client config must not receive TURN entries
+	clientCfg = p.getClientConfig(p.getConfiguration())
+	for _, c := range clientCfg.ICEServersConfigs {
+		require.Empty(t, c.Username, "non-admin client received TURN username: %+v", c)
+		require.Empty(t, c.Credential, "non-admin client received TURN credential: %+v", c)
+	}
+	require.True(t, *clientCfg.NeedsTURNCredentials)
+
 	// admin config
 	adminClientCfg := p.getAdminClientConfig(p.getConfiguration())
 	require.Equal(t, transcriber.TranscribeAPI(transcriber.TranscribeAPIWhisperCPP), adminClientCfg.TranscribeAPI)
+
+	// admin config must receive TURN entries
+	require.Len(t, adminClientCfg.ICEServersConfigs, 2)
+	require.Equal(t, "oneone", adminClientCfg.ICEServersConfigs[1].Username)
+	require.Equal(t, "OneIsOne", adminClientCfg.ICEServersConfigs[1].Credential)
 }
 
 func TestConfigurationWillBeSaved(t *testing.T) {
