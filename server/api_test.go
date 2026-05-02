@@ -126,6 +126,7 @@ func TestHandleGetTURNCredentials(t *testing.T) {
 			{URLs: []string{"turn:dynamic.example.com:3478"}},
 		}
 		p.configuration.TURNStaticAuthSecret = "super-secret"
+		p.configuration.TURNCredentialsExpirationMinutes = model.NewPointer(240)
 
 		mockAPI.On("GetUser", userID).Return(&model.User{Username: "testuser"}, (*model.AppError)(nil)).Once()
 
