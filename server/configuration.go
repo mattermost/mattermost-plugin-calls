@@ -781,13 +781,3 @@ func (cfgs ICEServersConfigs) hasTURN() bool {
 	}
 	return false
 }
-
-func (cfgs ICEServersConfigs) getTURNConfigsForCredentials() []rtc.ICEServerConfig {
-	var configs []rtc.ICEServerConfig
-	for _, cfg := range cfgs {
-		if cfg.IsTURN() && cfg.Username == "" && cfg.Credential == "" {
-			configs = append(configs, cfg)
-		}
-	}
-	return configs
-}
