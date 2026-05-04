@@ -176,32 +176,27 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         return {message: `/call stats ${btoa(data)}`, args};
     }
     case 'logs': {
-        // Flush current session first
         flushLogsToAccumulated();
-
-        // Get all accumulated logs
         const allLogs = getClientLogs();
 
         if (!allLogs || allLogs.trim().length === 0) {
             return {error: {message: 'No call logs available'}};
         }
 
-        // Generate UTC timestamp for filename
-        const now = new Date();
-        const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5) + 'Z'; // 2026-02-09T14-30-45Z
-        const filename = `call_logs_${timestamp}.txt`;
-
         try {
-            const response = await RestClient.fetch<{post_id: string}>(
+            await RestClient.fetch(
                 `${getPluginPath()}/logs/upload`,
                 {
                     method: 'POST',
-                    body: JSON.stringify({logs: allLogs, filename}),
+                    body: JSON.stringify({
+                        logs: allLogs,
+                        channel_id: args.channel_id,
+                        team_id: args.team_id,
+                    }),
                     headers: {'Content-Type': 'application/json'},
                 },
             );
-
-            return {message: `/call logs ${btoa(JSON.stringify({post_id: response.post_id}))}`, args};
+            return {};
         } catch (err) {
             return {error: {message: `Failed to upload logs: ${(err as Error).message}`}};
         }
