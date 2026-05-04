@@ -197,7 +197,14 @@ jobs:
         run: |
           echo "Building playwright test image ... "
           cp ${{ github.workspace }}/plugin.json plugin.json
-          docker build --quiet -t mm-playwright -f Playwright.Dockerfile .
+          for attempt in 1 2 3; do
+            if docker build --quiet -t mm-playwright -f Playwright.Dockerfile .; then
+              exit 0
+            fi
+            echo "Attempt ${attempt} failed, sleeping before retry..."
+            sleep 15
+          done
+          exit 1
 
       - name: e2e/test
         env:
