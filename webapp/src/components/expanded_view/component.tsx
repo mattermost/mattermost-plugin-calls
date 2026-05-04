@@ -42,8 +42,6 @@ import ShareScreenIcon from 'src/components/icons/share_screen';
 import SpeakerViewIcon from 'src/components/icons/speaker_view';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
-import VideoOffIcon from 'src/components/icons/video_off';
-import VideoOnIcon from 'src/components/icons/video_on';
 import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
@@ -1201,21 +1199,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const isMuted = this.isMuted();
         const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
-        const noVideoInputDevices = this.state.alerts.missingVideoInput.active;
-        const noVideoPermissions = this.state.alerts.missingVideoInputPermissions.active;
-        const isVideoOn = this.isVideoOn();
-        const VideoIcon = this.isVideoOn() || noVideoInputDevices || noVideoPermissions ? VideoOnIcon : VideoOffIcon;
-        let videoTooltipText = isVideoOn ? formatMessage({defaultMessage: 'Turn camera off'}) : formatMessage({defaultMessage: 'Turn camera on'});
-        let videoTooltipSubtext = '';
-        if (noVideoInputDevices) {
-            videoTooltipText = formatMessage(CallAlertConfigs.missingVideoInput.tooltipText!);
-            videoTooltipSubtext = formatMessage(CallAlertConfigs.missingVideoInput.tooltipSubtext!);
-        }
-        if (noVideoPermissions) {
-            videoTooltipText = formatMessage(CallAlertConfigs.missingVideoInputPermissions.tooltipText!);
-            videoTooltipSubtext = formatMessage(CallAlertConfigs.missingVideoInputPermissions.tooltipSubtext!);
-        }
-
         let muteTooltipText = isMuted ? formatMessage({defaultMessage: 'Unmute'}) : formatMessage({defaultMessage: 'Mute'});
         let muteTooltipSubtext = isMuted ? formatMessage({defaultMessage: 'Or hold space bar'}) : '';
 
@@ -1428,33 +1411,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 }
                                 unavailable={noInputDevices || noAudioPermissions}
                             />
-
-                            {this.props.enableVideo &&
-                            <ControlsButton
-                                id='calls-popout-video-button'
-                                dataTestId={isVideoOn ? 'calls-popout-stop-video' : 'calls-popout-start-video'}
-                                ariaLabel={videoTooltipText}
-                                // eslint-disable-next-line no-undefined
-                                onToggle={noVideoInputDevices ? undefined : this.onVideoToggle}
-                                tooltipText={videoTooltipText}
-                                tooltipSubtext={videoTooltipSubtext}
-                                // eslint-disable-next-line no-undefined
-                                // shortcut={noVideoInputDevices || noVideoPermissions ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
-                                bgColor={isVideoOn ? 'rgba(61, 184, 135, 0.16)' : ''}
-                                bgColorHover={isVideoOn ? 'rgba(61, 184, 135, 0.20)' : ''}
-                                iconFill={isVideoOn ? 'rgba(61, 184, 135, 0.80)' : ''}
-                                iconFillHover={isVideoOn ? 'rgba(61, 184, 135, 0.80)' : ''}
-                                icon={
-                                    <VideoIcon
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                        }}
-                                    />
-                                }
-                                unavailable={noVideoInputDevices || noVideoPermissions}
-                            />
-                            }
 
                             {this.props.allowScreenSharing &&
                                 <ControlsButton

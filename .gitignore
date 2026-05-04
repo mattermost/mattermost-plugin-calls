@@ -44,3 +44,7 @@ server/assets/i18n
 
 go.work
 go.work.sum
+
+# Claude Code local configuration
+CLAUDE.local.md
+.claude/
