@@ -429,13 +429,14 @@ export default class Plugin {
         });
 
         const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
-            const currentCallChannelId = channelIDForCurrentCall(store.getState());
+            // Prefer the live window.callsClient over Redux state: the client
+            // is the concrete "I am literally in a call right now" signal,
+            // while Redux can be transiently stale during reload reconnect.
+            // Falling back to Redux covers the case where the client hasn't
+            // attached yet on initial load.
+            const effectiveCurrentChannel = window.callsClient?.channelID ?? channelIDForCurrentCall(store.getState());
 
-            // Also check window.callsClient for active call (handles race condition during page load)
-            const hasActiveClient = Boolean(window.callsClient);
-            const activeClientChannel = window.callsClient?.channelID;
-
-            if (!currentCallChannelId && !hasActiveClient) {
+            if (!effectiveCurrentChannel) {
                 // Not in any call - join the new one
                 connectCall(channelId, title, rootId);
 
@@ -444,7 +445,7 @@ export default class Plugin {
                 if (channelHasCall(store.getState(), channelId)) {
                     followThread(store, channelId, teamId);
                 }
-            } else if ((currentCallChannelId && currentCallChannelId !== channelId) || (activeClientChannel && activeClientChannel !== channelId)) {
+            } else if (effectiveCurrentChannel !== channelId) {
                 // In a different call - show switch modal
                 store.dispatch(showSwitchCallModal(channelId));
             }
