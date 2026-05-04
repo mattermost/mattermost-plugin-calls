@@ -3,7 +3,7 @@
 
 import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {EventEmitter} from 'events';
-import {ConnectionState, DisconnectReason, RemoteParticipant, RemoteTrack, RemoteTrackPublication, Room, RoomEvent, Track} from 'livekit-client';
+import {ConnectionState, DisconnectReason, LocalTrackPublication, RemoteParticipant, RemoteTrack, RemoteTrackPublication, Room, RoomEvent, Track} from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {CALL_EVENT, CALL_TOKEN_API_PATH} from 'src/constants';
 import {logDebug, logErr, logInfo} from 'src/log';
@@ -20,8 +20,6 @@ export async function fetchRtcToken(channelID: string): Promise<RtcTokenResponse
     return RestClient.fetch<RtcTokenResponse>(url, {method: 'GET'});
 }
 
-const notImplemented = (name: string) => new Error(`CallClient.${name}: not yet implemented`);
-
 export default class CallClient extends EventEmitter {
     public channelID = '';
     public initTime = 0;
@@ -36,25 +34,27 @@ export default class CallClient extends EventEmitter {
 
     private closed = false;
 
-    private async handleConnected() {
+    private handleConnected() {
         this.initTime = Date.now();
-        logInfo('call client: connected to room');
 
-        // Request mic permission upfront, then immediately mute. The user
-        // always starts muted, but unmute clicks are instant (no permission
-        // dialog delay).
+        // Request microphone permission in the background so connection
+        // handling is not blocked by the user's interaction.
+        void this.requestMicrophonePermission();
+
+        this.emit(CALL_EVENT.CONNECTED);
+        logInfo('call client: connected to room');
+    }
+
+    private async requestMicrophonePermission() {
         try {
+            // Request microphone permission upfront, then immediately mute.
             await this.room?.localParticipant.setMicrophoneEnabled(true);
             await this.room?.localParticipant.setMicrophoneEnabled(false);
-            const pub = this.room?.localParticipant.getTrackPublication(Track.Source.Microphone);
-            this.audioTrack = pub?.track?.mediaStreamTrack ?? null;
+            this.emit(CALL_EVENT.MUTE);
         } catch (err) {
-            logErr('call client: failed to acquire microphone', err);
+            logErr('call client: failed to request microphone permission', err);
             this.emit(CALL_EVENT.ERROR, err);
         }
-
-        this.emit(CALL_EVENT.MUTE);
-        this.emit(CALL_EVENT.CONNECTED);
     }
 
     private handleConnectionStateChanged(state: ConnectionState) {
@@ -88,6 +88,16 @@ export default class CallClient extends EventEmitter {
         }
     }
 
+    private handleLocalTrackPublished(publication: LocalTrackPublication) {
+        logInfo('call client: local track published', publication);
+
+        if (publication.source === Track.Source.Microphone) {
+            this.audioTrack = publication.track?.mediaStreamTrack ?? null;
+        }
+    }
+
+    /** From here on down the methods are all PUBLIC, and are the entry points for the CallClient */
+
     public async connect(channelID: string): Promise<void> {
         if (this.room) {
             throw new Error('call client: room already connected');
@@ -113,6 +123,7 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.Reconnected, this.handleReconnected.bind(this));
         room.on(RoomEvent.Disconnected, this.handleDisconnected.bind(this));
         room.on(RoomEvent.TrackSubscribed, this.handleTrackSubscribed.bind(this));
+        room.on(RoomEvent.LocalTrackPublished, this.handleLocalTrackPublished.bind(this));
 
         try {
             await room.connect(url, token);
@@ -166,8 +177,6 @@ export default class CallClient extends EventEmitter {
             return;
         }
         await this.room.localParticipant.setMicrophoneEnabled(true);
-        const pub = this.room.localParticipant.getTrackPublication(Track.Source.Microphone);
-        this.audioTrack = pub?.track?.mediaStreamTrack ?? null;
         this.emit(CALL_EVENT.UNMUTE);
     }
 
