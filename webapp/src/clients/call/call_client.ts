@@ -41,38 +41,44 @@ export default class CallClient extends EventEmitter {
         // handling is not blocked by the user's interaction.
         void this.requestMicrophonePermission();
 
+        // User starts muted.
+        this.emit(CALL_EVENT.MUTE);
         this.emit(CALL_EVENT.CONNECTED);
-        logInfo('call client: connected to room');
+        logInfo('CallClient: connected to room');
     }
 
     private async requestMicrophonePermission() {
         try {
-            // Request microphone permission upfront, then immediately mute.
-            await this.room?.localParticipant.setMicrophoneEnabled(true);
-            await this.room?.localParticipant.setMicrophoneEnabled(false);
-            this.emit(CALL_EVENT.MUTE);
+            // Just request permission to the microphone and
+            // stop the track immediately to avoid any audio being published
+            const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true});
+            mediaStream.getTracks().forEach((mediaStreamTrack) => {
+                mediaStreamTrack.stop();
+            });
+
+            logInfo('CallClient: microphone permission granted');
         } catch (err) {
-            logErr('call client: failed to request microphone permission', err);
+            logErr('CallClient: failed to request microphone permission', err);
             this.emit(CALL_EVENT.ERROR, err);
         }
     }
 
     private handleConnectionStateChanged(state: ConnectionState) {
-        logDebug('call client: connection state changed', state);
+        logDebug('CallClient: connection state changed', state);
     }
 
     private handleReconnecting() {
-        logInfo('call client: reconnecting to room');
+        logInfo('CallClient: reconnecting to room');
         this.emit(CALL_EVENT.RECONNECTING);
     }
 
     private handleReconnected() {
-        logInfo('call client: reconnected to room');
+        logInfo('CallClient: reconnected to room');
         this.emit(CALL_EVENT.RECONNECTED);
     }
 
     private handleDisconnected(reason?: DisconnectReason) {
-        logInfo('call client: disconnected from room', reason);
+        logInfo('CallClient: disconnected from room', reason);
         this.emit(CALL_EVENT.DISCONNECTED, reason);
     }
 
@@ -83,13 +89,13 @@ export default class CallClient extends EventEmitter {
     ) {
         if (track.source === Track.Source.Microphone) {
             const stream = new MediaStream([track.mediaStreamTrack]);
-            logInfo(`call client: subscribed to remote voice from ${participant.identity}`);
+            logInfo(`CallClient: subscribed to remote voice from ${participant.identity}`);
             this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, stream, participant.identity);
         }
     }
 
     private handleLocalTrackPublished(publication: LocalTrackPublication) {
-        logInfo('call client: local track published', publication);
+        logInfo('CallClient: local track published', publication);
 
         if (publication.source === Track.Source.Microphone) {
             this.audioTrack = publication.track?.mediaStreamTrack ?? null;
@@ -100,7 +106,7 @@ export default class CallClient extends EventEmitter {
 
     public async connect(channelID: string): Promise<void> {
         if (this.room) {
-            throw new Error('call client: room already connected');
+            throw new Error('CallClient: room already connected');
         }
 
         this.channelID = channelID;
@@ -109,10 +115,10 @@ export default class CallClient extends EventEmitter {
         const token = response?.token ?? '';
         const url = response?.url ?? '';
         if (!token || !url) {
-            throw new Error('call client: either token or url were not received from token API');
+            throw new Error('CallClient: either token or url were not received from token API');
         }
 
-        logInfo(`call client: trying to connect to ${url} for channel ${channelID} with valid token`);
+        logInfo(`CallClient: trying to connect to ${url} for channel ${channelID} with valid token`);
 
         const room = new Room();
         this.room = room;
@@ -128,7 +134,7 @@ export default class CallClient extends EventEmitter {
         try {
             await room.connect(url, token);
         } catch (err) {
-            logErr(`call client: failed to connect to room ${url}`, err);
+            logErr(`CallClient: failed to connect to room ${url}`, err);
             this.room = null;
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
@@ -149,7 +155,7 @@ export default class CallClient extends EventEmitter {
             try {
                 await this.room.disconnect();
             } catch (disconnectErr) {
-                logErr('call client: error during disconnect', disconnectErr);
+                logErr('CallClient: error during disconnect', disconnectErr);
             } finally {
                 this.room = null;
             }
