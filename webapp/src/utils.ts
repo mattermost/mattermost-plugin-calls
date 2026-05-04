@@ -85,7 +85,8 @@ export function getChannelURL(state: GlobalState, channel?: Channel, teamId?: st
 export function getCallsClient(): CallClient | undefined {
     let callsClient;
     try {
-        callsClient = getCallsWindow().callsClient;
+        // TODO: Remove this once CallsClient is removed.
+        callsClient = getCallsWindow().callsClient as unknown as CallClient | undefined;
     } catch (err) {
         logErr(err);
     }
