@@ -23,7 +23,6 @@ import {
     UserDismissedNotification,
     UserJoinedData,
     UserLeftData,
-    UserMutedUnmutedData,
     UserRaiseUnraiseHandData,
     UserReactionData,
     UserRemovedData,
@@ -72,13 +71,11 @@ import {
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
-    handleUserMuted,
     handleUserRaisedHand,
     handleUserReaction,
     handleUserRemovedFromChannel,
     handleUserScreenOff,
     handleUserScreenOn,
-    handleUserUnmuted,
     handleUserUnraisedHand,
     handleUserVideoOff,
     handleUserVideoOn,
@@ -275,12 +272,6 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_user_screen_off`:
             handleUserScreenOff(store, ev as WebSocketMessage<UserScreenOnOffData>);
-            break;
-        case `custom_${pluginId}_user_muted`:
-            handleUserMuted(store, ev as WebSocketMessage<UserMutedUnmutedData>);
-            break;
-        case `custom_${pluginId}_user_unmuted`:
-            handleUserUnmuted(store, ev as WebSocketMessage<UserMutedUnmutedData>);
             break;
         case `custom_${pluginId}_user_raise_hand`:
             handleUserRaisedHand(store, ev as WebSocketMessage<UserRaiseUnraiseHandData>);

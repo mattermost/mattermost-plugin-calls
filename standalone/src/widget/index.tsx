@@ -58,24 +58,24 @@ async function initWidget({store, startingCall}: InitCbProps) {
 
     const locale = getCurrentUserLocale(store.getState()) || 'en';
 
-    window.callsClient?.on('mute', () => {
+    window.callsClient?.on('mute', (session_id: string, userID: string) => {
         store.dispatch({
             type: USER_MUTED,
             data: {
                 channelID: window.callsClient?.channelID,
-                userID: getCurrentUserId(store.getState()),
-                session_id: window.callsClient?.getSessionID(),
+                userID,
+                session_id,
             },
         });
     });
 
-    window.callsClient?.on('unmute', () => {
+    window.callsClient?.on('unmute', (session_id: string, userID: string) => {
         store.dispatch({
             type: USER_UNMUTED,
             data: {
                 channelID: window.callsClient?.channelID,
-                userID: getCurrentUserId(store.getState()),
-                session_id: window.callsClient?.getSessionID(),
+                userID,
+                session_id,
             },
         });
     });
