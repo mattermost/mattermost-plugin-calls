@@ -28,9 +28,7 @@ export type RtcTokenResponse = {
     url: string;
 };
 
-export async function fetchRtcToken(
-    channelID: string,
-): Promise<RtcTokenResponse> {
+export async function fetchRtcToken(channelID: string): Promise<RtcTokenResponse> {
     const url = `${getPluginPath()}/${CALL_TOKEN_API_PATH}?channel_id=${encodeURIComponent(channelID)}`;
     return RestClient.fetch<RtcTokenResponse>(url, {method: 'GET'});
 }
