@@ -15,6 +15,8 @@ import {mockStore} from 'src/testUtils';
 import JoinCallWatcher from './join_call_watcher';
 
 jest.mock('mattermost-redux/selectors/entities/channels', () => ({
+    getChannel: (state: {entities: {channels: {channels: Record<string, unknown>}}}, id: string) =>
+        state?.entities?.channels?.channels?.[id],
     getChannelsNameMapInCurrentTeam: jest.fn(),
 }));
 

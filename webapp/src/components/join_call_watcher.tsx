@@ -1,8 +1,9 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
-import {getChannelsNameMapInCurrentTeam} from 'mattermost-redux/selectors/entities/channels';
+import {getChannel, getChannelsNameMapInCurrentTeam} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
 import {useEffect} from 'react';
 import {useSelector} from 'react-redux';
@@ -22,43 +23,36 @@ type Props = {
 const JoinCallWatcher = ({onJoinCall}: Props) => {
     const location = useLocation();
     const joinCall = new URLSearchParams(location.search).get('join_call');
-    const channelsById = useSelector((state: GlobalState) => state.entities.channels.channels);
-    const channelsByName = useSelector(getChannelsNameMapInCurrentTeam);
-    const currentTeamName = useSelector(getCurrentTeam)?.name;
 
-    useEffect(() => {
-        if (joinCall !== 'true') {
-            return;
-        }
-
+    // Resolve the URL's channel in a single selector so the effect only
+    // re-fires when the resolved channel itself changes, not whenever
+    // unrelated channel map updates replace the broader Redux objects.
+    const channelFromUrl = useSelector((state: GlobalState): Channel | null => {
         // Pathname is /TEAM/channels/<channelID-or-name>. During cross-channel
-        // navigation, it's the channel ID briefly before Mattermost canonicalizes
-        // it to the channel name. We accept either by looking up both maps.
-        // Resolving via Redux directly (rather than gating on currentChannelId)
-        // is essential — currentChannelId lags the URL during cross-channel nav,
-        // and canonicalization strips the param before Redux catches up.
+        // navigation it's the ID form briefly before Mattermost canonicalizes
+        // to the name form. We accept either.
         //
-        // The team segment must match the current team. channelsByName is
-        // scoped to the current team, so a cross-team link like
-        // /other-team/channels/town-square would otherwise mis-resolve to the
-        // current team's town-square. DM/GM URLs (/messages/...) are not
-        // handled — see open work in feature doc.
+        // The team segment must match the current team to avoid mis-resolving
+        // a cross-team link against the current team's channel map.
+        // DM/GM URLs (/messages/...) are not handled — see feature doc.
         const match = location.pathname.match(/^\/([^/]+)\/channels\/([^/]+)/);
         if (!match) {
-            return;
+            return null;
         }
         const [, teamName, idOrName] = match;
+        const currentTeamName = getCurrentTeam(state)?.name;
         if (!currentTeamName || teamName !== currentTeamName) {
+            return null;
+        }
+        return getChannel(state, idOrName) || getChannelsNameMapInCurrentTeam(state)[idOrName] || null;
+    });
+
+    useEffect(() => {
+        if (joinCall !== 'true' || !channelFromUrl) {
             return;
         }
-
-        const channel = channelsById[idOrName] || channelsByName[idOrName];
-        if (!channel) {
-            return;
-        }
-
-        onJoinCall(channel.id);
-    }, [joinCall, location.pathname, channelsById, channelsByName, currentTeamName, onJoinCall]);
+        onJoinCall(channelFromUrl.id);
+    }, [joinCall, channelFromUrl, onJoinCall]);
 
     return null;
 };
