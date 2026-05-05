@@ -97,6 +97,7 @@ import {
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
 import JoinCallWatcher from 'src/components/join_call_watcher';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
+import {makeSameChannelLinkClickHandler} from 'src/components/same_channel_link_click_handler';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
@@ -1143,76 +1144,12 @@ export default class Plugin {
         // and the URL never updates — so JoinCallWatcher can't see it. Catch
         // those clicks here. Cross-channel clicks fall through to React Router
         // and are handled by JoinCallWatcher after navigation.
-        const handleSameChannelLinkClick = (e: MouseEvent) => {
-            // Preserve normal browser behavior for non-primary clicks, modified
-            // clicks (Cmd/Ctrl-click → new tab, Shift-click → new window), and
-            // links that explicitly open elsewhere.
-            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
-                return;
-            }
-
-            const link = (e.target as HTMLElement | null)?.closest('a');
-            if (!link || (link.target && link.target !== '_self')) {
-                return;
-            }
-
-            const href = link.getAttribute('href');
-            if (!href) {
-                return;
-            }
-
-            let url: URL;
-            try {
-                url = new URL(href, window.location.origin);
-            } catch {
-                return;
-            }
-            if (url.origin !== window.location.origin) {
-                return;
-            }
-            if (url.searchParams.get('join_call') !== 'true') {
-                return;
-            }
-
-            // On subpath deployments, url.pathname is /<basename>/<team>/...
-            // — strip the basename so the regex matches the team segment
-            // correctly. JoinCallWatcher doesn't need this because React
-            // Router's history is configured with basename and useLocation
-            // already returns paths relative to it.
-            const pathname = window.basename && url.pathname.startsWith(window.basename) ?
-                url.pathname.slice(window.basename.length) :
-                url.pathname;
-
-            // Match the team segment too — a cross-team link like
-            // /other-team/channels/<name> would otherwise mis-resolve against
-            // the current channel's name in the current team.
-            const targetMatch = pathname.match(/^\/([^/]+)\/channels\/([^/]+)/);
-            if (!targetMatch) {
-                return;
-            }
-            const [, teamName, target] = targetMatch;
-
-            const currentTeamName = getCurrentTeam(store.getState())?.name;
-            if (!currentTeamName || teamName !== currentTeamName) {
-                return;
-            }
-
-            const currentChannelId = getCurrentChannelId(store.getState());
-            const currentChannelName = getCurrentChannel(store.getState())?.name;
-            if (target !== currentChannelId && target !== currentChannelName) {
-                return;
-            }
-
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-
-            // Defer to the next tick so the click event finishes propagating
-            // before the switch modal might be shown — the modal's closeOnBlur
-            // handler is registered in capture phase and would otherwise catch
-            // this same click and immediately hide the modal.
-            setTimeout(() => joinCall(currentChannelId), 0);
-        };
+        const handleSameChannelLinkClick = makeSameChannelLinkClickHandler(
+            () => getCurrentTeam(store.getState())?.name,
+            () => getCurrentChannelId(store.getState()),
+            () => getCurrentChannel(store.getState())?.name,
+            joinCall,
+        );
         document.addEventListener('click', handleSameChannelLinkClick, true);
         this.unsubscribers.push(() => document.removeEventListener('click', handleSameChannelLinkClick, true));
 
