@@ -57,14 +57,16 @@ export default class CallClient extends EventEmitter {
         // handling is not blocked by the user's interaction.
         void this.requestMicrophonePermission();
 
-        // Set the initial mute state for the local and remote participants.
-        // we treat "no mic publication" as muted in our UI semantics.
-        const isLocalParticipantMicTrackPublicationMuted = this.room.localParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-        this.emit(isLocalParticipantMicTrackPublicationMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, this.room.localParticipant.sid, this.room.localParticipant.identity);
+        // Seed the initial state for everyone already in the room (local + remote)
+        const localParticipant = this.room.localParticipant;
+        const isLocalMicMuted = localParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
+        this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localParticipant.sid, localParticipant.identity);
+        this.emit(CALL_EVENT.USER_JOINED, localParticipant.sid, localParticipant.identity, true);
 
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
-            const isRemoteParticipantMicTrackPublicationMuted = remoteParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-            this.emit(isRemoteParticipantMicTrackPublicationMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remoteParticipant.sid, remoteParticipant.identity);
+            const isRemoteMicMuted = remoteParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
+            this.emit(isRemoteMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remoteParticipant.sid, remoteParticipant.identity);
+            this.emit(CALL_EVENT.USER_JOINED, remoteParticipant.sid, remoteParticipant.identity, true);
         }
 
         this.emit(CALL_EVENT.CONNECTED);
@@ -196,6 +198,26 @@ export default class CallClient extends EventEmitter {
         }
     }
 
+    /**
+     * Fires when a remote participant joins the room (after we have already connected).
+     * Emits USER_JOINED so the dispatcher can populate Redux + play the join sound.
+     */
+    private handleParticipantConnected(remoteParticipant: RemoteParticipant) {
+        this.emit(CALL_EVENT.USER_JOINED, remoteParticipant.sid, remoteParticipant.identity);
+
+        logInfo(`CallClient: participant connected ${remoteParticipant.identity}`);
+    }
+
+    /**
+     * Fires when a remote participant leaves the room.
+     * Emits USER_LEFT so the dispatcher can drop the session from Redux.
+     */
+    private handleParticipantDisconnected(remoteParticipant: RemoteParticipant) {
+        this.emit(CALL_EVENT.USER_LEFT, remoteParticipant.sid, remoteParticipant.identity);
+
+        logInfo(`CallClient: participant disconnected ${remoteParticipant.identity}`);
+    }
+
     private handleMediaDevicesError(err: Error) {
         logErr('CallClient: media device error', err);
         this.emit(CALL_EVENT.ERROR, err);
@@ -234,6 +256,8 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.LocalTrackUnpublished, this.handleLocalTrackUnpublished.bind(this));
         room.on(RoomEvent.TrackMuted, this.handleTrackMuted.bind(this));
         room.on(RoomEvent.TrackUnmuted, this.handleTrackUnmuted.bind(this));
+        room.on(RoomEvent.ParticipantConnected, this.handleParticipantConnected.bind(this));
+        room.on(RoomEvent.ParticipantDisconnected, this.handleParticipantDisconnected.bind(this));
         room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
 
         try {

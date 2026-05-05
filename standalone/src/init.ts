@@ -21,8 +21,6 @@ import {
     HostControlMsg,
     HostControlRemoved,
     UserDismissedNotification,
-    UserJoinedData,
-    UserLeftData,
     UserRaiseUnraiseHandData,
     UserReactionData,
     UserRemovedData,
@@ -69,8 +67,6 @@ import {
     handleHostRemoved,
     handleHostScreenOff,
     handleUserDismissedNotification,
-    handleUserJoined,
-    handleUserLeft,
     handleUserRaisedHand,
     handleUserReaction,
     handleUserRemovedFromChannel,
@@ -254,12 +250,6 @@ export default async function init(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_call_end`:
             handleCallEnd(store, ev as WebSocketMessage<EmptyData>);
-            break;
-        case `custom_${pluginId}_user_joined`:
-            handleUserJoined(store, ev as WebSocketMessage<UserJoinedData>);
-            break;
-        case `custom_${pluginId}_user_left`:
-            handleUserLeft(store, ev as WebSocketMessage<UserLeftData>);
             break;
         case `custom_${pluginId}_user_voice_on`:
             handleUserVoiceOn(store, ev as WebSocketMessage<UserVoiceOnOffData>);

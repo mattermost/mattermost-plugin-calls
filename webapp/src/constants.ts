@@ -138,4 +138,6 @@ export const CALL_EVENT = {
     MUTE: 'mute',
     UNMUTE: 'unmute',
     REMOTE_VOICE_STREAM: 'remoteVoiceStream',
+    USER_JOINED: 'userJoined',
+    USER_LEFT: 'userLeft',
 } as const;
