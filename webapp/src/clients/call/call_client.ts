@@ -57,16 +57,18 @@ export default class CallClient extends EventEmitter {
         // handling is not blocked by the user's interaction.
         void this.requestMicrophonePermission();
 
-        // Seed the initial state for everyone already in the room (local + remote)
+        // Seed the initial state for everyone already in the room (local + remote).
         const localParticipant = this.room.localParticipant;
-        const isLocalMicMuted = localParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-        this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localParticipant.sid, localParticipant.identity);
         this.emit(CALL_EVENT.USER_JOINED, localParticipant.sid, localParticipant.identity, true);
 
+        const isLocalMicMuted = localParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
+        this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localParticipant.sid, localParticipant.identity);
+
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            this.emit(CALL_EVENT.USER_JOINED, remoteParticipant.sid, remoteParticipant.identity, true);
+
             const isRemoteMicMuted = remoteParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
             this.emit(isRemoteMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remoteParticipant.sid, remoteParticipant.identity);
-            this.emit(CALL_EVENT.USER_JOINED, remoteParticipant.sid, remoteParticipant.identity, true);
         }
 
         this.emit(CALL_EVENT.CONNECTED);

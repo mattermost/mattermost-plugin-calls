@@ -35,6 +35,8 @@ import {
     setClientConnecting,
     showScreenSourceModal,
     showSwitchCallModal,
+    userJoined,
+    userLeft,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import CallClient from 'src/clients/call';
@@ -109,8 +111,6 @@ import {
     DISMISS_CALL,
     RECEIVED_CHANNEL_STATE,
     UNINIT,
-    USER_JOINED,
-    USER_LEFT,
     USER_MUTED,
     USER_UNMUTED,
     USERS_STATES,
@@ -146,7 +146,6 @@ import {
     isLimitRestricted,
     ringingEnabled,
     sessionsInCurrentCall,
-    shouldPlayJoinUserSound,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {convertStatsToPanels} from './stats';
@@ -723,9 +722,7 @@ export default class Plugin {
                 });
 
                 window.callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
-                    if (window.callsClient) {
-                        store.dispatch(displayCallErrorModal(err, window.callsClient.channelID));
-                    }
+                    store.dispatch(displayCallErrorModal(err, window.callsClient?.channelID));
                 });
 
                 window.callsClient.on(CALL_EVENT.MUTE, (session_id: string, userID: string) => {
@@ -751,36 +748,11 @@ export default class Plugin {
                 });
 
                 window.callsClient.on(CALL_EVENT.USER_JOINED, (session_id: string, userID: string, isFromInitialSync?: boolean) => {
-                    const callState = store.getState();
-                    const currentUserID = getCurrentUserId(callState);
-
-                    if (isFromInitialSync && userID === currentUserID) {
-                        playSound('join_self');
-                    } else if (!isFromInitialSync && userID !== currentUserID && shouldPlayJoinUserSound(callState)) {
-                        playSound('join_user');
-                    }
-
-                    store.dispatch(loadProfilesByIdsIfMissing([userID]));
-                    store.dispatch({
-                        type: USER_JOINED,
-                        data: {
-                            channelID: window.callsClient?.channelID,
-                            userID,
-                            currentUserID,
-                            session_id,
-                        },
-                    });
+                    store.dispatch(userJoined(window.callsClient?.channelID ?? '', userID, session_id, Boolean(isFromInitialSync)));
                 });
 
                 window.callsClient.on(CALL_EVENT.USER_LEFT, (session_id: string, userID: string) => {
-                    store.dispatch({
-                        type: USER_LEFT,
-                        data: {
-                            channelID: window.callsClient?.channelID,
-                            userID,
-                            session_id,
-                        },
-                    });
+                    store.dispatch(userLeft(window.callsClient?.channelID ?? '', userID, session_id));
                 });
 
                 window.callsClient.connect(channelID).catch((err: Error) => {
