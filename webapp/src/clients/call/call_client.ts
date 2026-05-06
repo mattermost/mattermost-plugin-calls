@@ -390,19 +390,20 @@ export default class CallClient extends EventEmitter {
         if (!this.room) {
             return [];
         }
-        const tracks: MediaStreamTrack[] = [];
-        for (const participant of this.room.remoteParticipants.values()) {
-            for (const pub of participant.audioTrackPublications.values()) {
-                if (pub.source !== Track.Source.Microphone || !pub.isSubscribed) {
+
+        const remoteVoiceTracks: MediaStreamTrack[] = [];
+        for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            for (const audioTrackPublicationOfRemoteParticipant of remoteParticipant.audioTrackPublications.values()) {
+                if (audioTrackPublicationOfRemoteParticipant.source !== Track.Source.Microphone || !audioTrackPublicationOfRemoteParticipant.isSubscribed) {
                     continue;
                 }
-                const t = pub.track?.mediaStreamTrack;
-                if (t?.readyState === 'live') {
-                    tracks.push(t);
+
+                if (audioTrackPublicationOfRemoteParticipant.track?.mediaStreamTrack?.readyState === 'live') {
+                    remoteVoiceTracks.push(audioTrackPublicationOfRemoteParticipant.track.mediaStreamTrack);
                 }
             }
         }
-        return tracks;
+        return remoteVoiceTracks;
     }
 
     public async getStats(): Promise<CallsClientStats | null> {
