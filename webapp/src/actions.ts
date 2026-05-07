@@ -23,7 +23,7 @@ import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from
 import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
-import {RING_LENGTH} from 'src/constants';
+import {JOINED_USER_NOTIFICATION_TIMEOUT, RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
 import {
     callDismissedNotification,
@@ -32,16 +32,20 @@ import {
     idForCurrentCall,
     incomingCalls,
     numSessionsInCallInChannel,
+    ringingEnabled,
     ringingForCall,
+    shouldPlayJoinUserSound,
 } from 'src/selectors';
 import {CallsStats, ChannelType} from 'src/types/types';
 import {
+    getCallsClientSessionID,
     getPluginPath,
     getSessionsMapFromSessions,
     getUserIDsForSessions,
     isDMChannel,
     isGMChannel,
     notificationsStopRinging,
+    playSound,
 } from 'src/utils';
 import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
@@ -73,6 +77,8 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
+    USER_JOINED,
+    USER_JOINED_TIMEOUT,
     USER_LEFT,
     USER_SCREEN_ON,
     USERS_STATES,
@@ -397,6 +403,65 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
         });
     };
 }
+
+/**
+ * userJoined thunk handles the side effects of a participant joining the call
+ * `isFromInitialSync` is for participants we're catching up on at connect time (already in the room when we joined).
+ */
+export const userJoined = (channelID: string, userID: string, sessionID: string, isFromInitialSync = false) => {
+    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const state = getState();
+        const currentUserID = getCurrentUserId(state);
+        const isOurSession = sessionID === getCallsClientSessionID();
+        const isSameUser = userID === currentUserID;
+
+        // Only play the join sound if we're in the call this event is about.
+        if (window.callsClient?.channelID === channelID) {
+            if (isOurSession) {
+                playSound('join_self');
+            } else if (!isFromInitialSync && !isSameUser && shouldPlayJoinUserSound(state)) {
+                playSound('join_user');
+            }
+        }
+
+        // Ringing should stop once you accept on one device, the other devices should stop ringing.
+        if (ringingEnabled(state) && isSameUser) {
+            const callID = calls(state)[channelID]?.ID || '';
+            dispatch(removeIncomingCallNotification(callID));
+            notificationsStopRinging();
+        }
+
+        dispatch(loadProfilesByIdsIfMissing([userID]));
+
+        const userJoinedAction = {
+            type: USER_JOINED,
+            data: {
+                channelID,
+                userID,
+                currentUserID,
+                session_id: sessionID,
+            },
+        };
+        const userJoinedTimeoutAction = {
+            type: USER_JOINED_TIMEOUT,
+            data: {
+                channelID,
+                userID,
+            },
+        };
+
+        if (isFromInitialSync && !isOurSession) {
+            // Catching up on a session that was already in the room when we
+            // joined (could be another user, or another device of ours).
+            dispatch(batchActions([userJoinedAction, userJoinedTimeoutAction]));
+        } else {
+            dispatch(userJoinedAction);
+
+            // Auto-dismiss the "X joined" banner after a delay.
+            setTimeout(() => dispatch(userJoinedTimeoutAction), JOINED_USER_NOTIFICATION_TIMEOUT);
+        }
+    };
+};
 
 export const userLeft = (channelID: string, userID: string, sessionID: string) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {

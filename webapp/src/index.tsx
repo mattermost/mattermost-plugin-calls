@@ -35,6 +35,8 @@ import {
     setClientConnecting,
     showScreenSourceModal,
     showSwitchCallModal,
+    userJoined,
+    userLeft,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import CallClient from 'src/clients/call';
@@ -174,15 +176,11 @@ import {
     handleHostRemoved,
     handleHostScreenOff,
     handleUserDismissedNotification,
-    handleUserJoined,
-    handleUserLeft,
-    handleUserMuted,
     handleUserRaisedHand,
     handleUserReaction,
     handleUserRemovedFromChannel,
     handleUserScreenOff,
     handleUserScreenOn,
-    handleUserUnmuted,
     handleUserUnraisedHand,
     handleUserVideoOff,
     handleUserVideoOn,
@@ -217,22 +215,6 @@ export default class Plugin {
                 type: RECEIVED_CHANNEL_STATE,
                 data: {id: ev.broadcast.channel_id, enabled: false},
             });
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_joined`, (ev) => {
-            handleUserJoined(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_left`, (ev) => {
-            handleUserLeft(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_muted`, (ev) => {
-            handleUserMuted(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unmuted`, (ev) => {
-            handleUserUnmuted(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_voice_on`, (ev) => {
@@ -740,31 +722,37 @@ export default class Plugin {
                 });
 
                 window.callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
-                    if (window.callsClient) {
-                        store.dispatch(displayCallErrorModal(err, window.callsClient.channelID));
-                    }
+                    store.dispatch(displayCallErrorModal(err, window.callsClient?.channelID));
                 });
 
-                window.callsClient.on(CALL_EVENT.MUTE, () => {
+                window.callsClient.on(CALL_EVENT.MUTE, (session_id: string, userID: string) => {
                     store.dispatch({
                         type: USER_MUTED,
                         data: {
                             channelID: window.callsClient?.channelID,
-                            userID: getCurrentUserId(store.getState()),
-                            session_id: window.callsClient?.getSessionID(),
+                            userID,
+                            session_id,
                         },
                     });
                 });
 
-                window.callsClient.on(CALL_EVENT.UNMUTE, () => {
+                window.callsClient.on(CALL_EVENT.UNMUTE, (session_id: string, userID: string) => {
                     store.dispatch({
                         type: USER_UNMUTED,
                         data: {
                             channelID: window.callsClient?.channelID,
-                            userID: getCurrentUserId(store.getState()),
-                            session_id: window.callsClient?.getSessionID(),
+                            userID,
+                            session_id,
                         },
                     });
+                });
+
+                window.callsClient.on(CALL_EVENT.USER_JOINED, (session_id: string, userID: string, isFromInitialSync?: boolean) => {
+                    store.dispatch(userJoined(window.callsClient?.channelID ?? '', userID, session_id, Boolean(isFromInitialSync)));
+                });
+
+                window.callsClient.on(CALL_EVENT.USER_LEFT, (session_id: string, userID: string) => {
+                    store.dispatch(userLeft(window.callsClient?.channelID ?? '', userID, session_id));
                 });
 
                 window.callsClient.connect(channelID).catch((err: Error) => {
