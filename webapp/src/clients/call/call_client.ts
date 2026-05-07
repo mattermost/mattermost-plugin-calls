@@ -19,11 +19,16 @@ import {
     Track,
     TrackPublication,
 } from 'livekit-client';
-import {CALL_EVENT, CALL_TOKEN_API_PATH} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
+import {
+    STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
+    STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
+} from 'src/constants';
 import {logDebug, logErr, logInfo} from 'src/log';
 import {CallsClientStats, MediaDevices} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
+
+import {CALL_EVENT, CALL_TOKEN_API_PATH} from './constants';
 
 export type RtcTokenResponse = {
     token: string;
@@ -47,6 +52,10 @@ export default class CallClient extends EventEmitter {
     public currentVideoInputDevice: MediaDeviceInfo | null = null;
 
     private closed = false;
+
+    // Cached enumerated audio devices so the synchronous getAudioDevices() called
+    // from componentDidMount stays cheap and never throws.
+    private audioDevices: MediaDevices = {inputs: [], outputs: []};
 
     private handleConnected() {
         if (!this.room) {
@@ -250,6 +259,111 @@ export default class CallClient extends EventEmitter {
         );
     }
 
+    /**
+     * Fires when the OS-level set of media devices changes (plug/unplug, permission grant).
+     * Re-enumerates, falls back to the system default if the active device disappeared,
+     * and broadcasts the new inventory so picker UIs refresh.
+     */
+    private async handleMediaDevicesChanged() {
+        await this.enumerateDevices();
+
+        if (this.currentAudioInputDevice) {
+            const stillPresent = this.audioDevices.inputs.some((dev) => dev.deviceId === this.currentAudioInputDevice?.deviceId);
+            if (!stillPresent) {
+                const unplugged = this.currentAudioInputDevice;
+                const fallback = this.audioDevices.inputs[0] ?? null;
+                if (fallback) {
+                    await this.setAudioInputDevice(fallback, false);
+                } else {
+                    this.currentAudioInputDevice = null;
+                }
+                this.emit(CALL_EVENT.DEVICE_FALLBACK, unplugged);
+            }
+        }
+
+        if (this.currentAudioOutputDevice) {
+            const stillPresent = this.audioDevices.outputs.some((dev) => dev.deviceId === this.currentAudioOutputDevice?.deviceId);
+            if (!stillPresent) {
+                const unplugged = this.currentAudioOutputDevice;
+                const fallback = this.audioDevices.outputs[0] ?? null;
+                if (fallback) {
+                    await this.setAudioOutputDevice(fallback, false);
+                } else {
+                    this.currentAudioOutputDevice = null;
+                }
+                this.emit(CALL_EVENT.DEVICE_FALLBACK, unplugged);
+            }
+        }
+
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+    }
+
+    private async enumerateDevices(): Promise<MediaDevices> {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            this.audioDevices = {
+                inputs: devices.filter((dev) => dev.kind === 'audioinput'),
+                outputs: devices.filter((dev) => dev.kind === 'audiooutput'),
+            };
+        } catch (err) {
+            logErr('CallClient: failed to enumerate devices', err);
+        }
+        return this.audioDevices;
+    }
+
+    /**
+     * Looks up the user's last-selected device for `kind` from localStorage and matches
+     * it against the freshly enumerated list. Tolerates the legacy raw-string format
+     * stored before MM-63274.
+     */
+    private getStoredAudioDevice(kind: 'input' | 'output'): MediaDeviceInfo | null {
+        const storageKey = kind === 'input' ? STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY : STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY;
+        const data = window.localStorage.getItem(storageKey);
+        if (!data) {
+            return null;
+        }
+
+        let stored: {deviceId: string; label?: string};
+        try {
+            stored = JSON.parse(data);
+        } catch {
+            // Backwards compatibility for the pre-MM-63274 raw-string format.
+            stored = {deviceId: data};
+        }
+
+        if (!stored.deviceId) {
+            return null;
+        }
+
+        const devices = kind === 'input' ? this.audioDevices.inputs : this.audioDevices.outputs;
+        const matches = devices.filter((dev) => dev.deviceId === stored.deviceId || dev.label === stored.label);
+        if (matches.length === 0) {
+            return null;
+        }
+        if (matches.length > 1) {
+            return matches.find((dev) => dev.deviceId === stored.deviceId) ?? null;
+        }
+        return matches[0];
+    }
+
+    private async restoreAudioDevicesFromStorage() {
+        await this.enumerateDevices();
+
+        const storedInput = this.getStoredAudioDevice('input');
+        if (storedInput) {
+            await this.setAudioInputDevice(storedInput, false);
+        }
+
+        const storedOutput = this.getStoredAudioDevice('output');
+        if (storedOutput) {
+            await this.setAudioOutputDevice(storedOutput, false);
+        }
+
+        // Always emit so the widget's componentDidMount listener picks up the
+        // initial inventory even when nothing was restored from localStorage.
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+    }
+
     /** From here on down the methods are all PUBLIC, and are the entry points for the CallClient */
 
     public async connect(channelID: string): Promise<void> {
@@ -287,6 +401,7 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.ParticipantDisconnected, this.handleParticipantDisconnected.bind(this));
         room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
         room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
+        room.on(RoomEvent.MediaDevicesChanged, this.handleMediaDevicesChanged.bind(this));
 
         try {
             await room.connect(url, token);
@@ -296,6 +411,11 @@ export default class CallClient extends EventEmitter {
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
         }
+
+        // Hydrate the device cache + restore the user's last selection. Awaited so the
+        // widget's componentDidMount can synchronously read currentAudioInputDevice /
+        // currentAudioOutputDevice once we resolve.
+        await this.restoreAudioDevicesFromStorage();
     }
 
     public async disconnect(err?: Error): Promise<void> {
@@ -385,12 +505,43 @@ export default class CallClient extends EventEmitter {
         throw new Error('CallClient.setBlurSettings: not yet implemented');
     }
 
-    public async setAudioInputDevice(_device: MediaDeviceInfo, _store: boolean = true): Promise<void> {
-        throw new Error('CallClient.setAudioInputDevice: not yet implemented');
+    public async setAudioInputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
+        if (store) {
+            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
+                deviceId: device.deviceId,
+                label: device.label,
+            }));
+        }
+
+        this.currentAudioInputDevice = device;
+
+        // LiveKit handles the published-track swap; no manual replaceTrack needed.
+        if (this.room) {
+            try {
+                await this.room.switchActiveDevice('audioinput', device.deviceId);
+            } catch (err) {
+                logErr('CallClient.setAudioInputDevice: failed to switch device', device.deviceId, err);
+            }
+        }
+
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
     }
 
-    public async setAudioOutputDevice(_device: MediaDeviceInfo, _store: boolean = true): Promise<void> {
-        throw new Error('CallClient.setAudioOutputDevice: not yet implemented');
+    public async setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
+        if (store) {
+            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({
+                deviceId: device.deviceId,
+                label: device.label,
+            }));
+        }
+
+        this.currentAudioOutputDevice = device;
+
+        // Output sinkId routing is owned by call_widget — it applies setSinkId() on the
+        // audio elements it creates after this method resolves. Calling LiveKit's
+        // switchActiveDevice('audiooutput', …) here would create a second sinkId path.
+
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
     }
 
     public sendUserReaction(_data: EmojiData): void {
@@ -401,7 +552,7 @@ export default class CallClient extends EventEmitter {
     // component lifecycle (componentDidMount), not user gestures, so they
     // must always be safe to invoke regardless of feature implementation state.
     public getAudioDevices(): MediaDevices {
-        return {inputs: [], outputs: []};
+        return this.audioDevices;
     }
 
     public getLocalScreenStream(): MediaStream | null {

@@ -705,7 +705,14 @@ export default class Plugin {
                     if (window.desktop) {
                         registry.unregisterComponent(rootComponentID);
                     }
+
                     if (window.callsClient) {
+                        const currentSessionID = window.callsClient.getSessionID();
+                        const currentUserID = getCurrentUserId(store.getState());
+                        if (currentSessionID) {
+                            store.dispatch(userLeft(window.callsClient.channelID, currentUserID, currentSessionID));
+                        }
+
                         store.dispatch(localSessionClose(window.callsClient.channelID));
                         window.callsClient.destroy();
                         delete window.callsClient;

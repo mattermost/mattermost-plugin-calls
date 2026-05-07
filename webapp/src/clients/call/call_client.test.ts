@@ -3,6 +3,10 @@
 
 import {Room, RoomEvent, Track} from 'livekit-client';
 import RestClient from 'src/clients/rest';
+import {
+    STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
+    STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
+} from 'src/constants';
 
 import CallClient from './call_client';
 import {CALL_EVENT} from './constants';
@@ -30,6 +34,7 @@ type MockRoom = {
     on: jest.Mock;
     connect: jest.Mock;
     disconnect: jest.Mock;
+    switchActiveDevice: jest.Mock;
     localParticipant: any;
     remoteParticipants: Map<string, any>;
     fire: RoomEventHandler;
@@ -44,6 +49,7 @@ function createMockRoom(): MockRoom {
         }),
         connect: jest.fn().mockResolvedValue(null),
         disconnect: jest.fn().mockResolvedValue(null),
+        switchActiveDevice: jest.fn().mockResolvedValue(null),
         localParticipant: {
             sid: 'me-sid',
             identity: 'me-id',
@@ -69,12 +75,20 @@ beforeAll(() => {
             getUserMedia: jest.fn().mockResolvedValue({
                 getTracks: () => [],
             }),
+            enumerateDevices: jest.fn().mockResolvedValue([]),
+            addEventListener: jest.fn(),
+            removeEventListener: jest.fn(),
         },
         configurable: true,
         writable: true,
     });
 
     (global as any).MediaStream = jest.fn().mockImplementation((tracks) => ({tracks}));
+});
+
+beforeEach(() => {
+    window.localStorage.clear();
+    (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([]);
 });
 
 describe('CallClient', () => {
@@ -477,6 +491,140 @@ describe('CallClient', () => {
             mockRoom.fire(RoomEvent.ActiveSpeakersChanged, []);
 
             expect(listener).toHaveBeenCalledWith([], []);
+        });
+    });
+
+    describe('audio devices', () => {
+        const inputDevice: MediaDeviceInfo = {
+            deviceId: 'mic-1',
+            kind: 'audioinput',
+            label: 'Built-in Mic',
+            groupId: 'g1',
+            toJSON: () => ({}),
+        } as MediaDeviceInfo;
+
+        const inputDevice2: MediaDeviceInfo = {
+            deviceId: 'mic-2',
+            kind: 'audioinput',
+            label: 'USB Mic',
+            groupId: 'g2',
+            toJSON: () => ({}),
+        } as MediaDeviceInfo;
+
+        const outputDevice: MediaDeviceInfo = {
+            deviceId: 'spk-1',
+            kind: 'audiooutput',
+            label: 'Built-in Speakers',
+            groupId: 'g3',
+            toJSON: () => ({}),
+        } as MediaDeviceInfo;
+
+        it('returns empty audio devices before any enumeration', () => {
+            expect(client.getAudioDevices()).toEqual({inputs: [], outputs: []});
+        });
+
+        it('partitions enumerated devices into inputs and outputs after connect', async () => {
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([
+                inputDevice,
+                outputDevice,
+                inputDevice2,
+            ]);
+
+            await client.connect('test-channel');
+
+            expect(client.getAudioDevices()).toEqual({
+                inputs: [inputDevice, inputDevice2],
+                outputs: [outputDevice],
+            });
+        });
+
+        it('setAudioInputDevice persists, switches the LiveKit device, and emits DEVICE_CHANGE', async () => {
+            await client.connect('test-channel');
+            const deviceChangeListener = jest.fn();
+            client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+
+            await client.setAudioInputDevice(inputDevice);
+
+            expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('audioinput', 'mic-1');
+            expect(client.currentAudioInputDevice).toBe(inputDevice);
+            expect(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY))
+                .toBe(JSON.stringify({deviceId: 'mic-1', label: 'Built-in Mic'}));
+            expect(deviceChangeListener).toHaveBeenCalled();
+        });
+
+        it('setAudioInputDevice with store=false skips the localStorage write', async () => {
+            await client.connect('test-channel');
+
+            await client.setAudioInputDevice(inputDevice, false);
+
+            expect(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY)).toBeNull();
+            expect(client.currentAudioInputDevice).toBe(inputDevice);
+        });
+
+        it('setAudioOutputDevice does NOT call switchActiveDevice (sinkId stays in widget)', async () => {
+            await client.connect('test-channel');
+            const deviceChangeListener = jest.fn();
+            client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+            mockRoom.switchActiveDevice.mockClear();
+
+            await client.setAudioOutputDevice(outputDevice);
+
+            expect(mockRoom.switchActiveDevice).not.toHaveBeenCalled();
+            expect(client.currentAudioOutputDevice).toBe(outputDevice);
+            expect(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY))
+                .toBe(JSON.stringify({deviceId: 'spk-1', label: 'Built-in Speakers'}));
+            expect(deviceChangeListener).toHaveBeenCalled();
+        });
+
+        it('restores stored input/output devices on connect when present in the enumerated list', async () => {
+            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({deviceId: 'mic-2', label: 'USB Mic'}));
+            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({deviceId: 'spk-1', label: 'Built-in Speakers'}));
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice, inputDevice2, outputDevice]);
+
+            await client.connect('test-channel');
+
+            expect(client.currentAudioInputDevice).toBe(inputDevice2);
+            expect(client.currentAudioOutputDevice).toBe(outputDevice);
+            expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('audioinput', 'mic-2');
+        });
+
+        it('falls back to the first input when the active input is unplugged', async () => {
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice, inputDevice2]);
+            await client.connect('test-channel');
+            await client.setAudioInputDevice(inputDevice);
+
+            const fallbackListener = jest.fn();
+            const deviceChangeListener = jest.fn();
+            client.on(CALL_EVENT.DEVICE_FALLBACK, fallbackListener);
+            client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice2]);
+            mockRoom.fire(RoomEvent.MediaDevicesChanged);
+
+            // Wait for the async handler to complete.
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(fallbackListener).toHaveBeenCalledWith(inputDevice);
+            expect(client.currentAudioInputDevice).toBe(inputDevice2);
+            expect(deviceChangeListener).toHaveBeenCalled();
+        });
+
+        it('emits only DEVICE_CHANGE when the device list changes but the active one is still present', async () => {
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice]);
+            await client.connect('test-channel');
+            await client.setAudioInputDevice(inputDevice);
+
+            const fallbackListener = jest.fn();
+            const deviceChangeListener = jest.fn();
+            client.on(CALL_EVENT.DEVICE_FALLBACK, fallbackListener);
+            client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice, inputDevice2]);
+            mockRoom.fire(RoomEvent.MediaDevicesChanged);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(fallbackListener).not.toHaveBeenCalled();
+            expect(deviceChangeListener).toHaveBeenCalled();
         });
     });
 });
