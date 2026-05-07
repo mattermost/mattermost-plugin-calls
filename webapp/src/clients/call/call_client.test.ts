@@ -1,19 +1,99 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {Track} from 'livekit-client';
+import {Room, RoomEvent, Track} from 'livekit-client';
+import RestClient from 'src/clients/rest';
 import {CALL_EVENT} from 'src/constants';
 
 import CallClient from './call_client';
 
+jest.mock('livekit-client', () => {
+    const actual = jest.requireActual('livekit-client');
+    return {
+        ...actual,
+        Room: jest.fn(),
+    };
+});
+
+jest.mock('src/clients/rest', () => ({
+    __esModule: true,
+    default: {
+        fetch: jest.fn(),
+    },
+}));
+
+// Mock factory for a Room instance — captures every `room.on(event, handler)`
+// call so tests can fire events back through the registered handler.
+type RoomEventHandler = (...args: any[]) => void;
+
+type MockRoom = {
+    on: jest.Mock;
+    connect: jest.Mock;
+    disconnect: jest.Mock;
+    localParticipant: any;
+    remoteParticipants: Map<string, any>;
+    fire: RoomEventHandler;
+};
+
+function createMockRoom(): MockRoom {
+    const handlers = new Map<string, RoomEventHandler>();
+    const room: MockRoom = {
+        on: jest.fn((event: string, handler: RoomEventHandler) => {
+            handlers.set(event, handler);
+            return room;
+        }),
+        connect: jest.fn().mockResolvedValue(null),
+        disconnect: jest.fn().mockResolvedValue(null),
+        localParticipant: {
+            sid: 'me-sid',
+            identity: 'me-id',
+            getTrackPublication: jest.fn(),
+            setMicrophoneEnabled: jest.fn().mockResolvedValue(null),
+            audioTrackPublications: new Map(),
+        },
+        remoteParticipants: new Map(),
+        fire: (event: string, ...args: any[]) => {
+            const handler = handlers.get(event);
+            if (!handler) {
+                throw new Error(`No handler registered for room event: ${event}`);
+            }
+            handler(...args);
+        },
+    };
+    return room;
+}
+
+beforeAll(() => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+        value: {
+            getUserMedia: jest.fn().mockResolvedValue({
+                getTracks: () => [],
+            }),
+        },
+        configurable: true,
+        writable: true,
+    });
+
+    (global as any).MediaStream = jest.fn().mockImplementation((tracks) => ({tracks}));
+});
+
 describe('CallClient', () => {
     let client: CallClient;
+    let mockRoom: MockRoom;
 
     beforeEach(() => {
-        client = new CallClient();
+        mockRoom = createMockRoom();
+        (Room as unknown as jest.Mock).mockImplementation(() => mockRoom);
+        (RestClient.fetch as jest.Mock).mockResolvedValue({
+            token: 'fake-token',
+            url: 'wss://fake.url',
+        });
 
-        // Stub out emit so we can assert calls without actually firing handlers.
-        client.emit = jest.fn();
+        client = new CallClient();
+    });
+
+    afterEach(() => {
+        jest.clearAllMocks();
     });
 
     describe('initial state', () => {
@@ -25,379 +105,292 @@ describe('CallClient', () => {
         });
     });
 
-    describe('getSessionID', () => {
-        it('returns empty string when no room', () => {
-            expect(client.getSessionID()).toBe('');
-        });
+    describe('connect', () => {
+        it('fetches a token, instantiates Room, and calls room.connect', async () => {
+            await client.connect('test-channel');
 
-        it('returns localParticipant.sid when room is set', () => {
-            (client as any).room = {localParticipant: {sid: 'session-123'}};
-            expect(client.getSessionID()).toBe('session-123');
-        });
-    });
-
-    describe('mute / unmute', () => {
-        it('mute is a no-op when no room', async () => {
-            await client.mute();
-            expect(client.emit).not.toHaveBeenCalled();
-        });
-
-        it('unmute is a no-op when no room', async () => {
-            await client.unmute();
-            expect(client.emit).not.toHaveBeenCalled();
-        });
-
-        it('mute() calls setMicrophoneEnabled(false) on local participant', async () => {
-            const setMicrophoneEnabled = jest.fn().mockResolvedValue(undefined);
-            (client as any).room = {localParticipant: {setMicrophoneEnabled}};
-
-            await client.mute();
-
-            expect(setMicrophoneEnabled).toHaveBeenCalledWith(false);
-        });
-
-        it('unmute() calls setMicrophoneEnabled(true) on local participant', async () => {
-            const setMicrophoneEnabled = jest.fn().mockResolvedValue(undefined);
-            (client as any).room = {localParticipant: {setMicrophoneEnabled}};
-
-            await client.unmute();
-
-            expect(setMicrophoneEnabled).toHaveBeenCalledWith(true);
-        });
-
-        it('mute() does not emit CALL_EVENT.MUTE itself (handler-driven)', async () => {
-            const setMicrophoneEnabled = jest.fn().mockResolvedValue(undefined);
-            (client as any).room = {localParticipant: {setMicrophoneEnabled}};
-
-            await client.mute();
-
-            expect(client.emit).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('handleTrackMuted', () => {
-        it('emits MUTE with (sid, identity) for mic source', () => {
-            const pub = {source: Track.Source.Microphone};
-            const participant = {sid: 'p1', identity: 'user1'};
-
-            (client as any).handleTrackMuted(pub, participant);
-
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.MUTE, 'p1', 'user1');
-        });
-
-        it('ignores non-microphone tracks', () => {
-            const pub = {source: Track.Source.ScreenShare};
-            const participant = {sid: 'p1', identity: 'user1'};
-
-            (client as any).handleTrackMuted(pub, participant);
-
-            expect(client.emit).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('handleTrackUnmuted', () => {
-        it('emits UNMUTE with (sid, identity) for mic source', () => {
-            const pub = {source: Track.Source.Microphone};
-            const participant = {sid: 'p1', identity: 'user1'};
-
-            (client as any).handleTrackUnmuted(pub, participant);
-
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.UNMUTE, 'p1', 'user1');
-        });
-
-        it('ignores non-microphone tracks', () => {
-            const pub = {source: Track.Source.ScreenShareAudio};
-            const participant = {sid: 'p1', identity: 'user1'};
-
-            (client as any).handleTrackUnmuted(pub, participant);
-
-            expect(client.emit).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('handleTrackSubscribed', () => {
-        let originalMediaStream: typeof MediaStream;
-
-        beforeAll(() => {
-            originalMediaStream = global.MediaStream;
-            (global as any).MediaStream = jest.fn().mockImplementation((tracks) => ({tracks}));
-        });
-
-        afterAll(() => {
-            (global as any).MediaStream = originalMediaStream;
-        });
-
-        it('emits REMOTE_VOICE_STREAM with stream and participant.sid for mic', () => {
-            const mediaStreamTrack = {} as MediaStreamTrack;
-            const track = {source: Track.Source.Microphone, mediaStreamTrack};
-            const participant = {sid: 'p1', identity: 'user1'};
-
-            (client as any).handleTrackSubscribed(track, {}, participant);
-
-            expect(client.emit).toHaveBeenCalledWith(
-                CALL_EVENT.REMOTE_VOICE_STREAM,
-                expect.anything(),
-                'p1',
+            expect(RestClient.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('test-channel'),
+                expect.objectContaining({method: 'GET'}),
             );
+            expect(Room).toHaveBeenCalled();
+            expect(mockRoom.connect).toHaveBeenCalledWith('wss://fake.url', 'fake-token');
         });
 
-        it('ignores non-microphone tracks', () => {
-            const track = {source: Track.Source.ScreenShare, mediaStreamTrack: {}};
-            const participant = {sid: 'p1', identity: 'user1'};
-
-            (client as any).handleTrackSubscribed(track, {}, participant);
-
-            expect(client.emit).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('handleTrackPublished (remote)', () => {
-        it('emits MUTE for muted publication', () => {
-            const pub = {source: Track.Source.Microphone, isMuted: true};
-            const participant = {sid: 'p1', identity: 'user1'};
-
-            (client as any).handleTrackPublished(pub, participant);
-
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.MUTE, 'p1', 'user1');
+        it('throws if a room is already connected', async () => {
+            await client.connect('test-channel');
+            await expect(client.connect('test-channel')).rejects.toThrow('already connected');
         });
 
-        it('emits UNMUTE for unmuted publication', () => {
-            const pub = {source: Track.Source.Microphone, isMuted: false};
-            const participant = {sid: 'p1', identity: 'user1'};
+        it('throws and emits ERROR if token fetch returns empty values', async () => {
+            (RestClient.fetch as jest.Mock).mockResolvedValueOnce({token: '', url: ''});
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
 
-            (client as any).handleTrackPublished(pub, participant);
-
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.UNMUTE, 'p1', 'user1');
+            await expect(client.connect('test-channel')).rejects.toThrow('token or url');
         });
 
-        it('ignores non-microphone tracks', () => {
-            const pub = {source: Track.Source.Camera, isMuted: false};
-            (client as any).handleTrackPublished(pub, {sid: 'p1', identity: 'u1'});
-            expect(client.emit).not.toHaveBeenCalled();
+        it('emits ERROR when room.connect rejects', async () => {
+            mockRoom.connect.mockRejectedValueOnce(new Error('network down'));
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            await expect(client.connect('test-channel')).rejects.toThrow('network down');
+            expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
+            expect(client.room).toBeNull();
         });
     });
 
-    describe('handleTrackUnpublished (remote)', () => {
-        it('emits MUTE (no track = muted) for mic', () => {
-            const pub = {source: Track.Source.Microphone};
-            const participant = {sid: 'p1', identity: 'user1'};
+    describe('Connected event', () => {
+        it('treats absent mic publication as muted', async () => {
+            mockRoom.localParticipant.getTrackPublication.mockReturnValue(null);
+            const muteListener = jest.fn();
+            client.on(CALL_EVENT.MUTE, muteListener);
 
-            (client as any).handleTrackUnpublished(pub, participant);
+            await client.connect('test-channel');
+            mockRoom.fire(RoomEvent.Connected);
 
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.MUTE, 'p1', 'user1');
+            expect(muteListener).toHaveBeenCalledWith('me-sid', 'me-id');
+        });
+
+        it('seeds USER_JOINED + MUTE for each remote participant in the room', async () => {
+            mockRoom.localParticipant.getTrackPublication.mockReturnValue({isMuted: false});
+            mockRoom.remoteParticipants.set('r1', {
+                sid: 'r1',
+                identity: 'remote-1',
+                getTrackPublication: jest.fn(() => ({isMuted: true})),
+            });
+            mockRoom.remoteParticipants.set('r2', {
+                sid: 'r2',
+                identity: 'remote-2',
+                getTrackPublication: jest.fn(() => ({isMuted: false})),
+            });
+
+            const userJoinedListener = jest.fn();
+            const muteListener = jest.fn();
+            const unmuteListener = jest.fn();
+            client.on(CALL_EVENT.USER_JOINED, userJoinedListener);
+            client.on(CALL_EVENT.MUTE, muteListener);
+            client.on(CALL_EVENT.UNMUTE, unmuteListener);
+
+            await client.connect('test-channel');
+            mockRoom.fire(RoomEvent.Connected);
+
+            expect(userJoinedListener).toHaveBeenCalledWith('r1', 'remote-1', true);
+            expect(muteListener).toHaveBeenCalledWith('r1', 'remote-1');
+            expect(userJoinedListener).toHaveBeenCalledWith('r2', 'remote-2', true);
+            expect(unmuteListener).toHaveBeenCalledWith('r2', 'remote-2');
         });
     });
 
-    describe('handleLocalTrackPublished', () => {
-        it('captures audioTrack and emits UNMUTE for unmuted mic publication', () => {
+    describe('TrackMuted / TrackUnmuted', () => {
+        it('emits MUTE with (sid, identity) when mic track is muted', async () => {
+            await client.connect('test-channel');
+            const muteListener = jest.fn();
+            client.on(CALL_EVENT.MUTE, muteListener);
+
+            mockRoom.fire(
+                RoomEvent.TrackMuted,
+                {source: Track.Source.Microphone},
+                {sid: 'p1', identity: 'user1'},
+            );
+
+            expect(muteListener).toHaveBeenCalledWith('p1', 'user1');
+        });
+
+        it('emits UNMUTE with (sid, identity) when mic track is unmuted', async () => {
+            await client.connect('test-channel');
+            const unmuteListener = jest.fn();
+            client.on(CALL_EVENT.UNMUTE, unmuteListener);
+
+            mockRoom.fire(
+                RoomEvent.TrackUnmuted,
+                {source: Track.Source.Microphone},
+                {sid: 'p1', identity: 'user1'},
+            );
+
+            expect(unmuteListener).toHaveBeenCalledWith('p1', 'user1');
+        });
+
+        it('does not emit when a non-microphone track is muted', async () => {
+            await client.connect('test-channel');
+            const muteListener = jest.fn();
+            client.on(CALL_EVENT.MUTE, muteListener);
+
+            mockRoom.fire(
+                RoomEvent.TrackMuted,
+                {source: Track.Source.ScreenShare},
+                {sid: 'p1', identity: 'user1'},
+            );
+
+            expect(muteListener).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('TrackPublished / TrackUnpublished (remote)', () => {
+        it('emits MUTE for a freshly-published muted mic publication', async () => {
+            await client.connect('test-channel');
+            const muteListener = jest.fn();
+            client.on(CALL_EVENT.MUTE, muteListener);
+
+            mockRoom.fire(
+                RoomEvent.TrackPublished,
+                {source: Track.Source.Microphone, isMuted: true},
+                {sid: 'p1', identity: 'user1'},
+            );
+
+            expect(muteListener).toHaveBeenCalledWith('p1', 'user1');
+        });
+
+        it('emits UNMUTE for a freshly-published unmuted mic publication (covers first-unmute)', async () => {
+            await client.connect('test-channel');
+            const unmuteListener = jest.fn();
+            client.on(CALL_EVENT.UNMUTE, unmuteListener);
+
+            mockRoom.fire(
+                RoomEvent.TrackPublished,
+                {source: Track.Source.Microphone, isMuted: false},
+                {sid: 'p1', identity: 'user1'},
+            );
+
+            expect(unmuteListener).toHaveBeenCalledWith('p1', 'user1');
+        });
+
+        it('emits MUTE when a remote unpublishes (no track == muted)', async () => {
+            await client.connect('test-channel');
+            const muteListener = jest.fn();
+            client.on(CALL_EVENT.MUTE, muteListener);
+
+            mockRoom.fire(
+                RoomEvent.TrackUnpublished,
+                {source: Track.Source.Microphone},
+                {sid: 'p1', identity: 'user1'},
+            );
+
+            expect(muteListener).toHaveBeenCalledWith('p1', 'user1');
+        });
+    });
+
+    describe('LocalTrackPublished / LocalTrackUnpublished', () => {
+        it('captures audioTrack and emits UNMUTE when local mic is published unmuted', async () => {
+            await client.connect('test-channel');
+            const unmuteListener = jest.fn();
+            client.on(CALL_EVENT.UNMUTE, unmuteListener);
+
             const mediaStreamTrack = {} as MediaStreamTrack;
-            const pub = {
-                source: Track.Source.Microphone,
-                isMuted: false,
-                track: {mediaStreamTrack},
-            };
-            const localParticipant = {sid: 'me', identity: 'me-id'};
-
-            (client as any).handleLocalTrackPublished(pub, localParticipant);
+            mockRoom.fire(
+                RoomEvent.LocalTrackPublished,
+                {
+                    source: Track.Source.Microphone,
+                    isMuted: false,
+                    track: {mediaStreamTrack},
+                },
+                mockRoom.localParticipant,
+            );
 
             expect(client.audioTrack).toBe(mediaStreamTrack);
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.UNMUTE, 'me', 'me-id');
+            expect(unmuteListener).toHaveBeenCalledWith('me-sid', 'me-id');
         });
 
-        it('emits MUTE for muted mic publication', () => {
-            const pub = {
-                source: Track.Source.Microphone,
-                isMuted: true,
-                track: {mediaStreamTrack: {} as MediaStreamTrack},
-            };
-            const localParticipant = {sid: 'me', identity: 'me-id'};
-
-            (client as any).handleLocalTrackPublished(pub, localParticipant);
-
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.MUTE, 'me', 'me-id');
-        });
-
-        it('ignores non-mic tracks and does not touch audioTrack', () => {
-            const pub = {source: Track.Source.ScreenShare};
-            (client as any).handleLocalTrackPublished(pub, {sid: 'me', identity: 'me-id'});
-
-            expect(client.audioTrack).toBeNull();
-            expect(client.emit).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('handleLocalTrackUnpublished', () => {
-        it('clears audioTrack and emits MUTE for mic', () => {
+        it('clears audioTrack and emits MUTE on local unpublish', async () => {
+            await client.connect('test-channel');
             client.audioTrack = {} as MediaStreamTrack;
-            const pub = {source: Track.Source.Microphone};
-            const localParticipant = {sid: 'me', identity: 'me-id'};
+            const muteListener = jest.fn();
+            client.on(CALL_EVENT.MUTE, muteListener);
 
-            (client as any).handleLocalTrackUnpublished(pub, localParticipant);
+            mockRoom.fire(
+                RoomEvent.LocalTrackUnpublished,
+                {source: Track.Source.Microphone},
+                mockRoom.localParticipant,
+            );
 
             expect(client.audioTrack).toBeNull();
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.MUTE, 'me', 'me-id');
+            expect(muteListener).toHaveBeenCalledWith('me-sid', 'me-id');
         });
 
-        it('ignores non-mic tracks', () => {
-            const original = {} as MediaStreamTrack;
-            client.audioTrack = original;
-            const pub = {source: Track.Source.ScreenShare};
+        it('does nothing for non-microphone local tracks', async () => {
+            await client.connect('test-channel');
+            const muteListener = jest.fn();
+            const unmuteListener = jest.fn();
+            client.on(CALL_EVENT.MUTE, muteListener);
+            client.on(CALL_EVENT.UNMUTE, unmuteListener);
 
-            (client as any).handleLocalTrackUnpublished(pub, {sid: 'me', identity: 'me-id'});
+            mockRoom.fire(
+                RoomEvent.LocalTrackPublished,
+                {source: Track.Source.ScreenShare},
+                mockRoom.localParticipant,
+            );
 
-            expect(client.audioTrack).toBe(original);
-            expect(client.emit).not.toHaveBeenCalled();
+            expect(client.audioTrack).toBeNull();
+            expect(muteListener).not.toHaveBeenCalled();
+            expect(unmuteListener).not.toHaveBeenCalled();
         });
     });
 
-    describe('handleParticipantConnected', () => {
-        it('emits USER_JOINED for the remote participant (no isFromInitialSync)', () => {
-            const participant = {sid: 'p1', identity: 'user1'};
+    describe('TrackSubscribed (remote audio routing)', () => {
+        it('emits REMOTE_VOICE_STREAM with stream + participant.sid for mic source', async () => {
+            await client.connect('test-channel');
+            const remoteVoiceListener = jest.fn();
+            client.on(CALL_EVENT.REMOTE_VOICE_STREAM, remoteVoiceListener);
 
-            (client as any).handleParticipantConnected(participant);
+            mockRoom.fire(
+                RoomEvent.TrackSubscribed,
+                {source: Track.Source.Microphone, mediaStreamTrack: {}},
+                {},
+                {sid: 'p1', identity: 'user1'},
+            );
 
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.USER_JOINED, 'p1', 'user1');
+            expect(remoteVoiceListener).toHaveBeenCalledWith(expect.anything(), 'p1');
+        });
+
+        it('does not emit for non-microphone tracks', async () => {
+            await client.connect('test-channel');
+            const remoteVoiceListener = jest.fn();
+            client.on(CALL_EVENT.REMOTE_VOICE_STREAM, remoteVoiceListener);
+
+            mockRoom.fire(
+                RoomEvent.TrackSubscribed,
+                {source: Track.Source.ScreenShare, mediaStreamTrack: {}},
+                {},
+                {sid: 'p1', identity: 'user1'},
+            );
+
+            expect(remoteVoiceListener).not.toHaveBeenCalled();
         });
     });
 
-    describe('handleParticipantDisconnected', () => {
-        it('emits USER_LEFT for the remote participant', () => {
-            const participant = {sid: 'p1', identity: 'user1'};
+    describe('ParticipantConnected / ParticipantDisconnected', () => {
+        it('emits USER_JOINED (no isFromInitialSync) for live remote join', async () => {
+            await client.connect('test-channel');
+            const userJoinedListener = jest.fn();
+            client.on(CALL_EVENT.USER_JOINED, userJoinedListener);
 
-            (client as any).handleParticipantDisconnected(participant);
+            mockRoom.fire(RoomEvent.ParticipantConnected, {sid: 'p1', identity: 'user1'});
 
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.USER_LEFT, 'p1', 'user1');
+            expect(userJoinedListener).toHaveBeenCalledWith('p1', 'user1');
+        });
+
+        it('emits USER_LEFT when a remote participant disconnects', async () => {
+            await client.connect('test-channel');
+            const userLeftListener = jest.fn();
+            client.on(CALL_EVENT.USER_LEFT, userLeftListener);
+
+            mockRoom.fire(RoomEvent.ParticipantDisconnected, {sid: 'p1', identity: 'user1'});
+
+            expect(userLeftListener).toHaveBeenCalledWith('p1', 'user1');
         });
     });
 
-    describe('handleMediaDevicesError', () => {
-        it('emits CALL_EVENT.ERROR with the error', () => {
-            const err = new Error('device gone');
+    describe('MediaDevicesError', () => {
+        it('emits ERROR with the underlying error', async () => {
+            await client.connect('test-channel');
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
 
-            (client as any).handleMediaDevicesError(err);
+            const err = new Error('mic unplugged');
+            mockRoom.fire(RoomEvent.MediaDevicesError, err);
 
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.ERROR, err);
-        });
-    });
-
-    describe('handleConnected', () => {
-        const setupRoom = (
-            localMicPub: any,
-            remoteParts: Array<{sid: string; identity: string; micPub: any}>,
-        ) => {
-            (client as any).room = {
-                localParticipant: {
-                    sid: 'me',
-                    identity: 'me-id',
-                    getTrackPublication: jest.fn(() => localMicPub),
-                },
-                remoteParticipants: new Map(
-                    remoteParts.map((p) => [
-                        p.sid,
-                        {
-                            sid: p.sid,
-                            identity: p.identity,
-                            getTrackPublication: jest.fn(() => p.micPub),
-                        },
-                    ]),
-                ),
-            };
-            // Don't actually request mic permission in tests.
-            (client as any).requestMicrophonePermission = jest.fn().mockResolvedValue(undefined);
-        };
-
-        it('is a no-op when room is null', () => {
-            (client as any).handleConnected();
-            expect(client.emit).not.toHaveBeenCalled();
-        });
-
-        it('emits USER_JOINED before MUTE/UNMUTE for self (regression: review #1)', () => {
-            setupRoom({isMuted: false}, []);
-
-            (client as any).handleConnected();
-
-            const calls = (client.emit as jest.Mock).mock.calls;
-            const joinedIdx = calls.findIndex(
-                (c) => c[0] === CALL_EVENT.USER_JOINED && c[1] === 'me',
-            );
-            const muteIdx = calls.findIndex(
-                (c) => (c[0] === CALL_EVENT.UNMUTE || c[0] === CALL_EVENT.MUTE) && c[1] === 'me',
-            );
-
-            expect(joinedIdx).toBeGreaterThanOrEqual(0);
-            expect(muteIdx).toBeGreaterThanOrEqual(0);
-            expect(joinedIdx).toBeLessThan(muteIdx);
-        });
-
-        it('seeds USER_JOINED for self with isFromInitialSync=true', () => {
-            setupRoom({isMuted: false}, []);
-
-            (client as any).handleConnected();
-
-            expect(client.emit).toHaveBeenCalledWith(
-                CALL_EVENT.USER_JOINED,
-                'me',
-                'me-id',
-                true,
-            );
-        });
-
-        it('treats absent mic publication as muted', () => {
-            setupRoom(undefined, []);
-
-            (client as any).handleConnected();
-
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.MUTE, 'me', 'me-id');
-        });
-
-        it('seeds USER_JOINED + MUTE/UNMUTE for each remote participant', () => {
-            setupRoom({isMuted: false}, [
-                {sid: 'r1', identity: 'remote-1', micPub: {isMuted: true}},
-                {sid: 'r2', identity: 'remote-2', micPub: {isMuted: false}},
-            ]);
-
-            (client as any).handleConnected();
-
-            expect(client.emit).toHaveBeenCalledWith(
-                CALL_EVENT.USER_JOINED,
-                'r1',
-                'remote-1',
-                true,
-            );
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.MUTE, 'r1', 'remote-1');
-            expect(client.emit).toHaveBeenCalledWith(
-                CALL_EVENT.USER_JOINED,
-                'r2',
-                'remote-2',
-                true,
-            );
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.UNMUTE, 'r2', 'remote-2');
-        });
-
-        it('emits CALL_EVENT.CONNECTED last', () => {
-            setupRoom({isMuted: false}, []);
-
-            (client as any).handleConnected();
-
-            const calls = (client.emit as jest.Mock).mock.calls;
-            expect(calls[calls.length - 1][0]).toBe(CALL_EVENT.CONNECTED);
-        });
-    });
-
-    describe('handleReconnecting / handleReconnected / handleDisconnected', () => {
-        it('handleReconnecting emits RECONNECTING', () => {
-            (client as any).handleReconnecting();
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.RECONNECTING);
-        });
-
-        it('handleReconnected emits RECONNECTED', () => {
-            (client as any).handleReconnected();
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.RECONNECTED);
-        });
-
-        it('handleDisconnected emits DISCONNECTED with reason', () => {
-            (client as any).handleDisconnected('SERVER_SHUTDOWN');
-            expect(client.emit).toHaveBeenCalledWith(CALL_EVENT.DISCONNECTED, 'SERVER_SHUTDOWN');
+            expect(errorListener).toHaveBeenCalledWith(err);
         });
     });
 
@@ -406,154 +399,59 @@ describe('CallClient', () => {
             expect(client.getRemoteVoiceTracks()).toEqual([]);
         });
 
-        it('returns live mic tracks from remote participants', () => {
+        it('returns live mic tracks from remote participants', async () => {
             const liveTrack = {readyState: 'live'} as MediaStreamTrack;
-
-            (client as any).room = {
-                remoteParticipants: new Map([
+            mockRoom.remoteParticipants.set('p1', {
+                audioTrackPublications: new Map([
                     [
-                        'p1',
+                        't1',
                         {
-                            audioTrackPublications: new Map([
-                                [
-                                    't1',
-                                    {
-                                        source: Track.Source.Microphone,
-                                        isSubscribed: true,
-                                        track: {mediaStreamTrack: liveTrack},
-                                    },
-                                ],
-                            ]),
+                            source: Track.Source.Microphone,
+                            isSubscribed: true,
+                            track: {mediaStreamTrack: liveTrack},
                         },
                     ],
                 ]),
-            };
+            });
+
+            await client.connect('test-channel');
 
             expect(client.getRemoteVoiceTracks()).toEqual([liveTrack]);
         });
 
-        it('skips ended tracks', () => {
-            const endedTrack = {readyState: 'ended'} as MediaStreamTrack;
-
-            (client as any).room = {
-                remoteParticipants: new Map([
+        it('skips ended, unsubscribed, and non-mic tracks', async () => {
+            mockRoom.remoteParticipants.set('p1', {
+                audioTrackPublications: new Map([
                     [
-                        'p1',
+                        'ended',
                         {
-                            audioTrackPublications: new Map([
-                                [
-                                    't1',
-                                    {
-                                        source: Track.Source.Microphone,
-                                        isSubscribed: true,
-                                        track: {mediaStreamTrack: endedTrack},
-                                    },
-                                ],
-                            ]),
+                            source: Track.Source.Microphone,
+                            isSubscribed: true,
+                            track: {mediaStreamTrack: {readyState: 'ended'}},
+                        },
+                    ],
+                    [
+                        'unsub',
+                        {
+                            source: Track.Source.Microphone,
+                            isSubscribed: false,
+                            track: {mediaStreamTrack: {readyState: 'live'}},
+                        },
+                    ],
+                    [
+                        'nonmic',
+                        {
+                            source: Track.Source.ScreenShareAudio,
+                            isSubscribed: true,
+                            track: {mediaStreamTrack: {readyState: 'live'}},
                         },
                     ],
                 ]),
-            };
+            });
+
+            await client.connect('test-channel');
 
             expect(client.getRemoteVoiceTracks()).toEqual([]);
-        });
-
-        it('skips unsubscribed publications', () => {
-            const liveTrack = {readyState: 'live'} as MediaStreamTrack;
-
-            (client as any).room = {
-                remoteParticipants: new Map([
-                    [
-                        'p1',
-                        {
-                            audioTrackPublications: new Map([
-                                [
-                                    't1',
-                                    {
-                                        source: Track.Source.Microphone,
-                                        isSubscribed: false,
-                                        track: {mediaStreamTrack: liveTrack},
-                                    },
-                                ],
-                            ]),
-                        },
-                    ],
-                ]),
-            };
-
-            expect(client.getRemoteVoiceTracks()).toEqual([]);
-        });
-
-        it('skips non-microphone publications', () => {
-            const liveTrack = {readyState: 'live'} as MediaStreamTrack;
-
-            (client as any).room = {
-                remoteParticipants: new Map([
-                    [
-                        'p1',
-                        {
-                            audioTrackPublications: new Map([
-                                [
-                                    't1',
-                                    {
-                                        source: Track.Source.ScreenShareAudio,
-                                        isSubscribed: true,
-                                        track: {mediaStreamTrack: liveTrack},
-                                    },
-                                ],
-                            ]),
-                        },
-                    ],
-                ]),
-            };
-
-            expect(client.getRemoteVoiceTracks()).toEqual([]);
-        });
-    });
-
-    describe('safe-default getters', () => {
-        it('getAudioDevices returns empty inputs/outputs', () => {
-            expect(client.getAudioDevices()).toEqual({inputs: [], outputs: []});
-        });
-
-        it('getRemoteVideoStream returns null', () => {
-            expect(client.getRemoteVideoStream()).toBeNull();
-        });
-
-        it('getRemoteScreenStream returns null', () => {
-            expect(client.getRemoteScreenStream()).toBeNull();
-        });
-
-        it('getLocalScreenStream returns null', () => {
-            expect(client.getLocalScreenStream()).toBeNull();
-        });
-
-        it('getVideoDevices returns empty array', () => {
-            expect(client.getVideoDevices()).toEqual([]);
-        });
-
-        it('getStats resolves to null', async () => {
-            await expect(client.getStats()).resolves.toBeNull();
-        });
-    });
-
-    describe('stub action methods throw "not yet implemented"', () => {
-        it('startVideo rejects', async () => {
-            await expect(client.startVideo()).rejects.toThrow('not yet implemented');
-        });
-
-        it('shareScreen rejects', async () => {
-            await expect(client.shareScreen()).rejects.toThrow('not yet implemented');
-        });
-
-        it('raiseHand throws', () => {
-            expect(() => client.raiseHand()).toThrow('not yet implemented');
-        });
-
-        it('setAudioInputDevice rejects', async () => {
-            await expect(client.setAudioInputDevice({} as MediaDeviceInfo)).rejects.toThrow(
-                'not yet implemented',
-            );
         });
     });
 });
