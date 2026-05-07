@@ -23,6 +23,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/livekit/protocol/auth"
+	"github.com/livekit/protocol/livekit"
+	"github.com/livekit/protocol/webhook"
 )
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
@@ -590,4 +592,189 @@ func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 	}
 
 	return nil
+}
+
+func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
+	cfg := p.getConfiguration()
+	if cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
+		p.LogError("handleLiveKitWebhook: LiveKit not configured")
+		http.Error(w, "LiveKit is not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	event, err := webhook.ReceiveWebhookEvent(r, auth.NewSimpleKeyProvider(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret))
+	if err != nil {
+		p.LogError("handleLiveKitWebhook: failed to verify webhook", "err", err.Error())
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	p.LogDebug("handleLiveKitWebhook: received event",
+		"event", event.GetEvent(),
+		"room", event.GetRoom().GetName())
+
+	switch event.GetEvent() {
+	case webhook.EventParticipantJoined:
+		p.handleLiveKitParticipantJoined(event)
+	case webhook.EventParticipantLeft:
+		p.handleLiveKitParticipantLeft(event)
+	case webhook.EventRoomStarted, webhook.EventRoomFinished:
+		p.LogDebug("handleLiveKitWebhook: room lifecycle event (informational only)",
+			"event", event.GetEvent(),
+			"room", event.GetRoom().GetName())
+	default:
+		p.LogDebug("handleLiveKitWebhook: ignoring event", "event", event.GetEvent())
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
+	participant := event.GetParticipant()
+	if participant == nil || participant.Kind != livekit.ParticipantInfo_SIP {
+		return
+	}
+
+	channelID := event.GetRoom().GetName()
+	if channelID == "" {
+		p.LogError("handleLiveKitParticipantJoined: empty room name")
+		return
+	}
+
+	sid := participant.Sid
+	identity := participant.Identity
+
+	p.LogDebug("handleLiveKitParticipantJoined: SIP participant joined",
+		"channelID", channelID, "sid", sid, "identity", identity)
+
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		p.LogError("handleLiveKitParticipantJoined: failed to lock call", "channelID", channelID, "err", err.Error())
+		return
+	}
+	defer p.unlockCall(channelID)
+
+	if state == nil {
+		p.LogDebug("handleLiveKitParticipantJoined: no active call", "channelID", channelID)
+		return
+	}
+
+	if state.Call.EndAt > 0 {
+		p.LogDebug("handleLiveKitParticipantJoined: call has ended", "channelID", channelID)
+		return
+	}
+
+	if _, exists := state.sessions[sid]; exists {
+		p.LogDebug("handleLiveKitParticipantJoined: SIP session already exists", "channelID", channelID, "sid", sid)
+		return
+	}
+
+	session := &public.CallSession{
+		ID:               sid,
+		CallID:           state.Call.ID,
+		UserID:           identity,
+		JoinAt:           time.Now().UnixMilli(),
+		IsSIPParticipant: true,
+	}
+	state.sessions[sid] = session
+
+	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
+		state.Call.Props.Hosts = []string{newHostID}
+		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
+			"hostID":  newHostID,
+			"call_id": state.Call.ID,
+		}, &WebSocketBroadcast{
+			ChannelID:           channelID,
+			ReliableClusterSend: true,
+			UserIDs:             getUserIDsFromSessions(state.sessions),
+		})
+	}
+
+	if err := p.store.CreateCallSession(session); err != nil {
+		p.LogError("handleLiveKitParticipantJoined: failed to create call session",
+			"channelID", channelID, "err", err.Error())
+		delete(state.sessions, sid)
+		return
+	}
+
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		p.LogError("handleLiveKitParticipantJoined: failed to update call",
+			"channelID", channelID, "err", err.Error())
+	}
+
+	p.publishWebSocketEvent(wsEventUserJoined, map[string]interface{}{
+		"user_id":    identity,
+		"session_id": sid,
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+}
+
+func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
+	participant := event.GetParticipant()
+	if participant == nil || participant.Kind != livekit.ParticipantInfo_SIP {
+		return
+	}
+
+	channelID := event.GetRoom().GetName()
+	if channelID == "" {
+		p.LogError("handleLiveKitParticipantLeft: empty room name")
+		return
+	}
+
+	sid := participant.Sid
+	identity := participant.Identity
+
+	p.LogDebug("handleLiveKitParticipantLeft: SIP participant left",
+		"channelID", channelID, "sid", sid, "identity", identity)
+
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		p.LogError("handleLiveKitParticipantLeft: failed to lock call", "channelID", channelID, "err", err.Error())
+		return
+	}
+	defer p.unlockCall(channelID)
+
+	if state == nil {
+		p.LogDebug("handleLiveKitParticipantLeft: no active call", "channelID", channelID)
+		return
+	}
+
+	if _, exists := state.sessions[sid]; !exists {
+		p.LogDebug("handleLiveKitParticipantLeft: SIP session not found (idempotent)", "channelID", channelID, "sid", sid)
+		return
+	}
+
+	if err := p.store.DeleteCallSession(sid); err != nil {
+		p.LogError("handleLiveKitParticipantLeft: failed to delete call session",
+			"channelID", channelID, "err", err.Error())
+		return
+	}
+	delete(state.sessions, sid)
+
+	if state.Call.GetHostID() == identity && len(state.sessions) > 0 {
+		if newHostID := state.getHostID(p.getBotID()); newHostID != identity {
+			if newHostID == "" {
+				state.Call.Props.Hosts = nil
+			} else {
+				state.Call.Props.Hosts = []string{newHostID}
+			}
+			p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
+				"hostID":  newHostID,
+				"call_id": state.Call.ID,
+			}, &WebSocketBroadcast{
+				ChannelID:           channelID,
+				ReliableClusterSend: true,
+				UserIDs:             getUserIDsFromSessions(state.sessions),
+			})
+		}
+	}
+
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		p.LogError("handleLiveKitParticipantLeft: failed to update call",
+			"channelID", channelID, "err", err.Error())
+	}
+
+	p.publishWebSocketEvent(wsEventUserLeft, map[string]interface{}{
+		"user_id":    identity,
+		"session_id": sid,
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 }
