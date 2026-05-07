@@ -64,7 +64,6 @@ func (c Call) GetHostID() string {
 
 type CallProps struct {
 	Hosts                  []string            `json:"hosts,omitempty"`
-	RTCDHost               string              `json:"rtcd_host,omitempty"`
 	ScreenSharingSessionID string              `json:"screen_sharing_session_id,omitempty"`
 	DismissedNotification  map[string]bool     `json:"dismissed_notification,omitempty"`
 	ScreenStartAt          int64               `json:"screen_start_at,omitempty"`

@@ -344,7 +344,6 @@ func TestCallStateClone(t *testing.T) {
 				},
 				Props: public.CallProps{
 					Hosts:                  []string{model.NewId()},
-					RTCDHost:               model.NewId(),
 					ScreenSharingSessionID: model.NewId(),
 					DismissedNotification: map[string]bool{
 						model.NewId(): true,

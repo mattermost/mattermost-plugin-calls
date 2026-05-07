@@ -33,22 +33,13 @@ type session struct {
 
 	// WebSocket
 
-	signalOutCh chan []byte
-	wsMsgCh     chan clientMessage
+	wsMsgCh chan clientMessage
 	// to notify of websocket disconnect.
 	wsCloseCh chan struct{}
 	wsClosed  int32
 	// to notify of websocket reconnection.
 	wsReconnectCh chan struct{}
 	wsReconnected int32
-
-	// RTC
-
-	// to notify of rtc session disconnect.
-	rtcCloseCh chan struct{}
-	// rtc indicates whether or not the session is also handling the WebRTC
-	// connection.
-	rtc bool
 
 	// to notify of session leaving a call.
 	leaveCh chan struct{}
@@ -61,21 +52,18 @@ type session struct {
 	wsMsgLimiter *rate.Limiter
 }
 
-func newUserSession(userID, channelID, connID, callID string, rtc bool) *session {
+func newUserSession(userID, channelID, connID, callID string) *session {
 	return &session{
 		userID:         userID,
 		channelID:      channelID,
 		connID:         connID,
 		originalConnID: connID,
 		callID:         callID,
-		signalOutCh:    make(chan []byte, msgChSize),
 		wsMsgCh:        make(chan clientMessage, msgChSize*2),
 		wsCloseCh:      make(chan struct{}),
 		wsReconnectCh:  make(chan struct{}),
 		leaveCh:        make(chan struct{}),
-		rtcCloseCh:     make(chan struct{}),
 		wsMsgLimiter:   rate.NewLimiter(10, 100),
-		rtc:            rtc,
 	}
 }
 

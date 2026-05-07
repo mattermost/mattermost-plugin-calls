@@ -27,50 +27,6 @@ func TestConfigurationIsValid(t *testing.T) {
 		err   string
 	}{
 		{
-			name:  "empty",
-			input: configuration{},
-			err:   "UDPServerPort should not be nil",
-		},
-		{
-			name: "invalid UDPServerAddress",
-			input: func() configuration {
-				var cfg configuration
-				cfg.SetDefaults()
-				cfg.UDPServerAddress = "invalid"
-				return cfg
-			}(),
-			err: "UDPServerAddress parsing failed",
-		},
-		{
-			name: "missing UDPServerPort",
-			input: func() configuration {
-				var cfg configuration
-				cfg.SetDefaults()
-				cfg.UDPServerPort = nil
-				return cfg
-			}(),
-			err: "UDPServerPort should not be nil",
-		},
-		{
-			name: "UDPServerPort not in range",
-			input: func() configuration {
-				var cfg configuration
-				cfg.SetDefaults()
-				cfg.UDPServerPort = model.NewPointer(45)
-				return cfg
-			}(),
-			err: "UDPServerPort is not valid: 45 is not in allowed range [80, 49151]",
-		},
-		{
-			name: "udp port in range",
-			input: func() configuration {
-				var cfg configuration
-				cfg.SetDefaults()
-				cfg.UDPServerPort = model.NewPointer(443)
-				return cfg
-			}(),
-		},
-		{
 			name: "invalid MaxCallParticipants",
 			input: func() configuration {
 				var cfg configuration
@@ -79,16 +35,6 @@ func TestConfigurationIsValid(t *testing.T) {
 				return cfg
 			}(),
 			err: "MaxCallParticipants is not valid",
-		},
-		{
-			name: "invalid TURNCredentialsExpirationMinutes",
-			input: func() configuration {
-				var cfg configuration
-				cfg.SetDefaults()
-				cfg.TURNCredentialsExpirationMinutes = model.NewPointer(-1)
-				return cfg
-			}(),
-			err: "TURNCredentialsExpirationMinutes is not valid",
 		},
 		{
 			name: "MaxRecordingDuration not in range",
@@ -109,16 +55,6 @@ func TestConfigurationIsValid(t *testing.T) {
 				return cfg
 			}(),
 			err: "RecordingQuality is not valid",
-		},
-		{
-			name: "invalid ICEHostPortOverride",
-			input: func() configuration {
-				var cfg configuration
-				cfg.SetDefaults()
-				cfg.ICEHostPortOverride = model.NewPointer(45)
-				return cfg
-			}(),
-			err: "ICEHostPortOverride is not valid: 45 is not in allowed range [80, 49151]",
 		},
 		{
 			name: "invalid LiveCaptionsModelSize",
@@ -308,7 +244,7 @@ func TestConfigurationWillBeSaved(t *testing.T) {
 		mockAPI.On("LogDebug", "ConfigurationWillBeSaved", "origin", mock.AnythingOfType("string")).Return()
 
 		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{
-			"udpserverport": float64(8443),
+			"maxcallparticipants": float64(50),
 		}))
 		require.Nil(t, retCfg)
 		require.NoError(t, err)
@@ -320,24 +256,24 @@ func TestConfigurationWillBeSaved(t *testing.T) {
 		mockAPI.On("LogDebug", "ConfigurationWillBeSaved", "origin", mock.AnythingOfType("string")).Return()
 
 		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{
-			"turnstaticauthsecret": model.FakeSetting,
+			"livekitapisecret": model.FakeSetting,
 		}))
 		require.Nil(t, retCfg)
 		require.NoError(t, err)
 	})
 
-	t.Run("invalid UDPServerPort", func(t *testing.T) {
+	t.Run("invalid MaxCallParticipants", func(t *testing.T) {
 		p, mockAPI := setup(t)
 		defer mockAPI.AssertExpectations(t)
 		mockAPI.On("LogDebug", "ConfigurationWillBeSaved", "origin", mock.AnythingOfType("string")).Return()
 
 		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{
-			"udpserverport": float64(45),
+			"maxcallparticipants": float64(-1),
 		}))
 		require.Nil(t, retCfg)
 		require.Error(t, err)
 		var appErr *model.AppError
 		require.True(t, errors.As(err, &appErr))
-		require.Contains(t, appErr.Message, "UDPServerPort is not valid")
+		require.Contains(t, appErr.Message, "MaxCallParticipants is not valid")
 	})
 }

@@ -7,11 +7,6 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/mattermost/mattermost-plugin-calls/server/public"
-
-	"github.com/mattermost/rtcd/service/perf"
-	"github.com/mattermost/rtcd/service/rtc"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -24,7 +19,6 @@ const (
 	metricsSubSystemApp     = "app"
 	metricsSubSystemStore   = "store"
 	metricsSubSystemJobs    = "jobs"
-	metricsSubSystemClient  = "client"
 )
 
 type DBStore interface {
@@ -32,8 +26,7 @@ type DBStore interface {
 }
 
 type Metrics struct {
-	registry   *prometheus.Registry
-	rtcMetrics *perf.Metrics
+	registry *prometheus.Registry
 
 	WebSocketConnections             prometheus.Gauge
 	WebSocketEventCounters           *prometheus.CounterVec
@@ -51,8 +44,6 @@ type Metrics struct {
 	LiveCaptionsWindowDroppedCounter       prometheus.Counter
 	LiveCaptionsTranscriberBufFullCounter  prometheus.Counter
 	LiveCaptionsPktPayloadChBufFullCounter prometheus.Counter
-
-	ClientICECandidatePairsCounter *prometheus.CounterVec
 }
 
 func NewMetrics() *Metrics {
@@ -198,28 +189,11 @@ func NewMetrics() *Metrics {
 	)
 	m.registry.MustRegister(m.StoreMethodsTimeHistograms)
 
-	m.ClientICECandidatePairsCounter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: metricsNamespace,
-			Subsystem: metricsSubSystemClient,
-			Name:      "ice_candidate_pairs_total",
-			Help:      "Total number of client-sent ICE candidate pairs",
-		},
-		[]string{"state", "local_type", "local_protocol", "remote_type", "remote_protocol"},
-	)
-	m.registry.MustRegister(m.ClientICECandidatePairsCounter)
-
-	m.rtcMetrics = perf.NewMetrics(metricsNamespace, m.registry)
-
 	return &m
 }
 
 func (m *Metrics) RegisterDBMetrics(db *sql.DB, name string) {
 	m.registry.MustRegister(collectors.NewDBStatsCollector(db, name))
-}
-
-func (m *Metrics) RTCMetrics() rtc.Metrics {
-	return m.rtcMetrics
 }
 
 func (m *Metrics) Handler() http.Handler {
@@ -280,14 +254,4 @@ func (m *Metrics) ObserveAppHandlersTime(handler string, elapsed float64) {
 
 func (m *Metrics) ObserveStoreMethodsTime(method string, elapsed float64) {
 	m.StoreMethodsTimeHistograms.With(prometheus.Labels{"method": method}).Observe(elapsed)
-}
-
-func (m *Metrics) IncClientICECandidatePairs(p public.ClientICECandidatePairMetricPayload) {
-	m.ClientICECandidatePairsCounter.With(prometheus.Labels{
-		"state":           p.State,
-		"local_type":      p.Local.Type,
-		"local_protocol":  p.Local.Protocol,
-		"remote_type":     p.Remote.Type,
-		"remote_protocol": p.Remote.Protocol,
-	}).Inc()
 }

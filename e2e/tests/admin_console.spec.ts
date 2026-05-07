@@ -38,9 +38,7 @@ test.describe('admin console', () => {
 
         // Verify all sections render as expected.
         await expect(await resizeAndScreenshot(page, 'calls-general-settings-section')).toMatchSnapshot('calls-system-console-general-settings-section.png', {maxDiffPixels: 0});
-        await expect(await resizeAndScreenshot(page, 'calls-rtcd-service-section')).toMatchSnapshot('calls-system-console-rtcd-service-section.png', {maxDiffPixels: 0});
-        await expect(await resizeAndScreenshot(page, 'calls-rtc-server-section')).toMatchSnapshot('calls-system-console-rtc-server-section.png', {maxDiffPixels: 0});
-        await expect(await resizeAndScreenshot(page, 'calls-ice-and-turn-section')).toMatchSnapshot('calls-system-console-ice-and-turn-section.png', {maxDiffPixels: 0});
+        await expect(await resizeAndScreenshot(page, 'calls-livekit-service-section')).toMatchSnapshot('calls-system-console-livekit-service-section.png', {maxDiffPixels: 0});
         await expect(await resizeAndScreenshot(page, 'calls-recordings-section')).toMatchSnapshot('calls-system-console-recordings-section.png', {maxDiffPixels: 0});
         await expect(await resizeAndScreenshot(page, 'calls-transcriptions-section')).toMatchSnapshot('calls-system-console-transcriptions-section.png', {maxDiffPixels: 0});
         await expect(await resizeAndScreenshot(page, 'calls-live-captions-section')).toMatchSnapshot('calls-system-console-live-captions-section.png', {maxDiffPixels: 0});
@@ -69,15 +67,10 @@ test.describe('admin console', () => {
         await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.maxcallparticipants')).toMatchSnapshot('calls-system-console-max-call-participants-modified.png', {maxDiffPixels: 0});
 
         // Check text input
-        await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.rtcdserviceurlinput').fill('http://rtcd.local:8065');
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.rtcdserviceurl')).toMatchSnapshot('calls-system-console-rtcd-url-filled.png', {maxDiffPixels: 0});
-        await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.rtcdserviceurlinput').clear();
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.rtcdserviceurl')).toMatchSnapshot('calls-system-console-rtcd-url-empty.png', {maxDiffPixels: 0});
-
-        // Check textarea input
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.iceserversconfigs')).toMatchSnapshot('calls-system-console-ice-configs-empty.png', {maxDiffPixels: 0});
-        await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.iceserversconfigsinput').fill('[]');
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.iceserversconfigs')).toMatchSnapshot('calls-system-console-ice-configs-filled.png', {maxDiffPixels: 0});
+        await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.livekiturlinput').fill('wss://livekit.local:7880');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.livekiturl')).toMatchSnapshot('calls-system-console-livekit-url-filled.png', {maxDiffPixels: 0});
+        await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.livekiturlinput').clear();
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.livekiturl')).toMatchSnapshot('calls-system-console-livekit-url-empty.png', {maxDiffPixels: 0});
 
         // Check dropdown input
         await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.recordingqualitydropdown').selectOption('High');
@@ -87,9 +80,9 @@ test.describe('admin console', () => {
         await expect(page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.allowscreensharingtrue')).toBeChecked();
         await expect(page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.allowscreensharingfalse')).not.toBeChecked();
 
-        // Check TURNStaticAuthSecret setting (MM-62637)
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.turnstaticauthsecret')).toMatchSnapshot('calls-system-console-turn-static-auth-secret-empty.png', {maxDiffPixels: 0});
-        await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.turnstaticauthsecretinput').fill('secret');
-        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.turnstaticauthsecret')).toMatchSnapshot('calls-system-console-turn-static-auth-secret-filled.png', {maxDiffPixels: 0});
+        // Check LiveKitAPISecret secret setting
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.livekitapisecret')).toMatchSnapshot('calls-system-console-livekit-api-secret-empty.png', {maxDiffPixels: 0});
+        await page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.livekitapisecretinput').fill('secret');
+        await expect(await resizeAndScreenshot(page, 'PluginSettings.Plugins.com+mattermost+calls.livekitapisecret')).toMatchSnapshot('calls-system-console-livekit-api-secret-filled.png', {maxDiffPixels: 0});
     });
 });
