@@ -5,6 +5,7 @@
 import {CallChannelState} from '@mattermost/calls-common/lib/types';
 import WebSocketClient from '@mattermost/client/websocket';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
+import type {Participant} from 'livekit-client';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
@@ -40,6 +41,7 @@ import {
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import CallClient from 'src/clients/call';
+import {CALL_EVENT} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
@@ -100,7 +102,7 @@ import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
-import {CALL_EVENT, CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
+import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
 import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
@@ -114,6 +116,7 @@ import {
     USER_MUTED,
     USER_UNMUTED,
     USERS_STATES,
+    USERS_VOICE_ACTIVITY_CHANGED,
 } from './action_types';
 import CallWidget from './components/call_widget';
 import ChannelCallToast from './components/channel_call_toast';
@@ -184,8 +187,6 @@ import {
     handleUserUnraisedHand,
     handleUserVideoOff,
     handleUserVideoOn,
-    handleUserVoiceOff,
-    handleUserVoiceOn,
 } from './websocket_handlers';
 
 export default class Plugin {
@@ -215,14 +216,6 @@ export default class Plugin {
                 type: RECEIVED_CHANNEL_STATE,
                 data: {id: ev.broadcast.channel_id, enabled: false},
             });
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_voice_on`, (ev) => {
-            handleUserVoiceOn(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_voice_off`, (ev) => {
-            handleUserVoiceOff(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_start`, (ev) => {
@@ -743,6 +736,17 @@ export default class Plugin {
                             channelID: window.callsClient?.channelID,
                             userID,
                             session_id,
+                        },
+                    });
+                });
+
+                window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (user_ids: Participant['identity'][], session_ids: Participant['sid'][]) => {
+                    store.dispatch({
+                        type: USERS_VOICE_ACTIVITY_CHANGED,
+                        data: {
+                            channelID: window.callsClient?.channelID,
+                            user_ids,
+                            session_ids,
                         },
                     });
                 });

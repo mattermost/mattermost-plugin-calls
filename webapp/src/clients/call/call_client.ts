@@ -1,6 +1,8 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+/* eslint-disable max-lines */
+
 import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {EventEmitter} from 'events';
 import {
@@ -17,8 +19,8 @@ import {
     Track,
     TrackPublication,
 } from 'livekit-client';
+import {CALL_EVENT, CALL_TOKEN_API_PATH} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
-import {CALL_EVENT, CALL_TOKEN_API_PATH} from 'src/constants';
 import {logDebug, logErr, logInfo} from 'src/log';
 import {CallsClientStats, MediaDevices} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
@@ -225,6 +227,29 @@ export default class CallClient extends EventEmitter {
         this.emit(CALL_EVENT.ERROR, err);
     }
 
+    /**
+     * Fires whenever LiveKit recomputes who's currently speaking.
+     * e.g. N users speaking -> N participants array
+     * conversely if no one is speaking -> empty array
+     */
+    private handleActiveSpeakersChanged(participants: Participant[]) {
+        const user_ids: string[] = [];
+        const session_ids: string[] = [];
+
+        // This is fine as data structure but if we ever want to have audio
+        // level then it would be better to have a tuple of [user_id, session_id, audio_level]
+        for (const participant of participants) {
+            user_ids.push(participant.identity);
+            session_ids.push(participant.sid);
+        }
+
+        this.emit(
+            CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED,
+            user_ids,
+            session_ids,
+        );
+    }
+
     /** From here on down the methods are all PUBLIC, and are the entry points for the CallClient */
 
     public async connect(channelID: string): Promise<void> {
@@ -261,6 +286,7 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.ParticipantConnected, this.handleParticipantConnected.bind(this));
         room.on(RoomEvent.ParticipantDisconnected, this.handleParticipantDisconnected.bind(this));
         room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
+        room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
 
         try {
             await room.connect(url, token);

@@ -3,9 +3,9 @@
 
 import {Room, RoomEvent, Track} from 'livekit-client';
 import RestClient from 'src/clients/rest';
-import {CALL_EVENT} from 'src/constants';
 
 import CallClient from './call_client';
+import {CALL_EVENT} from './constants';
 
 jest.mock('livekit-client', () => {
     const actual = jest.requireActual('livekit-client');
@@ -452,6 +452,31 @@ describe('CallClient', () => {
             await client.connect('test-channel');
 
             expect(client.getRemoteVoiceTracks()).toEqual([]);
+        });
+    });
+
+    describe('ActiveSpeakersChanged', () => {
+        it('emits USERS_VOICE_ACTIVITY_CHANGED with parallel user_ids and session_ids arrays', async () => {
+            await client.connect('test-channel');
+            const listener = jest.fn();
+            client.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, listener);
+
+            mockRoom.fire(RoomEvent.ActiveSpeakersChanged, [
+                {sid: 'p1', identity: 'u1'},
+                {sid: 'p2', identity: 'u2'},
+            ]);
+
+            expect(listener).toHaveBeenCalledWith(['u1', 'u2'], ['p1', 'p2']);
+        });
+
+        it('emits empty arrays when no one is speaking', async () => {
+            await client.connect('test-channel');
+            const listener = jest.fn();
+            client.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, listener);
+
+            mockRoom.fire(RoomEvent.ActiveSpeakersChanged, []);
+
+            expect(listener).toHaveBeenCalledWith([], []);
         });
     });
 });

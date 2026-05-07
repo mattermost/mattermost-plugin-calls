@@ -3,6 +3,7 @@
 
 /* eslint-disable max-lines */
 import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {Participant} from 'livekit-client';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {
@@ -70,6 +71,7 @@ import {
     USER_VOICE_OFF,
     USER_VOICE_ON,
     USERS_STATES,
+    USERS_VOICE_ACTIVITY_CHANGED,
 } from './action_types';
 
 type channelsState = {
@@ -162,6 +164,8 @@ type sessionsAction = {
         raised_hand?: number;
         reaction?: Reaction;
         states: { [userID: string]: UserSessionState };
+        user_ids: Participant['identity'][];
+        session_ids: Participant['sid'][];
     };
 }
 
@@ -308,6 +312,39 @@ const sessions = (state: sessionsState = {}, action: sessionsAction) => {
                 },
             },
         };
+    case USERS_VOICE_ACTIVITY_CHANGED: {
+        const channel = state[action.data.channelID];
+        if (!channel) {
+            return state;
+        }
+
+        let stateChanged = false;
+        const nextState: typeof channel = {};
+
+        // Walk every session in the channel — sessions present in the active-speakers list
+        // get voice: true, sessions absent from it get voice: false.
+        for (const session_id of Object.keys(channel)) {
+            const isSessionInActiveSpeakersList = action.data.session_ids.includes(session_id);
+
+            // If the voice flag already matches the new speaking state, reuse the existing session object reference.
+            if (channel[session_id].voice === isSessionInActiveSpeakersList) {
+                nextState[session_id] = channel[session_id];
+            } else {
+                // Else, voice flag flipped — create a new session object with the updated value.
+                nextState[session_id] = {...channel[session_id], voice: isSessionInActiveSpeakersList};
+                stateChanged = true;
+            }
+        }
+
+        if (!stateChanged) {
+            return state;
+        }
+
+        return {
+            ...state,
+            [action.data.channelID]: nextState,
+        };
+    }
     case USER_RAISE_HAND:
         if (!state[action.data.channelID]) {
             return {

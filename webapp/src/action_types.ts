@@ -9,6 +9,7 @@ export const USER_MUTED = pluginId + '_user_muted';
 export const USER_UNMUTED = pluginId + '_user_unmuted';
 export const USER_VOICE_ON = pluginId + '_user_voice_on';
 export const USER_VOICE_OFF = pluginId + '_user_voice_off';
+export const USERS_VOICE_ACTIVITY_CHANGED = pluginId + '_users_voice_activity_changed';
 export const USERS_STATES = pluginId + '_users_states';
 export const CALL_STATE = pluginId + '_call_state';
 export const USER_SCREEN_ON = pluginId + '_screen_on';
