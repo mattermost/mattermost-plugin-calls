@@ -22,21 +22,31 @@ This plugin demands some network configuration changes to allow audio/video comm
 
 ## Development
 
-> **_Note_**
->
-> Building the plugin requires the following:
->
-> - Golang: version >= **1.23**
-> - NodeJS: version **20.11**
-> - NPM: version **10.x**
+### Requirements
 
-Use `make dist` to build this plugin.
+#### GoLang
+Check `.go-version` for the required GoLang version. It is recommended to use [goenv](https://github.com/go-nv/goenv) for Go version management. Run `goenv install` in the project root once to install the required version.
 
-Use `make deploy` to deploy the plugin to your local server.
+#### Node.js
+Check `.nvmrc` for the required Node.js version. It is recommended to use [nvm](https://github.com/nvm-sh/nvm) for Node version management. Run `nvm use` in the project root to automatically switch to the required version.
+
+### Building
+
+Use `make deploy` to build and deploy the plugin to your local Mattermost server. Set `MM_SERVICESETTINGS_ENABLEDEVELOPER` so the build automatically detects and targets your native OS and architecture:
+
+```bash
+MM_SERVICESETTINGS_ENABLEDEVELOPER=true make deploy
+```
+
+Without this flag, the build only produces binaries for Linux, FreeBSD, and OpenBSD.
+
+*Note:* If the upload fails with a file size error, increase the maximum file size in *System Console → Environment → File Storage → Maximum File Size* (e.g. 256 MB).
 
 For more details on how to develop a plugin refer to the official [documentation](https://developers.mattermost.com/extend/plugins/).
 
 ## How to Release
+
+Use `make dist` to build a release bundle.
 
 To trigger a release, follow these steps:
 

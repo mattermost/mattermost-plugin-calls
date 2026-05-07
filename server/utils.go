@@ -171,9 +171,10 @@ func (p *Plugin) genFilenameForCall(channelID string) (filename string) {
 		return
 	}
 
-	if channel.Type == model.ChannelTypeOpen || channel.Type == model.ChannelTypePrivate {
+	switch channel.Type {
+	case model.ChannelTypeOpen, model.ChannelTypePrivate:
 		name = channel.DisplayName
-	} else if channel.Type == model.ChannelTypeDirect || channel.Type == model.ChannelTypeGroup {
+	case model.ChannelTypeDirect, model.ChannelTypeGroup:
 		users, appErr := p.API.GetUsersInChannel(channel.Id, model.ChannelSortByUsername, 0, 8)
 		if appErr != nil {
 			p.LogError("failed to get channel users", "err", appErr.Error())

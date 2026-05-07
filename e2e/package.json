@@ -1,24 +1,30 @@
 {
   "private": true,
+  "engines": {
+    "node": "^24.14",
+    "npm": "^11"
+  },
   "scripts": {
-    "lint": "eslint --ignore-pattern node_modules --ignore-pattern dist --ignore-pattern merge-reports.js --ext .js --ext .jsx --ext tsx --ext ts . --quiet --cache",
-    "fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ignore-pattern merge-reports.js --ext .js --ext .jsx --ext tsx --ext ts . --quiet --fix --cache",
+    "lint": "eslint --ext .js,.jsx,.tsx,.ts . --quiet --cache",
+    "lint:fix": "eslint --ext .js,.jsx,.tsx,.ts . --quiet --fix --cache",
     "check-types": "tsc"
   },
   "devDependencies": {
-    "@babel/core": "7.20.12",
-    "@babel/eslint-parser": "7.19.1",
-    "@mattermost/types": "6.7.0-0",
+    "@babel/core": "7.29.0",
+    "@babel/eslint-parser": "7.28.6",
+    "@mattermost/types": "11.4.0",
     "@playwright/test": "^1.51.1",
-    "@types/node": "^20.10.4",
-    "@typescript-eslint/eslint-plugin": "5.49.0",
+    "@types/node": "^24.12.0",
+    "@typescript-eslint/eslint-plugin": "6.21.0",
+    "@typescript-eslint/parser": "6.21.0",
     "eslint": "8.33.0",
     "eslint-plugin-formatjs": "4.13.0",
     "eslint-plugin-header": "^3.1.1",
-    "eslint-plugin-import": "2.27.5",
-    "eslint-plugin-react": "7.34.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "4.6.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
-    "eslint-plugin-unused-imports": "^2.0.0"
+    "eslint-plugin-unused-imports": "^3.2.0",
+    "typescript": "^5.6.3"
   }
 }

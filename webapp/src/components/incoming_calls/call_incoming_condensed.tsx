@@ -47,7 +47,7 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
         <FormattedMessage
             defaultMessage={'Call from <b>{callerName}</b>'}
             values={{
-                b: (text: string) => <b>{text}</b>,
+                b: (text: React.ReactNode) => <b>{text}</b>,
                 callerName,
             }}
         />
@@ -59,7 +59,7 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
             <FormattedMessage
                 defaultMessage={'Call from <b>{callerName}</b> with <b>{others}</b>'}
                 values={{
-                    b: (text: string) => <b>{text}</b>,
+                    b: (text: React.ReactNode) => <b>{text}</b>,
                     callerName,
                     others,
                 }}

@@ -41,7 +41,7 @@ export const HostNotices = ({onWidget = false}: Props) => {
                                 <FormattedMessage
                                     defaultMessage={'<b>{host}</b> lowered your hand'}
                                     values={{
-                                        b: (text: string) => <b>{text}</b>,
+                                        b: (text: React.ReactNode) => <b>{text}</b>,
                                         host: n.displayName,
                                     }}
                                 />
@@ -61,7 +61,7 @@ export const HostNotices = ({onWidget = false}: Props) => {
                                     <FormattedMessage
                                         defaultMessage={'<b>{name}</b> is now the host'}
                                         values={{
-                                            b: (text: string) => <b>{text}</b>,
+                                            b: (text: React.ReactNode) => <b>{text}</b>,
                                             name: n.displayName,
                                         }}
                                     />)
@@ -84,7 +84,7 @@ export const HostNotices = ({onWidget = false}: Props) => {
                                 <FormattedMessage
                                     defaultMessage={'<b>{name}</b> was removed from the call'}
                                     values={{
-                                        b: (text: string) => <b>{text}</b>,
+                                        b: (text: React.ReactNode) => <b>{text}</b>,
                                         name: n.displayName,
                                     }}
                                 />

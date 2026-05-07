@@ -79,6 +79,9 @@ type Plugin struct {
 	// Batchers
 	addSessionsBatchers    map[string]*batching.Batcher
 	removeSessionsBatchers map[string]*batching.Batcher
+
+	// Historical metrics update ticker
+	metricsUpdateTicker *time.Ticker
 }
 
 func (p *Plugin) startSession(us *session, senderID string, props rtc.SessionProps) {

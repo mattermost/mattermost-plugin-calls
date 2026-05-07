@@ -29,7 +29,7 @@ jobs:
       - name: e2e/setup-go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
 
       - name: e2e/setup-node
         uses: actions/setup-node@v4
@@ -124,9 +124,9 @@ jobs:
       CONTAINER_PROXY: playwright_tests_proxy
       CONTAINER_RTCD: playwright_tests_rtcd
       CONTAINER_OFFLOADER: playwright_tests_offloader
-      IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.9.3
-      IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.8.8
-      IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.7.1
+      IMAGE_CALLS_OFFLOADER: mattermost/calls-offloader:v0.9.6
+      IMAGE_CALLS_RECORDER: mattermost/calls-recorder:v0.8.13
+      IMAGE_CALLS_TRANSCRIBER: mattermost/calls-transcriber:v0.7.2
       IMAGE_SERVER: mattermostdevelopment/mattermost-enterprise-edition:master
       IMAGE_CURL: curlimages/curl:8.7.1
       CI_NODE_INDEX: ${{ matrix.run_id }}
@@ -153,11 +153,13 @@ jobs:
           go-version-file: mattermost/server/go.mod
 
       - name: e2e/generate-configuration
-        working-directory: ./mattermost/server/scripts/config_generator
+        working-directory: ./mattermost/server
         env:
           OUTPUT_CONFIG: ${{ github.workspace }}/config/config.json
         run: |
+          go work init . ./public
           mkdir -p ${{ github.workspace }}/config
+          cd scripts/config_generator
           go run main.go
 
       - name: e2e/download-mattermost-plugin-calls-package

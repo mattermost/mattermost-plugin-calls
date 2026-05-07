@@ -9,15 +9,15 @@ import type {DesktopAPI} from '@mattermost/desktop-api';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
-import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getChannel, getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getCurrentTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import React, {useEffect} from 'react';
-import ReactDOM from 'react-dom';
+import {createRoot, Root} from 'react-dom/client';
 import {FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {AnyAction} from 'redux';
@@ -95,7 +95,9 @@ import {
     StopRecordingConfirmation,
 } from 'src/components/expanded_view/stop_recording_confirmation';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
+import JoinCallWatcher from 'src/components/join_call_watcher';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
+import {makeSameChannelLinkClickHandler} from 'src/components/same_channel_link_click_handler';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
@@ -428,7 +430,15 @@ export default class Plugin {
         });
 
         const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
-            if (!channelIDForCurrentCall(store.getState())) {
+            // Prefer the live window.callsClient over Redux state: the client
+            // is the concrete "I am literally in a call right now" signal,
+            // while Redux can be transiently stale during reload reconnect.
+            // Falling back to Redux covers the case where the client hasn't
+            // attached yet on initial load.
+            const effectiveCurrentChannel = window.callsClient?.channelID ?? channelIDForCurrentCall(store.getState());
+
+            if (!effectiveCurrentChannel) {
+                // Not in any call - join the new one
                 connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
@@ -436,9 +446,12 @@ export default class Plugin {
                 if (channelHasCall(store.getState(), channelId)) {
                     followThread(store, channelId, teamId);
                 }
-            } else if (channelIDForCurrentCall(store.getState()) !== channelId) {
+            } else if (effectiveCurrentChannel !== channelId) {
+                // In a different call - show switch modal
                 store.dispatch(showSwitchCallModal(channelId));
             }
+
+            // If already in this call, do nothing
         };
 
         const joinCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
@@ -726,23 +739,27 @@ export default class Plugin {
 
                 const locale = getCurrentUserLocale(state) || 'en';
 
-                ReactDOM.render(
-                    <Provider store={store}>
-                        <IntlProvider
-                            locale={locale}
-                            key={locale}
-                            defaultLocale='en'
-                            messages={getTranslations(locale)}
-                        >
-                            <CallWidget/>
-                        </IntlProvider>
-                    </Provider>,
-                    document.getElementById('calls'),
-                );
+                let callWidgetRoot: Root | null = null;
+                const callsRootEl = document.getElementById('calls');
+                if (callsRootEl) {
+                    callWidgetRoot = createRoot(callsRootEl);
+                    callWidgetRoot.render(
+                        <Provider store={store}>
+                            <IntlProvider
+                                locale={locale}
+                                key={locale}
+                                defaultLocale='en'
+                                messages={getTranslations(locale)}
+                            >
+                                <CallWidget/>
+                            </IntlProvider>
+                        </Provider>,
+                    );
+                }
                 const unmountCallWidget = () => {
-                    const callsRoot = document.getElementById('calls');
-                    if (callsRoot) {
-                        ReactDOM.unmountComponentAtNode(callsRoot);
+                    if (callWidgetRoot) {
+                        callWidgetRoot.unmount();
+                        callWidgetRoot = null;
                     }
                 };
 
@@ -1099,6 +1116,16 @@ export default class Plugin {
             });
         });
 
+        // Watch the URL for ?join_call=true and trigger a join when it appears.
+        // Handles cross-channel link clicks and pasted URLs. Same-channel
+        // clicks are handled by the click handler below since the URL never
+        // changes in that case. Routes through joinCall (not connectToCall)
+        // so URL-driven joins go through the same enabled/disabled, limit,
+        // and test-mode gating as the regular UI buttons.
+        registry.registerRootComponent(() => (
+            <JoinCallWatcher onJoinCall={joinCall}/>
+        ));
+
         // A dummy React component so we can access webapp's
         // WebSocket client through the provided hook. Just lovely.
         registry.registerGlobalComponent(() => {
@@ -1125,23 +1152,32 @@ export default class Plugin {
         this.registerWebSocketEvents(registry, store);
 
         let currChannelId = getCurrentChannelId(store.getState());
-        let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
+
+        // Same-channel join_call links: when the link target is the channel
+        // we're already viewing, the webapp short-circuits navigation entirely
+        // and the URL never updates — so JoinCallWatcher can't see it. Catch
+        // those clicks here. Cross-channel clicks fall through to React Router
+        // and are handled by JoinCallWatcher after navigation.
+        const handleSameChannelLinkClick = makeSameChannelLinkClickHandler(
+            () => getCurrentTeam(store.getState())?.name,
+            () => getCurrentChannelId(store.getState()),
+            () => getCurrentChannel(store.getState())?.name,
+            joinCall,
+        );
+        document.addEventListener('click', handleSameChannelLinkClick, true);
+        this.unsubscribers.push(() => document.removeEventListener('click', handleSameChannelLinkClick, true));
+
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
+
+            // We only want to register the header menu component on first load
+            // and not on every channel switch.
             if (currChannelId !== currentChannelId) {
                 const firstLoad = !currChannelId;
                 currChannelId = currentChannelId;
-
-                // We only want to register the header menu component on first load and not
-                // on every channel switch.
                 if (firstLoad) {
                     registerHeaderMenuComponentIfNeeded(currentChannelId);
                 }
-
-                if (currChannelId && Boolean(joinCallParam) && !channelIDForCurrentCall(store.getState())) {
-                    connectCall(currChannelId);
-                }
-                joinCallParam = '';
             }
         }));
 

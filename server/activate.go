@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
@@ -215,6 +216,13 @@ func (p *Plugin) OnActivate() (retErr error) {
 	// Cluster events need to be handled regardless of whether the embedded RTC service or RTCD are in use.
 	go p.clusterEventsHandler()
 
+	// Start historical metrics update job (runs every hour)
+	if p.metrics != nil {
+		p.metricsUpdateTicker = time.NewTicker(1 * time.Hour)
+		go p.runMetricsUpdateJob()
+		p.LogDebug("started historical metrics update job")
+	}
+
 	p.LogDebug("activated", "ClusterID", status.ClusterId)
 
 	return nil
@@ -223,6 +231,12 @@ func (p *Plugin) OnActivate() (retErr error) {
 func (p *Plugin) OnDeactivate() error {
 	p.LogDebug("deactivate")
 	close(p.stopCh)
+
+	// Stop historical metrics update ticker
+	if p.metricsUpdateTicker != nil {
+		p.metricsUpdateTicker.Stop()
+		p.LogDebug("stopped historical metrics update job")
+	}
 
 	if err := p.store.Close(); err != nil {
 		p.LogError(err.Error())

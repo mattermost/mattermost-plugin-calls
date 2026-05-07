@@ -150,7 +150,7 @@ func TestTranscriptionIsValid(t *testing.T) {
 	}{
 		{
 			name: "missing language",
-			err:  "Language should not be empty",
+			err:  "language should not be empty",
 			tr: Transcription{
 				Title: "title",
 				FileIDs: []string{
