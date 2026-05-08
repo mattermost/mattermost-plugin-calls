@@ -18,6 +18,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
+import {CALL_EVENT} from 'src/clients/call/constants';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
@@ -664,7 +665,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         });
 
-        callsClient.on('devicefallback', (device: MediaDeviceInfo) => {
+        callsClient.on(CALL_EVENT.DEVICE_FALLBACK, (device: MediaDeviceInfo) => {
             if (device.kind === 'audioinput') {
                 this.setState({
                     alerts: {
@@ -706,11 +707,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 otherVideoStream: stream,
             });
         });
-        callsClient.on('devicechange', (audioDevices: MediaDevices, videoDevices: MediaDeviceInfo[]) => {
+        callsClient.on(CALL_EVENT.DEVICE_CHANGE, (audioDevices: MediaDevices, videoDevices: MediaDeviceInfo[]) => {
             this.setAudioDevices(audioDevices);
             this.setVideoDevices(videoDevices);
         });
-        callsClient.on('initaudio', () => {
+        callsClient.on(CALL_EVENT.INIT_AUDIO, () => {
             this.setState({
                 alerts: {
                     ...this.state.alerts,

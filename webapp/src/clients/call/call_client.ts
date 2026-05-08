@@ -19,6 +19,7 @@ import {
     Track,
     TrackPublication,
 } from 'livekit-client';
+import {AudioInputPermissionsError} from 'src/clients/calls';
 import RestClient from 'src/clients/rest';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
@@ -96,9 +97,16 @@ export default class CallClient extends EventEmitter {
             });
 
             logInfo('CallClient: microphone permission granted');
+
+            // enumerateDevices() returns devices with empty labels
+            // until getUserMedia has resolved successfully.
+            await this.enumerateDevices();
+            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+
+            this.emit(CALL_EVENT.INIT_AUDIO);
         } catch (err) {
-            logErr('CallClient: failed to request microphone permission', err);
-            this.emit(CALL_EVENT.ERROR, err);
+            const isPermissionDenied = err instanceof Error && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+            this.emit(CALL_EVENT.ERROR, isPermissionDenied ? AudioInputPermissionsError : err);
         }
     }
 

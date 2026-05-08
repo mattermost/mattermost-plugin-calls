@@ -3,11 +3,12 @@
 
 // CallClient emitted public event names.
 export const CALL_EVENT = {
-    CONNECTED: 'connected',
-    DISCONNECTED: 'disconnected',
+    CONNECTED: 'connect',
+    DISCONNECTED: 'close',
     RECONNECTING: 'reconnecting',
     RECONNECTED: 'reconnected',
     ERROR: 'error',
+    INIT_AUDIO: 'initaudio',
     MUTE: 'mute',
     UNMUTE: 'unmute',
     USERS_VOICE_ACTIVITY_CHANGED: 'usersVoiceActivityChanged',
