@@ -237,7 +237,7 @@ export default async function init(cfg: InitConfig) {
     }
 
     const clientConfig = {
-        wsURL: getWSConnectionURL(getConfig(store.getState())),
+        wsURL: getWSConnectionURL(getConfig(store.getState())?.WebsocketURL),
         iceServers: iceConfigs,
         authToken: getToken(),
         simulcast: callsConfig(store.getState()).EnableSimulcast,

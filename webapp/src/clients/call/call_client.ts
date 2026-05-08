@@ -4,6 +4,7 @@
 /* eslint-disable max-lines */
 
 import type {EmojiData} from '@mattermost/calls-common/lib/types';
+import {ClientConfig} from '@mattermost/types/config';
 import {EventEmitter} from 'events';
 import {
     ConnectionState,
@@ -21,15 +22,18 @@ import {
 } from 'livekit-client';
 import {AudioInputPermissionsError} from 'src/clients/calls';
 import RestClient from 'src/clients/rest';
+import {WebSocketClient, WebSocketError, WebSocketErrorType} from 'src/clients/websocket';
+import {WEBSOCKET_EVENT} from 'src/clients/websocket/constants';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
-import {logDebug, logErr, logInfo} from 'src/log';
+import {logDebug, logErr} from 'src/log';
 import {CallsClientStats, MediaDevices} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
 
 import {CALL_EVENT, CALL_TOKEN_API_PATH} from './constants';
+import {ConnectPayload} from './types';
 
 export type RtcTokenResponse = {
     token: string;
@@ -54,9 +58,19 @@ export default class CallClient extends EventEmitter {
 
     private closed = false;
 
+    private readonly websocketURL: string;
+    private websocketClient: WebSocketClient | null = null;
+
     // Cached enumerated audio devices so the synchronous getAudioDevices() called
     // from componentDidMount stays cheap and never throws.
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
+
+    constructor({websocketURL}: {websocketURL: ClientConfig['WebsocketURL']}) {
+        super();
+
+        this.websocketURL = websocketURL;
+        this.websocketClient = new WebSocketClient(this.websocketURL);
+    }
 
     private handleConnected() {
         if (!this.room) {
@@ -84,7 +98,7 @@ export default class CallClient extends EventEmitter {
         }
 
         this.emit(CALL_EVENT.CONNECTED);
-        logInfo('CallClient: connected to room');
+        logDebug('CallClient: connected to room');
     }
 
     private async requestMicrophonePermission() {
@@ -96,7 +110,7 @@ export default class CallClient extends EventEmitter {
                 mediaStreamTrack.stop();
             });
 
-            logInfo('CallClient: microphone permission granted');
+            logDebug('CallClient: microphone permission granted');
 
             // enumerateDevices() returns devices with empty labels
             // until getUserMedia has resolved successfully.
@@ -115,19 +129,19 @@ export default class CallClient extends EventEmitter {
     }
 
     private handleReconnecting() {
-        logInfo('CallClient: reconnecting to room');
+        logDebug('CallClient: reconnecting to room');
 
         this.emit(CALL_EVENT.RECONNECTING);
     }
 
     private handleReconnected() {
-        logInfo('CallClient: reconnected to room');
+        logDebug('CallClient: reconnected to room');
 
         this.emit(CALL_EVENT.RECONNECTED);
     }
 
     private handleDisconnected(reason?: DisconnectReason) {
-        logInfo('CallClient: disconnected from room', reason);
+        logDebug('CallClient: disconnected from room', reason);
 
         this.emit(CALL_EVENT.DISCONNECTED, reason);
     }
@@ -141,7 +155,7 @@ export default class CallClient extends EventEmitter {
             const stream = new MediaStream([track.mediaStreamTrack]);
             this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, stream, participant.sid);
 
-            logInfo(`CallClient: subscribed to remote track from ${participant.identity}`);
+            logDebug(`CallClient: subscribed to remote track from ${participant.identity}`);
         }
     }
 
@@ -154,7 +168,7 @@ export default class CallClient extends EventEmitter {
             this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localParticipant.sid, localParticipant.identity);
             this.audioTrack = localTrackPublication.track?.mediaStreamTrack ?? null;
 
-            logInfo(`CallClient: local track published from ${localParticipant.identity}`, localTrackPublication);
+            logDebug(`CallClient: local track published from ${localParticipant.identity}`, localTrackPublication);
         }
     }
 
@@ -167,7 +181,7 @@ export default class CallClient extends EventEmitter {
             this.emit(CALL_EVENT.MUTE, localParticipant.sid, localParticipant.identity);
             this.audioTrack = null;
 
-            logInfo(`CallClient: local track unpublished from ${localParticipant.identity}`, localTrackPublication);
+            logDebug(`CallClient: local track unpublished from ${localParticipant.identity}`, localTrackPublication);
         }
     }
 
@@ -179,7 +193,7 @@ export default class CallClient extends EventEmitter {
         if (remoteTrackPublication.source === Track.Source.Microphone) {
             this.emit(remoteTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remoteParticipant.sid, remoteParticipant.identity);
 
-            logInfo(`CallClient: remote track published from ${remoteParticipant.identity}`, remoteTrackPublication);
+            logDebug(`CallClient: remote track published from ${remoteParticipant.identity}`, remoteTrackPublication);
         }
     }
 
@@ -191,7 +205,7 @@ export default class CallClient extends EventEmitter {
         if (remoteTrackPublication.source === Track.Source.Microphone) {
             this.emit(CALL_EVENT.MUTE, remoteParticipant.sid, remoteParticipant.identity);
 
-            logInfo(`CallClient: remote track unpublished from ${remoteParticipant.identity}`, remoteTrackPublication);
+            logDebug(`CallClient: remote track unpublished from ${remoteParticipant.identity}`, remoteTrackPublication);
         }
     }
 
@@ -203,7 +217,7 @@ export default class CallClient extends EventEmitter {
         if (trackPublication.source === Track.Source.Microphone) {
             this.emit(CALL_EVENT.MUTE, participant.sid, participant.identity);
 
-            logInfo(`CallClient: track muted from ${participant.identity}`, trackPublication);
+            logDebug(`CallClient: track muted from ${participant.identity}`, trackPublication);
         }
     }
 
@@ -215,7 +229,7 @@ export default class CallClient extends EventEmitter {
         if (trackPublication.source === Track.Source.Microphone) {
             this.emit(CALL_EVENT.UNMUTE, participant.sid, participant.identity);
 
-            logInfo(`CallClient: track unmuted from ${participant.identity}`, trackPublication);
+            logDebug(`CallClient: track unmuted from ${participant.identity}`, trackPublication);
         }
     }
 
@@ -226,7 +240,7 @@ export default class CallClient extends EventEmitter {
     private handleParticipantConnected(remoteParticipant: RemoteParticipant) {
         this.emit(CALL_EVENT.USER_JOINED, remoteParticipant.sid, remoteParticipant.identity);
 
-        logInfo(`CallClient: participant connected ${remoteParticipant.identity}`);
+        logDebug(`CallClient: participant connected ${remoteParticipant.identity}`);
     }
 
     /**
@@ -236,7 +250,7 @@ export default class CallClient extends EventEmitter {
     private handleParticipantDisconnected(remoteParticipant: RemoteParticipant) {
         this.emit(CALL_EVENT.USER_LEFT, remoteParticipant.sid, remoteParticipant.identity);
 
-        logInfo(`CallClient: participant disconnected ${remoteParticipant.identity}`);
+        logDebug(`CallClient: participant disconnected ${remoteParticipant.identity}`);
     }
 
     private handleMediaDevicesError(err: Error) {
@@ -374,21 +388,21 @@ export default class CallClient extends EventEmitter {
 
     /** From here on down the methods are all PUBLIC, and are the entry points for the CallClient */
 
-    public async connect(channelID: string): Promise<void> {
+    public async connect(connectPayload: ConnectPayload): Promise<void> {
         if (this.room) {
             throw new Error('CallClient: room already connected');
         }
 
-        this.channelID = channelID;
+        this.channelID = connectPayload.channelID;
 
-        const response = await fetchRtcToken(channelID);
+        const response = await fetchRtcToken(connectPayload.channelID);
         const token = response?.token ?? '';
         const url = response?.url ?? '';
         if (!token || !url) {
             throw new Error('CallClient: either token or url were not received from token API');
         }
 
-        logInfo(`CallClient: trying to connect to ${url} for channel ${channelID} with valid token`);
+        logDebug(`CallClient: trying to connect to ${url} for channel ${connectPayload.channelID} with valid token`);
 
         const room = new Room();
         this.room = room;
@@ -424,10 +438,64 @@ export default class CallClient extends EventEmitter {
         // widget's componentDidMount can synchronously read currentAudioInputDevice /
         // currentAudioOutputDevice once we resolve.
         await this.restoreAudioDevicesFromStorage();
+
+        this.websocketClient?.on(WEBSOCKET_EVENT.ERROR, (err: WebSocketError) => {
+            logErr('CallClient: ws error', err);
+            switch (err.type) {
+            case WebSocketErrorType.Native:
+                break;
+            case WebSocketErrorType.ReconnectTimeout:
+                this.websocketClient = null;
+                this.disconnect(err);
+                break;
+            case WebSocketErrorType.Join:
+                this.disconnect(err);
+                break;
+            default:
+            }
+        });
+
+        this.websocketClient?.on(WEBSOCKET_EVENT.CLOSE, (code?: number) => {
+            logDebug(`CallClient: ws close: ${code}`);
+        });
+
+        this.websocketClient?.on(WEBSOCKET_EVENT.OPEN, (originalConnID: string, prevConnID: string, isReconnect: boolean) => {
+            if (isReconnect) {
+                logDebug('CallClient: ws reconnect, sending reconnect msg');
+                this.websocketClient?.sendReconnect({
+                    channelID: connectPayload.channelID,
+                    originalConnID,
+                    prevConnID,
+                });
+            } else {
+                logDebug('CallClient: ws open, sending join msg');
+                this.websocketClient?.sendJoin(connectPayload);
+            }
+        });
+
+        this.websocketClient?.on(WEBSOCKET_EVENT.JOIN, async () => {
+            logDebug('CallClient: join ack received, initializing connection');
+        });
+
+        this.websocketClient?.on(WEBSOCKET_EVENT.MESSAGE, async ({data}) => {
+            try {
+                const msg = JSON.parse(data);
+                if (!msg) {
+                    logErr('ws.on(message): invalid message', data);
+                }
+
+                logDebug('ws.on(message): message received', msg);
+            } catch (err) {
+                logErr('ws.on(message): failed to handle message', err, 'data:', data);
+            }
+        });
+
+        this.websocketClient?.connect();
     }
 
     public async disconnect(err?: Error): Promise<void> {
         if (this.closed) {
+            logErr('CallClient: already disconnected');
             return;
         }
         this.closed = true;
@@ -445,14 +513,18 @@ export default class CallClient extends EventEmitter {
                 this.room = null;
             }
         }
+
+        if (this.websocketClient) {
+            // Tell the server we're leaving — server then broadcasts user_left
+            // and (if we were the last participant) call_end.
+            this.websocketClient.sendLeave();
+            this.websocketClient.close();
+            this.websocketClient = null;
+        }
     }
 
     public destroy() {
         this.disconnect();
-    }
-
-    public getSessionID(): string {
-        return this.room?.localParticipant?.sid ?? '';
     }
 
     public async mute(): Promise<void> {
@@ -470,15 +542,16 @@ export default class CallClient extends EventEmitter {
     }
 
     public async startVideo(): Promise<MediaStream | null> {
-        throw new Error('CallClient.startVideo: not yet implemented');
+        logErr('CallClient.startVideo: not yet implemented');
+        return null;
     }
 
     public stopVideo(): void {
-        throw new Error('CallClient.stopVideo: not yet implemented');
+        logErr('CallClient.stopVideo: not yet implemented');
     }
 
     public async setVideoInputDevice(_device: MediaDeviceInfo): Promise<void> {
-        throw new Error('CallClient.setVideoInputDevice: not yet implemented');
+        logErr('CallClient.setVideoInputDevice: not yet implemented');
     }
 
     public getVideoDevices(): MediaDeviceInfo[] {
@@ -490,27 +563,28 @@ export default class CallClient extends EventEmitter {
     }
 
     public raiseHand(): void {
-        throw new Error('CallClient.raiseHand: not yet implemented');
+        logErr('CallClient.raiseHand: not yet implemented');
     }
 
     public unraiseHand(): void {
-        throw new Error('CallClient.unraiseHand: not yet implemented');
+        logErr('CallClient.unraiseHand: not yet implemented');
     }
 
     public async shareScreen(_sourceID?: string, _withAudio?: boolean): Promise<MediaStream | null> {
-        throw new Error('CallClient.shareScreen: not yet implemented');
+        logErr('CallClient.shareScreen: not yet implemented');
+        return null;
     }
 
     public unshareScreen(): void {
-        throw new Error('CallClient.unshareScreen: not yet implemented');
+        logErr('CallClient.unshareScreen: not yet implemented');
     }
 
     public async setScreenStream(_stream: MediaStream): Promise<void> {
-        throw new Error('CallClient.setScreenStream: not yet implemented');
+        logErr('CallClient.setScreenStream: not yet implemented');
     }
 
     public async setBlurSettings(_blurEnabled: boolean, _blurIntensity: number): Promise<void> {
-        throw new Error('CallClient.setBlurSettings: not yet implemented');
+        logErr('CallClient.setBlurSettings: not yet implemented');
     }
 
     public async setAudioInputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
@@ -553,7 +627,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public sendUserReaction(_data: EmojiData): void {
-        throw new Error('CallClient.sendUserReaction: not yet implemented');
+        logErr('CallClient.sendUserReaction: not yet implemented');
     }
 
     // Getters return safe defaults rather than throwing — they're called from
@@ -592,6 +666,20 @@ export default class CallClient extends EventEmitter {
     }
 
     public async getStats(): Promise<CallsClientStats | null> {
+        return null;
+    }
+
+    public getSessionID() {
+        logDebug('CallClient: getting session ID', this.room?.localParticipant?.sid, this.websocketClient?.getOriginalConnID());
+
+        if (this.room && this.room.localParticipant && this.room.localParticipant.sid) {
+            return this.room.localParticipant.sid;
+        }
+
+        if (this.websocketClient && this.websocketClient.getOriginalConnID()) {
+            return this.websocketClient.getOriginalConnID();
+        }
+
         return null;
     }
 }

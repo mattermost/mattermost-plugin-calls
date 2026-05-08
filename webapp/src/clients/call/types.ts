@@ -18,3 +18,9 @@ export type CallClientStats = {
     tracksInfo: TrackMetadata[];
     rtcStats: RTCStats | null;
 }
+
+export type ConnectPayload = {
+    channelID: string;
+    title?: string;
+    threadID?: string;
+}

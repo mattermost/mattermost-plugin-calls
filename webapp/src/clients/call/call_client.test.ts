@@ -103,7 +103,7 @@ describe('CallClient', () => {
             url: 'wss://fake.url',
         });
 
-        client = new CallClient();
+        client = new CallClient({websocketURL: 'wss://fake.ws'});
     });
 
     afterEach(() => {
@@ -121,7 +121,7 @@ describe('CallClient', () => {
 
     describe('connect', () => {
         it('fetches a token, instantiates Room, and calls room.connect', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
 
             expect(RestClient.fetch).toHaveBeenCalledWith(
                 expect.stringContaining('test-channel'),
@@ -132,8 +132,8 @@ describe('CallClient', () => {
         });
 
         it('throws if a room is already connected', async () => {
-            await client.connect('test-channel');
-            await expect(client.connect('test-channel')).rejects.toThrow('already connected');
+            await client.connect({channelID: 'test-channel'});
+            await expect(client.connect({channelID: 'test-channel'})).rejects.toThrow('already connected');
         });
 
         it('throws and emits ERROR if token fetch returns empty values', async () => {
@@ -141,7 +141,7 @@ describe('CallClient', () => {
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
-            await expect(client.connect('test-channel')).rejects.toThrow('token or url');
+            await expect(client.connect({channelID: 'test-channel'})).rejects.toThrow('token or url');
         });
 
         it('emits ERROR when room.connect rejects', async () => {
@@ -149,7 +149,7 @@ describe('CallClient', () => {
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
-            await expect(client.connect('test-channel')).rejects.toThrow('network down');
+            await expect(client.connect({channelID: 'test-channel'})).rejects.toThrow('network down');
             expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
             expect(client.room).toBeNull();
         });
@@ -161,7 +161,7 @@ describe('CallClient', () => {
             const muteListener = jest.fn();
             client.on(CALL_EVENT.MUTE, muteListener);
 
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             mockRoom.fire(RoomEvent.Connected);
 
             expect(muteListener).toHaveBeenCalledWith('me-sid', 'me-id');
@@ -187,7 +187,7 @@ describe('CallClient', () => {
             client.on(CALL_EVENT.MUTE, muteListener);
             client.on(CALL_EVENT.UNMUTE, unmuteListener);
 
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             mockRoom.fire(RoomEvent.Connected);
 
             expect(userJoinedListener).toHaveBeenCalledWith('r1', 'remote-1', true);
@@ -199,7 +199,7 @@ describe('CallClient', () => {
 
     describe('TrackMuted / TrackUnmuted', () => {
         it('emits MUTE with (sid, identity) when mic track is muted', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const muteListener = jest.fn();
             client.on(CALL_EVENT.MUTE, muteListener);
 
@@ -213,7 +213,7 @@ describe('CallClient', () => {
         });
 
         it('emits UNMUTE with (sid, identity) when mic track is unmuted', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const unmuteListener = jest.fn();
             client.on(CALL_EVENT.UNMUTE, unmuteListener);
 
@@ -227,7 +227,7 @@ describe('CallClient', () => {
         });
 
         it('does not emit when a non-microphone track is muted', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const muteListener = jest.fn();
             client.on(CALL_EVENT.MUTE, muteListener);
 
@@ -243,7 +243,7 @@ describe('CallClient', () => {
 
     describe('TrackPublished / TrackUnpublished (remote)', () => {
         it('emits MUTE for a freshly-published muted mic publication', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const muteListener = jest.fn();
             client.on(CALL_EVENT.MUTE, muteListener);
 
@@ -257,7 +257,7 @@ describe('CallClient', () => {
         });
 
         it('emits UNMUTE for a freshly-published unmuted mic publication (covers first-unmute)', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const unmuteListener = jest.fn();
             client.on(CALL_EVENT.UNMUTE, unmuteListener);
 
@@ -271,7 +271,7 @@ describe('CallClient', () => {
         });
 
         it('emits MUTE when a remote unpublishes (no track == muted)', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const muteListener = jest.fn();
             client.on(CALL_EVENT.MUTE, muteListener);
 
@@ -287,7 +287,7 @@ describe('CallClient', () => {
 
     describe('LocalTrackPublished / LocalTrackUnpublished', () => {
         it('captures audioTrack and emits UNMUTE when local mic is published unmuted', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const unmuteListener = jest.fn();
             client.on(CALL_EVENT.UNMUTE, unmuteListener);
 
@@ -307,7 +307,7 @@ describe('CallClient', () => {
         });
 
         it('clears audioTrack and emits MUTE on local unpublish', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             client.audioTrack = {} as MediaStreamTrack;
             const muteListener = jest.fn();
             client.on(CALL_EVENT.MUTE, muteListener);
@@ -323,7 +323,7 @@ describe('CallClient', () => {
         });
 
         it('does nothing for non-microphone local tracks', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const muteListener = jest.fn();
             const unmuteListener = jest.fn();
             client.on(CALL_EVENT.MUTE, muteListener);
@@ -343,7 +343,7 @@ describe('CallClient', () => {
 
     describe('TrackSubscribed (remote audio routing)', () => {
         it('emits REMOTE_VOICE_STREAM with stream + participant.sid for mic source', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const remoteVoiceListener = jest.fn();
             client.on(CALL_EVENT.REMOTE_VOICE_STREAM, remoteVoiceListener);
 
@@ -358,7 +358,7 @@ describe('CallClient', () => {
         });
 
         it('does not emit for non-microphone tracks', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const remoteVoiceListener = jest.fn();
             client.on(CALL_EVENT.REMOTE_VOICE_STREAM, remoteVoiceListener);
 
@@ -375,7 +375,7 @@ describe('CallClient', () => {
 
     describe('ParticipantConnected / ParticipantDisconnected', () => {
         it('emits USER_JOINED (no isFromInitialSync) for live remote join', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const userJoinedListener = jest.fn();
             client.on(CALL_EVENT.USER_JOINED, userJoinedListener);
 
@@ -385,7 +385,7 @@ describe('CallClient', () => {
         });
 
         it('emits USER_LEFT when a remote participant disconnects', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const userLeftListener = jest.fn();
             client.on(CALL_EVENT.USER_LEFT, userLeftListener);
 
@@ -397,7 +397,7 @@ describe('CallClient', () => {
 
     describe('MediaDevicesError', () => {
         it('emits ERROR with the underlying error', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
@@ -428,7 +428,7 @@ describe('CallClient', () => {
                 ]),
             });
 
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
 
             expect(client.getRemoteVoiceTracks()).toEqual([liveTrack]);
         });
@@ -463,7 +463,7 @@ describe('CallClient', () => {
                 ]),
             });
 
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
 
             expect(client.getRemoteVoiceTracks()).toEqual([]);
         });
@@ -471,7 +471,7 @@ describe('CallClient', () => {
 
     describe('ActiveSpeakersChanged', () => {
         it('emits USERS_VOICE_ACTIVITY_CHANGED with parallel user_ids and session_ids arrays', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const listener = jest.fn();
             client.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, listener);
 
@@ -484,7 +484,7 @@ describe('CallClient', () => {
         });
 
         it('emits empty arrays when no one is speaking', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const listener = jest.fn();
             client.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, listener);
 
@@ -530,7 +530,7 @@ describe('CallClient', () => {
                 inputDevice2,
             ]);
 
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
 
             expect(client.getAudioDevices()).toEqual({
                 inputs: [inputDevice, inputDevice2],
@@ -539,7 +539,7 @@ describe('CallClient', () => {
         });
 
         it('setAudioInputDevice persists, switches the LiveKit device, and emits DEVICE_CHANGE', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const deviceChangeListener = jest.fn();
             client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
 
@@ -553,7 +553,7 @@ describe('CallClient', () => {
         });
 
         it('setAudioInputDevice with store=false skips the localStorage write', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
 
             await client.setAudioInputDevice(inputDevice, false);
 
@@ -562,7 +562,7 @@ describe('CallClient', () => {
         });
 
         it('setAudioOutputDevice does NOT call switchActiveDevice (sinkId stays in widget)', async () => {
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             const deviceChangeListener = jest.fn();
             client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
             mockRoom.switchActiveDevice.mockClear();
@@ -581,7 +581,7 @@ describe('CallClient', () => {
             window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({deviceId: 'spk-1', label: 'Built-in Speakers'}));
             (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice, inputDevice2, outputDevice]);
 
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
 
             expect(client.currentAudioInputDevice).toBe(inputDevice2);
             expect(client.currentAudioOutputDevice).toBe(outputDevice);
@@ -590,7 +590,7 @@ describe('CallClient', () => {
 
         it('falls back to the first input when the active input is unplugged', async () => {
             (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice, inputDevice2]);
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             await client.setAudioInputDevice(inputDevice);
 
             const fallbackListener = jest.fn();
@@ -611,7 +611,7 @@ describe('CallClient', () => {
 
         it('emits only DEVICE_CHANGE when the device list changes but the active one is still present', async () => {
             (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice]);
-            await client.connect('test-channel');
+            await client.connect({channelID: 'test-channel'});
             await client.setAudioInputDevice(inputDevice);
 
             const fallbackListener = jest.fn();

@@ -648,6 +648,10 @@ export default class CallsClient extends EventEmitter {
                 logErr('ws.on(message): failed to handle message', err, 'data:', data);
             }
         });
+
+        // WebSocketClient now requires an explicit connect() call after handlers
+        // are attached (its constructor only stores config now).
+        ws.connect();
     }
 
     public destroy() {

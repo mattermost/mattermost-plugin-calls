@@ -851,8 +851,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     onChatThreadButtonClick = () => {
         if (!this.props.callThreadID) {
-            // TEMP DIAGNOSTIC — log what the widget knows so we can diagnose the source.
-            logErr('missing thread ID', JSON.stringify({channel: this.props.channel?.id, callThreadIDProp: this.props.callThreadID}));
+            logErr('missing thread ID');
             return;
         }
 

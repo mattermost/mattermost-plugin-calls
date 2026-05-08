@@ -9,7 +9,7 @@ import type {Participant} from 'livekit-client';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
+import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
@@ -106,6 +106,7 @@ import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
 import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
+import {getWSConnectionURL} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 
 import {
@@ -656,8 +657,11 @@ export default class Plugin {
                 }
 
                 const state = store.getState();
+                const websocketURLInConfig = getConfig(state)?.WebsocketURL ?? '';
 
-                window.callsClient = new CallClient();
+                window.callsClient = new CallClient({
+                    websocketURL: getWSConnectionURL(websocketURLInConfig),
+                });
                 window.currentCallData = CurrentCallDataDefault;
 
                 const locale = getCurrentUserLocale(state) || 'en';
@@ -766,7 +770,7 @@ export default class Plugin {
                     store.dispatch(userLeft(window.callsClient?.channelID ?? '', userID, session_id));
                 });
 
-                window.callsClient.connect(channelID).catch((err: Error) => {
+                window.callsClient.connect({channelID, title, threadID: rootId}).catch((err: Error) => {
                     store.dispatch(setClientConnecting(false));
 
                     logErr(err);

@@ -48,12 +48,15 @@ export class WebSocketClient extends EventEmitter {
 
     constructor(wsURL: string, authToken?: string) {
         super();
+
         this.wsURL = wsURL;
         this.authToken = authToken || '';
-        this.init(false);
     }
 
-    private init(isReconnect: boolean) {
+    /**
+     * Create a new WebSocket connection and handle the connection lifecycle.
+     */
+    public connect(isReconnect = false) {
         if (this.closed) {
             logWarn('client is closed!');
             return;
@@ -166,7 +169,7 @@ export class WebSocketClient extends EventEmitter {
         }
     };
 
-    send(action: string, data?: Record<string, unknown>, binary?: boolean) {
+    public send(action: string, data?: Record<string, unknown>, binary?: boolean) {
         const msg = {
             action: `${this.eventPrefix}_${action}`,
             seq: this.seqNo++,
@@ -184,7 +187,19 @@ export class WebSocketClient extends EventEmitter {
         }
     }
 
-    close() {
+    public sendJoin(payload: {channelID: string; title?: string; threadID?: string}) {
+        this.send('join', payload);
+    }
+
+    public sendReconnect(payload: {channelID: string; originalConnID: string; prevConnID: string}) {
+        this.send('reconnect', payload);
+    }
+
+    public sendLeave() {
+        this.send('leave');
+    }
+
+    public close() {
         this.closed = true;
         this.stopPingInterval();
         this.ws?.close();
@@ -203,7 +218,7 @@ export class WebSocketClient extends EventEmitter {
         this.removeAllListeners('message');
     }
 
-    reconnect() {
+    public reconnect() {
         const now = Date.now();
         if (this.lastDisconnect === 0) {
             this.lastDisconnect = now;
@@ -218,14 +233,14 @@ export class WebSocketClient extends EventEmitter {
         setTimeout(() => {
             if (!this.closed) {
                 logInfo('ws: reconnecting', this.originalConnID);
-                this.init(true);
+                this.connect(true);
             }
         }, this.reconnectRetryTime);
 
         this.reconnectRetryTime += wsReconnectTimeIncrement;
     }
 
-    getOriginalConnID() {
+    public getOriginalConnID() {
         return this.originalConnID;
     }
 
