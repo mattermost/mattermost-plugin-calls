@@ -84,7 +84,7 @@ type WebSocketEventHandler = (...args: any[]) => void;
 type MockWebSocketClient = {
     on: jest.Mock;
     connect: jest.Mock;
-    awaitOriginalConnID: jest.Mock;
+    ready: jest.Mock;
     sendJoin: jest.Mock;
     sendReconnect: jest.Mock;
     sendLeave: jest.Mock;
@@ -101,7 +101,7 @@ function createMockWebSocketClient(): MockWebSocketClient {
             return websocketClient;
         }),
         connect: jest.fn(),
-        awaitOriginalConnID: jest.fn().mockResolvedValue('orig-conn-id'),
+        ready: jest.fn().mockResolvedValue('orig-conn-id'),
         sendJoin: jest.fn(),
         sendReconnect: jest.fn(),
         sendLeave: jest.fn(),
@@ -227,7 +227,8 @@ describe('CallClient', () => {
             await client.connect({channelID: 'test-channel'});
             mockRoom.fire(RoomEvent.Connected);
 
-            expect(muteListener).toHaveBeenCalledWith('me-sid', 'me-id');
+            // Local session_id is the WS originalConnID, not LiveKit's sid.
+            expect(muteListener).toHaveBeenCalledWith('orig-conn-id', 'me-id');
         });
 
         it('seeds USER_JOINED + MUTE for each remote participant in the room', async () => {
@@ -365,7 +366,8 @@ describe('CallClient', () => {
                 mockRoom.localParticipant,
             );
 
-            expect(unmuteListener).toHaveBeenCalledWith('me-sid', 'me-id');
+            // Local session_id is the WS originalConnID, not LiveKit's sid.
+            expect(unmuteListener).toHaveBeenCalledWith('orig-conn-id', 'me-id');
         });
 
         it('emits MUTE on local unpublish', async () => {
@@ -379,7 +381,8 @@ describe('CallClient', () => {
                 mockRoom.localParticipant,
             );
 
-            expect(muteListener).toHaveBeenCalledWith('me-sid', 'me-id');
+            // Local session_id is the WS originalConnID, not LiveKit's sid.
+            expect(muteListener).toHaveBeenCalledWith('orig-conn-id', 'me-id');
         });
 
         it('does nothing for non-microphone local tracks', async () => {

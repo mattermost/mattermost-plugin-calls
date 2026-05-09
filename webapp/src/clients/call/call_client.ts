@@ -349,17 +349,34 @@ export default class CallClient extends EventEmitter {
     }
 
     public getSessionID() {
-        logDebug('CallClient: getting session ID', this.room?.localParticipant?.sid, this.websocketClient?.getOriginalConnID());
-
-        if (this.room && this.room.localParticipant && this.room.localParticipant.sid) {
-            return this.room.localParticipant.sid;
-        }
-
-        if (this.websocketClient && this.websocketClient.getOriginalConnID()) {
+        // The server's plugin-WS broadcasts (user_joined, call_state, etc.) use the
+        // WS originalConnID as session_id. Aligning with that here so the "(you)"
+        // check in the UI matches the session populated via USERS_STATES, instead
+        // of LiveKit's sid which the server doesn't know about.
+        // Once MM-68557 lands (server encodes session_id in LiveKit identity), this
+        // can be derived from participant.identity instead.
+        if (this.websocketClient?.getOriginalConnID()) {
             return this.websocketClient.getOriginalConnID();
         }
 
+        if (this.room?.localParticipant?.sid) {
+            return this.room.localParticipant.sid;
+        }
+
         return null;
+    }
+
+    /**
+     * TODO: This is a temporary fix to align the session_id with the server's broadcasts.
+     * Returns the canonical session_id for a LiveKit Participant. For the LOCAL
+     * participant we use the WS originalConnID (matches what the server broadcasts);
+     * for REMOTE participants we use LiveKit's sid (best we have until MM-68557).
+     */
+    private sessionIDForParticipant(p: Participant): string {
+        if (this.room && p === this.room.localParticipant) {
+            return this.websocketClient?.getOriginalConnID() ?? p.sid;
+        }
+        return p.sid;
     }
 
     private handleWebsocketOpened(originalConnID: string, prevConnID: string, isReconnect: boolean) {
@@ -430,11 +447,15 @@ export default class CallClient extends EventEmitter {
         void this.requestMicrophonePermission();
 
         // Seed the initial state for everyone already in the room (local + remote).
+        // Use WS originalConnID as our local session_id — it's what the server uses
+        // in its broadcasts. Without this alignment, USERS_STATES (server snapshot)
+        // would create a second session entry for us alongside the LiveKit-sid one.
         const localParticipant = this.room.localParticipant;
-        this.emit(CALL_EVENT.USER_JOINED, localParticipant.sid, localParticipant.identity, true);
+        const localSessionID = this.websocketClient?.getOriginalConnID() ?? localParticipant.sid;
+        this.emit(CALL_EVENT.USER_JOINED, localSessionID, localParticipant.identity, true);
 
         const isLocalMicMuted = localParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-        this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localParticipant.sid, localParticipant.identity);
+        this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localSessionID, localParticipant.identity);
 
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             this.emit(CALL_EVENT.USER_JOINED, remoteParticipant.sid, remoteParticipant.identity, true);
@@ -513,7 +534,7 @@ export default class CallClient extends EventEmitter {
      */
     private handleLocalTrackPublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
         if (localTrackPublication.source === Track.Source.Microphone) {
-            this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localParticipant.sid, localParticipant.identity);
+            this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, this.sessionIDForParticipant(localParticipant), localParticipant.identity);
 
             logDebug(`CallClient: local track published from ${localParticipant.identity}`, localTrackPublication);
         }
@@ -525,7 +546,7 @@ export default class CallClient extends EventEmitter {
      */
     private handleLocalTrackUnpublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
         if (localTrackPublication.source === Track.Source.Microphone) {
-            this.emit(CALL_EVENT.MUTE, localParticipant.sid, localParticipant.identity);
+            this.emit(CALL_EVENT.MUTE, this.sessionIDForParticipant(localParticipant), localParticipant.identity);
 
             logDebug(`CallClient: local track unpublished from ${localParticipant.identity}`, localTrackPublication);
         }
@@ -561,7 +582,7 @@ export default class CallClient extends EventEmitter {
      */
     private handleTrackMuted(trackPublication: TrackPublication, participant: Participant) {
         if (trackPublication.source === Track.Source.Microphone) {
-            this.emit(CALL_EVENT.MUTE, participant.sid, participant.identity);
+            this.emit(CALL_EVENT.MUTE, this.sessionIDForParticipant(participant), participant.identity);
 
             logDebug(`CallClient: track muted from ${participant.identity}`, trackPublication);
         }
@@ -573,7 +594,7 @@ export default class CallClient extends EventEmitter {
      */
     private handleTrackUnmuted(trackPublication: TrackPublication, participant: Participant) {
         if (trackPublication.source === Track.Source.Microphone) {
-            this.emit(CALL_EVENT.UNMUTE, participant.sid, participant.identity);
+            this.emit(CALL_EVENT.UNMUTE, this.sessionIDForParticipant(participant), participant.identity);
 
             logDebug(`CallClient: track unmuted from ${participant.identity}`, trackPublication);
         }
@@ -617,7 +638,7 @@ export default class CallClient extends EventEmitter {
         // level then it would be better to have a tuple of [user_id, session_id, audio_level]
         for (const participant of participants) {
             user_ids.push(participant.identity);
-            session_ids.push(participant.sid);
+            session_ids.push(this.sessionIDForParticipant(participant));
         }
 
         this.emit(

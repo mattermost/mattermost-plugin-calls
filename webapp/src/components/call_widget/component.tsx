@@ -547,10 +547,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 if (window.callsClient.currentAudioOutputDevice !== this.state.currentAudioOutputDevice) {
                     state.currentAudioOutputDevice = window.callsClient.currentAudioOutputDevice;
                 }
-
-                if (window.callsClient.currentVideoInputDevice !== this.state.currentVideoInputDevice) {
-                    state.currentVideoInputDevice = window.callsClient.currentVideoInputDevice;
-                }
             }
 
             this.setState({
@@ -627,7 +623,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             this.setState({currentAudioInputDevice: callsClient?.currentAudioInputDevice});
             this.setState({currentAudioOutputDevice: callsClient?.currentAudioOutputDevice});
-            this.setState({currentVideoInputDevice: callsClient?.currentVideoInputDevice});
         });
 
         window.callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
