@@ -46,20 +46,21 @@ export async function fetchRtcToken(channelID: string): Promise<RtcTokenResponse
 }
 
 export default class CallClient extends EventEmitter {
-    public channelID = '';
-    public initTime = 0;
-    public room: Room | null = null;
-
-    public audioTrack: MediaStreamTrack | null = null;
-    public localVideoStream: MediaStream | null = null;
-    public currentAudioInputDevice: MediaDeviceInfo | null = null;
-    public currentAudioOutputDevice: MediaDeviceInfo | null = null;
-    public currentVideoInputDevice: MediaDeviceInfo | null = null;
-
-    private closed = false;
-
     private readonly websocketURL: string;
     private websocketClient: WebSocketClient | null = null;
+
+    public room: Room | null;
+
+    public channelID = '';
+    public initTime = 0;
+
+    public currentAudioInputDevice: MediaDeviceInfo | null = null;
+    public currentAudioOutputDevice: MediaDeviceInfo | null = null;
+
+    private isDisconnected = false;
+    private isRoomConnected = false;
+
+    private connectPayload: ConnectPayload | null = null;
 
     // Cached enumerated audio devices so the synchronous getAudioDevices() called
     // from componentDidMount stays cheap and never throws.
@@ -69,7 +70,352 @@ export default class CallClient extends EventEmitter {
         super();
 
         this.websocketURL = websocketURL;
-        this.websocketClient = new WebSocketClient(this.websocketURL);
+
+        const websocketClient = new WebSocketClient(this.websocketURL);
+        this.websocketClient = websocketClient;
+        websocketClient.on(WEBSOCKET_EVENT.OPEN, this.handleWebsocketOpened.bind(this));
+        websocketClient.on(WEBSOCKET_EVENT.JOIN, this.handleWebsocketJoined.bind(this));
+        websocketClient.on(WEBSOCKET_EVENT.MESSAGE, this.handleWebsocketMessageReceived.bind(this));
+        websocketClient.on(WEBSOCKET_EVENT.ERROR, this.handleWebsocketErrored.bind(this));
+        websocketClient.on(WEBSOCKET_EVENT.CLOSE, this.handleWebsocketClosed.bind(this));
+
+        const room = new Room();
+        this.room = room;
+        room.on(RoomEvent.Connected, this.handleConnected.bind(this));
+        room.on(RoomEvent.ConnectionStateChanged, this.handleConnectionStateChanged.bind(this));
+        room.on(RoomEvent.Reconnecting, this.handleReconnecting.bind(this));
+        room.on(RoomEvent.Reconnected, this.handleReconnected.bind(this));
+        room.on(RoomEvent.Disconnected, this.handleDisconnected.bind(this));
+        room.on(RoomEvent.TrackSubscribed, this.handleTrackSubscribed.bind(this));
+        room.on(RoomEvent.TrackPublished, this.handleTrackPublished.bind(this));
+        room.on(RoomEvent.TrackUnpublished, this.handleTrackUnpublished.bind(this));
+        room.on(RoomEvent.LocalTrackPublished, this.handleLocalTrackPublished.bind(this));
+        room.on(RoomEvent.LocalTrackUnpublished, this.handleLocalTrackUnpublished.bind(this));
+        room.on(RoomEvent.TrackMuted, this.handleTrackMuted.bind(this));
+        room.on(RoomEvent.TrackUnmuted, this.handleTrackUnmuted.bind(this));
+        room.on(RoomEvent.ParticipantConnected, this.handleParticipantConnected.bind(this));
+        room.on(RoomEvent.ParticipantDisconnected, this.handleParticipantDisconnected.bind(this));
+        room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
+        room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
+        room.on(RoomEvent.MediaDevicesChanged, this.handleMediaDevicesChanged.bind(this));
+    }
+
+    public async connect(connectPayload: ConnectPayload): Promise<void> {
+        if (this.isRoomConnected) {
+            throw new Error('CallClient: room already connected');
+        }
+
+        if (!this.room) {
+            throw new Error('CallClient: room not initialized');
+        }
+
+        if (!this.websocketClient) {
+            throw new Error('CallClient: websocket client not initialized');
+        }
+
+        this.connectPayload = connectPayload;
+        this.channelID = connectPayload.channelID;
+
+        let connID: string;
+        try {
+            this.websocketClient.connect();
+            connID = await this.websocketClient.ready();
+
+            logDebug('CallClient: pluginWS connected with connID', connID);
+        } catch (err) {
+            logErr('CallClient: failed to connect to pluginWS', err);
+            this.connectPayload = null;
+
+            this.emit(CALL_EVENT.ERROR, err);
+            throw err;
+        }
+
+        let token: string;
+        let url: string;
+        try {
+            const response = await fetchRtcToken(connectPayload.channelID);
+            token = response.token;
+            url = response.url;
+
+            if (!token || !url) {
+                throw new Error('CallClient: either token or url were not received from token API');
+            }
+
+            logDebug('CallClient: token fetched from token API', url);
+        } catch (err) {
+            logErr('CallClient: failed to fetch token from token API', err);
+            this.connectPayload = null;
+
+            this.emit(CALL_EVENT.ERROR, err);
+            throw err;
+        }
+
+        try {
+            await this.room.connect(url, token);
+            this.isRoomConnected = true;
+
+            logDebug('CallClient: connected to room');
+        } catch (err) {
+            logErr('CallClient: failed to connect to room', err);
+            this.isRoomConnected = false;
+            this.connectPayload = null;
+            this.room = null;
+
+            this.emit(CALL_EVENT.ERROR, err);
+            throw err;
+        }
+
+        // Hydrate the device cache + restore the user's last selection.
+        await this.restoreAudioDevicesFromStorage();
+    }
+
+    public async disconnect(err?: Error): Promise<void> {
+        if (this.isDisconnected) {
+            logErr('CallClient: already disconnected');
+            return;
+        }
+        this.isDisconnected = true;
+
+        if (err) {
+            this.emit(CALL_EVENT.ERROR, err);
+        }
+
+        this.isRoomConnected = false;
+        this.connectPayload = null;
+
+        if (this.room) {
+            try {
+                await this.room.disconnect();
+            } catch (disconnectErr) {
+                logErr('CallClient: error during disconnect', disconnectErr);
+            } finally {
+                this.room = null;
+            }
+        }
+
+        if (this.websocketClient) {
+            // Tell the server we're leaving — server then broadcasts user_left
+            // and (if we were the last participant) call_end.
+            this.websocketClient.sendLeave();
+            this.websocketClient.close();
+            this.websocketClient = null;
+        }
+    }
+
+    public destroy() {
+        this.disconnect();
+    }
+
+    public async mute(): Promise<void> {
+        if (!this.room || !this.isRoomConnected) {
+            return;
+        }
+        await this.room.localParticipant.setMicrophoneEnabled(false);
+    }
+
+    public async unmute(): Promise<void> {
+        if (!this.room || !this.isRoomConnected) {
+            return;
+        }
+        await this.room.localParticipant.setMicrophoneEnabled(true);
+    }
+
+    public async startVideo(): Promise<MediaStream | null> {
+        logErr('CallClient.startVideo: not yet implemented');
+        return null;
+    }
+
+    public stopVideo(): void {
+        logErr('CallClient.stopVideo: not yet implemented');
+    }
+
+    public async setVideoInputDevice(_device: MediaDeviceInfo): Promise<void> {
+        logErr('CallClient.setVideoInputDevice: not yet implemented');
+    }
+
+    public getVideoDevices(): MediaDeviceInfo[] {
+        return [];
+    }
+
+    public getRemoteVideoStream(): MediaStream | null {
+        return null;
+    }
+
+    public raiseHand(): void {
+        logErr('CallClient.raiseHand: not yet implemented');
+    }
+
+    public unraiseHand(): void {
+        logErr('CallClient.unraiseHand: not yet implemented');
+    }
+
+    public async shareScreen(_sourceID?: string, _withAudio?: boolean): Promise<MediaStream | null> {
+        logErr('CallClient.shareScreen: not yet implemented');
+        return null;
+    }
+
+    public unshareScreen(): void {
+        logErr('CallClient.unshareScreen: not yet implemented');
+    }
+
+    public async setScreenStream(_stream: MediaStream): Promise<void> {
+        logErr('CallClient.setScreenStream: not yet implemented');
+    }
+
+    public async setBlurSettings(_blurEnabled: boolean, _blurIntensity: number): Promise<void> {
+        logErr('CallClient.setBlurSettings: not yet implemented');
+    }
+
+    public async setAudioInputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
+        if (store) {
+            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
+                deviceId: device.deviceId,
+                label: device.label,
+            }));
+        }
+
+        this.currentAudioInputDevice = device;
+
+        // LiveKit handles the published-track swap; no manual replaceTrack needed.
+        if (this.room && this.isRoomConnected) {
+            try {
+                await this.room.switchActiveDevice('audioinput', device.deviceId);
+            } catch (err) {
+                logErr('CallClient.setAudioInputDevice: failed to switch device', device.deviceId, err);
+            }
+        }
+
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+    }
+
+    public async setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
+        if (store) {
+            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({
+                deviceId: device.deviceId,
+                label: device.label,
+            }));
+        }
+
+        this.currentAudioOutputDevice = device;
+
+        // Output sinkId routing is owned by call_widget — it applies setSinkId() on the
+        // audio elements it creates after this method resolves. Calling LiveKit's
+        // switchActiveDevice('audiooutput', …) here would create a second sinkId path.
+
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+    }
+
+    public sendUserReaction(_data: EmojiData): void {
+        logErr('CallClient.sendUserReaction: not yet implemented');
+    }
+
+    // Getters return safe defaults rather than throwing — they're called from
+    // component lifecycle (componentDidMount), not user gestures, so they
+    // must always be safe to invoke regardless of feature implementation state.
+    public getAudioDevices(): MediaDevices {
+        return this.audioDevices;
+    }
+
+    public getLocalScreenStream(): MediaStream | null {
+        return null;
+    }
+
+    public getRemoteScreenStream(): MediaStream | null {
+        return null;
+    }
+
+    public getRemoteVoiceTracks(): MediaStreamTrack[] {
+        if (!this.room) {
+            return [];
+        }
+
+        const remoteVoiceTracks: MediaStreamTrack[] = [];
+        for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            for (const audioTrackPublicationOfRemoteParticipant of remoteParticipant.audioTrackPublications.values()) {
+                if (audioTrackPublicationOfRemoteParticipant.source !== Track.Source.Microphone || !audioTrackPublicationOfRemoteParticipant.isSubscribed) {
+                    continue;
+                }
+
+                if (audioTrackPublicationOfRemoteParticipant.track?.mediaStreamTrack?.readyState === 'live') {
+                    remoteVoiceTracks.push(audioTrackPublicationOfRemoteParticipant.track.mediaStreamTrack);
+                }
+            }
+        }
+        return remoteVoiceTracks;
+    }
+
+    public async getStats(): Promise<CallsClientStats | null> {
+        return null;
+    }
+
+    public getSessionID() {
+        logDebug('CallClient: getting session ID', this.room?.localParticipant?.sid, this.websocketClient?.getOriginalConnID());
+
+        if (this.room && this.room.localParticipant && this.room.localParticipant.sid) {
+            return this.room.localParticipant.sid;
+        }
+
+        if (this.websocketClient && this.websocketClient.getOriginalConnID()) {
+            return this.websocketClient.getOriginalConnID();
+        }
+
+        return null;
+    }
+
+    private handleWebsocketOpened(originalConnID: string, prevConnID: string, isReconnect: boolean) {
+        if (!this.connectPayload) {
+            logErr('CallClient: ws open received without connect payload');
+            return;
+        }
+
+        if (isReconnect) {
+            logDebug('CallClient: ws reconnect, sending reconnect msg');
+            this.websocketClient?.sendReconnect({
+                channelID: this.connectPayload.channelID,
+                originalConnID,
+                prevConnID,
+            });
+        } else {
+            logDebug('CallClient: ws open, sending join msg');
+            this.websocketClient?.sendJoin(this.connectPayload);
+        }
+    }
+
+    private handleWebsocketJoined() {
+        logDebug('CallClient: pluginWS join ack received');
+    }
+
+    private handleWebsocketMessageReceived({data}: {data: string}) {
+        try {
+            const msg = JSON.parse(data);
+            if (!msg) {
+                logErr('ws.on(message): invalid message', data);
+            }
+            logDebug('ws.on(message): message received', msg);
+        } catch (err) {
+            logErr('ws.on(message): failed to handle message', err, 'data:', data);
+        }
+    }
+
+    private handleWebsocketErrored(err: WebSocketError) {
+        logErr('CallClient: ws error', err);
+
+        switch (err.type) {
+        case WebSocketErrorType.Native:
+            break;
+        case WebSocketErrorType.ReconnectTimeout:
+            this.websocketClient = null;
+            this.disconnect(err);
+            break;
+        case WebSocketErrorType.Join:
+            this.disconnect(err);
+            break;
+        default:
+        }
+    }
+
+    private handleWebsocketClosed(code?: number) {
+        logDebug(`CallClient: ws close: ${code}`);
     }
 
     private handleConnected() {
@@ -98,7 +444,6 @@ export default class CallClient extends EventEmitter {
         }
 
         this.emit(CALL_EVENT.CONNECTED);
-        logDebug('CallClient: connected to room');
     }
 
     private async requestMicrophonePermission() {
@@ -143,6 +488,9 @@ export default class CallClient extends EventEmitter {
     private handleDisconnected(reason?: DisconnectReason) {
         logDebug('CallClient: disconnected from room', reason);
 
+        this.isRoomConnected = false;
+        this.connectPayload = null;
+
         this.emit(CALL_EVENT.DISCONNECTED, reason);
     }
 
@@ -161,12 +509,11 @@ export default class CallClient extends EventEmitter {
 
     /**
      * Fires when our own mic track is created and published (e.g., user's first unmute).
-     * Captures the underlying MediaStreamTrack and emits the initial mute/unmute state.
+     * Emits the initial mute/unmute state.
      */
     private handleLocalTrackPublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
         if (localTrackPublication.source === Track.Source.Microphone) {
             this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localParticipant.sid, localParticipant.identity);
-            this.audioTrack = localTrackPublication.track?.mediaStreamTrack ?? null;
 
             logDebug(`CallClient: local track published from ${localParticipant.identity}`, localTrackPublication);
         }
@@ -174,12 +521,11 @@ export default class CallClient extends EventEmitter {
 
     /**
      * Fires when our own mic track is fully torn down (disconnect, explicit unpublish).
-     * Clears the audioTrack reference and emits MUTE since "no publication" means muted in our UI.
+     * Emits MUTE since "no publication" means muted in our UI.
      */
     private handleLocalTrackUnpublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
         if (localTrackPublication.source === Track.Source.Microphone) {
             this.emit(CALL_EVENT.MUTE, localParticipant.sid, localParticipant.identity);
-            this.audioTrack = null;
 
             logDebug(`CallClient: local track unpublished from ${localParticipant.identity}`, localTrackPublication);
         }
@@ -384,302 +730,5 @@ export default class CallClient extends EventEmitter {
         // Always emit so the widget's componentDidMount listener picks up the
         // initial inventory even when nothing was restored from localStorage.
         this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
-    }
-
-    /** From here on down the methods are all PUBLIC, and are the entry points for the CallClient */
-
-    public async connect(connectPayload: ConnectPayload): Promise<void> {
-        if (this.room) {
-            throw new Error('CallClient: room already connected');
-        }
-
-        this.channelID = connectPayload.channelID;
-
-        const response = await fetchRtcToken(connectPayload.channelID);
-        const token = response?.token ?? '';
-        const url = response?.url ?? '';
-        if (!token || !url) {
-            throw new Error('CallClient: either token or url were not received from token API');
-        }
-
-        logDebug(`CallClient: trying to connect to ${url} for channel ${connectPayload.channelID} with valid token`);
-
-        const room = new Room();
-        this.room = room;
-
-        room.on(RoomEvent.Connected, this.handleConnected.bind(this));
-        room.on(RoomEvent.ConnectionStateChanged, this.handleConnectionStateChanged.bind(this));
-        room.on(RoomEvent.Reconnecting, this.handleReconnecting.bind(this));
-        room.on(RoomEvent.Reconnected, this.handleReconnected.bind(this));
-        room.on(RoomEvent.Disconnected, this.handleDisconnected.bind(this));
-        room.on(RoomEvent.TrackSubscribed, this.handleTrackSubscribed.bind(this));
-        room.on(RoomEvent.TrackPublished, this.handleTrackPublished.bind(this));
-        room.on(RoomEvent.TrackUnpublished, this.handleTrackUnpublished.bind(this));
-        room.on(RoomEvent.LocalTrackPublished, this.handleLocalTrackPublished.bind(this));
-        room.on(RoomEvent.LocalTrackUnpublished, this.handleLocalTrackUnpublished.bind(this));
-        room.on(RoomEvent.TrackMuted, this.handleTrackMuted.bind(this));
-        room.on(RoomEvent.TrackUnmuted, this.handleTrackUnmuted.bind(this));
-        room.on(RoomEvent.ParticipantConnected, this.handleParticipantConnected.bind(this));
-        room.on(RoomEvent.ParticipantDisconnected, this.handleParticipantDisconnected.bind(this));
-        room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
-        room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
-        room.on(RoomEvent.MediaDevicesChanged, this.handleMediaDevicesChanged.bind(this));
-
-        try {
-            await room.connect(url, token);
-        } catch (err) {
-            logErr(`CallClient: failed to connect to room ${url}`, err);
-            this.room = null;
-            this.emit(CALL_EVENT.ERROR, err);
-            throw err;
-        }
-
-        // Hydrate the device cache + restore the user's last selection. Awaited so the
-        // widget's componentDidMount can synchronously read currentAudioInputDevice /
-        // currentAudioOutputDevice once we resolve.
-        await this.restoreAudioDevicesFromStorage();
-
-        this.websocketClient?.on(WEBSOCKET_EVENT.ERROR, (err: WebSocketError) => {
-            logErr('CallClient: ws error', err);
-            switch (err.type) {
-            case WebSocketErrorType.Native:
-                break;
-            case WebSocketErrorType.ReconnectTimeout:
-                this.websocketClient = null;
-                this.disconnect(err);
-                break;
-            case WebSocketErrorType.Join:
-                this.disconnect(err);
-                break;
-            default:
-            }
-        });
-
-        this.websocketClient?.on(WEBSOCKET_EVENT.CLOSE, (code?: number) => {
-            logDebug(`CallClient: ws close: ${code}`);
-        });
-
-        this.websocketClient?.on(WEBSOCKET_EVENT.OPEN, (originalConnID: string, prevConnID: string, isReconnect: boolean) => {
-            if (isReconnect) {
-                logDebug('CallClient: ws reconnect, sending reconnect msg');
-                this.websocketClient?.sendReconnect({
-                    channelID: connectPayload.channelID,
-                    originalConnID,
-                    prevConnID,
-                });
-            } else {
-                logDebug('CallClient: ws open, sending join msg');
-                this.websocketClient?.sendJoin(connectPayload);
-            }
-        });
-
-        this.websocketClient?.on(WEBSOCKET_EVENT.JOIN, async () => {
-            logDebug('CallClient: join ack received, initializing connection');
-        });
-
-        this.websocketClient?.on(WEBSOCKET_EVENT.MESSAGE, async ({data}) => {
-            try {
-                const msg = JSON.parse(data);
-                if (!msg) {
-                    logErr('ws.on(message): invalid message', data);
-                }
-
-                logDebug('ws.on(message): message received', msg);
-            } catch (err) {
-                logErr('ws.on(message): failed to handle message', err, 'data:', data);
-            }
-        });
-
-        this.websocketClient?.connect();
-    }
-
-    public async disconnect(err?: Error): Promise<void> {
-        if (this.closed) {
-            logErr('CallClient: already disconnected');
-            return;
-        }
-        this.closed = true;
-
-        if (err) {
-            this.emit(CALL_EVENT.ERROR, err);
-        }
-
-        if (this.room) {
-            try {
-                await this.room.disconnect();
-            } catch (disconnectErr) {
-                logErr('CallClient: error during disconnect', disconnectErr);
-            } finally {
-                this.room = null;
-            }
-        }
-
-        if (this.websocketClient) {
-            // Tell the server we're leaving — server then broadcasts user_left
-            // and (if we were the last participant) call_end.
-            this.websocketClient.sendLeave();
-            this.websocketClient.close();
-            this.websocketClient = null;
-        }
-    }
-
-    public destroy() {
-        this.disconnect();
-    }
-
-    public async mute(): Promise<void> {
-        if (!this.room) {
-            return;
-        }
-        await this.room.localParticipant.setMicrophoneEnabled(false);
-    }
-
-    public async unmute(): Promise<void> {
-        if (!this.room) {
-            return;
-        }
-        await this.room.localParticipant.setMicrophoneEnabled(true);
-    }
-
-    public async startVideo(): Promise<MediaStream | null> {
-        logErr('CallClient.startVideo: not yet implemented');
-        return null;
-    }
-
-    public stopVideo(): void {
-        logErr('CallClient.stopVideo: not yet implemented');
-    }
-
-    public async setVideoInputDevice(_device: MediaDeviceInfo): Promise<void> {
-        logErr('CallClient.setVideoInputDevice: not yet implemented');
-    }
-
-    public getVideoDevices(): MediaDeviceInfo[] {
-        return [];
-    }
-
-    public getRemoteVideoStream(): MediaStream | null {
-        return null;
-    }
-
-    public raiseHand(): void {
-        logErr('CallClient.raiseHand: not yet implemented');
-    }
-
-    public unraiseHand(): void {
-        logErr('CallClient.unraiseHand: not yet implemented');
-    }
-
-    public async shareScreen(_sourceID?: string, _withAudio?: boolean): Promise<MediaStream | null> {
-        logErr('CallClient.shareScreen: not yet implemented');
-        return null;
-    }
-
-    public unshareScreen(): void {
-        logErr('CallClient.unshareScreen: not yet implemented');
-    }
-
-    public async setScreenStream(_stream: MediaStream): Promise<void> {
-        logErr('CallClient.setScreenStream: not yet implemented');
-    }
-
-    public async setBlurSettings(_blurEnabled: boolean, _blurIntensity: number): Promise<void> {
-        logErr('CallClient.setBlurSettings: not yet implemented');
-    }
-
-    public async setAudioInputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
-        if (store) {
-            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
-                deviceId: device.deviceId,
-                label: device.label,
-            }));
-        }
-
-        this.currentAudioInputDevice = device;
-
-        // LiveKit handles the published-track swap; no manual replaceTrack needed.
-        if (this.room) {
-            try {
-                await this.room.switchActiveDevice('audioinput', device.deviceId);
-            } catch (err) {
-                logErr('CallClient.setAudioInputDevice: failed to switch device', device.deviceId, err);
-            }
-        }
-
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
-    }
-
-    public async setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
-        if (store) {
-            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({
-                deviceId: device.deviceId,
-                label: device.label,
-            }));
-        }
-
-        this.currentAudioOutputDevice = device;
-
-        // Output sinkId routing is owned by call_widget — it applies setSinkId() on the
-        // audio elements it creates after this method resolves. Calling LiveKit's
-        // switchActiveDevice('audiooutput', …) here would create a second sinkId path.
-
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
-    }
-
-    public sendUserReaction(_data: EmojiData): void {
-        logErr('CallClient.sendUserReaction: not yet implemented');
-    }
-
-    // Getters return safe defaults rather than throwing — they're called from
-    // component lifecycle (componentDidMount), not user gestures, so they
-    // must always be safe to invoke regardless of feature implementation state.
-    public getAudioDevices(): MediaDevices {
-        return this.audioDevices;
-    }
-
-    public getLocalScreenStream(): MediaStream | null {
-        return null;
-    }
-
-    public getRemoteScreenStream(): MediaStream | null {
-        return null;
-    }
-
-    public getRemoteVoiceTracks(): MediaStreamTrack[] {
-        if (!this.room) {
-            return [];
-        }
-
-        const remoteVoiceTracks: MediaStreamTrack[] = [];
-        for (const remoteParticipant of this.room.remoteParticipants.values()) {
-            for (const audioTrackPublicationOfRemoteParticipant of remoteParticipant.audioTrackPublications.values()) {
-                if (audioTrackPublicationOfRemoteParticipant.source !== Track.Source.Microphone || !audioTrackPublicationOfRemoteParticipant.isSubscribed) {
-                    continue;
-                }
-
-                if (audioTrackPublicationOfRemoteParticipant.track?.mediaStreamTrack?.readyState === 'live') {
-                    remoteVoiceTracks.push(audioTrackPublicationOfRemoteParticipant.track.mediaStreamTrack);
-                }
-            }
-        }
-        return remoteVoiceTracks;
-    }
-
-    public async getStats(): Promise<CallsClientStats | null> {
-        return null;
-    }
-
-    public getSessionID() {
-        logDebug('CallClient: getting session ID', this.room?.localParticipant?.sid, this.websocketClient?.getOriginalConnID());
-
-        if (this.room && this.room.localParticipant && this.room.localParticipant.sid) {
-            return this.room.localParticipant.sid;
-        }
-
-        if (this.websocketClient && this.websocketClient.getOriginalConnID()) {
-            return this.websocketClient.getOriginalConnID();
-        }
-
-        return null;
     }
 }

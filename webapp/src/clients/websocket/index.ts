@@ -161,6 +161,19 @@ export class WebSocketClient extends EventEmitter {
         };
     }
 
+    /**
+     * Resolves with the originalConnID once the server's 'hello' message has arrived.
+     */
+    public async ready(): Promise<string> {
+        if (this.originalConnID) {
+            return this.originalConnID;
+        }
+        return new Promise<string>((resolve, reject) => {
+            this.once('open', () => resolve(this.originalConnID));
+            this.once('error', reject);
+        });
+    }
+
     private closeHandler = (ev: CloseEvent) => {
         this.stopPingInterval();
         this.emit('close', ev.code);

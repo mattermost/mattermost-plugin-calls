@@ -3,6 +3,8 @@
 
 import {Room, RoomEvent, Track} from 'livekit-client';
 import RestClient from 'src/clients/rest';
+import {WebSocketClient} from 'src/clients/websocket';
+import {WEBSOCKET_EVENT} from 'src/clients/websocket/constants';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
@@ -25,6 +27,14 @@ jest.mock('src/clients/rest', () => ({
         fetch: jest.fn(),
     },
 }));
+
+jest.mock('src/clients/websocket', () => {
+    const actual = jest.requireActual('src/clients/websocket');
+    return {
+        ...actual,
+        WebSocketClient: jest.fn(),
+    };
+});
 
 // Mock factory for a Room instance — captures every `room.on(event, handler)`
 // call so tests can fire events back through the registered handler.
@@ -69,6 +79,45 @@ function createMockRoom(): MockRoom {
     return room;
 }
 
+type WebSocketEventHandler = (...args: any[]) => void;
+
+type MockWebSocketClient = {
+    on: jest.Mock;
+    connect: jest.Mock;
+    awaitOriginalConnID: jest.Mock;
+    sendJoin: jest.Mock;
+    sendReconnect: jest.Mock;
+    sendLeave: jest.Mock;
+    close: jest.Mock;
+    getOriginalConnID: jest.Mock;
+    fire: (event: string, ...args: any[]) => void;
+};
+
+function createMockWebSocketClient(): MockWebSocketClient {
+    const handlers = new Map<string, WebSocketEventHandler>();
+    const websocketClient: MockWebSocketClient = {
+        on: jest.fn((event: string, handler: WebSocketEventHandler) => {
+            handlers.set(event, handler);
+            return websocketClient;
+        }),
+        connect: jest.fn(),
+        awaitOriginalConnID: jest.fn().mockResolvedValue('orig-conn-id'),
+        sendJoin: jest.fn(),
+        sendReconnect: jest.fn(),
+        sendLeave: jest.fn(),
+        close: jest.fn(),
+        getOriginalConnID: jest.fn().mockReturnValue('orig-conn-id'),
+        fire: (event: string, ...args: any[]) => {
+            const handler = handlers.get(event);
+            if (!handler) {
+                throw new Error(`No handler registered for websocket event: ${event}`);
+            }
+            handler(...args);
+        },
+    };
+    return websocketClient;
+}
+
 beforeAll(() => {
     Object.defineProperty(navigator, 'mediaDevices', {
         value: {
@@ -94,10 +143,13 @@ beforeEach(() => {
 describe('CallClient', () => {
     let client: CallClient;
     let mockRoom: MockRoom;
+    let mockWebSocketClient: MockWebSocketClient;
 
     beforeEach(() => {
         mockRoom = createMockRoom();
+        mockWebSocketClient = createMockWebSocketClient();
         (Room as unknown as jest.Mock).mockImplementation(() => mockRoom);
+        (WebSocketClient as unknown as jest.Mock).mockImplementation(() => mockWebSocketClient);
         (RestClient.fetch as jest.Mock).mockResolvedValue({
             token: 'fake-token',
             url: 'wss://fake.url',
@@ -114,21 +166,32 @@ describe('CallClient', () => {
         it('initializes fields to defaults', () => {
             expect(client.channelID).toBe('');
             expect(client.initTime).toBe(0);
-            expect(client.room).toBeNull();
-            expect(client.audioTrack).toBeNull();
+            expect(client.room).toBe(mockRoom);
+            expect(Room).toHaveBeenCalledTimes(1);
+            expect(WebSocketClient).toHaveBeenCalledWith('wss://fake.ws');
         });
     });
 
     describe('connect', () => {
-        it('fetches a token, instantiates Room, and calls room.connect', async () => {
+        it('fetches a token and calls room.connect', async () => {
             await client.connect({channelID: 'test-channel'});
 
             expect(RestClient.fetch).toHaveBeenCalledWith(
                 expect.stringContaining('test-channel'),
                 expect.objectContaining({method: 'GET'}),
             );
-            expect(Room).toHaveBeenCalled();
+            expect(mockWebSocketClient.connect).toHaveBeenCalled();
             expect(mockRoom.connect).toHaveBeenCalledWith('wss://fake.url', 'fake-token');
+        });
+
+        it('reuses the stored connect payload when the websocket opens', async () => {
+            const payload = {channelID: 'test-channel', title: 'Test Call', threadID: 'thread-id'};
+            const connectPromise = client.connect(payload);
+
+            mockWebSocketClient.fire(WEBSOCKET_EVENT.OPEN, 'orig-conn-id', '', false);
+            await connectPromise;
+
+            expect(mockWebSocketClient.sendJoin).toHaveBeenCalledWith(payload);
         });
 
         it('throws if a room is already connected', async () => {
@@ -286,7 +349,7 @@ describe('CallClient', () => {
     });
 
     describe('LocalTrackPublished / LocalTrackUnpublished', () => {
-        it('captures audioTrack and emits UNMUTE when local mic is published unmuted', async () => {
+        it('emits UNMUTE when local mic is published unmuted', async () => {
             await client.connect({channelID: 'test-channel'});
             const unmuteListener = jest.fn();
             client.on(CALL_EVENT.UNMUTE, unmuteListener);
@@ -302,13 +365,11 @@ describe('CallClient', () => {
                 mockRoom.localParticipant,
             );
 
-            expect(client.audioTrack).toBe(mediaStreamTrack);
             expect(unmuteListener).toHaveBeenCalledWith('me-sid', 'me-id');
         });
 
-        it('clears audioTrack and emits MUTE on local unpublish', async () => {
+        it('emits MUTE on local unpublish', async () => {
             await client.connect({channelID: 'test-channel'});
-            client.audioTrack = {} as MediaStreamTrack;
             const muteListener = jest.fn();
             client.on(CALL_EVENT.MUTE, muteListener);
 
@@ -318,7 +379,6 @@ describe('CallClient', () => {
                 mockRoom.localParticipant,
             );
 
-            expect(client.audioTrack).toBeNull();
             expect(muteListener).toHaveBeenCalledWith('me-sid', 'me-id');
         });
 
@@ -335,7 +395,6 @@ describe('CallClient', () => {
                 mockRoom.localParticipant,
             );
 
-            expect(client.audioTrack).toBeNull();
             expect(muteListener).not.toHaveBeenCalled();
             expect(unmuteListener).not.toHaveBeenCalled();
         });
@@ -409,7 +468,7 @@ describe('CallClient', () => {
     });
 
     describe('getRemoteVoiceTracks', () => {
-        it('returns empty array when no room', () => {
+        it('returns empty array before the room is connected', () => {
             expect(client.getRemoteVoiceTracks()).toEqual([]);
         });
 

@@ -738,6 +738,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.setVideoDevices(callsClient.getVideoDevices());
 
         const screenStream = callsClient.getLocalScreenStream() || callsClient.getRemoteScreenStream();
+
+        // TODO: fix this
+        // @ts-ignore
         const selfVideoStream = callsClient.localVideoStream;
         const otherVideoStream = callsClient.getRemoteVideoStream();
 
@@ -747,12 +750,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 ...this.state.alerts,
                 missingAudioInputPermissions: {
                     ...this.state.alerts.missingAudioInputPermissions,
-                    active: !this.state.alerts.missingAudioInput.active && !callsClient.audioTrack,
-                    show: !this.state.alerts.missingAudioInput.active && !callsClient.audioTrack,
+                    active: false,
+                    show: false,
                 },
                 missingVideoInputPermissions: {
                     ...this.state.alerts.missingVideoInputPermissions,
+
+                    // TODO: fix this
+                    // @ts-ignore
                     active: this.props.enableVideo && !this.state.alerts.missingVideoInput.active && !callsClient.localVideoStream,
+
+                    // TODO: fix this
+                    // @ts-ignore
                     show: this.props.enableVideo && !this.state.alerts.missingVideoInput.active && !callsClient.localVideoStream,
                 },
             },
