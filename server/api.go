@@ -615,9 +615,9 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 
 	switch event.GetEvent() {
 	case webhook.EventParticipantJoined:
-		p.handleLiveKitParticipantJoined(event)
+		p.handleLiveKitSIPParticipantJoined(event)
 	case webhook.EventParticipantLeft:
-		p.handleLiveKitParticipantLeft(event)
+		p.handleLiveKitSIPParticipantLeft(event)
 	case webhook.EventRoomStarted, webhook.EventRoomFinished:
 		p.LogDebug("handleLiveKitWebhook: room lifecycle event (informational only)",
 			"event", event.GetEvent(),
@@ -629,7 +629,7 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
+func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) {
 	participant := event.GetParticipant()
 	if participant == nil || participant.Kind != livekit.ParticipantInfo_SIP {
 		return
@@ -637,35 +637,35 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 
 	channelID := event.GetRoom().GetName()
 	if channelID == "" {
-		p.LogError("handleLiveKitParticipantJoined: empty room name")
+		p.LogError("handleLiveKitSIPParticipantJoined: empty room name")
 		return
 	}
 
 	sid := participant.Sid
 	identity := participant.Identity
 
-	p.LogDebug("handleLiveKitParticipantJoined: SIP participant joined",
+	p.LogDebug("handleLiveKitSIPParticipantJoined: SIP participant joined",
 		"channelID", channelID, "sid", sid, "identity", identity)
 
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
-		p.LogError("handleLiveKitParticipantJoined: failed to lock call", "channelID", channelID, "err", err.Error())
+		p.LogError("handleLiveKitSIPParticipantJoined: failed to lock call", "channelID", channelID, "err", err.Error())
 		return
 	}
 	defer p.unlockCall(channelID)
 
 	if state == nil {
-		p.LogDebug("handleLiveKitParticipantJoined: no active call", "channelID", channelID)
+		p.LogDebug("handleLiveKitSIPParticipantJoined: no active call", "channelID", channelID)
 		return
 	}
 
 	if state.Call.EndAt > 0 {
-		p.LogDebug("handleLiveKitParticipantJoined: call has ended", "channelID", channelID)
+		p.LogDebug("handleLiveKitSIPParticipantJoined: call has ended", "channelID", channelID)
 		return
 	}
 
 	if _, exists := state.sessions[sid]; exists {
-		p.LogDebug("handleLiveKitParticipantJoined: SIP session already exists", "channelID", channelID, "sid", sid)
+		p.LogDebug("handleLiveKitSIPParticipantJoined: SIP session already exists", "channelID", channelID, "sid", sid)
 		return
 	}
 
@@ -691,14 +691,14 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 	}
 
 	if err := p.store.CreateCallSession(session); err != nil {
-		p.LogError("handleLiveKitParticipantJoined: failed to create call session",
+		p.LogError("handleLiveKitSIPParticipantJoined: failed to create call session",
 			"channelID", channelID, "err", err.Error())
 		delete(state.sessions, sid)
 		return
 	}
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
-		p.LogError("handleLiveKitParticipantJoined: failed to update call",
+		p.LogError("handleLiveKitSIPParticipantJoined: failed to update call",
 			"channelID", channelID, "err", err.Error())
 	}
 
@@ -708,7 +708,7 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 }
 
-func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
+func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 	participant := event.GetParticipant()
 	if participant == nil || participant.Kind != livekit.ParticipantInfo_SIP {
 		return
@@ -716,35 +716,35 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 
 	channelID := event.GetRoom().GetName()
 	if channelID == "" {
-		p.LogError("handleLiveKitParticipantLeft: empty room name")
+		p.LogError("handleLiveKitSIPParticipantLeft: empty room name")
 		return
 	}
 
 	sid := participant.Sid
 	identity := participant.Identity
 
-	p.LogDebug("handleLiveKitParticipantLeft: SIP participant left",
+	p.LogDebug("handleLiveKitSIPParticipantLeft: SIP participant left",
 		"channelID", channelID, "sid", sid, "identity", identity)
 
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
-		p.LogError("handleLiveKitParticipantLeft: failed to lock call", "channelID", channelID, "err", err.Error())
+		p.LogError("handleLiveKitSIPParticipantLeft: failed to lock call", "channelID", channelID, "err", err.Error())
 		return
 	}
 	defer p.unlockCall(channelID)
 
 	if state == nil {
-		p.LogDebug("handleLiveKitParticipantLeft: no active call", "channelID", channelID)
+		p.LogDebug("handleLiveKitSIPParticipantLeft: no active call", "channelID", channelID)
 		return
 	}
 
 	if _, exists := state.sessions[sid]; !exists {
-		p.LogDebug("handleLiveKitParticipantLeft: SIP session not found (idempotent)", "channelID", channelID, "sid", sid)
+		p.LogDebug("handleLiveKitSIPParticipantLeft: SIP session not found (idempotent)", "channelID", channelID, "sid", sid)
 		return
 	}
 
 	if err := p.store.DeleteCallSession(sid); err != nil {
-		p.LogError("handleLiveKitParticipantLeft: failed to delete call session",
+		p.LogError("handleLiveKitSIPParticipantLeft: failed to delete call session",
 			"channelID", channelID, "err", err.Error())
 		return
 	}
@@ -769,7 +769,7 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 	}
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
-		p.LogError("handleLiveKitParticipantLeft: failed to update call",
+		p.LogError("handleLiveKitSIPParticipantLeft: failed to update call",
 			"channelID", channelID, "err", err.Error())
 	}
 
