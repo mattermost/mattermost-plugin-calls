@@ -72,7 +72,7 @@ import {
     USER_VOICE_ON,
     USERS_STATES,
     USERS_VOICE_ACTIVITY_CHANGED,
-} from './action_types';
+} from '../action_types';
 
 type channelsState = {
     [channelID: string]: ChannelState;

@@ -2,5 +2,5 @@
 // See LICENSE.txt for license information.
 
 export {default} from './call_client';
-export {CALL_EVENT, CALL_TOKEN_API_PATH} from './constants';
+export {CALL_EVENT} from './constants';
 export type {CallClientStats, TrackMetadata} from './types';
