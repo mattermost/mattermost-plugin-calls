@@ -459,7 +459,24 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sessionID := r.URL.Query().Get("session_id")
+	if sessionID == "" {
+		res.Err = "session_id is required"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
 	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+		res.Err = "Forbidden"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	// The session must belong to the requesting user. Without this check a
+	// client could mint a token claiming any session_id, breaking the
+	// invariant that LiveKit identity == owner's plugin-WS session.
+	us := p.getSessionByOriginalID(sessionID)
+	if us == nil || us.userID != userID {
 		res.Err = "Forbidden"
 		res.Code = http.StatusForbidden
 		return
@@ -480,13 +497,23 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// userID rides in metadata so other clients can map identity (session_id)
+	// back to a Mattermost user. LiveKit relays metadata to all participants.
+	metadata, err := json.Marshal(map[string]string{"user_id": userID})
+	if err != nil {
+		res.Err = fmt.Sprintf("failed to encode metadata: %s", err.Error())
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
 	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 	grant := &auth.VideoGrant{
 		RoomJoin: true,
 		Room:     channelID,
 	}
 	at.SetVideoGrant(grant).
-		SetIdentity(userID).
+		SetIdentity(sessionID).
+		SetMetadata(string(metadata)).
 		SetName(user.GetDisplayName(model.ShowFullName)).
 		SetValidFor(time.Hour)
 
