@@ -135,22 +135,6 @@ func handleStatsCommand(fields []string) (*model.CommandResponse, error) {
 	}, nil
 }
 
-func handleLogsCommand(fields []string) (*model.CommandResponse, error) {
-	if len(fields) < 3 {
-		return nil, fmt.Errorf("empty logs")
-	}
-
-	logs, err := base64.StdEncoding.DecodeString(fields[2])
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode payload: %w", err)
-	}
-
-	return &model.CommandResponse{
-		ResponseType: model.CommandResponseTypeEphemeral,
-		Text:         fmt.Sprintf("```\n%s\n```", logs),
-	}, nil
-}
-
 func (p *Plugin) handleEndCallCommand() (*model.CommandResponse, error) {
 	return &model.CommandResponse{}, nil
 }
@@ -222,10 +206,6 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == statsCommandTrigger {
 		return buildCommandResponse(handleStatsCommand(fields))
-	}
-
-	if subCmd == logsCommandTrigger {
-		return buildCommandResponse(handleLogsCommand(fields))
 	}
 
 	if subCmd == endCommandTrigger {
