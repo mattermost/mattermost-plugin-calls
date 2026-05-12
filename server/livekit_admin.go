@@ -26,8 +26,9 @@ func (p *Plugin) getLiveKitRoomClient() (*lksdk.RoomServiceClient, error) {
 	return lksdk.NewRoomServiceClient(lkURL, cfg.LiveKitAPIKey, cfg.LiveKitAPISecret), nil
 }
 
-// livekitMuteParticipant revokes the participant's publish permission so the
-// host mute can't be undone by the muted user re-publishing.
+// livekitMuteParticipant force-mutes the participant's microphone track(s) on
+// the server. The user can still unmute themselves locally afterwards, matching
+// v1 host-mute semantics.
 func (p *Plugin) livekitMuteParticipant(room, identity string) error {
 	client, err := p.getLiveKitRoomClient()
 	if err != nil {
@@ -37,17 +38,26 @@ func (p *Plugin) livekitMuteParticipant(room, identity string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), livekitAPITimeout)
 	defer cancel()
 
-	_, err = client.UpdateParticipant(ctx, &livekit.UpdateParticipantRequest{
+	info, err := client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{
 		Room:     room,
 		Identity: identity,
-		Permission: &livekit.ParticipantPermission{
-			CanSubscribe:   true,
-			CanPublish:     false,
-			CanPublishData: true,
-		},
 	})
 	if err != nil {
-		return fmt.Errorf("livekit UpdateParticipant: %w", err)
+		return fmt.Errorf("livekit GetParticipant: %w", err)
+	}
+
+	for _, t := range info.GetTracks() {
+		if t.GetSource() != livekit.TrackSource_MICROPHONE || t.GetMuted() {
+			continue
+		}
+		if _, err := client.MutePublishedTrack(ctx, &livekit.MuteRoomTrackRequest{
+			Room:     room,
+			Identity: identity,
+			TrackSid: t.GetSid(),
+			Muted:    true,
+		}); err != nil {
+			return fmt.Errorf("livekit MutePublishedTrack: %w", err)
+		}
 	}
 	return nil
 }
