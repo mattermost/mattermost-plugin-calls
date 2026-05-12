@@ -261,7 +261,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		verifier, err := auth.ParseAPIToken(tokenResp["token"])
 		require.NoError(t, err)
 		require.Equal(t, "testkey", verifier.APIKey())
-		require.Equal(t, sessionID, verifier.Identity())
+		require.Equal(t, userID+"___"+sessionID, verifier.Identity())
 
 		_, claims, err := verifier.Verify("testsecret")
 		require.NoError(t, err)
@@ -269,12 +269,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		require.NotNil(t, claims.Video)
 		require.True(t, claims.Video.RoomJoin)
 		require.Equal(t, channelID, claims.Video.Room)
-
-		// userID rides in metadata.
-		var metadata map[string]string
-		err = json.Unmarshal([]byte(claims.Metadata), &metadata)
-		require.NoError(t, err)
-		require.Equal(t, userID, metadata["user_id"])
+		require.Empty(t, claims.Metadata)
 	})
 
 	t.Run("session matched by originalConnID after reconnect", func(t *testing.T) {
@@ -315,7 +310,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 
 		verifier, err := auth.ParseAPIToken(tokenResp["token"])
 		require.NoError(t, err)
-		require.Equal(t, originalConnID, verifier.Identity())
+		require.Equal(t, userID+"___"+originalConnID, verifier.Identity())
 	})
 
 	t.Run("unauthenticated", func(t *testing.T) {

@@ -497,23 +497,16 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// userID rides in metadata so other clients can map identity (session_id)
-	// back to a Mattermost user. LiveKit relays metadata to all participants.
-	metadata, err := json.Marshal(map[string]string{"user_id": userID})
-	if err != nil {
-		res.Err = fmt.Sprintf("failed to encode metadata: %s", err.Error())
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
+	// Identity is the only LiveKit field sealed post-connect, so userID and
+	// sessionID both ride in it. The "___" separator both delimits the two
+	// halves and tags the format as an MM user (vs. "guest:" / "sip:" kinds).
 	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 	grant := &auth.VideoGrant{
 		RoomJoin: true,
 		Room:     channelID,
 	}
 	at.SetVideoGrant(grant).
-		SetIdentity(sessionID).
-		SetMetadata(string(metadata)).
+		SetIdentity(userID + "___" + sessionID).
 		SetName(user.GetDisplayName(model.ShowFullName)).
 		SetValidFor(time.Hour)
 

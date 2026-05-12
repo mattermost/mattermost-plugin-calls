@@ -46,16 +46,21 @@ export async function fetchRtcToken(channelID: string, sessionID: string): Promi
     return RestClient.fetch<RtcTokenResponse>(url, {method: 'GET'});
 }
 
-// LiveKit identity is the plugin-WS session_id; userID rides in metadata.
-function userIDFromMetadata(p: Participant): string {
-    if (!p.metadata) {
-        return '';
+// MM-user identity is "userID___sessionID" — both halves are sealed by the
+// LiveKit token signature, so neither can be tampered with post-connect.
+// Guest/SIP participants use "guest:" / "sip:" prefixes (no "___"); for those
+// userID is empty and the whole identity is used as the session key.
+const MM_IDENTITY_SEP = '___';
+
+function parseIdentity(p: Participant): {userID: string; sessionID: string} {
+    const idx = p.identity.indexOf(MM_IDENTITY_SEP);
+    if (idx < 0) {
+        return {userID: '', sessionID: p.identity};
     }
-    try {
-        return JSON.parse(p.metadata).user_id ?? '';
-    } catch {
-        return '';
-    }
+    return {
+        userID: p.identity.slice(0, idx),
+        sessionID: p.identity.slice(idx + MM_IDENTITY_SEP.length),
+    };
 }
 
 export default class CallClient extends EventEmitter {
@@ -362,7 +367,10 @@ export default class CallClient extends EventEmitter {
     }
 
     public getSessionID() {
-        return this.room?.localParticipant?.identity ?? null;
+        if (!this.room?.localParticipant) {
+            return null;
+        }
+        return parseIdentity(this.room.localParticipant).sessionID;
     }
 
     private handleWebsocketOpened(originalConnID: string, prevConnID: string, isReconnect: boolean) {
@@ -434,16 +442,18 @@ export default class CallClient extends EventEmitter {
 
         // Seed the initial state for everyone already in the room (local + remote).
         const localParticipant = this.room.localParticipant;
-        this.emit(CALL_EVENT.USER_JOINED, localParticipant.identity, userIDFromMetadata(localParticipant), true);
+        const local = parseIdentity(localParticipant);
+        this.emit(CALL_EVENT.USER_JOINED, local.sessionID, local.userID, true);
 
         const isLocalMicMuted = localParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-        this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localParticipant.identity, userIDFromMetadata(localParticipant));
+        this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, local.sessionID, local.userID);
 
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
-            this.emit(CALL_EVENT.USER_JOINED, remoteParticipant.identity, userIDFromMetadata(remoteParticipant), true);
+            const remote = parseIdentity(remoteParticipant);
+            this.emit(CALL_EVENT.USER_JOINED, remote.sessionID, remote.userID, true);
 
             const isRemoteMicMuted = remoteParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-            this.emit(isRemoteMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remoteParticipant.identity, userIDFromMetadata(remoteParticipant));
+            this.emit(isRemoteMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remote.sessionID, remote.userID);
         }
 
         this.emit(CALL_EVENT.CONNECTED);
@@ -504,9 +514,10 @@ export default class CallClient extends EventEmitter {
     private handleTrackSubscribed(track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) {
         if (track.source === Track.Source.Microphone) {
             const stream = new MediaStream([track.mediaStreamTrack]);
-            this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, stream, participant.identity);
+            const {sessionID, userID} = parseIdentity(participant);
+            this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, stream, sessionID);
 
-            logDebug(`CallClient: subscribed to remote track from ${userIDFromMetadata(participant)}`);
+            logDebug(`CallClient: subscribed to remote track from ${userID}`);
         }
     }
 
@@ -516,9 +527,10 @@ export default class CallClient extends EventEmitter {
      */
     private handleLocalTrackPublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
         if (localTrackPublication.source === Track.Source.Microphone) {
-            this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localParticipant.identity, userIDFromMetadata(localParticipant));
+            const {sessionID, userID} = parseIdentity(localParticipant);
+            this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
 
-            logDebug(`CallClient: local track published from ${userIDFromMetadata(localParticipant)}`, localTrackPublication);
+            logDebug(`CallClient: local track published from ${userID}`, localTrackPublication);
         }
     }
 
@@ -528,9 +540,10 @@ export default class CallClient extends EventEmitter {
      */
     private handleLocalTrackUnpublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
         if (localTrackPublication.source === Track.Source.Microphone) {
-            this.emit(CALL_EVENT.MUTE, localParticipant.identity, userIDFromMetadata(localParticipant));
+            const {sessionID, userID} = parseIdentity(localParticipant);
+            this.emit(CALL_EVENT.MUTE, sessionID, userID);
 
-            logDebug(`CallClient: local track unpublished from ${userIDFromMetadata(localParticipant)}`, localTrackPublication);
+            logDebug(`CallClient: local track unpublished from ${userID}`, localTrackPublication);
         }
     }
 
@@ -540,9 +553,10 @@ export default class CallClient extends EventEmitter {
      */
     private handleTrackPublished(remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
         if (remoteTrackPublication.source === Track.Source.Microphone) {
-            this.emit(remoteTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remoteParticipant.identity, userIDFromMetadata(remoteParticipant));
+            const {sessionID, userID} = parseIdentity(remoteParticipant);
+            this.emit(remoteTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
 
-            logDebug(`CallClient: remote track published from ${userIDFromMetadata(remoteParticipant)}`, remoteTrackPublication);
+            logDebug(`CallClient: remote track published from ${userID}`, remoteTrackPublication);
         }
     }
 
@@ -552,9 +566,10 @@ export default class CallClient extends EventEmitter {
      */
     private handleTrackUnpublished(remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
         if (remoteTrackPublication.source === Track.Source.Microphone) {
-            this.emit(CALL_EVENT.MUTE, remoteParticipant.identity, userIDFromMetadata(remoteParticipant));
+            const {sessionID, userID} = parseIdentity(remoteParticipant);
+            this.emit(CALL_EVENT.MUTE, sessionID, userID);
 
-            logDebug(`CallClient: remote track unpublished from ${userIDFromMetadata(remoteParticipant)}`, remoteTrackPublication);
+            logDebug(`CallClient: remote track unpublished from ${userID}`, remoteTrackPublication);
         }
     }
 
@@ -564,9 +579,10 @@ export default class CallClient extends EventEmitter {
      */
     private handleTrackMuted(trackPublication: TrackPublication, participant: Participant) {
         if (trackPublication.source === Track.Source.Microphone) {
-            this.emit(CALL_EVENT.MUTE, participant.identity, userIDFromMetadata(participant));
+            const {sessionID, userID} = parseIdentity(participant);
+            this.emit(CALL_EVENT.MUTE, sessionID, userID);
 
-            logDebug(`CallClient: track muted from ${userIDFromMetadata(participant)}`, trackPublication);
+            logDebug(`CallClient: track muted from ${userID}`, trackPublication);
         }
     }
 
@@ -576,9 +592,10 @@ export default class CallClient extends EventEmitter {
      */
     private handleTrackUnmuted(trackPublication: TrackPublication, participant: Participant) {
         if (trackPublication.source === Track.Source.Microphone) {
-            this.emit(CALL_EVENT.UNMUTE, participant.identity, userIDFromMetadata(participant));
+            const {sessionID, userID} = parseIdentity(participant);
+            this.emit(CALL_EVENT.UNMUTE, sessionID, userID);
 
-            logDebug(`CallClient: track unmuted from ${userIDFromMetadata(participant)}`, trackPublication);
+            logDebug(`CallClient: track unmuted from ${userID}`, trackPublication);
         }
     }
 
@@ -587,9 +604,10 @@ export default class CallClient extends EventEmitter {
      * Emits USER_JOINED so the dispatcher can populate Redux + play the join sound.
      */
     private handleParticipantConnected(remoteParticipant: RemoteParticipant) {
-        this.emit(CALL_EVENT.USER_JOINED, remoteParticipant.identity, userIDFromMetadata(remoteParticipant));
+        const {sessionID, userID} = parseIdentity(remoteParticipant);
+        this.emit(CALL_EVENT.USER_JOINED, sessionID, userID);
 
-        logDebug(`CallClient: participant connected ${userIDFromMetadata(remoteParticipant)}`);
+        logDebug(`CallClient: participant connected ${userID}`);
     }
 
     /**
@@ -597,9 +615,10 @@ export default class CallClient extends EventEmitter {
      * Emits USER_LEFT so the dispatcher can drop the session from Redux.
      */
     private handleParticipantDisconnected(remoteParticipant: RemoteParticipant) {
-        this.emit(CALL_EVENT.USER_LEFT, remoteParticipant.identity, userIDFromMetadata(remoteParticipant));
+        const {sessionID, userID} = parseIdentity(remoteParticipant);
+        this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
-        logDebug(`CallClient: participant disconnected ${userIDFromMetadata(remoteParticipant)}`);
+        logDebug(`CallClient: participant disconnected ${userID}`);
     }
 
     private handleMediaDevicesError(err: Error) {
@@ -619,8 +638,9 @@ export default class CallClient extends EventEmitter {
         // This is fine as data structure but if we ever want to have audio
         // level then it would be better to have a tuple of [user_id, session_id, audio_level]
         for (const participant of participants) {
-            user_ids.push(userIDFromMetadata(participant));
-            session_ids.push(participant.identity);
+            const {sessionID, userID} = parseIdentity(participant);
+            user_ids.push(userID);
+            session_ids.push(sessionID);
         }
 
         this.emit(
