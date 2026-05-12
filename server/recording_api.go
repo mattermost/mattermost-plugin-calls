@@ -73,7 +73,20 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	}
 }
 
+// errRecordingNotSupported and errTranscriptionNotSupported gate the
+// recording/transcription entry points while the recorder/transcriber are
+// being migrated to LiveKit. The orchestration logic below the gates is kept
+// intact so it can be re-enabled by deleting the guard.
+var (
+	errRecordingNotSupported     = fmt.Errorf("recording is not yet supported on this version")
+	errTranscriptionNotSupported = fmt.Errorf("transcription is not yet supported on this version")
+)
+
 func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst *JobStateClient, rcode int, rerr error) {
+	if true { // LiveKit migration gate; delete to restore recording
+		return nil, http.StatusNotImplemented, errRecordingNotSupported
+	}
+
 	if state.Recording != nil && state.Recording.EndAt == 0 {
 		return nil, http.StatusForbidden, fmt.Errorf("recording already in progress")
 	}
@@ -180,6 +193,10 @@ func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst
 }
 
 func (p *Plugin) stopRecordingJob(state *callState, callID string) (rst *JobStateClient, rcode int, rerr error) {
+	if true { // LiveKit migration gate; delete to restore recording
+		return nil, http.StatusNotImplemented, errRecordingNotSupported
+	}
+
 	if state.Recording == nil || state.Recording.EndAt != 0 {
 		return nil, http.StatusForbidden, fmt.Errorf("no recording in progress")
 	}

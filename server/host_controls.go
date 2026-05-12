@@ -100,6 +100,11 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 		return nil
 	}
 
+	if err := p.livekitMuteParticipant(channelID, ust.UserID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+		p.LogError("muteSession: failed to mute participant via LiveKit",
+			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
+	}
+
 	p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
 		"channel_id": channelID,
 		"session_id": sessionID,
@@ -128,6 +133,11 @@ func (p *Plugin) muteOthers(requesterID, channelID string) error {
 	// If there are no unmuted sessions, return without doing anything.
 	for id, s := range state.sessions {
 		if s.Unmuted && s.UserID != requesterID {
+			if err := p.livekitMuteParticipant(channelID, s.UserID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+				p.LogError("muteOthers: failed to mute participant via LiveKit",
+					"channelID", channelID, "sessionID", id, "err", err.Error())
+			}
+
 			p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
 				"channel_id": channelID,
 				"session_id": id,
@@ -242,7 +252,7 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 
 	go func() {
 		// Wait a few seconds for the client to end their session cleanly. If they don't (like for an
-		// older mobile client) then forcibly end it.
+		// older mobile client) then forcibly remove them via the LiveKit Server API.
 		time.Sleep(3 * time.Second)
 
 		state, err := p.getCallState(channelID, false)
@@ -259,8 +269,9 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 			return
 		}
 
-		if err := p.closeRTCSession(ust.UserID, sessionID, channelID); err != nil {
-			p.LogError("hostRemoveSession: failed to close RTC session", "err", err.Error())
+		if err := p.livekitRemoveParticipant(channelID, ust.UserID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+			p.LogError("hostRemoveSession: failed to remove participant via LiveKit",
+				"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 		}
 	}()
 
