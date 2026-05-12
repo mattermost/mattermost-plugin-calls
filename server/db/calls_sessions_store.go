@@ -14,7 +14,7 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
-var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "Video"}
+var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "Video", "IsSIPParticipant"}
 
 func (s *Store) CreateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("CreateCallSession")
@@ -29,7 +29,7 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 	qb := getQueryBuilder(s.driverName).
 		Insert("calls_sessions").
 		Columns(callsSessionsColumns...).
-		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.Unmuted, session.RaisedHand, session.Video)
+		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.Unmuted, session.RaisedHand, session.Video, session.IsSIPParticipant)
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -156,7 +156,7 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 
 	for rows.Next() {
 		var session public.CallSession
-		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.Unmuted, &session.RaisedHand, &session.Video); err != nil {
+		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.Unmuted, &session.RaisedHand, &session.Video, &session.IsSIPParticipant); err != nil {
 			return nil, fmt.Errorf("failed to scan rows: %w", err)
 		}
 		sessionsMap[session.ID] = &session

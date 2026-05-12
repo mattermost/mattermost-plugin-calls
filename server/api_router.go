@@ -26,6 +26,7 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 		metricsRoute = router.Handle("/metrics", p.metrics.Handler()).Methods("GET")
 	}
 	standaloneRoute := router.PathPrefix("/standalone/").HandlerFunc(p.handleServeStandalone).Methods("GET")
+	webhookRoute := router.HandleFunc("/livekit-webhook", p.handleLiveKitWebhook).Methods("POST")
 
 	// Authenticated API handlers (user session required)
 
@@ -43,6 +44,11 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 			}
 
 			if standaloneRoute.Match(r, &mux.RouteMatch{}) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if webhookRoute.Match(r, &mux.RouteMatch{}) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -175,6 +181,11 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if botRouter.Match(r, &mux.RouteMatch{}) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if webhookRoute.Match(r, &mux.RouteMatch{}) {
 				next.ServeHTTP(w, r)
 				return
 			}

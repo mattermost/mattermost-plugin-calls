@@ -174,30 +174,39 @@ func (cs *callState) getHostID(botID string) string {
 		return cs.Call.Props.HostLockedUserID
 	}
 
-	var host public.CallSession
-	for _, session := range cs.sessions {
-		// if current host is still in the call, keep them as the host
-		if session.UserID == cs.Call.GetHostID() {
-			return cs.Call.GetHostID()
-		}
+	currentHostID := cs.Call.GetHostID()
 
-		// bot can't be host
-		if session.UserID == botID {
-			continue
-		}
-
-		if host.UserID == "" {
-			host = *session
-			continue
-		}
-
-		// the participant who joined earliest should be host
-		if session.JoinAt < host.JoinAt {
-			host = *session
+	// If the current host is a non-SIP, non-bot participant still in the call, keep them.
+	if currentHostID != "" && currentHostID != botID {
+		for _, session := range cs.sessions {
+			if session.UserID == currentHostID && !session.IsSIPParticipant {
+				return currentHostID
+			}
 		}
 	}
 
-	return host.UserID
+	// Current host has left, is a SIP participant, or is the bot.
+	// Find the best candidate: prefer non-SIP over SIP, earliest joiner wins within each tier.
+	var bestNonSIP, bestSIP public.CallSession
+	for _, session := range cs.sessions {
+		if session.UserID == botID {
+			continue
+		}
+		if !session.IsSIPParticipant {
+			if bestNonSIP.UserID == "" || session.JoinAt < bestNonSIP.JoinAt {
+				bestNonSIP = *session
+			}
+		} else {
+			if bestSIP.UserID == "" || session.JoinAt < bestSIP.JoinAt {
+				bestSIP = *session
+			}
+		}
+	}
+
+	if bestNonSIP.UserID != "" {
+		return bestNonSIP.UserID
+	}
+	return bestSIP.UserID
 }
 
 func (cs *callState) isUserIDInCall(userID string) bool {
