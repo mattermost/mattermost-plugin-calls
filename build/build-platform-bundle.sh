@@ -62,15 +62,13 @@ done
 echo "Trimming staged plugin.json executables map..."
 tmp=$(mktemp)
 jq --arg platform "$PLATFORM" --arg path "server/dist/${BINARY}" \
-    '.server = {executables: {($platform): $path}, executable: ""}' \
+    '.server.executables = {($platform): $path} | .server.executable = ""' \
     "$MANIFEST" > "$tmp"
 mv "$tmp" "$MANIFEST"
 
 VERSION=$(jq -r '.version' "$MANIFEST")
 BUNDLE_NAME="com.mattermost.calls-${VERSION/+/-}-${PLATFORM}-slim.tar.gz"
 BUNDLE="$DIST_DIR/$BUNDLE_NAME"
-
-rm -f "$DIST_DIR"/com.mattermost.calls-*-slim.tar.gz
 
 echo "Repackaging as ${BUNDLE_NAME}..."
 cd "$DIST_DIR"
