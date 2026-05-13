@@ -282,7 +282,7 @@ export default class CallClient extends EventEmitter {
         this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
     }
 
-    public async setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
+    public setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): void {
         if (store) {
             window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({
                 deviceId: device.deviceId,
@@ -633,18 +633,16 @@ export default class CallClient extends EventEmitter {
      * conversely if no one is speaking -> empty array
      */
     private handleActiveSpeakersChanged(participants: Participant[]) {
-        const user_ids: string[] = [];
-        const session_ids: string[] = [];
+        const userIDs: string[] = [];
+        const sessionIDs: string[] = [];
 
-        // This is fine as data structure but if we ever want to have audio
-        // level then it would be better to have a tuple of [session_id, user_id, audio_level]
         for (const participant of participants) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
-            session_ids.push(sessionID);
-            user_ids.push(userID);
+            sessionIDs.push(sessionID);
+            userIDs.push(userID);
         }
 
-        this.emit(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, session_ids, user_ids);
+        this.emit(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, sessionIDs, userIDs);
     }
 
     /**
@@ -675,7 +673,7 @@ export default class CallClient extends EventEmitter {
                 const unplugged = this.currentAudioOutputDevice;
                 const fallback = this.audioDevices.outputs[0] ?? null;
                 if (fallback) {
-                    await this.setAudioOutputDevice(fallback, false);
+                    this.setAudioOutputDevice(fallback, false);
                 } else {
                     this.currentAudioOutputDevice = null;
                 }
@@ -744,7 +742,7 @@ export default class CallClient extends EventEmitter {
 
         const storedOutput = this.getStoredAudioDevice('output');
         if (storedOutput) {
-            await this.setAudioOutputDevice(storedOutput, false);
+            this.setAudioOutputDevice(storedOutput, false);
         }
 
         // Always emit so the widget's componentDidMount listener picks up the

@@ -755,14 +755,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 },
                 missingVideoInputPermissions: {
                     ...this.state.alerts.missingVideoInputPermissions,
-
-                    // TODO: fix this
-                    // @ts-ignore
-                    active: this.props.enableVideo && !this.state.alerts.missingVideoInput.active && !callsClient.localVideoStream,
-
-                    // TODO: fix this
-                    // @ts-ignore
-                    show: this.props.enableVideo && !this.state.alerts.missingVideoInput.active && !callsClient.localVideoStream,
+                    active: false,
+                    show: false,
                 },
             },
             screenStream,

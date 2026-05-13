@@ -466,15 +466,8 @@ const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenShari
             [action.data.channelID]: action.data.session_id,
         };
     case USER_LEFT: {
-        // If the user who disconnected matches the one sharing we
-        // want to fallthrough and clear the state.
-        if (action.data.session_id !== state[action.data.channelID]) {
-            return state;
-        }
-    }
-    // eslint-disable-next-line no-fallthrough
-    case CALL_ENDED:
-    case USER_SCREEN_OFF:
+        // If the user who disconnected was the one sharing, clear it.
+        // Otherwise keep state — they weren't the sharer.
         if (action.data.session_id !== state[action.data.channelID]) {
             return state;
         }
@@ -482,6 +475,22 @@ const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenShari
             ...state,
             [action.data.channelID]: '',
         };
+    }
+    case USER_SCREEN_OFF:{
+        if (action.data.session_id !== state[action.data.channelID]) {
+            return state;
+        }
+        return {
+            ...state,
+            [action.data.channelID]: '',
+        };
+    }
+    case CALL_ENDED:{
+        return {
+            ...state,
+            [action.data.channelID]: '',
+        };
+    }
     default:
         return state;
     }

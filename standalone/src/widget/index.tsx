@@ -52,11 +52,11 @@ async function initWidget({store, startingCall}: InitCbProps) {
     const locale = getCurrentUserLocale(store.getState()) || 'en';
 
     window.callsClient?.on('mute', () => {
-        store.dispatch(userMuted(window.callsClient?.channelID ?? '', getCurrentUserId(store.getState()), window.callsClient?.getSessionID() ?? ''));
+        store.dispatch(userMuted(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? '', getCurrentUserId(store.getState())));
     });
 
     window.callsClient?.on('unmute', () => {
-        store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', getCurrentUserId(store.getState()), window.callsClient?.getSessionID() ?? ''));
+        store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? '', getCurrentUserId(store.getState())));
     });
 
     window.callsClient?.on('video_on', () => {

@@ -731,8 +731,8 @@ export default class Plugin {
                     store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', session_id, userID));
                 });
 
-                window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (session_ids: string[], user_ids: string[]) => {
-                    store.dispatch(usersVoiceActivityChanged(window.callsClient?.channelID ?? '', session_ids, user_ids));
+                window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
+                    store.dispatch(usersVoiceActivityChanged(window.callsClient?.channelID ?? '', sessionIDs, userIDs));
                 });
 
                 window.callsClient.on(CALL_EVENT.USER_JOINED, (session_id: string, userID: string, isFromInitialSync?: boolean) => {
@@ -743,6 +743,8 @@ export default class Plugin {
                     store.dispatch(leaveUser(window.callsClient?.channelID ?? '', userID, session_id));
                 });
 
+                store.dispatch(setClientConnecting(true));
+
                 window.callsClient.connect({channelID, title, threadID: rootId}).catch((err: Error) => {
                     store.dispatch(setClientConnecting(false));
 
@@ -751,8 +753,6 @@ export default class Plugin {
                     store.dispatch(displayCallErrorModal(err, channelID));
                     delete window.callsClient;
                 });
-
-                store.dispatch(setClientConnecting(true));
             } catch (err) {
                 delete window.callsClient;
                 logErr(err);
