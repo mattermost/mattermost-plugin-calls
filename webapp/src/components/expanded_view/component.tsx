@@ -19,6 +19,7 @@ import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import {CALL_EVENT} from 'src/clients/call/constants';
+import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
@@ -711,6 +712,30 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.setAudioDevices(audioDevices);
             this.setVideoDevices(videoDevices);
         });
+        callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
+            if (err === AudioInputPermissionsError) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        missingAudioInputPermissions: {
+                            active: true,
+                            show: true,
+                        },
+                    },
+                });
+            } else if (err === VideoInputPermissionsError) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        missingVideoInputPermissions: {
+                            active: true,
+                            show: true,
+                        },
+                    },
+                });
+            }
+        });
+
         callsClient.on(CALL_EVENT.INIT_AUDIO, () => {
             this.setState({
                 alerts: {

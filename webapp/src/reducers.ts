@@ -672,11 +672,15 @@ type RingNotifyForCallsAction = {
 
 const ringingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
     switch (action.type) {
-    case RINGING_FOR_CALL:
+    case RINGING_FOR_CALL: {
+        if (!action.data.callID) {
+            return state;
+        }
         return {
             ...state,
             [action.data.callID]: true,
         };
+    }
     case DID_RING_FOR_CALL: {
         const nextState = {...state};
         delete nextState[action.data.callID];
