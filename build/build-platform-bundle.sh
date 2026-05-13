@@ -52,6 +52,13 @@ PLUGIN_DIR="$DIST_DIR/com.mattermost.calls"
 SERVER_DIST="$PLUGIN_DIR/server/dist"
 MANIFEST="$PLUGIN_DIR/plugin.json"
 BINARY="plugin-${PLATFORM}"
+TARGET_BINARY="$SERVER_DIST/$BINARY"
+
+if [[ ! -f "$TARGET_BINARY" ]]; then
+    echo "error: expected binary not found: $TARGET_BINARY" >&2
+    echo "  (Makefile may be out of sync with this script's supported platforms)" >&2
+    exit 1
+fi
 
 echo "Pruning server binaries to ${PLATFORM} only..."
 for f in "$SERVER_DIST"/plugin-*; do
