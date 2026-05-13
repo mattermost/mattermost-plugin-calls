@@ -34,6 +34,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		},
 		metrics:     mockMetrics,
 		apiLimiters: map[string]*rate.Limiter{},
+		sessions:    map[string]*session{},
 	}
 
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
@@ -72,14 +73,79 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		require.Equal(t, "channel_id is required", res.Msg)
 	})
 
+	t.Run("missing session_id", func(t *testing.T) {
+		userID := model.NewId()
+		channelID := model.NewId()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s", channelID), nil)
+		r.Header.Set("Mattermost-User-Id", userID)
+
+		apiRouter.ServeHTTP(w, r)
+
+		resp := w.Result()
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		var res httpResponse
+		err := json.NewDecoder(resp.Body).Decode(&res)
+		require.NoError(t, err)
+		require.Equal(t, "session_id is required", res.Msg)
+	})
+
 	t.Run("no channel permission", func(t *testing.T) {
 		userID := model.NewId()
 		channelID := model.NewId()
+		sessionID := model.NewId()
 
 		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(false).Once()
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s", channelID), nil)
+		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s&session_id=%s", channelID, sessionID), nil)
+		r.Header.Set("Mattermost-User-Id", userID)
+
+		apiRouter.ServeHTTP(w, r)
+
+		resp := w.Result()
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		var res httpResponse
+		err := json.NewDecoder(resp.Body).Decode(&res)
+		require.NoError(t, err)
+		require.Equal(t, "Forbidden", res.Msg)
+	})
+
+	t.Run("session_id not found", func(t *testing.T) {
+		userID := model.NewId()
+		channelID := model.NewId()
+		sessionID := model.NewId()
+
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(true).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s&session_id=%s", channelID, sessionID), nil)
+		r.Header.Set("Mattermost-User-Id", userID)
+
+		apiRouter.ServeHTTP(w, r)
+
+		resp := w.Result()
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		var res httpResponse
+		err := json.NewDecoder(resp.Body).Decode(&res)
+		require.NoError(t, err)
+		require.Equal(t, "Forbidden", res.Msg)
+	})
+
+	t.Run("session_id owned by different user", func(t *testing.T) {
+		userID := model.NewId()
+		otherUserID := model.NewId()
+		channelID := model.NewId()
+		sessionID := model.NewId()
+
+		p.sessions[sessionID] = &session{userID: otherUserID, connID: sessionID, originalConnID: sessionID}
+		t.Cleanup(func() { delete(p.sessions, sessionID) })
+
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(true).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s&session_id=%s", channelID, sessionID), nil)
 		r.Header.Set("Mattermost-User-Id", userID)
 
 		apiRouter.ServeHTTP(w, r)
@@ -95,12 +161,16 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 	t.Run("livekit not configured", func(t *testing.T) {
 		userID := model.NewId()
 		channelID := model.NewId()
+		sessionID := model.NewId()
+
+		p.sessions[sessionID] = &session{userID: userID, connID: sessionID, originalConnID: sessionID}
+		t.Cleanup(func() { delete(p.sessions, sessionID) })
 
 		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(true).Once()
 		mockAPI.On("LoadPluginConfiguration", mock.AnythingOfType("*main.configuration")).Return(nil).Once()
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s", channelID), nil)
+		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s&session_id=%s", channelID, sessionID), nil)
 		r.Header.Set("Mattermost-User-Id", userID)
 
 		apiRouter.ServeHTTP(w, r)
@@ -116,6 +186,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 	t.Run("get user error", func(t *testing.T) {
 		userID := model.NewId()
 		channelID := model.NewId()
+		sessionID := model.NewId()
 
 		cfg := &configuration{}
 		cfg.SetDefaults()
@@ -124,13 +195,16 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		cfg.LiveKitAPISecret = "testsecret"
 		p.configuration = cfg
 
+		p.sessions[sessionID] = &session{userID: userID, connID: sessionID, originalConnID: sessionID}
+		t.Cleanup(func() { delete(p.sessions, sessionID) })
+
 		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(true).Once()
 		mockAPI.On("GetUser", userID).Return(nil, &model.AppError{
 			Message: "user not found",
 		}).Once()
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s", channelID), nil)
+		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s&session_id=%s", channelID, sessionID), nil)
 		r.Header.Set("Mattermost-User-Id", userID)
 
 		apiRouter.ServeHTTP(w, r)
@@ -146,6 +220,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		userID := model.NewId()
 		channelID := model.NewId()
+		sessionID := model.NewId()
 
 		cfg := &configuration{}
 		cfg.SetDefaults()
@@ -153,6 +228,9 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		cfg.LiveKitAPIKey = "testkey"
 		cfg.LiveKitAPISecret = "testsecret"
 		p.configuration = cfg
+
+		p.sessions[sessionID] = &session{userID: userID, connID: sessionID, originalConnID: sessionID}
+		t.Cleanup(func() { delete(p.sessions, sessionID) })
 
 		user := &model.User{
 			Id:        userID,
@@ -165,7 +243,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		mockAPI.On("GetUser", userID).Return(user, nil).Once()
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s", channelID), nil)
+		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s&session_id=%s", channelID, sessionID), nil)
 		r.Header.Set("Mattermost-User-Id", userID)
 
 		apiRouter.ServeHTTP(w, r)
@@ -183,7 +261,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		verifier, err := auth.ParseAPIToken(tokenResp["token"])
 		require.NoError(t, err)
 		require.Equal(t, "testkey", verifier.APIKey())
-		require.Equal(t, userID, verifier.Identity())
+		require.Equal(t, userID+"___"+sessionID, verifier.Identity())
 
 		_, claims, err := verifier.Verify("testsecret")
 		require.NoError(t, err)
@@ -191,6 +269,48 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		require.NotNil(t, claims.Video)
 		require.True(t, claims.Video.RoomJoin)
 		require.Equal(t, channelID, claims.Video.Room)
+		require.Empty(t, claims.Metadata)
+	})
+
+	t.Run("session matched by originalConnID after reconnect", func(t *testing.T) {
+		userID := model.NewId()
+		channelID := model.NewId()
+		originalConnID := model.NewId()
+		currentConnID := model.NewId()
+
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.LiveKitURL = "wss://lk.example.com"
+		cfg.LiveKitAPIKey = "testkey"
+		cfg.LiveKitAPISecret = "testsecret"
+		p.configuration = cfg
+
+		// After a WS reconnect, p.sessions is keyed by the current connID,
+		// but the client sends the original connID — getSessionByOriginalID
+		// must fall back to scanning the originalConnID field.
+		p.sessions[currentConnID] = &session{userID: userID, connID: currentConnID, originalConnID: originalConnID}
+		t.Cleanup(func() { delete(p.sessions, currentConnID) })
+
+		user := &model.User{Id: userID, Username: "testuser"}
+
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(true).Once()
+		mockAPI.On("GetUser", userID).Return(user, nil).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s&session_id=%s", channelID, originalConnID), nil)
+		r.Header.Set("Mattermost-User-Id", userID)
+
+		apiRouter.ServeHTTP(w, r)
+
+		resp := w.Result()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var tokenResp map[string]string
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&tokenResp))
+
+		verifier, err := auth.ParseAPIToken(tokenResp["token"])
+		require.NoError(t, err)
+		require.Equal(t, userID+"___"+originalConnID, verifier.Identity())
 	})
 
 	t.Run("unauthenticated", func(t *testing.T) {
