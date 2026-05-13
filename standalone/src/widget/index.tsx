@@ -10,16 +10,14 @@ import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
-import {
-    USER_MUTED,
-    USER_UNMUTED,
-    USER_VIDEO_OFF,
-    USER_VIDEO_ON,
-} from 'plugin/action_types';
 import CallWidget from 'plugin/components/call_widget';
 import {
     logDebug,
 } from 'plugin/log';
+import {
+    USER_MUTED,
+    USER_UNMUTED,
+} from 'plugin/state/session/action_types';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getTranslations,
@@ -82,7 +80,7 @@ async function initWidget({store, startingCall}: InitCbProps) {
 
     window.callsClient?.on('video_on', () => {
         store.dispatch({
-            type: USER_VIDEO_ON,
+            type: 'USER_VIDEO_ON',
             data: {
                 channelID: window.callsClient?.channelID,
                 userID: getCurrentUserId(store.getState()),
@@ -93,7 +91,7 @@ async function initWidget({store, startingCall}: InitCbProps) {
 
     window.callsClient?.on('video_off', () => {
         store.dispatch({
-            type: USER_VIDEO_OFF,
+            type: 'USER_VIDEO_OFF',
             data: {
                 channelID: window.callsClient?.channelID,
                 userID: getCurrentUserId(store.getState()),
@@ -158,7 +156,7 @@ function deinitWidget(err?: Error) {
     // Using setTimeout to give the app enough time to play the sound before
     // closing the widget window.
     setTimeout(() => {
-        window.callsClient?.destroy();
+        void window.callsClient?.disconnect();
         delete window.callsClient;
         widgetRoot?.unmount();
         widgetRoot = null;

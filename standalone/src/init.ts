@@ -339,7 +339,7 @@ export default async function init(cfg: InitConfig) {
     try {
         cfg.initCb({store, theme, channelID, startingCall: !active});
     } catch (err) {
-        window.callsClient?.destroy();
+        void window.callsClient?.disconnect();
         throw new Error(`initCb failed: ${err}`);
     }
 

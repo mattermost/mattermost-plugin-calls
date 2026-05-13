@@ -174,20 +174,20 @@ export default class CallClient extends EventEmitter {
             logErr('CallClient: already disconnected');
             return;
         }
+
         this.isDisconnected = true;
+        this.isRoomConnected = false;
+        this.connectPayload = null;
 
         if (err) {
             this.emit(CALL_EVENT.ERROR, err);
         }
 
-        this.isRoomConnected = false;
-        this.connectPayload = null;
-
         if (this.room) {
             try {
                 await this.room.disconnect();
             } catch (disconnectErr) {
-                logErr('CallClient: error during disconnect', disconnectErr);
+                logErr('CallClient: room disconnect error', disconnectErr);
             } finally {
                 this.room = null;
             }
@@ -195,15 +195,16 @@ export default class CallClient extends EventEmitter {
 
         if (this.websocketClient) {
             // Tell the server we're leaving — server then broadcasts user_left
-            // and (if we were the last participant) call_end.
-            this.websocketClient.sendLeave();
-            this.websocketClient.close();
-            this.websocketClient = null;
+            // and (if we were the last participant) call_ended.
+            try {
+                this.websocketClient.sendLeave();
+                this.websocketClient.close();
+            } catch (wsErr) {
+                logErr('CallClient: pluginWS teardown error', wsErr);
+            } finally {
+                this.websocketClient = null;
+            }
         }
-    }
-
-    public destroy() {
-        this.disconnect();
     }
 
     public async mute(): Promise<void> {
