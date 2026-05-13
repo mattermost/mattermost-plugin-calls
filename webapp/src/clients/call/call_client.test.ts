@@ -407,7 +407,7 @@ describe('CallClient', () => {
     });
 
     describe('TrackSubscribed (remote audio routing)', () => {
-        it('emits REMOTE_VOICE_STREAM with stream + session_id parsed from identity for mic source', async () => {
+        it('emits REMOTE_VOICE_STREAM with stream + session_id + user_id parsed from identity for mic source', async () => {
             await client.connect({channelID: 'test-channel'});
             const remoteVoiceListener = jest.fn();
             client.on(CALL_EVENT.REMOTE_VOICE_STREAM, remoteVoiceListener);
@@ -419,7 +419,7 @@ describe('CallClient', () => {
                 {sid: 'p1-sid', identity: 'user1___p1-session'},
             );
 
-            expect(remoteVoiceListener).toHaveBeenCalledWith(expect.anything(), 'p1-session');
+            expect(remoteVoiceListener).toHaveBeenCalledWith(expect.anything(), 'p1-session', 'user1');
         });
 
         it('does not emit for non-microphone tracks', async () => {
@@ -535,7 +535,7 @@ describe('CallClient', () => {
     });
 
     describe('ActiveSpeakersChanged', () => {
-        it('emits USERS_VOICE_ACTIVITY_CHANGED with parallel user_ids and session_ids arrays', async () => {
+        it('emits USERS_VOICE_ACTIVITY_CHANGED with parallel session_ids and user_ids arrays', async () => {
             await client.connect({channelID: 'test-channel'});
             const listener = jest.fn();
             client.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, listener);
@@ -545,7 +545,7 @@ describe('CallClient', () => {
                 {sid: 'p2-sid', identity: 'u2___p2-session'},
             ]);
 
-            expect(listener).toHaveBeenCalledWith(['u1', 'u2'], ['p1-session', 'p2-session']);
+            expect(listener).toHaveBeenCalledWith(['p1-session', 'p2-session'], ['u1', 'u2']);
         });
 
         it('emits empty arrays when no one is speaking', async () => {
