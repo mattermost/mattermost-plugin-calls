@@ -11,13 +11,7 @@ import {getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
 import CallWidget from 'plugin/components/call_widget';
-import {
-    logDebug,
-} from 'plugin/log';
-import {
-    USER_MUTED,
-    USER_UNMUTED,
-} from 'plugin/state/session/action_types';
+import {logDebug} from 'plugin/log';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getTranslations,
@@ -28,6 +22,7 @@ import React from 'react';
 import {createRoot, Root} from 'react-dom/client';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
+import {userMuted, userUnmuted} from 'src/state/session/actions';
 
 import init, {InitCbProps} from '../init';
 
@@ -57,25 +52,11 @@ async function initWidget({store, startingCall}: InitCbProps) {
     const locale = getCurrentUserLocale(store.getState()) || 'en';
 
     window.callsClient?.on('mute', () => {
-        store.dispatch({
-            type: USER_MUTED,
-            data: {
-                channelID: window.callsClient?.channelID,
-                userID: getCurrentUserId(store.getState()),
-                session_id: window.callsClient?.getSessionID(),
-            },
-        });
+        store.dispatch(userMuted(window.callsClient?.channelID ?? '', getCurrentUserId(store.getState()), window.callsClient?.getSessionID() ?? ''));
     });
 
     window.callsClient?.on('unmute', () => {
-        store.dispatch({
-            type: USER_UNMUTED,
-            data: {
-                channelID: window.callsClient?.channelID,
-                userID: getCurrentUserId(store.getState()),
-                session_id: window.callsClient?.getSessionID(),
-            },
-        });
+        store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', getCurrentUserId(store.getState()), window.callsClient?.getSessionID() ?? ''));
     });
 
     window.callsClient?.on('video_on', () => {

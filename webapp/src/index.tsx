@@ -5,7 +5,6 @@
 import {CallChannelState} from '@mattermost/calls-common/lib/types';
 import WebSocketClient from '@mattermost/client/websocket';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
-import type {Participant} from 'livekit-client';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
@@ -29,6 +28,8 @@ import {
     getCallsStats,
     getCallsVersionInfo,
     incomingCallOnChannel,
+    joinUser,
+    leaveUser,
     loadProfilesByIdsIfMissing,
     localSessionClose,
     openCallsUserSettings,
@@ -36,8 +37,6 @@ import {
     setClientConnecting,
     showScreenSourceModal,
     showSwitchCallModal,
-    userJoined,
-    userLeft,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import CallClient from 'src/clients/call';
@@ -105,6 +104,7 @@ import VideoDevicesSettingsSection from 'src/components/user_settings/video_devi
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
+import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userMuted, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
 import {getWSConnectionURL} from 'src/utils';
 import {modals} from 'src/webapp_globals';
@@ -113,11 +113,6 @@ import {
     CALL_STATE,
     DISMISS_CALL,
     RECEIVED_CHANNEL_STATE,
-    UNINIT,
-    USER_MUTED,
-    USER_UNMUTED,
-    USERS_STATES,
-    USERS_VOICE_ACTIVITY_CHANGED,
 } from './action_types';
 import CallWidget from './components/call_widget';
 import ChannelCallToast from './components/channel_call_toast';
@@ -159,7 +154,6 @@ import {
     getCallsClient,
     getChannelURL,
     getPluginPath,
-    getSessionsMapFromSessions,
     getTranslations,
     getUserIDsForSessions,
     isCallsPopOut,
@@ -223,7 +217,7 @@ export default class Plugin {
             handleCallStart(store, ev);
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_end`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_ended`, (ev) => {
             handleCallEnd(store, ev);
         });
 
@@ -714,11 +708,11 @@ export default class Plugin {
                         const currentSessionID = window.callsClient.getSessionID();
                         const currentUserID = getCurrentUserId(store.getState());
                         if (currentSessionID) {
-                            store.dispatch(userLeft(window.callsClient.channelID, currentUserID, currentSessionID));
+                            store.dispatch(leaveUser(window.callsClient.channelID, currentUserID, currentSessionID));
                         }
 
                         store.dispatch(localSessionClose(window.callsClient.channelID));
-                        window.callsClient.destroy();
+                        void window.callsClient.disconnect();
                         delete window.callsClient;
                         delete window.currentCallData;
                         playSound('leave_self');
@@ -730,44 +724,23 @@ export default class Plugin {
                 });
 
                 window.callsClient.on(CALL_EVENT.MUTE, (session_id: string, userID: string) => {
-                    store.dispatch({
-                        type: USER_MUTED,
-                        data: {
-                            channelID: window.callsClient?.channelID,
-                            userID,
-                            session_id,
-                        },
-                    });
+                    store.dispatch(userMuted(window.callsClient?.channelID ?? '', session_id, userID));
                 });
 
                 window.callsClient.on(CALL_EVENT.UNMUTE, (session_id: string, userID: string) => {
-                    store.dispatch({
-                        type: USER_UNMUTED,
-                        data: {
-                            channelID: window.callsClient?.channelID,
-                            userID,
-                            session_id,
-                        },
-                    });
+                    store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', session_id, userID));
                 });
 
-                window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (user_ids: Participant['identity'][], session_ids: Participant['sid'][]) => {
-                    store.dispatch({
-                        type: USERS_VOICE_ACTIVITY_CHANGED,
-                        data: {
-                            channelID: window.callsClient?.channelID,
-                            user_ids,
-                            session_ids,
-                        },
-                    });
+                window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (session_ids: string[], user_ids: string[]) => {
+                    store.dispatch(usersVoiceActivityChanged(window.callsClient?.channelID ?? '', session_ids, user_ids));
                 });
 
                 window.callsClient.on(CALL_EVENT.USER_JOINED, (session_id: string, userID: string, isFromInitialSync?: boolean) => {
-                    store.dispatch(userJoined(window.callsClient?.channelID ?? '', userID, session_id, Boolean(isFromInitialSync)));
+                    store.dispatch(joinUser(window.callsClient?.channelID ?? '', userID, session_id, Boolean(isFromInitialSync)));
                 });
 
                 window.callsClient.on(CALL_EVENT.USER_LEFT, (session_id: string, userID: string) => {
-                    store.dispatch(userLeft(window.callsClient?.channelID ?? '', userID, session_id));
+                    store.dispatch(leaveUser(window.callsClient?.channelID ?? '', userID, session_id));
                 });
 
                 window.callsClient.connect({channelID, title, threadID: rootId}).catch((err: Error) => {
@@ -883,13 +856,7 @@ export default class Plugin {
                             },
                         });
 
-                        actions.push({
-                            type: USERS_STATES,
-                            data: {
-                                states: getSessionsMapFromSessions(call.sessions),
-                                channelID: data[i].channel_id,
-                            },
-                        });
+                        actions.push(sessionsReceived(data[i].channel_id, getSessionsMapFromSessions(call.sessions)));
 
                         if (ringingEnabled(store.getState()) && data[i].call) {
                             // dismissedNotification is populated after the actions array has been batched, so manually check:
@@ -1016,9 +983,7 @@ export default class Plugin {
                 window.callsClient.disconnect();
             }
             logDebug('resetting state');
-            store.dispatch({
-                type: UNINIT,
-            });
+            store.dispatch(unInitialized());
         });
 
         // A dummy React component so we can access webapp's
@@ -1034,9 +999,7 @@ export default class Plugin {
                     logDebug('websocket reconnect handler');
                     if (!getCallsClient()) {
                         logDebug('resetting state');
-                        store.dispatch({
-                            type: UNINIT,
-                        });
+                        store.dispatch(unInitialized());
                     }
                     onActivate(client);
                 });

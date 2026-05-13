@@ -338,13 +338,6 @@ export function getUserIDsForSessions(sessions: SessionState[]) {
     return Object.keys(idsMap);
 }
 
-export function getSessionsMapFromSessions(sessions: SessionState[]) {
-    return sessions.reduce((map: Record<string, SessionState>, session: SessionState) => {
-        map[session.session_id] = session;
-        return map;
-    }, {});
-}
-
 export function getUserIdFromDM(dmName: string, currentUserId: string) {
     const ids = dmName.split('__');
     let otherUserId = '';

@@ -32,36 +32,8 @@ import {logDebug, logErr} from 'src/log';
 import {CallsClientStats, MediaDevices} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
 
-import {CALL_EVENT, CALL_TOKEN_API_PATH} from './constants';
-import {ConnectPayload} from './types';
-
-export type RtcTokenResponse = {
-    token: string;
-    url: string;
-};
-
-export async function fetchRtcToken(channelID: string, sessionID: string): Promise<RtcTokenResponse> {
-    const params = new URLSearchParams({channel_id: channelID, session_id: sessionID});
-    const url = `${getPluginPath()}/${CALL_TOKEN_API_PATH}?${params.toString()}`;
-    return RestClient.fetch<RtcTokenResponse>(url, {method: 'GET'});
-}
-
-// MM-user identity is "userID___sessionID" — both halves are sealed by the
-// LiveKit token signature, so neither can be tampered with post-connect.
-// Guest/SIP participants use "guest:" / "sip:" prefixes (no "___"); for those
-// userID is empty and the whole identity is used as the session key.
-const MM_IDENTITY_SEP = '___';
-
-function parseIdentity(p: Participant): {userID: string; sessionID: string} {
-    const idx = p.identity.indexOf(MM_IDENTITY_SEP);
-    if (idx < 0) {
-        return {userID: '', sessionID: p.identity};
-    }
-    return {
-        userID: p.identity.slice(0, idx),
-        sessionID: p.identity.slice(idx + MM_IDENTITY_SEP.length),
-    };
-}
+import {CALL_EVENT, CALL_TOKEN_API_PATH, USER_ID_SESSION_ID_SEPARATOR} from './constants';
+import {ConnectPayload, RtcTokenResponse} from './types';
 
 export default class CallClient extends EventEmitter {
     private readonly websocketURL: string;
@@ -128,20 +100,23 @@ export default class CallClient extends EventEmitter {
         }
 
         if (!this.websocketClient) {
-            throw new Error('CallClient: websocket client not initialized');
+            throw new Error('CallClient: pluginWS not initialized');
         }
 
         this.connectPayload = connectPayload;
         this.channelID = connectPayload.channelID;
 
-        let connID: string;
+        let connectionId: string;
         try {
             this.websocketClient.connect();
-            connID = await this.websocketClient.ready();
 
-            logDebug('CallClient: pluginWS connected with connID', connID);
+            // We obtain the connection ID from the pluginWS so we can use it to fetch the JWT token and URL.
+            // this would be the same sessionID which would also be embedded in the identity of the participant.
+            connectionId = await this.websocketClient.ready();
+
+            logDebug('CallClient: pluginWS ready with connection_id', connectionId);
         } catch (err) {
-            logErr('CallClient: failed to connect to pluginWS', err);
+            logErr('CallClient: pluginWS connection error', err);
             this.connectPayload = null;
 
             this.emit(CALL_EVENT.ERROR, err);
@@ -151,7 +126,7 @@ export default class CallClient extends EventEmitter {
         let token: string;
         let url: string;
         try {
-            const response = await fetchRtcToken(connectPayload.channelID, connID);
+            const response = await this.fetchJwtTokenAndUrl(connectPayload.channelID, connectionId);
             token = response.token;
             url = response.url;
 
@@ -161,7 +136,7 @@ export default class CallClient extends EventEmitter {
 
             logDebug('CallClient: token fetched from token API', url);
         } catch (err) {
-            logErr('CallClient: failed to fetch token from token API', err);
+            logErr('CallClient: token fetch error', err);
             this.connectPayload = null;
 
             this.emit(CALL_EVENT.ERROR, err);
@@ -172,9 +147,9 @@ export default class CallClient extends EventEmitter {
             await this.room.connect(url, token);
             this.isRoomConnected = true;
 
-            logDebug('CallClient: connected to room');
+            logDebug('CallClient: room connected');
         } catch (err) {
-            logErr('CallClient: failed to connect to room', err);
+            logErr('CallClient: room connection error', err);
             this.isRoomConnected = false;
             this.connectPayload = null;
             this.room = null;
@@ -371,7 +346,32 @@ export default class CallClient extends EventEmitter {
         if (!this.room?.localParticipant) {
             return null;
         }
-        return parseIdentity(this.room.localParticipant).sessionID;
+
+        const {sessionID} = this.parseUserIdAndSessionIdFromIdentity(this.room.localParticipant);
+        return sessionID;
+    }
+
+    // ------------------------------------------------------------
+    // Private methods
+    // ------------------------------------------------------------
+
+    private async fetchJwtTokenAndUrl(channelID: string, sessionID: string): Promise<RtcTokenResponse> {
+        const params = new URLSearchParams({channel_id: channelID, session_id: sessionID});
+        const url = `${getPluginPath()}/${CALL_TOKEN_API_PATH}?${params.toString()}`;
+        return RestClient.fetch<RtcTokenResponse>(url, {method: 'GET'});
+    }
+
+    private parseUserIdAndSessionIdFromIdentity(p: Participant): {userID: string; sessionID: string} {
+        const parts = p.identity.split(USER_ID_SESSION_ID_SEPARATOR);
+        if (parts.length !== 2) {
+            return {userID: '', sessionID: p.identity};
+        }
+
+        const [userID, sessionID] = parts;
+        return {
+            userID,
+            sessionID,
+        };
     }
 
     private handleWebsocketOpened(originalConnID: string, prevConnID: string, isReconnect: boolean) {
@@ -443,18 +443,18 @@ export default class CallClient extends EventEmitter {
 
         // Seed the initial state for everyone already in the room (local + remote).
         const localParticipant = this.room.localParticipant;
-        const local = parseIdentity(localParticipant);
-        this.emit(CALL_EVENT.USER_JOINED, local.sessionID, local.userID, true);
+        const {userID: localUserId, sessionID: localSessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
+        this.emit(CALL_EVENT.USER_JOINED, localSessionID, localUserId, true);
 
         const isLocalMicMuted = localParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-        this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, local.sessionID, local.userID);
+        this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localSessionID, localUserId);
 
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
-            const remote = parseIdentity(remoteParticipant);
-            this.emit(CALL_EVENT.USER_JOINED, remote.sessionID, remote.userID, true);
+            const {userID: remoteUserId, sessionID: remoteSessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
+            this.emit(CALL_EVENT.USER_JOINED, remoteSessionID, remoteUserId, true);
 
             const isRemoteMicMuted = remoteParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-            this.emit(isRemoteMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remote.sessionID, remote.userID);
+            this.emit(isRemoteMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remoteSessionID, remoteUserId);
         }
 
         this.emit(CALL_EVENT.CONNECTED);
@@ -515,10 +515,10 @@ export default class CallClient extends EventEmitter {
     private handleTrackSubscribed(track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) {
         if (track.source === Track.Source.Microphone) {
             const stream = new MediaStream([track.mediaStreamTrack]);
-            const {sessionID, userID} = parseIdentity(participant);
-            this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, stream, sessionID);
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+            this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, stream, sessionID, userID);
 
-            logDebug(`CallClient: subscribed to remote track from ${userID}`);
+            logDebug(`CallClient: remote user ${userID} subscribed to track`);
         }
     }
 
@@ -528,7 +528,7 @@ export default class CallClient extends EventEmitter {
      */
     private handleLocalTrackPublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
         if (localTrackPublication.source === Track.Source.Microphone) {
-            const {sessionID, userID} = parseIdentity(localParticipant);
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
             this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
 
             logDebug(`CallClient: local track published from ${userID}`, localTrackPublication);
@@ -541,7 +541,7 @@ export default class CallClient extends EventEmitter {
      */
     private handleLocalTrackUnpublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
         if (localTrackPublication.source === Track.Source.Microphone) {
-            const {sessionID, userID} = parseIdentity(localParticipant);
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
 
             logDebug(`CallClient: local track unpublished from ${userID}`, localTrackPublication);
@@ -554,7 +554,7 @@ export default class CallClient extends EventEmitter {
      */
     private handleTrackPublished(remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
         if (remoteTrackPublication.source === Track.Source.Microphone) {
-            const {sessionID, userID} = parseIdentity(remoteParticipant);
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
             this.emit(remoteTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
 
             logDebug(`CallClient: remote track published from ${userID}`, remoteTrackPublication);
@@ -567,7 +567,7 @@ export default class CallClient extends EventEmitter {
      */
     private handleTrackUnpublished(remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
         if (remoteTrackPublication.source === Track.Source.Microphone) {
-            const {sessionID, userID} = parseIdentity(remoteParticipant);
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
 
             logDebug(`CallClient: remote track unpublished from ${userID}`, remoteTrackPublication);
@@ -580,7 +580,7 @@ export default class CallClient extends EventEmitter {
      */
     private handleTrackMuted(trackPublication: TrackPublication, participant: Participant) {
         if (trackPublication.source === Track.Source.Microphone) {
-            const {sessionID, userID} = parseIdentity(participant);
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
 
             logDebug(`CallClient: track muted from ${userID}`, trackPublication);
@@ -593,7 +593,7 @@ export default class CallClient extends EventEmitter {
      */
     private handleTrackUnmuted(trackPublication: TrackPublication, participant: Participant) {
         if (trackPublication.source === Track.Source.Microphone) {
-            const {sessionID, userID} = parseIdentity(participant);
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.UNMUTE, sessionID, userID);
 
             logDebug(`CallClient: track unmuted from ${userID}`, trackPublication);
@@ -605,7 +605,7 @@ export default class CallClient extends EventEmitter {
      * Emits USER_JOINED so the dispatcher can populate Redux + play the join sound.
      */
     private handleParticipantConnected(remoteParticipant: RemoteParticipant) {
-        const {sessionID, userID} = parseIdentity(remoteParticipant);
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
         this.emit(CALL_EVENT.USER_JOINED, sessionID, userID);
 
         logDebug(`CallClient: participant connected ${userID}`);
@@ -616,7 +616,7 @@ export default class CallClient extends EventEmitter {
      * Emits USER_LEFT so the dispatcher can drop the session from Redux.
      */
     private handleParticipantDisconnected(remoteParticipant: RemoteParticipant) {
-        const {sessionID, userID} = parseIdentity(remoteParticipant);
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
         this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
         logDebug(`CallClient: participant disconnected ${userID}`);
@@ -637,18 +637,14 @@ export default class CallClient extends EventEmitter {
         const session_ids: string[] = [];
 
         // This is fine as data structure but if we ever want to have audio
-        // level then it would be better to have a tuple of [user_id, session_id, audio_level]
+        // level then it would be better to have a tuple of [session_id, user_id, audio_level]
         for (const participant of participants) {
-            const {sessionID, userID} = parseIdentity(participant);
-            user_ids.push(userID);
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             session_ids.push(sessionID);
+            user_ids.push(userID);
         }
 
-        this.emit(
-            CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED,
-            user_ids,
-            session_ids,
-        );
+        this.emit(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, session_ids, user_ids);
     }
 
     /**

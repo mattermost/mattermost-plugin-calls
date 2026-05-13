@@ -162,14 +162,13 @@ export class WebSocketClient extends EventEmitter {
     }
 
     /**
-     * Resolves with the originalConnID once the server's 'hello' message has arrived.
+     * Resolves with the originalConnID once the server's plugin-WS join ack
+     * has arrived. The server registers the session (p.sessions[connID])
+     * inside its join handler so futher HTTP endpoints that validate against p.sessions
      */
     public async ready(): Promise<string> {
-        if (this.originalConnID) {
-            return this.originalConnID;
-        }
         return new Promise<string>((resolve, reject) => {
-            this.once('open', () => resolve(this.originalConnID));
+            this.once('join', () => resolve(this.originalConnID));
             this.once('error', reject);
         });
     }

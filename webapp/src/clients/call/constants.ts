@@ -21,3 +21,4 @@ export const CALL_EVENT = {
 
 // Plugin call API routes
 export const CALL_TOKEN_API_PATH = 'livekit-token';
+export const USER_ID_SESSION_ID_SEPARATOR = '___';

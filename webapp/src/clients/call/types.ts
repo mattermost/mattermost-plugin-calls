@@ -3,6 +3,11 @@
 
 import type {RTCStats} from '@mattermost/calls-common/lib/types';
 
+export type RtcTokenResponse = {
+    token: string;
+    url: string;
+};
+
 export type TrackMetadata = {
     id: string;
     streamID: string;
