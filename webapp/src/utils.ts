@@ -4,6 +4,7 @@
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@mattermost/calls-common';
 import {CallJobMetadata, CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
+import {ClientConfig} from '@mattermost/types/config';
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
@@ -39,7 +40,7 @@ export function getPluginPath() {
     return `${window.basename || ''}/plugins/${pluginId}`;
 }
 
-export function getWSConnectionURL(websocketURL?: string): string {
+export function getWSConnectionURL(websocketURL?: ClientConfig['WebsocketURL']): string {
     const loc = window.location;
     const uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
     const baseURL = websocketURL && websocketURL.length > 0 ? websocketURL : `${uri}//${loc.host}${window.basename || ''}`;
