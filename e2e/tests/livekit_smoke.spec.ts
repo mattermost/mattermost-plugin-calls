@@ -52,14 +52,14 @@ test.describe('livekit framework smoke', {tag: '@livekit-smoke'}, () => {
             // This is what proves the end-to-end LiveKit URL/API key/API secret
             // plumbing works — a token signed with the wrong secret, or a server
             // the browser can't reach, would never get here.
-            await page.waitForFunction(() => window.callsClient?.room?.state === 'connected', undefined, {timeout: 30000});
+            await page.waitForFunction(() => window.callsClient?.room?.state === 'connected');
 
             // The widget joins regular channels muted (auto-unmute only triggers in
             // DM/GM channels). Toggle the mic so an audio track gets published, then
             // verify it actually shows up in localParticipant.audioTrackPublications.
             // This proves the WebRTC negotiation isn't stuck halfway.
             await page.locator('#voice-mute-unmute').click();
-            await page.waitForFunction(() => (window.callsClient?.room?.localParticipant?.audioTrackPublications?.size ?? 0) > 0, undefined, {timeout: 30000});
+            await page.waitForFunction(() => (window.callsClient?.room?.localParticipant?.audioTrackPublications?.size ?? 0) > 0);
 
             // Leave cleanly via the widget menu and confirm the widget disappears.
             await page.locator('#calls-widget-leave-button').click();
