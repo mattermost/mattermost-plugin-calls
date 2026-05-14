@@ -9,21 +9,10 @@ function print_logs {
 		docker logs ${CONTAINER_SERVER}1
 		docker logs ${CONTAINER_SERVER}2
 		docker logs ${CONTAINER_PROXY}
-		docker logs ${CONTAINER_RTCD}
-		docker logs ${CONTAINER_OFFLOADER}
+		docker logs ${CONTAINER_LIVEKIT}
 
 		# Log all containers
 		docker ps -a
-
-		# Print transcriber job logs in case of failure.
-		for ID in $(docker ps -a --filter=ancestor="calls-transcriber:master" --filter=status="exited" --format "{{.ID}}"); do
-			docker logs $ID
-		done
-
-		# Print recorder job logs in case of failure.
-		for ID in $(docker ps -a --filter=ancestor="calls-recorder:master" --filter=status="exited" --format "{{.ID}}"); do
-			docker logs $ID
-		done
 	fi
 }
 
@@ -62,10 +51,6 @@ docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 echo "Copying calls plugin into ${CONTAINER_SERVER}1 server container ..."
 docker cp dist/*.tar.gz ${CONTAINER_SERVER}1:/mattermost/bin/calls
 
-# Copy config patch into server container
-echo "Copying calls config patch into ${CONTAINER_SERVER}1 server container ..."
-docker cp e2e/config-patch.json ${CONTAINER_SERVER}1:/mattermost
-
 # Install Calls
 echo "Installing calls ..."
 docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
@@ -73,16 +58,9 @@ docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 	/mattermost/bin/mmctl plugin add bin/calls
 sleep 5
 
-# Patch config
-echo "Patching calls config ..."
-docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
-	${CONTAINER_SERVER}1 \
-	/mattermost/bin/mmctl plugin disable com.mattermost.calls
-sleep 2
-docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
-	${CONTAINER_SERVER}1 \
-	/mattermost/bin/mmctl config patch /mattermost/config-patch.json
-sleep 2
+# Enable Calls — LiveKit config arrives via MM_CALLS_LIVE_KIT_* env vars set in
+# prepare-server.sh, applied by server/environment.go.
+echo "Enabling calls ..."
 docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 	${CONTAINER_SERVER}1 \
 	/mattermost/bin/mmctl plugin enable com.mattermost.calls
@@ -96,11 +74,15 @@ echo "Spawning playwright image ..."
 # or localhost.
 # https://docs.docker.com/engine/reference/run/#network-settings
 # https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts
+#
+# Scope of this run: just the LiveKit smoke test that validates the framework.
+# Constrained to chromium because that's the browser the smoke test was authored
+# against; broader cross-browser + cross-feature coverage lands under MM-68570.
 docker run -d --name playwright-e2e \
 	--network=container:${CONTAINER_PROXY} \
 	--entrypoint "" \
 	mm-playwright \
-	bash -c "npm ci && npx playwright install && npx playwright test --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
+	bash -c "npm ci && npx playwright install && npx playwright test --project=chromium --grep @livekit-smoke --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
 
 docker logs -f playwright-e2e
 
@@ -112,8 +94,7 @@ docker cp playwright-e2e:/usr/src/calls-e2e/pw-results.json results/pw-results-$
 docker logs ${CONTAINER_SERVER}1 >"${WORKSPACE}/logs/server1.log"
 docker logs ${CONTAINER_SERVER}2 >"${WORKSPACE}/logs/server2.log"
 docker logs ${CONTAINER_PROXY} >"${WORKSPACE}/logs/proxy.log"
-docker logs ${CONTAINER_RTCD} >"${WORKSPACE}/logs/rtcd.log"
-docker logs ${CONTAINER_OFFLOADER} >"${WORKSPACE}/logs/offloader.log"
+docker logs ${CONTAINER_LIVEKIT} >"${WORKSPACE}/logs/livekit.log"
 
 ## Check if we have an early failures in order to upload logs
 NUM_FAILURES=0
