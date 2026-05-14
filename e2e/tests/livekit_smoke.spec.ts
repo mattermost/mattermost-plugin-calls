@@ -13,7 +13,7 @@ test.describe('livekit framework smoke', {tag: '@livekit-smoke'}, () => {
     test.describe('admin console exposes LiveKit configuration', () => {
         test.use({storageState: adminState.storageStatePath});
 
-        test('LiveKit URL field renders with injected config', async ({page}) => {
+        test('LiveKit URL field renders', async ({page}) => {
             await page.goto(`${baseURL}/admin_console/plugins/plugin_com.mattermost.calls`);
 
             // The Calls header rendering proves the plugin booted without a fatal
@@ -21,10 +21,12 @@ test.describe('livekit framework smoke', {tag: '@livekit-smoke'}, () => {
             await expect(page.locator('.admin-console__header')).toContainText('Calls');
 
             // The LiveKit URL field is the user-facing surface for the LiveKitURL
-            // config field that MM_CALLS_LIVE_KIT_URL overrides.
-            const livekitUrlInput = page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.livekiturlinput');
-            await expect(livekitUrlInput).toBeVisible();
-            await expect(livekitUrlInput).toHaveValue(/livekit/i);
+            // config field. We don't assert on its value here: MM_CALLS_LIVE_KIT_*
+            // env overrides apply in-memory inside the plugin process (so the call
+            // flow sees them) but the admin UI reads the DB-backed config, which
+            // is empty in this CI setup by design. The end-to-end call test below
+            // is what proves the env values actually reach the plugin.
+            await expect(page.getByTestId('PluginSettings.Plugins.com+mattermost+calls.livekiturlinput')).toBeVisible();
         });
     });
 

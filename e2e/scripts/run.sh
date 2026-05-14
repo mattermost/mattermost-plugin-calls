@@ -96,8 +96,17 @@ docker logs ${CONTAINER_SERVER}2 >"${WORKSPACE}/logs/server2.log"
 docker logs ${CONTAINER_PROXY} >"${WORKSPACE}/logs/proxy.log"
 docker logs ${CONTAINER_LIVEKIT} >"${WORKSPACE}/logs/livekit.log"
 
-## Check if we have an early failures in order to upload logs
-NUM_FAILURES=0
-NUM_FAILURES=$((NUM_FAILURES + $(jq '.suites[].suites[].specs[].tests[] | last(.results[]) | select(.status != "passed").status' <"${WORKSPACE}/results/pw-results-${RUN_ID}.json" | wc -l)))
+## Count failures. The recursive descent (`..`) walks arbitrary `test.describe`
+## nesting; a shallow `.suites[].suites[].specs[]` filter would miss specs nested
+## deeper and silently report zero failures.
+NUM_FAILURES=$(jq '[.. | objects | select(has("tests") and (.tests | type == "array")) | .tests[] | last(.results[]) | select(.status != "passed").status] | length' <"${WORKSPACE}/results/pw-results-${RUN_ID}.json")
 echo "FAILURES=${NUM_FAILURES}" >>${GITHUB_OUTPUT}
 sudo chown -R 1001:1001 "${WORKSPACE}/logs"
+
+## Exit non-zero on any failure so the GitHub Actions step itself fails — without
+## this, FAILURES is only consumed by the persist-report-logs `if:`, leaving the
+## step green even when every test failed.
+if [[ ${NUM_FAILURES} -gt 0 ]]; then
+	echo "playwright reported ${NUM_FAILURES} failing tests"
+	exit 1
+fi
