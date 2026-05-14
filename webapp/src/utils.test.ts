@@ -45,7 +45,7 @@ describe('utils', () => {
         ];
 
         testCases.forEach((testCase) => it(testCase.description, () => {
-            expect(getWSConnectionURL(testCase.config)).toEqual(testCase.expected);
+            expect(getWSConnectionURL(testCase.config.WebsocketURL)).toEqual(testCase.expected);
         }));
     });
 

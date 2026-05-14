@@ -176,10 +176,6 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
         if (callsClient.currentAudioOutputDevice !== currentAudioOutputDevice) {
             setCurrentAudioOutputDevice(callsClient.currentAudioOutputDevice);
         }
-
-        if (callsClient.currentVideoInputDevice !== currentVideoInputDevice) {
-            setCurrentVideoInputDevice(callsClient.currentVideoInputDevice);
-        }
     };
 
     useEffect(() => {
@@ -197,8 +193,6 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
             setCurrentAudioInputDevice(callsClient.currentAudioInputDevice);
         } else if (deviceType === 'audiooutput') {
             setCurrentAudioOutputDevice(callsClient.currentAudioOutputDevice);
-        } else if (deviceType === 'videoinput') {
-            setCurrentVideoInputDevice(callsClient.currentVideoInputDevice);
         }
 
         return () => {

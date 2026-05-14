@@ -33,10 +33,10 @@ import {generateId} from 'mattermost-redux/utils/helpers';
 import {
     callEnd,
     incomingCallOnChannel,
+    joinUser,
+    leaveUser,
     loadCallState,
-    loadProfilesByIdsIfMissing,
     removeIncomingCallNotification,
-    userLeft,
 } from 'src/actions';
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/clients/calls';
 import {hostRemovedMsg} from 'src/components/call_error_modal';
@@ -44,10 +44,16 @@ import {
     HOST_CONTROL_NOTICE_TIMEOUT,
     JOB_TYPE_CAPTIONING,
     JOB_TYPE_RECORDING,
-    JOINED_USER_NOTIFICATION_TIMEOUT,
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
+import {
+    USER_LOWER_HAND,
+    USER_RAISE_HAND,
+    USER_REACTED,
+    USER_REACTED_TIMEOUT,
+} from 'src/state/session/action_types';
+import {userMuted, userUnmuted} from 'src/state/session/actions';
 import {
     HostControlNotice,
     HostControlNoticeType,
@@ -63,37 +69,20 @@ import {
     HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
-    USER_JOINED,
-    USER_JOINED_TIMEOUT,
-    USER_LOWER_HAND,
-    USER_MUTED,
-    USER_RAISE_HAND,
-    USER_REACTED,
-    USER_REACTED_TIMEOUT,
     USER_SCREEN_OFF,
     USER_SCREEN_ON,
-    USER_UNMUTED,
-    USER_VIDEO_OFF,
-    USER_VIDEO_ON,
-    USER_VOICE_OFF,
-    USER_VOICE_ON,
 } from './action_types';
 import {logErr} from './log';
 import {
-    calls,
     channelIDForCurrentCall,
     profilesInCurrentCallMap,
     ringingEnabled,
-    shouldPlayJoinUserSound,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
 import {
     followThread,
     getCallsClient,
-    getCallsClientSessionID,
     getUserDisplayName,
-    notificationsStopRinging,
-    playSound,
 } from './utils';
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
@@ -170,8 +159,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
 // state mutating operations.
 export function handleUserLeft(store: Store, ev: WebSocketMessage<UserLeftData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-
-    store.dispatch(userLeft(channelID, ev.data.user_id, ev.data.session_id));
+    store.dispatch(leaveUser(channelID, ev.data.user_id, ev.data.session_id));
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
@@ -179,80 +167,28 @@ export function handleUserLeft(store: Store, ev: WebSocketMessage<UserLeftData>)
 export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedData>) {
     const userID = ev.data.user_id;
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    const currentUserID = getCurrentUserId(store.getState());
     const sessionID = ev.data.session_id;
-
-    if (window.callsClient?.channelID === channelID) {
-        if (sessionID === getCallsClientSessionID()) {
-            playSound('join_self');
-        } else if (userID !== currentUserID && shouldPlayJoinUserSound(store.getState())) {
-            playSound('join_user');
-        }
-    }
-
-    if (ringingEnabled(store.getState()) && userID === currentUserID) {
-        const callID = calls(store.getState())[channelID]?.ID || '';
-        store.dispatch(removeIncomingCallNotification(callID));
-        notificationsStopRinging(); // And stop ringing for _any_ incoming call.
-    }
-
-    // This is async, which is expected as we are okay with setting the state while we wait
-    // for any missing user profiles.
-    store.dispatch(loadProfilesByIdsIfMissing([userID]));
-
-    store.dispatch({
-        type: USER_JOINED,
-        data: {
-            channelID,
-            userID,
-            currentUserID,
-            session_id: sessionID,
-        },
-    });
-
-    setTimeout(() => {
-        store.dispatch({
-            type: USER_JOINED_TIMEOUT,
-            data: {
-                channelID,
-                userID,
-            },
-        });
-    }, JOINED_USER_NOTIFICATION_TIMEOUT);
+    store.dispatch(joinUser(channelID, userID, sessionID, false));
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
 export function handleUserMuted(store: Store, ev: WebSocketMessage<UserMutedUnmutedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch({
-        type: USER_MUTED,
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            session_id: ev.data.session_id,
-        },
-    });
+    store.dispatch(userMuted(channelID, ev.data.session_id, ev.data.userID));
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
 export function handleUserUnmuted(store: Store, ev: WebSocketMessage<UserMutedUnmutedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch({
-        type: USER_UNMUTED,
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            session_id: ev.data.session_id,
-        },
-    });
+    store.dispatch(userUnmuted(channelID, ev.data.session_id, ev.data.userID));
 }
 
 export function handleUserVoiceOn(store: Store, ev: WebSocketMessage<UserVoiceOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: USER_VOICE_ON,
+        type: 'USER_VOICE_ON',
         data: {
             channelID,
             userID: ev.data.userID,
@@ -264,7 +200,7 @@ export function handleUserVoiceOn(store: Store, ev: WebSocketMessage<UserVoiceOn
 export function handleUserVoiceOff(store: Store, ev: WebSocketMessage<UserVoiceOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: USER_VOICE_OFF,
+        type: 'USER_VOICE_OFF',
         data: {
             channelID,
             userID: ev.data.userID,
@@ -616,7 +552,7 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControl
 export function handleUserVideoOn(store: Store, ev: WebSocketMessage<UserVideoOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: USER_VIDEO_ON,
+        type: 'USER_VIDEO_ON',
         data: {
             channelID,
             userID: ev.data.userID,
@@ -628,7 +564,7 @@ export function handleUserVideoOn(store: Store, ev: WebSocketMessage<UserVideoOn
 export function handleUserVideoOff(store: Store, ev: WebSocketMessage<UserVideoOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
-        type: USER_VIDEO_OFF,
+        type: 'USER_VIDEO_OFF',
         data: {
             channelID,
             userID: ev.data.userID,

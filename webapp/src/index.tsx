@@ -8,7 +8,7 @@ import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
+import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
@@ -28,6 +28,8 @@ import {
     getCallsStats,
     getCallsVersionInfo,
     incomingCallOnChannel,
+    joinUser,
+    leaveUser,
     loadProfilesByIdsIfMissing,
     localSessionClose,
     openCallsUserSettings,
@@ -35,11 +37,10 @@ import {
     setClientConnecting,
     showScreenSourceModal,
     showSwitchCallModal,
-    userJoined,
-    userLeft,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import CallClient from 'src/clients/call';
+import {CALL_EVENT} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
@@ -100,20 +101,18 @@ import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
-import {CALL_EVENT, CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
+import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
+import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userMuted, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
+import {getWSConnectionURL} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 
 import {
     CALL_STATE,
     DISMISS_CALL,
     RECEIVED_CHANNEL_STATE,
-    UNINIT,
-    USER_MUTED,
-    USER_UNMUTED,
-    USERS_STATES,
 } from './action_types';
 import CallWidget from './components/call_widget';
 import ChannelCallToast from './components/channel_call_toast';
@@ -155,7 +154,6 @@ import {
     getCallsClient,
     getChannelURL,
     getPluginPath,
-    getSessionsMapFromSessions,
     getTranslations,
     getUserIDsForSessions,
     isCallsPopOut,
@@ -184,8 +182,6 @@ import {
     handleUserUnraisedHand,
     handleUserVideoOff,
     handleUserVideoOn,
-    handleUserVoiceOff,
-    handleUserVoiceOn,
 } from './websocket_handlers';
 
 export default class Plugin {
@@ -217,19 +213,11 @@ export default class Plugin {
             });
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_voice_on`, (ev) => {
-            handleUserVoiceOn(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_voice_off`, (ev) => {
-            handleUserVoiceOff(store, ev);
-        });
-
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_start`, (ev) => {
             handleCallStart(store, ev);
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_end`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_ended`, (ev) => {
             handleCallEnd(store, ev);
         });
 
@@ -663,8 +651,11 @@ export default class Plugin {
                 }
 
                 const state = store.getState();
+                const websocketURLInConfig = getConfig(state)?.WebsocketURL ?? '';
 
-                window.callsClient = new CallClient();
+                window.callsClient = new CallClient({
+                    websocketURL: getWSConnectionURL(websocketURLInConfig),
+                });
                 window.currentCallData = CurrentCallDataDefault;
 
                 const locale = getCurrentUserLocale(state) || 'en';
@@ -712,9 +703,16 @@ export default class Plugin {
                     if (window.desktop) {
                         registry.unregisterComponent(rootComponentID);
                     }
+
                     if (window.callsClient) {
+                        const currentSessionID = window.callsClient.getSessionID();
+                        const currentUserID = getCurrentUserId(store.getState());
+                        if (currentSessionID) {
+                            store.dispatch(leaveUser(window.callsClient.channelID, currentUserID, currentSessionID));
+                        }
+
                         store.dispatch(localSessionClose(window.callsClient.channelID));
-                        window.callsClient.destroy();
+                        void window.callsClient.disconnect();
                         delete window.callsClient;
                         delete window.currentCallData;
                         playSound('leave_self');
@@ -726,36 +724,28 @@ export default class Plugin {
                 });
 
                 window.callsClient.on(CALL_EVENT.MUTE, (session_id: string, userID: string) => {
-                    store.dispatch({
-                        type: USER_MUTED,
-                        data: {
-                            channelID: window.callsClient?.channelID,
-                            userID,
-                            session_id,
-                        },
-                    });
+                    store.dispatch(userMuted(window.callsClient?.channelID ?? '', session_id, userID));
                 });
 
                 window.callsClient.on(CALL_EVENT.UNMUTE, (session_id: string, userID: string) => {
-                    store.dispatch({
-                        type: USER_UNMUTED,
-                        data: {
-                            channelID: window.callsClient?.channelID,
-                            userID,
-                            session_id,
-                        },
-                    });
+                    store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', session_id, userID));
+                });
+
+                window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
+                    store.dispatch(usersVoiceActivityChanged(window.callsClient?.channelID ?? '', sessionIDs, userIDs));
                 });
 
                 window.callsClient.on(CALL_EVENT.USER_JOINED, (session_id: string, userID: string, isFromInitialSync?: boolean) => {
-                    store.dispatch(userJoined(window.callsClient?.channelID ?? '', userID, session_id, Boolean(isFromInitialSync)));
+                    store.dispatch(joinUser(window.callsClient?.channelID ?? '', userID, session_id, Boolean(isFromInitialSync)));
                 });
 
                 window.callsClient.on(CALL_EVENT.USER_LEFT, (session_id: string, userID: string) => {
-                    store.dispatch(userLeft(window.callsClient?.channelID ?? '', userID, session_id));
+                    store.dispatch(leaveUser(window.callsClient?.channelID ?? '', userID, session_id));
                 });
 
-                window.callsClient.connect(channelID).catch((err: Error) => {
+                store.dispatch(setClientConnecting(true));
+
+                window.callsClient.connect({channelID, title, threadID: rootId}).catch((err: Error) => {
                     store.dispatch(setClientConnecting(false));
 
                     logErr(err);
@@ -763,8 +753,6 @@ export default class Plugin {
                     store.dispatch(displayCallErrorModal(err, channelID));
                     delete window.callsClient;
                 });
-
-                store.dispatch(setClientConnecting(true));
             } catch (err) {
                 delete window.callsClient;
                 logErr(err);
@@ -868,13 +856,7 @@ export default class Plugin {
                             },
                         });
 
-                        actions.push({
-                            type: USERS_STATES,
-                            data: {
-                                states: getSessionsMapFromSessions(call.sessions),
-                                channelID: data[i].channel_id,
-                            },
-                        });
+                        actions.push(sessionsReceived(data[i].channel_id, getSessionsMapFromSessions(call.sessions)));
 
                         if (ringingEnabled(store.getState()) && data[i].call) {
                             // dismissedNotification is populated after the actions array has been batched, so manually check:
@@ -1001,9 +983,7 @@ export default class Plugin {
                 window.callsClient.disconnect();
             }
             logDebug('resetting state');
-            store.dispatch({
-                type: UNINIT,
-            });
+            store.dispatch(unInitialized());
         });
 
         // A dummy React component so we can access webapp's
@@ -1019,9 +999,7 @@ export default class Plugin {
                     logDebug('websocket reconnect handler');
                     if (!getCallsClient()) {
                         logDebug('resetting state');
-                        store.dispatch({
-                            type: UNINIT,
-                        });
+                        store.dispatch(unInitialized());
                     }
                     onActivate(client);
                 });

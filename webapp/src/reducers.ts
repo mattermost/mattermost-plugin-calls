@@ -2,9 +2,19 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
+
 import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
+import {
+    CALL_ENDED,
+    UN_INITIALIZED,
+    USER_JOINED,
+    USER_LEFT,
+    USER_REACTED,
+    USER_REACTED_TIMEOUT,
+} from 'src/state/session/action_types';
+import {sessionsReducer as sessions} from 'src/state/session/reducers';
 import {
     CallsConfigDefault,
     CallsUserPreferences,
@@ -19,7 +29,6 @@ import {
 
 import {
     ADD_INCOMING_CALL,
-    CALL_END,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
@@ -53,23 +62,9 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
-    UNINIT,
-    USER_JOINED,
     USER_JOINED_TIMEOUT,
-    USER_LEFT,
-    USER_LOWER_HAND,
-    USER_MUTED,
-    USER_RAISE_HAND,
-    USER_REACTED,
-    USER_REACTED_TIMEOUT,
     USER_SCREEN_OFF,
     USER_SCREEN_ON,
-    USER_UNMUTED,
-    USER_VIDEO_OFF,
-    USER_VIDEO_ON,
-    USER_VOICE_OFF,
-    USER_VOICE_ON,
-    USERS_STATES,
 } from './action_types';
 
 type channelsState = {
@@ -119,7 +114,7 @@ type callEndData = {
 // connected through the global widget.
 const clientStateReducer = (state: clientState = null, action: clientStateAction | callEndAction) => {
     switch (action.type) {
-    case UNINIT:
+    case UN_INITIALIZED:
         return null;
     case DESKTOP_WIDGET_CONNECTED: {
         const data = action.data as clientStateData;
@@ -135,7 +130,7 @@ const clientStateReducer = (state: clientState = null, action: clientStateAction
         }
         return state;
     }
-    case CALL_END: {
+    case CALL_ENDED: {
         const data = action.data as callEndData;
         if (data.channelID === state?.channelID) {
             return null;
@@ -162,306 +157,10 @@ type sessionsAction = {
         raised_hand?: number;
         reaction?: Reaction;
         states: { [userID: string]: UserSessionState };
+        user_ids: string[];
+        session_ids: string[];
     };
 }
-
-const sessions = (state: sessionsState = {}, action: sessionsAction) => {
-    switch (action.type) {
-    case UNINIT:
-        return {};
-    case CALL_END: {
-        const nextState = {...state};
-        delete nextState[action.data.channelID];
-        return nextState;
-    }
-    case USER_JOINED:
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: {
-                    session_id: action.data.session_id,
-                    user_id: action.data.userID,
-                    unmuted: false,
-                    voice: false,
-                    video: false,
-                    raised_hand: 0,
-                },
-            },
-        };
-    case USER_LEFT:
-        if (state[action.data.channelID]) {
-            // eslint-disable-next-line
-            const {[action.data.session_id]: omit, ...res} = state[action.data.channelID];
-            return {
-                ...state,
-                [action.data.channelID]: res,
-            };
-        }
-        return state;
-    case USERS_STATES:
-        return {
-            ...state,
-            [action.data.channelID]: action.data.states,
-        };
-    case USER_MUTED:
-        if (!state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    [action.data.session_id]: {
-                        session_id: action.data.session_id,
-                        user_id: action.data.userID,
-                        unmuted: false,
-                        voice: false,
-                        video: false,
-                        raised_hand: 0,
-                    },
-                },
-            };
-        }
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: {
-                    ...state[action.data.channelID][action.data.session_id],
-                    unmuted: false,
-                },
-            },
-        };
-    case USER_UNMUTED:
-        if (!state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    [action.data.session_id]: {
-                        session_id: action.data.session_id,
-                        user_id: action.data.userID,
-                        unmuted: true,
-                        voice: false,
-                        video: false,
-                        raised_hand: 0,
-                    },
-                },
-            };
-        }
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: {
-                    ...state[action.data.channelID][action.data.session_id],
-                    unmuted: true,
-                },
-            },
-        };
-    case USER_VOICE_ON:
-        if (!state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    [action.data.session_id]: {
-                        session_id: action.data.session_id,
-                        user_id: action.data.userID,
-                        unmuted: false,
-                        voice: true,
-                        video: false,
-                        raised_hand: 0,
-                    },
-                },
-            };
-        }
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: {
-                    ...state[action.data.channelID][action.data.session_id],
-                    voice: true,
-                },
-            },
-        };
-    case USER_VOICE_OFF:
-        if (!state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    [action.data.session_id]: {
-                        session_id: action.data.session_id,
-                        user_id: action.data.userID,
-                        unmuted: false,
-                        voice: false,
-                        video: false,
-                        raised_hand: 0,
-                    },
-                },
-            };
-        }
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: {
-                    ...state[action.data.channelID][action.data.session_id],
-                    voice: false,
-                },
-            },
-        };
-    case USER_RAISE_HAND:
-        if (!state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    [action.data.session_id]: {
-                        session_id: action.data.session_id,
-                        user_id: action.data.userID,
-                        unmuted: false,
-                        voice: false,
-                        video: false,
-                        raised_hand: action.data.raised_hand,
-                    },
-                },
-            };
-        }
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: {
-                    ...state[action.data.channelID][action.data.session_id],
-                    raised_hand: action.data.raised_hand,
-                },
-            },
-        };
-    case USER_LOWER_HAND:
-        if (!state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    [action.data.session_id]: {
-                        session_id: action.data.session_id,
-                        user_id: action.data.userID,
-                        voice: false,
-                        unmuted: false,
-                        video: false,
-                        raised_hand: action.data.raised_hand,
-                    },
-                },
-            };
-        }
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: {
-                    ...state[action.data.channelID][action.data.session_id],
-                    raised_hand: action.data.raised_hand,
-                },
-            },
-        };
-    case USER_REACTED:
-        if (!state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    [action.data.session_id]: {
-                        session_id: action.data.session_id,
-                        user_id: action.data.userID,
-                        voice: false,
-                        unmuted: false,
-                        raised_hand: 0,
-                        video: false,
-                        reaction: action.data.reaction,
-                    },
-                },
-            };
-        }
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: {
-                    ...state[action.data.channelID][action.data.session_id],
-                    reaction: action.data.reaction,
-                },
-            },
-        };
-    case USER_REACTED_TIMEOUT: {
-        const storedReaction = state[action.data.channelID]?.[action.data.session_id]?.reaction;
-        if (!storedReaction || !action.data.reaction) {
-            return state;
-        }
-        if (storedReaction.timestamp > action.data.reaction.timestamp) {
-            return state;
-        }
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: {
-                    ...state[action.data.channelID][action.data.session_id],
-                    reaction: null,
-                },
-            },
-        };
-    }
-    case USER_VIDEO_ON:
-        if (!state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    [action.data.session_id]: {
-                        session_id: action.data.session_id,
-                        user_id: action.data.userID,
-                        unmuted: false,
-                        voice: false,
-                        raised_hand: 0,
-                        video: true,
-                    },
-                },
-            };
-        }
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: {
-                    ...state[action.data.channelID][action.data.session_id],
-                    video: true,
-                },
-            },
-        };
-    case USER_VIDEO_OFF:
-        if (!state[action.data.channelID]) {
-            return {
-                ...state,
-                [action.data.channelID]: {
-                    [action.data.session_id]: {
-                        session_id: action.data.session_id,
-                        user_id: action.data.userID,
-                        unmuted: true,
-                        voice: false,
-                        raised_hand: 0,
-                        video: false,
-                    },
-                },
-            };
-        }
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...state[action.data.channelID],
-                [action.data.session_id]: {
-                    ...state[action.data.channelID][action.data.session_id],
-                    video: false,
-                },
-            },
-        };
-    default:
-        return state;
-    }
-};
 
 export type usersReactionsState = {
     [channelID: string]: {
@@ -623,7 +322,7 @@ type disclaimerDismissedAction = {
 
 const recordings = (state: callsJobState = {}, action: jobStateAction | localSessionCloseAction | disclaimerDismissedAction) => {
     switch (action.type) {
-    case UNINIT:
+    case UN_INITIALIZED:
         return {};
     case LOCAL_SESSION_CLOSE: {
         const theAction = action as localSessionCloseAction;
@@ -693,7 +392,7 @@ type callsState = {
 
 const calls = (state: callsState = {}, action: callStateAction) => {
     switch (action.type) {
-    case UNINIT:
+    case UN_INITIALIZED:
         return {};
     case CALL_STATE:
         return {
@@ -702,7 +401,7 @@ const calls = (state: callsState = {}, action: callStateAction) => {
                 ...action.data,
             },
         };
-    case CALL_END: {
+    case CALL_ENDED: {
         const nextState = {...state};
         delete nextState[action.data.channelID];
         return nextState;
@@ -730,7 +429,7 @@ type hostsStateAction = {
 
 const hosts = (state: hostsState = {}, action: hostsStateAction) => {
     switch (action.type) {
-    case UNINIT:
+    case UN_INITIALIZED:
         return {};
     case CALL_HOST:
         return {
@@ -759,7 +458,7 @@ type screenSharingIDAction = {
 
 const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenSharingIDAction) => {
     switch (action.type) {
-    case UNINIT:
+    case UN_INITIALIZED:
         return {};
     case USER_SCREEN_ON:
         return {
@@ -767,15 +466,8 @@ const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenShari
             [action.data.channelID]: action.data.session_id,
         };
     case USER_LEFT: {
-        // If the user who disconnected matches the one sharing we
-        // want to fallthrough and clear the state.
-        if (action.data.session_id !== state[action.data.channelID]) {
-            return state;
-        }
-    }
-    // eslint-disable-next-line no-fallthrough
-    case CALL_END:
-    case USER_SCREEN_OFF:
+        // If the user who disconnected was the one sharing, clear it.
+        // Otherwise keep state — they weren't the sharer.
         if (action.data.session_id !== state[action.data.channelID]) {
             return state;
         }
@@ -783,6 +475,22 @@ const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenShari
             ...state,
             [action.data.channelID]: '',
         };
+    }
+    case USER_SCREEN_OFF:{
+        if (action.data.session_id !== state[action.data.channelID]) {
+            return state;
+        }
+        return {
+            ...state,
+            [action.data.channelID]: '',
+        };
+    }
+    case CALL_ENDED:{
+        return {
+            ...state,
+            [action.data.channelID]: '',
+        };
+    }
     default:
         return state;
     }
@@ -790,7 +498,7 @@ const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenShari
 
 const expandedView = (state = false, action: { type: string }) => {
     switch (action.type) {
-    case UNINIT:
+    case UN_INITIALIZED:
         return false;
     case SHOW_EXPANDED_VIEW:
         return true;
@@ -806,7 +514,7 @@ const switchCallModal = (state = {
     targetID: '',
 }, action: { type: string, data?: { targetID: string } }) => {
     switch (action.type) {
-    case UNINIT:
+    case UN_INITIALIZED:
         return {show: false, targetID: ''};
     case SHOW_SWITCH_CALL_MODAL:
         return {show: true, targetID: action.data?.targetID};
@@ -819,7 +527,7 @@ const switchCallModal = (state = {
 
 const screenSourceModal = (state = false, action: { type: string }) => {
     switch (action.type) {
-    case UNINIT:
+    case UN_INITIALIZED:
         return false;
     case SHOW_SCREEN_SOURCE_MODAL:
         return true;
@@ -897,7 +605,7 @@ type recentlyJoinedUsersAction = {
 
 const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: recentlyJoinedUsersAction) => {
     switch (action.type) {
-    case UNINIT:
+    case UN_INITIALIZED:
         return {};
     case USER_JOINED:
         if (!state[action.data.channelID]) {
@@ -918,7 +626,7 @@ const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: recen
             ...state,
             [action.data.channelID]: state[action.data.channelID]?.filter((val) => val !== action.data.userID),
         };
-    case CALL_END:
+    case CALL_ENDED:
         return {
             ...state,
             [action.data.channelID]: [],
@@ -964,11 +672,15 @@ type RingNotifyForCallsAction = {
 
 const ringingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
     switch (action.type) {
-    case RINGING_FOR_CALL:
+    case RINGING_FOR_CALL: {
+        if (!action.data.callID) {
+            return state;
+        }
         return {
             ...state,
             [action.data.callID]: true,
         };
+    }
     case DID_RING_FOR_CALL: {
         const nextState = {...state};
         delete nextState[action.data.callID];
@@ -982,11 +694,16 @@ const ringingForCalls = (state: { [callID: string]: boolean } = {}, action: Ring
 const didRingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
     switch (action.type) {
     case DID_RING_FOR_CALL:
-    case RINGING_FOR_CALL:
+    case RINGING_FOR_CALL:{
+        if (!action.data.callID) {
+            return state;
+        }
+
         return {
             ...state,
             [action.data.callID]: true,
         };
+    }
     default:
         return state;
     }
@@ -1018,7 +735,7 @@ const dismissedCalls = (state: { [callID: string]: boolean } = {}, action: RingN
 
 const clientConnecting = (state = false, action: { type: string, data: boolean }) => {
     switch (action.type) {
-    case UNINIT:
+    case UN_INITIALIZED:
         return false;
     case CLIENT_CONNECTING:
         return action.data;

@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-// eslint-disable max-lines
+/* eslint-disable max-lines */
 
 import {parseRTCStats, RTCMonitor, RTCPeer} from '@mattermost/calls-common';
 import type {CallsClientJoinData, EmojiData, RTPEncodingParameters, TrackInfo} from '@mattermost/calls-common/lib/types';
@@ -648,6 +648,10 @@ export default class CallsClient extends EventEmitter {
                 logErr('ws.on(message): failed to handle message', err, 'data:', data);
             }
         });
+
+        // WebSocketClient now requires an explicit connect() call after handlers
+        // are attached (its constructor only stores config now).
+        ws.connect();
     }
 
     public destroy() {

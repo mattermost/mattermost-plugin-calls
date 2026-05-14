@@ -36,11 +36,11 @@ import {
     ringingForCall,
     shouldPlayJoinUserSound,
 } from 'src/selectors';
+import {callEnded, getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/session/actions';
 import {CallsStats, ChannelType} from 'src/types/types';
 import {
     getCallsClientSessionID,
     getPluginPath,
-    getSessionsMapFromSessions,
     getUserIDsForSessions,
     isDMChannel,
     isGMChannel,
@@ -51,7 +51,6 @@ import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
     ADD_INCOMING_CALL,
-    CALL_END,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
@@ -77,11 +76,8 @@ import {
     SHOW_SWITCH_CALL_MODAL,
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
-    USER_JOINED,
     USER_JOINED_TIMEOUT,
-    USER_LEFT,
     USER_SCREEN_ON,
-    USERS_STATES,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch) => {
@@ -405,10 +401,10 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
 }
 
 /**
- * userJoined thunk handles the side effects of a participant joining the call
+ * joinUser thunk handles the side effects of a participant joining the call
  * `isFromInitialSync` is for participants we're catching up on at connect time (already in the room when we joined).
  */
-export const userJoined = (channelID: string, userID: string, sessionID: string, isFromInitialSync = false) => {
+export const joinUser = (channelID: string, userID: string, sessionID: string, isFromInitialSync = false) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
         const state = getState();
         const currentUserID = getCurrentUserId(state);
@@ -433,15 +429,7 @@ export const userJoined = (channelID: string, userID: string, sessionID: string,
 
         dispatch(loadProfilesByIdsIfMissing([userID]));
 
-        const userJoinedAction = {
-            type: USER_JOINED,
-            data: {
-                channelID,
-                userID,
-                currentUserID,
-                session_id: sessionID,
-            },
-        };
+        const userJoinedAction = userJoined(channelID, sessionID, userID, currentUserID);
         const userJoinedTimeoutAction = {
             type: USER_JOINED_TIMEOUT,
             data: {
@@ -463,16 +451,9 @@ export const userJoined = (channelID: string, userID: string, sessionID: string,
     };
 };
 
-export const userLeft = (channelID: string, userID: string, sessionID: string) => {
+export const leaveUser = (channelID: string, userID: string, sessionID: string) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
-        dispatch({
-            type: USER_LEFT,
-            data: {
-                channelID,
-                userID,
-                session_id: sessionID,
-            },
-        });
+        dispatch(userLeft(channelID, sessionID, userID));
 
         if (numSessionsInCallInChannel(getState(), channelID) === 0) {
             dispatch(callEnd(channelID));
@@ -488,13 +469,7 @@ export const callEnd = (channelID: string) => {
 
         const callID = calls(getState())[channelID]?.ID || '';
 
-        dispatch({
-            type: CALL_END,
-            data: {
-                channelID,
-                callID,
-            },
-        });
+        dispatch(callEnded(channelID, callID));
 
         dispatch(removeIncomingCallNotification(callID));
     };
@@ -647,13 +622,7 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
         dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(call.sessions)));
     }
 
-    actions.push({
-        type: USERS_STATES,
-        data: {
-            states: getSessionsMapFromSessions(call.sessions),
-            channelID,
-        },
-    });
+    actions.push(sessionsReceived(channelID, getSessionsMapFromSessions(call.sessions)));
 
     dispatch(batchActions(actions));
 };

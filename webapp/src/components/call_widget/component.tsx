@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-/* eslint-disable-file max-lines */
+/* eslint-disable max-lines */
 
 import './component.scss';
 
@@ -17,6 +17,7 @@ import {FormattedMessage, IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
+import {CALL_EVENT} from 'src/clients/call/constants';
 import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
@@ -503,7 +504,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         };
 
         this.attachVoiceTracks(window.callsClient.getRemoteVoiceTracks());
-        window.callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
+        window.callsClient.on(CALL_EVENT.REMOTE_VOICE_STREAM, (stream: MediaStream) => {
             this.attachVoiceTracks(stream.getAudioTracks());
         });
 
@@ -535,7 +536,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
-        window.callsClient.on('devicechange', (devices: MediaDevices, videoDevices: MediaDeviceInfo[]) => {
+        window.callsClient.on(CALL_EVENT.DEVICE_CHANGE, (devices: MediaDevices, videoDevices: MediaDeviceInfo[]) => {
             const state = {} as State;
 
             if (window.callsClient) {
@@ -545,10 +546,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                 if (window.callsClient.currentAudioOutputDevice !== this.state.currentAudioOutputDevice) {
                     state.currentAudioOutputDevice = window.callsClient.currentAudioOutputDevice;
-                }
-
-                if (window.callsClient.currentVideoInputDevice !== this.state.currentVideoInputDevice) {
-                    state.currentVideoInputDevice = window.callsClient.currentVideoInputDevice;
                 }
             }
 
@@ -572,7 +569,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
-        window.callsClient.on('devicefallback', (device: MediaDeviceInfo) => {
+        window.callsClient.on(CALL_EVENT.DEVICE_FALLBACK, (device: MediaDeviceInfo) => {
             if (device.kind === 'audioinput') {
                 this.setState({
                     alerts: {
@@ -604,7 +601,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         });
 
-        window.callsClient.on('connect', () => {
+        window.callsClient.on(CALL_EVENT.CONNECTED, () => {
             const callsClient = window.callsClient;
 
             if (this.props.global && callsClient) {
@@ -626,10 +623,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             this.setState({currentAudioInputDevice: callsClient?.currentAudioInputDevice});
             this.setState({currentAudioOutputDevice: callsClient?.currentAudioOutputDevice});
-            this.setState({currentVideoInputDevice: callsClient?.currentVideoInputDevice});
         });
 
-        window.callsClient.on('error', (err: Error) => {
+        window.callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
             if (err === AudioInputPermissionsError) {
                 this.setState({
                     alerts: {
@@ -653,7 +649,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         });
 
-        window.callsClient.on('initaudio', () => {
+        window.callsClient.on(CALL_EVENT.INIT_AUDIO, () => {
             this.setState({
                 alerts: {
                     ...this.state.alerts,
@@ -1411,8 +1407,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             }
         };
 
-        let devices = deviceType === 'audioinput' ? this.state.devices.inputs?.filter((device) => device.deviceId && device.label) :
-            this.state.devices.outputs?.filter((device) => device.deviceId && device.label);
+        let devices = deviceType === 'audioinput' ? this.state.devices.inputs?.filter((device) => device.deviceId && device.label) : this.state.devices.outputs?.filter((device) => device.deviceId && device.label);
         if (deviceType === 'videoinput' && this.state.videoDevices) {
             devices = this.state.videoDevices.filter((device) => device.deviceId && device.label);
         }
@@ -1434,8 +1429,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showSubMenu = devices.length > 0;
         }
 
-        let deviceTypeLabel = deviceType === 'audioinput' ?
-            formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio output'});
+        let deviceTypeLabel = deviceType === 'audioinput' ? formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio output'});
         if (deviceType === 'videoinput') {
             deviceTypeLabel = formatMessage({defaultMessage: 'Camera'});
         }
@@ -1619,8 +1613,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const RecordIcon = this.props.isRecording ? RecordSquareIcon : RecordCircleIcon;
 
-        const recordingActionLabel = this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) :
-            formatMessage({defaultMessage: 'Record call'});
+        const recordingActionLabel = this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
 
         return (
             <React.Fragment>
@@ -1668,8 +1661,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const noPermissions = this.state.alerts.missingScreenPermissions.active;
 
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
-        const screenSharingActionLabel = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) :
-            formatMessage({defaultMessage: 'Start presenting'});
+        const screenSharingActionLabel = isSharing ? formatMessage({defaultMessage: 'Stop presenting'}) : formatMessage({defaultMessage: 'Start presenting'});
 
         return (
             <React.Fragment>
@@ -2512,8 +2504,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const showLeaveMenuShim = !(this.state.showMenu || this.state.showParticipantsList || this.props.screenSharingSession) && this.state.leaveMenuOpen;
 
         const openPopOutLabel = formatMessage({defaultMessage: 'Open in new window'});
-        const showParticipantsListLabel = this.state.showParticipantsList ?
-            formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'});
+        const showParticipantsListLabel = this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'});
         const settingsButtonLabel = formatMessage({defaultMessage: 'More options'});
         const leaveMenuLabel = formatMessage({defaultMessage: 'Leave call'});
 
