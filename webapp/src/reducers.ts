@@ -429,9 +429,10 @@ type hostsStateAction = {
 
 const hosts = (state: hostsState = {}, action: hostsStateAction) => {
     switch (action.type) {
-    case UN_INITIALIZED:
+    case UN_INITIALIZED:{
         return {};
-    case CALL_HOST:
+    }
+    case CALL_HOST:{
         return {
             ...state,
             [action.data.channelID]: {
@@ -439,6 +440,12 @@ const hosts = (state: hostsState = {}, action: hostsStateAction) => {
                 hostChangeAt: action.data.hostChangeAt,
             },
         };
+    }
+    case CALL_ENDED: {
+        const nextState = {...state};
+        delete nextState[action.data.channelID];
+        return nextState;
+    }
     default:
         return state;
     }
@@ -703,6 +710,11 @@ const didRingForCalls = (state: { [callID: string]: boolean } = {}, action: Ring
             ...state,
             [action.data.callID]: true,
         };
+    }
+    case CALL_ENDED: {
+        const nextState = {...state};
+        delete nextState[action.data.callID];
+        return nextState;
     }
     default:
         return state;
