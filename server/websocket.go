@@ -200,8 +200,12 @@ func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage, h
 		}
 	}
 
-	// Note: Screen sharing stats are persisted when users leave or call ends,
-	// no need to write to DB on every toggle for performance.
+	// Props.ScreenSharingSessionID and ScreenStartAt must be persisted on every
+	// toggle: getCallState reloads from the DB on each handler invocation, so
+	// without this write the next screen_on/screen_off would see stale state.
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		return fmt.Errorf("failed to update call: %w", err)
+	}
 
 	msgType := rtc.ScreenOnMessage
 	wsMsgType := wsEventUserScreenOn
