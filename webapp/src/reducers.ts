@@ -429,10 +429,10 @@ type hostsStateAction = {
 
 const hosts = (state: hostsState = {}, action: hostsStateAction) => {
     switch (action.type) {
-    case UN_INITIALIZED:{
+    case UN_INITIALIZED: {
         return {};
     }
-    case CALL_HOST:{
+    case CALL_HOST: {
         return {
             ...state,
             [action.data.channelID]: {
@@ -483,7 +483,7 @@ const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenShari
             [action.data.channelID]: '',
         };
     }
-    case USER_SCREEN_OFF:{
+    case USER_SCREEN_OFF: {
         if (action.data.session_id !== state[action.data.channelID]) {
             return state;
         }
@@ -492,7 +492,7 @@ const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenShari
             [action.data.channelID]: '',
         };
     }
-    case CALL_ENDED:{
+    case CALL_ENDED: {
         return {
             ...state,
             [action.data.channelID]: '',
@@ -701,7 +701,7 @@ const ringingForCalls = (state: { [callID: string]: boolean } = {}, action: Ring
 const didRingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
     switch (action.type) {
     case DID_RING_FOR_CALL:
-    case RINGING_FOR_CALL:{
+    case RINGING_FOR_CALL: {
         if (!action.data.callID) {
             return state;
         }
