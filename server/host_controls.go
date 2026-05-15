@@ -216,7 +216,7 @@ func (p *Plugin) lowerHand(requesterID, channelID, sessionID string) error {
 	return nil
 }
 
-func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) error {
+func (p *Plugin) hostRemoveParticipant(requesterID, channelID, sessionID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -257,7 +257,7 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 
 		state, err := p.getCallState(channelID, false)
 		if err != nil {
-			p.LogError("hostRemoveSession: failed to get call state", "err", err.Error())
+			p.LogError("hostRemoveParticipant: failed to get call state", "err", err.Error())
 		}
 
 		if state == nil {
@@ -270,7 +270,7 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 		}
 
 		if err := p.livekitRemoveParticipant(channelID, ust.UserID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-			p.LogError("hostRemoveSession: failed to remove participant via LiveKit",
+			p.LogError("hostRemoveParticipant: failed to remove participant via LiveKit",
 				"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 		}
 	}()
