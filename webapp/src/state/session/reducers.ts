@@ -19,13 +19,13 @@ import {Actions} from './actions';
 
 type State = {
     [channelID: Channel['id']]: {
-        [session_id: string]: UserSessionState;
+        [session_id: UserSessionState['session_id']]: UserSessionState;
     }
 }
 
 const emptyState: State = {};
 
-export const sessionsReducer: Reducer<State, Actions> = (initialState = emptyState, action) : State => {
+export const reducer: Reducer<State, Actions> = (initialState = emptyState, action) : State => {
     switch (action.type) {
     case UN_INITIALIZED: {
         return emptyState;

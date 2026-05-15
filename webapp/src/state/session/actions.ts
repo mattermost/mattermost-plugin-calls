@@ -19,6 +19,7 @@ import {
 export const unInitialized = () => ({
     type: UN_INITIALIZED,
 });
+export type ActionUnInitialized = ReturnType<typeof unInitialized>
 
 export const sessionsReceived = (channelID: Channel['id'], sessions: {[session_id: string]: UserSessionState}) => ({
     type: SESSIONS_RECEIVED,
@@ -27,6 +28,7 @@ export const sessionsReceived = (channelID: Channel['id'], sessions: {[session_i
         sessions,
     },
 });
+export type ActionSessionsReceived = ReturnType<typeof sessionsReceived>
 
 export const userJoined = (channelID: Channel['id'], sessionID: string, userID: UserProfile['id'], currentUserID: UserProfile['id']) => ({
     type: USER_JOINED,
@@ -37,15 +39,17 @@ export const userJoined = (channelID: Channel['id'], sessionID: string, userID: 
         currentUserID,
     },
 });
+export type ActionUserJoined = ReturnType<typeof userJoined>
 
 export const usersVoiceActivityChanged = (channelID: Channel['id'], sessionIDs: string[], userIDs: string[]) => ({
     type: USERS_VOICE_ACTIVITY_CHANGED,
     data: {
         channelID,
         session_ids: sessionIDs,
-        user_ids: userIDs,
+        userIDs,
     },
 });
+export type ActionUsersVoiceActivityChanged = ReturnType<typeof usersVoiceActivityChanged>
 
 export const userMuted = (channelID: Channel['id'], sessionID: string, userID: string) => ({
     type: USER_MUTED,
@@ -55,6 +59,7 @@ export const userMuted = (channelID: Channel['id'], sessionID: string, userID: s
         userID,
     },
 });
+export type ActionUserMuted = ReturnType<typeof userMuted>
 
 export const userUnmuted = (channelID: Channel['id'], sessionID: string, userID: string) => ({
     type: USER_UNMUTED,
@@ -64,6 +69,7 @@ export const userUnmuted = (channelID: Channel['id'], sessionID: string, userID:
         userID,
     },
 });
+export type ActionUserUnmuted = ReturnType<typeof userUnmuted>
 
 export const userLeft = (channelID: Channel['id'], sessionID: string, userID: UserProfile['id']) => ({
     type: USER_LEFT,
@@ -73,6 +79,7 @@ export const userLeft = (channelID: Channel['id'], sessionID: string, userID: Us
         session_id: sessionID,
     },
 });
+export type ActionUserLeft = ReturnType<typeof userLeft>
 
 export const callEnded = (channelID: Channel['id'], callID: string) => ({
     type: CALL_ENDED,
@@ -81,16 +88,17 @@ export const callEnded = (channelID: Channel['id'], callID: string) => ({
         callID,
     },
 });
+export type ActionCallEnded = ReturnType<typeof callEnded>
 
 export type Actions =
-  | ReturnType<typeof unInitialized>
-  | ReturnType<typeof sessionsReceived>
-  | ReturnType<typeof userJoined>
-  | ReturnType<typeof usersVoiceActivityChanged>
-  | ReturnType<typeof userMuted>
-  | ReturnType<typeof userUnmuted>
-  | ReturnType<typeof userLeft>
-  | ReturnType<typeof callEnded>
+  | ActionUnInitialized
+  | ActionSessionsReceived
+  | ActionUserJoined
+  | ActionUsersVoiceActivityChanged
+  | ActionUserMuted
+  | ActionUserUnmuted
+  | ActionUserLeft
+  | ActionCallEnded
 
 export function getSessionsMapFromSessions(sessions: UserSessionState[]): {[session_id: string]: UserSessionState} {
     return sessions.reduce((map: Record<string, UserSessionState>, session: UserSessionState) => {

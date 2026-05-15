@@ -512,13 +512,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({
             screenStream: window.callsClient.getRemoteScreenStream(),
         });
-        window.callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+
+        window.callsClient.on(CALL_EVENT.LOCAL_SCREEN_STREAM, (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
         });
 
-        window.callsClient.on('localScreenStream', (stream: MediaStream) => {
+        window.callsClient.on(CALL_EVENT.REMOTE_SCREEN_STREAM, (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
@@ -786,7 +787,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     private shareScreen = async (sourceID: string, withAudio: boolean) => {
-        logDebug(`CallWidget.shareScreen called with sourceID: ${sourceID}, withAudio: ${withAudio}`);
         const stream = await window.callsClient?.shareScreen(sourceID, withAudio);
         if (stream) {
             logDebug(`CallWidget.shareScreen: stream received with ${stream.getVideoTracks().length} video tracks and ${stream.getAudioTracks().length} audio tracks`);

@@ -6,6 +6,7 @@
 import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
+import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducers';
 import {
     CALL_ENDED,
     UN_INITIALIZED,
@@ -14,7 +15,7 @@ import {
     USER_REACTED,
     USER_REACTED_TIMEOUT,
 } from 'src/state/session/action_types';
-import {sessionsReducer as sessions} from 'src/state/session/reducers';
+import {reducer as sessions} from 'src/state/session/reducers';
 import {
     CallsConfigDefault,
     CallsUserPreferences,
@@ -63,8 +64,6 @@ import {
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
     USER_JOINED_TIMEOUT,
-    USER_SCREEN_OFF,
-    USER_SCREEN_ON,
 } from './action_types';
 
 type channelsState = {
@@ -148,7 +147,7 @@ export type sessionsState = {
     };
 }
 
-type sessionsAction = {
+type reactionsAction = {
     type: string;
     data: {
         channelID: string;
@@ -181,7 +180,7 @@ const removeReaction = (reactions: Reaction[], reaction: Reaction) => {
     return reactions.filter((r) => r.user_id !== reaction.user_id || r.timestamp > reaction.timestamp);
 };
 
-const reactions = (state: usersReactionsState = {}, action: sessionsAction) => {
+const reactions = (state: usersReactionsState = {}, action: reactionsAction) => {
     switch (action.type) {
     case USER_REACTED:
         if (action.data.reaction) {
@@ -445,58 +444,6 @@ const hosts = (state: hostsState = {}, action: hostsStateAction) => {
         const nextState = {...state};
         delete nextState[action.data.channelID];
         return nextState;
-    }
-    default:
-        return state;
-    }
-};
-
-export type screenSharingIDsState = {
-    [channelID: string]: string;
-}
-
-type screenSharingIDAction = {
-    type: string;
-    data: {
-        channelID: string;
-        session_id: string;
-    }
-}
-
-const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenSharingIDAction) => {
-    switch (action.type) {
-    case UN_INITIALIZED:
-        return {};
-    case USER_SCREEN_ON:
-        return {
-            ...state,
-            [action.data.channelID]: action.data.session_id,
-        };
-    case USER_LEFT: {
-        // If the user who disconnected was the one sharing, clear it.
-        // Otherwise keep state — they weren't the sharer.
-        if (action.data.session_id !== state[action.data.channelID]) {
-            return state;
-        }
-        return {
-            ...state,
-            [action.data.channelID]: '',
-        };
-    }
-    case USER_SCREEN_OFF: {
-        if (action.data.session_id !== state[action.data.channelID]) {
-            return state;
-        }
-        return {
-            ...state,
-            [action.data.channelID]: '',
-        };
-    }
-    case CALL_ENDED: {
-        return {
-            ...state,
-            [action.data.channelID]: '',
-        };
     }
     default:
         return state;
@@ -803,7 +750,7 @@ const hostControlNotices = (state: hostControlNoticeState = {},
     }
 };
 
-export default combineReducers({
+const rootReducer = combineReducers({
     channels,
     clientStateReducer,
     reactions,
@@ -831,3 +778,12 @@ export default combineReducers({
     clientConnecting,
     hostControlNotices,
 });
+
+export default rootReducer;
+
+export const initialRootState = rootReducer(
+    {} as Parameters<typeof rootReducer>[0],
+    {type: '@@INIT'} as Parameters<typeof rootReducer>[1],
+);
+
+export type RootState = ReturnType<typeof rootReducer>;

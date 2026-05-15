@@ -660,7 +660,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 screenStream: stream,
             });
         });
-        callsClient.on('localScreenStream', (stream: MediaStream) => {
+        callsClient.on(CALL_EVENT.LOCAL_SCREEN_STREAM, (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
@@ -760,7 +760,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         });
 
         this.setAudioDevices(callsClient.getAudioDevices());
-        this.setVideoDevices(callsClient.getVideoDevices());
 
         const screenStream = callsClient.getLocalScreenStream() || callsClient.getRemoteScreenStream();
 

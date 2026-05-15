@@ -10,6 +10,7 @@ import {alphaSortSessions, getUserDisplayName, stateSortSessions, untranslatable
 import React, {useCallback, useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
+import {CALL_EVENT} from 'src/clients/call';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import Timestamp from 'src/components/timestamp';
@@ -58,12 +59,12 @@ const RecordingView = () => {
         }
 
         setScreenStream(callsClient.getRemoteScreenStream());
-        callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+        callsClient.on(CALL_EVENT.REMOTE_SCREEN_STREAM, (stream: MediaStream) => {
             setScreenStream(stream);
         });
 
         attachVoiceTracks(callsClient.getRemoteVoiceTracks());
-        callsClient.on('remoteVoiceStream', (stream: MediaStream) => {
+        callsClient.on(CALL_EVENT.REMOTE_VOICE_STREAM, (stream: MediaStream) => {
             attachVoiceTracks(stream.getAudioTracks());
         });
     }, [callsClient]);
