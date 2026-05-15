@@ -6,6 +6,6 @@ rtc:
   udp_port: 7882
   use_ice_lite: true
 keys:
-  devkey: secretkeyforlivekitservercie2etest
+  devkey: secret_key_for_livekit_server_ci_e2e_test
 logging:
   level: info

@@ -80,7 +80,7 @@ jobs:
       # LiveKit credentials match e2e/docker/livekit.yaml.
       MM_CALLS_LIVE_KIT_URL: ws://livekit:7880
       MM_CALLS_LIVE_KIT_API_KEY: devkey
-      MM_CALLS_LIVE_KIT_API_SECRET: secretkeyforlivekitservercie2etest
+      MM_CALLS_LIVE_KIT_API_SECRET: secret_key_for_livekit_server_ci_e2e_test
       CI_NODE_INDEX: ${{ matrix.run_id }}
       CI_NODE_TOTAL: ${{ needs.generate-matrix.outputs.parallelism }}
       WORKSPACE: ${{github.workspace}}

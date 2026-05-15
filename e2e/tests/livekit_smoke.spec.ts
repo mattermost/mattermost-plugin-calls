@@ -42,24 +42,26 @@ test.describe('livekit framework smoke', {tag: '@livekit-smoke'}, () => {
             await expect(startCallButton).toBeVisible();
             await startCallButton.click();
 
-            // The widget appearing + loading overlay clearing means the plugin's
-            // token endpoint returned a valid LiveKit URL+JWT and the browser
-            // completed the LiveKit room handshake.
+            // Widget visible + loading overlay hidden is the UI signal that the
+            // CallClient reached CONNECTED — clientConnecting flips false on that
+            // event, and the widget unmounts on connect errors, so getting here
+            // proves the plugin's token endpoint returned a valid URL+JWT and
+            // the browser completed the LiveKit room handshake.
             await expect(page.locator('#calls-widget')).toBeVisible();
             await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
 
-            // Confirm the underlying LiveKit room reached the 'connected' state.
-            // This is what proves the end-to-end LiveKit URL/API key/API secret
-            // plumbing works — a token signed with the wrong secret, or a server
-            // the browser can't reach, would never get here.
-            await page.waitForFunction(() => window.callsClient?.room?.state === 'connected');
-
-            // The widget joins regular channels muted (auto-unmute only triggers in
-            // DM/GM channels). Toggle the mic so an audio track gets published, then
-            // verify it actually shows up in localParticipant.audioTrackPublications.
-            // This proves the WebRTC negotiation isn't stuck halfway.
-            await page.locator('#voice-mute-unmute').click();
-            await page.waitForFunction(() => (window.callsClient?.room?.localParticipant?.audioTrackPublications?.size ?? 0) > 0);
+            // Joining a regular channel starts muted (auto-unmute only fires in
+            // DM/GM channels), so the mic button's aria-label is "Unmute". Click
+            // it and assert it flips to "Mute". The flip requires the round-trip
+            // to land: setMicrophoneEnabled(true) publishes the audio track to
+            // LiveKit → server marks the session unmuted → broadcasts via WS →
+            // redux updates `currentSession.unmuted` → button re-renders. A
+            // half-negotiated track or a stuck WS would leave the label as
+            // "Unmute".
+            const muteButton = page.locator('#voice-mute-unmute');
+            await expect(muteButton).toHaveAttribute('aria-label', 'Unmute');
+            await muteButton.click();
+            await expect(muteButton).toHaveAttribute('aria-label', 'Mute');
 
             // Leave cleanly via the widget menu and confirm the widget disappears.
             await page.locator('#calls-widget-leave-button').click();
