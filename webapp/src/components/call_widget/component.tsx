@@ -5,12 +5,12 @@
 
 import './component.scss';
 
-import {mosThreshold} from '@mattermost/calls-common';
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
+import {ConnectionQuality} from 'livekit-client';
 import {Client4} from 'mattermost-redux/client';
 import React, {CSSProperties, useEffect, useState} from 'react';
 import {FormattedMessage, IntlShape} from 'react-intl';
@@ -673,8 +673,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
-        window.callsClient?.on('mos', (mos: number) => {
-            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+        window.callsClient?.on(CALL_EVENT.QUALITY_CHANGED, (quality: ConnectionQuality) => {
+            const degraded = quality === ConnectionQuality.Poor || quality === ConnectionQuality.Lost;
+            const healthy = quality === ConnectionQuality.Excellent || quality === ConnectionQuality.Good;
+            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && degraded) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -685,7 +687,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     },
                 });
             }
-            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && healthy) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,

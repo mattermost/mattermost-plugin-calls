@@ -3,7 +3,7 @@
 
 /* eslint-disable max-lines */
 
-import {parseRTCStats, RTCMonitor, RTCPeer} from '@mattermost/calls-common';
+import {parseRTCStats, RTCPeer} from '@mattermost/calls-common';
 import type {CallsClientJoinData, EmojiData, RTPEncodingParameters, TrackInfo} from '@mattermost/calls-common/lib/types';
 import {EventEmitter} from 'events';
 import {strToU8, zlibSync} from 'fflate';
@@ -44,8 +44,6 @@ export const DefaultVideoTrackOptions: MediaTrackConstraints = {
     },
 };
 
-const rtcMonitorInterval = 10000;
-
 export default class CallsClient extends EventEmitter {
     public channelID: string;
     private readonly config: CallsClientConfig;
@@ -71,7 +69,6 @@ export default class CallsClient extends EventEmitter {
     private closed = false;
     private connected = false;
     public initTime = Date.now();
-    private rtcMonitor: RTCMonitor | null = null;
     private av1Codec: Awaited<ReturnType<typeof RTCPeer.getVideoCodec>> = null;
     private defaultAudioTrackOptions: MediaTrackConstraints;
     private defaultVideoTrackOptions: MediaTrackConstraints;
@@ -532,18 +529,6 @@ export default class CallsClient extends EventEmitter {
 
             this.collectICEStats();
 
-            this.rtcMonitor = new RTCMonitor({
-                peer,
-                logger: {
-                    logDebug,
-                    logErr,
-                    logWarn,
-                    logInfo,
-                },
-                monitorInterval: rtcMonitorInterval,
-            });
-            this.rtcMonitor.on('mos', (mos: number) => this.emit('mos', mos));
-
             const sdpHandler = (sdp: RTCSessionDescription) => {
                 const payload = JSON.stringify(sdp);
 
@@ -620,7 +605,6 @@ export default class CallsClient extends EventEmitter {
                 logDebug('rtc connected');
 
                 this.emit('connect');
-                this.rtcMonitor?.start();
                 this.connected = true;
             });
 
@@ -670,7 +654,6 @@ export default class CallsClient extends EventEmitter {
         this.removeAllListeners('unmute');
         this.removeAllListeners('raise_hand');
         this.removeAllListeners('lower_hand');
-        this.removeAllListeners('mos');
         this.removeAllListeners('video_on');
         this.removeAllListeners('video_off');
         window.removeEventListener('beforeunload', this.onBeforeUnload);
@@ -833,8 +816,6 @@ export default class CallsClient extends EventEmitter {
             return;
         }
 
-        this.rtcMonitor?.stop();
-
         this.closed = true;
         if (this.peer) {
             this.getStats().then((stats) => {
@@ -898,14 +879,6 @@ export default class CallsClient extends EventEmitter {
                 return;
             }
         }
-
-        // NOTE: we purposely clear the monitor's stats cache upon unmuting
-        // in order to skip some calculations since upon muting we actually
-        // stop sending packets which would result in stats to be skewed as
-        // soon as we resume sending.
-        // This is not perfect but it avoids having to constantly send
-        // silence frames when muted.
-        this.rtcMonitor?.clearCache();
 
         if (this.audioTrack) {
             if (this.voiceTrackAdded) {
@@ -1098,14 +1071,6 @@ export default class CallsClient extends EventEmitter {
                 return null;
             }
         }
-
-        // NOTE: we purposely clear the monitor's stats cache upon starting video
-        // in order to skip some calculations since upon starting video we actually
-        // stop sending packets which would result in stats to be skewed as
-        // soon as we resume sending.
-        // This is not perfect but it avoids having to constantly send
-        // empty frames when the video is off.
-        this.rtcMonitor?.clearCache();
 
         if (!this.localVideoStream) {
             logWarn('no local video stream');

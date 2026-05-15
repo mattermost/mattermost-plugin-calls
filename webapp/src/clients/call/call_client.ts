@@ -7,6 +7,7 @@ import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {ClientConfig} from '@mattermost/types/config';
 import {EventEmitter} from 'events';
 import {
+    ConnectionQuality,
     ConnectionState,
     DisconnectReason,
     LocalParticipant,
@@ -88,6 +89,7 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
         room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
         room.on(RoomEvent.MediaDevicesChanged, this.handleMediaDevicesChanged.bind(this));
+        room.on(RoomEvent.ConnectionQualityChanged, this.handleConnectionQualityChanged.bind(this));
     }
 
     public async connect(connectPayload: ConnectPayload): Promise<void> {
@@ -620,6 +622,19 @@ export default class CallClient extends EventEmitter {
         this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
         logDebug(`CallClient: participant disconnected ${userID}`);
+    }
+
+    /**
+     * Fires when LiveKit publishes a new ConnectionQuality value for any participant.
+     * We only surface the local participant's quality — the SFU's view of our own
+     * uplink/downlink path is what drives the "call quality degraded" banner.
+     */
+    private handleConnectionQualityChanged(quality: ConnectionQuality, participant: Participant) {
+        if (!this.room || participant !== this.room.localParticipant) {
+            return;
+        }
+
+        this.emit(CALL_EVENT.QUALITY_CHANGED, quality);
     }
 
     private handleMediaDevicesError(err: Error) {

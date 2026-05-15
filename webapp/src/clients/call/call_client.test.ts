@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {Room, RoomEvent, Track} from 'livekit-client';
+import {ConnectionQuality, Room, RoomEvent, Track} from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {WebSocketClient} from 'src/clients/websocket';
 import {WEBSOCKET_EVENT} from 'src/clients/websocket/constants';
@@ -556,6 +556,28 @@ describe('CallClient', () => {
             mockRoom.fire(RoomEvent.ActiveSpeakersChanged, []);
 
             expect(listener).toHaveBeenCalledWith([], []);
+        });
+    });
+
+    describe('ConnectionQualityChanged', () => {
+        it('emits QUALITY_CHANGED for the local participant', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const listener = jest.fn();
+            client.on(CALL_EVENT.QUALITY_CHANGED, listener);
+
+            mockRoom.fire(RoomEvent.ConnectionQualityChanged, ConnectionQuality.Poor, mockRoom.localParticipant);
+
+            expect(listener).toHaveBeenCalledWith(ConnectionQuality.Poor);
+        });
+
+        it('ignores quality updates for remote participants', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const listener = jest.fn();
+            client.on(CALL_EVENT.QUALITY_CHANGED, listener);
+
+            mockRoom.fire(RoomEvent.ConnectionQualityChanged, ConnectionQuality.Poor, {sid: 'r1-sid', identity: 'r1___r1-session'});
+
+            expect(listener).not.toHaveBeenCalled();
         });
     });
 

@@ -17,6 +17,7 @@ export const CALL_EVENT = {
     USER_LEFT: 'userLeft',
     DEVICE_CHANGE: 'devicechange',
     DEVICE_FALLBACK: 'devicefallback',
+    QUALITY_CHANGED: 'qualityChanged',
 } as const;
 
 // Plugin call API routes
