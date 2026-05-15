@@ -9,6 +9,7 @@ rtc:
 # verifies JWTs against this pair). Values must match MM_CALLS_LIVE_KIT_API_KEY
 # and MM_CALLS_LIVE_KIT_API_SECRET in .github/workflows/e2e.yml.
 keys:
+  # api_key: api_secret
   devkey_for_livekit_e2e_ci_tests: secret_for_livekit_server_ci_e2e_tests
 logging:
   level: info
