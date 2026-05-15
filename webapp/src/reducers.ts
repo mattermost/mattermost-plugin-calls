@@ -463,15 +463,20 @@ const expandedView = (state = false, action: { type: string }) => {
     }
 };
 
-const switchCallModal = (state = {
+type switchCallModalState = {
+    show: boolean;
+    targetID: string;
+}
+
+const switchCallModal = (state: switchCallModalState = {
     show: false,
     targetID: '',
-}, action: { type: string, data?: { targetID: string } }) => {
+}, action: { type: string, data?: { targetID: string } }): switchCallModalState => {
     switch (action.type) {
     case UN_INITIALIZED:
         return {show: false, targetID: ''};
     case SHOW_SWITCH_CALL_MODAL:
-        return {show: true, targetID: action.data?.targetID};
+        return {show: true, targetID: action.data?.targetID ?? ''};
     case HIDE_SWITCH_CALL_MODAL:
         return {show: false, targetID: ''};
     default:
