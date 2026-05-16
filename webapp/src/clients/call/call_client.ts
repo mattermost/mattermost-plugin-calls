@@ -624,19 +624,6 @@ export default class CallClient extends EventEmitter {
         logDebug(`CallClient: participant disconnected ${userID}`);
     }
 
-    /**
-     * Fires when LiveKit publishes a new ConnectionQuality value for any participant.
-     * We only surface the local participant's quality — the SFU's view of our own
-     * uplink/downlink path is what drives the "call quality degraded" banner.
-     */
-    private handleConnectionQualityChanged(quality: ConnectionQuality, participant: Participant) {
-        if (!this.room || participant !== this.room.localParticipant) {
-            return;
-        }
-
-        this.emit(CALL_EVENT.QUALITY_CHANGED, quality);
-    }
-
     private handleMediaDevicesError(err: Error) {
         logErr('CallClient: media device error', err);
         this.emit(CALL_EVENT.ERROR, err);
@@ -697,6 +684,16 @@ export default class CallClient extends EventEmitter {
         }
 
         this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+    }
+
+    /**
+     * Fires when LiveKit publishes a new ConnectionQuality value for any participant.
+     * We only surface the local participant's quality and not the remote participants' quality.
+     */
+    private handleConnectionQualityChanged(quality: ConnectionQuality, participant: Participant) {
+        if (this.room && this.room.localParticipant === participant) {
+            this.emit(CALL_EVENT.QUALITY_CHANGED, quality);
+        }
     }
 
     private async enumerateDevices(): Promise<MediaDevices> {

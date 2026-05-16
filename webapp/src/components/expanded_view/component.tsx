@@ -9,7 +9,6 @@ import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {ConnectionQuality} from 'livekit-client';
 import {Client4} from 'mattermost-redux/client';
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
@@ -18,7 +17,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
-import {CALL_EVENT} from 'src/clients/call/constants';
+import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
 import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
@@ -807,10 +806,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        callsClient.on(CALL_EVENT.QUALITY_CHANGED, (quality: ConnectionQuality) => {
-            const degraded = quality === ConnectionQuality.Poor || quality === ConnectionQuality.Lost;
-            const healthy = quality === ConnectionQuality.Excellent || quality === ConnectionQuality.Good;
-            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && degraded) {
+        callsClient.on(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
+            const isCallQualityDegraded = quality === CONNECTION_QUALITY.Poor || quality === CONNECTION_QUALITY.Lost;
+            const isCallQualityHealthy = quality === CONNECTION_QUALITY.Excellent || quality === CONNECTION_QUALITY.Good;
+
+            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && isCallQualityDegraded) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -821,7 +821,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     },
                 });
             }
-            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && healthy) {
+
+            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && isCallQualityHealthy) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,

@@ -10,14 +10,13 @@ import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {ConnectionQuality} from 'livekit-client';
 import {Client4} from 'mattermost-redux/client';
 import React, {CSSProperties, useEffect, useState} from 'react';
 import {FormattedMessage, IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import {CALL_EVENT} from 'src/clients/call/constants';
+import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
 import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
@@ -673,10 +672,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
-        window.callsClient?.on(CALL_EVENT.QUALITY_CHANGED, (quality: ConnectionQuality) => {
-            const degraded = quality === ConnectionQuality.Poor || quality === ConnectionQuality.Lost;
-            const healthy = quality === ConnectionQuality.Excellent || quality === ConnectionQuality.Good;
-            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && degraded) {
+        window.callsClient?.on(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
+            const isCallQualityDegraded = quality === CONNECTION_QUALITY.Poor || quality === CONNECTION_QUALITY.Lost;
+            const isCallQualityHealthy = quality === CONNECTION_QUALITY.Excellent || quality === CONNECTION_QUALITY.Good;
+
+            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && isCallQualityDegraded) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -687,7 +687,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     },
                 });
             }
-            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && healthy) {
+
+            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && isCallQualityHealthy) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
