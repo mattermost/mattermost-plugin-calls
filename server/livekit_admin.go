@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/livekit/protocol/livekit"
@@ -23,15 +22,6 @@ func composeLivekitIdentity(userID, sessionID string) string {
 	return userID + userIDSessionIDSeparator + sessionID
 }
 
-func decomposeLivekitIdentity(identity string) (userID, sessionID string) {
-	parts := strings.Split(identity, userIDSessionIDSeparator)
-	if len(parts) != 2 {
-		return "", identity
-	}
-
-	return parts[0], parts[1]
-}
-
 func (p *Plugin) getLiveKitRoomClient() (*lksdk.RoomServiceClient, error) {
 	cfg := p.getConfiguration()
 	lkURL := cfg.getLiveKitURL()
@@ -43,7 +33,8 @@ func (p *Plugin) getLiveKitRoomClient() (*lksdk.RoomServiceClient, error) {
 
 // livekitMuteParticipant force-mutes the participant's microphone track(s) on
 // the server. The user can still unmute themselves locally afterwards, matching
-// v1 host-mute semantics.
+// v1 host-mute semantics. Returns nil if the participant has not yet published
+// a mic track (mid-join window) — the mute is a silent no-op in that case.
 func (p *Plugin) livekitMuteParticipant(room, identity string) error {
 	client, err := p.getLiveKitRoomClient()
 	if err != nil {

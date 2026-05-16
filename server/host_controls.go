@@ -75,7 +75,7 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	return nil
 }
 
-func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
+func (p *Plugin) hostMuteParticipant(requesterID, channelID, sessionID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	}
 
 	if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(ust.UserID, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-		p.LogError("muteSession: failed to mute participant via LiveKit",
+		p.LogError("hostMuteParticipant: failed to mute participant via LiveKit",
 			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 	}
 
@@ -113,7 +113,7 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	return nil
 }
 
-func (p *Plugin) muteOthers(requesterID, channelID string) error {
+func (p *Plugin) hostMuteAllParticipants(requesterID, channelID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -134,7 +134,7 @@ func (p *Plugin) muteOthers(requesterID, channelID string) error {
 	for id, s := range state.sessions {
 		if s.Unmuted && s.UserID != requesterID {
 			if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(s.UserID, id)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-				p.LogError("muteOthers: failed to mute participant via LiveKit",
+				p.LogError("hostMuteAllParticipants: failed to mute participant via LiveKit",
 					"channelID", channelID, "sessionID", id, "err", err.Error())
 			}
 
@@ -148,7 +148,7 @@ func (p *Plugin) muteOthers(requesterID, channelID string) error {
 	return nil
 }
 
-func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
+func (p *Plugin) hostSwitchOffParticipantScreen(requesterID, channelID, sessionID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -181,7 +181,7 @@ func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 	return nil
 }
 
-func (p *Plugin) lowerHand(requesterID, channelID, sessionID string) error {
+func (p *Plugin) hostLowerParticipantHand(requesterID, channelID, sessionID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
