@@ -211,6 +211,14 @@ export class WebSocketClient extends EventEmitter {
         this.send('leave');
     }
 
+    public sendScreenOn(payload: {screenStreamID: string}) {
+        this.send('screen_on', {data: JSON.stringify(payload)});
+    }
+
+    public sendScreenOff() {
+        this.send('screen_off');
+    }
+
     public close() {
         this.closed = true;
         this.stopPingInterval();

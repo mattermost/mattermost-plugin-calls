@@ -19,19 +19,19 @@ import {Actions} from './actions';
 
 type State = {
     [channelID: Channel['id']]: {
-        [session_id: string]: UserSessionState;
+        [session_id: UserSessionState['session_id']]: UserSessionState;
     }
 }
 
 const emptyState: State = {};
 
-export const sessionsReducer: Reducer<State, Actions> = (initialState = emptyState, action) : State => {
+export const reducer: Reducer<State, Actions> = (initialState = emptyState, action) : State => {
     switch (action.type) {
-    case UN_INITIALIZED:{
+    case UN_INITIALIZED: {
         return emptyState;
     }
 
-    case SESSIONS_RECEIVED:{
+    case SESSIONS_RECEIVED: {
         return {
             ...initialState,
             [action.data.channelID]: action.data.sessions,
@@ -93,7 +93,7 @@ export const sessionsReducer: Reducer<State, Actions> = (initialState = emptySta
         };
     }
 
-    case USER_MUTED:{
+    case USER_MUTED: {
         const allSessions = initialState[action.data.channelID];
         const currentSession = allSessions?.[action.data.session_id];
 
@@ -113,7 +113,7 @@ export const sessionsReducer: Reducer<State, Actions> = (initialState = emptySta
         };
     }
 
-    case USER_UNMUTED:{
+    case USER_UNMUTED: {
         const allSessions = initialState[action.data.channelID];
         const currentSession = allSessions?.[action.data.session_id];
 
@@ -133,7 +133,7 @@ export const sessionsReducer: Reducer<State, Actions> = (initialState = emptySta
         };
     }
 
-    case USER_LEFT:{
+    case USER_LEFT: {
         if (!initialState[action.data.channelID]?.[action.data.session_id]) {
             return initialState;
         }

@@ -36,6 +36,7 @@ import {
     ringingForCall,
     shouldPlayJoinUserSound,
 } from 'src/selectors';
+import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {callEnded, getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/session/actions';
 import {CallsStats, ChannelType} from 'src/types/types';
 import {
@@ -77,7 +78,6 @@ import {
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
     USER_JOINED_TIMEOUT,
-    USER_SCREEN_ON,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch) => {
@@ -586,13 +586,7 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
         },
     });
 
-    actions.push({
-        type: USER_SCREEN_ON,
-        data: {
-            channelID,
-            session_id: call.screen_sharing_session_id,
-        },
-    });
+    actions.push(userScreenShared(channelID, call.screen_sharing_session_id, call.owner_id));
 
     actions.push({
         type: CALL_HOST,

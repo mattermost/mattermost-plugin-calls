@@ -187,7 +187,6 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
 
         callsClient.on('devicechange', handleDeviceChange);
         setAudioDevices(callsClient.getAudioDevices());
-        setVideoDevices(callsClient.getVideoDevices());
 
         if (deviceType === 'audioinput') {
             setCurrentAudioInputDevice(callsClient.currentAudioInputDevice);

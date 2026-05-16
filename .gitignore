@@ -47,4 +47,6 @@ go.work.sum
 
 # Claude Code local configuration
 CLAUDE.local.md
+HANDOFF.local.md
+PLAN.local.md
 .claude/

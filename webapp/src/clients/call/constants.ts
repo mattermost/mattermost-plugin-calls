@@ -17,6 +17,10 @@ export const CALL_EVENT = {
     USER_LEFT: 'userLeft',
     DEVICE_CHANGE: 'devicechange',
     DEVICE_FALLBACK: 'devicefallback',
+    LOCAL_SCREEN_STREAM: 'localScreenStream',
+    LOCAL_SCREEN_STREAM_OFF: 'localScreenStreamOff',
+    REMOTE_SCREEN_STREAM: 'remoteScreenStream',
+    REMOTE_SCREEN_STREAM_OFF: 'remoteScreenStreamOff',
 } as const;
 
 // Plugin call API routes

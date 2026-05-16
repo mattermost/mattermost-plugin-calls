@@ -20,6 +20,8 @@ import Segmenter from 'src/segmenter';
 import {CallsClientConfig, CallsClientStats, MediaDevices, TrackMetadata} from 'src/types/types';
 import {getPersistentStorage, getScreenStream} from 'src/utils';
 
+import {CALL_EVENT} from '../call';
+
 export const AudioInputPermissionsError = new Error('missing audio input permissions');
 export const AudioInputMissingError = new Error('no audio input available');
 export const VideoInputPermissionsError = new Error('missing video input permissions');
@@ -588,12 +590,12 @@ export default class CallsClient extends EventEmitter {
                     if (trackInfo?.type === 'screen-audio') {
                         // Screen share audio - emit as voice stream so it gets played
                         logDebug('received screen-audio track, emitting as remoteVoiceStream');
-                        this.emit('remoteVoiceStream', new MediaStream(audioTracks));
+                        this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, new MediaStream(audioTracks));
                         this.remoteVoiceTracks.push(...audioTracks);
                     } else if (trackInfo?.type === 'voice' || !trackInfo?.type) {
                         // Regular voice audio
                         logDebug('received voice track, emitting as remoteVoiceStream');
-                        this.emit('remoteVoiceStream', remoteStream);
+                        this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, remoteStream);
                         this.remoteVoiceTracks.push(...audioTracks);
                     } else {
                         logDebug('unexpected audio track type:', trackInfo?.type);
@@ -608,7 +610,7 @@ export default class CallsClient extends EventEmitter {
                         this.remoteVideoTracks.push(videoTracks[0]);
                     } else if (trackInfo?.type === 'screen') {
                         logDebug('received screen track, emitting as remoteScreenStream');
-                        this.emit('remoteScreenStream', remoteStream);
+                        this.emit(CALL_EVENT.REMOTE_SCREEN_STREAM, remoteStream);
                         this.remoteScreenTrack = videoTracks[0];
                     } else {
                         logDebug('unexpected video track type:', trackInfo?.type);

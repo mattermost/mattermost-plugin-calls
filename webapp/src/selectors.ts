@@ -32,10 +32,10 @@ import {
     callState,
     hostControlNoticeState,
     hostsState,
+    initialRootState,
     liveCaptionState,
     recentlyJoinedUsersState,
-    screenSharingIDsState,
-    sessionsState,
+    RootState,
     usersReactionsState,
 } from 'src/reducers';
 import {
@@ -50,16 +50,16 @@ import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID
 
 import {pluginId} from './manifest';
 
-//@ts-ignore GlobalState is not complete
-const pluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
+const pluginReduxStateKey = `plugins-${pluginId}`;
 
-const clientState = (state: GlobalState) => pluginState(state).clientStateReducer;
+const pluginState = (state: GlobalState): RootState =>
+    (state[pluginReduxStateKey as keyof GlobalState] as unknown as RootState) ?? initialRootState;
 
 export const channelIDForCurrentCall: (state: GlobalState) => string =
     createSelector(
         'channelIDForCurrentCall',
         getCallsClientChannelID,
-        clientState,
+        (state: GlobalState) => pluginState(state).clientStateReducer,
         (channelID, cState) => channelID || cState?.channelID || '',
     );
 
@@ -102,7 +102,7 @@ export const teamForCurrentCall: (state: GlobalState) => Team | null =
         },
     );
 
-const sessionsInCalls = (state: GlobalState): sessionsState => {
+const sessionsInCalls = (state: GlobalState): RootState['sessions'] => {
     return pluginState(state).sessions;
 };
 
@@ -290,7 +290,7 @@ export const callDismissedNotification = (state: GlobalState, channelID: string)
     return Boolean(pluginState(state).dismissedCalls[channelID]);
 };
 
-const screenSharingIDsForCalls = (state: GlobalState): screenSharingIDsState => {
+const screenSharingIDsForCalls = (state: GlobalState): RootState['screenSharingIDs'] => {
     return pluginState(state).screenSharingIDs;
 };
 
@@ -495,10 +495,6 @@ export const callsEnabledInCurrentChannel = (state: GlobalState): boolean => {
         return false;
     }
     return callsExplicitlyEnabled(state, channelId) || defaultEnabled(state) || isCurrentUserSystemAdmin(state);
-};
-
-export const endCallModal = (state: GlobalState) => {
-    return pluginState(state).endCallModal;
 };
 
 export const callsShowButton = (state: GlobalState, channelId?: string): boolean =>
