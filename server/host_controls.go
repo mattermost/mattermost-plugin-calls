@@ -75,7 +75,7 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 	return nil
 }
 
-func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
+func (p *Plugin) hostMuteParticipant(requesterID, channelID, sessionID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -100,6 +100,11 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 		return nil
 	}
 
+	if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(ust.UserID, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+		p.LogError("hostMuteParticipant: failed to mute participant via LiveKit",
+			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
+	}
+
 	p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
 		"channel_id": channelID,
 		"session_id": sessionID,
@@ -108,7 +113,7 @@ func (p *Plugin) muteSession(requesterID, channelID, sessionID string) error {
 	return nil
 }
 
-func (p *Plugin) muteOthers(requesterID, channelID string) error {
+func (p *Plugin) hostMuteAllParticipants(requesterID, channelID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -128,6 +133,11 @@ func (p *Plugin) muteOthers(requesterID, channelID string) error {
 	// If there are no unmuted sessions, return without doing anything.
 	for id, s := range state.sessions {
 		if s.Unmuted && s.UserID != requesterID {
+			if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(s.UserID, id)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+				p.LogError("hostMuteAllParticipants: failed to mute participant via LiveKit",
+					"channelID", channelID, "sessionID", id, "err", err.Error())
+			}
+
 			p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
 				"channel_id": channelID,
 				"session_id": id,
@@ -138,7 +148,7 @@ func (p *Plugin) muteOthers(requesterID, channelID string) error {
 	return nil
 }
 
-func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
+func (p *Plugin) hostSwitchOffParticipantScreen(requesterID, channelID, sessionID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -171,7 +181,7 @@ func (p *Plugin) screenOff(requesterID, channelID, sessionID string) error {
 	return nil
 }
 
-func (p *Plugin) lowerHand(requesterID, channelID, sessionID string) error {
+func (p *Plugin) hostLowerParticipantHand(requesterID, channelID, sessionID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -206,7 +216,7 @@ func (p *Plugin) lowerHand(requesterID, channelID, sessionID string) error {
 	return nil
 }
 
-func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) error {
+func (p *Plugin) hostRemoveParticipant(requesterID, channelID, sessionID string) error {
 	state, err := p.getCallState(channelID, false)
 	if err != nil {
 		return err
@@ -242,12 +252,12 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 
 	go func() {
 		// Wait a few seconds for the client to end their session cleanly. If they don't (like for an
-		// older mobile client) then forcibly end it.
+		// older mobile client) then forcibly remove them via the LiveKit Server API.
 		time.Sleep(3 * time.Second)
 
 		state, err := p.getCallState(channelID, false)
 		if err != nil {
-			p.LogError("hostRemoveSession: failed to get call state", "err", err.Error())
+			p.LogError("hostRemoveParticipant: failed to get call state", "err", err.Error())
 		}
 
 		if state == nil {
@@ -259,8 +269,9 @@ func (p *Plugin) hostRemoveSession(requesterID, channelID, sessionID string) err
 			return
 		}
 
-		if err := p.closeRTCSession(ust.UserID, sessionID, channelID); err != nil {
-			p.LogError("hostRemoveSession: failed to close RTC session", "err", err.Error())
+		if err := p.livekitRemoveParticipant(channelID, composeLivekitIdentity(ust.UserID, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+			p.LogError("hostRemoveParticipant: failed to remove participant via LiveKit",
+				"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 		}
 	}()
 
