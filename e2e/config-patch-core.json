@@ -1,9 +1,0 @@
-{
-  "PluginSettings": {
-    "Plugins": {
-      "com.mattermost.calls": {
-        "rtcdserviceurl": ""
-      }
-    }
-  }
-}
