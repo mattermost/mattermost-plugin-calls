@@ -5,7 +5,6 @@
 
 import './component.scss';
 
-import {mosThreshold} from '@mattermost/calls-common';
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Team} from '@mattermost/types/teams';
@@ -17,7 +16,7 @@ import {FormattedMessage, IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import {CALL_EVENT} from 'src/clients/call/constants';
+import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
 import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
@@ -673,8 +672,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
-        window.callsClient?.on('mos', (mos: number) => {
-            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+        window.callsClient?.on(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
+            const isCallQualityDegraded = quality === CONNECTION_QUALITY.Poor || quality === CONNECTION_QUALITY.Lost;
+            const isCallQualityHealthy = quality === CONNECTION_QUALITY.Excellent || quality === CONNECTION_QUALITY.Good;
+
+            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && isCallQualityDegraded) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -685,7 +687,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     },
                 });
             }
-            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+
+            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && isCallQualityHealthy) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
