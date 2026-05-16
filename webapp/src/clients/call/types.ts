@@ -3,6 +3,11 @@
 
 import type {RTCStats} from '@mattermost/calls-common/lib/types';
 
+export type RtcTokenResponse = {
+    token: string;
+    url: string;
+};
+
 export type TrackMetadata = {
     id: string;
     streamID: string;
@@ -17,4 +22,10 @@ export type CallClientStats = {
     callID: string;
     tracksInfo: TrackMetadata[];
     rtcStats: RTCStats | null;
+}
+
+export type ConnectPayload = {
+    channelID: string;
+    title?: string;
+    threadID?: string;
 }

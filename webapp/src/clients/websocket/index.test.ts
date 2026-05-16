@@ -48,6 +48,7 @@ describe('WebSocketClient', () => {
         jest.clearAllMocks();
         jest.useFakeTimers();
         client = new WebSocketClient('ws://test.com');
+        client.connect();
 
         // Get reference to the mock WebSocket instance
         mockWebSocket = (client as any).ws;
@@ -76,6 +77,7 @@ describe('WebSocketClient', () => {
     describe('connection handling', () => {
         it('should send authentication challenge on open when token provided', () => {
             client = new WebSocketClient('ws://test.com', 'test-token');
+            client.connect();
             mockWebSocket = (client as any).ws;
 
             const sendSpy = jest.spyOn(mockWebSocket, 'send');
@@ -393,7 +395,7 @@ describe('WebSocketClient', () => {
 
     describe('reconnection logic', () => {
         it('should attempt reconnection on close', () => {
-            const initSpy = jest.spyOn(client as any, 'init');
+            const initSpy = jest.spyOn(client as any, 'connect');
 
             mockWebSocket.onclose!(new CloseEvent('close', {code: 1000}));
 
@@ -403,7 +405,7 @@ describe('WebSocketClient', () => {
         });
 
         it('should increase retry time on subsequent reconnections', () => {
-            const initSpy = jest.spyOn(client as any, 'init');
+            const initSpy = jest.spyOn(client as any, 'connect');
 
             // First reconnection
             mockWebSocket.onclose!(new CloseEvent('close', {code: 1000}));
@@ -480,7 +482,7 @@ describe('WebSocketClient', () => {
         });
 
         it('should not attempt reconnection when closed', () => {
-            const initSpy = jest.spyOn(client as any, 'init');
+            const initSpy = jest.spyOn(client as any, 'connect');
 
             client.close();
             mockWebSocket.onclose!(new CloseEvent('close', {code: 1000}));

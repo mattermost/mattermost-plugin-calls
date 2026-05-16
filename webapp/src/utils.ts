@@ -40,10 +40,10 @@ export function getPluginPath() {
     return `${window.basename || ''}/plugins/${pluginId}`;
 }
 
-export function getWSConnectionURL(config: Partial<ClientConfig>): string {
+export function getWSConnectionURL(websocketURL?: ClientConfig['WebsocketURL']): string {
     const loc = window.location;
     const uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-    const baseURL = config && config.WebsocketURL ? config.WebsocketURL : `${uri}//${loc.host}${window.basename || ''}`;
+    const baseURL = websocketURL && websocketURL.length > 0 ? websocketURL : `${uri}//${loc.host}${window.basename || ''}`;
 
     return `${baseURL}${RestClient.getUrlVersion()}/websocket`;
 }
@@ -336,13 +336,6 @@ export function getUserIDsForSessions(sessions: SessionState[]) {
         idsMap[session.user_id] = true;
     }
     return Object.keys(idsMap);
-}
-
-export function getSessionsMapFromSessions(sessions: SessionState[]) {
-    return sessions.reduce((map: Record<string, SessionState>, session: SessionState) => {
-        map[session.session_id] = session;
-        return map;
-    }, {});
 }
 
 export function getUserIdFromDM(dmName: string, currentUserId: string) {

@@ -34,11 +34,23 @@ services:
     ports:
       - "8065:8065"
 
+  livekit:
+    image: livekit/livekit-server:v1.7.2
+    restart: on-failure
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+    command: --config /etc/livekit.yaml
+    networks:
+      default:
+        aliases:
+          - livekit
+
   start_dependencies:
     image: mattermost/mattermost-wait-for-dep:latest
     depends_on:
       - postgres
       - haproxy
+      - livekit
     command: postgres:5432
     networks:
       default:

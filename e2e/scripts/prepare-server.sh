@@ -6,8 +6,7 @@ function print_logs {
 	docker logs ${CONTAINER_SERVER}1
 	docker logs ${CONTAINER_SERVER}2
 	docker logs ${CONTAINER_PROXY}
-	docker logs ${CONTAINER_RTCD}
-	docker logs ${CONTAINER_OFFLOADER}
+	docker logs ${CONTAINER_LIVEKIT}
 }
 
 trap print_logs EXIT
@@ -21,57 +20,22 @@ docker rmi -f ${IMAGE_SERVER}
 
 docker network create ${DOCKER_NETWORK}
 
-# Start server dependencies
+# Start server dependencies (postgres, haproxy, livekit).
 echo "Starting server dependencies ... "
 DOCKER_NETWORK=${DOCKER_NETWORK} CONTAINER_PROXY=${CONTAINER_PROXY} docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
 timeout --foreground 90s bash -c "until docker compose -f ${DOCKER_COMPOSE_FILE} exec -T postgres pg_isready ; do sleep 5 ; done"
 
-echo "Pulling ${IMAGE_CALLS_RECORDER} in order to be quickly accessible ... "
-# Pull calls-recorder image to be used by calls-offloader.
-docker pull ${IMAGE_CALLS_RECORDER}
+# Rename the livekit container so it matches CONTAINER_LIVEKIT for log access.
+LIVEKIT_ID=$(docker compose -f ${DOCKER_COMPOSE_FILE} ps -q livekit)
+docker rename "${LIVEKIT_ID}" "${CONTAINER_LIVEKIT}"
 
-echo "Pulling ${IMAGE_CALLS_TRANSCRIBER} in order to be quickly accessible ... "
-# Pull calls-transcriber image to be used by calls-offloader.
-docker pull ${IMAGE_CALLS_TRANSCRIBER}
-
-# We retag the official images so they can be run instead of the expected local
-# one (DEV_MODE=true). Alternatively we'd have to build our own image from scratch or make
-# some CI specific changes on the offloader.
-docker image tag ${IMAGE_CALLS_RECORDER} calls-recorder:master
-docker image tag ${IMAGE_CALLS_TRANSCRIBER} calls-transcriber:master
-
-## Load rtcd image
-docker load --input ${RTCD_IMAGE_PATH}
+# Check that livekit is reachable on its signaling port. We omit -f because the
+# response code for "/" varies across livekit-server versions; any HTTP response
+# (i.e. successful TCP connect + HTTP roundtrip) proves the service is listening.
+timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_livekit --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -s -o /dev/null --max-time 5 http://livekit:7880/; do echo Waiting for livekit; sleep 2; done; echo livekit is up"
 
 ## Print images info
 docker images
-
-echo "Spawning RTCD service..."
-docker run -d --quiet --name "${CONTAINER_RTCD}" \
-	--net ${DOCKER_NETWORK} \
-	--env "RTCD_LOGGER_ENABLEFILE=false" \
-	--env "RTCD_LOGGER_CONSOLELEVEL=DEBUG" \
-	--env "RTCD_API_SECURITY_ALLOWSELFREGISTRATION=true" \
-	--network-alias=rtcd "rtcd:e2e"
-
-# Check that rtcd is up and ready
-timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_rtcd --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://rtcd:8045/version; do echo Waiting for rtcd; sleep 2; done; echo rtcd is up"
-
-echo "Spawning calls-offloader service with docker host access ..."
-# Spawn calls offloader image as root to access local docker socket
-docker run -d --quiet --user root --name "${CONTAINER_OFFLOADER}" \
-	-v /var/run/docker.sock:/var/run/docker.sock:rw \
-	--net ${DOCKER_NETWORK} \
-	--env "API_SECURITY_ALLOWSELFREGISTRATION=true" \
-	--env "JOBS_MAXCONCURRENTJOBS=20" \
-	--env "LOGGER_ENABLEFILE=false" \
-	--env "LOGGER_CONSOLELEVEL=DEBUG" \
-	--env "DEV_MODE=true" \
-	--env "DOCKER_NETWORK=${DOCKER_NETWORK}" \
-	--network-alias=calls-offloader ${IMAGE_CALLS_OFFLOADER}
-
-# Check that calls-offloader is up and ready
-docker run --rm --quiet --name "${COMPOSE_PROJECT_NAME}_curl_callsoffloader" --net ${DOCKER_NETWORK} ${IMAGE_CURL} sh -c "until curl -fs http://calls-offloader:4545/version; do echo Waiting for calls-offloader; sleep 5; done; echo calls-offloader is up"
 
 ## Add extra environment variables for mattermost server. This is needed to override configuration in HA since
 ## the config is stored in DB.
@@ -97,6 +61,12 @@ echo "MM_SQLSETTINGS_DATASOURCE=postgres://mmuser:mostest@postgres:5432/mattermo
 echo "MM_EXPERIMENTALSETTINGS_DISABLEAPPBAR=false" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_ANNOUNCEMENTSETTINGS_USERNOTICESENABLED=false" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED=false" >>${WORKSPACE}/dotenv/app.private.env
+
+# LiveKit configuration consumed by the plugin via the generic MM_CALLS_* env-override
+# mechanism in server/environment.go. Field names map to: LiveKitURL -> LIVE_KIT_URL, etc.
+echo "MM_CALLS_LIVE_KIT_URL=${MM_CALLS_LIVE_KIT_URL}" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CALLS_LIVE_KIT_API_KEY=${MM_CALLS_LIVE_KIT_API_KEY}" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CALLS_LIVE_KIT_API_SECRET=${MM_CALLS_LIVE_KIT_API_SECRET}" >>${WORKSPACE}/dotenv/app.private.env
 
 sudo cp -r ${WORKSPACE}/logs ${WORKSPACE}/logs1
 sudo cp -r ${WORKSPACE}/config ${WORKSPACE}/config1

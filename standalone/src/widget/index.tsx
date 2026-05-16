@@ -10,16 +10,8 @@ import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {isOpenChannel, isPrivateChannel} from 'mattermost-redux/utils/channel_utils';
-import {
-    USER_MUTED,
-    USER_UNMUTED,
-    USER_VIDEO_OFF,
-    USER_VIDEO_ON,
-} from 'plugin/action_types';
 import CallWidget from 'plugin/components/call_widget';
-import {
-    logDebug,
-} from 'plugin/log';
+import {logDebug} from 'plugin/log';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getTranslations,
@@ -30,6 +22,7 @@ import React from 'react';
 import {createRoot, Root} from 'react-dom/client';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
+import {userMuted, userUnmuted} from 'src/state/session/actions';
 
 import init, {InitCbProps} from '../init';
 
@@ -59,30 +52,16 @@ async function initWidget({store, startingCall}: InitCbProps) {
     const locale = getCurrentUserLocale(store.getState()) || 'en';
 
     window.callsClient?.on('mute', () => {
-        store.dispatch({
-            type: USER_MUTED,
-            data: {
-                channelID: window.callsClient?.channelID,
-                userID: getCurrentUserId(store.getState()),
-                session_id: window.callsClient?.getSessionID(),
-            },
-        });
+        store.dispatch(userMuted(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? '', getCurrentUserId(store.getState())));
     });
 
     window.callsClient?.on('unmute', () => {
-        store.dispatch({
-            type: USER_UNMUTED,
-            data: {
-                channelID: window.callsClient?.channelID,
-                userID: getCurrentUserId(store.getState()),
-                session_id: window.callsClient?.getSessionID(),
-            },
-        });
+        store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? '', getCurrentUserId(store.getState())));
     });
 
     window.callsClient?.on('video_on', () => {
         store.dispatch({
-            type: USER_VIDEO_ON,
+            type: 'USER_VIDEO_ON',
             data: {
                 channelID: window.callsClient?.channelID,
                 userID: getCurrentUserId(store.getState()),
@@ -93,7 +72,7 @@ async function initWidget({store, startingCall}: InitCbProps) {
 
     window.callsClient?.on('video_off', () => {
         store.dispatch({
-            type: USER_VIDEO_OFF,
+            type: 'USER_VIDEO_OFF',
             data: {
                 channelID: window.callsClient?.channelID,
                 userID: getCurrentUserId(store.getState()),
@@ -158,7 +137,7 @@ function deinitWidget(err?: Error) {
     // Using setTimeout to give the app enough time to play the sound before
     // closing the widget window.
     setTimeout(() => {
-        window.callsClient?.destroy();
+        void window.callsClient?.disconnect();
         delete window.callsClient;
         widgetRoot?.unmount();
         widgetRoot = null;

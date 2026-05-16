@@ -3,7 +3,6 @@
 
 /* eslint-disable max-lines */
 
-import {mosThreshold} from '@mattermost/calls-common';
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
@@ -18,6 +17,8 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
+import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
+import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
@@ -664,7 +665,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         });
 
-        callsClient.on('devicefallback', (device: MediaDeviceInfo) => {
+        callsClient.on(CALL_EVENT.DEVICE_FALLBACK, (device: MediaDeviceInfo) => {
             if (device.kind === 'audioinput') {
                 this.setState({
                     alerts: {
@@ -706,11 +707,35 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 otherVideoStream: stream,
             });
         });
-        callsClient.on('devicechange', (audioDevices: MediaDevices, videoDevices: MediaDeviceInfo[]) => {
+        callsClient.on(CALL_EVENT.DEVICE_CHANGE, (audioDevices: MediaDevices, videoDevices: MediaDeviceInfo[]) => {
             this.setAudioDevices(audioDevices);
             this.setVideoDevices(videoDevices);
         });
-        callsClient.on('initaudio', () => {
+        callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
+            if (err === AudioInputPermissionsError) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        missingAudioInputPermissions: {
+                            active: true,
+                            show: true,
+                        },
+                    },
+                });
+            } else if (err === VideoInputPermissionsError) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        missingVideoInputPermissions: {
+                            active: true,
+                            show: true,
+                        },
+                    },
+                });
+            }
+        });
+
+        callsClient.on(CALL_EVENT.INIT_AUDIO, () => {
             this.setState({
                 alerts: {
                     ...this.state.alerts,
@@ -737,6 +762,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.setVideoDevices(callsClient.getVideoDevices());
 
         const screenStream = callsClient.getLocalScreenStream() || callsClient.getRemoteScreenStream();
+
+        // TODO: fix this
+        // @ts-ignore
         const selfVideoStream = callsClient.localVideoStream;
         const otherVideoStream = callsClient.getRemoteVideoStream();
 
@@ -746,13 +774,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 ...this.state.alerts,
                 missingAudioInputPermissions: {
                     ...this.state.alerts.missingAudioInputPermissions,
-                    active: !this.state.alerts.missingAudioInput.active && !callsClient.audioTrack,
-                    show: !this.state.alerts.missingAudioInput.active && !callsClient.audioTrack,
+                    active: false,
+                    show: false,
                 },
                 missingVideoInputPermissions: {
                     ...this.state.alerts.missingVideoInputPermissions,
-                    active: this.props.enableVideo && !this.state.alerts.missingVideoInput.active && !callsClient.localVideoStream,
-                    show: this.props.enableVideo && !this.state.alerts.missingVideoInput.active && !callsClient.localVideoStream,
+                    active: false,
+                    show: false,
                 },
             },
             screenStream,
@@ -778,8 +806,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        callsClient.on('mos', (mos: number) => {
-            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && mos < mosThreshold) {
+        callsClient.on(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
+            const isCallQualityDegraded = quality === CONNECTION_QUALITY.Poor || quality === CONNECTION_QUALITY.Lost;
+            const isCallQualityHealthy = quality === CONNECTION_QUALITY.Excellent || quality === CONNECTION_QUALITY.Good;
+
+            if (!this.callQualityBannerLocked && !this.state.alerts.degradedCallQuality.show && isCallQualityDegraded) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
@@ -790,7 +821,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     },
                 });
             }
-            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && mos >= mosThreshold) {
+
+            if (!this.callQualityBannerLocked && this.state.alerts.degradedCallQuality.show && isCallQualityHealthy) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
