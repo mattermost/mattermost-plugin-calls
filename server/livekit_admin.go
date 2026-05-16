@@ -7,15 +7,30 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/livekit/protocol/livekit"
 	lksdk "github.com/livekit/server-sdk-go/v2"
 )
 
+const userIDSessionIDSeparator = "___"
 const livekitAPITimeout = 5 * time.Second
 
 var errLiveKitNotConfigured = errors.New("LiveKit is not configured")
+
+func composeLivekitIdentity(userID, sessionID string) string {
+	return userID + userIDSessionIDSeparator + sessionID
+}
+
+func decomposeLivekitIdentity(identity string) (userID, sessionID string) {
+	parts := strings.Split(identity, userIDSessionIDSeparator)
+	if len(parts) != 2 {
+		return "", identity
+	}
+
+	return parts[0], parts[1]
+}
 
 func (p *Plugin) getLiveKitRoomClient() (*lksdk.RoomServiceClient, error) {
 	cfg := p.getConfiguration()

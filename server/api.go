@@ -499,16 +499,13 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Identity is the only LiveKit field sealed post-connect, so userID and
-	// sessionID both ride in it. The "___" separator both delimits the two
-	// halves and tags the format as an MM user (vs. "guest:" / "sip:" kinds).
 	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 	grant := &auth.VideoGrant{
 		RoomJoin: true,
 		Room:     channelID,
 	}
 	at.SetVideoGrant(grant).
-		SetIdentity(userID + "___" + sessionID).
+		SetIdentity(composeLivekitIdentity(userID, sessionID)).
 		SetName(user.GetDisplayName(model.ShowFullName)).
 		SetValidFor(time.Hour)
 
