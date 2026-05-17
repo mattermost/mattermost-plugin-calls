@@ -28,7 +28,12 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
     }
 
     case USER_SCREEN_OFF: {
-        if (action.data.session_id !== initialState[action.data.channelID]) {
+        const currentScreenSharerSessionID = initialState[action.data.channelID];
+        if (!currentScreenSharerSessionID) {
+            return initialState;
+        }
+
+        if (action.data.session_id !== currentScreenSharerSessionID) {
             return initialState;
         }
 
@@ -39,12 +44,17 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
     }
 
     case USER_LEFT: {
-        // If the user who disconnected was the one sharing, clear it.
-        // Otherwise keep state — they weren't the sharer.
-        if (action.data.session_id !== initialState[action.data.channelID]) {
+        const currentScreenSharerSessionID = initialState[action.data.channelID];
+        if (!currentScreenSharerSessionID) {
             return initialState;
         }
 
+        // If the user who disconnected was not the sharer, keep state.
+        if (action.data.session_id !== currentScreenSharerSessionID) {
+            return initialState;
+        }
+
+        // If the user who disconnected was the one sharing, clear it.
         return {
             ...initialState,
             [action.data.channelID]: '',

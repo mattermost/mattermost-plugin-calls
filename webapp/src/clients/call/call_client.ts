@@ -17,6 +17,7 @@ import {
     RemoteTrackPublication,
     Room,
     RoomEvent,
+    ScreenShareCaptureOptions,
     Track,
     TrackPublication,
 } from 'livekit-client';
@@ -255,7 +256,12 @@ export default class CallClient extends EventEmitter {
         }
 
         try {
-            await this.room.localParticipant.setScreenShareEnabled(true, {audio: Boolean(withAudio), systemAudio: 'include'});
+            // Only hint systemAudio when audio capture is actually requested.
+            const captureOptions: ScreenShareCaptureOptions = {audio: Boolean(withAudio)};
+            if (withAudio) {
+                captureOptions.systemAudio = 'include';
+            }
+            await this.room.localParticipant.setScreenShareEnabled(true, captureOptions);
 
             const stream = this.getLocalScreenStream();
 
@@ -272,14 +278,21 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    public unshareScreen(): void {
+    public async unshareScreen(): Promise<void> {
         if (!this.room || !this.isRoomConnected) {
             return;
         }
 
-        // handleLocalTrackUnpublished will fire and emit LOCAL_SCREEN_STREAM_OFF.
-        void this.room.localParticipant.setScreenShareEnabled(false);
-        this.websocketClient?.sendScreenOff();
+        try {
+            // handleLocalTrackUnpublished will fire and emit LOCAL_SCREEN_STREAM_OFF.
+            // We await the unpublish before telling the server so server-side state
+            // only flips to "off" once LiveKit has actually torn down the publication.
+            await this.room.localParticipant.setScreenShareEnabled(false);
+            this.websocketClient?.sendScreenOff();
+        } catch (err) {
+            logErr('CallClient.unshareScreen: failed', err);
+            this.emit(CALL_EVENT.ERROR, err);
+        }
     }
 
     public async setScreenStream(_stream: MediaStream): Promise<void> {
@@ -351,6 +364,8 @@ export default class CallClient extends EventEmitter {
         if (!this.room) {
             return null;
         }
+
+        // Only one participant is allowed to share at a time; first match wins.
         for (const p of this.room.remoteParticipants.values()) {
             const stream = this.composeScreenShareStream(p);
             if (stream) {
@@ -555,6 +570,12 @@ export default class CallClient extends EventEmitter {
             };
         }
 
+        // LiveKit publishes ScreenShare (video) and ScreenShareAudio as two separate tracks, so this
+        // handler fires once per source. When sharing with audio, that means we emit LOCAL_SCREEN_STREAM
+        // twice in quick succession:
+        // - on ScreenShare publish — composeScreenShareStream returns a stream with just video.
+        // - on ScreenShareAudio publish — composeScreenShareStream returns a fresh stream with both
+        //      video + audio (it reads the participant's current publications each call).
         if (localTrackPublication.source === Track.Source.ScreenShare || localTrackPublication.source === Track.Source.ScreenShareAudio) {
             const screenShareStream = this.composeScreenShareStream(localParticipant);
             if (screenShareStream) {
@@ -643,7 +664,7 @@ export default class CallClient extends EventEmitter {
 
         if (remoteTrackPublication.source === Track.Source.ScreenShare) {
             this.emit(CALL_EVENT.REMOTE_SCREEN_STREAM_OFF, sessionID, userID);
-            logDebug(`CallClient: remote screen stream unpublished from ${userID}`, remoteTrackPublication);
+            logDebug(`CallClient: remote screen share stream unpublished for user ${userID}`, remoteTrackPublication);
         }
     }
 
@@ -656,7 +677,7 @@ export default class CallClient extends EventEmitter {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
 
-            logDebug(`CallClient: track muted from ${userID}`, trackPublication);
+            logDebug(`CallClient: track muted for user ${userID}`, trackPublication);
         }
     }
 
@@ -669,7 +690,7 @@ export default class CallClient extends EventEmitter {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.UNMUTE, sessionID, userID);
 
-            logDebug(`CallClient: track unmuted from ${userID}`, trackPublication);
+            logDebug(`CallClient: track unmuted for user ${userID}`, trackPublication);
         }
     }
 

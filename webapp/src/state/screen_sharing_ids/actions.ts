@@ -37,4 +37,4 @@ export type Actions =
   | ActionUserLeft
   | ActionCallEnded
   | ActionUserScreenShared
-  | ActionUserScreenUnshared
+  | ActionUserScreenUnshared;
