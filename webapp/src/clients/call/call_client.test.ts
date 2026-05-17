@@ -760,7 +760,7 @@ describe('CallClient', () => {
 
             const stream = await client.shareScreen('', false);
 
-            expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(true, {audio: false, systemAudio: 'include'});
+            expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(true, {audio: false});
             expect(localScreenListener).toHaveBeenCalledWith(expect.anything(), 'me-session', 'me-id');
             expect(stream).not.toBeNull();
             expect((stream as MediaStream).getTracks()).toEqual([videoTrack]);
@@ -815,6 +815,11 @@ describe('CallClient', () => {
 
             mockRoom.localParticipant.setScreenShareEnabled.mockClear();
             videoTrack.onended();
+
+            // unshareScreen is async and `onended` is a fire-and-forget caller.
+            // Flush the microtask queue so unshareScreen's awaited
+            // setScreenShareEnabled(false) resolves and sendScreenOff runs.
+            await new Promise((resolve) => setImmediate(resolve));
 
             expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(false);
             expect(mockWebSocketClient.sendScreenOff).toHaveBeenCalled();
@@ -953,10 +958,56 @@ describe('CallClient', () => {
 
         it('unshareScreen calls setScreenShareEnabled(false) and sends screen_off', async () => {
             await client.connect({channelID: 'test-channel'});
-            client.unshareScreen();
+            await client.unshareScreen();
 
             expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(false);
             expect(mockWebSocketClient.sendScreenOff).toHaveBeenCalled();
+        });
+
+        it('unshareScreen returns early without WS message when not connected', async () => {
+            // No connect() — isRoomConnected stays false.
+            await client.unshareScreen();
+
+            expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
+            expect(mockWebSocketClient.sendScreenOff).not.toHaveBeenCalled();
+        });
+
+        it('unshareScreen emits ERROR and skips sendScreenOff when setScreenShareEnabled rejects', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(new Error('unpublish failed'));
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            await client.unshareScreen();
+
+            expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
+            expect(mockWebSocketClient.sendScreenOff).not.toHaveBeenCalled();
+        });
+
+        it('shareScreen returns existing stream without publishing when this client is already sharing', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const videoTrack = {} as MediaStreamTrack;
+
+            // Simulate that this client already has an active screen share publication.
+            setLocalScreenPublications({mediaStreamTrack: videoTrack});
+
+            const stream = await client.shareScreen();
+
+            expect(stream).not.toBeNull();
+            expect((stream as MediaStream).getTracks()).toEqual([videoTrack]);
+            expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
+            expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
+        });
+
+        it('shareScreen passes systemAudio: include only when withAudio is true', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.localParticipant.setScreenShareEnabled.mockResolvedValue(null);
+            await client.shareScreen('', true);
+
+            expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(true, {audio: true, systemAudio: 'include'});
         });
 
         it('shareScreen returns null without publishing when a remote participant is already sharing', async () => {
