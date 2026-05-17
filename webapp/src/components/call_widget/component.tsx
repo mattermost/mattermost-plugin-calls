@@ -513,13 +513,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             screenStream: window.callsClient.getRemoteScreenStream(),
         });
 
-        window.callsClient.on(CALL_EVENT.LOCAL_SCREEN_STREAM, (stream: MediaStream) => {
+        window.callsClient.on(CALL_EVENT.REMOTE_SCREEN_STREAM, (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
         });
 
-        window.callsClient.on(CALL_EVENT.REMOTE_SCREEN_STREAM, (stream: MediaStream) => {
+        window.callsClient.on(CALL_EVENT.LOCAL_SCREEN_STREAM, (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
