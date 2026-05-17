@@ -240,6 +240,12 @@ export default class CallClient extends EventEmitter {
             return null;
         }
 
+        // If we're already sharing, return the existing stream.
+        if (this.room.localParticipant.getTrackPublication(Track.Source.ScreenShare)) {
+            logDebug('CallClient.shareScreen: this client is already sharing, returning existing stream');
+            return this.getLocalScreenStream();
+        }
+
         // If another participant is already sharing, we skip.
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
