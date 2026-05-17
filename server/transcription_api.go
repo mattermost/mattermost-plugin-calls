@@ -100,6 +100,10 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 }
 
 func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID string) (rerr error) {
+	if true { // LiveKit migration gate; delete to restore transcription
+		return errTranscriptionNotSupported
+	}
+
 	if state.Transcription != nil && state.Transcription.EndAt == 0 {
 		return fmt.Errorf("transcription already in progress")
 	}
@@ -232,6 +236,10 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 }
 
 func (p *Plugin) stopTranscribingJob(state *callState, callID string) (rerr error) {
+	if true { // LiveKit migration gate; delete to restore transcription
+		return errTranscriptionNotSupported
+	}
+
 	p.LogDebug("stopping transcribing job", "callID", callID)
 
 	if state.Transcription == nil || state.Transcription.EndAt != 0 {

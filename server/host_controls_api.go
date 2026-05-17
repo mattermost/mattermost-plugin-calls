@@ -52,7 +52,7 @@ func (p *Plugin) handleMuteSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := p.muteSession(userID, callID, payload.SessionID); err != nil {
+	if err := p.hostMuteParticipant(userID, callID, payload.SessionID); err != nil {
 		p.handleHostControlsError(err, &res, "handleMuteSession")
 		return
 	}
@@ -68,7 +68,7 @@ func (p *Plugin) handleMuteOthers(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
 	callID := mux.Vars(r)["call_id"]
 
-	if err := p.muteOthers(userID, callID); err != nil {
+	if err := p.hostMuteAllParticipants(userID, callID); err != nil {
 		p.handleHostControlsError(err, &res, "handleMuteOthers")
 		return
 	}
@@ -93,7 +93,7 @@ func (p *Plugin) handleScreenOff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := p.screenOff(userID, callID, payload.SessionID); err != nil {
+	if err := p.hostSwitchOffParticipantScreen(userID, callID, payload.SessionID); err != nil {
 		p.handleHostControlsError(err, &res, "handleScreenOff")
 		return
 	}
@@ -118,7 +118,7 @@ func (p *Plugin) handleLowerHand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := p.lowerHand(userID, callID, payload.SessionID); err != nil {
+	if err := p.hostLowerParticipantHand(userID, callID, payload.SessionID); err != nil {
 		p.handleHostControlsError(err, &res, "handleLowerHand")
 		return
 	}
@@ -143,7 +143,7 @@ func (p *Plugin) handleRemoveSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := p.hostRemoveSession(userID, callID, payload.SessionID); err != nil {
+	if err := p.hostRemoveParticipant(userID, callID, payload.SessionID); err != nil {
 		p.handleHostControlsError(err, &res, "handleRemoveSession")
 		return
 	}

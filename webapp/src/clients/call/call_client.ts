@@ -7,6 +7,7 @@ import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {ClientConfig} from '@mattermost/types/config';
 import {EventEmitter} from 'events';
 import {
+    ConnectionQuality,
     ConnectionState,
     DisconnectReason,
     LocalParticipant,
@@ -85,6 +86,7 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
         room.on(RoomEvent.MediaDevicesChanged, this.handleMediaDevicesChanged.bind(this));
         room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
+        room.on(RoomEvent.ConnectionQualityChanged, this.handleConnectionQualityChanged.bind(this));
     }
 
     public async connect(connectPayload: ConnectPayload): Promise<void> {
@@ -776,6 +778,16 @@ export default class CallClient extends EventEmitter {
         }
 
         this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+    }
+
+    /**
+     * Fires when LiveKit publishes a new ConnectionQuality value for any participant.
+     * We only surface the local participant's quality and not the remote participants' quality.
+     */
+    private handleConnectionQualityChanged(quality: ConnectionQuality, participant: Participant) {
+        if (this.room && this.room.localParticipant === participant) {
+            this.emit(CALL_EVENT.QUALITY_CHANGED, quality);
+        }
     }
 
     private async fetchJwtTokenAndUrl(channelID: string, sessionID: string): Promise<RtcTokenResponse> {

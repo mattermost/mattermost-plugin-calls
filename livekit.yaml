@@ -6,6 +6,6 @@ rtc:
   udp_port: 7882
   use_ice_lite: true
 keys:
-  devkey: secret
+  devkey: this-is-a-32-plus-character-dev-secret
 logging:
   level: info
