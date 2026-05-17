@@ -592,8 +592,10 @@ export default class CallClient extends EventEmitter {
         }
 
         if (remoteTrackPublication.source === Track.Source.ScreenShare || remoteTrackPublication.source === Track.Source.ScreenShareAudio) {
-            // Screen-share publications do not carry stream state before subscription. We wait for TrackSubscribed,
-            logDebug(`CallClient: remote screen share stream published for user ${userID}`, remoteTrackPublication);
+            // Screen-share publications do not carry stream state before subscription:
+            // `remoteTrackPublication.track` is undefined here. The actual MediaStreamTrack arrives in
+            // handleRemoteTrackSubscribed, which is where we compose and emit REMOTE_SCREEN_STREAM.
+            logDebug(`CallClient: remote screen share stream announced (awaiting subscription) for user ${userID}`, remoteTrackPublication);
         }
     }
 
