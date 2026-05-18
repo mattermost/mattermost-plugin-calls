@@ -37,10 +37,9 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
             return initialState;
         }
 
-        return {
-            ...initialState,
-            [action.data.channelID]: '',
-        };
+        const nextState = {...initialState};
+        delete nextState[action.data.channelID];
+        return nextState;
     }
 
     case USER_LEFT: {
@@ -55,10 +54,9 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
         }
 
         // If the user who disconnected was the one sharing, clear it.
-        return {
-            ...initialState,
-            [action.data.channelID]: '',
-        };
+        const nextState = {...initialState};
+        delete nextState[action.data.channelID];
+        return nextState;
     }
 
     case CALL_ENDED: {

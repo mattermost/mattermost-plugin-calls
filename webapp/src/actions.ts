@@ -591,8 +591,12 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
         },
     });
 
-    const screenSharer = call.sessions.find((session) => session.session_id === call.screen_sharing_session_id);
-    actions.push(userScreenShared(channelID, call.screen_sharing_session_id, screenSharer?.user_id ?? ''));
+    if (call.screen_sharing_session_id) {
+        const screenSharer = call.sessions.find((session) => session.session_id === call.screen_sharing_session_id);
+        if (screenSharer?.user_id) {
+            actions.push(userScreenShared(channelID, call.screen_sharing_session_id, screenSharer.user_id));
+        }
+    }
 
     actions.push({
         type: CALL_HOST,
