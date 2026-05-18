@@ -7,6 +7,7 @@ import {ConnectionQuality} from 'livekit-client';
  * CallClient emitted public event names.
  */
 export const CALL_EVENT = {
+    WEBSOCKET_EVENT: 'websocketEvent',
     CONNECTED: 'connect',
     DISCONNECTED: 'close',
     RECONNECTING: 'reconnecting',
