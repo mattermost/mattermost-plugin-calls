@@ -134,6 +134,30 @@ describe('CallWidget', () => {
         expect(disconnect).toHaveBeenCalledTimes(1);
     });
 
+    test('disconnects without calling close when the popout is already closed', async () => {
+        const fakePopout = {
+            closed: true,
+            close: jest.fn(),
+            addEventListener: jest.fn(),
+        };
+        openSpy.mockReturnValue(fakePopout as unknown as Window);
+        const user = userEvent.setup();
+
+        render(
+            <Provider store={mockStore()}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget {...props}/>
+                </RawIntlProvider>
+            </Provider>,
+        );
+
+        await user.click(screen.getByRole('button', {name: /open in new window/i}));
+        await user.click(screen.getByRole('button', {name: /^leave call$/i}));
+
+        expect(fakePopout.close).not.toHaveBeenCalled();
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
     test('disconnects when no popout was ever opened', async () => {
         const user = userEvent.setup();
 
