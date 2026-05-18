@@ -24,7 +24,14 @@ import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {userMuted, userUnmuted} from 'src/state/session/actions';
 
-import init, {InitCbProps} from '../init';
+import initStandaloneApp, {InitCbProps} from '../index';
+
+initStandaloneApp({
+    name: 'widget',
+    initCb: initWidget,
+    initStore: initStoreWidget,
+    closeCb: deinitWidget,
+});
 
 let widgetRoot: Root | null = null;
 
@@ -153,10 +160,3 @@ function deinitWidget(err?: Error) {
         }
     }, 250);
 }
-
-init({
-    name: 'widget',
-    initCb: initWidget,
-    initStore: initStoreWidget,
-    closeCb: deinitWidget,
-});
