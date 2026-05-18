@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-/* eslint-disable-file max-lines */
+/* eslint-disable max-lines */
 
 import './component.scss';
 
@@ -987,7 +987,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
             expandedViewWindow: null,
         });
-        if (this.state.expandedViewWindow) {
+        if (this.state.expandedViewWindow && !this.state.expandedViewWindow.closed) {
             this.state.expandedViewWindow.close();
         }
         if (window.callsClient) {
