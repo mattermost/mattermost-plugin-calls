@@ -138,7 +138,7 @@ type ClientConfig struct {
 	GroupCallsAllowed bool
 	// When set to true it enables experimental support for using the data channel for signaling.
 	EnableDCSignaling *bool
-	// When set to try it enables video calls in direct message channels.
+	// When set to true it enables video calls in direct message channels.
 	EnableVideo *bool
 }
 
