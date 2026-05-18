@@ -8,16 +8,11 @@ import type CallClient from 'src/clients/call';
 import type {DesktopNotificationArgs, WebAppUtils} from 'src/types/mattermost-webapp';
 import type {CallActions, CurrentCallData} from 'src/types/types';
 
-import type Plugin from '../index';
-
 declare global {
     interface Window {
-        registerPlugin(id: string, plugin: Plugin): void,
-
         callsClient?: CallClient,
         webkitAudioContext: AudioContext,
         basename: string,
-
         desktop?: {
             version?: string | null;
         },
@@ -37,6 +32,8 @@ declare global {
             WebSocketProvider: React.Context<WebSocketClient>,
             selectRhsPost: (postId: string) => ActionFuncAsync,
         };
+
+        registerPlugin(id: string, plugin: Plugin): void,
     }
 
     interface HTMLVideoElement {
