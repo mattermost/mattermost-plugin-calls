@@ -47,6 +47,7 @@ import {
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
+import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {
     USER_LOWER_HAND,
     USER_RAISE_HAND,
@@ -69,8 +70,6 @@ import {
     HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
-    USER_SCREEN_OFF,
-    USER_SCREEN_ON,
 } from './action_types';
 import {logErr} from './log';
 import {
@@ -213,28 +212,14 @@ export function handleUserVoiceOff(store: Store, ev: WebSocketMessage<UserVoiceO
 // state mutating operations.
 export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreenOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch({
-        type: USER_SCREEN_ON,
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            session_id: ev.data.session_id,
-        },
-    });
+    store.dispatch(userScreenShared(channelID, ev.data.session_id, ev.data.userID));
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
 export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScreenOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch({
-        type: USER_SCREEN_OFF,
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            session_id: ev.data.session_id,
-        },
-    });
+    store.dispatch(userScreenUnshared(channelID, ev.data.session_id, ev.data.userID));
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of

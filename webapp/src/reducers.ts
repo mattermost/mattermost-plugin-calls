@@ -6,6 +6,7 @@
 import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
+import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
 import {
     CALL_ENDED,
     UN_INITIALIZED,
@@ -14,7 +15,7 @@ import {
     USER_REACTED,
     USER_REACTED_TIMEOUT,
 } from 'src/state/session/action_types';
-import {sessionsReducer as sessions} from 'src/state/session/reducers';
+import {reducer as sessions} from 'src/state/session/reducer';
 import {
     CallsConfigDefault,
     CallsUserPreferences,
@@ -63,8 +64,6 @@ import {
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
     USER_JOINED_TIMEOUT,
-    USER_SCREEN_OFF,
-    USER_SCREEN_ON,
 } from './action_types';
 
 type channelsState = {
@@ -148,7 +147,7 @@ export type sessionsState = {
     };
 }
 
-type sessionsAction = {
+type reactionsAction = {
     type: string;
     data: {
         channelID: string;
@@ -181,7 +180,7 @@ const removeReaction = (reactions: Reaction[], reaction: Reaction) => {
     return reactions.filter((r) => r.user_id !== reaction.user_id || r.timestamp > reaction.timestamp);
 };
 
-const reactions = (state: usersReactionsState = {}, action: sessionsAction) => {
+const reactions = (state: usersReactionsState = {}, action: reactionsAction) => {
     switch (action.type) {
     case USER_REACTED:
         if (action.data.reaction) {
@@ -429,9 +428,10 @@ type hostsStateAction = {
 
 const hosts = (state: hostsState = {}, action: hostsStateAction) => {
     switch (action.type) {
-    case UN_INITIALIZED:
+    case UN_INITIALIZED: {
         return {};
-    case CALL_HOST:
+    }
+    case CALL_HOST: {
         return {
             ...state,
             [action.data.channelID]: {
@@ -439,57 +439,11 @@ const hosts = (state: hostsState = {}, action: hostsStateAction) => {
                 hostChangeAt: action.data.hostChangeAt,
             },
         };
-    default:
-        return state;
     }
-};
-
-export type screenSharingIDsState = {
-    [channelID: string]: string;
-}
-
-type screenSharingIDAction = {
-    type: string;
-    data: {
-        channelID: string;
-        session_id: string;
-    }
-}
-
-const screenSharingIDs = (state: screenSharingIDsState = {}, action: screenSharingIDAction) => {
-    switch (action.type) {
-    case UN_INITIALIZED:
-        return {};
-    case USER_SCREEN_ON:
-        return {
-            ...state,
-            [action.data.channelID]: action.data.session_id,
-        };
-    case USER_LEFT: {
-        // If the user who disconnected was the one sharing, clear it.
-        // Otherwise keep state — they weren't the sharer.
-        if (action.data.session_id !== state[action.data.channelID]) {
-            return state;
-        }
-        return {
-            ...state,
-            [action.data.channelID]: '',
-        };
-    }
-    case USER_SCREEN_OFF:{
-        if (action.data.session_id !== state[action.data.channelID]) {
-            return state;
-        }
-        return {
-            ...state,
-            [action.data.channelID]: '',
-        };
-    }
-    case CALL_ENDED:{
-        return {
-            ...state,
-            [action.data.channelID]: '',
-        };
+    case CALL_ENDED: {
+        const nextState = {...state};
+        delete nextState[action.data.channelID];
+        return nextState;
     }
     default:
         return state;
@@ -509,15 +463,20 @@ const expandedView = (state = false, action: { type: string }) => {
     }
 };
 
-const switchCallModal = (state = {
+type switchCallModalState = {
+    show: boolean;
+    targetID: string;
+}
+
+const switchCallModal = (state: switchCallModalState = {
     show: false,
     targetID: '',
-}, action: { type: string, data?: { targetID: string } }) => {
+}, action: { type: string, data?: { targetID: string } }): switchCallModalState => {
     switch (action.type) {
     case UN_INITIALIZED:
         return {show: false, targetID: ''};
     case SHOW_SWITCH_CALL_MODAL:
-        return {show: true, targetID: action.data?.targetID};
+        return {show: true, targetID: action.data?.targetID ?? ''};
     case HIDE_SWITCH_CALL_MODAL:
         return {show: false, targetID: ''};
     default:
@@ -694,7 +653,7 @@ const ringingForCalls = (state: { [callID: string]: boolean } = {}, action: Ring
 const didRingForCalls = (state: { [callID: string]: boolean } = {}, action: RingNotifyForCallsAction) => {
     switch (action.type) {
     case DID_RING_FOR_CALL:
-    case RINGING_FOR_CALL:{
+    case RINGING_FOR_CALL: {
         if (!action.data.callID) {
             return state;
         }
@@ -703,6 +662,11 @@ const didRingForCalls = (state: { [callID: string]: boolean } = {}, action: Ring
             ...state,
             [action.data.callID]: true,
         };
+    }
+    case CALL_ENDED: {
+        const nextState = {...state};
+        delete nextState[action.data.callID];
+        return nextState;
     }
     default:
         return state;
@@ -791,7 +755,7 @@ const hostControlNotices = (state: hostControlNoticeState = {},
     }
 };
 
-export default combineReducers({
+const rootReducer = combineReducers({
     channels,
     clientStateReducer,
     reactions,
@@ -819,3 +783,12 @@ export default combineReducers({
     clientConnecting,
     hostControlNotices,
 });
+
+export default rootReducer;
+
+export const initialRootState = rootReducer(
+    {} as Parameters<typeof rootReducer>[0],
+    {type: '@@INIT'} as Parameters<typeof rootReducer>[1],
+);
+
+export type RootState = ReturnType<typeof rootReducer>;

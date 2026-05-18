@@ -18,6 +18,7 @@ import {
     RemoteTrackPublication,
     Room,
     RoomEvent,
+    ScreenShareCaptureOptions,
     Track,
     TrackPublication,
 } from 'livekit-client';
@@ -33,36 +34,32 @@ import {logDebug, logErr} from 'src/log';
 import {CallsClientStats, MediaDevices} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
 
-import {CALL_EVENT, CALL_TOKEN_API_PATH, USER_ID_SESSION_ID_SEPARATOR} from './constants';
+import {
+    CALL_EVENT,
+    CALL_TOKEN_API_PATH,
+    USER_ID_SESSION_ID_SEPARATOR,
+} from './constants';
 import {ConnectPayload, RtcTokenResponse} from './types';
 
 export default class CallClient extends EventEmitter {
-    private readonly websocketURL: string;
-    private websocketClient: WebSocketClient | null = null;
-
-    public room: Room | null;
-
     public channelID = '';
     public initTime = 0;
-
     public currentAudioInputDevice: MediaDeviceInfo | null = null;
     public currentAudioOutputDevice: MediaDeviceInfo | null = null;
 
+    private websocketClient: WebSocketClient | null = null;
+    private room: Room | null = null;
     private isDisconnected = false;
     private isRoomConnected = false;
-
     private connectPayload: ConnectPayload | null = null;
 
-    // Cached enumerated audio devices so the synchronous getAudioDevices() called
-    // from componentDidMount stays cheap and never throws.
+    // Cached enumerated audio devices so we can call getAudioDevices() synchronously
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
 
     constructor({websocketURL}: {websocketURL: ClientConfig['WebsocketURL']}) {
         super();
 
-        this.websocketURL = websocketURL;
-
-        const websocketClient = new WebSocketClient(this.websocketURL);
+        const websocketClient = new WebSocketClient(websocketURL);
         this.websocketClient = websocketClient;
         websocketClient.on(WEBSOCKET_EVENT.OPEN, this.handleWebsocketOpened.bind(this));
         websocketClient.on(WEBSOCKET_EVENT.JOIN, this.handleWebsocketJoined.bind(this));
@@ -77,18 +74,18 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.Reconnecting, this.handleReconnecting.bind(this));
         room.on(RoomEvent.Reconnected, this.handleReconnected.bind(this));
         room.on(RoomEvent.Disconnected, this.handleDisconnected.bind(this));
-        room.on(RoomEvent.TrackSubscribed, this.handleTrackSubscribed.bind(this));
-        room.on(RoomEvent.TrackPublished, this.handleTrackPublished.bind(this));
-        room.on(RoomEvent.TrackUnpublished, this.handleTrackUnpublished.bind(this));
         room.on(RoomEvent.LocalTrackPublished, this.handleLocalTrackPublished.bind(this));
         room.on(RoomEvent.LocalTrackUnpublished, this.handleLocalTrackUnpublished.bind(this));
+        room.on(RoomEvent.TrackPublished, this.handleRemoteTrackPublished.bind(this));
+        room.on(RoomEvent.TrackSubscribed, this.handleRemoteTrackSubscribed.bind(this));
+        room.on(RoomEvent.TrackUnpublished, this.handleRemoteTrackUnpublished.bind(this));
         room.on(RoomEvent.TrackMuted, this.handleTrackMuted.bind(this));
         room.on(RoomEvent.TrackUnmuted, this.handleTrackUnmuted.bind(this));
         room.on(RoomEvent.ParticipantConnected, this.handleParticipantConnected.bind(this));
         room.on(RoomEvent.ParticipantDisconnected, this.handleParticipantDisconnected.bind(this));
-        room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
         room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
         room.on(RoomEvent.MediaDevicesChanged, this.handleMediaDevicesChanged.bind(this));
+        room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
         room.on(RoomEvent.ConnectionQualityChanged, this.handleConnectionQualityChanged.bind(this));
     }
 
@@ -229,10 +226,6 @@ export default class CallClient extends EventEmitter {
         logErr('CallClient.setVideoInputDevice: not yet implemented');
     }
 
-    public getVideoDevices(): MediaDeviceInfo[] {
-        return [];
-    }
-
     public getRemoteVideoStream(): MediaStream | null {
         return null;
     }
@@ -245,13 +238,63 @@ export default class CallClient extends EventEmitter {
         logErr('CallClient.unraiseHand: not yet implemented');
     }
 
-    public async shareScreen(_sourceID?: string, _withAudio?: boolean): Promise<MediaStream | null> {
-        logErr('CallClient.shareScreen: not yet implemented');
-        return null;
+    public async shareScreen(sourceID?: string, withAudio?: boolean): Promise<MediaStream | null> {
+        if (!this.room || !this.isRoomConnected) {
+            return null;
+        }
+
+        // If we're already sharing, return the existing stream.
+        if (this.room.localParticipant.getTrackPublication(Track.Source.ScreenShare)) {
+            logDebug('CallClient.shareScreen: this client is already sharing, returning existing stream');
+            return this.getLocalScreenStream();
+        }
+
+        // If another participant is already sharing, we skip.
+        for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
+                logDebug('CallClient.shareScreen: another participant is already sharing, skipping');
+                return null;
+            }
+        }
+
+        try {
+            // Only hint systemAudio when audio capture is actually requested.
+            const captureOptions: ScreenShareCaptureOptions = {audio: Boolean(withAudio)};
+            if (withAudio) {
+                captureOptions.systemAudio = 'include';
+            }
+            await this.room.localParticipant.setScreenShareEnabled(true, captureOptions);
+
+            const stream = this.getLocalScreenStream();
+
+            if (stream && this.websocketClient) {
+                this.websocketClient.sendScreenOn({screenStreamID: stream.id});
+            }
+
+            logDebug('CallClient.shareScreen: stream started for sourceID', sourceID, 'withAudio', withAudio, 'stream.id', stream?.id);
+            return stream;
+        } catch (err) {
+            logErr('CallClient.shareScreen: failed', err);
+            this.emit(CALL_EVENT.ERROR, err);
+            return null;
+        }
     }
 
-    public unshareScreen(): void {
-        logErr('CallClient.unshareScreen: not yet implemented');
+    public async unshareScreen(): Promise<void> {
+        if (!this.room || !this.isRoomConnected) {
+            return;
+        }
+
+        try {
+            // handleLocalTrackUnpublished will fire and emit LOCAL_SCREEN_STREAM_OFF.
+            // We await the unpublish before telling the server so server-side state
+            // only flips to "off" once LiveKit has actually torn down the publication.
+            await this.room.localParticipant.setScreenShareEnabled(false);
+            this.websocketClient?.sendScreenOff();
+        } catch (err) {
+            logErr('CallClient.unshareScreen: failed', err);
+            this.emit(CALL_EVENT.ERROR, err);
+        }
     }
 
     public async setScreenStream(_stream: MediaStream): Promise<void> {
@@ -313,10 +356,24 @@ export default class CallClient extends EventEmitter {
     }
 
     public getLocalScreenStream(): MediaStream | null {
-        return null;
+        if (!this.room) {
+            return null;
+        }
+        return this.composeScreenShareStream(this.room.localParticipant);
     }
 
     public getRemoteScreenStream(): MediaStream | null {
+        if (!this.room) {
+            return null;
+        }
+
+        // Only one participant is allowed to share at a time; first match wins.
+        for (const p of this.room.remoteParticipants.values()) {
+            const stream = this.composeScreenShareStream(p);
+            if (stream) {
+                return stream;
+            }
+        }
         return null;
     }
 
@@ -356,25 +413,6 @@ export default class CallClient extends EventEmitter {
     // ------------------------------------------------------------
     // Private methods
     // ------------------------------------------------------------
-
-    private async fetchJwtTokenAndUrl(channelID: string, sessionID: string): Promise<RtcTokenResponse> {
-        const params = new URLSearchParams({channel_id: channelID, session_id: sessionID});
-        const url = `${getPluginPath()}/${CALL_TOKEN_API_PATH}?${params.toString()}`;
-        return RestClient.fetch<RtcTokenResponse>(url, {method: 'GET'});
-    }
-
-    private parseUserIdAndSessionIdFromIdentity(p: Participant): {userID: string; sessionID: string} {
-        const parts = p.identity.split(USER_ID_SESSION_ID_SEPARATOR);
-        if (parts.length !== 2) {
-            return {userID: '', sessionID: p.identity};
-        }
-
-        const [userID, sessionID] = parts;
-        return {
-            userID,
-            sessionID,
-        };
-    }
 
     private handleWebsocketOpened(originalConnID: string, prevConnID: string, isReconnect: boolean) {
         if (!this.connectPayload) {
@@ -511,68 +549,124 @@ export default class CallClient extends EventEmitter {
     }
 
     /**
-     * Fires when a remote participant's audio bits start flowing to us.
-     * We wrap the track in a MediaStream and ship it to the widget for `<audio>` playback.
-     */
-    private handleTrackSubscribed(track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) {
-        if (track.source === Track.Source.Microphone) {
-            const stream = new MediaStream([track.mediaStreamTrack]);
-            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
-            this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, stream, sessionID, userID);
-
-            logDebug(`CallClient: remote user ${userID} subscribed to track`);
-        }
-    }
-
-    /**
-     * Fires when our own mic track is created and published (e.g., user's first unmute).
-     * Emits the initial mute/unmute state.
+     * Fires when:
+     * - our mic track is created and published.
+     * - we start sharing our screen.
+     * Since this is for us, we are already subscribed to our own tracks as soon as we publish them.
      */
     private handleLocalTrackPublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
         if (localTrackPublication.source === Track.Source.Microphone) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
             this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
 
-            logDebug(`CallClient: local track published from ${userID}`, localTrackPublication);
+            logDebug(`CallClient: local voice stream published for user ${userID}`, localTrackPublication);
+        }
+
+        // Browser renders a native "Stop sharing" bar when sharing screen which has dismiss/stop button.
+        // Clicking on the button fires the 'ended' event on the underlying MediaStreamTrack and not by Client or WS.
+        // We need to handle this event to tear down the screen share stream.
+        if (localTrackPublication.source === Track.Source.ScreenShare && localTrackPublication.track) {
+            localTrackPublication.track.mediaStreamTrack.onended = () => {
+                this.unshareScreen();
+                logDebug('CallClient: local screen share stream teared down by user action on native "Stop sharing" bar');
+            };
+        }
+
+        // LiveKit publishes ScreenShare (video) and ScreenShareAudio as two separate tracks, so this
+        // handler fires once per source. When sharing with audio, that means we emit LOCAL_SCREEN_STREAM
+        // twice in quick succession:
+        // - on ScreenShare publish — composeScreenShareStream returns a stream with just video.
+        // - on ScreenShareAudio publish — composeScreenShareStream returns a fresh stream with both
+        //      video + audio (it reads the participant's current publications each call).
+        if (localTrackPublication.source === Track.Source.ScreenShare || localTrackPublication.source === Track.Source.ScreenShareAudio) {
+            const screenShareStream = this.composeScreenShareStream(localParticipant);
+            if (screenShareStream) {
+                const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
+                this.emit(CALL_EVENT.LOCAL_SCREEN_STREAM, screenShareStream, sessionID, userID);
+                logDebug(`CallClient: local screen share stream published for user ${userID}`, localTrackPublication);
+            }
         }
     }
 
     /**
-     * Fires when our own mic track is fully torn down (disconnect, explicit unpublish).
-     * Emits MUTE since "no publication" means muted in our UI.
+     * Fires when:
+     * - our mic track is fully torn down (disconnect, explicit unpublish).
+     * - we stop sharing our screen.
      */
     private handleLocalTrackUnpublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
+
         if (localTrackPublication.source === Track.Source.Microphone) {
-            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
+            logDebug(`CallClient: local voice stream unpublished for user ${userID}`, localTrackPublication);
+        }
 
-            logDebug(`CallClient: local track unpublished from ${userID}`, localTrackPublication);
+        if (localTrackPublication.source === Track.Source.ScreenShare) {
+            this.emit(CALL_EVENT.LOCAL_SCREEN_STREAM_OFF, sessionID, userID);
+            logDebug(`CallClient: local screen share stream unpublished for user ${userID}`, localTrackPublication);
         }
     }
 
     /**
-     * Fires when a remote participant publishes a mic track (e.g., they unmute for the first time).
-     * Emits the initial mute/unmute state for that participant based on `pub.isMuted`.
+     * Fires when:
+     * - a remote participant publishes a mic track (e.g., they unmute for the first time).
+     * - a remote participant publishes a screen-share track.
      */
-    private handleTrackPublished(remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
+    private handleRemoteTrackPublished(remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
+
         if (remoteTrackPublication.source === Track.Source.Microphone) {
-            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
             this.emit(remoteTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
+            logDebug(`CallClient: remote voice stream published for user ${userID}`, remoteTrackPublication);
+        }
 
-            logDebug(`CallClient: remote track published from ${userID}`, remoteTrackPublication);
+        if (remoteTrackPublication.source === Track.Source.ScreenShare || remoteTrackPublication.source === Track.Source.ScreenShareAudio) {
+            // Screen-share publications do not carry stream state before subscription:
+            // `remoteTrackPublication.track` is undefined here. The actual MediaStreamTrack arrives in
+            // handleRemoteTrackSubscribed, which is where we compose and emit REMOTE_SCREEN_STREAM.
+            logDebug(`CallClient: remote screen share stream announced (awaiting subscription) for user ${userID}`, remoteTrackPublication);
         }
     }
 
     /**
-     * Fires when a remote participant tears down their mic track (rare; usually only on leave).
-     * Treats "no publication" as muted and emits MUTE for that participant.
+     * Fires when
+     * - a remote participant's audio bits start flowing to us. We wrap the track in a MediaStream and ship it to the widget for `<audio>` playback.
+     * - a remote participant's screen-share bits start flowing to us. We wrap the track in a MediaStream and ship it to the widget for `<video>` playback.
      */
-    private handleTrackUnpublished(remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
-        if (remoteTrackPublication.source === Track.Source.Microphone) {
-            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
-            this.emit(CALL_EVENT.MUTE, sessionID, userID);
+    private handleRemoteTrackSubscribed(remoteTrack: RemoteTrack, _remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
 
-            logDebug(`CallClient: remote track unpublished from ${userID}`, remoteTrackPublication);
+        if (remoteTrack.source === Track.Source.Microphone) {
+            const stream = new MediaStream([remoteTrack.mediaStreamTrack]);
+            this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, stream, sessionID, userID);
+            logDebug(`CallClient: remote voice stream published for user ${userID}`, remoteTrack);
+        }
+
+        if (remoteTrack.source === Track.Source.ScreenShare || remoteTrack.source === Track.Source.ScreenShareAudio) {
+            const screenShareStream = this.composeScreenShareStream(remoteParticipant);
+            if (screenShareStream) {
+                this.emit(CALL_EVENT.REMOTE_SCREEN_STREAM, screenShareStream, sessionID, userID);
+                logDebug(`CallClient: remote screen share stream published for user ${userID}`, remoteTrack);
+            }
+        }
+    }
+
+    /**
+     * Fires when -
+     * a remote participant tears down their mic track (rare; usually only on leave).
+     * a remote participant tears down their screen-share track.
+     */
+    private handleRemoteTrackUnpublished(remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
+
+        if (remoteTrackPublication.source === Track.Source.Microphone) {
+            this.emit(CALL_EVENT.MUTE, sessionID, userID);
+            logDebug(`CallClient: remote voice stream unpublished for user ${userID}`, remoteTrackPublication);
+        }
+
+        if (remoteTrackPublication.source === Track.Source.ScreenShare) {
+            this.emit(CALL_EVENT.REMOTE_SCREEN_STREAM_OFF, sessionID, userID);
+            logDebug(`CallClient: remote screen share stream unpublished for user ${userID}`, remoteTrackPublication);
         }
     }
 
@@ -585,7 +679,7 @@ export default class CallClient extends EventEmitter {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
 
-            logDebug(`CallClient: track muted from ${userID}`, trackPublication);
+            logDebug(`CallClient: track muted for user ${userID}`, trackPublication);
         }
     }
 
@@ -598,7 +692,7 @@ export default class CallClient extends EventEmitter {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.UNMUTE, sessionID, userID);
 
-            logDebug(`CallClient: track unmuted from ${userID}`, trackPublication);
+            logDebug(`CallClient: track unmuted for user ${userID}`, trackPublication);
         }
     }
 
@@ -694,6 +788,43 @@ export default class CallClient extends EventEmitter {
         if (this.room && this.room.localParticipant === participant) {
             this.emit(CALL_EVENT.QUALITY_CHANGED, quality);
         }
+    }
+
+    private async fetchJwtTokenAndUrl(channelID: string, sessionID: string): Promise<RtcTokenResponse> {
+        const params = new URLSearchParams({channel_id: channelID, session_id: sessionID});
+        const url = `${getPluginPath()}/${CALL_TOKEN_API_PATH}?${params.toString()}`;
+        return RestClient.fetch<RtcTokenResponse>(url, {method: 'GET'});
+    }
+
+    /*
+     * Combines video and audio tracks into a single MediaStream from sourceParticipant.
+     * Just audio without video is never surfaced.
+     */
+    private composeScreenShareStream(participant: Participant): MediaStream | null {
+        const video = participant.getTrackPublication(Track.Source.ScreenShare)?.track?.mediaStreamTrack;
+        if (!video) {
+            return null;
+        }
+
+        const audio = participant.getTrackPublication(Track.Source.ScreenShareAudio)?.track?.mediaStreamTrack;
+        if (!audio) {
+            return new MediaStream([video]);
+        }
+
+        return new MediaStream([video, audio]);
+    }
+
+    private parseUserIdAndSessionIdFromIdentity(p: Participant): {userID: string; sessionID: string} {
+        const parts = p.identity.split(USER_ID_SESSION_ID_SEPARATOR);
+        if (parts.length !== 2) {
+            return {userID: '', sessionID: p.identity};
+        }
+
+        const [userID, sessionID] = parts;
+        return {
+            userID,
+            sessionID,
+        };
     }
 
     private async enumerateDevices(): Promise<MediaDevices> {

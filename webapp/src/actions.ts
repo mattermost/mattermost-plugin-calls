@@ -36,6 +36,7 @@ import {
     ringingForCall,
     shouldPlayJoinUserSound,
 } from 'src/selectors';
+import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {callEnded, getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/session/actions';
 import {CallsStats, ChannelType} from 'src/types/types';
 import {
@@ -77,7 +78,6 @@ import {
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
     USER_JOINED_TIMEOUT,
-    USER_SCREEN_ON,
 } from './action_types';
 
 export const showExpandedView = () => (dispatch: Dispatch) => {
@@ -556,6 +556,11 @@ export const loadProfilesByIdsIfMissing = (ids: string[]) => {
     };
 };
 
+/**
+ * This is the hydration action for the call state. It is used to set the initial state of the call when the page is loaded.
+ * It is used to set the initial state of the call when the page is loaded when for example user joins an ongoing call,
+ * or a client drop the connection and reconnects after a period of time.
+ */
 export const loadCallState = (channelID: string, call: CallState) => (dispatch: DispatchFunc, getState: GetStateFunc) => {
     const actions: AnyAction[] = [];
 
@@ -586,13 +591,12 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
         },
     });
 
-    actions.push({
-        type: USER_SCREEN_ON,
-        data: {
-            channelID,
-            session_id: call.screen_sharing_session_id,
-        },
-    });
+    if (call.screen_sharing_session_id) {
+        const screenSharer = call.sessions.find((session) => session.session_id === call.screen_sharing_session_id);
+        if (screenSharer?.user_id) {
+            actions.push(userScreenShared(channelID, call.screen_sharing_session_id, screenSharer.user_id));
+        }
+    }
 
     actions.push({
         type: CALL_HOST,
