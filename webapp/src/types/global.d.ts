@@ -33,7 +33,7 @@ declare global {
             selectRhsPost: (postId: string) => ActionFuncAsync,
         };
 
-        registerPlugin(id: string, plugin: Plugin): void,
+        registerPlugin(id: string, plugin: unknown): void,
     }
 
     interface HTMLVideoElement {

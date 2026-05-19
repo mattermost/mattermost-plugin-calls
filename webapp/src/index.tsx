@@ -1054,4 +1054,4 @@ export default class Plugin {
     }
 }
 
-window.registerPlugin(pluginId, new Plugin());
+window.registerPlugin(pluginId, new Plugin() as Plugin);
