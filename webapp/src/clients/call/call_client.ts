@@ -163,7 +163,7 @@ export default class CallClient extends EventEmitter {
 
     public async disconnect(err?: Error): Promise<void> {
         if (this.isDisconnected) {
-            logErr('CallClient: already disconnected');
+            logDebug('CallClient: already disconnected');
             return;
         }
 

@@ -47,8 +47,6 @@ import TickIcon from 'src/components/icons/tick';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
-import VideoOffIcon from 'src/components/icons/video_off';
-import VideoOnIcon from 'src/components/icons/video_on';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {JoinLoadingOverlay, VideoLoadingOverlay} from 'src/components/loading_overlays';
@@ -140,7 +138,6 @@ interface Props {
     recordingsEnabled: boolean,
     openModal: <P>(modalData: ModalData<P>) => void;
     openCallsUserSettings: () => void;
-    enableVideo: boolean,
     connectedDMUser: UserProfile | undefined,
 }
 
@@ -163,12 +160,9 @@ interface State {
     otherVideoStream: MediaStream | null,
     currentAudioInputDevice?: MediaDeviceInfo | null,
     currentAudioOutputDevice?: MediaDeviceInfo | null,
-    currentVideoInputDevice?: MediaDeviceInfo | null,
     devices?: MediaDevices,
-    videoDevices?: MediaDeviceInfo[],
     showAudioInputDevicesMenu?: boolean,
     showAudioOutputDevicesMenu?: boolean,
-    showVideoInputDevicesMenu?: boolean,
     dragging: DraggingState,
     expandedViewWindow: Window | null,
     audioEls: HTMLAudioElement[],
@@ -507,7 +501,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.attachVoiceTracks(stream.getAudioTracks());
         });
 
-        // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
             screenStream: window.callsClient.getRemoteScreenStream(),
         });
@@ -536,7 +529,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             });
         });
 
-        window.callsClient.on(CALL_EVENT.DEVICE_CHANGE, (devices: MediaDevices, videoDevices: MediaDeviceInfo[]) => {
+        window.callsClient.on(CALL_EVENT.DEVICE_CHANGE, (devices: MediaDevices) => {
             const state = {} as State;
 
             if (window.callsClient) {
@@ -546,24 +539,30 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                 if (window.callsClient.currentAudioOutputDevice !== this.state.currentAudioOutputDevice) {
                     state.currentAudioOutputDevice = window.callsClient.currentAudioOutputDevice;
+
+                    const outputDeviceId = window.callsClient.currentAudioOutputDevice?.deviceId;
+                    if (outputDeviceId) {
+                        const ps = [];
+                        for (const audioEl of this.state.audioEls) {
+                            // @ts-ignore - setSinkId is an experimental feature
+                            ps.push(audioEl.setSinkId(outputDeviceId));
+                        }
+                        Promise.all(ps).then().catch((err) => {
+                            logErr(err);
+                        });
+                    }
                 }
             }
 
             this.setState({
                 ...state,
                 devices,
-                videoDevices,
                 alerts: {
                     ...this.state.alerts,
                     missingAudioInput: {
                         ...this.state.alerts.missingAudioInput,
                         active: devices.inputs.length === 0,
                         show: devices.inputs.length === 0,
-                    },
-                    missingVideoInput: {
-                        ...this.state.alerts.missingVideoInput,
-                        active: this.props.enableVideo && videoDevices.length === 0,
-                        show: this.props.enableVideo && videoDevices.length === 0,
                     },
                 },
             });
@@ -640,10 +639,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
-                        missingVideoInputPermissions: {
-                            active: true,
-                            show: true,
-                        },
                     },
                 });
             }
@@ -665,10 +660,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.setState({
                 alerts: {
                     ...this.state.alerts,
-                    missingVideoInputPermissions: {
-                        active: false,
-                        show: false,
-                    },
                 },
             });
         });
@@ -933,32 +924,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         return this.props.currentSession ? !this.props.currentSession.unmuted : true;
     }
 
-    onVideoToggle = async () => {
-        if (!window.callsClient) {
-            return;
-        }
-
-        if (this.isVideoOn()) {
-            logDebug('CallWidget.onVideoToggle: stopping video (user toggled off)');
-            window.callsClient.stopVideo();
-            this.setState({
-                selfVideoStream: null,
-            });
-        } else {
-            logDebug('CallWidget.onVideoToggle: starting video (user toggled on)');
-            this.setState({
-                initializingSelfVideo: true,
-            });
-
-            const selfVideoStream = await window.callsClient.startVideo();
-
-            this.setState({
-                selfVideoStream,
-                initializingSelfVideo: false,
-            });
-        }
-    };
-
     isVideoOn() {
         return this.props.currentSession ? Boolean(this.props.currentSession.video) : false;
     }
@@ -1012,32 +977,20 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     onAudioInputDeviceClick = (device: MediaDeviceInfo) => {
         if (device.deviceId !== this.state.currentAudioInputDevice?.deviceId) {
-            logDebug('CallWidget.onAudioInputDeviceClick: changing audio input device', device.label, device.deviceId);
             window.callsClient?.setAudioInputDevice(device);
         }
         this.setState({showAudioInputDevicesMenu: false, currentAudioInputDevice: device});
     };
 
-    onVideoInputDeviceClick = (device: MediaDeviceInfo) => {
-        if (device.deviceId !== this.state.currentVideoInputDevice?.deviceId) {
-            logDebug('CallWidget.onVideoInputDeviceClick: changing video input device', device.label, device.deviceId);
-            window.callsClient?.setVideoInputDevice(device);
-        }
-        this.setState({showVideoInputDevicesMenu: false, currentVideoInputDevice: device});
-    };
-
     onAudioOutputDeviceClick = (device: MediaDeviceInfo) => {
         if (device.deviceId !== this.state.currentAudioOutputDevice?.deviceId) {
-            logDebug('CallWidget.onAudioOutputDeviceClick: changing audio output device', device.label, device.deviceId);
             window.callsClient?.setAudioOutputDevice(device);
             const ps = [];
             for (const audioEl of this.state.audioEls) {
                 // @ts-ignore - setSinkId is an experimental feature
                 ps.push(audioEl.setSinkId(device.deviceId));
             }
-            Promise.all(ps).then(() => {
-                logDebug('audio output has changed');
-            }).catch((err) => {
+            Promise.all(ps).then().catch((err) => {
                 logErr(err);
             });
         }
@@ -1270,14 +1223,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
-        if (deviceType === 'videoinput' && !this.state.showVideoInputDevicesMenu) {
-            return null;
-        }
-
-        let currentDevice = deviceType === 'audioinput' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
-        if (deviceType === 'videoinput') {
-            currentDevice = this.state.currentVideoInputDevice;
-        }
+        const currentDevice = deviceType === 'audioinput' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
 
         // Note: this is system default, not the concept of default that we save in local storage in client.ts
         const makeDeviceLabel = (device: MediaDeviceInfo) => {
@@ -1287,10 +1233,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return device.label;
         };
 
-        let onClickHandler = deviceType === 'audioinput' ? this.onAudioInputDeviceClick : this.onAudioOutputDeviceClick;
-        if (deviceType === 'videoinput') {
-            onClickHandler = this.onVideoInputDeviceClick;
-        }
+        const onClickHandler = deviceType === 'audioinput' ? this.onAudioInputDeviceClick : this.onAudioOutputDeviceClick;
 
         const deviceList = devices.map((device) => {
             return (
@@ -1367,25 +1310,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const {formatMessage} = this.props.intl;
 
-        let currentDevice = deviceType === 'audioinput' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
-        if (deviceType === 'videoinput') {
-            currentDevice = this.state.currentVideoInputDevice;
-        }
+        const currentDevice = deviceType === 'audioinput' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
 
-        let DeviceIcon = deviceType === 'audioinput' ? UnmutedIcon : SpeakerIcon;
-        if (deviceType === 'videoinput') {
-            DeviceIcon = VideoOnIcon;
-        }
+        const DeviceIcon = deviceType === 'audioinput' ? UnmutedIcon : SpeakerIcon;
 
-        const noInputDevices = (deviceType === 'audioinput' && this.state.devices.inputs?.length === 0) || (deviceType === 'videoinput' && this.state.videoDevices?.length === 0);
-        const noInputPermissions = (deviceType === 'audioinput' && this.state.alerts.missingAudioInputPermissions.active) ||
-      (deviceType === 'videoinput' && this.state.alerts.missingVideoInputPermissions.active);
+        const noInputDevices = deviceType === 'audioinput' && this.state.devices.inputs?.length === 0;
+        const noInputPermissions = (deviceType === 'audioinput' && this.state.alerts.missingAudioInputPermissions.active);
 
         let label = currentDevice?.label || formatMessage({defaultMessage: 'Default'});
         if (noInputPermissions) {
-            label = deviceType === 'audioinput' ? formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!) : formatMessage(CallAlertConfigs.missingVideoInputPermissions.tooltipText!);
+            label = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!);
         } else if (noInputDevices) {
-            label = deviceType === 'audioinput' ? formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!) : formatMessage(CallAlertConfigs.missingVideoInput.tooltipText!);
+            label = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
         }
 
         const onClickHandler = () => {
@@ -1393,27 +1329,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 this.setState({
                     showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu,
                     showAudioOutputDevicesMenu: false,
-                    showVideoInputDevicesMenu: false,
                 });
             } else if (deviceType === 'audiooutput') {
                 this.setState({
                     showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu,
                     showAudioInputDevicesMenu: false,
-                    showVideoInputDevicesMenu: false,
                 });
             } else {
                 this.setState({
-                    showVideoInputDevicesMenu: !this.state.showVideoInputDevicesMenu,
                     showAudioInputDevicesMenu: false,
                     showAudioOutputDevicesMenu: false,
                 });
             }
         };
 
-        let devices = deviceType === 'audioinput' ? this.state.devices.inputs?.filter((device) => device.deviceId && device.label) : this.state.devices.outputs?.filter((device) => device.deviceId && device.label);
-        if (deviceType === 'videoinput' && this.state.videoDevices) {
-            devices = this.state.videoDevices.filter((device) => device.deviceId && device.label);
-        }
+        const devices = deviceType === 'audioinput' ? this.state.devices.inputs?.filter((device) => device.deviceId && device.label) : this.state.devices.outputs?.filter((device) => device.deviceId && device.label);
 
         const isDisabled = devices.length === 0;
 
@@ -1426,8 +1356,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         let showSubMenu = false;
         if ((deviceType === 'audioinput' && this.state.showAudioInputDevicesMenu) ||
-      (deviceType === 'audiooutput' && this.state.showAudioOutputDevicesMenu) ||
-      (deviceType === 'videoinput' && this.state.showVideoInputDevicesMenu)) {
+      (deviceType === 'audiooutput' && this.state.showAudioOutputDevicesMenu)) {
             buttonStyle.background = 'rgba(var(--center-channel-color-rgb), 0.08)';
             showSubMenu = devices.length > 0;
         }
@@ -1757,7 +1686,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     {this.renderDevices('audiooutput')}
                     {this.renderDevices('audioinput')}
-                    {this.props.enableVideo && this.renderDevices('videoinput')}
                     { divider }
                     {showScreenShareItem && this.renderScreenSharingMenuItem()}
                     {showScreenShareItem && divider}
@@ -2459,8 +2387,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
-        const noVideoPermissions = this.state.alerts.missingVideoInputPermissions.active;
-        const noVideoInputDevices = this.state.alerts.missingVideoInput.active;
 
         const MuteIcon = this.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
 
@@ -2487,19 +2413,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const HandIcon = this.isHandRaised() ? UnraisedHandIcon : RaisedHandIcon;
 
         const MenuIcon = HorizontalDotsIcon;
-
-        const VideoIcon = this.isVideoOn() || noVideoInputDevices || noVideoPermissions ? VideoOnIcon : VideoOffIcon;
-        let videoTooltipText = this.isVideoOn() ? formatMessage({defaultMessage: 'Turn camera off'}) : formatMessage({defaultMessage: 'Turn camera on'});
-        let videoTooltipSubtext = '';
-
-        if (noVideoInputDevices) {
-            videoTooltipText = formatMessage(CallAlertConfigs.missingVideoInput.tooltipText!);
-            videoTooltipSubtext = formatMessage(CallAlertConfigs.missingVideoInput.tooltipSubtext!);
-        }
-        if (noVideoPermissions) {
-            videoTooltipText = formatMessage(CallAlertConfigs.missingVideoInputPermissions.tooltipText!);
-            videoTooltipSubtext = formatMessage(CallAlertConfigs.missingVideoInputPermissions.tooltipSubtext!);
-        }
 
         const handTooltipText = this.isHandRaised() ? formatMessage({defaultMessage: 'Lower hand'}) : formatMessage({defaultMessage: 'Raise hand'});
 
@@ -2557,48 +2470,39 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 </div>
 
                 <div style={this.style.frame}>
+                    <div
+                        style={this.style.topBar}
+                        // eslint-disable-next-line no-undefined
+                        onMouseDown={this.props.global ? undefined : this.onMouseDown}
+                    >
+                        {this.renderSpeakingProfile()}
 
-                    {!this.props.enableVideo &&
-                        <div
-                            style={this.style.topBar}
-                            // eslint-disable-next-line no-undefined
-                            onMouseDown={this.props.global ? undefined : this.onMouseDown}
-                        >
-                            {this.renderSpeakingProfile()}
-
-                            <div style={{width: this.props.wider ? '210px' : '152px'}}>
-                                {this.renderSpeaking()}
-                                <div style={this.style.callInfo}>
-                                    {this.renderRecordingBadge()}
-                                    <CallDuration
-                                        startAt={this.props.callStartAt}
-                                        style={{letterSpacing: '0.02em'}}
-                                    />
-                                    {this.renderChannelName()}
-                                </div>
+                        <div style={{width: this.props.wider ? '210px' : '152px'}}>
+                            {this.renderSpeaking()}
+                            <div style={this.style.callInfo}>
+                                {this.renderRecordingBadge()}
+                                <CallDuration
+                                    startAt={this.props.callStartAt}
+                                    style={{letterSpacing: '0.02em'}}
+                                />
+                                {this.renderChannelName()}
                             </div>
-
-                            <WidgetButton
-                                id='calls-widget-expand-button'
-                                ariaLabel={openPopOutLabel}
-                                onToggle={this.onExpandClick}
-                                tooltipText={openPopOutLabel}
-                                tooltipPosition='left'
-                                bgColor=''
-                                icon={
-                                    <ShowIcon
-                                        fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
-                                    />
-                                }
-                            />
                         </div>
-                    }
 
-                    {this.props.enableVideo && this.renderTopBar() }
-
-                    {/* {shouldRenderVideoContainer && this.renderVideoContainer()} */}
-
-                    {this.props.enableVideo && this.renderMiddleBar() }
+                        <WidgetButton
+                            id='calls-widget-expand-button'
+                            ariaLabel={openPopOutLabel}
+                            onToggle={this.onExpandClick}
+                            tooltipText={openPopOutLabel}
+                            tooltipPosition='left'
+                            bgColor=''
+                            icon={
+                                <ShowIcon
+                                    fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
+                                />
+                            }
+                        />
+                    </div>
 
                     <div
                         className='calls-widget-bottom-bar'
@@ -2651,28 +2555,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             }
                             unavailable={noInputDevices || noAudioPermissions}
                         />
-
-                        {this.props.enableVideo &&
-                            <WidgetButton
-                                id='video-start-stop'
-                                // eslint-disable-next-line no-undefined
-                                onToggle={noVideoInputDevices ? undefined : this.onVideoToggle}
-                                ariaLabel={videoTooltipText}
-
-                                //shortcut={} TODO: add shortcut
-                                tooltipText={videoTooltipText}
-                                tooltipSubtext={videoTooltipSubtext}
-                                bgColor={this.isVideoOn() ? 'rgba(61, 184, 135, 0.16)' : ''}
-                                icon={
-                                    <VideoIcon
-                                        style={{
-                                            fill: this.isVideoOn() ? 'rgba(61, 184, 135, 1)' : '',
-                                        }}
-                                    />
-                                }
-                                unavailable={noVideoInputDevices || noVideoPermissions}
-                            />
-                        }
 
                         {!isDMChannel(this.props.channel) &&
                             <WidgetButton
