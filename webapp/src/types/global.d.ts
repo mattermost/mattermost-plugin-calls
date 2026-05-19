@@ -20,18 +20,18 @@ declare global {
         screenSharingTrackId: string,
         currentCallData?: CurrentCallData,
         callActions?: CallActions,
-        e2eDesktopNotificationsRejected?: DesktopNotificationArgs[],
-        e2eDesktopNotificationsSent?: string[],
-        e2eNotificationsSoundedAt?: number[],
-        e2eNotificationsSoundStoppedAt?: number[],
-        e2eRingLength?: number,
         WebappUtils: WebAppUtils,
-
         ProductApi: {
             useWebSocketClient: () => WebSocketClient,
             WebSocketProvider: React.Context<WebSocketClient>,
             selectRhsPost: (postId: string) => ActionFuncAsync,
         };
+
+        e2eDesktopNotificationsRejected?: DesktopNotificationArgs[],
+        e2eDesktopNotificationsSent?: string[],
+        e2eNotificationsSoundedAt?: number[],
+        e2eNotificationsSoundStoppedAt?: number[],
+        e2eRingLength?: number,
 
         registerPlugin(id: string, plugin: unknown): void,
     }
@@ -48,10 +48,5 @@ declare global {
         msBackingStorePixelRatio: number,
         oBackingStorePixelRatio: number,
         backingStorePixelRatio: number,
-    }
-
-    // fix for a type problem in webapp as of 6dcac2
-    type DeepPartial<T> = {
-        [P in keyof T]?: DeepPartial<T[P]>;
     }
 }
