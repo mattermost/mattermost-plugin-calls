@@ -213,23 +213,6 @@ export default class CallClient extends EventEmitter {
         await this.room.localParticipant.setMicrophoneEnabled(true);
     }
 
-    public async startVideo(): Promise<MediaStream | null> {
-        logErr('CallClient.startVideo: not yet implemented');
-        return null;
-    }
-
-    public stopVideo(): void {
-        logErr('CallClient.stopVideo: not yet implemented');
-    }
-
-    public async setVideoInputDevice(_device: MediaDeviceInfo): Promise<void> {
-        logErr('CallClient.setVideoInputDevice: not yet implemented');
-    }
-
-    public getRemoteVideoStream(): MediaStream | null {
-        return null;
-    }
-
     public raiseHand(): void {
         logErr('CallClient.raiseHand: not yet implemented');
     }
@@ -297,14 +280,6 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    public async setScreenStream(_stream: MediaStream): Promise<void> {
-        logErr('CallClient.setScreenStream: not yet implemented');
-    }
-
-    public async setBlurSettings(_blurEnabled: boolean, _blurIntensity: number): Promise<void> {
-        logErr('CallClient.setBlurSettings: not yet implemented');
-    }
-
     public async setAudioInputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
         if (store) {
             window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
@@ -324,7 +299,8 @@ export default class CallClient extends EventEmitter {
             }
         }
 
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+        logDebug('CallClient: emitting DEVICE_CHANGE for audio input', device.label, device.deviceId);
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
     public setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): void {
@@ -341,7 +317,8 @@ export default class CallClient extends EventEmitter {
         // audio elements it creates after this method resolves. Calling LiveKit's
         // switchActiveDevice('audiooutput', …) here would create a second sinkId path.
 
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+        logDebug('CallClient: emitting DEVICE_CHANGE for audio output', device.label, device.deviceId);
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
     public sendUserReaction(_data: EmojiData): void {
@@ -514,7 +491,7 @@ export default class CallClient extends EventEmitter {
             // enumerateDevices() returns devices with empty labels
             // until getUserMedia has resolved successfully.
             await this.enumerateDevices();
-            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
 
             this.emit(CALL_EVENT.INIT_AUDIO);
         } catch (err) {
@@ -777,7 +754,7 @@ export default class CallClient extends EventEmitter {
             }
         }
 
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
     /**
@@ -890,6 +867,6 @@ export default class CallClient extends EventEmitter {
 
         // Always emit so the widget's componentDidMount listener picks up the
         // initial inventory even when nothing was restored from localStorage.
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 }
