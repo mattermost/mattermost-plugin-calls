@@ -173,7 +173,7 @@ type InitConfig = {
     initStore?: (store: Store, channelID: string) => Promise<void>,
 };
 
-export default async function initStandaloneApp(cfg: InitConfig) {
+export default async function initialiseEmbedApp(cfg: InitConfig) {
     setBasename();
     const initStartTime = performance.now();
 

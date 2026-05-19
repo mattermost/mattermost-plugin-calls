@@ -24,9 +24,9 @@ import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {userMuted, userUnmuted} from 'src/state/session/actions';
 
-import initStandaloneApp, {InitCbProps} from '../index';
+import initialiseEmbedApp, {InitCbProps} from '../index';
 
-initStandaloneApp({
+initialiseEmbedApp({
     name: 'widget',
     initCb: initWidget,
     initStore: initStoreWidget,

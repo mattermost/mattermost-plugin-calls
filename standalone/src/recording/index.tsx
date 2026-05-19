@@ -23,7 +23,7 @@ import RestClient from 'src/clients/rest';
 import {getJobID} from 'src/common';
 import recordingReducer from 'src/recording/reducers';
 
-import initStandaloneApp, {InitCbProps} from '../index';
+import initialiseEmbedApp, {InitCbProps} from '../index';
 import {
     RECEIVED_CALL_PROFILE_IMAGES,
 } from './action_types';
@@ -163,7 +163,7 @@ function deinitRecording() {
     delete window.callsClient;
 }
 
-runWithRetry(() => initStandaloneApp({
+runWithRetry(() => initialiseEmbedApp({
     name: 'recording',
     reducer: recordingReducer,
     initStore: initRecordingStore,
