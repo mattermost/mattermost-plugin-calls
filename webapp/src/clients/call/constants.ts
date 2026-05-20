@@ -33,3 +33,9 @@ export {ConnectionQuality as CONNECTION_QUALITY};
 // Plugin call API routes
 export const CALL_TOKEN_API_PATH = 'livekit-token';
 export const USER_ID_SESSION_ID_SEPARATOR = '___';
+
+export const AUDIO_CAPTURE_DEFAULTS = {
+    autoGainControl: true,
+    echoCancellation: true,
+    noiseSuppression: true,
+};

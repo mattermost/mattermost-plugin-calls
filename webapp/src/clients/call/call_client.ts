@@ -35,6 +35,7 @@ import {CallsClientStats, MediaDevices} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
 
 import {
+    AUDIO_CAPTURE_DEFAULTS,
     CALL_EVENT,
     CALL_TOKEN_API_PATH,
     USER_ID_SESSION_ID_SEPARATOR,
@@ -67,7 +68,11 @@ export default class CallClient extends EventEmitter {
         websocketClient.on(WEBSOCKET_EVENT.ERROR, this.handleWebsocketErrored.bind(this));
         websocketClient.on(WEBSOCKET_EVENT.CLOSE, this.handleWebsocketClosed.bind(this));
 
-        const room = new Room();
+        const room = new Room({
+            audioCaptureDefaults: AUDIO_CAPTURE_DEFAULTS,
+            dynacast: true,
+            disconnectOnPageLeave: true,
+        });
         this.room = room;
         room.on(RoomEvent.Connected, this.handleConnected.bind(this));
         room.on(RoomEvent.ConnectionStateChanged, this.handleConnectionStateChanged.bind(this));
