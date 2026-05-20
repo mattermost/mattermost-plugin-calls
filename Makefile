@@ -335,6 +335,26 @@ else
 dist: apply server webapp standalone bundle
 endif
 
+## Builds a single-platform "linux-amd64" bundle.
+.PHONY: dist-linux-amd64
+dist-linux-amd64:
+	./build/build-platform-bundle.sh linux-amd64
+
+## Builds a single-platform "linux-arm64" bundle.
+.PHONY: dist-linux-arm64
+dist-linux-arm64:
+	./build/build-platform-bundle.sh linux-arm64
+
+## Builds a single-platform "freebsd-amd64" bundle.
+.PHONY: dist-freebsd-amd64
+dist-freebsd-amd64:
+	./build/build-platform-bundle.sh freebsd-amd64
+
+## Builds a single-platform "openbsd-amd64" bundle.
+.PHONY: dist-openbsd-amd64
+dist-openbsd-amd64:
+	./build/build-platform-bundle.sh openbsd-amd64
+
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
 deploy: dist
