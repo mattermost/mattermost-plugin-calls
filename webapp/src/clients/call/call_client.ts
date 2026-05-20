@@ -7,6 +7,7 @@ import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {ClientConfig} from '@mattermost/types/config';
 import {EventEmitter} from 'events';
 import {
+    AudioPresets,
     ConnectionQuality,
     ConnectionState,
     DisconnectReason,
@@ -71,7 +72,13 @@ export default class CallClient extends EventEmitter {
         const room = new Room({
             audioCaptureDefaults: AUDIO_CAPTURE_DEFAULTS,
             dynacast: true,
+            adaptiveStream: true,
             disconnectOnPageLeave: true,
+            publishDefaults: {
+                dtx: true,
+                red: true,
+                audioPreset: AudioPresets.speech,
+            },
         });
         this.room = room;
         room.on(RoomEvent.Connected, this.handleConnected.bind(this));
