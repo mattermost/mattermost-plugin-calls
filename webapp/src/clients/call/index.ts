@@ -3,4 +3,5 @@
 
 export {default} from './call_client';
 export {CALL_EVENT} from './constants';
-export type {CallClientStats, TrackMetadata} from './types';
+export type {CallClientStats, ConnectPayload, TrackMetadata} from './types';
+export {DisconnectReason} from 'livekit-client';

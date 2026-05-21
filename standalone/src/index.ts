@@ -39,7 +39,7 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
 import {getCallActive, getCallsConfig, getCallsVersionInfo, localSessionClose, setClientConnecting} from 'plugin/actions';
-import CallClient, {CALL_EVENT} from 'plugin/clients/call';
+import CallClient, {CALL_EVENT, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
 import RestClient from 'plugin/clients/rest';
 import {
     logDebug,
@@ -84,6 +84,7 @@ import {CurrentCallDataDefault} from 'src/types/types';
 import {
     getCallID,
     getCallTitle,
+    getJobID,
     getRootID,
     getToken,
 } from './common';
@@ -96,8 +97,12 @@ function setBasename() {
     }
 }
 
+function toError(err: unknown): Error {
+    return err instanceof Error ? err : new Error(String(err));
+}
+
 function connectCall(
-    connectPayload: {channelID: string; title?: string; threadID?: string},
+    connectPayload: ConnectPayload,
     websocketURL: string,
     authToken: string,
     wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void,
@@ -127,13 +132,17 @@ function connectCall(
             }
         });
         callClient.on(CALL_EVENT.CONNECTED, () => store.dispatch(setClientConnecting(false)));
-        callClient.on(CALL_EVENT.DISCONNECTED, () => {
+        callClient.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
             store.dispatch(setClientConnecting(false));
             if (window.callsClient) {
                 store.dispatch(localSessionClose(window.callsClient.channelID));
             }
             if (closeCb) {
-                closeCb(lastError);
+                let err = lastError;
+                if (!err && typeof reason === 'number' && reason !== DisconnectReason.CLIENT_INITIATED) {
+                    err = new Error(`disconnected from room (reason: ${DisconnectReason[reason]})`);
+                }
+                closeCb(err);
             }
         });
 
@@ -141,19 +150,11 @@ function connectCall(
         callClient.connect(connectPayload).catch((err: unknown) => {
             store.dispatch(setClientConnecting(false));
             logErr(err);
-            if (closeCb) {
-                if (err instanceof Error) {
-                    closeCb(err);
-                } else {
-                    closeCb();
-                }
-            }
+            closeCb?.(toError(err));
         });
     } catch (err) {
         logErr(err);
-        if (closeCb) {
-            closeCb();
-        }
+        closeCb?.(toError(err));
     }
 }
 
@@ -190,8 +191,7 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
 
     const channelID = getCallID();
     if (!channelID) {
-        logErr('invalid call id');
-        return;
+        throw new Error('invalid call id');
     }
 
     // Setting the base URL if present, in case MM is running under a subpath.
@@ -210,8 +210,7 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
 
     const channel = getChannel(store.getState(), channelID);
     if (!channel) {
-        logErr('channel not found');
-        return;
+        throw new Error('channel not found');
     }
 
     let active = false;
@@ -315,6 +314,7 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
             channelID,
             title: getCallTitle(),
             threadID: getRootID(),
+            jobID: getJobID(),
         },
         getWSConnectionURL(getConfig(store.getState())?.WebsocketURL),
         getToken(),

@@ -183,7 +183,7 @@ export class WebSocketClient extends EventEmitter {
         }
     }
 
-    public sendJoin(payload: {channelID: string; title?: string; threadID?: string}) {
+    public sendJoin(payload: {channelID: string; title?: string; threadID?: string; jobID?: string}) {
         this.send('join', payload);
     }
 
