@@ -13,6 +13,7 @@ import {
     DisconnectReason,
     LocalParticipant,
     LocalTrackPublication,
+    MediaDeviceFailure,
     Participant,
     RemoteParticipant,
     RemoteTrack,
@@ -98,6 +99,7 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
         room.on(RoomEvent.MediaDevicesChanged, this.handleMediaDevicesChanged.bind(this));
         room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
+        room.on(RoomEvent.ActiveDeviceChanged, this.handleActiveDeviceChanged.bind(this));
         room.on(RoomEvent.ConnectionQualityChanged, this.handleConnectionQualityChanged.bind(this));
     }
 
@@ -155,6 +157,15 @@ export default class CallClient extends EventEmitter {
         }
 
         try {
+            // Warm DNS / WebSocket / ICE candidates before the final connect so the
+            // user-perceived join latency is lower. Safe to ignore failures here —
+            // they will resurface on the real connect call below.
+            try {
+                await this.room.prepareConnection(url, token);
+            } catch (prepareErr) {
+                logDebug('CallClient: prepareConnection failed (non-fatal)', prepareErr);
+            }
+
             await this.room.connect(url, token);
             this.isRoomConnected = true;
 
@@ -299,19 +310,11 @@ export default class CallClient extends EventEmitter {
 
         this.currentAudioInputDevice = device;
 
-        // LiveKit handles the published-track swap; no manual replaceTrack needed.
         if (this.room && this.isRoomConnected) {
             logDebug('CallClient.setAudioInputDevice: requesting switchActiveDevice', {requestedDeviceId: device.deviceId, requestedLabel: device.label});
             try {
-                // `exact: true` is required — without it Chrome treats the
-                // deviceId as a non-binding preference and may keep capturing
-                // from whichever mic was granted at the original prompt.
                 await this.room.switchActiveDevice('audioinput', device.deviceId, true);
 
-                // Read back what the browser actually bound to the live mic
-                // track. Without this we can't tell whether a "successful"
-                // switchActiveDevice actually changed the capture or whether
-                // the browser silently kept the previous mic. (Gap #4.)
                 const pub = this.room.localParticipant.getTrackPublication(Track.Source.Microphone);
                 const actualDeviceId = pub?.track?.mediaStreamTrack?.getSettings().deviceId;
                 if (actualDeviceId && actualDeviceId !== device.deviceId) {
@@ -321,8 +324,6 @@ export default class CallClient extends EventEmitter {
                     logDebug('CallClient.setAudioInputDevice: switch verified', {actualDeviceId: actualDeviceId ?? '(no track published yet)'});
                 }
             } catch (err) {
-                // With exact: true a denied/missing device throws
-                // OverconstrainedError instead of silently downgrading. (Gap #1.)
                 logErr('CallClient.setAudioInputDevice: failed to switch device',
                     {requestedDeviceId: device.deviceId, requestedLabel: device.label, errName: (err instanceof Error) ? err.name : 'unknown', err});
             }
@@ -542,7 +543,10 @@ export default class CallClient extends EventEmitter {
 
             this.emit(CALL_EVENT.INIT_AUDIO);
         } catch (err) {
-            const isPermissionDenied = err instanceof Error && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+            // MediaDeviceFailure.getFailure classifies device errors across browsers
+            // more reliably than checking err.name strings directly.
+            const failure = MediaDeviceFailure.getFailure(err);
+            const isPermissionDenied = failure === MediaDeviceFailure.PermissionDenied;
             this.emit(CALL_EVENT.ERROR, isPermissionDenied ? AudioInputPermissionsError : err);
         }
     }
@@ -743,8 +747,25 @@ export default class CallClient extends EventEmitter {
     }
 
     private handleMediaDevicesError(err: Error) {
-        logErr('CallClient: media device error', err);
-        this.emit(CALL_EVENT.ERROR, err);
+        const failure = MediaDeviceFailure.getFailure(err);
+        logErr('CallClient: media device error', {failure, err});
+        this.emit(CALL_EVENT.ERROR, failure === MediaDeviceFailure.PermissionDenied ? AudioInputPermissionsError : err);
+    }
+
+    /**
+     * Fires when LiveKit switches the active device for a kind — either because we
+     * called switchActiveDevice ourselves, or because LiveKit fell back internally
+     * (e.g., system default tracking). Keep our cached currentAudioInputDevice in
+     * sync so the picker UI reflects what LiveKit is actually using.
+     */
+    private handleActiveDeviceChanged(kind: MediaDeviceKind, deviceId: string) {
+        if (kind === 'audioinput') {
+            const match = this.audioDevices.inputs.find((d) => d.deviceId === deviceId);
+            if (match && match.deviceId !== this.currentAudioInputDevice?.deviceId) {
+                this.currentAudioInputDevice = match;
+                this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+            }
+        }
     }
 
     /**
@@ -853,11 +874,12 @@ export default class CallClient extends EventEmitter {
 
     private async enumerateDevices(): Promise<MediaDevices> {
         try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            this.audioDevices = {
-                inputs: devices.filter((dev) => dev.kind === 'audioinput'),
-                outputs: devices.filter((dev) => dev.kind === 'audiooutput'),
-            };
+            // Room.getLocalDevices wraps navigator.mediaDevices.enumerateDevices
+            const [inputs, outputs] = await Promise.all([
+                Room.getLocalDevices('audioinput', false),
+                Room.getLocalDevices('audiooutput', false),
+            ]);
+            this.audioDevices = {inputs, outputs};
 
             // Log a compact summary of what was returned. Empty labels mean
             // permission has not yet been granted in this browsing context —
