@@ -168,9 +168,6 @@ export default class CallClient extends EventEmitter {
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
         }
-
-        // Hydrate the device cache + restore the user's last selection.
-        await this.restoreAudioDevicesFromStorage();
     }
 
     public async disconnect(err?: Error): Promise<void> {
@@ -304,10 +301,30 @@ export default class CallClient extends EventEmitter {
 
         // LiveKit handles the published-track swap; no manual replaceTrack needed.
         if (this.room && this.isRoomConnected) {
+            logDebug('CallClient.setAudioInputDevice: requesting switchActiveDevice', {requestedDeviceId: device.deviceId, requestedLabel: device.label});
             try {
-                await this.room.switchActiveDevice('audioinput', device.deviceId);
+                // `exact: true` is required — without it Chrome treats the
+                // deviceId as a non-binding preference and may keep capturing
+                // from whichever mic was granted at the original prompt.
+                await this.room.switchActiveDevice('audioinput', device.deviceId, true);
+
+                // Read back what the browser actually bound to the live mic
+                // track. Without this we can't tell whether a "successful"
+                // switchActiveDevice actually changed the capture or whether
+                // the browser silently kept the previous mic. (Gap #4.)
+                const pub = this.room.localParticipant.getTrackPublication(Track.Source.Microphone);
+                const actualDeviceId = pub?.track?.mediaStreamTrack?.getSettings().deviceId;
+                if (actualDeviceId && actualDeviceId !== device.deviceId) {
+                    logErr('CallClient.setAudioInputDevice: device mismatch after switch',
+                        {requested: device.deviceId, actual: actualDeviceId, label: device.label});
+                } else {
+                    logDebug('CallClient.setAudioInputDevice: switch verified', {actualDeviceId: actualDeviceId ?? '(no track published yet)'});
+                }
             } catch (err) {
-                logErr('CallClient.setAudioInputDevice: failed to switch device', device.deviceId, err);
+                // With exact: true a denied/missing device throws
+                // OverconstrainedError instead of silently downgrading. (Gap #1.)
+                logErr('CallClient.setAudioInputDevice: failed to switch device',
+                    {requestedDeviceId: device.deviceId, requestedLabel: device.label, errName: (err instanceof Error) ? err.name : 'unknown', err});
             }
         }
 
@@ -493,6 +510,7 @@ export default class CallClient extends EventEmitter {
         try {
             // Just request permission to the microphone and
             // stop the track immediately to avoid any audio being published
+            logDebug('CallClient: requesting microphone permission (getUserMedia)');
             const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true});
             mediaStream.getTracks().forEach((mediaStreamTrack) => {
                 mediaStreamTrack.stop();
@@ -503,6 +521,23 @@ export default class CallClient extends EventEmitter {
             // enumerateDevices() returns devices with empty labels
             // until getUserMedia has resolved successfully.
             await this.enumerateDevices();
+
+            // Restore the user's last-selected device now that the inventory
+            // has real labels and deviceIds. Matching against the pre-grant
+            // stub list would either miss the entry or pin a phantom
+            // "default" deviceId that no longer maps to anything. (Gap #5.)
+            logDebug('CallClient: restoring stored audio devices from localStorage (post-permission)');
+            const storedInput = this.getStoredAudioDevice('input');
+            logDebug('CallClient: storedInput resolved to', storedInput ? {deviceId: storedInput.deviceId, label: storedInput.label} : null);
+            if (storedInput) {
+                await this.setAudioInputDevice(storedInput, false);
+            }
+            const storedOutput = this.getStoredAudioDevice('output');
+            logDebug('CallClient: storedOutput resolved to', storedOutput ? {deviceId: storedOutput.deviceId, label: storedOutput.label} : null);
+            if (storedOutput) {
+                this.setAudioOutputDevice(storedOutput, false);
+            }
+
             this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
 
             this.emit(CALL_EVENT.INIT_AUDIO);
@@ -823,6 +858,16 @@ export default class CallClient extends EventEmitter {
                 inputs: devices.filter((dev) => dev.kind === 'audioinput'),
                 outputs: devices.filter((dev) => dev.kind === 'audiooutput'),
             };
+
+            // Log a compact summary of what was returned. Empty labels mean
+            // permission has not yet been granted in this browsing context —
+            // matching localStorage against this list would pin a phantom
+            // "default" deviceId. (Gap #2.)
+            const summarize = (d: MediaDeviceInfo) => ({deviceId: d.deviceId, label: d.label});
+            logDebug('CallClient.enumerateDevices: result',
+                'inputs=', this.audioDevices.inputs.map(summarize),
+                'outputs=', this.audioDevices.outputs.map(summarize),
+                'labelsPopulated=', this.audioDevices.inputs.every((d) => d.label !== ''));
         } catch (err) {
             logErr('CallClient: failed to enumerate devices', err);
         }
@@ -862,23 +907,5 @@ export default class CallClient extends EventEmitter {
             return matches.find((dev) => dev.deviceId === stored.deviceId) ?? null;
         }
         return matches[0];
-    }
-
-    private async restoreAudioDevicesFromStorage() {
-        await this.enumerateDevices();
-
-        const storedInput = this.getStoredAudioDevice('input');
-        if (storedInput) {
-            await this.setAudioInputDevice(storedInput, false);
-        }
-
-        const storedOutput = this.getStoredAudioDevice('output');
-        if (storedOutput) {
-            this.setAudioOutputDevice(storedOutput, false);
-        }
-
-        // Always emit so the widget's componentDidMount listener picks up the
-        // initial inventory even when nothing was restored from localStorage.
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 }
