@@ -97,10 +97,6 @@ function setBasename() {
     }
 }
 
-function toError(err: unknown): Error {
-    return err instanceof Error ? err : new Error(String(err));
-}
-
 function connectCall(
     connectPayload: ConnectPayload,
     websocketURL: string,
@@ -142,19 +138,23 @@ function connectCall(
                 if (!err && typeof reason === 'number' && reason !== DisconnectReason.CLIENT_INITIATED) {
                     err = new Error(`disconnected from room (reason: ${DisconnectReason[reason]})`);
                 }
+                if (err) {
+                    logErr(err);
+                }
                 closeCb(err);
             }
         });
 
         store.dispatch(setClientConnecting(true));
+
         callClient.connect(connectPayload).catch((err: unknown) => {
             store.dispatch(setClientConnecting(false));
             logErr(err);
-            closeCb?.(toError(err));
+            closeCb?.(err instanceof Error ? err : new Error(String(err)));
         });
     } catch (err) {
         logErr(err);
-        closeCb?.(toError(err));
+        closeCb?.(err instanceof Error ? err : new Error(String(err)));
     }
 }
 
@@ -168,7 +168,7 @@ export type InitCbProps = {
 type InitConfig = {
     name: string,
     initCb: (props: InitCbProps) => void,
-    closeCb?: () => void,
+    closeCb?: (err?: Error) => void,
     reducer?: Reducer,
     wsHandler?: (store: Store, ev: WebSocketMessage<WebsocketEventData>) => void,
     initStore?: (store: Store, channelID: string) => Promise<void>,
@@ -191,7 +191,9 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
 
     const channelID = getCallID();
     if (!channelID) {
-        throw new Error('invalid call id');
+        const err = new Error('invalid call id');
+        cfg.closeCb?.(err);
+        throw err;
     }
 
     // Setting the base URL if present, in case MM is running under a subpath.
@@ -210,7 +212,9 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
 
     const channel = getChannel(store.getState(), channelID);
     if (!channel) {
-        throw new Error('channel not found');
+        const err = new Error('channel not found');
+        cfg.closeCb?.(err);
+        throw err;
     }
 
     let active = false;
@@ -220,8 +224,10 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
             store.dispatch(getCallsVersionInfo()),
             getCallActive(channelID),
         ]);
-    } catch (err) {
-        throw new Error(`failed to fetch channel data: ${err}`);
+    } catch (e) {
+        const err = new Error(`failed to fetch channel data: ${e}`);
+        cfg.closeCb?.(err);
+        throw err;
     }
 
     const wsEventHandler = (ev: WebSocketMessage<WebsocketEventData>) => {

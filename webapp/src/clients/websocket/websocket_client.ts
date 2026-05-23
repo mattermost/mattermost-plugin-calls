@@ -6,7 +6,8 @@ import {EventEmitter} from 'events';
 import {logDebug, logErr, logInfo, logWarn} from 'src/log';
 import {pluginId} from 'src/manifest';
 
-import {wsMinReconnectRetryTimeMs,
+import {
+    wsMinReconnectRetryTimeMs,
     wsPingIntervalMs,
     wsReconnectionTimeout,
     wsReconnectTimeIncrement,
