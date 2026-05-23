@@ -199,3 +199,132 @@ func TestNotificationWillBePushed(t *testing.T) {
 		})
 	})
 }
+
+func TestSendCancelPushNotifications(t *testing.T) {
+	// Drives a cancel-ring (Type=clear SubType=calls) push to every DM/GM
+	// member who didn't join the call, skipping the sender and anyone in
+	// the joined list. Public/private channels never ring → never cancel.
+
+	newPlugin := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI) {
+		t.Helper()
+		mockAPI := &pluginMocks.MockAPI{}
+		mockAPI.On("GetLicense").Return(&model.License{}).Maybe()
+		return &Plugin{
+			MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
+		}, mockAPI
+	}
+
+	defaultCfg := func() *model.Config {
+		var cfg model.Config
+		cfg.SetDefaults()
+		return &cfg
+	}
+
+	t.Run("DM: notifies non-joining recipient, skips sender and joiners", func(t *testing.T) {
+		p, mockAPI := newPlugin(t)
+		defer mockAPI.AssertExpectations(t)
+
+		channelID := model.NewId()
+		senderID := model.NewId()
+		receiverID := model.NewId()
+		joinerID := model.NewId()
+
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeDirect,
+		}, nil).Once()
+
+		mockAPI.On("GetUsersInChannel", channelID, model.ChannelSortByUsername, 0, 8).Return([]*model.User{
+			{Id: senderID},
+			{Id: receiverID},
+			{Id: joinerID},
+		}, nil).Once()
+
+		// Only the receiver gets the cancel push — sender excluded by the
+		// `member.Id == senderID` guard, joiner excluded by the joined set.
+		mockAPI.On("SendPushNotification", mock.MatchedBy(func(m *model.PushNotification) bool {
+			return m.Type == model.PushTypeClear &&
+				m.SubType == model.PushSubTypeCalls &&
+				m.ChannelId == channelID &&
+				m.SenderId == senderID
+		}), receiverID).Return((*model.AppError)(nil)).Once()
+
+		p.sendCancelPushNotifications(channelID, "postID", "threadID", senderID, []string{senderID, joinerID}, defaultCfg())
+	})
+
+	t.Run("GM: same filter applies", func(t *testing.T) {
+		p, mockAPI := newPlugin(t)
+		defer mockAPI.AssertExpectations(t)
+
+		channelID := model.NewId()
+		senderID := model.NewId()
+		a := model.NewId()
+		b := model.NewId()
+
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeGroup,
+		}, nil).Once()
+
+		mockAPI.On("GetUsersInChannel", channelID, model.ChannelSortByUsername, 0, 8).Return([]*model.User{
+			{Id: senderID},
+			{Id: a},
+			{Id: b},
+		}, nil).Once()
+
+		// Both non-sender members never joined → both get the cancel push.
+		mockAPI.On("SendPushNotification", mock.AnythingOfType("*model.PushNotification"), a).Return((*model.AppError)(nil)).Once()
+		mockAPI.On("SendPushNotification", mock.AnythingOfType("*model.PushNotification"), b).Return((*model.AppError)(nil)).Once()
+
+		p.sendCancelPushNotifications(channelID, "postID", "threadID", senderID, []string{senderID}, defaultCfg())
+	})
+
+	t.Run("public channel: never sends cancel push", func(t *testing.T) {
+		p, mockAPI := newPlugin(t)
+		defer mockAPI.AssertExpectations(t)
+
+		channelID := model.NewId()
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
+		}, nil).Once()
+
+		// No SendPushNotification expectation → assertion fails if called.
+		p.sendCancelPushNotifications(channelID, "postID", "threadID", "senderID", nil, defaultCfg())
+	})
+
+	t.Run("private channel: never sends cancel push", func(t *testing.T) {
+		p, mockAPI := newPlugin(t)
+		defer mockAPI.AssertExpectations(t)
+
+		channelID := model.NewId()
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypePrivate,
+		}, nil).Once()
+
+		p.sendCancelPushNotifications(channelID, "postID", "threadID", "senderID", nil, defaultCfg())
+	})
+
+	t.Run("all DM members joined: no cancel push sent", func(t *testing.T) {
+		p, mockAPI := newPlugin(t)
+		defer mockAPI.AssertExpectations(t)
+
+		channelID := model.NewId()
+		senderID := model.NewId()
+		otherID := model.NewId()
+
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeDirect,
+		}, nil).Once()
+
+		mockAPI.On("GetUsersInChannel", channelID, model.ChannelSortByUsername, 0, 8).Return([]*model.User{
+			{Id: senderID},
+			{Id: otherID},
+		}, nil).Once()
+
+		// Both members are in the joined list → no SendPushNotification call.
+		p.sendCancelPushNotifications(channelID, "postID", "threadID", senderID, []string{senderID, otherID}, defaultCfg())
+	})
+}

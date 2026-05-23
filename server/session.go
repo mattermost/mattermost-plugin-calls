@@ -475,12 +475,29 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 		setCallEnded(&state.Call)
 
+		callPostID := state.Call.PostID
+		callThreadID := state.Call.ThreadID
+		callOwnerID := state.Call.OwnerID
+
 		defer func() {
-			_, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))
+			_, err := p.updateCallPostEnded(callPostID, state.Call.Participants)
 			if err != nil {
 				p.LogError("failed to update call post ended", "err", err.Error(), "channelID", channelID)
 			}
 		}()
+
+		// Cancel any outstanding CallKit ring on devices that got the
+		// original ring push but never joined. Skip once we're past
+		// CallKit's auto-decline window (~45s) — nothing left to cancel.
+		const callKitRingTimeoutMs = int64(50_000)
+		if cfg := p.getConfiguration(); cfg != nil && cfg.EnableRinging != nil && *cfg.EnableRinging {
+			if time.Now().UnixMilli()-state.Call.StartAt <= callKitRingTimeoutMs {
+				joinedUserIDs := state.Call.Participants
+				defer func() {
+					p.sendCancelPushNotifications(channelID, callPostID, callThreadID, callOwnerID, joinedUserIDs, p.API.GetConfig())
+				}()
+			}
+		}
 	}
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {

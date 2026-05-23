@@ -137,6 +137,64 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 	}
 }
 
+// sendCancelPushNotifications sends a `type=clear sub_type=calls` push to
+// the same recipients that received the original ring push. On iOS this
+// is routed via PushKit to the mobile client, which clears the CallKit
+// ringing UI for any device that hadn't yet answered. Without it the
+// CallKit incoming-call UI keeps ringing until iOS times it out, because
+// the call_end WebSocket event can't reach backgrounded/locked devices.
+func (p *Plugin) sendCancelPushNotifications(channelID, postID, threadID, senderID string, joinedUserIDs []string, config *model.Config) {
+	if err := p.canSendPushNotifications(config, p.API.GetLicense()); err != nil {
+		return
+	}
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.LogError("failed to get channel", "error", appErr.Error())
+		return
+	}
+
+	if channel.Type != model.ChannelTypeDirect && channel.Type != model.ChannelTypeGroup {
+		return
+	}
+
+	members, appErr := p.API.GetUsersInChannel(channelID, model.ChannelSortByUsername, 0, 8)
+	if appErr != nil {
+		p.LogError("failed to get channel users", "error", appErr.Error())
+		return
+	}
+
+	joined := make(map[string]struct{}, len(joinedUserIDs))
+	for _, id := range joinedUserIDs {
+		joined[id] = struct{}{}
+	}
+
+	for _, member := range members {
+		if member.Id == senderID {
+			continue
+		}
+		if _, didJoin := joined[member.Id]; didJoin {
+			continue
+		}
+
+		msg := &model.PushNotification{
+			Version:     model.PushMessageV2,
+			Type:        model.PushTypeClear,
+			SubType:     model.PushSubTypeCalls,
+			TeamId:      channel.TeamId,
+			ChannelId:   channelID,
+			PostId:      postID,
+			RootId:      threadID,
+			SenderId:    senderID,
+			ChannelType: channel.Type,
+		}
+
+		if err := p.API.SendPushNotification(msg, member.Id); err != nil {
+			p.LogError(fmt.Sprintf("failed to send cancel push notification for userID: %s", member.Id), "error", err.Error())
+		}
+	}
+}
+
 func (p *Plugin) checkLicenseForIDLoaded() bool {
 	licence := p.API.GetLicense()
 	if licence == nil || licence.Features == nil || licence.Features.IDLoadedPushNotifications == nil {
