@@ -24,8 +24,7 @@ import {
 } from 'livekit-client';
 import {AudioInputPermissionsError} from 'src/clients/calls';
 import RestClient from 'src/clients/rest';
-import {WebSocketClient, WebSocketError, WebSocketErrorType} from 'src/clients/websocket';
-import {WEBSOCKET_EVENT} from 'src/clients/websocket/constants';
+import {WEBSOCKET_EVENT, WebSocketClient, WebSocketError, WebSocketErrorType} from 'src/clients/websocket';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
