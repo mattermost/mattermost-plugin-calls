@@ -5,7 +5,7 @@
 import {CallChannelState} from '@mattermost/calls-common/lib/types';
 import {hasDCSignalingLockSupport} from '@mattermost/calls-common/lib/utils';
 import WebSocketClient from '@mattermost/client/websocket';
-import type {DesktopAPI} from '@mattermost/desktop-api';
+import {type DesktopAPI} from '@mattermost/desktop-api';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
