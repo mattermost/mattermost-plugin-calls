@@ -474,11 +474,17 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The session must belong to the requesting user. Without this check a
-	// client could mint a token claiming any session_id, breaking the
-	// invariant that LiveKit identity == owner's plugin-WS session.
-	us := p.getSessionByOriginalID(sessionID)
-	if us == nil || us.userID != userID {
+	// Require the session to belong to the requesting user to prevent unauthorized token minting.
+	callSession, err := p.store.GetCallSession(sessionID, db.GetCallSessionOpts{})
+	if err != nil {
+		if !errors.Is(err, db.ErrNotFound) {
+			p.LogError("failed to get call session", "err", err.Error(), "sessionID", sessionID)
+		}
+		res.Err = "Forbidden"
+		res.Code = http.StatusForbidden
+		return
+	}
+	if callSession.UserID != userID {
 		res.Err = "Forbidden"
 		res.Code = http.StatusForbidden
 		return
@@ -506,7 +512,7 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 	}
 	at.SetVideoGrant(grant).
 		SetIdentity(composeLivekitIdentity(userID, sessionID)).
-		SetName(user.GetDisplayName(model.ShowFullName)).
+		SetName(user.Username).
 		SetValidFor(time.Hour)
 
 	token, err := at.ToJWT()
