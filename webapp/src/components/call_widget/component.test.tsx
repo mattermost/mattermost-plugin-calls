@@ -8,7 +8,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import {createIntl, RawIntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
-import type CallsClient from 'src/client';
+import type CallClient from 'src/clients/call';
 import {mockStore} from 'src/testUtils';
 
 import CallWidget from './component';
@@ -99,7 +99,7 @@ describe('CallWidget', () => {
             getLocalScreenStream: () => null,
             on: jest.fn(),
             off: jest.fn(),
-        } as unknown as CallsClient;
+        } as unknown as CallClient;
         openSpy = jest.spyOn(window, 'open');
     });
 
