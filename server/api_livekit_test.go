@@ -290,7 +290,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 
 		_, claims, err := verifier.Verify("testsecret")
 		require.NoError(t, err)
-		require.Equal(t, "Test User", claims.Name)
+		require.Equal(t, "testuser", claims.Name)
 		require.NotNil(t, claims.Video)
 		require.True(t, claims.Video.RoomJoin)
 		require.Equal(t, channelID, claims.Video.Room)
