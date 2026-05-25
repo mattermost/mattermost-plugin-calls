@@ -1034,9 +1034,18 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
-	addSessionToCall(state)
+	state = addSessionToCall(state)
 
 	p.unlockCall(channelID)
+
+	// Clear any active native ringing UI on this user's other VoIP
+	// devices. Gated on a confirmed join (session present in state) and
+	// not the bot (no human sessions to clear).
+	if !p.isBot(userID) && state != nil {
+		if _, joined := state.sessions[connID]; joined {
+			go p.sendAnsweredElsewhereCancelPush(channelID, state.Call.PostID, state.Call.ThreadID, userID, authSessionID, p.API.GetConfig())
+		}
+	}
 
 	return nil
 }

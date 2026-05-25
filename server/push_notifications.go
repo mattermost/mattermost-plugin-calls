@@ -13,7 +13,18 @@ import (
 	"github.com/mattermost/mattermost/server/public/shared/i18n"
 )
 
+// Must match the constant of the same name in mattermost-server's
+// channels/app/notification_push.go.
+const pushCategoryAnsweredElsewhere = "answered_elsewhere"
+
 func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, userID string) (*model.PushNotification, string) {
+	// Our own answered-elsewhere cancel push goes to a user who IS in the
+	// call by definition — that's the trigger. Let it through without
+	// running the in-call suppression below.
+	if notification.Category == pushCategoryAnsweredElsewhere {
+		return nil, ""
+	}
+
 	// If the user is in a call we suppress notifications for replies to the call thread.
 	call, err := p.store.GetActiveCallByChannelID(notification.ChannelId, db.GetCallOpts{})
 	if err == nil && call.ThreadID == notification.RootId {
@@ -192,6 +203,42 @@ func (p *Plugin) sendCancelPushNotifications(channelID, postID, threadID, sender
 		if err := p.API.SendPushNotification(msg, member.Id); err != nil {
 			p.LogError(fmt.Sprintf("failed to send cancel push notification for userID: %s", member.Id), "error", err.Error())
 		}
+	}
+}
+
+// sendAnsweredElsewhereCancelPush clears the CallKit ringing UI on a user's
+// other VoIP-registered devices when they answer a call from one of them.
+// We can't pass a skip-session-id through the public plugin API, so we
+// encode it on SenderId together with Category="answered_elsewhere"; core
+// recognizes the pair, skips the matching session, and strips SenderId
+// before forwarding to the proxy. See sendPushNotificationToAllSessions
+// in mattermost-server's notification_push.go for the matching side.
+func (p *Plugin) sendAnsweredElsewhereCancelPush(channelID, postID, threadID, userID, authSessionID string, config *model.Config) {
+	if err := p.canSendPushNotifications(config, p.API.GetLicense()); err != nil {
+		return
+	}
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.LogError("failed to get channel", "error", appErr.Error())
+		return
+	}
+
+	msg := &model.PushNotification{
+		Version:     model.PushMessageV2,
+		Type:        model.PushTypeClear,
+		SubType:     model.PushSubTypeCalls,
+		Category:    pushCategoryAnsweredElsewhere,
+		TeamId:      channel.TeamId,
+		ChannelId:   channelID,
+		PostId:      postID,
+		RootId:      threadID,
+		SenderId:    authSessionID,
+		ChannelType: channel.Type,
+	}
+
+	if err := p.API.SendPushNotification(msg, userID); err != nil {
+		p.LogError(fmt.Sprintf("failed to send answered-elsewhere cancel push for userID: %s", userID), "error", err.Error())
 	}
 }
 

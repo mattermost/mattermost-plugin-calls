@@ -328,3 +328,41 @@ func TestSendCancelPushNotifications(t *testing.T) {
 		p.sendCancelPushNotifications(channelID, "postID", "threadID", senderID, []string{senderID, otherID}, defaultCfg())
 	})
 }
+
+func TestSendAnsweredElsewhereCancelPush(t *testing.T) {
+	// Fires when a user joins a call: clears CallKit ringing UI on their
+	// other VoIP devices. Plugin overloads SenderId as the auth-session-id
+	// to skip (Category=answered_elsewhere) — core sees the convention and
+	// drops the matching session before forwarding to the proxy.
+	mockAPI := &pluginMocks.MockAPI{}
+	mockAPI.On("GetLicense").Return(&model.License{}).Maybe()
+
+	p := &Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
+	}
+
+	var cfg model.Config
+	cfg.SetDefaults()
+
+	channelID := model.NewId()
+	userID := model.NewId()
+	authSessionID := model.NewId()
+
+	mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+		Id:     channelID,
+		Type:   model.ChannelTypeDirect,
+		TeamId: "team1",
+	}, nil).Once()
+
+	mockAPI.On("SendPushNotification", mock.MatchedBy(func(m *model.PushNotification) bool {
+		return m.Type == model.PushTypeClear &&
+			m.SubType == model.PushSubTypeCalls &&
+			m.Category == "answered_elsewhere" &&
+			m.SenderId == authSessionID &&
+			m.ChannelId == channelID
+	}), userID).Return((*model.AppError)(nil)).Once()
+
+	p.sendAnsweredElsewhereCancelPush(channelID, "postID", "threadID", userID, authSessionID, &cfg)
+
+	mockAPI.AssertExpectations(t)
+}
