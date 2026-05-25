@@ -387,21 +387,17 @@ func TestSendAnsweredElsewhereCancelPush(t *testing.T) {
 	userID := model.NewId()
 	authSessionID := model.NewId()
 
-	mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-		Id:     channelID,
-		Type:   model.ChannelTypeDirect,
-		TeamId: "team1",
-	}, nil).Once()
-
 	mockAPI.On("SendPushNotification", mock.MatchedBy(func(m *model.PushNotification) bool {
 		return m.Type == model.PushTypeClear &&
 			m.SubType == model.PushSubTypeCalls &&
 			m.Category == "answered_elsewhere" &&
 			m.SenderId == authSessionID &&
-			m.ChannelId == channelID
+			m.ChannelId == channelID &&
+			m.TeamId == "team1" &&
+			m.ChannelType == model.ChannelTypeDirect
 	}), userID).Return((*model.AppError)(nil)).Once()
 
-	p.sendAnsweredElsewhereCancelPush(channelID, "postID", "threadID", userID, authSessionID, &cfg)
+	p.sendAnsweredElsewhereCancelPush(channelID, "team1", model.ChannelTypeDirect, "postID", "threadID", userID, authSessionID, &cfg)
 
 	mockAPI.AssertExpectations(t)
 }

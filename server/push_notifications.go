@@ -213,14 +213,8 @@ func (p *Plugin) sendCancelPushNotifications(channelID, postID, threadID, sender
 // recognizes the pair, skips the matching session, and strips SenderId
 // before forwarding to the proxy. See sendPushNotificationToAllSessions
 // in mattermost-server's notification_push.go for the matching side.
-func (p *Plugin) sendAnsweredElsewhereCancelPush(channelID, postID, threadID, userID, authSessionID string, config *model.Config) {
+func (p *Plugin) sendAnsweredElsewhereCancelPush(channelID, channelTeamID string, channelType model.ChannelType, postID, threadID, userID, authSessionID string, config *model.Config) {
 	if err := p.canSendPushNotifications(config, p.API.GetLicense()); err != nil {
-		return
-	}
-
-	channel, appErr := p.API.GetChannel(channelID)
-	if appErr != nil {
-		p.LogError("failed to get channel", "error", appErr.Error())
 		return
 	}
 
@@ -229,12 +223,12 @@ func (p *Plugin) sendAnsweredElsewhereCancelPush(channelID, postID, threadID, us
 		Type:        model.PushTypeClear,
 		SubType:     model.PushSubTypeCalls,
 		Category:    pushCategoryAnsweredElsewhere,
-		TeamId:      channel.TeamId,
+		TeamId:      channelTeamID,
 		ChannelId:   channelID,
 		PostId:      postID,
 		RootId:      threadID,
 		SenderId:    authSessionID,
-		ChannelType: channel.Type,
+		ChannelType: channelType,
 	}
 
 	if err := p.API.SendPushNotification(msg, userID); err != nil {

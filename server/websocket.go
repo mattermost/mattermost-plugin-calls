@@ -1043,7 +1043,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	// not the bot (no human sessions to clear).
 	if !p.isBot(userID) && state != nil {
 		if _, joined := state.sessions[connID]; joined {
-			go p.sendAnsweredElsewhereCancelPush(channelID, state.Call.PostID, state.Call.ThreadID, userID, authSessionID, p.API.GetConfig())
+			go p.sendAnsweredElsewhereCancelPush(channelID, channel.TeamId, channel.Type, state.Call.PostID, state.Call.ThreadID, userID, authSessionID, p.API.GetConfig())
 		}
 	}
 
