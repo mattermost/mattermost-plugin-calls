@@ -99,6 +99,45 @@ func TestNotificationWillBePushed(t *testing.T) {
 		require.Equal(t, "calls: suppressing notification on call thread for connected user", msg)
 	})
 
+	t.Run("answered_elsewhere passes through even when user is in the call", func(t *testing.T) {
+		// Same setup as "user in call" above (user has an active session
+		// on the call's thread) — the only difference is Category. The
+		// hook must NOT consult the store (no IsUserInCall lookup) and
+		// must NOT suppress. We assert this by giving the mockAPI no
+		// expectations: any unmocked call (e.g. LogDebug) would fail.
+		channelID := model.NewId()
+		threadID := model.NewId()
+		userID := model.NewId()
+		callID := model.NewId()
+
+		err := p.store.CreateCall(&public.Call{
+			ID:        callID,
+			CreateAt:  time.Now().UnixMilli(),
+			ChannelID: channelID,
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  threadID,
+			OwnerID:   model.NewId(),
+		})
+		require.NoError(t, err)
+
+		err = p.store.CreateCallSession(&public.CallSession{
+			ID:     model.NewId(),
+			CallID: callID,
+			UserID: userID,
+			JoinAt: time.Now().UnixMilli(),
+		})
+		require.NoError(t, err)
+
+		res, msg := p.NotificationWillBePushed(&model.PushNotification{
+			ChannelId: channelID,
+			RootId:    threadID,
+			Category:  pushCategoryAnsweredElsewhere,
+		}, userID)
+		require.Nil(t, res)
+		require.Empty(t, msg)
+	})
+
 	t.Run("DM/GM ringing", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		var cfg configuration
