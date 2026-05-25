@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-calls/lt
 
-go 1.25.0
+go 1.26.3
 
 require (
 	github.com/aws/aws-sdk-go v1.50.3
