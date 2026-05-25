@@ -34,7 +34,7 @@ import {
 } from '@mattermost/calls-common/lib/types';
 import {hasDCSignalingLockSupport} from '@mattermost/calls-common/lib/utils';
 import {WebSocketMessage} from '@mattermost/client/websocket';
-import type {DesktopAPI} from '@mattermost/desktop-api';
+import {type DesktopAPI} from '@mattermost/desktop-api';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';

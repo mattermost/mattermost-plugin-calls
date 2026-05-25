@@ -3,7 +3,7 @@
 
 import './component.scss';
 
-import {DesktopCaptureSource} from '@mattermost/desktop-api';
+import {type DesktopCaptureSource} from '@mattermost/desktop-api';
 import React, {CSSProperties} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
