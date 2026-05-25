@@ -1039,9 +1039,15 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	p.unlockCall(channelID)
 
 	// Clear any active native ringing UI on this user's other VoIP
-	// devices. Gated on a confirmed join (session present in state) and
-	// not the bot (no human sessions to clear).
-	if !p.isBot(userID) && state != nil {
+	// devices. Gated on:
+	//   - ringing enabled (no ring push was sent otherwise)
+	//   - DM/GM only (public/private channels never ring)
+	//   - not the bot (no human sessions to clear)
+	//   - a confirmed join (session present in state)
+	cfg := p.getConfiguration()
+	if cfg.EnableRinging != nil && *cfg.EnableRinging &&
+		(channel.Type == model.ChannelTypeDirect || channel.Type == model.ChannelTypeGroup) &&
+		!p.isBot(userID) && state != nil {
 		if _, joined := state.sessions[connID]; joined {
 			go p.sendAnsweredElsewhereCancelPush(channelID, channel.TeamId, channel.Type, state.Call.PostID, state.Call.ThreadID, userID, authSessionID, p.API.GetConfig())
 		}
