@@ -122,7 +122,7 @@ func (s *Store) GetCallSession(id string, opts GetCallSessionOpts) (*public.Call
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
 	defer cancel()
 	if err := s.dbXFromGetOpts(opts).GetContext(ctx, &session, q, args...); err == sql.ErrNoRows {
-		return nil, fmt.Errorf("call session not found: %w", ErrNotFound)
+		return nil, fmt.Errorf("call session %w", ErrNotFound)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get call session: %w", err)
 	}
