@@ -191,9 +191,7 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
 
     const channelID = getCallID();
     if (!channelID) {
-        const err = new Error('invalid call id');
-        cfg.closeCb?.(err);
-        throw err;
+        throw new Error('invalid call id');
     }
 
     // Setting the base URL if present, in case MM is running under a subpath.
@@ -212,9 +210,7 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
 
     const channel = getChannel(store.getState(), channelID);
     if (!channel) {
-        const err = new Error('channel not found');
-        cfg.closeCb?.(err);
-        throw err;
+        throw new Error('channel not found');
     }
 
     let active = false;
@@ -225,9 +221,7 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
             getCallActive(channelID),
         ]);
     } catch (e) {
-        const err = new Error(`failed to fetch channel data: ${e}`);
-        cfg.closeCb?.(err);
-        throw err;
+        throw new Error(`failed to fetch channel data: ${e}`);
     }
 
     const wsEventHandler = (ev: WebSocketMessage<WebsocketEventData>) => {

@@ -31,7 +31,7 @@ initialiseEmbedApp({
     initCb: initWidget,
     initStore: initStoreWidget,
     closeCb: deinitWidget,
-});
+}).catch(deinitWidget);
 
 let widgetRoot: Root | null = null;
 
