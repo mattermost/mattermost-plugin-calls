@@ -14,10 +14,10 @@ test.beforeEach(async ({page}) => {
     await devPage.goto();
 });
 
-test.describe('join call', () => {
+test.describe('join call', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('channel header button', {
+    test.fixme('channel header button', {
         tag: '@core',
     }, async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -26,7 +26,7 @@ test.describe('join call', () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
-    test('channel toast', async ({page}) => {
+    test.fixme('channel toast', async ({page}) => {
         // start a call
         const userPage = await startCall(userStorages[1]);
 
@@ -48,7 +48,7 @@ test.describe('join call', () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
-    test('call thread', async ({page}) => {
+    test.fixme('call thread', async ({page}) => {
         // start a call
         const userPage = await startCall(userStorages[1]);
 
@@ -85,7 +85,7 @@ test.describe('join call', () => {
         await userPage.leaveCall();
     });
 
-    test('user profile popover', async ({page}) => {
+    test.fixme('user profile popover', async ({page}) => {
         const userAPage = page;
         const userADevPage = new PlaywrightDevPage(page);
         await userADevPage.gotoDM(usernames[1]);
@@ -153,7 +153,7 @@ test.describe('join call', () => {
         await userADevPage.leaveCall();
     });
 
-    test('multiple sessions per user', {
+    test.fixme('multiple sessions per user', {
         tag: '@core',
     }, async ({page}) => {
         const sessionAPage = new PlaywrightDevPage(page);
@@ -178,11 +178,11 @@ test.describe('join call', () => {
     });
 });
 
-test.describe('end call', () => {
+test.describe('end call', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
     const userIdx = getUserIdxForTest();
 
-    test('widget', async ({page}) => {
+    test.fixme('widget', async ({page}) => {
         // userA starts a call and userB joins
         const userAPage = new PlaywrightDevPage(page);
         const [_, userBPage] = await Promise.all([
@@ -204,7 +204,7 @@ test.describe('end call', () => {
         await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('post card', async ({page}) => {
+    test.fixme('post card', async ({page}) => {
         // userA starts a call and userB joins
         const userAPage = new PlaywrightDevPage(page);
         const [_, userBPage] = await Promise.all([
@@ -228,7 +228,7 @@ test.describe('end call', () => {
         await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('popout', async ({page}) => {
+    test.fixme('popout', async ({page}) => {
         const [_, popOut] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
 

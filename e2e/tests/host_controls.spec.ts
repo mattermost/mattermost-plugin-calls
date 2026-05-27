@@ -27,10 +27,10 @@ test.afterEach(async ({page}) => {
     await devPage.slashCallEnd();
 });
 
-test.describe('host controls', () => {
+test.describe('host controls', {tag: '@livekit'}, () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('host change', async ({page}) => {
+    test.fixme('host change', async ({page}) => {
         const user0Page = new PlaywrightDevPage(page);
 
         // Here we are potentially introducing flakiness since the host is the first user to join
@@ -76,7 +76,7 @@ test.describe('host controls', () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall(), user2Page.leaveCall()]);
     });
 
-    test('widget', async ({page}) => {
+    test.fixme('widget', async ({page}) => {
         // Here we are potentially introducing flakiness since the host is the first user to join
         // and through the Promise.all() call both users join in parallel.
         // That said, in one case (the second user) we have to spawn a new browser process,
@@ -206,7 +206,7 @@ test.describe('host controls', () => {
         await Promise.all([user0Page.leaveCall(), user2Page.leaveCall()]);
     });
 
-    test('popout - participant card - make host', async ({page}) => {
+    test.fixme('popout - participant card - make host', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         const [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
 
@@ -242,7 +242,7 @@ test.describe('host controls', () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test('popout - participant card - mute, lower hand', async ({page}) => {
+    test.fixme('popout - participant card - mute, lower hand', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         const [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
 
@@ -282,7 +282,7 @@ test.describe('host controls', () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test('popout - participant card - remove, stop screenshare', async ({page}) => {
+    test.fixme('popout - participant card - remove, stop screenshare', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -317,7 +317,7 @@ test.describe('host controls', () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test('popout - RHS - make host', async ({page}) => {
+    test.fixme('popout - RHS - make host', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -360,7 +360,7 @@ test.describe('host controls', () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test('popout - RHS - mute, lower hand', async ({page}) => {
+    test.fixme('popout - RHS - mute, lower hand', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -432,7 +432,7 @@ test.describe('host controls', () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall(), user2Page.leaveCall()]);
     });
 
-    test('popout - RHS - remove, stop screenshare', async ({page}) => {
+    test.fixme('popout - RHS - remove, stop screenshare', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);

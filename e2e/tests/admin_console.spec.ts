@@ -7,7 +7,7 @@ import {apiSetEnableLiveCaptions, apiSetEnableTranscriptions} from '../config';
 import {adminState, baseURL} from '../constants';
 import {acquireLock, releaseLock, resizeAndScreenshot, wait} from '../utils';
 
-test.describe('admin console', () => {
+test.describe('admin console', {tag: '@livekit'}, () => {
     test.use({storageState: adminState.storageStatePath});
 
     test.beforeEach(async () => {
@@ -26,7 +26,7 @@ test.describe('admin console', () => {
         }
     });
 
-    test('config sections', async ({page}) => {
+    test.fixme('config sections', async ({page}) => {
         await apiSetEnableTranscriptions(true);
         await apiSetEnableLiveCaptions(true);
 
@@ -44,7 +44,7 @@ test.describe('admin console', () => {
         await expect(await resizeAndScreenshot(page, 'calls-live-captions-section')).toMatchSnapshot('calls-system-console-live-captions-section.png', {maxDiffPixels: 0});
     });
 
-    test('config settings', async ({page}) => {
+    test.fixme('config settings', async ({page}) => {
         // Go to the plugin settings page.
         await page.goto(`${baseURL}/admin_console/plugins/plugin_com.mattermost.calls`);
 

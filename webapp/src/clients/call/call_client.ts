@@ -92,6 +92,23 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.ConnectionQualityChanged, this.handleConnectionQualityChanged.bind(this));
     }
 
+    // E2E helpers — public read-only views of internal state so Playwright
+    // tests can wait on `window.callsClient.connected` / `.closed`.
+    public get connected(): boolean {
+        return this.isRoomConnected;
+    }
+
+    public get closed(): boolean {
+        return this.isDisconnected;
+    }
+
+    // _e2eForceWebsocketClose closes the plugin WebSocket without telling the
+    // client to stay closed, so reconnect logic runs — used by E2E tests to
+    // exercise the WS-reconnect path.
+    public _e2eForceWebsocketClose(): void {
+        this.websocketClient?.e2eForceClose();
+    }
+
     public async connect(connectPayload: ConnectPayload): Promise<void> {
         if (this.isRoomConnected) {
             throw new Error('CallClient: room already connected');

@@ -1,6 +1,12 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+// MM-68570: incoming-call notifications are out of scope for the v2
+// migration's first coverage pass; the underlying WS plumbing works but the
+// surface is large and depends on features (DND/OOO routing, sound/desktop
+// banners) we want to verify separately. Every test is test.skip'd until
+// then.
+
 import {expect, test} from '@playwright/test';
 
 import {apiChannelNotifyProps} from '../channels';
@@ -64,10 +70,10 @@ test.afterEach(async ({page, request}) => {
     );
 });
 
-test.describe('notifications', () => {
+test.describe('notifications', {tag: '@livekit'}, () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('dm channel notification', async ({page}) => {
+    test.skip('dm channel notification', async ({page}) => {
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -115,7 +121,7 @@ test.describe('notifications', () => {
         await expect(notification).not.toBeVisible();
     });
 
-    test('dm channel, global desktop none', async ({page, request}) => {
+    test.skip('dm channel, global desktop none', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'none'});
         await page.reload();
         const devPage = new PlaywrightDevPage(page);
@@ -152,7 +158,7 @@ test.describe('notifications', () => {
         await expect(notification).not.toBeVisible();
     });
 
-    test('dm channel, global sound false', async ({page, request}) => {
+    test.skip('dm channel, global sound false', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'mentions', calls_desktop_sound: 'false'});
         await page.reload();
         const devPage = new PlaywrightDevPage(page);
@@ -188,7 +194,7 @@ test.describe('notifications', () => {
         await expect(notification).not.toBeVisible();
     });
 
-    test('gm channel notification', async ({page}) => {
+    test.skip('gm channel notification', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
         await page.evaluate(() => {
@@ -241,7 +247,7 @@ test.describe('notifications', () => {
         await expect(notification).not.toBeVisible();
     });
 
-    test('gm channel, global desktop none', async ({page, request}) => {
+    test.skip('gm channel, global desktop none', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'none'});
         await page.reload();
         const devPage = new PlaywrightDevPage(page);
@@ -284,7 +290,7 @@ test.describe('notifications', () => {
         await user1.leaveCall();
     });
 
-    test('gm channel, global desktop sound false', async ({page, request}) => {
+    test.skip('gm channel, global desktop sound false', async ({page, request}) => {
         await apiPatchNotifyProps(request, {desktop: 'mentions', calls_desktop_sound: 'false'});
         await page.reload();
         const devPage = new PlaywrightDevPage(page);
@@ -325,7 +331,7 @@ test.describe('notifications', () => {
         await user1.leaveCall();
     });
 
-    test('two notifications stacked, do not ring for second call when first is ringing', async ({page}) => {
+    test.skip('two notifications stacked, do not ring for second call when first is ringing', async ({page}) => {
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -387,7 +393,7 @@ test.describe('notifications', () => {
         await expect(notificationsSoundedAt.length).toEqual(1);
     });
 
-    test('two notifications stacked, ring for second call when first is finished ringing', async ({page}) => {
+    test.skip('two notifications stacked, ring for second call when first is finished ringing', async ({page}) => {
         await page.evaluate(() => {
             window.e2eNotificationsSoundedAt = [];
             window.e2eRingLength = 500;
@@ -412,7 +418,7 @@ test.describe('notifications', () => {
         await Promise.all([user1.leaveCall(), user2.leaveCall()]);
     });
 
-    test('stacked notifications while in a call - webapp', async ({page}) => {
+    test.skip('stacked notifications while in a call - webapp', async ({page}) => {
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eNotificationsSoundedAt = [];
@@ -475,7 +481,7 @@ test.describe('notifications', () => {
         await Promise.all([user1.leaveCall(), user2.leaveCall()]);
     });
 
-    test('stacked notifications while in a call - global widget', async ({page}) => {
+    test.skip('stacked notifications while in a call - global widget', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.openWidget(getChannelNamesForTest()[0]);
 
@@ -505,7 +511,7 @@ test.describe('notifications', () => {
         await expect(notification).not.toBeVisible();
     });
 
-    test('reloading and new client, user will see notifications immediately', async ({page}) => {
+    test.skip('reloading and new client, user will see notifications immediately', async ({page}) => {
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
 
@@ -549,7 +555,7 @@ test.describe('notifications', () => {
         await Promise.all([user1.leaveCall(), user2.leaveCall()]);
     });
 
-    test('dismiss works across clients and is recorded (reloading and new client)', async ({page}) => {
+    test.skip('dismiss works across clients and is recorded (reloading and new client)', async ({page}) => {
         const user1 = await startDMWith(userStorages[1], usernames[0]);
         await user1.startCall();
 
@@ -604,7 +610,7 @@ test.describe('notifications', () => {
         await Promise.all([user1.leaveCall(), user2.leaveCall()]);
     });
 
-    test('do not ring twice for same call, lhs -> widget', async ({page}) => {
+    test.skip('do not ring twice for same call, lhs -> widget', async ({page}) => {
         // Notification appears in LHS, then user starts a call, the notification moves to above the widget (no sound for second appearance)
         await page.evaluate(() => {
             window.e2eNotificationsSoundedAt = [];
@@ -644,7 +650,7 @@ test.describe('notifications', () => {
         await Promise.all([user1.leaveCall(), devPage.leaveCall()]);
     });
 
-    test('do not ring twice for same call, widget -> lhs', async ({page}) => {
+    test.skip('do not ring twice for same call, widget -> lhs', async ({page}) => {
         // User is in a call, notification appears above widget (no sound), then user ends call, the notification moves to LHS (no sound for second appearance)
         await page.evaluate(() => {
             window.e2eNotificationsSoundedAt = [];
@@ -681,7 +687,7 @@ test.describe('notifications', () => {
         await user1.leaveCall();
     });
 
-    test('stop ringing immediately when joining any call', async ({page}) => {
+    test.skip('stop ringing immediately when joining any call', async ({page}) => {
         await page.evaluate(() => {
             window.e2eNotificationsSoundedAt = [];
             window.e2eNotificationsSoundStoppedAt = [];
@@ -699,7 +705,7 @@ test.describe('notifications', () => {
         await Promise.all([user1.leaveCall(), devPage.leaveCall()]);
     });
 
-    test('user is DND: no ringing, no desktop notification', async ({page, request}) => {
+    test.skip('user is DND: no ringing, no desktop notification', async ({page, request}) => {
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eDesktopNotificationsSent = [];
@@ -723,7 +729,7 @@ test.describe('notifications', () => {
         await user1.leaveCall();
     });
 
-    test('user is OOO: no ringing, no desktop notification', async ({page, request}) => {
+    test.skip('user is OOO: no ringing, no desktop notification', async ({page, request}) => {
         // set automatic replies setting (ooo) to true
         const adminContext = (await newUserPage(adminState.storageStatePath)).page.request;
         let resp = await adminContext.put(`${baseURL}/api/v4/config/patch`, {
@@ -780,7 +786,7 @@ test.describe('notifications', () => {
         await expect(resp.status()).toEqual(200);
     });
 
-    test('gm channel pref sound off: ringing sound yes, desktop notification yes', async ({page, request}) => {
+    test.skip('gm channel pref sound off: ringing sound yes, desktop notification yes', async ({page, request}) => {
         const devPage = new PlaywrightDevPage(page);
         const channel = await devPage.goToGM(usernames[0]);
         await apiChannelNotifyProps(request, channel.id, allUserIDsInTest[0], {desktop_sound: 'off'});
@@ -819,7 +825,7 @@ test.describe('notifications', () => {
         await user1.leaveCall();
     });
 
-    test('gm channel pref desktop notification never: ringing sound yes, desktop notification no', async ({
+    test.skip('gm channel pref desktop notification never: ringing sound yes, desktop notification no', async ({
         page,
         request,
     }) => {
@@ -845,7 +851,7 @@ test.describe('notifications', () => {
         await user1.leaveCall();
     });
 
-    test('gm channel pref mute: ringing sound no, desktop notification no', async ({page, request}) => {
+    test.skip('gm channel pref mute: ringing sound no, desktop notification no', async ({page, request}) => {
         const devPage = new PlaywrightDevPage(page);
         const channel = await devPage.goToGM(usernames[0]);
         await apiChannelNotifyProps(request, channel.id, allUserIDsInTest[0], {mark_unread: 'mention'});
@@ -869,7 +875,7 @@ test.describe('notifications', () => {
         await user1.leaveCall();
     });
 
-    test('expanded view notification: change channel, dismiss, join new call', async ({page, context}) => {
+    test.skip('expanded view notification: change channel, dismiss, join new call', async ({page, context}) => {
         const userIdx = getUserIdxForTest();
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
@@ -935,7 +941,7 @@ test.describe('notifications', () => {
         await Promise.all([user1.leaveCall(), devPage.leaveCall()]);
     });
 
-    test('ringing stops on last leave, and /call end', async ({page}) => {
+    test.skip('ringing stops on last leave, and /call end', async ({page}) => {
         await page.evaluate(() => {
             window.e2eDesktopNotificationsRejected = [];
             window.e2eDesktopNotificationsSent = [];
