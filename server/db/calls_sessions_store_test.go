@@ -136,13 +136,13 @@ func testDeleteCallSession(t *testing.T, store *Store) {
 	_, err = store.GetCallSession(session.ID, GetCallSessionOpts{
 		FromWriter: true,
 	})
-	require.EqualError(t, err, "call session not found")
+	require.ErrorIs(t, err, ErrNotFound)
 }
 
 func testGetCallSession(t *testing.T, store *Store) {
 	t.Run("missing", func(t *testing.T) {
 		session, err := store.GetCallSession(model.NewId(), GetCallSessionOpts{})
-		require.EqualError(t, err, "call session not found")
+		require.ErrorIs(t, err, ErrNotFound)
 		require.Nil(t, session)
 	})
 
