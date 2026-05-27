@@ -16,7 +16,7 @@ import {FormattedMessage, IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
+import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call';
 import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';

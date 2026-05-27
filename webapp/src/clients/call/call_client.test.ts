@@ -3,8 +3,7 @@
 
 import {ConnectionQuality, Room, RoomEvent, Track} from 'livekit-client';
 import RestClient from 'src/clients/rest';
-import {WebSocketClient} from 'src/clients/websocket';
-import {WEBSOCKET_EVENT} from 'src/clients/websocket/constants';
+import {WEBSOCKET_EVENT, WebSocketClient} from 'src/clients/websocket';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
@@ -185,7 +184,33 @@ describe('CallClient', () => {
             expect(client.channelID).toBe('');
             expect(client.initTime).toBe(0);
             expect(Room).toHaveBeenCalledTimes(1);
-            expect(WebSocketClient).toHaveBeenCalledWith('wss://fake.ws');
+
+            // CallClient constructs WebSocketClient as `new WebSocketClient(url, authToken)`,
+            // with authToken left unset by default. Assert on the first positional arg only —
+            // the no-undefined lint rule blocks asserting the literal `undefined` value.
+            const wsCtorArgs = (WebSocketClient as unknown as jest.Mock).mock.calls[0];
+            expect(wsCtorArgs[0]).toBe('wss://fake.ws');
+            expect(wsCtorArgs[1]).toBeFalsy();
+        });
+    });
+
+    describe('constructor options', () => {
+        it('threads authToken to the underlying WebSocketClient', () => {
+            const standaloneClient = new CallClient({websocketURL: 'wss://standalone.ws', authToken: 'tok-abc'});
+            expect(standaloneClient).toBeDefined();
+            expect(WebSocketClient).toHaveBeenLastCalledWith('wss://standalone.ws', 'tok-abc');
+        });
+    });
+
+    describe('raw plugin websocket events', () => {
+        it('re-emits plugin-WS event subscriptions via CALL_EVENT.WS_EVENT', () => {
+            const listener = jest.fn();
+            client.on(CALL_EVENT.WEBSOCKET_EVENT, listener);
+
+            const fakeEvent = {event: 'custom_com.mattermost.calls_user_joined', data: {userID: 'u1'}};
+            mockWebSocketClient.fire('event', fakeEvent);
+
+            expect(listener).toHaveBeenCalledWith(fakeEvent);
         });
     });
 

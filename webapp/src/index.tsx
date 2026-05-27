@@ -39,8 +39,7 @@ import {
     showSwitchCallModal,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import CallClient from 'src/clients/call';
-import {CALL_EVENT} from 'src/clients/call/constants';
+import CallClient, {CALL_EVENT} from 'src/clients/call';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
@@ -1054,4 +1053,4 @@ export default class Plugin {
     }
 }
 
-window.registerPlugin(pluginId, new Plugin());
+window.registerPlugin(pluginId, new Plugin() as Plugin);

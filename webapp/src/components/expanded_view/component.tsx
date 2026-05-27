@@ -17,7 +17,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
-import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
+import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call';
 import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';

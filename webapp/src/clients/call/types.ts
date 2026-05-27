@@ -28,4 +28,9 @@ export type ConnectPayload = {
     channelID: string;
     title?: string;
     threadID?: string;
+
+    /**
+     * jobID is set only for bot connections (recording / transcription).
+     */
+    jobID?: string;
 }
