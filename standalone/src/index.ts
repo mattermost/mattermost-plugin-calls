@@ -12,7 +12,6 @@ import '@mattermost/compass-icons/css/compass-icons.css';
 import {
     CallHostChangedData,
     CallJobStateData,
-    CallsClientJoinData,
     CallStartData,
     CallStateData,
     EmptyData,
@@ -32,18 +31,15 @@ import {
     UserVoiceOnOffData,
     WebsocketEventData,
 } from '@mattermost/calls-common/lib/types';
-import {hasDCSignalingLockSupport} from '@mattermost/calls-common/lib/utils';
 import {WebSocketMessage} from '@mattermost/client/websocket';
-import type {DesktopAPI} from '@mattermost/desktop-api';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import {getCallActive, getCallsConfig, getCallsVersionInfo, localSessionClose, setClientConnecting} from 'plugin/actions';
-import CallsClient from 'plugin/clients/calls';
+import CallClient, {CALL_EVENT, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
 import RestClient from 'plugin/clients/rest';
 import {
     logDebug,
@@ -51,12 +47,9 @@ import {
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
-import {callsConfig, callsVersionInfo, iceServers, needsTURNCredentials} from 'plugin/selectors';
-import {DesktopNotificationArgs, Store, WebAppUtils} from 'plugin/types/mattermost-webapp';
+import {Store} from 'plugin/types/mattermost-webapp';
 import {
-    getPluginPath,
     getWSConnectionURL,
-    isDMChannel,
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
 import {
@@ -86,7 +79,7 @@ import {
     handleUserVoiceOn,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
-import {CallActions, CallsClientConfig, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
+import {CurrentCallDataDefault} from 'src/types/types';
 
 import {
     getCallID,
@@ -105,49 +98,63 @@ function setBasename() {
 }
 
 function connectCall(
-    joinData: CallsClientJoinData,
-    clientConfig: CallsClientConfig,
+    connectPayload: ConnectPayload,
+    websocketURL: string,
+    authToken: string,
     wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void,
     store: Store,
     closeCb?: (err?: Error) => void,
 ) {
     try {
         if (window.callsClient) {
-            logErr('calls client is already initialized');
+            logErr('Standalone: CallClient is already initialized');
             return;
         }
 
-        window.callsClient = new CallsClient(clientConfig);
+        const callClient = new CallClient({websocketURL, authToken});
+
+        // Update the global instances.
+        window.callsClient = callClient;
         window.currentCallData = CurrentCallDataDefault;
 
-        window.callsClient.on('connect', () => store.dispatch(setClientConnecting(false)));
+        // Subscribe to raw plugin-WS events BEFORE connect() so 'hello' isn't missed.
+        callClient.on(CALL_EVENT.WEBSOCKET_EVENT, wsEventHandler);
 
-        window.callsClient.on('close', (err?: Error) => {
+        let lastError: Error | undefined;
+
+        callClient.on(CALL_EVENT.ERROR, (e: unknown) => {
+            if (e instanceof Error) {
+                lastError = e;
+            }
+        });
+        callClient.on(CALL_EVENT.CONNECTED, () => store.dispatch(setClientConnecting(false)));
+        callClient.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
             store.dispatch(setClientConnecting(false));
             if (window.callsClient) {
                 store.dispatch(localSessionClose(window.callsClient.channelID));
             }
             if (closeCb) {
-                closeCb(err);
-            }
-        });
-
-        window.callsClient.init(joinData).then(() => {
-            window.callsClient?.ws?.on('event', wsEventHandler);
-        }).catch((err: Error) => {
-            store.dispatch(setClientConnecting(false));
-            logErr(err);
-            if (closeCb) {
+                let err = lastError;
+                if (!err && typeof reason === 'number' && reason !== DisconnectReason.CLIENT_INITIATED) {
+                    err = new Error(`disconnected from room (reason: ${DisconnectReason[reason]})`);
+                }
+                if (err) {
+                    logErr(err);
+                }
                 closeCb(err);
             }
         });
 
         store.dispatch(setClientConnecting(true));
+
+        callClient.connect(connectPayload).catch((err: unknown) => {
+            store.dispatch(setClientConnecting(false));
+            logErr(err);
+            closeCb?.(err instanceof Error ? err : new Error(String(err)));
+        });
     } catch (err) {
         logErr(err);
-        if (closeCb) {
-            closeCb();
-        }
+        closeCb?.(err instanceof Error ? err : new Error(String(err)));
     }
 }
 
@@ -161,13 +168,13 @@ export type InitCbProps = {
 type InitConfig = {
     name: string,
     initCb: (props: InitCbProps) => void,
-    closeCb?: () => void,
+    closeCb?: (err?: Error) => void,
     reducer?: Reducer,
     wsHandler?: (store: Store, ev: WebSocketMessage<WebsocketEventData>) => void,
     initStore?: (store: Store, channelID: string) => Promise<void>,
 };
 
-export default async function init(cfg: InitConfig) {
+export default async function initialiseEmbedApp(cfg: InitConfig) {
     setBasename();
     const initStartTime = performance.now();
 
@@ -184,16 +191,8 @@ export default async function init(cfg: InitConfig) {
 
     const channelID = getCallID();
     if (!channelID) {
-        logErr('invalid call id');
-        return;
+        throw new Error('invalid call id');
     }
-
-    const joinData = {
-        channelID,
-        title: getCallTitle(),
-        threadID: getRootID(),
-        jobID: getJobID(),
-    };
 
     // Setting the base URL if present, in case MM is running under a subpath.
     if (window.basename) {
@@ -211,8 +210,7 @@ export default async function init(cfg: InitConfig) {
 
     const channel = getChannel(store.getState(), channelID);
     if (!channel) {
-        logErr('channel not found');
-        return;
+        throw new Error('channel not found');
     }
 
     let active = false;
@@ -222,32 +220,11 @@ export default async function init(cfg: InitConfig) {
             store.dispatch(getCallsVersionInfo()),
             getCallActive(channelID),
         ]);
-    } catch (err) {
-        throw new Error(`failed to fetch channel data: ${err}`);
+    } catch (e) {
+        throw new Error(`failed to fetch channel data: ${e}`);
     }
 
-    const iceConfigs = [...iceServers(store.getState())];
-    if (needsTURNCredentials(store.getState())) {
-        logDebug('turn credentials needed');
-        const configs = await RestClient.fetch<RTCIceServer[]>(
-            `${getPluginPath()}/turn-credentials`,
-            {method: 'get'},
-        );
-        iceConfigs.push(...configs);
-    }
-
-    const clientConfig = {
-        wsURL: getWSConnectionURL(getConfig(store.getState())?.WebsocketURL),
-        iceServers: iceConfigs,
-        authToken: getToken(),
-        simulcast: callsConfig(store.getState()).EnableSimulcast,
-        enableAV1: callsConfig(store.getState()).EnableAV1,
-        dcSignaling: callsConfig(store.getState()).EnableDCSignaling,
-        dcLocking: hasDCSignalingLockSupport(callsVersionInfo(store.getState())),
-        enableVideo: callsConfig(store.getState()).EnableVideo && isDMChannel(channel),
-    };
-
-    connectCall(joinData, clientConfig, (ev) => {
+    const wsEventHandler = (ev: WebSocketMessage<WebsocketEventData>) => {
         switch (ev.event) {
         case 'hello':
             store.dispatch(setServerVersion((ev.data as HelloData).server_version));
@@ -330,7 +307,21 @@ export default async function init(cfg: InitConfig) {
         if (cfg.wsHandler) {
             cfg.wsHandler(store, ev);
         }
-    }, store, cfg.closeCb);
+    };
+
+    connectCall(
+        {
+            channelID,
+            title: getCallTitle(),
+            threadID: getRootID(),
+            jobID: getJobID(),
+        },
+        getWSConnectionURL(getConfig(store.getState())?.WebsocketURL),
+        getToken(),
+        wsEventHandler,
+        store,
+        cfg.closeCb,
+    );
 
     const theme = getTheme(store.getState());
     applyTheme(theme);
@@ -344,47 +335,4 @@ export default async function init(cfg: InitConfig) {
     }
 
     logDebug(`${cfg.name} init completed in ${Math.round(performance.now() - initStartTime)}ms`);
-}
-
-declare global {
-    interface Window {
-        callsClient?: CallsClient,
-        webkitAudioContext: AudioContext,
-        basename: string,
-        desktop: {
-            version?: string | null;
-        },
-        desktopAPI?: DesktopAPI;
-        screenSharingTrackId: string,
-        currentCallData?: CurrentCallData,
-        callActions?: CallActions,
-        e2eDesktopNotificationsRejected?: DesktopNotificationArgs[],
-        e2eDesktopNotificationsSent?: string[],
-        e2eNotificationsSoundedAt?: number[],
-        e2eNotificationsSoundStoppedAt?: number[],
-        e2eRingLength?: number,
-        WebappUtils: WebAppUtils,
-        ProductApi: {
-            selectRhsPost: (postId: string) => ActionFuncAsync,
-        },
-    }
-
-    interface HTMLVideoElement {
-        webkitRequestFullscreen: () => void,
-        msRequestFullscreen: () => void,
-        mozRequestFullscreen: () => void,
-    }
-
-    interface CanvasRenderingContext2D {
-        webkitBackingStorePixelRatio: number,
-        mozBackingStorePixelRatio: number,
-        msBackingStorePixelRatio: number,
-        oBackingStorePixelRatio: number,
-        backingStorePixelRatio: number,
-    }
-
-    // fix for a type problem in webapp as of 6dcac2
-    type DeepPartial<T> = {
-        [P in keyof T]?: DeepPartial<T[P]>;
-    }
 }
