@@ -24,8 +24,7 @@ import {
 } from 'livekit-client';
 import {AudioInputPermissionsError} from 'src/clients/calls';
 import RestClient from 'src/clients/rest';
-import {WebSocketClient, WebSocketError, WebSocketErrorType} from 'src/clients/websocket';
-import {WEBSOCKET_EVENT} from 'src/clients/websocket/constants';
+import {WEBSOCKET_EVENT, WebSocketClient, WebSocketError, WebSocketErrorType} from 'src/clients/websocket';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
@@ -56,14 +55,18 @@ export default class CallClient extends EventEmitter {
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
 
-    constructor({websocketURL}: {websocketURL: ClientConfig['WebsocketURL']}) {
+    constructor({websocketURL, authToken}: {
+        websocketURL: ClientConfig['WebsocketURL'];
+        authToken?: string;
+    }) {
         super();
 
-        const websocketClient = new WebSocketClient(websocketURL);
+        const websocketClient = new WebSocketClient(websocketURL, authToken);
         this.websocketClient = websocketClient;
         websocketClient.on(WEBSOCKET_EVENT.OPEN, this.handleWebsocketOpened.bind(this));
         websocketClient.on(WEBSOCKET_EVENT.JOIN, this.handleWebsocketJoined.bind(this));
         websocketClient.on(WEBSOCKET_EVENT.MESSAGE, this.handleWebsocketMessageReceived.bind(this));
+        websocketClient.on(WEBSOCKET_EVENT.EVENT, this.handleWebsocketEvent.bind(this));
         websocketClient.on(WEBSOCKET_EVENT.ERROR, this.handleWebsocketErrored.bind(this));
         websocketClient.on(WEBSOCKET_EVENT.CLOSE, this.handleWebsocketClosed.bind(this));
 
@@ -447,6 +450,10 @@ export default class CallClient extends EventEmitter {
         } catch (err) {
             logErr('ws.on(message): failed to handle message', err, 'data:', data);
         }
+    }
+
+    private handleWebsocketEvent(event: unknown) {
+        this.emit(CALL_EVENT.WEBSOCKET_EVENT, event);
     }
 
     private handleWebsocketErrored(err: WebSocketError) {

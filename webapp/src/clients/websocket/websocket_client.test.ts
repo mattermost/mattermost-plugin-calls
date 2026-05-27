@@ -1,7 +1,8 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {WebSocketClient, WebSocketErrorType} from './index';
+import {WebSocketErrorType} from './types';
+import {WebSocketClient} from './websocket_client';
 
 // Mock the manifest
 jest.mock('src/manifest', () => ({
