@@ -453,38 +453,51 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleGetLiveKitToken", &res, w, r)
 
-	userID := r.Header.Get("Mattermost-User-Id")
-	channelID := r.URL.Query().Get("channel_id")
-	if channelID == "" {
+	requestingUserID := r.Header.Get("Mattermost-User-Id")
+	requestingChannelID := r.URL.Query().Get("channel_id")
+	if requestingChannelID == "" {
 		res.Err = "channel_id is required"
 		res.Code = http.StatusBadRequest
 		return
 	}
 
-	sessionID := r.URL.Query().Get("session_id")
-	if sessionID == "" {
+	requestingSessionID := r.URL.Query().Get("session_id")
+	if requestingSessionID == "" {
 		res.Err = "session_id is required"
 		res.Code = http.StatusBadRequest
 		return
 	}
 
-	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel) {
+	// Require the requesting user to have read permissions on the requested channel.
+	if !p.API.HasPermissionToChannel(requestingUserID, requestingChannelID, model.PermissionReadChannel) {
 		res.Err = "Forbidden"
 		res.Code = http.StatusForbidden
 		return
 	}
 
 	// Require the session to belong to the requesting user to prevent unauthorized token minting.
-	callSession, err := p.store.GetCallSession(sessionID, db.GetCallSessionOpts{})
-	if err != nil {
-		if !errors.Is(err, db.ErrNotFound) {
-			p.LogError("failed to get call session", "err", err.Error(), "sessionID", sessionID)
-		}
+	callSession, err := p.store.GetCallSession(requestingSessionID, db.GetCallSessionOpts{})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		p.LogError("failed to get call session", "err", err.Error(), "session_id", requestingSessionID)
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	if callSession == nil || callSession.UserID != requestingUserID {
 		res.Err = "Forbidden"
 		res.Code = http.StatusForbidden
 		return
 	}
-	if callSession.UserID != userID {
+
+	// Require the session to belong to the active call in the requested channel.
+	activeCall, err := p.store.GetActiveCallByChannelID(requestingChannelID, db.GetCallOpts{})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		p.LogError("failed to get active call", "err", err.Error(), "channel_id", requestingChannelID)
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	if activeCall == nil || activeCall.ID != callSession.CallID {
 		res.Err = "Forbidden"
 		res.Code = http.StatusForbidden
 		return
@@ -498,7 +511,7 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, appErr := p.API.GetUser(userID)
+	user, appErr := p.API.GetUser(requestingUserID)
 	if appErr != nil {
 		res.Err = appErr.Error()
 		res.Code = http.StatusInternalServerError
@@ -508,16 +521,16 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 	grant := &auth.VideoGrant{
 		RoomJoin: true,
-		Room:     channelID,
+		Room:     requestingChannelID,
 	}
 	at.SetVideoGrant(grant).
-		SetIdentity(composeLivekitIdentity(userID, sessionID)).
-		SetName(user.Username).
+		SetIdentity(composeLivekitIdentity(requestingUserID, requestingSessionID)).
+		SetName(user.Id).
 		SetValidFor(time.Hour)
 
 	token, err := at.ToJWT()
 	if err != nil {
-		res.Err = fmt.Sprintf("failed to generate LiveKit token: %s", err.Error())
+		res.Err = fmt.Errorf("failed to generate LiveKit token: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return
 	}
@@ -527,7 +540,7 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		"token": token,
 		"url":   lkURL,
 	}); err != nil {
-		p.LogError(err.Error())
+		p.LogError("failed to encode LiveKit token response", "err", err.Error())
 	}
 }
 
