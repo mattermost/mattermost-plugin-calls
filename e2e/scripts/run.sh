@@ -101,7 +101,12 @@ docker logs ${CONTAINER_LIVEKIT} >"${WORKSPACE}/logs/livekit.log"
 ## Count failures. The recursive descent (`..`) walks arbitrary `test.describe`
 ## nesting; a shallow `.suites[].suites[].specs[]` filter would miss specs nested
 ## deeper and silently report zero failures.
-NUM_FAILURES=$(jq '[.. | objects | select(has("tests") and (.tests | type == "array")) | .tests[] | last(.results[]) | select(.status != "passed").status] | length' <"${WORKSPACE}/results/pw-results-${RUN_ID}.json")
+##
+## Match only real-failure statuses (failed/timedOut/interrupted). Tests that
+## are `test.skip` or `test.fixme` are reported as status="skipped" and must
+## not count as failures — otherwise the broader MM-68570 quarantine fleet
+## would pin the job red.
+NUM_FAILURES=$(jq '[.. | objects | select(has("tests") and (.tests | type == "array")) | .tests[] | last(.results[]) | select(.status == "failed" or .status == "timedOut" or .status == "interrupted").status] | length' <"${WORKSPACE}/results/pw-results-${RUN_ID}.json")
 echo "FAILURES=${NUM_FAILURES}" >>${GITHUB_OUTPUT}
 sudo chown -R 1001:1001 "${WORKSPACE}/logs"
 
