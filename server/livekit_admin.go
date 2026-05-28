@@ -86,3 +86,26 @@ func (p *Plugin) livekitRemoveParticipant(room, identity string) error {
 	}
 	return nil
 }
+
+// livekitDeleteRoom destroys the LiveKit room and forcibly disconnects every
+// participant. The plugin server is the authority on call lifecycle; this is
+// the atomic media-layer teardown that backs the host-end-call action and any
+// other server-driven call termination. Each connected client's LiveKit SDK
+// fires RoomEvent.Disconnected (reason=ROOM_DELETED), which drives in-call UI
+// teardown without relying on plugin-WebSocket delivery.
+func (p *Plugin) livekitDeleteRoom(room string) error {
+	client, err := p.getLiveKitRoomClient()
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), livekitAPITimeout)
+	defer cancel()
+
+	if _, err := client.DeleteRoom(ctx, &livekit.DeleteRoomRequest{
+		Room: room,
+	}); err != nil {
+		return fmt.Errorf("livekit DeleteRoom: %w", err)
+	}
+	return nil
+}

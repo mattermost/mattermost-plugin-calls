@@ -31,7 +31,7 @@ const (
 	wsEventUserVideoOff              = "user_video_off"
 	wsEventCallStart                 = "call_start"
 	wsEventCallState                 = "call_state"
-	wsEventCallEnd                   = "call_end"
+	wsEventCallEnd                   = "call_ended"
 	wsEventUserRaiseHand             = "user_raise_hand"
 	wsEventUserUnraiseHand           = "user_unraise_hand"
 	wsEventUserReacted               = "user_reacted"
@@ -446,11 +446,13 @@ func (p *Plugin) wsReader(us *session, authSessionID string) {
 					fields = append(fields, "sessionID", s.Id, "expiresAt", fmt.Sprintf("%d", s.ExpiresAt))
 				}
 
-				p.LogInfo("invalid or expired session, closing RTC session", fields...)
+				p.LogInfo("invalid or expired session, removing LiveKit participant", fields...)
 
-				// We forcefully disconnect any session that has been revoked or expired.
-				if err := p.closeRTCSession(us.userID, us.connID, us.channelID); err != nil {
-					p.LogError("failed to close RTC session", append(fields[:5], "err", err.Error()))
+				// Force the participant off the LiveKit room. Their client will see
+				// RoomEvent.Disconnected and tear down its own UI.
+				if err := p.livekitRemoveParticipant(us.channelID, composeLivekitIdentity(us.userID, us.connID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+					p.LogError("failed to remove LiveKit participant for revoked session",
+						append(fields, "err", err.Error())...)
 				}
 
 				return
@@ -1068,13 +1070,6 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		p.LogError("chan is full, dropping ws msg", "type", msg.Type)
 		return
 	}
-}
-
-// closeRTCSession is a no-op in the LiveKit architecture.
-// LiveKit manages media session cleanup directly when participants disconnect.
-func (p *Plugin) closeRTCSession(userID, connID, channelID string) error {
-	p.LogDebug("closeRTCSession", "userID", userID, "connID", connID, "channelID", channelID)
-	return nil
 }
 
 func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channelID string) error {

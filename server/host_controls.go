@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mattermost/mattermost-plugin-calls/server/db"
-
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/pkg/errors"
 )
@@ -295,36 +293,26 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 		}
 	}
 
-	// Ask clients to disconnect themselves. The last to disconnect will cause the call to end, as usual.
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+	// Destroy the LiveKit room. This forcibly disconnects every connected
+	// participant; each client's LiveKit SDK fires RoomEvent.Disconnected
+	// (reason=ROOM_DELETED), driving in-call UI teardown independently of
+	// plugin-WebSocket delivery.
+	if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+		p.LogError("hostEnd: failed to delete LiveKit room",
+			"channelID", channelID, "err", err.Error())
+	}
 
-	callID := state.Call.ID
+	// Notify the whole channel that the call has ended so bystander UI
+	// (toast, sidebar icon) clears immediately. In-call clients also receive
+	// this event, but their widget teardown is driven by LiveKit.
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
+		ChannelID:           channelID,
+		ReliableClusterSend: true,
+	})
 
-	go func() {
-		// We wait a few seconds for the call to end cleanly. If this doesn't
-		// happen we force end it.
-		time.Sleep(5 * time.Second)
-
-		call, err := p.store.GetCall(callID, db.GetCallOpts{})
-		if err != nil {
-			p.LogError("failed to get call", "err", err.Error())
-		}
-
-		sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})
-		if err != nil {
-			p.LogError("failed to get call sessions", "err", err.Error())
-		}
-
-		for _, session := range sessions {
-			if err := p.closeRTCSession(session.UserID, session.ID, channelID); err != nil {
-				p.LogError(err.Error())
-			}
-		}
-
-		if err := p.cleanCallState(call); err != nil {
-			p.LogError(err.Error())
-		}
-	}()
+	if err := p.cleanCallState(&state.Call); err != nil {
+		return fmt.Errorf("failed to clean call state: %w", err)
+	}
 
 	return nil
 }
