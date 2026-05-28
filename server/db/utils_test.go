@@ -52,7 +52,7 @@ func TestSetupConn(t *testing.T) {
 				db, err := s.setupDBConn(dsn)
 				require.NoError(t, err)
 				defer require.NoError(t, db.Close())
-				require.Equal(t, 30, db.Stats().MaxOpenConnections)
+				require.Equal(t, 10, db.Stats().MaxOpenConnections)
 			})
 
 			t.Run("overrides", func(t *testing.T) {

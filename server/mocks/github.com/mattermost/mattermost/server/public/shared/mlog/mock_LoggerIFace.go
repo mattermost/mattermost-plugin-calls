@@ -7,7 +7,6 @@ import (
 
 	logr "github.com/mattermost/logr/v2"
 	mlog "github.com/mattermost/mattermost/server/public/shared/mlog"
-
 	mock "github.com/stretchr/testify/mock"
 )
 

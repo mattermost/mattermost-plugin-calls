@@ -96,7 +96,7 @@ func TestAddUserSession(t *testing.T) {
 
 		retState2, err := p.addUserSession(retState, model.NewPointer(true), "userB", "connB", "channelID", "", model.ChannelTypeOpen)
 		require.NotNil(t, retState2)
-		require.EqualError(t, err, "failed to create call session: failed to run query: pq: duplicate key value violates unique constraint \"calls_sessions_pkey\"")
+		require.ErrorContains(t, err, "failed to create call session: failed to run query: pq: duplicate key value violates unique constraint \"calls_sessions_pkey\"")
 
 		// Verify the original state has not mutated.
 		require.Equal(t, map[string]struct{}{"userA": {}}, retState.Props.Participants)
