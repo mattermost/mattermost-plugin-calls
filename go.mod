@@ -10,7 +10,6 @@ require (
 
 require (
 	github.com/Masterminds/semver v1.5.0
-	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/jmoiron/sqlx v1.3.5
@@ -26,7 +25,6 @@ require (
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/testcontainers/testcontainers-go v0.34.0
-	github.com/testcontainers/testcontainers-go/modules/mysql v0.34.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.34.0
 	golang.org/x/time v0.10.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -69,6 +67,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
+	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/gofrs/flock v0.8.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect

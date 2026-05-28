@@ -26,7 +26,7 @@ func (s *Store) CreateCallJob(job *public.CallJob) error {
 		return fmt.Errorf("invalid call job: %w", err)
 	}
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Insert("calls_jobs").
 		Columns(callsJobsColumns...).
 		Values(job.ID, job.CallID, job.Type, job.CreatorID, job.InitAt, job.StartAt, job.EndAt, s.newJSONValueWrapper(job.Props))
@@ -56,7 +56,7 @@ func (s *Store) UpdateCallJob(job *public.CallJob) error {
 		return fmt.Errorf("invalid call job: %w", err)
 	}
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Update("calls_jobs").
 		Set("StartAt", job.StartAt).
 		Set("EndAt", job.EndAt).
@@ -84,7 +84,7 @@ func (s *Store) GetCallJob(id string, opts GetCallJobOpts) (*public.CallJob, err
 		s.metrics.ObserveStoreMethodsTime("GetCallJob", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select(callsJobsColumns...).
+	qb := getQueryBuilder().Select(callsJobsColumns...).
 		From("calls_jobs").
 		Where(sq.Eq{"ID": id})
 
@@ -115,7 +115,7 @@ func (s *Store) GetActiveCallJobs(callID string, opts GetCallJobOpts) (map[publi
 		s.metrics.ObserveStoreMethodsTime("GetActiveCallJobs", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select(callsJobsColumns...).
+	qb := getQueryBuilder().Select(callsJobsColumns...).
 		From("calls_jobs").
 		Where(sq.And{
 			sq.Eq{"CallID": callID},

@@ -11,8 +11,6 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
-	"github.com/mattermost/mattermost/server/public/model"
-
 	sq "github.com/mattermost/squirrel"
 )
 
@@ -22,13 +20,10 @@ func (s *Store) GetAvgCallParticipants() (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetAvgCallParticipants", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Select("AVG(jsonb_array_length(participants))").
 		From("calls").
 		Where("jsonb_typeof(participants) = 'array'")
-	if s.driverName == model.DatabaseDriverMysql {
-		qb = getQueryBuilder(s.driverName).Select("AVG(json_length(participants))").From("calls")
-	}
 	qb = qb.Where(sq.And{
 		sq.Expr("EndAt > StartAt"),
 		sq.Eq{"DeleteAt": 0},
@@ -59,7 +54,7 @@ func (s *Store) GetAvgCallDuration() (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetAvgCallDuration", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("AVG(EndAt - StartAt)/1000").
+	qb := getQueryBuilder().Select("AVG(EndAt - StartAt)/1000").
 		From("calls").
 		Where(sq.And{
 			sq.Expr("EndAt > StartAt"),
@@ -91,7 +86,7 @@ func (s *Store) GetTotalActiveSessions() (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetTotalActiveSessions", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("COUNT(*)").
+	qb := getQueryBuilder().Select("COUNT(*)").
 		From("calls_sessions").
 		Join("calls ON calls_sessions.CallID = calls.ID").
 		Where(sq.And{
@@ -120,7 +115,7 @@ func (s *Store) GetTotalCalls(active bool) (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetTotalCalls", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("COUNT(*)").From("calls")
+	qb := getQueryBuilder().Select("COUNT(*)").From("calls")
 
 	if active {
 		qb = qb.Where(sq.And{
@@ -155,7 +150,7 @@ func (s *Store) GetCallsByChannelType() (map[string]int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetCallsByChannelType", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("COUNT(*) AS Count, Type").
+	qb := getQueryBuilder().Select("COUNT(*) AS Count, Type").
 		From("calls").
 		Join("Channels ON calls.ChannelID = Channels.Id").
 		Where(sq.And{
@@ -186,13 +181,9 @@ func (s *Store) GetCallsByChannelType() (map[string]int64, error) {
 	return m, nil
 }
 
-func getByMonthQueryBase(driverName string, now time.Time) sq.SelectBuilder {
-	qb := getQueryBuilder(driverName).
+func getByMonthQueryBase(now time.Time) sq.SelectBuilder {
+	qb := getQueryBuilder().
 		Select("to_char(to_timestamp(startat / 1000), 'YYYY-MM') AS Month, COUNT(*) AS Count")
-	if driverName == model.DatabaseDriverMysql {
-		qb = getQueryBuilder(driverName).
-			Select("DATE_FORMAT(FROM_UNIXTIME(startat / 1000), '%Y-%m') AS Month, COUNT(*) AS Count")
-	}
 
 	return qb.Where(sq.And{
 		sq.Expr("EndAt > StartAt"),
@@ -232,16 +223,12 @@ func (s *Store) GetCallsByMonth() (map[string]int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetCallsByMonth", time.Since(start).Seconds())
 	}(now)
 
-	return s.getByMonth(getByMonthQueryBase(s.driverName, now).Where(sq.Eq{"DeleteAt": 0}).From("calls"), now)
+	return s.getByMonth(getByMonthQueryBase(now).Where(sq.Eq{"DeleteAt": 0}).From("calls"), now)
 }
 
-func getByDayQueryBase(driverName string, now time.Time) sq.SelectBuilder {
-	qb := getQueryBuilder(driverName).
+func getByDayQueryBase(now time.Time) sq.SelectBuilder {
+	qb := getQueryBuilder().
 		Select("to_char(to_timestamp(startat / 1000), 'YYYY-MM-DD') AS Day, COUNT(*) AS Count")
-	if driverName == model.DatabaseDriverMysql {
-		qb = getQueryBuilder(driverName).
-			Select("DATE_FORMAT(FROM_UNIXTIME(startat / 1000), '%Y-%m-%d') AS Day, COUNT(*) AS Count")
-	}
 	return qb.Where(sq.And{
 		sq.Expr("EndAt > StartAt"),
 		sq.GtOrEq{"StartAt": now.AddDate(0, 0, -30).UnixMilli()},
@@ -284,7 +271,7 @@ func (s *Store) GetCallsByDay() (map[string]int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetCallsByDay", time.Since(start).Seconds())
 	}(now)
 
-	return s.getByDay(getByDayQueryBase(s.driverName, now).Where(sq.Eq{"DeleteAt": 0}).From("calls"), now)
+	return s.getByDay(getByDayQueryBase(now).Where(sq.Eq{"DeleteAt": 0}).From("calls"), now)
 }
 
 func (s *Store) GetRecordingJobsByMonth() (map[string]int64, error) {
@@ -295,7 +282,7 @@ func (s *Store) GetRecordingJobsByMonth() (map[string]int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetRecordingJobsByMonth", time.Since(start).Seconds())
 	}(now)
 
-	return s.getByMonth(getByMonthQueryBase(s.driverName, now).From("calls_jobs").Where(sq.Eq{"type": public.JobTypeRecording}), now)
+	return s.getByMonth(getByMonthQueryBase(now).From("calls_jobs").Where(sq.Eq{"type": public.JobTypeRecording}), now)
 }
 
 func (s *Store) GetRecordingJobsByDay() (map[string]int64, error) {
@@ -306,7 +293,7 @@ func (s *Store) GetRecordingJobsByDay() (map[string]int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetRecordingJobsByDay", time.Since(start).Seconds())
 	}(now)
 
-	return s.getByDay(getByDayQueryBase(s.driverName, now).From("calls_jobs").Where(sq.Eq{"type": public.JobTypeRecording}), now)
+	return s.getByDay(getByDayQueryBase(now).From("calls_jobs").Where(sq.Eq{"type": public.JobTypeRecording}), now)
 }
 
 func (s *Store) GetAvgVideoDuration() (int64, error) {
@@ -315,14 +302,9 @@ func (s *Store) GetAvgVideoDuration() (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetAvgVideoDuration", time.Since(start).Seconds())
 	}(time.Now())
 
-	var jsonPath string
-	if s.driverName == model.DatabaseDriverMysql {
-		jsonPath = "JSON_EXTRACT(stats, '$.video_duration')"
-	} else {
-		jsonPath = "(stats->>'video_duration')::bigint"
-	}
+	const jsonPath = "(stats->>'video_duration')::bigint"
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Select(fmt.Sprintf("AVG(%s)", jsonPath)).
 		From("calls").
 		Where(sq.And{
@@ -356,14 +338,9 @@ func (s *Store) GetTotalVideoDuration() (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetTotalVideoDuration", time.Since(start).Seconds())
 	}(time.Now())
 
-	var jsonPath string
-	if s.driverName == model.DatabaseDriverMysql {
-		jsonPath = "JSON_EXTRACT(stats, '$.video_duration')"
-	} else {
-		jsonPath = "(stats->>'video_duration')::bigint"
-	}
+	const jsonPath = "(stats->>'video_duration')::bigint"
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Select(fmt.Sprintf("COALESCE(SUM(%s), 0)", jsonPath)).
 		From("calls").
 		Where(sq.And{
@@ -393,21 +370,12 @@ func (s *Store) GetTotalCallsWithVideo() (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetTotalCallsWithVideo", time.Since(start).Seconds())
 	}(time.Now())
 
-	var condition sq.Sqlizer
-	if s.driverName == model.DatabaseDriverMysql {
-		// MySQL: Cast JSON boolean to unsigned int (1 for true, 0 for false)
-		condition = sq.Eq{"CAST(JSON_EXTRACT(stats, '$.has_used_video') AS UNSIGNED)": 1}
-	} else {
-		// PostgreSQL: Cast to boolean
-		condition = sq.Eq{"(stats->>'has_used_video')::bool": true}
-	}
-
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Select("COUNT(*)").
 		From("calls").
 		Where(sq.And{
 			sq.Eq{"DeleteAt": 0},
-			condition,
+			sq.Eq{"(stats->>'has_used_video')::bool": true},
 		})
 
 	q, args, err := qb.ToSql()
@@ -431,21 +399,12 @@ func (s *Store) GetTotalCallsWithScreenShare() (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetTotalCallsWithScreenShare", time.Since(start).Seconds())
 	}(time.Now())
 
-	var condition sq.Sqlizer
-	if s.driverName == model.DatabaseDriverMysql {
-		// MySQL: Cast JSON boolean to unsigned int (1 for true, 0 for false)
-		condition = sq.Eq{"CAST(JSON_EXTRACT(stats, '$.has_used_screen_share') AS UNSIGNED)": 1}
-	} else {
-		// PostgreSQL: Cast to boolean
-		condition = sq.Eq{"(stats->>'has_used_screen_share')::bool": true}
-	}
-
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Select("COUNT(*)").
 		From("calls").
 		Where(sq.And{
 			sq.Eq{"DeleteAt": 0},
-			condition,
+			sq.Eq{"(stats->>'has_used_screen_share')::bool": true},
 		})
 
 	q, args, err := qb.ToSql()

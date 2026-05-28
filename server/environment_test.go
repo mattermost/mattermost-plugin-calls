@@ -191,7 +191,7 @@ func TestSetFieldFromEnv(t *testing.T) {
 // Helper function to get a reflect.Value for a field by name
 func getField(obj interface{}, fieldName string) reflect.Value {
 	val := reflect.ValueOf(obj)
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		val = val.Elem()
 	}
 	return val.FieldByName(fieldName)

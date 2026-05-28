@@ -32,7 +32,7 @@ func (p *Plugin) applyEnvOverrides(config interface{}, prefix string) map[string
 	val := reflect.ValueOf(config)
 
 	// Config must be a pointer to a struct
-	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
+	if val.Kind() != reflect.Pointer || val.Elem().Kind() != reflect.Struct {
 		p.LogError("applyEnvOverrides: config must be a pointer to a struct")
 		return make(map[string]string)
 	}
@@ -74,9 +74,9 @@ func (p *Plugin) processStructFields(val reflect.Value, prefix, fieldPath string
 			// For embedded structs, we recurse without adding the struct name to the path
 			if field.Kind() == reflect.Struct {
 				p.processStructFields(field, prefix, fieldPath, overrideMap)
-			} else if field.Kind() == reflect.Ptr && !field.IsNil() && field.Elem().Kind() == reflect.Struct {
+			} else if field.Kind() == reflect.Pointer && !field.IsNil() && field.Elem().Kind() == reflect.Struct {
 				p.processStructFields(field.Elem(), prefix, fieldPath, overrideMap)
-			} else if field.Kind() == reflect.Ptr && field.IsNil() && field.Type().Elem().Kind() == reflect.Struct {
+			} else if field.Kind() == reflect.Pointer && field.IsNil() && field.Type().Elem().Kind() == reflect.Struct {
 				// Initialize nil pointer to embedded struct
 				field.Set(reflect.New(field.Type().Elem()))
 				p.processStructFields(field.Elem(), prefix, fieldPath, overrideMap)
@@ -95,7 +95,7 @@ func (p *Plugin) processStructFields(val reflect.Value, prefix, fieldPath string
 		if field.Kind() == reflect.Struct && field.Type() != reflect.TypeOf(time.Time{}) {
 			// Recurse into nested structs
 			p.processStructFields(field, prefix, fullFieldPath, overrideMap)
-		} else if field.Kind() == reflect.Ptr && !field.IsNil() && field.Elem().Kind() == reflect.Struct &&
+		} else if field.Kind() == reflect.Pointer && !field.IsNil() && field.Elem().Kind() == reflect.Struct &&
 			field.Elem().Type() != reflect.TypeOf(time.Time{}) {
 			// Recurse into nested struct pointers
 			p.processStructFields(field.Elem(), prefix, fullFieldPath, overrideMap)
@@ -109,7 +109,7 @@ func (p *Plugin) processStructFields(val reflect.Value, prefix, fieldPath string
 			if envValue, exists := os.LookupEnv(envVar); exists {
 				// Special handling for ICEServersConfigs to store the raw JSON
 				if field.Type().String() == "main.ICEServersConfigs" ||
-					(field.Kind() == reflect.Ptr && field.Type().Elem().String() == "main.ICEServersConfigs") {
+					(field.Kind() == reflect.Pointer && field.Type().Elem().String() == "main.ICEServersConfigs") {
 					if p.setFieldFromEnv(field, envValue) {
 						overrideMap[fullFieldPath] = envValue // Store the raw JSON string
 					}
@@ -149,7 +149,7 @@ func fieldNameToEnvKey(fieldName string) string {
 // Returns true if the value was successfully set, false otherwise.
 func (p *Plugin) setFieldFromEnv(field reflect.Value, envValue string) bool {
 	// Handle pointer types
-	if field.Kind() == reflect.Ptr {
+	if field.Kind() == reflect.Pointer {
 		// If it's nil, initialize it
 		if field.IsNil() {
 			field.Set(reflect.New(field.Type().Elem()))
