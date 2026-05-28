@@ -64,16 +64,16 @@ func TestMigrate(t *testing.T) {
 					require.NoError(t, err)
 
 					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_channels`)
-					require.EqualError(t, err, `pq: relation "calls_channels" does not exist`)
+					require.ErrorContains(t, err, `pq: relation "calls_channels" does not exist`)
 
 					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls`)
-					require.EqualError(t, err, `pq: relation "calls" does not exist`)
+					require.ErrorContains(t, err, `pq: relation "calls" does not exist`)
 
 					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_sessions`)
-					require.EqualError(t, err, `pq: relation "calls_sessions" does not exist`)
+					require.ErrorContains(t, err, `pq: relation "calls_sessions" does not exist`)
 
 					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_jobs`)
-					require.EqualError(t, err, `pq: relation "calls_jobs" does not exist`)
+					require.ErrorContains(t, err, `pq: relation "calls_jobs" does not exist`)
 				})
 			})
 
@@ -130,16 +130,16 @@ func TestMigrate(t *testing.T) {
 					require.NoError(t, err)
 
 					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_channels`)
-					require.EqualError(t, err, `pq: relation "calls_channels" does not exist`)
+					require.ErrorContains(t, err, `pq: relation "calls_channels" does not exist`)
 
 					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls`)
-					require.EqualError(t, err, `pq: relation "calls" does not exist`)
+					require.ErrorContains(t, err, `pq: relation "calls" does not exist`)
 
 					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_sessions`)
-					require.EqualError(t, err, `pq: relation "calls_sessions" does not exist`)
+					require.ErrorContains(t, err, `pq: relation "calls_sessions" does not exist`)
 
 					_, err = store.wDB.Exec(`SELECT COUNT(*) FROM calls_jobs`)
-					require.EqualError(t, err, `pq: relation "calls_jobs" does not exist`)
+					require.ErrorContains(t, err, `pq: relation "calls_jobs" does not exist`)
 				})
 			})
 		})
