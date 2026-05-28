@@ -11,11 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mattermost/mattermost/server/public/model"
-
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
-	"github.com/go-sql-driver/mysql"
 	sq "github.com/mattermost/squirrel"
 )
 
@@ -62,31 +59,6 @@ func (s *Store) setupDBConn(dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
-// appendMultipleStatementsFlag attached dsn parameters to MySQL dsn in order to make migrations work.
-func appendMultipleStatementsFlag(dsn string) (string, error) {
-	config, err := mysql.ParseDSN(dsn)
-	if err != nil {
-		return "", err
-	}
-
-	if config.Params == nil {
-		config.Params = map[string]string{}
-	}
-
-	config.Params["multiStatements"] = "true"
-	return config.FormatDSN(), nil
-}
-
-// resetReadTimeout removes the timeout constraint from the MySQL dsn.
-func resetReadTimeout(dsn string) (string, error) {
-	config, err := mysql.ParseDSN(dsn)
-	if err != nil {
-		return "", err
-	}
-	config.ReadTimeout = 0
-	return config.FormatDSN(), nil
-}
-
 func hasBinaryParams(dsn string) (bool, error) {
 	url, err := url.Parse(dsn)
 	if err != nil {
@@ -95,15 +67,8 @@ func hasBinaryParams(dsn string) (bool, error) {
 	return url.Query().Get("binary_parameters") == "yes", nil
 }
 
-func getQueryBuilder(driverName string) sq.StatementBuilderType {
-	return sq.StatementBuilder.PlaceholderFormat(getQueryPlaceholder(driverName))
-}
-
-func getQueryPlaceholder(driverName string) sq.PlaceholderFormat {
-	if driverName == model.DatabaseDriverPostgres {
-		return sq.Dollar
-	}
-	return sq.Question
+func getQueryBuilder() sq.StatementBuilderType {
+	return sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 }
 
 func genLast12MonthsMap(now time.Time) map[string]int64 {
