@@ -820,8 +820,8 @@ github.com/mattermost/logr/v2 v2.0.22 h1:npFkXlkAWR9J8payh8ftPcCZvLbHSI125mAM5/r
 github.com/mattermost/logr/v2 v2.0.22/go.mod h1:0sUKpO+XNMZApeumaid7PYaUZPBIydfuWZ0dqixXo+s=
 github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3 h1:KYs2mcdufWa+KMGnK15nkoMx4BTdfIRyZGhqRkJ+n1g=
 github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3/go.mod h1:9a5FoYxu9rPCvV4FEo0DkJSqqCZ80FCeB9Y4haBI2FQ=
-github.com/mattermost/mattermost/server/public v0.4.1 h1:M15mKgz8b7EKIWcwYMNNWeluiTqnUPppR4VyTQUR660=
-github.com/mattermost/mattermost/server/public v0.4.1/go.mod h1:2z08gasPXqIIbzl/xf2/2Sfn5ITFLGC6tplhOklyAAQ=
+github.com/mattermost/mattermost/server/public v0.4.2 h1:odRsJWb4biFZ22L3J1Rvls7Qq7FFGWBX60OOiboePLo=
+github.com/mattermost/mattermost/server/public v0.4.2/go.mod h1:2z08gasPXqIIbzl/xf2/2Sfn5ITFLGC6tplhOklyAAQ=
 github.com/mattermost/morph v1.1.0 h1:Q9vrJbeM3s2jfweGheq12EFIzdNp9a/6IovcbvOQ6Cw=
 github.com/mattermost/morph v1.1.0/go.mod h1:gD+EaqX2UMyyuzmF4PFh4r33XneQ8Nzi+0E8nXjMa3A=
 github.com/mattermost/rtcd v1.2.5 h1:edhYO5Fv82q1V5py5ZHnipEUD2ZoCXj+34VTw8ZAk7s=
