@@ -1081,12 +1081,31 @@ export default class CallsClient extends EventEmitter {
             video.remove();
         };
 
-        this.segmenter = new Segmenter({
+        const segmenter = new Segmenter({
             inputVideo: video,
             outputCanvas: canvas,
         });
-        this.segmenter.setBlurIntensity(bgBlurData.blurIntensity);
+        segmenter.setBlurIntensity(bgBlurData.blurIntensity);
 
+        try {
+            await segmenter.ready();
+        } catch (err) {
+            // Segmenter failed to initialize (e.g. MediaPipe does not initialize in the Desktop
+            // calls widget renderer or in Safari — see MM-67963). Tear down the canvas pipeline
+            // and fall back to sending the raw camera track so video still works without blur.
+            logErr('segmenter init failed, falling back to unblurred video', err);
+            outTrack.onended = null;
+            segmenter.stop();
+            outTrack.stop();
+            stream.removeTrack(outTrack);
+            stream.addTrack(localVideoTrack);
+            canvas.remove();
+            video.remove();
+            this.emit('blur_unavailable', err);
+            return localVideoTrack;
+        }
+
+        this.segmenter = segmenter;
         return outTrack;
     }
 

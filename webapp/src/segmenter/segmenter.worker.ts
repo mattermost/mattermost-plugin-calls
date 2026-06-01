@@ -19,26 +19,46 @@ self.onmessage = async ({data}) => {
                 `${data.assetsPath}/mediapipe/tasks-vision/wasm`,
             );
 
-            segmenter = await ImageSegmenter.createFromOptions(vision, {
-                baseOptions: {
-                    modelAssetPath: `${data.assetsPath}/mediapipe/tasks-vision/selfie_segmenter_landscape.tflite`,
-                    delegate: 'GPU',
-                },
+            const segmenterOptions = {
                 outputCategoryMask: true,
                 outputConfidenceMasks: false,
-                runningMode: 'VIDEO',
-            });
+                runningMode: 'VIDEO' as const,
+            };
+
+            try {
+                segmenter = await ImageSegmenter.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: `${data.assetsPath}/mediapipe/tasks-vision/selfie_segmenter_landscape.tflite`,
+                        delegate: 'GPU',
+                    },
+                    ...segmenterOptions,
+                });
+            } catch (gpuErr) {
+                console.error('segmeneter.worker: GPU delegate failed, falling back to CPU', gpuErr);
+                segmenter = await ImageSegmenter.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: `${data.assetsPath}/mediapipe/tasks-vision/selfie_segmenter_landscape.tflite`,
+                        delegate: 'CPU',
+                    },
+                    ...segmenterOptions,
+                });
+            }
         } catch (err) {
             console.error('segmeneter.worker: failed to initialize segmenter', err);
+            self.postMessage({type: 'init_error', error: err instanceof Error ? err.message : String(err)});
+            return;
         }
 
         outputCtx = data.canvas.getContext('2d');
         const tmpCtx = new OffscreenCanvas(640, 480).getContext('2d', {willReadFrequently: true});
         if (!tmpCtx) {
             console.error('segmeneter.worker: failed to create temp canvas context');
+            self.postMessage({type: 'init_error', error: 'failed to create temp canvas context'});
             return;
         }
         tempCtx = tmpCtx;
+
+        self.postMessage({type: 'initialized'});
     } else if (data.frame && segmenter) {
         if (outputCtx.canvas.width !== data.width || outputCtx.canvas.height !== data.height) {
             console.log('segmeneter.worker: resizing output canvas', data.width, data.height);
