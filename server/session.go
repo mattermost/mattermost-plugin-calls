@@ -475,10 +475,8 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 		setCallEnded(&state.Call)
 
-		callPostID := state.Call.PostID
-
 		defer func() {
-			_, err := p.updateCallPostEnded(callPostID, state.Call.Participants)
+			_, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))
 			if err != nil {
 				p.LogError("failed to update call post ended", "err", err.Error(), "channelID", channelID)
 			}
