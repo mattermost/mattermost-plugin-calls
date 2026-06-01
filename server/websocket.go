@@ -1034,7 +1034,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
-	state = addSessionToCall(state)
+	addSessionToCall(state)
 
 	p.unlockCall(channelID)
 
