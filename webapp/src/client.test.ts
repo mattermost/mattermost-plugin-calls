@@ -376,6 +376,18 @@ describe('CallsClient', () => {
     });
 
     describe('video track management', () => {
+        const originalMediaDevices = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
+
+        afterEach(() => {
+            // Restore navigator.mediaDevices in case a test replaced it, to avoid polluting other tests.
+            if (originalMediaDevices) {
+                Object.defineProperty(navigator, 'mediaDevices', originalMediaDevices);
+            } else {
+                // @ts-ignore - cleaning up a mock added by a test
+                delete navigator.mediaDevices;
+            }
+        });
+
         const makeVideoTrack = (id: string) => ({
             id,
             kind: 'video',
@@ -441,16 +453,42 @@ describe('CallsClient', () => {
 
             client.stopVideo();
 
-            // Detaches the track from the sender without tearing it down.
+            // Detaches the track from the sender (which is kept alive) before stopping it.
             expect(peer.replaceTrack).toHaveBeenCalledWith('cam-1', null);
 
-            // Crucially, the device is fully stopped (not just disabled) so the LED turns off.
+            // Crucially, the device is fully stopped (not just disabled) so the LED turns off,
+            // and an 'ended' event is dispatched so listeners can react.
             expect(track.stop).toHaveBeenCalledTimes(1);
+            expect(track.dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({type: 'ended'}));
 
             // The stream is released so the next startVideo re-initializes it.
             // @ts-ignore - accessing private property for testing
             expect(client.localVideoStream).toBeNull();
             expect(ws.send).toHaveBeenCalledWith('video_off');
+        });
+
+        it('stopVideo stops and clears the background-blur segmenter when active', () => {
+            setupPeer();
+            const track = makeVideoTrack('cam-1');
+            track.enabled = true;
+            const stream = makeStream('stream-1', [track]);
+            const segmenter = {stop: jest.fn()};
+
+            // @ts-ignore - accessing private property for testing
+            client.localVideoStream = stream;
+
+            // @ts-ignore - accessing private property for testing
+            client.videoSenderTrackID = 'cam-1';
+
+            // @ts-ignore - accessing private property for testing
+            client.segmenter = segmenter;
+
+            client.stopVideo();
+
+            expect(segmenter.stop).toHaveBeenCalledTimes(1);
+
+            // @ts-ignore - accessing private property for testing
+            expect(client.segmenter).toBeNull();
         });
 
         it('re-enables video after a stop by replacing the sender track with a freshly acquired one', async () => {
