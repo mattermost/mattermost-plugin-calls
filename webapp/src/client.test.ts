@@ -374,4 +374,156 @@ describe('CallsClient', () => {
             expect(client.setAudioInputDevice).not.toHaveBeenCalled();
         });
     });
+
+    describe('video track management', () => {
+        const makeVideoTrack = (id: string) => ({
+            id,
+            kind: 'video',
+            enabled: false,
+            stop: jest.fn(),
+            dispatchEvent: jest.fn(),
+        });
+
+        const makeStream = (id: string, tracks: Array<ReturnType<typeof makeVideoTrack>>) => ({
+            id,
+            getVideoTracks: () => tracks,
+            getTracks: () => tracks,
+            removeTrack: jest.fn(),
+            addTrack: jest.fn(),
+        });
+
+        const setupPeer = () => {
+            const peer = {addTrack: jest.fn(), replaceTrack: jest.fn()};
+            const ws = {send: jest.fn()};
+
+            // @ts-ignore - accessing private property for testing
+            client.config.enableVideo = true;
+
+            // @ts-ignore - accessing private property for testing
+            client.peer = peer;
+
+            // @ts-ignore - accessing private property for testing
+            client.ws = ws;
+            return {peer, ws};
+        };
+
+        it('startVideo adds the track and records the sender track ID', async () => {
+            const {peer} = setupPeer();
+            const track = makeVideoTrack('cam-1');
+            const stream = makeStream('stream-1', [track]);
+
+            // @ts-ignore - accessing private property for testing
+            client.localVideoStream = stream;
+
+            await client.startVideo();
+
+            expect(peer.addTrack).toHaveBeenCalledTimes(1);
+            expect(track.enabled).toBe(true);
+
+            // @ts-ignore - accessing private property for testing
+            expect(client.videoTrackAdded).toBe(true);
+
+            // @ts-ignore - accessing private property for testing
+            expect(client.videoSenderTrackID).toBe('cam-1');
+        });
+
+        it('stopVideo stops the camera track and releases the stream so the device LED turns off', () => {
+            const {peer, ws} = setupPeer();
+            const track = makeVideoTrack('cam-1');
+            track.enabled = true;
+            const stream = makeStream('stream-1', [track]);
+
+            // @ts-ignore - accessing private property for testing
+            client.localVideoStream = stream;
+
+            // @ts-ignore - accessing private property for testing
+            client.videoSenderTrackID = 'cam-1';
+
+            client.stopVideo();
+
+            // Detaches the track from the sender without tearing it down.
+            expect(peer.replaceTrack).toHaveBeenCalledWith('cam-1', null);
+
+            // Crucially, the device is fully stopped (not just disabled) so the LED turns off.
+            expect(track.stop).toHaveBeenCalledTimes(1);
+
+            // The stream is released so the next startVideo re-initializes it.
+            // @ts-ignore - accessing private property for testing
+            expect(client.localVideoStream).toBeNull();
+            expect(ws.send).toHaveBeenCalledWith('video_off');
+        });
+
+        it('re-enables video after a stop by replacing the sender track with a freshly acquired one', async () => {
+            const {peer} = setupPeer();
+
+            const track1 = makeVideoTrack('cam-1');
+            const stream1 = makeStream('stream-1', [track1]);
+
+            // @ts-ignore - accessing private property for testing
+            client.localVideoStream = stream1;
+
+            await client.startVideo();
+            client.stopVideo();
+
+            // initVideo acquires a brand new stream/track on re-enable.
+            const track2 = makeVideoTrack('cam-2');
+            const stream2 = makeStream('stream-2', [track2]);
+
+            // @ts-ignore - accessing private method for testing
+            client.initVideo = jest.fn().mockImplementation(async () => {
+                // @ts-ignore - accessing private property for testing
+                client.localVideoStream = stream2;
+            });
+
+            await client.startVideo();
+
+            // The sender is reused (no second addTrack) and the new track replaces the
+            // previously held one, keyed by the tracked ID.
+            expect(peer.addTrack).toHaveBeenCalledTimes(1);
+            expect(peer.replaceTrack).toHaveBeenLastCalledWith('cam-1', track2);
+
+            // @ts-ignore - accessing private property for testing
+            expect(client.videoSenderTrackID).toBe('cam-2');
+        });
+
+        it('keeps the sender track ID in sync after a device switch so a later stopVideo targets the right sender (MM-68796 regression)', async () => {
+            const {peer} = setupPeer();
+
+            const oldTrack = makeVideoTrack('cam-1');
+            const oldStream = makeStream('stream-1', [oldTrack]);
+
+            // @ts-ignore - accessing private property for testing
+            client.localVideoStream = oldStream;
+
+            await client.startVideo();
+
+            // @ts-ignore - accessing private property for testing
+            expect(client.videoSenderTrackID).toBe('cam-1');
+
+            // Switching the camera replaces the sender track, which re-keys the peer's
+            // senders map. Before the fix, videoSenderTrackID kept pointing at the old ID,
+            // and the subsequent stopVideo threw "senders for track not found".
+            const newTrack = makeVideoTrack('cam-2');
+            const newStream = makeStream('stream-2', [newTrack]);
+            Object.defineProperty(navigator, 'mediaDevices', {
+                value: {getUserMedia: jest.fn().mockResolvedValue(newStream)},
+                writable: true,
+                configurable: true,
+            });
+
+            await client.setVideoInputDevice({deviceId: 'cam-2-device', label: 'Camera 2'} as MediaDeviceInfo);
+
+            expect(oldTrack.stop).toHaveBeenCalledTimes(1);
+            expect(peer.replaceTrack).toHaveBeenLastCalledWith('cam-1', newTrack);
+
+            // @ts-ignore - accessing private property for testing
+            expect(client.videoSenderTrackID).toBe('cam-2');
+
+            client.stopVideo();
+
+            // The detach now targets the current sender track, not the stale one.
+            expect(peer.replaceTrack).toHaveBeenLastCalledWith('cam-2', null);
+            expect(newTrack.stop).toHaveBeenCalledTimes(1);
+        });
+    });
 });

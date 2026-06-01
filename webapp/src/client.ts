@@ -807,6 +807,7 @@ export default class CallsClient extends EventEmitter {
                 // videoTrackAdded must be true if the track is enabled.
                 logDebug('replacing track to peer', newTrack.id);
                 this.peer.replaceTrack(videoTrack.id, newTrack);
+
                 // Keep track of the new ID the sender holds so a later stopVideo
                 // can replace it (the peer re-keys its senders map by track ID).
                 this.videoSenderTrackID = newTrack.id;
