@@ -16,7 +16,7 @@ import {FormattedMessage, IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
+import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call';
 import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
@@ -164,7 +164,6 @@ interface State {
     showAudioInputDevicesMenu?: boolean,
     showAudioOutputDevicesMenu?: boolean,
     dragging: DraggingState,
-    expandedViewWindow: Window | null,
     audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
@@ -182,6 +181,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private prevDevicePixelRatio = 0;
     private unsubscribers: (() => void)[] = [];
     private callQualityBannerLocked = false;
+    private readonly expandedViewWindowRef: React.MutableRefObject<Window | null>;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
         return {
@@ -310,7 +310,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offX: 0,
                 offY: 0,
             },
-            expandedViewWindow: null,
             audioEls: [],
             alerts: CallAlertStatesDefault,
             screenStream: null,
@@ -322,6 +321,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
+        this.expandedViewWindowRef = React.createRef<Window>() as React.MutableRefObject<Window | null>;
     }
 
     setScreenPlayerRef = (node: HTMLVideoElement) => {
@@ -366,8 +366,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             },
         });
 
-        if (forward && this.state.expandedViewWindow) {
-            this.state.expandedViewWindow.callActions?.setMissingScreenPermissions(missing);
+        if (forward && this.expandedViewWindowRef.current) {
+            this.expandedViewWindowRef.current.callActions?.setMissingScreenPermissions(missing);
         }
 
         if (window.currentCallData) {
@@ -802,7 +802,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.props.recordingPromptDismissedAt(this.props.channel.id, Date.now());
 
         // Dismiss the expanded window's prompt.
-        this.state.expandedViewWindow?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
+        this.expandedViewWindowRef.current?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
     };
 
     onRecordToggle = async () => {
@@ -933,24 +933,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     onDisconnectClick = () => {
-        this.setState({
-            showMenu: false,
-            showParticipantsList: false,
-            currentAudioInputDevice: null,
-            dragging: {
-                dragging: false,
-                x: 0,
-                y: 0,
-                initX: 0,
-                initY: 0,
-                offX: 0,
-                offY: 0,
-            },
-            expandedViewWindow: null,
-        });
-        if (this.state.expandedViewWindow) {
-            this.state.expandedViewWindow.close();
+        if (this.expandedViewWindowRef.current && this.expandedViewWindowRef.current.closed === false) {
+            this.expandedViewWindowRef.current.close();
+            this.expandedViewWindowRef.current = null;
         }
+
         if (window.callsClient) {
             window.callsClient.disconnect();
         }
@@ -2075,7 +2062,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     onExpandClick = () => {
-        if (this.state.expandedViewWindow && !this.state.expandedViewWindow.closed) {
+        if (this.expandedViewWindowRef.current && !this.expandedViewWindowRef.current.closed) {
             if (this.props.global) {
                 if (window.desktopAPI?.focusPopout) {
                     logDebug('desktopAPI.focusPopout');
@@ -2085,7 +2072,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     sendDesktopEvent('calls-popout-focus');
                 }
             } else {
-                this.state.expandedViewWindow.focus();
+                this.expandedViewWindowRef.current.focus();
             }
             return;
         }
@@ -2100,23 +2087,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 return;
             }
 
-            const expandedViewWindow = window.open(
+            this.expandedViewWindowRef.current = window.open(
                 getPopOutURL(this.props.team, this.props.channel),
                 'ExpandedView',
                 'resizable=yes',
             );
 
-            this.setState({
-                expandedViewWindow,
-            });
-
-            expandedViewWindow?.addEventListener('beforeunload', () => {
+            this.expandedViewWindowRef.current?.addEventListener('beforeunload', () => {
                 if (!window.callsClient) {
                     return;
                 }
 
                 const localScreenStream = window.callsClient.getLocalScreenStream();
-                if (localScreenStream && localScreenStream.getVideoTracks()[0].id === expandedViewWindow.screenSharingTrackId) {
+                if (localScreenStream && localScreenStream.getVideoTracks()[0].id === this.expandedViewWindowRef.current?.screenSharingTrackId) {
                     window.callsClient.unshareScreen();
                 }
             });

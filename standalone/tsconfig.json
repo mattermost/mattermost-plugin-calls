@@ -49,6 +49,7 @@
   },
   "include": [
     "./**/*",
+    "../webapp/src/types/global.d.ts",
     "../webapp/src/types/semver-parser/*",
     "../webapp/src/types/static/*",
   ],
