@@ -14,9 +14,21 @@ import {CALL_EVENT} from './constants';
 
 jest.mock('livekit-client', () => {
     const actual = jest.requireActual('livekit-client');
+    const RoomMock = jest.fn() as unknown as jest.Mock & {
+        getLocalDevices: jest.Mock;
+    };
+
+    // Production code reads devices via the static Room.getLocalDevices wrapper,
+    // but tests stub navigator.mediaDevices.enumerateDevices. Bridge the two so
+    // existing tests keep working.
+    RoomMock.getLocalDevices = jest.fn(async (kind?: MediaDeviceKind) => {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        return kind ? devices.filter((d) => d.kind === kind) : devices;
+    });
+
     return {
         ...actual,
-        Room: jest.fn(),
+        Room: RoomMock,
     };
 });
 
@@ -42,6 +54,7 @@ type RoomEventHandler = (...args: any[]) => void;
 type MockRoom = {
     on: jest.Mock;
     connect: jest.Mock;
+    prepareConnection: jest.Mock;
     disconnect: jest.Mock;
     switchActiveDevice: jest.Mock;
     localParticipant: any;
@@ -57,6 +70,7 @@ function createMockRoom(): MockRoom {
             return room;
         }),
         connect: jest.fn().mockResolvedValue(null),
+        prepareConnection: jest.fn().mockResolvedValue(null),
         disconnect: jest.fn().mockResolvedValue(null),
         switchActiveDevice: jest.fn().mockResolvedValue(null),
         localParticipant: {
