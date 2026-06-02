@@ -232,7 +232,7 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
         case `custom_${pluginId}_call_start`:
             handleCallStart(store, ev as WebSocketMessage<CallStartData>);
             break;
-        case `custom_${pluginId}_call_end`:
+        case `custom_${pluginId}_call_ended`:
             handleCallEnd(store, ev as WebSocketMessage<EmptyData>);
             break;
         case `custom_${pluginId}_user_joined`:
