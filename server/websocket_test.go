@@ -319,14 +319,10 @@ func TestWSReader(t *testing.T) {
 				ExpiresAt: expiresAt,
 			}, nil).Once()
 
-			mockAPI.On("LogInfo", "invalid or expired session, closing RTC session",
+			mockAPI.On("LogInfo", "invalid or expired session, removing LiveKit participant",
 				"origin", mock.AnythingOfType("string"),
 				"channelID", us.channelID, "userID", us.userID, "connID", us.connID,
 				"sessionID", "authSessionID", "expiresAt", fmt.Sprintf("%d", expiresAt)).Once()
-
-			mockAPI.On("LogDebug", "closeRTCSession",
-				"origin", mock.AnythingOfType("string"),
-				"userID", us.userID, "connID", us.connID, "channelID", us.channelID).Once()
 
 			var wg sync.WaitGroup
 			wg.Add(1)
@@ -349,14 +345,10 @@ func TestWSReader(t *testing.T) {
 			mockAPI.On("GetSession", "authSessionID").Return(nil,
 				model.NewAppError("GetSessionById", "We encountered an error finding the session.", nil, "", http.StatusUnauthorized)).Once()
 
-			mockAPI.On("LogInfo", "invalid or expired session, closing RTC session",
+			mockAPI.On("LogInfo", "invalid or expired session, removing LiveKit participant",
 				"origin", mock.AnythingOfType("string"),
 				"channelID", us.channelID, "userID", us.userID, "connID", us.connID,
 				"err", "GetSessionById: We encountered an error finding the session.").Once()
-
-			mockAPI.On("LogDebug", "closeRTCSession",
-				"origin", mock.AnythingOfType("string"),
-				"userID", us.userID, "connID", us.connID, "channelID", us.channelID).Once()
 
 			var wg sync.WaitGroup
 			wg.Add(1)
@@ -383,13 +375,9 @@ func TestWSReader(t *testing.T) {
 				"origin", mock.AnythingOfType("string"),
 				"channelID", us.channelID, "userID", us.userID, "connID", us.connID)
 
-			mockAPI.On("LogInfo", "invalid or expired session, closing RTC session",
+			mockAPI.On("LogInfo", "invalid or expired session, removing LiveKit participant",
 				"origin", mock.AnythingOfType("string"),
 				"channelID", us.channelID, "userID", us.userID, "connID", us.connID).Once()
-
-			mockAPI.On("LogDebug", "closeRTCSession",
-				"origin", mock.AnythingOfType("string"),
-				"userID", us.userID, "connID", us.connID, "channelID", us.channelID).Once()
 
 			var wg sync.WaitGroup
 			wg.Add(1)
@@ -905,6 +893,11 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
+		// Last participant leaving triggers the call_ended broadcast.
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
 		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
 
 		// Call unlock
@@ -1039,6 +1032,11 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Times(10)
 
+		// Last participant leaving triggers the call_ended broadcast.
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
 		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
 
 		// Call unlock
@@ -1152,6 +1150,12 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
 		defer mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Unset()
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd)
+		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Unset()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, mock.Anything,
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
+		defer mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Unset()
 		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil)
 		mockAPI.On("LogError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
@@ -1372,6 +1376,11 @@ func TestHandleJoin(t *testing.T) {
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		// Last participant leaving triggers the call_ended broadcast.
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
 		// Call unlock

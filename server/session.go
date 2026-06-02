@@ -436,6 +436,11 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 		setCallEnded(&state.Call)
 
+		p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
+			ChannelID:           channelID,
+			ReliableClusterSend: true,
+		})
+
 		defer func() {
 			_, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))
 			if err != nil {
