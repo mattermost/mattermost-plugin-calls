@@ -176,6 +176,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private screenPlayer: HTMLVideoElement | null = null;
     private callQualityBannerLocked = false;
     private callClientUnsubscribers: Array<() => void> = [];
+    private hasReSyncedLiveKitState = false;
 
     static contextType = window.ProductApi.WebSocketProvider;
     declare context: React.ContextType<typeof window.ProductApi.WebSocketProvider>;
@@ -587,6 +588,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     // prefetch to get initial unreads
                     this.props.prefetchThread(this.props.threadID);
                 }
+            }
+
+            // The WS call_state seed carries the server's stale unmuted/raised_hand
+            // (those fields moved to LiveKit). Once the session list is populated,
+            // overlay the live mute + raised-hand state from the opener's CallClient.
+            // Runs once; incremental CALL_EVENTs keep it fresh afterward.
+            if (!this.hasReSyncedLiveKitState && this.props.sessions.length > 0) {
+                this.hasReSyncedLiveKitState = true;
+                getCallsClient()?.reSyncMuteAndHandState();
             }
         }
 

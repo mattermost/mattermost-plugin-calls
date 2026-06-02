@@ -531,33 +531,57 @@ export default class CallClient extends EventEmitter {
         // handling is not blocked by the user's interaction.
         void this.requestMicrophonePermission();
 
-        // Seed the initial state for everyone already in the room (local + remote).
+        // Seed the initial state for everyone already in the room (local + remote):
+        // USER_JOINED creates the session, then the LiveKit-owned fields (mic mute +
+        // raised hand) are layered on top.
         const localParticipant = this.room.localParticipant;
         const {userID: localUserId, sessionID: localSessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
         this.emit(CALL_EVENT.USER_JOINED, localSessionID, localUserId, true);
-
-        const isLocalMicMuted = localParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-        this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localSessionID, localUserId);
-
-        const isLocalHandRaised = localParticipant.attributes?.[CALL_ATTRIBUTES.RAISED_HAND]?.length > 0;
-        if (isLocalHandRaised) {
-            this.emit(CALL_EVENT.RAISE_HAND, localSessionID, localUserId, Number(localParticipant.attributes?.[CALL_ATTRIBUTES.RAISED_HAND]));
-        }
+        this.emitLiveKitOwnedState(localParticipant);
 
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             const {userID: remoteUserId, sessionID: remoteSessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
             this.emit(CALL_EVENT.USER_JOINED, remoteSessionID, remoteUserId, true);
-
-            const isRemoteMicMuted = remoteParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-            this.emit(isRemoteMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remoteSessionID, remoteUserId);
-
-            const isRemoteHandRaised = remoteParticipant.attributes?.[CALL_ATTRIBUTES.RAISED_HAND]?.length > 0;
-            if (isRemoteHandRaised) {
-                this.emit(CALL_EVENT.RAISE_HAND, remoteSessionID, remoteUserId, Number(remoteParticipant.attributes?.[CALL_ATTRIBUTES.RAISED_HAND]));
-            }
+            this.emitLiveKitOwnedState(remoteParticipant);
         }
 
         this.emit(CALL_EVENT.CONNECTED);
+    }
+
+    /**
+     * Emits the LiveKit-owned per-participant state — mic mute and raised hand —
+     * that the server no longer tracks (those moved to LiveKit, so the plugin-WS
+     * call_state ships stale values). Layered on top of an already-created session;
+     * does NOT emit USER_JOINED.
+     */
+    private emitLiveKitOwnedState(participant: Participant) {
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+
+        const isMicMuted = participant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
+        this.emit(isMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
+
+        const raisedHand = Number(participant.attributes?.[CALL_ATTRIBUTES.RAISED_HAND]);
+        if (raisedHand > 0) {
+            this.emit(CALL_EVENT.RAISE_HAND, sessionID, userID, raisedHand);
+        }
+    }
+
+    /**
+     * Re-emits the LiveKit-owned mute + raised-hand state for every current
+     * participant, without re-emitting USER_JOINED (so existing sessions keep their
+     * voice/reaction state). Used by the expanded-view popout to overlay accurate
+     * state on top of its WS call_state seed, which carries stale unmuted/raised_hand
+     * because the server no longer tracks those fields after the LiveKit migration.
+     */
+    public reSyncMuteAndHandState() {
+        if (!this.room) {
+            return;
+        }
+
+        this.emitLiveKitOwnedState(this.room.localParticipant);
+        for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            this.emitLiveKitOwnedState(remoteParticipant);
+        }
     }
 
     private async requestMicrophonePermission() {

@@ -677,6 +677,39 @@ describe('CallClient', () => {
         });
     });
 
+    describe('reSyncMuteAndHandState (popout overlay)', () => {
+        it('re-emits mute + raised-hand for all participants WITHOUT USER_JOINED', async () => {
+            mockRoom.localParticipant.getTrackPublication.mockReturnValue({isMuted: false});
+            mockRoom.localParticipant.attributes = {};
+            mockRoom.remoteParticipants.set('r1', {
+                sid: 'r1-sid',
+                identity: 'remote-1___r1-session',
+                getTrackPublication: jest.fn(() => ({isMuted: true})),
+                attributes: {raised_hand: '1700000000999'},
+            });
+
+            await client.connect({channelID: 'test-channel'});
+
+            const userJoinedListener = jest.fn();
+            const muteListener = jest.fn();
+            const unmuteListener = jest.fn();
+            const raiseListener = jest.fn();
+            client.on(CALL_EVENT.USER_JOINED, userJoinedListener);
+            client.on(CALL_EVENT.MUTE, muteListener);
+            client.on(CALL_EVENT.UNMUTE, unmuteListener);
+            client.on(CALL_EVENT.RAISE_HAND, raiseListener);
+
+            client.reSyncMuteAndHandState();
+
+            expect(unmuteListener).toHaveBeenCalledWith('me-session', 'me-id');
+            expect(muteListener).toHaveBeenCalledWith('r1-session', 'remote-1');
+            expect(raiseListener).toHaveBeenCalledWith('r1-session', 'remote-1', 1700000000999);
+
+            // Must NOT re-create sessions — that would reset voice/reaction state.
+            expect(userJoinedListener).not.toHaveBeenCalled();
+        });
+    });
+
     describe('MediaDevicesError', () => {
         it('emits ERROR with the underlying error', async () => {
             await client.connect({channelID: 'test-channel'});
