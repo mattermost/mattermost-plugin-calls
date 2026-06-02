@@ -128,6 +128,9 @@ interface Props extends RouteComponentProps {
     otherSessions: UserSessionState[];
     userMuted: (channelID: string, sessionID: string, userID: string) => void;
     userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
+    joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
+    leaveUser: (channelID: string, userID: string, sessionID: string) => void;
+    usersVoiceActivityChanged: (channelID: string, sessionIDs: string[], userIDs: string[]) => void;
 }
 
 interface State {
@@ -168,6 +171,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private pushToTalk = false;
     private screenPlayer: HTMLVideoElement | null = null;
     private callQualityBannerLocked = false;
+    private callClientUnsubscribers: Array<() => void> = [];
 
     static contextType = window.ProductApi.WebSocketProvider;
     declare context: React.ContextType<typeof window.ProductApi.WebSocketProvider>;
@@ -626,30 +630,55 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.addEventListener('keyup', this.handleKeyUp, true);
         window.addEventListener('blur', this.handleBlur, true);
 
-        callsClient.on(CALL_EVENT.REMOTE_SCREEN_STREAM, (stream: MediaStream) => {
+        // onClient registers a CallClient listener and records its teardown so
+        // componentWillUnmount can detach it. The CallClient lives in the opener
+        // window, so without explicit off() its listeners accumulate per mount.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const onClient = (event: string, handler: (...args: any[]) => void) => {
+            callsClient.on(event, handler);
+            this.callClientUnsubscribers.push(() => callsClient.off(event, handler));
+        };
+
+        onClient(CALL_EVENT.REMOTE_SCREEN_STREAM, (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
         });
-        callsClient.on(CALL_EVENT.LOCAL_SCREEN_STREAM, (stream: MediaStream) => {
+        onClient(CALL_EVENT.LOCAL_SCREEN_STREAM, (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
         });
-        callsClient.on(CALL_EVENT.LOCAL_SCREEN_STREAM_OFF, () => {
+        onClient(CALL_EVENT.LOCAL_SCREEN_STREAM_OFF, () => {
             this.setState({screenStream: null});
         });
-        callsClient.on(CALL_EVENT.REMOTE_SCREEN_STREAM_OFF, () => {
+        onClient(CALL_EVENT.REMOTE_SCREEN_STREAM_OFF, () => {
             this.setState({screenStream: null});
         });
-        callsClient.on(CALL_EVENT.MUTE, (sessionID: string, userID: string) => {
+        onClient(CALL_EVENT.MUTE, (sessionID: string, userID: string) => {
             this.props.userMuted(callsClient.channelID, sessionID, userID);
         });
-        callsClient.on(CALL_EVENT.UNMUTE, (sessionID: string, userID: string) => {
+        onClient(CALL_EVENT.UNMUTE, (sessionID: string, userID: string) => {
             this.props.userUnmuted(callsClient.channelID, sessionID, userID);
         });
 
-        callsClient.on(CALL_EVENT.DEVICE_FALLBACK, (device: MediaDeviceInfo) => {
+        // In the popout, this component's Redux store is separate from the
+        // opener's. The opener subscribes USER_JOINED / USER_LEFT /
+        // USERS_VOICE_ACTIVITY_CHANGED in its own index.tsx — gate on
+        // window.opener so we don't double-dispatch in the inline case.
+        if (window.opener) {
+            onClient(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {
+                this.props.joinUser(callsClient.channelID, userID, sessionID, Boolean(isFromInitialSync));
+            });
+            onClient(CALL_EVENT.USER_LEFT, (sessionID: string, userID: string) => {
+                this.props.leaveUser(callsClient.channelID, userID, sessionID);
+            });
+            onClient(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
+                this.props.usersVoiceActivityChanged(callsClient.channelID, sessionIDs, userIDs);
+            });
+        }
+
+        onClient(CALL_EVENT.DEVICE_FALLBACK, (device: MediaDeviceInfo) => {
             if (device.kind === 'audioinput') {
                 this.setState({
                     alerts: {
@@ -681,10 +710,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         });
 
-        callsClient.on(CALL_EVENT.DEVICE_CHANGE, (audioDevices: MediaDevices) => {
+        onClient(CALL_EVENT.DEVICE_CHANGE, (audioDevices: MediaDevices) => {
             this.setAudioDevices(audioDevices);
         });
-        callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
+        onClient(CALL_EVENT.ERROR, (err: Error) => {
             if (err === AudioInputPermissionsError) {
                 this.setState({
                     alerts: {
@@ -698,7 +727,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         });
 
-        callsClient.on(CALL_EVENT.INIT_AUDIO, () => {
+        onClient(CALL_EVENT.INIT_AUDIO, () => {
             this.setState({
                 alerts: {
                     ...this.state.alerts,
@@ -744,7 +773,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        callsClient.on(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
+        onClient(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
             const isCallQualityDegraded = quality === CONNECTION_QUALITY.Poor || quality === CONNECTION_QUALITY.Lost;
             const isCallQualityHealthy = quality === CONNECTION_QUALITY.Excellent || quality === CONNECTION_QUALITY.Good;
 
@@ -793,6 +822,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.removeEventListener('blur', this.handleBlur, true);
         this.#unlockNavigation?.();
         this.context?.removeFirstConnectListener(this.requestCallState);
+
+        this.callClientUnsubscribers.forEach((unsubscribe) => unsubscribe());
+        this.callClientUnsubscribers = [];
     }
 
     dismissRecordingPrompt = () => {

@@ -9,6 +9,8 @@ import {connect} from 'react-redux';
 import {withRouter} from 'react-router-dom';
 import {
     hideExpandedView,
+    joinUser,
+    leaveUser,
     prefetchThread,
     recordingPromptDismissedAt,
     showScreenSourceModal,
@@ -37,7 +39,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
-import {userMuted, userUnmuted} from 'src/state/session/actions';
+import {userMuted, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, modals, selectRhsPost} from 'src/webapp_globals';
 
@@ -111,6 +113,9 @@ const mapDispatchToProps = {
     openModal: modals.openModal,
     userMuted,
     userUnmuted,
+    joinUser,
+    leaveUser,
+    usersVoiceActivityChanged,
 };
 
 export default withRouter(connect(mapStateToProps, mapDispatchToProps)(ExpandedView));
