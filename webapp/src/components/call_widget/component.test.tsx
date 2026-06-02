@@ -79,7 +79,6 @@ const props: Props = {
     recordingsEnabled: false,
     openModal: jest.fn(),
     openCallsUserSettings: jest.fn(),
-    enableVideo: false,
     connectedDMUser: undefined,
 };
 
