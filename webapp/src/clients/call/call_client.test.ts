@@ -277,6 +277,21 @@ describe('CallClient', () => {
         });
     });
 
+    describe('isConnected / isDisconnected getters', () => {
+        it('isConnected is false before connect, true once the room is connected, and isDisconnected flips on disconnect', async () => {
+            expect(client.isConnected).toBe(false);
+            expect(client.isDisconnected).toBe(false);
+
+            await client.connect({channelID: 'test-channel'});
+            expect(client.isConnected).toBe(true);
+            expect(client.isDisconnected).toBe(false);
+
+            await client.disconnect();
+            expect(client.isConnected).toBe(false);
+            expect(client.isDisconnected).toBe(true);
+        });
+    });
+
     describe('Connected event', () => {
         it('treats absent mic publication as muted', async () => {
             mockRoom.localParticipant.getTrackPublication.mockReturnValue(null);

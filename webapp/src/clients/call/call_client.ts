@@ -106,10 +106,11 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.ConnectionQualityChanged, this.handleConnectionQualityChanged.bind(this));
     }
 
-    // E2E helpers — public read-only views of internal state so Playwright
-    // tests can wait on `window.callsClient.isConnected` / `.isDisconnected`.
+    // True while the LiveKit room is connected and we haven't torn down. Note this
+    // reflects the media plane only; plugin call state (host/sessions) hydrates via WS
+    // separately, so callers needing that should wait on it themselves (see MM-69019).
     public get isConnected(): boolean {
-        return this.roomConnected;
+        return this.roomConnected && !this.disconnected;
     }
 
     public get isDisconnected(): boolean {
