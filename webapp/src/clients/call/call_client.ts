@@ -7,11 +7,13 @@ import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {ClientConfig} from '@mattermost/types/config';
 import {EventEmitter} from 'events';
 import {
+    AudioPresets,
     ConnectionQuality,
     ConnectionState,
     DisconnectReason,
     LocalParticipant,
     LocalTrackPublication,
+    MediaDeviceFailure,
     Participant,
     RemoteParticipant,
     RemoteTrack,
@@ -34,6 +36,7 @@ import {CallsClientStats, MediaDevices} from 'src/types/types';
 import {getPluginPath} from 'src/utils';
 
 import {
+    AUDIO_CAPTURE_DEFAULTS,
     CALL_EVENT,
     CALL_TOKEN_API_PATH,
     USER_ID_SESSION_ID_SEPARATOR,
@@ -70,7 +73,17 @@ export default class CallClient extends EventEmitter {
         websocketClient.on(WEBSOCKET_EVENT.ERROR, this.handleWebsocketErrored.bind(this));
         websocketClient.on(WEBSOCKET_EVENT.CLOSE, this.handleWebsocketClosed.bind(this));
 
-        const room = new Room();
+        const room = new Room({
+            audioCaptureDefaults: AUDIO_CAPTURE_DEFAULTS,
+            dynacast: true,
+            adaptiveStream: true,
+            disconnectOnPageLeave: true,
+            publishDefaults: {
+                dtx: true,
+                red: true,
+                audioPreset: AudioPresets.speech,
+            },
+        });
         this.room = room;
         room.on(RoomEvent.Connected, this.handleConnected.bind(this));
         room.on(RoomEvent.ConnectionStateChanged, this.handleConnectionStateChanged.bind(this));
@@ -89,6 +102,7 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
         room.on(RoomEvent.MediaDevicesChanged, this.handleMediaDevicesChanged.bind(this));
         room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
+        room.on(RoomEvent.ActiveDeviceChanged, this.handleActiveDeviceChanged.bind(this));
         room.on(RoomEvent.ConnectionQualityChanged, this.handleConnectionQualityChanged.bind(this));
     }
 
@@ -163,6 +177,15 @@ export default class CallClient extends EventEmitter {
         }
 
         try {
+            // Warm DNS / WebSocket / ICE candidates before the final connect so the
+            // user-perceived join latency is lower. Safe to ignore failures here —
+            // they will resurface on the real connect call below.
+            try {
+                await this.room.prepareConnection(url, token);
+            } catch (prepareErr) {
+                logDebug('CallClient: prepareConnection failed (non-fatal)', prepareErr);
+            }
+
             await this.room.connect(url, token);
             this.roomConnected = true;
 
@@ -176,14 +199,11 @@ export default class CallClient extends EventEmitter {
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
         }
-
-        // Hydrate the device cache + restore the user's last selection.
-        await this.restoreAudioDevicesFromStorage();
     }
 
     public async disconnect(err?: Error): Promise<void> {
         if (this.disconnected) {
-            logErr('CallClient: already disconnected');
+            logDebug('CallClient: already disconnected');
             return;
         }
 
@@ -231,23 +251,6 @@ export default class CallClient extends EventEmitter {
             return;
         }
         await this.room.localParticipant.setMicrophoneEnabled(true);
-    }
-
-    public async startVideo(): Promise<MediaStream | null> {
-        logErr('CallClient.startVideo: not yet implemented');
-        return null;
-    }
-
-    public stopVideo(): void {
-        logErr('CallClient.stopVideo: not yet implemented');
-    }
-
-    public async setVideoInputDevice(_device: MediaDeviceInfo): Promise<void> {
-        logErr('CallClient.setVideoInputDevice: not yet implemented');
-    }
-
-    public getRemoteVideoStream(): MediaStream | null {
-        return null;
     }
 
     public raiseHand(): void {
@@ -317,14 +320,6 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    public async setScreenStream(_stream: MediaStream): Promise<void> {
-        logErr('CallClient.setScreenStream: not yet implemented');
-    }
-
-    public async setBlurSettings(_blurEnabled: boolean, _blurIntensity: number): Promise<void> {
-        logErr('CallClient.setBlurSettings: not yet implemented');
-    }
-
     public async setAudioInputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
         if (store) {
             window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
@@ -337,14 +332,26 @@ export default class CallClient extends EventEmitter {
 
         // LiveKit handles the published-track swap; no manual replaceTrack needed.
         if (this.room && this.roomConnected) {
+            logDebug('CallClient.setAudioInputDevice: requesting switchActiveDevice', {requestedDeviceId: device.deviceId, requestedLabel: device.label});
             try {
-                await this.room.switchActiveDevice('audioinput', device.deviceId);
+                await this.room.switchActiveDevice('audioinput', device.deviceId, true);
+
+                const pub = this.room.localParticipant.getTrackPublication(Track.Source.Microphone);
+                const actualDeviceId = pub?.track?.mediaStreamTrack?.getSettings().deviceId;
+                if (actualDeviceId && actualDeviceId !== device.deviceId) {
+                    logErr('CallClient.setAudioInputDevice: device mismatch after switch',
+                        {requested: device.deviceId, actual: actualDeviceId, label: device.label});
+                } else {
+                    logDebug('CallClient.setAudioInputDevice: switch verified', {actualDeviceId: actualDeviceId ?? '(no track published yet)'});
+                }
             } catch (err) {
-                logErr('CallClient.setAudioInputDevice: failed to switch device', device.deviceId, err);
+                logErr('CallClient.setAudioInputDevice: failed to switch device',
+                    {requestedDeviceId: device.deviceId, requestedLabel: device.label, errName: (err instanceof Error) ? err.name : 'unknown', err});
             }
         }
 
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+        logDebug('CallClient: emitting DEVICE_CHANGE for audio input', device.label, device.deviceId);
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
     public setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): void {
@@ -361,7 +368,8 @@ export default class CallClient extends EventEmitter {
         // audio elements it creates after this method resolves. Calling LiveKit's
         // switchActiveDevice('audiooutput', …) here would create a second sinkId path.
 
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+        logDebug('CallClient: emitting DEVICE_CHANGE for audio output', device.label, device.deviceId);
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
     public sendUserReaction(_data: EmojiData): void {
@@ -528,6 +536,7 @@ export default class CallClient extends EventEmitter {
         try {
             // Just request permission to the microphone and
             // stop the track immediately to avoid any audio being published
+            logDebug('CallClient: requesting microphone permission (getUserMedia)');
             const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true});
             mediaStream.getTracks().forEach((mediaStreamTrack) => {
                 mediaStreamTrack.stop();
@@ -538,11 +547,31 @@ export default class CallClient extends EventEmitter {
             // enumerateDevices() returns devices with empty labels
             // until getUserMedia has resolved successfully.
             await this.enumerateDevices();
-            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+
+            // Restore the user's last-selected device now that the inventory
+            // has real labels and deviceIds. Matching against the pre-grant
+            // stub list would either miss the entry or pin a phantom
+            // "default" deviceId that no longer maps to anything. (Gap #5.)
+            logDebug('CallClient: restoring stored audio devices from localStorage (post-permission)');
+            const storedInput = this.getStoredAudioDevice('input');
+            logDebug('CallClient: storedInput resolved to', storedInput ? {deviceId: storedInput.deviceId, label: storedInput.label} : null);
+            if (storedInput) {
+                await this.setAudioInputDevice(storedInput, false);
+            }
+            const storedOutput = this.getStoredAudioDevice('output');
+            logDebug('CallClient: storedOutput resolved to', storedOutput ? {deviceId: storedOutput.deviceId, label: storedOutput.label} : null);
+            if (storedOutput) {
+                this.setAudioOutputDevice(storedOutput, false);
+            }
+
+            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
 
             this.emit(CALL_EVENT.INIT_AUDIO);
         } catch (err) {
-            const isPermissionDenied = err instanceof Error && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+            // MediaDeviceFailure.getFailure classifies device errors across browsers
+            // more reliably than checking err.name strings directly.
+            const failure = MediaDeviceFailure.getFailure(err);
+            const isPermissionDenied = failure === MediaDeviceFailure.PermissionDenied;
             this.emit(CALL_EVENT.ERROR, isPermissionDenied ? AudioInputPermissionsError : err);
         }
     }
@@ -743,8 +772,25 @@ export default class CallClient extends EventEmitter {
     }
 
     private handleMediaDevicesError(err: Error) {
-        logErr('CallClient: media device error', err);
-        this.emit(CALL_EVENT.ERROR, err);
+        const failure = MediaDeviceFailure.getFailure(err);
+        logErr('CallClient: media device error', {failure, err});
+        this.emit(CALL_EVENT.ERROR, failure === MediaDeviceFailure.PermissionDenied ? AudioInputPermissionsError : err);
+    }
+
+    /**
+     * Fires when LiveKit switches the active device for a kind — either because we
+     * called switchActiveDevice ourselves, or because LiveKit fell back internally
+     * (e.g., system default tracking). Keep our cached currentAudioInputDevice in
+     * sync so the picker UI reflects what LiveKit is actually using.
+     */
+    private handleActiveDeviceChanged(kind: MediaDeviceKind, deviceId: string) {
+        if (kind === 'audioinput') {
+            const match = this.audioDevices.inputs.find((d) => d.deviceId === deviceId);
+            if (match && match.deviceId !== this.currentAudioInputDevice?.deviceId) {
+                this.currentAudioInputDevice = match;
+                this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+            }
+        }
     }
 
     /**
@@ -801,7 +847,7 @@ export default class CallClient extends EventEmitter {
             }
         }
 
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
     /**
@@ -853,11 +899,22 @@ export default class CallClient extends EventEmitter {
 
     private async enumerateDevices(): Promise<MediaDevices> {
         try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            this.audioDevices = {
-                inputs: devices.filter((dev) => dev.kind === 'audioinput'),
-                outputs: devices.filter((dev) => dev.kind === 'audiooutput'),
-            };
+            // Room.getLocalDevices wraps navigator.mediaDevices.enumerateDevices
+            const [inputs, outputs] = await Promise.all([
+                Room.getLocalDevices('audioinput', false),
+                Room.getLocalDevices('audiooutput', false),
+            ]);
+            this.audioDevices = {inputs, outputs};
+
+            // Log a compact summary of what was returned. Empty labels mean
+            // permission has not yet been granted in this browsing context —
+            // matching localStorage against this list would pin a phantom
+            // "default" deviceId. (Gap #2.)
+            const summarize = (d: MediaDeviceInfo) => ({deviceId: d.deviceId, label: d.label});
+            logDebug('CallClient.enumerateDevices: result',
+                'inputs=', this.audioDevices.inputs.map(summarize),
+                'outputs=', this.audioDevices.outputs.map(summarize),
+                'labelsPopulated=', this.audioDevices.inputs.every((d) => d.label !== ''));
         } catch (err) {
             logErr('CallClient: failed to enumerate devices', err);
         }
@@ -897,23 +954,5 @@ export default class CallClient extends EventEmitter {
             return matches.find((dev) => dev.deviceId === stored.deviceId) ?? null;
         }
         return matches[0];
-    }
-
-    private async restoreAudioDevicesFromStorage() {
-        await this.enumerateDevices();
-
-        const storedInput = this.getStoredAudioDevice('input');
-        if (storedInput) {
-            await this.setAudioInputDevice(storedInput, false);
-        }
-
-        const storedOutput = this.getStoredAudioDevice('output');
-        if (storedOutput) {
-            this.setAudioOutputDevice(storedOutput, false);
-        }
-
-        // Always emit so the widget's componentDidMount listener picks up the
-        // initial inventory even when nothing was restored from localStorage.
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices, []);
     }
 }

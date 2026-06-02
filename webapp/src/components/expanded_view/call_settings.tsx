@@ -5,6 +5,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {openCallsUserSettings} from 'src/actions';
+import {CALL_EVENT} from 'src/clients/call/constants';
 import CCIcon from 'src/components/icons/cc_icon';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
 import SettingsWheelIcon from 'src/components/icons/settings_wheel';
@@ -12,7 +13,6 @@ import ShowMoreIcon from 'src/components/icons/show_more';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
 import TickIcon from 'src/components/icons/tick';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
-import VideoOnIcon from 'src/components/icons/video_on';
 import {areLiveCaptionsAvailableInCurrentCall, callsConfig} from 'src/selectors';
 import type {
     MediaDevices,
@@ -133,36 +133,28 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
     const {formatMessage} = useIntl();
     const [currentAudioInputDevice, setCurrentAudioInputDevice] = useState<MediaDeviceInfo | null>(null);
     const [currentAudioOutputDevice, setCurrentAudioOutputDevice] = useState<MediaDeviceInfo | null>(null);
-    const [currentVideoInputDevice, setCurrentVideoInputDevice] = useState<MediaDeviceInfo | null>(null);
     const [audioDevices, setAudioDevices] = useState<MediaDevices>({inputs: [], outputs: []});
-    const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
 
     const handleDeviceClick = (device: MediaDeviceInfo) => {
         const callsClient = getCallsClient();
 
         if (deviceType === 'audioinput') {
-            if (device !== currentAudioInputDevice) {
+            if (device.deviceId !== currentAudioInputDevice?.deviceId) {
                 callsClient?.setAudioInputDevice(device);
             }
             setCurrentAudioInputDevice(device);
         } else if (deviceType === 'audiooutput') {
-            if (device !== currentAudioOutputDevice) {
+            if (device.deviceId !== currentAudioOutputDevice?.deviceId) {
                 callsClient?.setAudioOutputDevice(device);
             }
             setCurrentAudioOutputDevice(device);
-        } else if (deviceType === 'videoinput') {
-            if (device !== currentVideoInputDevice) {
-                callsClient?.setVideoInputDevice(device);
-            }
-            setCurrentVideoInputDevice(device);
         }
 
         onToggle(deviceType);
     };
 
-    const handleDeviceChange = (aDevices: MediaDevices, vDevices: MediaDeviceInfo[]) => {
+    const handleDeviceChange = (aDevices: MediaDevices) => {
         setAudioDevices(aDevices);
-        setVideoDevices(vDevices);
 
         const callsClient = getCallsClient();
         if (!callsClient) {
@@ -185,7 +177,7 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
             return undefined;
         }
 
-        callsClient.on('devicechange', handleDeviceChange);
+        callsClient.on(CALL_EVENT.DEVICE_CHANGE, handleDeviceChange);
         setAudioDevices(callsClient.getAudioDevices());
 
         if (deviceType === 'audioinput') {
@@ -195,7 +187,7 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
         }
 
         return () => {
-            callsClient.off('devicechange', handleDeviceChange);
+            callsClient.off(CALL_EVENT.DEVICE_CHANGE, handleDeviceChange);
         };
     }, []);
 
@@ -207,34 +199,20 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
         return null;
     }
 
-    if (deviceType === 'videoinput' && videoDevices.length === 0) {
-        return null;
-    }
+    const currentDevice = deviceType === 'audioinput' ? currentAudioInputDevice : currentAudioOutputDevice;
 
-    let currentDevice = deviceType === 'audioinput' ? currentAudioInputDevice : currentAudioOutputDevice;
-    if (deviceType === 'videoinput') {
-        currentDevice = currentVideoInputDevice;
-    }
-    let Icon = deviceType === 'audioinput' ? UnmutedIcon : SpeakerIcon;
-    if (deviceType === 'videoinput') {
-        Icon = VideoOnIcon;
-    }
+    const Icon = deviceType === 'audioinput' ? UnmutedIcon : SpeakerIcon;
+
     const label = currentDevice?.label || formatMessage({defaultMessage: 'Default'});
 
-    let devices = deviceType === 'audioinput' ?
+    const devices = deviceType === 'audioinput' ?
         audioDevices.inputs?.filter((device) => device.deviceId && device.label) :
         audioDevices.outputs?.filter((device) => device.deviceId && device.label);
-    if (deviceType === 'videoinput') {
-        devices = videoDevices.filter((device) => device.deviceId && device.label);
-    }
 
     const isDisabled = devices.length === 0;
 
-    let deviceTypeLabel = deviceType === 'audioinput' ?
+    const deviceTypeLabel = deviceType === 'audioinput' ?
         formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio output'});
-    if (deviceType === 'videoinput') {
-        deviceTypeLabel = formatMessage({defaultMessage: 'Camera'});
-    }
 
     return (
         <>
