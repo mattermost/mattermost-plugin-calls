@@ -64,6 +64,12 @@ export default class CallsClient extends EventEmitter {
     public currentVideoInputDevice: MediaDeviceInfo | null = null;
     private voiceTrackAdded: boolean;
     private videoTrackAdded: boolean;
+
+    // ID of the track currently held by the video sender. The sender is kept
+    // alive for the lifetime of the call (to avoid renegotiation), but the
+    // underlying track is stopped and recreated as video is toggled off/on, so
+    // we track the current ID to be able to replace it.
+    private videoSenderTrackID = '';
     private streams: MediaStream[];
     private stream: MediaStream | null;
     private audioDevices: MediaDevices;
@@ -92,6 +98,7 @@ export default class CallsClient extends EventEmitter {
         this.currentVideoInputDevice = null;
         this.voiceTrackAdded = false;
         this.videoTrackAdded = false;
+        this.videoSenderTrackID = '';
         this.streams = [];
         this.remoteVoiceTracks = [];
         this.remoteVideoTracks = [];
@@ -800,6 +807,10 @@ export default class CallsClient extends EventEmitter {
                 // videoTrackAdded must be true if the track is enabled.
                 logDebug('replacing track to peer', newTrack.id);
                 this.peer.replaceTrack(videoTrack.id, newTrack);
+
+                // Keep track of the new ID the sender holds so a later stopVideo
+                // can replace it (the peer re-keys its senders map by track ID).
+                this.videoSenderTrackID = newTrack.id;
                 this.emit('localVideoStream', newStream);
             } else {
                 this.videoTrackAdded = false;
@@ -1119,7 +1130,6 @@ export default class CallsClient extends EventEmitter {
         }
 
         let localVideoTrack = this.localVideoStream.getVideoTracks()[0];
-        const localVideoTrackID = localVideoTrack.id;
         localVideoTrack.enabled = true;
 
         const bgBlurData = getBgBlurData();
@@ -1129,7 +1139,10 @@ export default class CallsClient extends EventEmitter {
         }
 
         if (this.videoTrackAdded) {
-            await this.peer.replaceTrack(localVideoTrackID, localVideoTrack);
+            // The sender already exists from a previous startVideo. Its track may
+            // currently be null (video was stopped) or a now-stopped track, so we
+            // replace whatever it holds with the freshly initialized one.
+            await this.peer.replaceTrack(this.videoSenderTrackID, localVideoTrack);
         } else {
             await this.peer.addTrack(localVideoTrack, this.localVideoStream, {encodings: this.defaultVideoTrackEncodings});
             if (this.config.enableAV1 && this.av1Codec) {
@@ -1141,6 +1154,7 @@ export default class CallsClient extends EventEmitter {
             }
             this.videoTrackAdded = true;
         }
+        this.videoSenderTrackID = localVideoTrack.id;
 
         this.emit('localVideoStream', this.localVideoStream);
 
@@ -1159,11 +1173,26 @@ export default class CallsClient extends EventEmitter {
             return;
         }
 
-        const localVideoTrack = this.localVideoStream.getVideoTracks()[0];
-
+        // Detach the track from the sender so we stop transmitting video. We keep
+        // the sender itself around (videoTrackAdded stays true) to avoid a
+        // renegotiation when video is started again.
         // @ts-ignore: we actually mean (and need) to pass null here
-        this.peer.replaceTrack(localVideoTrack.id, null);
-        localVideoTrack.enabled = false;
+        this.peer.replaceTrack(this.videoSenderTrackID, null);
+
+        // Fully stop and release the camera device so its hardware indicator (LED)
+        // turns off. Simply disabling the track (enabled = false) keeps the device
+        // open and the LED lit (MM-68796). The stream (and its segmenter, if
+        // background blur is enabled) is released here and re-initialized on the
+        // next startVideo. When blur is active the stream holds the canvas track,
+        // whose 'ended' event stops the underlying camera track.
+        this.segmenter?.stop();
+        this.segmenter = null;
+        for (const track of this.localVideoStream.getVideoTracks()) {
+            track.stop();
+            track.dispatchEvent(new Event('ended'));
+        }
+        this.localVideoStream = null;
+
         this.emit('video_off');
         this.ws.send('video_off');
     }
