@@ -9,9 +9,13 @@ import {
     CALL_ENDED,
     SESSIONS_RECEIVED,
     UN_INITIALIZED,
+    USER_HAND_LOWERED,
+    USER_HAND_RAISED,
     USER_JOINED,
     USER_LEFT,
     USER_MUTED,
+    USER_REACTED,
+    USER_REACTED_TIMEOUT,
     USER_UNMUTED,
     USERS_VOICE_ACTIVITY_CHANGED,
 } from './action_types';
@@ -128,6 +132,88 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
                 [action.data.session_id]: {
                     ...currentSession,
                     unmuted: true,
+                },
+            },
+        };
+    }
+
+    case USER_HAND_RAISED: {
+        const allSessions = initialState[action.data.channelID];
+        const currentSession = allSessions?.[action.data.session_id];
+
+        if (!currentSession) {
+            return initialState;
+        }
+
+        return {
+            ...initialState,
+            [action.data.channelID]: {
+                ...allSessions,
+                [action.data.session_id]: {
+                    ...currentSession,
+                    raised_hand: action.data.raised_hand,
+                },
+            },
+        };
+    }
+
+    case USER_HAND_LOWERED: {
+        const allSessions = initialState[action.data.channelID];
+        const currentSession = allSessions?.[action.data.session_id];
+
+        if (!currentSession) {
+            return initialState;
+        }
+
+        return {
+            ...initialState,
+            [action.data.channelID]: {
+                ...allSessions,
+                [action.data.session_id]: {
+                    ...currentSession,
+                    raised_hand: 0,
+                },
+            },
+        };
+    }
+
+    case USER_REACTED: {
+        const allSessions = initialState[action.data.channelID];
+        const currentSession = allSessions?.[action.data.session_id];
+
+        if (!currentSession) {
+            return initialState;
+        }
+
+        return {
+            ...initialState,
+            [action.data.channelID]: {
+                ...allSessions,
+                [action.data.session_id]: {
+                    ...currentSession,
+                    reaction: action.data.reaction,
+                },
+            },
+        };
+    }
+
+    case USER_REACTED_TIMEOUT: {
+        const allSessions = initialState[action.data.channelID];
+        const currentSession = allSessions?.[action.data.session_id];
+
+        // Only clear if the timing-out reaction is still the one displayed — a newer
+        // reaction within the window must not be cleared by an older reaction's timeout.
+        if (!currentSession || currentSession.reaction?.timestamp !== action.data.reaction.timestamp) {
+            return initialState;
+        }
+
+        return {
+            ...initialState,
+            [action.data.channelID]: {
+                ...allSessions,
+                [action.data.session_id]: {
+                    ...currentSession,
+                    reaction: undefined,
                 },
             },
         };

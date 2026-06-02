@@ -269,6 +269,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		require.NotNil(t, claims.Video)
 		require.True(t, claims.Video.RoomJoin)
 		require.Equal(t, channelID, claims.Video.Room)
+		require.True(t, claims.Video.GetCanUpdateOwnMetadata())
 		require.Empty(t, claims.Metadata)
 	})
 

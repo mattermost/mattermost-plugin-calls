@@ -27,6 +27,17 @@ export const CALL_EVENT = {
     REMOTE_SCREEN_STREAM: 'remoteScreenStream',
     REMOTE_SCREEN_STREAM_OFF: 'remoteScreenStreamOff',
     QUALITY_CHANGED: 'qualityChanged',
+    RAISE_HAND: 'raiseHand',
+    LOWER_HAND: 'lowerHand',
+    REACTION: 'reaction',
+} as const;
+
+export const CALL_ATTRIBUTES = {
+    RAISED_HAND: 'raised_hand',
+} as const;
+
+export const CALL_MESSAGE_TOPICS = {
+    REACTION: 'reaction',
 } as const;
 
 export {ConnectionQuality as CONNECTION_QUALITY};

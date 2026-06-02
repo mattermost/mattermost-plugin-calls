@@ -37,11 +37,13 @@ import {getPluginPath} from 'src/utils';
 
 import {
     AUDIO_CAPTURE_DEFAULTS,
+    CALL_ATTRIBUTES,
     CALL_EVENT,
+    CALL_MESSAGE_TOPICS,
     CALL_TOKEN_API_PATH,
     USER_ID_SESSION_ID_SEPARATOR,
 } from './constants';
-import {ConnectPayload, RtcTokenResponse} from './types';
+import {ConnectPayload, ReactionPayload, RtcTokenResponse} from './types';
 
 export default class CallClient extends EventEmitter {
     public channelID = '';
@@ -99,7 +101,9 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.TrackUnmuted, this.handleTrackUnmuted.bind(this));
         room.on(RoomEvent.ParticipantConnected, this.handleParticipantConnected.bind(this));
         room.on(RoomEvent.ParticipantDisconnected, this.handleParticipantDisconnected.bind(this));
+        room.on(RoomEvent.ParticipantAttributesChanged, this.handleParticipantAttributesChanged.bind(this));
         room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
+        room.on(RoomEvent.DataReceived, this.handleDataReceivedFromParticipant.bind(this));
         room.on(RoomEvent.MediaDevicesChanged, this.handleMediaDevicesChanged.bind(this));
         room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
         room.on(RoomEvent.ActiveDeviceChanged, this.handleActiveDeviceChanged.bind(this));
@@ -236,12 +240,28 @@ export default class CallClient extends EventEmitter {
         await this.room.localParticipant.setMicrophoneEnabled(true);
     }
 
-    public raiseHand(): void {
-        logErr('CallClient.raiseHand: not yet implemented');
+    public async raiseHand(): Promise<void> {
+        if (!this.room || !this.isRoomConnected) {
+            return;
+        }
+
+        try {
+            await this.room.localParticipant.setAttributes({[CALL_ATTRIBUTES.RAISED_HAND]: String(Date.now())});
+        } catch (err) {
+            logErr('CallClient.raiseHand: failed to set attribute', err);
+        }
     }
 
-    public unraiseHand(): void {
-        logErr('CallClient.unraiseHand: not yet implemented');
+    public async unraiseHand(): Promise<void> {
+        if (!this.room || !this.isRoomConnected) {
+            return;
+        }
+
+        try {
+            await this.room.localParticipant.setAttributes({[CALL_ATTRIBUTES.RAISED_HAND]: ''});
+        } catch (err) {
+            logErr('CallClient.unraiseHand: failed to set attribute', err);
+        }
     }
 
     public async shareScreen(sourceID?: string, withAudio?: boolean): Promise<MediaStream | null> {
@@ -354,8 +374,24 @@ export default class CallClient extends EventEmitter {
         this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
-    public sendUserReaction(_data: EmojiData): void {
-        logErr('CallClient.sendUserReaction: not yet implemented');
+    public async sendReaction(emojiData: EmojiData) {
+        if (!this.room || !this.isRoomConnected) {
+            return;
+        }
+
+        const localParticipant = this.room.localParticipant;
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(this.room.localParticipant);
+        const timestamp = Date.now();
+
+        try {
+            const reactionPayload: ReactionPayload = {emojiData, timestamp};
+            const encodedReactionPayload = new TextEncoder().encode(JSON.stringify(reactionPayload));
+            await localParticipant.publishData(encodedReactionPayload, {reliable: true, topic: CALL_MESSAGE_TOPICS.REACTION});
+
+            this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
+        } catch (err) {
+            logErr('CallClient.sendReaction: failed to publish reaction', err);
+        }
     }
 
     // Getters return safe defaults rather than throwing — they're called from
@@ -503,12 +539,22 @@ export default class CallClient extends EventEmitter {
         const isLocalMicMuted = localParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
         this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localSessionID, localUserId);
 
+        const isLocalHandRaised = localParticipant.attributes?.[CALL_ATTRIBUTES.RAISED_HAND]?.length > 0;
+        if (isLocalHandRaised) {
+            this.emit(CALL_EVENT.RAISE_HAND, localSessionID, localUserId, Number(localParticipant.attributes?.[CALL_ATTRIBUTES.RAISED_HAND]));
+        }
+
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             const {userID: remoteUserId, sessionID: remoteSessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
             this.emit(CALL_EVENT.USER_JOINED, remoteSessionID, remoteUserId, true);
 
             const isRemoteMicMuted = remoteParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
             this.emit(isRemoteMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remoteSessionID, remoteUserId);
+
+            const isRemoteHandRaised = remoteParticipant.attributes?.[CALL_ATTRIBUTES.RAISED_HAND]?.length > 0;
+            if (isRemoteHandRaised) {
+                this.emit(CALL_EVENT.RAISE_HAND, remoteSessionID, remoteUserId, Number(remoteParticipant.attributes?.[CALL_ATTRIBUTES.RAISED_HAND]));
+            }
         }
 
         this.emit(CALL_EVENT.CONNECTED);
@@ -751,6 +797,49 @@ export default class CallClient extends EventEmitter {
         this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
         logDebug(`CallClient: participant disconnected ${userID}`);
+    }
+
+    /**
+     * Fires when any participant's attributes change, this includes the local participant as well
+     */
+    private handleParticipantAttributesChanged(changedAttributes: Participant['attributes'], participant: Participant) {
+        if (!participant) {
+            return;
+        }
+
+        if ((CALL_ATTRIBUTES.RAISED_HAND in changedAttributes)) {
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+            const isHandRaised = changedAttributes[CALL_ATTRIBUTES.RAISED_HAND]?.length > 0;
+            if (isHandRaised) {
+                this.emit(CALL_EVENT.RAISE_HAND, sessionID, userID, Number(changedAttributes[CALL_ATTRIBUTES.RAISED_HAND]));
+            } else {
+                this.emit(CALL_EVENT.LOWER_HAND, sessionID, userID);
+            }
+
+            logDebug(`CallClient: attributes changed for user ${userID}`, changedAttributes);
+        }
+    }
+
+    /**
+     * Fires when a participant publishes a data message.
+     */
+    private handleDataReceivedFromParticipant(payload: Uint8Array, participant?: RemoteParticipant, _kind?: number, topic?: string) {
+        if (!participant) {
+            return;
+        }
+
+        if (topic === CALL_MESSAGE_TOPICS.REACTION) {
+            try {
+                const {emojiData, timestamp} = JSON.parse(new TextDecoder().decode(payload)) as ReactionPayload;
+                const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+
+                this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
+
+                logDebug(`CallClient: reaction received from user ${userID}`, emojiData);
+            } catch (err) {
+                logErr('CallClient.handleDataReceivedFromParticipant: failed to parse reaction', err);
+            }
+        }
     }
 
     private handleMediaDevicesError(err: Error) {
