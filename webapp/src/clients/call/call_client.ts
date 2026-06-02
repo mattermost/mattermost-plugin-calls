@@ -48,8 +48,8 @@ export default class CallClient extends EventEmitter {
 
     private websocketClient: WebSocketClient | null = null;
     private room: Room | null = null;
-    private isDisconnected = false;
-    private isRoomConnected = false;
+    private _isDisconnected = false;
+    private _isRoomConnected = false;
     private connectPayload: ConnectPayload | null = null;
 
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
@@ -93,13 +93,13 @@ export default class CallClient extends EventEmitter {
     }
 
     // E2E helpers — public read-only views of internal state so Playwright
-    // tests can wait on `window.callsClient.connected` / `.closed`.
-    public get connected(): boolean {
-        return this.isRoomConnected;
+    // tests can wait on `window.callsClient.isConnected` / `.isDisconnected`.
+    public get isConnected(): boolean {
+        return this._isRoomConnected;
     }
 
-    public get closed(): boolean {
-        return this.isDisconnected;
+    public get isDisconnected(): boolean {
+        return this._isDisconnected;
     }
 
     // _e2eForceWebsocketClose closes the plugin WebSocket without telling the
@@ -110,7 +110,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async connect(connectPayload: ConnectPayload): Promise<void> {
-        if (this.isRoomConnected) {
+        if (this._isRoomConnected) {
             throw new Error('CallClient: room already connected');
         }
 
@@ -164,12 +164,12 @@ export default class CallClient extends EventEmitter {
 
         try {
             await this.room.connect(url, token);
-            this.isRoomConnected = true;
+            this._isRoomConnected = true;
 
             logDebug('CallClient: room connected');
         } catch (err) {
             logErr('CallClient: room connection error', err);
-            this.isRoomConnected = false;
+            this._isRoomConnected = false;
             this.connectPayload = null;
             this.room = null;
 
@@ -182,13 +182,13 @@ export default class CallClient extends EventEmitter {
     }
 
     public async disconnect(err?: Error): Promise<void> {
-        if (this.isDisconnected) {
+        if (this._isDisconnected) {
             logErr('CallClient: already disconnected');
             return;
         }
 
-        this.isDisconnected = true;
-        this.isRoomConnected = false;
+        this._isDisconnected = true;
+        this._isRoomConnected = false;
         this.connectPayload = null;
 
         if (err) {
@@ -220,14 +220,14 @@ export default class CallClient extends EventEmitter {
     }
 
     public async mute(): Promise<void> {
-        if (!this.room || !this.isRoomConnected) {
+        if (!this.room || !this._isRoomConnected) {
             return;
         }
         await this.room.localParticipant.setMicrophoneEnabled(false);
     }
 
     public async unmute(): Promise<void> {
-        if (!this.room || !this.isRoomConnected) {
+        if (!this.room || !this._isRoomConnected) {
             return;
         }
         await this.room.localParticipant.setMicrophoneEnabled(true);
@@ -259,7 +259,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async shareScreen(sourceID?: string, withAudio?: boolean): Promise<MediaStream | null> {
-        if (!this.room || !this.isRoomConnected) {
+        if (!this.room || !this._isRoomConnected) {
             return null;
         }
 
@@ -301,7 +301,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async unshareScreen(): Promise<void> {
-        if (!this.room || !this.isRoomConnected) {
+        if (!this.room || !this._isRoomConnected) {
             return;
         }
 
@@ -336,7 +336,7 @@ export default class CallClient extends EventEmitter {
         this.currentAudioInputDevice = device;
 
         // LiveKit handles the published-track swap; no manual replaceTrack needed.
-        if (this.room && this.isRoomConnected) {
+        if (this.room && this._isRoomConnected) {
             try {
                 await this.room.switchActiveDevice('audioinput', device.deviceId);
             } catch (err) {
@@ -566,7 +566,7 @@ export default class CallClient extends EventEmitter {
     private handleDisconnected(reason?: DisconnectReason) {
         logDebug('CallClient: disconnected from room', reason);
 
-        this.isRoomConnected = false;
+        this._isRoomConnected = false;
         this.connectPayload = null;
 
         this.emit(CALL_EVENT.DISCONNECTED, reason);

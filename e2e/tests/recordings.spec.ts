@@ -300,7 +300,7 @@ test.describe('call recordings, transcriptions, live-captions', {tag: '@livekit'
         await page.getByTestId('modal-confirm-button').getByText('End call').click();
 
         // verify user has been kicked out
-        await page.waitForFunction(() => !window.callsClient || window.callsClient.closed);
+        await page.waitForFunction(() => !window.callsClient || window.callsClient.isDisconnected);
         await expect(page.locator('#calls-widget')).toBeHidden();
 
         // verify recording file has been posted by the bot (assumes CRT enabled)
