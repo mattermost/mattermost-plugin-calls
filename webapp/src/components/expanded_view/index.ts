@@ -39,7 +39,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
-import {userMuted, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
+import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, modals, selectRhsPost} from 'src/webapp_globals';
 
@@ -116,6 +116,10 @@ const mapDispatchToProps = {
     joinUser,
     leaveUser,
     usersVoiceActivityChanged,
+    userRaisedHand,
+    userLoweredHand,
+    userReacted,
+    userReactedTimeout,
 };
 
 export default withRouter(connect(mapStateToProps, mapDispatchToProps)(ExpandedView));

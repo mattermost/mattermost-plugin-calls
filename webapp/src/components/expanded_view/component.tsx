@@ -3,7 +3,7 @@
 
 /* eslint-disable max-lines */
 
-import {UserSessionState} from '@mattermost/calls-common/lib/types';
+import {EmojiData, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
@@ -44,7 +44,7 @@ import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
-import {CallAlertConfigs, DEGRADED_CALL_QUALITY_ALERT_WAIT, STORAGE_CALLS_MIRROR_VIDEO_KEY} from 'src/constants';
+import {CallAlertConfigs, DEGRADED_CALL_QUALITY_ALERT_WAIT, REACTION_TIMEOUT_IN_REACTION_STREAM, STORAGE_CALLS_MIRROR_VIDEO_KEY} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -131,6 +131,10 @@ interface Props extends RouteComponentProps {
     joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
     leaveUser: (channelID: string, userID: string, sessionID: string) => void;
     usersVoiceActivityChanged: (channelID: string, sessionIDs: string[], userIDs: string[]) => void;
+    userRaisedHand: (channelID: string, sessionID: string, userID: string, raisedHandTimestamp: number) => void;
+    userLoweredHand: (channelID: string, sessionID: string, userID: string) => void;
+    userReacted: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
+    userReactedTimeout: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
 }
 
 interface State {
@@ -675,6 +679,27 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
             onClient(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
                 this.props.usersVoiceActivityChanged(callsClient.channelID, sessionIDs, userIDs);
+            });
+            onClient(CALL_EVENT.RAISE_HAND, (sessionID: string, userID: string, raisedHandTimestamp: number) => {
+                this.props.userRaisedHand(callsClient.channelID, sessionID, userID, raisedHandTimestamp);
+            });
+            onClient(CALL_EVENT.LOWER_HAND, (sessionID: string, userID: string) => {
+                this.props.userLoweredHand(callsClient.channelID, sessionID, userID);
+            });
+            onClient(CALL_EVENT.REACTION, (sessionID: string, userID: string, emoji: EmojiData, timestamp: number) => {
+                // Mirrors dispatchReaction() (the main-window path): store the reaction with
+                // the sender's display name, then auto-clear it after the standard timeout.
+                const reaction: Reaction = {
+                    user_id: userID,
+                    session_id: sessionID,
+                    emoji,
+                    timestamp,
+                    displayName: getUserDisplayName(this.props.profiles[userID]),
+                };
+                this.props.userReacted(callsClient.channelID, userID, sessionID, reaction);
+                setTimeout(() => {
+                    this.props.userReactedTimeout(callsClient.channelID, userID, sessionID, reaction);
+                }, REACTION_TIMEOUT_IN_REACTION_STREAM);
             });
         }
 
