@@ -277,6 +277,21 @@ describe('CallClient', () => {
         });
     });
 
+    describe('connected / closed getters', () => {
+        it('connected is false before connect, true once the room is connected, and closed flips on disconnect', async () => {
+            expect(client.connected).toBe(false);
+            expect(client.closed).toBe(false);
+
+            await client.connect({channelID: 'test-channel'});
+            expect(client.connected).toBe(true);
+            expect(client.closed).toBe(false);
+
+            await client.disconnect();
+            expect(client.connected).toBe(false);
+            expect(client.closed).toBe(true);
+        });
+    });
+
     describe('Connected event', () => {
         it('treats absent mic publication as muted', async () => {
             mockRoom.localParticipant.getTrackPublication.mockReturnValue(null);

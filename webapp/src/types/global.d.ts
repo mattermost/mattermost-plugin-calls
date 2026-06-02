@@ -32,6 +32,7 @@ declare global {
         e2eNotificationsSoundedAt?: number[],
         e2eNotificationsSoundStoppedAt?: number[],
         e2eRingLength?: number,
+        e2eCallStateLoaded?: (channelID?: string) => boolean,
 
         registerPlugin(id: string, plugin: unknown): void,
     }

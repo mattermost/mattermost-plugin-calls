@@ -420,6 +420,17 @@ export default class CallClient extends EventEmitter {
         return sessionID;
     }
 
+    // True while the LiveKit room is connected and we haven't torn down. Note this
+    // reflects the media plane only; plugin call state (host/sessions) hydrates via WS
+    // separately, so callers needing that should wait on it themselves (see MM-69019).
+    public get connected(): boolean {
+        return this.isRoomConnected && !this.isDisconnected;
+    }
+
+    public get closed(): boolean {
+        return this.isDisconnected;
+    }
+
     // ------------------------------------------------------------
     // Private methods
     // ------------------------------------------------------------
