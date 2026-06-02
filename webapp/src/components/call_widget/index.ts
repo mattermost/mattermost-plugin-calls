@@ -19,7 +19,6 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
-    callsConfig,
     callStartAtForCurrentCall,
     clientConnecting,
     expandedView,
@@ -97,7 +96,6 @@ const mapStateToProps = (state: GlobalState) => {
         clientConnecting: clientConnecting(state),
         callThreadID,
         recordingsEnabled: recordingsEnabled(state),
-        enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
         connectedDMUser,
         otherSessions: sessionsForOtherUsersInCall(state),
     };

@@ -14,9 +14,21 @@ import {CALL_EVENT} from './constants';
 
 jest.mock('livekit-client', () => {
     const actual = jest.requireActual('livekit-client');
+    const RoomMock = jest.fn() as unknown as jest.Mock & {
+        getLocalDevices: jest.Mock;
+    };
+
+    // Production code reads devices via the static Room.getLocalDevices wrapper,
+    // but tests stub navigator.mediaDevices.enumerateDevices. Bridge the two so
+    // existing tests keep working.
+    RoomMock.getLocalDevices = jest.fn(async (kind?: MediaDeviceKind) => {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        return kind ? devices.filter((d) => d.kind === kind) : devices;
+    });
+
     return {
         ...actual,
-        Room: jest.fn(),
+        Room: RoomMock,
     };
 });
 
@@ -42,6 +54,7 @@ type RoomEventHandler = (...args: any[]) => void;
 type MockRoom = {
     on: jest.Mock;
     connect: jest.Mock;
+    prepareConnection: jest.Mock;
     disconnect: jest.Mock;
     switchActiveDevice: jest.Mock;
     localParticipant: any;
@@ -57,6 +70,7 @@ function createMockRoom(): MockRoom {
             return room;
         }),
         connect: jest.fn().mockResolvedValue(null),
+        prepareConnection: jest.fn().mockResolvedValue(null),
         disconnect: jest.fn().mockResolvedValue(null),
         switchActiveDevice: jest.fn().mockResolvedValue(null),
         localParticipant: {
@@ -661,6 +675,11 @@ describe('CallClient', () => {
 
             await client.connect({channelID: 'test-channel'});
 
+            // Enumeration runs from handleConnected → requestMicrophonePermission,
+            // which only fires after LiveKit emits Connected.
+            mockRoom.fire(RoomEvent.Connected);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
             expect(client.getAudioDevices()).toEqual({
                 inputs: [inputDevice, inputDevice2],
                 outputs: [outputDevice],
@@ -674,7 +693,9 @@ describe('CallClient', () => {
 
             await client.setAudioInputDevice(inputDevice);
 
-            expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('audioinput', 'mic-1');
+            // The 3rd arg (exact=true) was added so LiveKit treats a missing
+            // device as an error instead of silently falling back.
+            expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('audioinput', 'mic-1', true);
             expect(client.currentAudioInputDevice).toBe(inputDevice);
             expect(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY))
                 .toBe(JSON.stringify({deviceId: 'mic-1', label: 'Built-in Mic'}));
@@ -712,9 +733,14 @@ describe('CallClient', () => {
 
             await client.connect({channelID: 'test-channel'});
 
+            // Device restore runs from handleConnected → requestMicrophonePermission,
+            // which only fires after LiveKit emits Connected.
+            mockRoom.fire(RoomEvent.Connected);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
             expect(client.currentAudioInputDevice).toBe(inputDevice2);
             expect(client.currentAudioOutputDevice).toBe(outputDevice);
-            expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('audioinput', 'mic-2');
+            expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('audioinput', 'mic-2', true);
         });
 
         it('falls back to the first input when the active input is unplugged', async () => {

@@ -17,8 +17,8 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
-import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call';
-import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/clients/calls';
+import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
+import {AudioInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
@@ -32,7 +32,6 @@ import {
 import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CollapseIcon from 'src/components/icons/collapse';
 import CompassIcon from 'src/components/icons/compassIcon';
-import GridViewIcon from 'src/components/icons/grid_view';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
 import ParticipantsIcon from 'src/components/icons/participants';
@@ -40,7 +39,6 @@ import RecordCircleIcon from 'src/components/icons/record_circle';
 import RecordSquareIcon from 'src/components/icons/record_square';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import ShareScreenIcon from 'src/components/icons/share_screen';
-import SpeakerViewIcon from 'src/components/icons/speaker_view';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
@@ -70,7 +68,6 @@ import {
 } from 'src/types/types';
 import {
     getCallsClient,
-    getScreenStream,
     getUserDisplayName,
     isDMChannel,
     sendDesktopEvent,
@@ -129,6 +126,11 @@ interface Props extends RouteComponentProps {
     openModal: <P>(modalData: ModalData<P>) => void;
     enableVideo: boolean;
     otherSessions: UserSessionState[];
+    userMuted: (channelID: string, sessionID: string, userID: string) => void;
+    userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
+    joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
+    leaveUser: (channelID: string, userID: string, sessionID: string) => void;
+    usersVoiceActivityChanged: (channelID: string, sessionIDs: string[], userIDs: string[]) => void;
 }
 
 interface State {
@@ -169,6 +171,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private pushToTalk = false;
     private screenPlayer: HTMLVideoElement | null = null;
     private callQualityBannerLocked = false;
+    private callClientUnsubscribers: Array<() => void> = [];
 
     static contextType = window.ProductApi.WebSocketProvider;
     declare context: React.ContextType<typeof window.ProductApi.WebSocketProvider>;
@@ -298,7 +301,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         if (window.opener) {
             const callsClient = window.opener.callsClient;
-            callsClient?.on('close', () => window.close());
+            callsClient?.on(CALL_EVENT.DISCONNECTED, () => window.close());
 
             // don't allow navigation in expanded window e.g. permalinks in rhs
             this.#unlockNavigation = props.history.block((tx) => {
@@ -439,19 +442,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         });
     };
 
-    setVideoDevices = (devices: MediaDeviceInfo[]) => {
-        this.setState({
-            alerts: {
-                ...this.state.alerts,
-                missingVideoInput: {
-                    ...this.state.alerts.missingVideoInput,
-                    active: devices.length === 0,
-                    show: devices.length === 0,
-                },
-            },
-        });
-    };
-
     onDisconnectClick = () => {
         this.props.hideExpandedView();
         const callsClient = getCallsClient();
@@ -474,17 +464,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         } else {
             logDebug('ExpandedView.onMuteToggle: muting (user toggled off)');
             callsClient?.mute();
-        }
-    };
-
-    onVideoToggle = () => {
-        const callsClient = getCallsClient();
-        if (this.isVideoOn()) {
-            logDebug('ExpandedView.onVideoToggle: stopping video (user toggled off)');
-            callsClient?.stopVideo();
-        } else {
-            logDebug('ExpandedView.onVideoToggle: starting video (user toggled on)');
-            callsClient?.startVideo();
         }
     };
 
@@ -534,14 +513,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 logDebug('desktopAPI.openScreenShareModal');
                 window.desktopAPI.openScreenShareModal();
             } else {
-                const stream = await getScreenStream('', shareAudioWithScreen());
-                if (window.opener && stream) {
-                    window.screenSharingTrackId = stream.getVideoTracks()[0].id;
-                }
+                const stream = await callsClient?.shareScreen('', shareAudioWithScreen());
                 if (stream) {
-                    await callsClient?.setScreenStream(stream);
-
-                    this.setState({screenStream: stream});
+                    if (window.opener) {
+                        window.screenSharingTrackId = stream.getVideoTracks()[0].id;
+                    }
                     this.setMissingScreenPermissions(false, true);
                 } else {
                     this.setMissingScreenPermissions(true, true);
@@ -654,18 +630,55 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.addEventListener('keyup', this.handleKeyUp, true);
         window.addEventListener('blur', this.handleBlur, true);
 
-        callsClient.on('remoteScreenStream', (stream: MediaStream) => {
+        // onClient registers a CallClient listener and records its teardown so
+        // componentWillUnmount can detach it. The CallClient lives in the opener
+        // window, so without explicit off() its listeners accumulate per mount.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const onClient = (event: string, handler: (...args: any[]) => void) => {
+            callsClient.on(event, handler);
+            this.callClientUnsubscribers.push(() => callsClient.off(event, handler));
+        };
+
+        onClient(CALL_EVENT.REMOTE_SCREEN_STREAM, (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
         });
-        callsClient.on(CALL_EVENT.LOCAL_SCREEN_STREAM, (stream: MediaStream) => {
+        onClient(CALL_EVENT.LOCAL_SCREEN_STREAM, (stream: MediaStream) => {
             this.setState({
                 screenStream: stream,
             });
+        });
+        onClient(CALL_EVENT.LOCAL_SCREEN_STREAM_OFF, () => {
+            this.setState({screenStream: null});
+        });
+        onClient(CALL_EVENT.REMOTE_SCREEN_STREAM_OFF, () => {
+            this.setState({screenStream: null});
+        });
+        onClient(CALL_EVENT.MUTE, (sessionID: string, userID: string) => {
+            this.props.userMuted(callsClient.channelID, sessionID, userID);
+        });
+        onClient(CALL_EVENT.UNMUTE, (sessionID: string, userID: string) => {
+            this.props.userUnmuted(callsClient.channelID, sessionID, userID);
         });
 
-        callsClient.on(CALL_EVENT.DEVICE_FALLBACK, (device: MediaDeviceInfo) => {
+        // In the popout, this component's Redux store is separate from the
+        // opener's. The opener subscribes USER_JOINED / USER_LEFT /
+        // USERS_VOICE_ACTIVITY_CHANGED in its own index.tsx — gate on
+        // window.opener so we don't double-dispatch in the inline case.
+        if (window.opener) {
+            onClient(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {
+                this.props.joinUser(callsClient.channelID, userID, sessionID, Boolean(isFromInitialSync));
+            });
+            onClient(CALL_EVENT.USER_LEFT, (sessionID: string, userID: string) => {
+                this.props.leaveUser(callsClient.channelID, userID, sessionID);
+            });
+            onClient(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
+                this.props.usersVoiceActivityChanged(callsClient.channelID, sessionIDs, userIDs);
+            });
+        }
+
+        onClient(CALL_EVENT.DEVICE_FALLBACK, (device: MediaDeviceInfo) => {
             if (device.kind === 'audioinput') {
                 this.setState({
                     alerts: {
@@ -697,21 +710,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         });
 
-        callsClient.on('localVideoStream', (stream: MediaStream) => {
-            this.setState({
-                selfVideoStream: stream,
-            });
-        });
-        callsClient.on('remoteVideoStream', (stream: MediaStream) => {
-            this.setState({
-                otherVideoStream: stream,
-            });
-        });
-        callsClient.on(CALL_EVENT.DEVICE_CHANGE, (audioDevices: MediaDevices, videoDevices: MediaDeviceInfo[]) => {
+        onClient(CALL_EVENT.DEVICE_CHANGE, (audioDevices: MediaDevices) => {
             this.setAudioDevices(audioDevices);
-            this.setVideoDevices(videoDevices);
         });
-        callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
+        onClient(CALL_EVENT.ERROR, (err: Error) => {
             if (err === AudioInputPermissionsError) {
                 this.setState({
                     alerts: {
@@ -722,20 +724,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         },
                     },
                 });
-            } else if (err === VideoInputPermissionsError) {
-                this.setState({
-                    alerts: {
-                        ...this.state.alerts,
-                        missingVideoInputPermissions: {
-                            active: true,
-                            show: true,
-                        },
-                    },
-                });
             }
         });
 
-        callsClient.on(CALL_EVENT.INIT_AUDIO, () => {
+        onClient(CALL_EVENT.INIT_AUDIO, () => {
             this.setState({
                 alerts: {
                     ...this.state.alerts,
@@ -746,26 +738,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 },
             });
         });
-        callsClient.on('initvideo', () => {
-            this.setState({
-                alerts: {
-                    ...this.state.alerts,
-                    missingVideoInputPermissions: {
-                        active: false,
-                        show: false,
-                    },
-                },
-            });
-        });
-
         this.setAudioDevices(callsClient.getAudioDevices());
 
         const screenStream = callsClient.getLocalScreenStream() || callsClient.getRemoteScreenStream();
-
-        // TODO: fix this
-        // @ts-ignore
-        const selfVideoStream = callsClient.localVideoStream;
-        const otherVideoStream = callsClient.getRemoteVideoStream();
 
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
@@ -776,15 +751,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     active: false,
                     show: false,
                 },
-                missingVideoInputPermissions: {
-                    ...this.state.alerts.missingVideoInputPermissions,
-                    active: false,
-                    show: false,
-                },
             },
             screenStream,
-            selfVideoStream,
-            otherVideoStream,
         });
 
         if (window.opener) {
@@ -805,7 +773,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         }
 
-        callsClient.on(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
+        onClient(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
             const isCallQualityDegraded = quality === CONNECTION_QUALITY.Poor || quality === CONNECTION_QUALITY.Lost;
             const isCallQualityHealthy = quality === CONNECTION_QUALITY.Excellent || quality === CONNECTION_QUALITY.Good;
 
@@ -854,6 +822,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.removeEventListener('blur', this.handleBlur, true);
         this.#unlockNavigation?.();
         this.context?.removeFirstConnectListener(this.requestCallState);
+
+        this.callClientUnsubscribers.forEach((unsubscribe) => unsubscribe());
+        this.callClientUnsubscribers = [];
     }
 
     dismissRecordingPrompt = () => {
@@ -1284,9 +1255,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const leaveCallTooltipText = formatMessage({defaultMessage: 'Leave call'});
         const closeViewLabel = formatMessage({defaultMessage: 'Close window'});
 
-        const switchViewLabel = this.state.viewState === 'speaker' ? formatMessage({defaultMessage: 'Switch to grid view'}) : formatMessage({defaultMessage: 'Switch to speaker view'});
-        const SwitchViewIcon = this.state.viewState === 'speaker' ? SpeakerViewIcon : GridViewIcon;
-
         const shouldRenderVideoContainer = this.props.currentSession?.video || this.props.otherSessions.some((s) => s.video);
         const shouldRenderTopVideoContainer = (this.state.viewState === 'speaker' || this.props.screenSharingSession) && ((this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video));
 
@@ -1315,31 +1283,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
                         <div style={this.style.headerSpreader}/>
                         <ExpandedIncomingCallContainer/>
-
-                        { this.props.enableVideo && !this.props.screenSharingSession && shouldRenderVideoContainer && this.props.otherSessions.length > 0 &&
-                        <OverlayTrigger
-                            placement='bottom'
-                            key={'switch-view'}
-                            overlay={
-                                <Tooltip id='tooltip-switch-view'>
-                                    {switchViewLabel}
-                                </Tooltip>
-                            }
-                        >
-                            <SwitchViewButton
-                                className='style--none'
-                                onClick={this.onSwitchViewClick}
-                                aria-label={switchViewLabel}
-                            >
-                                <SwitchViewIcon
-                                    style={{
-                                        width: '20px',
-                                        height: '20px',
-                                    }}
-                                />
-                            </SwitchViewButton>
-                        </OverlayTrigger>
-                        }
 
                         <OverlayTrigger
                             placement='bottom'
@@ -1734,35 +1677,6 @@ const CloseButton = styled.button`
 `;
 
 const CloseViewButton = styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    padding: 10px;
-    border-radius: 4px;
-
-    svg {
-        fill: rgba(255, 255, 255, 0.64);
-    }
-
-    &:hover {
-        background: rgba(255, 255, 255, 0.08);
-
-        svg {
-            fill: rgba(255, 255, 255, 0.72);
-        }
-    }
-
-    &:active {
-        background: rgba(255, 255, 255, 0.16);
-
-        svg {
-            fill: rgba(255, 255, 255, 0.80);
-        }
-    }
-`;
-
-const SwitchViewButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
