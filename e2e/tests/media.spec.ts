@@ -18,7 +18,7 @@ test.beforeEach(async ({page}) => {
 test.describe('screen sharing', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test.fixme('share screen button', {
+    test('share screen button', {
         tag: '@core',
     }, async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -34,12 +34,16 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await expect(page.locator('#screen-player')).toBeVisible();
         await expect(userPage.page.locator('#screen-player')).toBeVisible();
 
+        // Asserting a screen track ID is present is enough — RTCD used to
+        // prefix IDs with 'screen_', but LiveKit assigns its own track IDs
+        // ('TR_VS…'). What we care about is that the remote side received a
+        // screen video track at all.
         const screenStreamID = await (await userPage.page.waitForFunction(() => {
             return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
         })).evaluate(() => {
             return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
         });
-        expect(screenStreamID).toContain('screen_');
+        expect(screenStreamID).toBeTruthy();
 
         await page.getByTestId('calls-widget-stop-screenshare').click();
 
@@ -49,7 +53,7 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
-    test.fixme('share screen keyboard shortcut', async ({page}) => {
+    test('share screen keyboard shortcut', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
 
         const [userPage, _] = await Promise.all([
@@ -71,7 +75,7 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         })).evaluate(() => {
             return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
         });
-        expect(screenTrackID).toContain('screen_');
+        expect(screenTrackID).toBeTruthy();
 
         if (process.platform === 'darwin') {
             await page.keyboard.press('Meta+Shift+E');
@@ -85,6 +89,13 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
+    // MM-68570: flaky on the rejoin step. After leaveCall, when joinCall is
+    // immediately called again on the same page, window.callsClient races —
+    // the new CallClient instance's isConnected doesn't flip within 150s.
+    // Passed in one CI run, failed in the next on the same branch. MM-69018's
+    // teardown improved this but didn't fully fix it; needs a "new
+    // callsClient instance" detection in the helper rather than polling
+    // isConnected on whatever happens to be at window.callsClient.
     test.fixme('presenter leaving and joining back', {
         tag: '@core',
     }, async ({page}) => {
@@ -109,7 +120,7 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         })).evaluate(() => {
             return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
         });
-        expect(screenStreamID).toContain('screen_');
+        expect(screenStreamID).toBeTruthy();
 
         // presenter leaves call
         await devPage.leaveCall();
@@ -131,11 +142,15 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         })).evaluate(() => {
             return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
         });
-        expect(screenStreamID).toContain('screen_');
+        expect(screenStreamID).toBeTruthy();
 
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
+    // MM-68570: AV1 codec assertions read codecIds from
+    // `callsClient.peer.pc.getStats()` — that RTCPeerConnection isn't exposed
+    // under LiveKit (the room manages multiple PCs internally). No equivalent
+    // public API for cross-codec stats inspection yet; quarantined indefinitely.
     test.fixme('av1', {
         tag: '@core',
     }, async ({page}) => {
@@ -265,6 +280,10 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await Promise.all([senderPage.leaveCall(), receiverPage.leaveCall()]);
     });
 
+    // MM-68570: retried after MM-69018/MM-69019, still times out at 150s
+    // with no specific assertion error in the log — the Settings modal →
+    // enable audio-with-screen → save → publish chain doesn't complete on
+    // LiveKit. Needs a Playwright trace inspection to localize the hang.
     test.fixme('share screen with audio', {
         tag: '@core',
     }, async ({page}) => {
@@ -314,10 +333,12 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await expect(receiverPage.page.locator('#screen-player')).toBeVisible();
 
         // Verify that the audio track for screen sharing is received.
+        // RTCD exposed the remote voice array as `callsClient.remoteVoiceTracks`;
+        // LiveKit exposes it through `getRemoteVoiceTracks()` (call_client.ts:400).
         const hasReceivedAudioScreenTrack = await (await receiverPage.page.waitForFunction(() => {
-            return window.callsClient.remoteVoiceTracks.length > 0;
+            return window.callsClient.getRemoteVoiceTracks().length > 0;
         })).evaluate(() => {
-            return window.callsClient.remoteVoiceTracks.length > 0;
+            return window.callsClient.getRemoteVoiceTracks().length > 0;
         });
         expect(hasReceivedAudioScreenTrack).toBe(true);
 
