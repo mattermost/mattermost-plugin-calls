@@ -1,6 +1,15 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+// MM-68570: /call end on LiveKit hits the "you don't have permission" branch
+// in webapp/src/slash_commands.tsx:146 because hostIDForCallInChannel in the
+// Redux store doesn't yet reflect the current user as host when slashCallEnd
+// runs right after startCall. The helper in page.ts handles both possible
+// modals cleanly, but the call doesn't end because the host check fails
+// client-side. Needs a host-state-ready signal — either a hydrated host
+// before startCall returns, or an explicit wait in the test. Revisit with a
+// dedicated helper change.
+
 import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';

@@ -15,7 +15,7 @@ test.describe('switch call', {tag: '@livekit'}, () => {
     const userIdx = getUserIdxForTest();
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test.fixme('exit modal - cancel button', async ({page}) => {
+    test('exit modal - cancel button', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -32,7 +32,7 @@ test.describe('switch call', {tag: '@livekit'}, () => {
         await devPage.leaveCall();
     });
 
-    test.fixme('exit modal - close icon', async ({page}) => {
+    test('exit modal - close icon', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -49,7 +49,7 @@ test.describe('switch call', {tag: '@livekit'}, () => {
         await devPage.leaveCall();
     });
 
-    test.fixme('exit modal - esc key', async ({page}) => {
+    test('exit modal - esc key', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -66,7 +66,7 @@ test.describe('switch call', {tag: '@livekit'}, () => {
         await devPage.leaveCall();
     });
 
-    test.fixme('exit modal - click outside', async ({page}) => {
+    test('exit modal - click outside', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -83,6 +83,13 @@ test.describe('switch call', {tag: '@livekit'}, () => {
         await devPage.leaveCall();
     });
 
+    // MM-68570: under LiveKit, clicking the switch-call modal's "Join"
+    // button closes the modal but the new channel's widget never mounts
+    // (leave button isn't visible after 150s). Needs investigation — likely
+    // a gap in the leave-old → join-new transition that's specific to
+    // switch-call (not the channel-header join path, which works). Keeping
+    // fixme until that's traced; the four other switch-call modal-dismiss
+    // tests all pass.
     test.fixme('join call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();

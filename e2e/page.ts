@@ -74,14 +74,23 @@ export default class PlaywrightDevPage {
 
     async slashCallEnd() {
         await this.sendSlashCommand('/call end');
-        let modal = this.page.locator('#end_call_confirmation');
-        if (await modal.isVisible()) {
+
+        // Wait for one of the two possible modals to surface. The previous
+        // implementation called isVisible() inline, which is a non-blocking
+        // point-in-time check — under LiveKit the host-confirmation modal
+        // renders a few hundred ms after /call end, so the inline check would
+        // race past it and the call would never actually end.
+        const confirmModal = this.page.locator('#end_call_confirmation');
+        const errorModal = this.page.locator('.modal-content');
+        await Promise.race([
+            confirmModal.waitFor({state: 'visible', timeout: 10000}),
+            errorModal.waitFor({state: 'visible', timeout: 10000}),
+        ]).catch(() => undefined);
+
+        if (await confirmModal.isVisible()) {
             await this.page.getByTestId('modal-confirm-button').getByText('End call').click();
-        } else {
-            modal = this.page.locator('.modal-content');
-            if (await modal.isVisible()) {
-                await modal.getByRole('button', {name: 'Understood'}).click();
-            }
+        } else if (await errorModal.isVisible()) {
+            await errorModal.getByRole('button', {name: 'Understood'}).click();
         }
     }
 
