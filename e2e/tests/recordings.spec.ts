@@ -1,6 +1,10 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+// MM-68570: recording, transcription, and live captions are stubbed on the
+// LiveKit v2 branch — the server returns 501 from server/recording_api.go.
+// Every test in this file is test.skip'd; revisit when those features ship.
+
 import {expect, test} from '@playwright/test';
 
 import {apiSetEnableLiveCaptions, apiSetEnableTranscriptions} from '../config';
@@ -13,7 +17,7 @@ test.beforeEach(async ({page}) => {
     await devPage.goto();
 });
 
-test.describe('call recordings, transcriptions, live-captions', () => {
+test.describe('call recordings, transcriptions, live-captions', {tag: '@livekit'}, () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
     test.beforeEach(async () => {
@@ -34,7 +38,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         }
     });
 
-    test('slash command, popout + buttons', {
+    test.skip('slash command, popout + buttons', {
         tag: '@core',
     }, async ({page, context, request}) => {
         await apiSetEnableTranscriptions(false);
@@ -247,7 +251,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await devPage.leaveCall();
     });
 
-    test('recording - no participants left', async ({page}) => {
+    test.skip('recording - no participants left', async ({page}) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
 
@@ -273,7 +277,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
     });
 
-    test('recording - call end', async ({page}) => {
+    test.skip('recording - call end', async ({page}) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
 
@@ -296,7 +300,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await page.getByTestId('modal-confirm-button').getByText('End call').click();
 
         // verify user has been kicked out
-        await page.waitForFunction(() => !window.callsClient || window.callsClient.closed);
+        await page.waitForFunction(() => !window.callsClient || window.callsClient.isDisconnected);
         await expect(page.locator('#calls-widget')).toBeHidden();
 
         // verify recording file has been posted by the bot (assumes CRT enabled)
@@ -306,7 +310,7 @@ test.describe('call recordings, transcriptions, live-captions', () => {
         await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
     });
 
-    test('recording - widget menu', async ({page}) => {
+    test.skip('recording - widget menu', async ({page}) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();

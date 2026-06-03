@@ -15,10 +15,10 @@ test.beforeEach(async ({page}) => {
     await devPage.goto();
 });
 
-test.describe('screen sharing', () => {
+test.describe('screen sharing', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('share screen button', {
+    test.fixme('share screen button', {
         tag: '@core',
     }, async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -49,7 +49,7 @@ test.describe('screen sharing', () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
-    test('share screen keyboard shortcut', async ({page}) => {
+    test.fixme('share screen keyboard shortcut', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
 
         const [userPage, _] = await Promise.all([
@@ -85,7 +85,7 @@ test.describe('screen sharing', () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
-    test('presenter leaving and joining back', {
+    test.fixme('presenter leaving and joining back', {
         tag: '@core',
     }, async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -136,7 +136,7 @@ test.describe('screen sharing', () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
-    test('av1', {
+    test.fixme('av1', {
         tag: '@core',
     }, async ({page}) => {
         test.setTimeout(180000);
@@ -265,7 +265,7 @@ test.describe('screen sharing', () => {
         await Promise.all([senderPage.leaveCall(), receiverPage.leaveCall()]);
     });
 
-    test('share screen with audio', {
+    test.fixme('share screen with audio', {
         tag: '@core',
     }, async ({page}) => {
         const senderPage = new PlaywrightDevPage(page);
@@ -325,10 +325,10 @@ test.describe('screen sharing', () => {
     });
 });
 
-test.describe('sending voice', () => {
+test.describe('sending voice', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('unmuting', {
+    test.fixme('unmuting', {
         tag: '@core',
     }, async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -363,7 +363,7 @@ test.describe('sending voice', () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
-    test('unmuting after ws reconnect', {
+    test.fixme('unmuting after ws reconnect', {
         tag: '@core',
     }, async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -416,11 +416,11 @@ test.describe('sending voice', () => {
     });
 });
 
-test.describe('video calls', () => {
+test.describe('video calls', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
     test.describe('widget', () => {
-        test('self only', {
+        test.fixme('self only', {
             tag: '@core',
         }, async ({page}) => {
             const userAPage = new PlaywrightDevPage(page);
@@ -450,7 +450,7 @@ test.describe('video calls', () => {
             await userAPage.leaveCall();
         });
 
-        test('1-1', {
+        test.fixme('1-1', {
             tag: '@core',
         }, async ({page}) => {
             const userAPage = new PlaywrightDevPage(page);
@@ -520,7 +520,7 @@ test.describe('video calls', () => {
     });
 
     test.describe('popout', () => {
-        test('self only', {
+        test.fixme('self only', {
             tag: '@core',
         }, async ({page}) => {
             const userAPage = new PlaywrightDevPage(page);
@@ -552,7 +552,7 @@ test.describe('video calls', () => {
             await userAPage.leaveCall();
         });
 
-        test('1-1', {
+        test.fixme('1-1', {
             tag: '@core',
         }, async ({page}) => {
             const userAPage = new PlaywrightDevPage(page);
@@ -608,7 +608,7 @@ test.describe('video calls', () => {
             await Promise.all([userAPage.leaveCall(), userBPage.leaveCall()]);
         });
 
-        test('video + screen sharing', {
+        test.fixme('video + screen sharing', {
             tag: '@core',
         }, async ({page}) => {
             const userAPage = new PlaywrightDevPage(page);

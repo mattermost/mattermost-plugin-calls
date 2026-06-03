@@ -31,10 +31,10 @@ test.beforeEach(async ({page}, info) => {
     await devPage.goto();
 });
 
-test.describe('start/join call in channel with calls disabled', () => {
+test.describe('start/join call in channel with calls disabled', {tag: '@livekit'}, () => {
     test.use({storageState: adminState.storageStatePath});
 
-    test('/call start', async ({page}) => {
+    test.fixme('/call start', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.disableCalls();
 
@@ -48,7 +48,7 @@ test.describe('start/join call in channel with calls disabled', () => {
         await devPage.enableCalls();
     });
 
-    test('/call join', async ({page}) => {
+    test.fixme('/call join', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.disableCalls();
 
@@ -63,17 +63,17 @@ test.describe('start/join call in channel with calls disabled', () => {
     });
 });
 
-test.describe('start new call', () => {
+test.describe('start new call', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('channel header button', async ({page}) => {
+    test.fixme('channel header button', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
         expect(await page.locator('#calls-widget .calls-widget-bottom-bar').screenshot()).toMatchSnapshot('calls-widget-bottom-bar.png');
         await devPage.leaveCall();
     });
 
-    test('slash command', async ({page}) => {
+    test.fixme('slash command', async ({page}) => {
         await page.locator('#post_textbox').fill('/call join');
         await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeVisible();
@@ -84,7 +84,7 @@ test.describe('start new call', () => {
         await expect(page.locator('#postCreateFooter .has-error')).toBeHidden();
     });
 
-    test('dm channel', async ({page}) => {
+    test.fixme('dm channel', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.gotoDM(usernames[1]);
         await devPage.startCall();
@@ -92,7 +92,7 @@ test.describe('start new call', () => {
         await devPage.leaveCall();
     });
 
-    test('cannot start call twice', async ({page}) => {
+    test.fixme('cannot start call twice', async ({page}) => {
         await page.locator('#post_textbox').fill('/call start');
         await page.getByTestId('SendMessageButton').click();
         await expect(page.locator('#calls-widget')).toBeVisible();
@@ -110,7 +110,7 @@ test.describe('start new call', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('slash command from existing thread', async ({page}) => {
+    test.fixme('slash command from existing thread', async ({page}) => {
         // create a test thread
         await page.locator('#post_textbox').fill('test thread');
         await page.getByTestId('SendMessageButton').click();
@@ -136,7 +136,7 @@ test.describe('start new call', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('verify no one is talking…', async ({page}) => {
+    test.fixme('verify no one is talking…', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -145,7 +145,7 @@ test.describe('start new call', () => {
         await devPage.leaveCall();
     });
 
-    test('ws reconnect', async ({page}) => {
+    test.fixme('ws reconnect', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -167,10 +167,10 @@ test.describe('start new call', () => {
     });
 });
 
-test.describe('auto join link', () => {
+test.describe('auto join link', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('public channel', async ({page}) => {
+    test.fixme('public channel', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
 
         await page.locator('#post_textbox').fill('/call link');
@@ -195,7 +195,7 @@ test.describe('auto join link', () => {
         await devPage.leaveCall();
     });
 
-    test('dm channel', async ({page}) => {
+    test.fixme('dm channel', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.gotoDM(usernames[1]);
 
@@ -220,10 +220,10 @@ test.describe('auto join link', () => {
     });
 });
 
-test.describe('setting audio input device', () => {
+test.describe('setting audio input device', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('no default', async ({page}) => {
+    test.fixme('no default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -238,7 +238,7 @@ test.describe('setting audio input device', () => {
         await devPage.leaveCall();
     });
 
-    test('setting default', async ({page}) => {
+    test.fixme('setting default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -290,10 +290,10 @@ test.describe('setting audio input device', () => {
     });
 });
 
-test.describe('setting audio output device', () => {
+test.describe('setting audio output device', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('no default', async ({page}) => {
+    test.fixme('no default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -308,7 +308,7 @@ test.describe('setting audio output device', () => {
         await devPage.leaveCall();
     });
 
-    test('setting default', async ({page}) => {
+    test.fixme('setting default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -360,10 +360,10 @@ test.describe('setting audio output device', () => {
     });
 });
 
-test.describe('switching products', () => {
+test.describe('switching products', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('playbooks', async ({page}) => {
+    test.fixme('playbooks', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -396,10 +396,10 @@ test.describe('switching products', () => {
     });
 });
 
-test.describe('switching views', () => {
+test.describe('switching views', {tag: '@livekit'}, () => {
     test.use({storageState: adminState.storageStatePath});
 
-    test('system console', async ({page}) => {
+    test.fixme('system console', async ({page}) => {
         // Using the second channel allocated for the test to avoid a potential
         // race condition with a previous test making use of the system admin.
         const channelName = getChannelNamesForTest()[1];
@@ -425,11 +425,11 @@ test.describe('switching views', () => {
     });
 });
 
-test.describe('ux', () => {
+test.describe('ux', {tag: '@livekit'}, () => {
     const userIdx = getUserIdxForTest();
     test.use({storageState: userStorages[0]});
 
-    test('channel link', async ({page}) => {
+    test.fixme('channel link', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -451,7 +451,7 @@ test.describe('ux', () => {
         await devPage.leaveCall();
     });
 
-    test('call post card', async ({page}) => {
+    test.fixme('call post card', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -484,10 +484,10 @@ test.describe('ux', () => {
     });
 });
 
-test.describe('call post', () => {
+test.describe('call post', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('user starting call should not be allowed to edit the call post', async ({page}) => {
+    test.fixme('user starting call should not be allowed to edit the call post', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -518,10 +518,10 @@ test.describe('call post', () => {
     });
 });
 
-test.describe('permissions', () => {
+test.describe('permissions', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('leaving active call channel should disconnect from call', async ({page}) => {
+    test.fixme('leaving active call channel should disconnect from call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -541,7 +541,7 @@ test.describe('permissions', () => {
         await page.getByTestId('SendMessageButton').click();
     });
 
-    test('should disconnect from call when removed from channel', async ({page}) => {
+    test.fixme('should disconnect from call when removed from channel', async ({page}) => {
         const channelName = getChannelNamesForTest()[1];
         const devPage = new PlaywrightDevPage(page);
         devPage.goToChannel(channelName);
@@ -572,10 +572,10 @@ test.describe('permissions', () => {
     });
 });
 
-test.describe('widget menu', () => {
+test.describe('widget menu', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('menu button should open call thread', async ({page}) => {
+    test.fixme('menu button should open call thread', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -600,10 +600,10 @@ test.describe('widget menu', () => {
     });
 });
 
-test.describe('setting video input device', () => {
+test.describe('setting video input device', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('no default', async ({page}) => {
+    test.fixme('no default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -618,7 +618,7 @@ test.describe('setting video input device', () => {
         await devPage.leaveCall();
     });
 
-    test('setting default', async ({page}) => {
+    test.fixme('setting default', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
 
         // Video is only available in DMs

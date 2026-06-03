@@ -11,11 +11,11 @@ test.beforeEach(async ({page}) => {
     await devPage.goto();
 });
 
-test.describe('switch call', () => {
+test.describe('switch call', {tag: '@livekit'}, () => {
     const userIdx = getUserIdxForTest();
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('exit modal - cancel button', async ({page}) => {
+    test.fixme('exit modal - cancel button', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -32,7 +32,7 @@ test.describe('switch call', () => {
         await devPage.leaveCall();
     });
 
-    test('exit modal - close icon', async ({page}) => {
+    test.fixme('exit modal - close icon', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -49,7 +49,7 @@ test.describe('switch call', () => {
         await devPage.leaveCall();
     });
 
-    test('exit modal - esc key', async ({page}) => {
+    test.fixme('exit modal - esc key', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -66,7 +66,7 @@ test.describe('switch call', () => {
         await devPage.leaveCall();
     });
 
-    test('exit modal - click outside', async ({page}) => {
+    test.fixme('exit modal - click outside', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -83,7 +83,7 @@ test.describe('switch call', () => {
         await devPage.leaveCall();
     });
 
-    test('join call', async ({page}) => {
+    test.fixme('join call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 

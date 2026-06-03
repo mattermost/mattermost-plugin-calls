@@ -1,6 +1,11 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+// MM-68570: Electron desktopAPI coverage is deferred on the LiveKit v2
+// branch. The desktop client integration with the new CallClient is not yet
+// validated. Every test in this file is test.skip'd; revisit once the
+// desktop client targets v2.
+
 import {expect, test} from '@playwright/test';
 import {readFile} from 'fs/promises';
 
@@ -84,10 +89,10 @@ test.beforeEach(async ({page}, info) => {
     await devPage.goto();
 });
 
-test.describe('desktop', () => {
+test.describe('desktop', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('screen sharing < 5.1.0', async ({page}) => {
+    test.skip('screen sharing < 5.1.0', async ({page}) => {
         await page.evaluate(() => {
             window.desktop = {version: '5.0.0'};
         });
@@ -99,7 +104,7 @@ test.describe('desktop', () => {
         await devPage.leaveCall();
     });
 
-    test('screen source modal >= 5.1.0', async ({page}) => {
+    test.skip('screen source modal >= 5.1.0', async ({page}) => {
         const data = await readFile('./assets/screen.png', {encoding: 'base64'});
         const sourceURI = `data:image/png;base64,${data}`;
         await page.evaluate((thumbnailURL) => {
@@ -141,7 +146,7 @@ test.describe('desktop', () => {
         await devPage.leaveCall();
     });
 
-    test('desktopAPI: screen sharing', async ({page}) => {
+    test.skip('desktopAPI: screen sharing', async ({page}) => {
         await page.addInitScript(() => {
             window.desktopAPI.onScreenShared = (listener: (sourceID: string, withAudio: boolean) => void) => {
                 window.desktopAPI.openScreenShareModal = () => {
@@ -194,7 +199,7 @@ test.describe('desktop', () => {
         await devPage.leaveCall();
     });
 
-    test('desktopAPI: widget window should be excluded from sharing sources', async ({page}) => {
+    test.skip('desktopAPI: widget window should be excluded from sharing sources', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -220,7 +225,7 @@ test.describe('desktop', () => {
         await devPage.leaveCall();
     });
 
-    test('desktopAPI: share system audio toggle', async ({page}) => {
+    test.skip('desktopAPI: share system audio toggle', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -240,7 +245,7 @@ test.describe('desktop', () => {
         await devPage.leaveCall();
     });
 
-    test('desktopAPI: screen sharing permissions error', async ({page}) => {
+    test.skip('desktopAPI: screen sharing permissions error', async ({page}) => {
         await page.addInitScript(() => {
             window.desktopAPI.onScreenShared = (listener: (sourceID: string, withAudio: boolean) => void) => {
                 window.desktopAPI.openScreenShareModal = () => {
@@ -274,7 +279,7 @@ test.describe('desktop', () => {
         await devPage.leaveCall();
     });
 
-    test('desktopAPI: calls client error', async ({page}) => {
+    test.skip('desktopAPI: calls client error', async ({page}) => {
         // start call in global widget
         const devPage = new PlaywrightDevPage(page);
         await devPage.openWidget(getChannelNamesForTest()[0]);
@@ -293,7 +298,7 @@ test.describe('desktop', () => {
         expect(desktopAPICalls.sendCallsError).toBe(true);
     });
 
-    test('desktopAPI: leave call', async ({page}) => {
+    test.skip('desktopAPI: leave call', async ({page}) => {
         // start call in global widget
         const devPage = new PlaywrightDevPage(page);
         await devPage.openWidget(getChannelNamesForTest()[0]);
@@ -307,7 +312,7 @@ test.describe('desktop', () => {
         expect(desktopAPICalls.leaveCall).toBe(true);
     });
 
-    test('desktop: /call stats command', async ({page}) => {
+    test.skip('desktop: /call stats command', async ({page}) => {
         // start call in global widget
         const devPage = new PlaywrightDevPage(page);
         await devPage.openWidget(getChannelNamesForTest()[0]);
@@ -329,7 +334,7 @@ test.describe('desktop', () => {
         await expect(page.locator('.post__body').last()).toContainText('"callID"');
     });
 
-    test('desktop: /call logs command', async ({page}) => {
+    test.skip('desktop: /call logs command', async ({page}) => {
         // start call in global widget
         const devPage = new PlaywrightDevPage(page);
         await devPage.openWidget(getChannelNamesForTest()[0]);

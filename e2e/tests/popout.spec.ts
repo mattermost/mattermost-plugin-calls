@@ -1,6 +1,10 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+// MM-68570: popout/expanded view is deferred on the LiveKit v2 branch until
+// the popout feature ships. Every test in this file is test.skip'd; revisit
+// when the popout window starts working.
+
 import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
@@ -13,10 +17,10 @@ test.beforeEach(async ({page}) => {
     await devPage.goto();
 });
 
-test.describe('popout window', () => {
+test.describe('popout window', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('popout opens muted', async ({page}) => {
+    test.skip('popout opens muted', async ({page}) => {
         const [_, popOut] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
 
@@ -37,14 +41,14 @@ test.describe('popout window', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('popout opens in a DM channel', async ({page}) => {
+    test.skip('popout opens in a DM channel', async ({page}) => {
         const [_, popOut] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
         await popOut.leaveFromPopout();
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('window title matches', async ({page}) => {
+    test.skip('window title matches', async ({page}) => {
         const [_, popOut] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
         await expect(popOut.page).toHaveTitle(`Call - ${getChannelNamesForTest()[0]}`);
@@ -53,7 +57,7 @@ test.describe('popout window', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('supports chat', async ({page}) => {
+    test.skip('supports chat', async ({page}) => {
         const [_, popOut] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
 
@@ -74,7 +78,7 @@ test.describe('popout window', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('supports chat in a DM channel', async ({page}) => {
+    test.skip('supports chat in a DM channel', async ({page}) => {
         const [_, popOut] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
 
@@ -95,7 +99,7 @@ test.describe('popout window', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('expanding chat', async ({page}) => {
+    test.skip('expanding chat', async ({page}) => {
         const [_, popOut] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
 
@@ -114,7 +118,7 @@ test.describe('popout window', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('recording banner dismissed works cross-window and is remembered - clicked on widget', async ({
+    test.skip('recording banner dismissed works cross-window and is remembered - clicked on widget', async ({
         page,
         context,
     }) => {
@@ -183,7 +187,7 @@ test.describe('popout window', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('recording banner dismissed works cross-window and is remembered - clicked on popout', async ({
+    test.skip('recording banner dismissed works cross-window and is remembered - clicked on popout', async ({
         page,
         context,
     }) => {
@@ -252,7 +256,7 @@ test.describe('popout window', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('/call leave slash command', async ({page, context}) => {
+    test.skip('/call leave slash command', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
         await devPage.startCall();
@@ -275,7 +279,7 @@ test.describe('popout window', () => {
         await expect(popOut.isClosed()).toEqual(true);
     });
 
-    test('webapp ws reconnect', async ({page, context}) => {
+    test.skip('webapp ws reconnect', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.goto();
         await devPage.startCall();
@@ -315,10 +319,10 @@ test.describe('popout window', () => {
     });
 });
 
-test.describe('popout window - reactions', () => {
+test.describe('popout window - reactions', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('raising hand', async ({page, context}) => {
+    test.skip('raising hand', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -339,7 +343,7 @@ test.describe('popout window - reactions', () => {
         await devPage.leaveCall();
     });
 
-    test('quick reaction', async ({page, context}) => {
+    test.skip('quick reaction', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -394,7 +398,7 @@ test.describe('popout window - reactions', () => {
         await devPage.leaveCall();
     });
 
-    test('reaction picker', async ({page, context}) => {
+    test.skip('reaction picker', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -453,10 +457,10 @@ test.describe('popout window - reactions', () => {
     });
 });
 
-test.describe('popout window - screen sharing', () => {
+test.describe('popout window - screen sharing', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('player renders correctly', async ({page, context}) => {
+    test.skip('player renders correctly', async ({page, context}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 

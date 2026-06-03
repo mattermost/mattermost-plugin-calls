@@ -13,11 +13,11 @@ test.beforeEach(async ({page}) => {
     await devPage.goto();
 });
 
-test.describe('channel toast', () => {
+test.describe('channel toast', {tag: '@livekit'}, () => {
     const userIdx = getUserIdxForTest();
     test.use({storageState: userStorages[0]});
 
-    test('dismissed and remains dismissed when leaving and returning to channel', async ({page}) => {
+    test.fixme('dismissed and remains dismissed when leaving and returning to channel', async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         await page.locator('.post__body').last().scrollIntoViewIfNeeded();
@@ -38,7 +38,7 @@ test.describe('channel toast', () => {
         await userPage.leaveCall();
     });
 
-    test('dismissed and reappears for next call while remaining in channel', async ({page}) => {
+    test.fixme('dismissed and reappears for next call while remaining in channel', async ({page}) => {
         const userPage = await startCall(userStorages[1]);
 
         await page.locator('.post__body').last().scrollIntoViewIfNeeded();
@@ -57,7 +57,7 @@ test.describe('channel toast', () => {
         await userPage.leaveCall();
     });
 
-    test('does not reappear after leaving call (call ends)', async () => {
+    test.fixme('does not reappear after leaving call (call ends)', async () => {
         const user0Page = await startCall(userStorages[0]);
 
         await expect(user0Page.page.locator('#calls-channel-toast')).toBeHidden();

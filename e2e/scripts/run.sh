@@ -75,14 +75,16 @@ echo "Spawning playwright image ..."
 # https://docs.docker.com/engine/reference/run/#network-settings
 # https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts
 #
-# Scope of this run: just the LiveKit smoke test that validates the framework.
-# Constrained to chromium because that's the browser the smoke test was authored
-# against; broader cross-browser + cross-feature coverage lands under MM-68570.
+# Scope of this run: the LiveKit smoke test plus the broader @livekit-tagged
+# suite from MM-68570. Bucket A/B tests are test.fixme'd and Bucket C tests are
+# test.skip'd as each PR in the MM-68570 series lands; only the smoke test
+# actually executes today. Constrained to chromium because that's the browser
+# both the smoke test and the early MM-68570 specs were authored against.
 docker run -d --name playwright-e2e \
 	--network=container:${CONTAINER_PROXY} \
 	--entrypoint "" \
 	mm-playwright \
-	bash -c "npm ci && npx playwright install && npx playwright test --project=chromium --grep @livekit-smoke --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
+	bash -c "npm ci && npx playwright install && npx playwright test --project=chromium --grep '@livekit-smoke|@livekit' --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
 
 docker logs -f playwright-e2e
 
@@ -99,7 +101,12 @@ docker logs ${CONTAINER_LIVEKIT} >"${WORKSPACE}/logs/livekit.log"
 ## Count failures. The recursive descent (`..`) walks arbitrary `test.describe`
 ## nesting; a shallow `.suites[].suites[].specs[]` filter would miss specs nested
 ## deeper and silently report zero failures.
-NUM_FAILURES=$(jq '[.. | objects | select(has("tests") and (.tests | type == "array")) | .tests[] | last(.results[]) | select(.status != "passed").status] | length' <"${WORKSPACE}/results/pw-results-${RUN_ID}.json")
+##
+## Match only real-failure statuses (failed/timedOut/interrupted). Tests that
+## are `test.skip` or `test.fixme` are reported as status="skipped" and must
+## not count as failures — otherwise the broader MM-68570 quarantine fleet
+## would pin the job red.
+NUM_FAILURES=$(jq '[.. | objects | select(has("tests") and (.tests | type == "array")) | .tests[] | last(.results[]) | select(.status == "failed" or .status == "timedOut" or .status == "interrupted").status] | length' <"${WORKSPACE}/results/pw-results-${RUN_ID}.json")
 echo "FAILURES=${NUM_FAILURES}" >>${GITHUB_OUTPUT}
 sudo chown -R 1001:1001 "${WORKSPACE}/logs"
 
