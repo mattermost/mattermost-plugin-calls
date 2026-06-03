@@ -89,14 +89,7 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
-    // MM-68570: the rejoin step (devPage.joinCall after devPage.leaveCall on
-    // the same page) times out waiting for callsClient.connected. The
-    // previous CallClient instance on window.callsClient is closed; the new
-    // join either doesn't trigger replacement or the new instance never
-    // flips connected. Possibly related to MM-69018 (end-call cleanup) — if
-    // leaveCall doesn't fully clear plugin/room state, the rejoin can't
-    // succeed. Needs investigation.
-    test.fixme('presenter leaving and joining back', {
+    test('presenter leaving and joining back', {
         tag: '@core',
     }, async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -280,13 +273,7 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await Promise.all([senderPage.leaveCall(), receiverPage.leaveCall()]);
     });
 
-    // MM-68570: 150s test timeout; the Settings modal → enable audio-with-
-    // screen → save → start-share flow doesn't complete on LiveKit (no
-    // useful error in the run log — needs a trace inspection). Suspect
-    // either the Calls Settings modal save isn't wired or the
-    // setScreenShareEnabled(true, {audio, systemAudio: 'include'}) path
-    // hangs/errors silently. Worth a manual repro before reviving.
-    test.fixme('share screen with audio', {
+    test('share screen with audio', {
         tag: '@core',
     }, async ({page}) => {
         const senderPage = new PlaywrightDevPage(page);
