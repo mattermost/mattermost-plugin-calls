@@ -30,6 +30,13 @@ test.afterEach(async ({page}) => {
 test.describe('host controls', {tag: '@livekit'}, () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
+    // MM-68570: host change burns the entire 400s test timeout exercising
+    // /call host transfers + host-rejoin + "longest member becomes host"
+    // reordering. Each transfer's UI assertion waits up to 60s for the
+    // host-changed event to flip the participant-list badge, and the
+    // host-rejoin step likely hits the same rejoin-on-same-page gap as
+    // media > presenter leaving and joining back. Stays fixme until
+    // MM-69019 (state propagation) and the rejoin gap are addressed.
     test.fixme('host change', async ({page}) => {
         const user0Page = new PlaywrightDevPage(page);
 
@@ -76,6 +83,12 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall(), user2Page.leaveCall()]);
     });
 
+    // MM-68570: the widget host-control monolith fails at expectMuted after
+    // a Mute-participant click — the host-mute action goes through but the
+    // participant card's data-testid="muted" never appears within the
+    // 60s expect timeout, suggesting the mute-state WS propagation is
+    // missing or delayed on LiveKit. Same family as MM-69019 (host/active
+    // state lag). Quarantine until MM-69019 is resolved.
     test.fixme('widget', async ({page}) => {
         // Here we are potentially introducing flakiness since the host is the first user to join
         // and through the Promise.all() call both users join in parallel.
@@ -154,22 +167,6 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await user0Page.expectMuted(usernames[2], true);
 
         //
-        // LOWER HAND
-        //
-        // 1 raises hand
-        await user1Page.raiseHand();
-        await user0Page.expectRaisedHand(usernames[1]);
-
-        // lower hand snapshot
-        expect(await (await user0Page.getDropdownMenu(usernames[1])).screenshot()).toMatchSnapshot('lower-hand-widget.png');
-        await user0Page.closeDropdownMenu();
-
-        // Lower 1's hand
-        await user0Page.clickHostControlOnWidget(usernames[1], HostControlAction.LowerHand);
-        await user0Page.expectUnRaisedHand(usernames[1]);
-        await user1Page.expectNotice(HostNotice.LowerHand, usernames[0]);
-
-        //
         // REMOVE FROM CALL
         //
 
@@ -204,6 +201,32 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await expect(user2Page.page.locator('#screen-player')).toBeHidden();
 
         await Promise.all([user0Page.leaveCall(), user2Page.leaveCall()]);
+    });
+
+    // MM-68570: lower-hand is split out so the rest of widget host controls can
+    // run. raiseHand() is a client-side stub on LiveKit (call_client.ts:237)
+    // — there's no hand to lower yet. Revisit once raise-hand is implemented.
+    test.fixme('widget - lower hand', async ({page}) => {
+        const user0Page = new PlaywrightDevPage(page);
+        const [_, user1Page] = await Promise.all([
+            user0Page.startCall(),
+            startCall(userStorages[1]),
+        ]);
+
+        // 1 raises hand
+        await user1Page.raiseHand();
+        await user0Page.expectRaisedHand(usernames[1]);
+
+        // lower hand snapshot
+        expect(await (await user0Page.getDropdownMenu(usernames[1])).screenshot()).toMatchSnapshot('lower-hand-widget.png');
+        await user0Page.closeDropdownMenu();
+
+        // Lower 1's hand
+        await user0Page.clickHostControlOnWidget(usernames[1], HostControlAction.LowerHand);
+        await user0Page.expectUnRaisedHand(usernames[1]);
+        await user1Page.expectNotice(HostNotice.LowerHand, usernames[0]);
+
+        await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
     test.fixme('popout - participant card - make host', async ({page}) => {
