@@ -17,7 +17,7 @@ test.beforeEach(async ({page}) => {
 test.describe('join call', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test.fixme('channel header button', {
+    test('channel header button', {
         tag: '@core',
     }, async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -26,6 +26,11 @@ test.describe('join call', {tag: '@livekit'}, () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
+    // MM-68570: this test asserts on a stored snapshot
+    // (tests/join_call.spec.ts-snapshots/channel-toast-chromium-linux.png)
+    // that's RTCD-era — the LiveKit render differs by 356 pixels (ratio
+    // 0.02). Defer to a snapshot-regen follow-up (same class as
+    // admin_console.spec.ts).
     test.fixme('channel toast', async ({page}) => {
         // start a call
         const userPage = await startCall(userStorages[1]);
@@ -48,7 +53,7 @@ test.describe('join call', {tag: '@livekit'}, () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
-    test.fixme('call thread', async ({page}) => {
+    test('call thread', async ({page}) => {
         // start a call
         const userPage = await startCall(userStorages[1]);
 
@@ -85,6 +90,12 @@ test.describe('join call', {tag: '@livekit'}, () => {
         await userPage.leaveCall();
     });
 
+    // MM-68570: this test's later sections assert that userA's popover Start
+    // Call button is DISABLED while userB has a call (in another channel or
+    // in the DM). MM-69019's e2eCallStateLoaded probe fires inside
+    // startCall/joinCall, but userA never joins anything here — she observes
+    // userB's call state passively. Needs a different probe: a cross-user
+    // "remote call known in Redux" wait. Until that lands, fixme.
     test.fixme('user profile popover', async ({page}) => {
         const userAPage = page;
         const userADevPage = new PlaywrightDevPage(page);
@@ -153,7 +164,7 @@ test.describe('join call', {tag: '@livekit'}, () => {
         await userADevPage.leaveCall();
     });
 
-    test.fixme('multiple sessions per user', {
+    test('multiple sessions per user', {
         tag: '@core',
     }, async ({page}) => {
         const sessionAPage = new PlaywrightDevPage(page);
@@ -182,7 +193,7 @@ test.describe('end call', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
     const userIdx = getUserIdxForTest();
 
-    test.fixme('widget', async ({page}) => {
+    test('widget', async ({page}) => {
         // userA starts a call and userB joins
         const userAPage = new PlaywrightDevPage(page);
         const [_, userBPage] = await Promise.all([
@@ -204,7 +215,7 @@ test.describe('end call', {tag: '@livekit'}, () => {
         await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
     });
 
-    test.fixme('post card', async ({page}) => {
+    test('post card', async ({page}) => {
         // userA starts a call and userB joins
         const userAPage = new PlaywrightDevPage(page);
         const [_, userBPage] = await Promise.all([
@@ -228,6 +239,7 @@ test.describe('end call', {tag: '@livekit'}, () => {
         await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
     });
 
+    // MM-68570: popout window deferred until the feature ships.
     test.fixme('popout', async ({page}) => {
         const [_, popOut] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();
