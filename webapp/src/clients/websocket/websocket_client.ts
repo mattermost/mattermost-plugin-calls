@@ -204,6 +204,13 @@ export class WebSocketClient extends EventEmitter {
         this.send('screen_off');
     }
 
+    // e2eForceClose closes the underlying WebSocket without flipping
+    // `this.closed`, so closeHandler still triggers reconnect — used by E2E
+    // tests to simulate a transport-level network drop.
+    public e2eForceClose() {
+        this.ws?.close();
+    }
+
     public close() {
         this.closed = true;
         this.stopPingInterval();

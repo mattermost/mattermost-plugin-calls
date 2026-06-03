@@ -140,6 +140,7 @@ import {
     channelIDForCurrentCall,
     defaultEnabled,
     hasPermissionsToEnableCalls,
+    hostIDForCallInChannel,
     isCloudStarter,
     isLimitRestricted,
     ringingEnabled,
@@ -299,6 +300,16 @@ export default class Plugin {
             RestClient.setUrl(window.basename);
             Client4.setUrl(window.basename);
         }
+
+        // E2E hydration probe: lets tests wait until the plugin's WS-driven call state
+        // (host/sessions) has landed in Redux before acting, rather than racing it. Reads
+        // current state on each call, so there's no setup ordering to get wrong. With no
+        // channelID it checks the call the local user is currently in. See MM-69019.
+        window.e2eCallStateLoaded = (channelID?: string) => {
+            const state = store.getState();
+            const cid = channelID || channelIDForCurrentCall(state);
+            return Boolean(cid && hostIDForCallInChannel(state, cid));
+        };
 
         const theme = getTheme(store.getState());
         setCallsGlobalCSSVars(theme.sidebarBg);

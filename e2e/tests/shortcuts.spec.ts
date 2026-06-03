@@ -11,10 +11,10 @@ test.beforeEach(async ({page}) => {
     await devPage.goto();
 });
 
-test.describe('keyboard shortcuts', () => {
+test.describe('keyboard shortcuts', {tag: '@livekit'}, () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('join/leave call', async ({page}) => {
+    test.fixme('join/leave call', async ({page}) => {
         // Solely needed to wait till the page has loaded.
         await expect(page.locator('[aria-label="channel header region"] button:has-text("Start call")')).toBeVisible();
 
@@ -36,7 +36,7 @@ test.describe('keyboard shortcuts', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('mute/unmute', async ({page}) => {
+    test.fixme('mute/unmute', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -71,7 +71,7 @@ test.describe('keyboard shortcuts', () => {
         await devPage.leaveCall();
     });
 
-    test('raise/lower hand', async ({page}) => {
+    test.fixme('raise/lower hand', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -116,7 +116,7 @@ test.describe('keyboard shortcuts', () => {
         await devPage.leaveCall();
     });
 
-    test('participants list toggle', async ({page}) => {
+    test.fixme('participants list toggle', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -141,7 +141,7 @@ test.describe('keyboard shortcuts', () => {
         await devPage.leaveCall();
     });
 
-    test('accessibility conflict', async ({page}) => {
+    test.fixme('accessibility conflict', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 

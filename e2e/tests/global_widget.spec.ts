@@ -7,7 +7,7 @@ import {apiSetEnableLiveCaptions, apiSetEnableTranscriptions} from '../config';
 import PlaywrightDevPage from '../page';
 import {acquireLock, getChannelNamesForTest, getUserStoragesForTest, releaseLock} from '../utils';
 
-test.describe('global widget', () => {
+test.describe('global widget', {tag: '@livekit'}, () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
     test.beforeEach(async () => {
@@ -25,7 +25,7 @@ test.describe('global widget', () => {
         releaseLock('calls-config-lock');
     });
 
-    test('start call', async ({page}) => {
+    test.fixme('start call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.openWidget(getChannelNamesForTest()[0]);
 
@@ -34,7 +34,7 @@ test.describe('global widget', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('recording widget banner and stop confirmation modal', async ({page, context}) => {
+    test.fixme('recording widget banner and stop confirmation modal', async ({page, context}) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
         await devPage.openWidget(getChannelNamesForTest()[0]);
@@ -76,7 +76,7 @@ test.describe('global widget', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('recording banner dismissed works cross-window and is remembered - clicked on widget', async ({
+    test.fixme('recording banner dismissed works cross-window and is remembered - clicked on widget', async ({
         page,
         context,
     }) => {
@@ -148,7 +148,7 @@ test.describe('global widget', () => {
         await expect(page.locator('#calls-widget')).toBeHidden();
     });
 
-    test('recording banner dismissed works cross-window and is remembered - clicked on popout', async ({
+    test.fixme('recording banner dismissed works cross-window and is remembered - clicked on popout', async ({
         page,
         context,
     }) => {

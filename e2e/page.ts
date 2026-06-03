@@ -55,7 +55,7 @@ export default class PlaywrightDevPage {
 
     async leaveCall() {
         await this.leaveFromWidget();
-        await this.page.waitForFunction(() => !window.callsClient || window.callsClient.closed);
+        await this.page.waitForFunction(() => !window.callsClient || window.callsClient.isDisconnected);
         await expect(this.page.locator('#calls-widget')).toBeHidden();
     }
 
@@ -63,7 +63,12 @@ export default class PlaywrightDevPage {
         const startCallButton = this.page.locator('#calls-join-button');
         await expect(startCallButton).toBeVisible();
         await startCallButton.click();
-        await this.page.waitForFunction(() => window.callsClient && window.callsClient.connected && !window.callsClient.closed);
+        await this.page.waitForFunction(() => window.callsClient && window.callsClient.isConnected && !window.callsClient.isDisconnected);
+
+        // Wait for the plugin's WS-driven call state (host/sessions) to land in Redux
+        // before returning, so a following action (e.g. /call end, which reads the host)
+        // doesn't race the hydration. See MM-69019.
+        await this.page.waitForFunction(() => window.e2eCallStateLoaded?.());
         await expect(this.page.locator('#calls-widget')).toBeVisible();
     }
 
@@ -84,7 +89,10 @@ export default class PlaywrightDevPage {
         const joinCallButton = this.page.locator('#calls-join-button');
         await expect(joinCallButton).toBeVisible();
         await joinCallButton.click();
-        await this.page.waitForFunction(() => window.callsClient && window.callsClient.connected && !window.callsClient.closed);
+        await this.page.waitForFunction(() => window.callsClient && window.callsClient.isConnected && !window.callsClient.isDisconnected);
+
+        // See startCall() — wait for WS hydration before returning (MM-69019).
+        await this.page.waitForFunction(() => window.e2eCallStateLoaded?.());
         await expect(this.page.locator('#calls-widget')).toBeVisible();
     }
 
