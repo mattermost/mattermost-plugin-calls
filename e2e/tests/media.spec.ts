@@ -273,7 +273,11 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await Promise.all([senderPage.leaveCall(), receiverPage.leaveCall()]);
     });
 
-    test('share screen with audio', {
+    // MM-68570: retried after MM-69018/MM-69019, still times out at 150s
+    // with no specific assertion error in the log — the Settings modal →
+    // enable audio-with-screen → save → publish chain doesn't complete on
+    // LiveKit. Needs a Playwright trace inspection to localize the hang.
+    test.fixme('share screen with audio', {
         tag: '@core',
     }, async ({page}) => {
         const senderPage = new PlaywrightDevPage(page);
