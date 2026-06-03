@@ -1,6 +1,12 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+// MM-68570: admin_console tests stay `test.fixme` until the LiveKit-specific
+// snapshot PNGs (calls-livekit-service-section, livekit-url-*,
+// livekit-api-secret-*) are generated against the docker-compose stack from
+// MM-68789. Snapshot regeneration is a follow-up to this PR — see plan
+// /Users/billg/.claude/plans/iterative-napping-pike.md.
+
 import {expect, test} from '@playwright/test';
 
 import {apiSetEnableLiveCaptions, apiSetEnableTranscriptions} from '../config';

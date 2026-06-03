@@ -18,7 +18,7 @@ test.describe('slash commands', {tag: '@livekit'}, () => {
     const userIdx = getUserIdxForTest();
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test.fixme('end call', async ({page}) => {
+    test('end call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -33,7 +33,7 @@ test.describe('slash commands', {tag: '@livekit'}, () => {
         await expect(page.locator(`#sidebarItem_calls${userIdx}`).getByTestId('calls-sidebar-active-call-icon')).toBeHidden();
     });
 
-    test.fixme('end call as second host', async ({page}) => {
+    test('end call as second host', async ({page}) => {
         const user0Page = new PlaywrightDevPage(page);
 
         // Here we are potentially introducing flakiness since the host is the first user to join
