@@ -83,14 +83,7 @@ test.describe('switch call', {tag: '@livekit'}, () => {
         await devPage.leaveCall();
     });
 
-    // MM-68570: under LiveKit, clicking the switch-call modal's "Join"
-    // button closes the modal but the new channel's widget never mounts
-    // (leave button isn't visible after 150s). Needs investigation — likely
-    // a gap in the leave-old → join-new transition that's specific to
-    // switch-call (not the channel-header join path, which works). Keeping
-    // fixme until that's traced; the four other switch-call modal-dismiss
-    // tests all pass.
-    test.fixme('join call', async ({page}) => {
+    test('join call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 

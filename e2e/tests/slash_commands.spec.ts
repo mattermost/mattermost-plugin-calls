@@ -1,15 +1,6 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-// MM-68570: /call end on LiveKit hits the "you don't have permission" branch
-// in webapp/src/slash_commands.tsx:146 because hostIDForCallInChannel in the
-// Redux store doesn't yet reflect the current user as host when slashCallEnd
-// runs right after startCall. The helper in page.ts handles both possible
-// modals cleanly, but the call doesn't end because the host check fails
-// client-side. Needs a host-state-ready signal — either a hydrated host
-// before startCall returns, or an explicit wait in the test. Revisit with a
-// dedicated helper change.
-
 import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
@@ -27,7 +18,7 @@ test.describe('slash commands', {tag: '@livekit'}, () => {
     const userIdx = getUserIdxForTest();
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test.fixme('end call', async ({page}) => {
+    test('end call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
@@ -42,7 +33,7 @@ test.describe('slash commands', {tag: '@livekit'}, () => {
         await expect(page.locator(`#sidebarItem_calls${userIdx}`).getByTestId('calls-sidebar-active-call-icon')).toBeHidden();
     });
 
-    test.fixme('end call as second host', async ({page}) => {
+    test('end call as second host', async ({page}) => {
         const user0Page = new PlaywrightDevPage(page);
 
         // Here we are potentially introducing flakiness since the host is the first user to join
