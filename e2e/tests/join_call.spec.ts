@@ -17,7 +17,7 @@ test.beforeEach(async ({page}) => {
 test.describe('join call', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test.fixme('channel header button', {
+    test('channel header button', {
         tag: '@core',
     }, async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -26,6 +26,11 @@ test.describe('join call', {tag: '@livekit'}, () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
+    // MM-68570: this test asserts on a stored snapshot
+    // (tests/join_call.spec.ts-snapshots/channel-toast-chromium-linux.png)
+    // that's RTCD-era — the LiveKit render differs by 356 pixels (ratio
+    // 0.02). Defer to a snapshot-regen follow-up (same class as
+    // admin_console.spec.ts).
     test.fixme('channel toast', async ({page}) => {
         // start a call
         const userPage = await startCall(userStorages[1]);
@@ -48,7 +53,7 @@ test.describe('join call', {tag: '@livekit'}, () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
-    test.fixme('call thread', async ({page}) => {
+    test('call thread', async ({page}) => {
         // start a call
         const userPage = await startCall(userStorages[1]);
 
@@ -85,6 +90,11 @@ test.describe('join call', {tag: '@livekit'}, () => {
         await userPage.leaveCall();
     });
 
+    // MM-68570: the popover's #startCallButton is expected to be disabled
+    // while another participant has an active call, but on LiveKit userA's
+    // UI doesn't have userB's call info in time — the button stays enabled.
+    // Same state-propagation class as the host-state race we saw with /call
+    // end in PR 2. Needs a "remote call known" signal before the assertion.
     test.fixme('user profile popover', async ({page}) => {
         const userAPage = page;
         const userADevPage = new PlaywrightDevPage(page);
@@ -153,7 +163,7 @@ test.describe('join call', {tag: '@livekit'}, () => {
         await userADevPage.leaveCall();
     });
 
-    test.fixme('multiple sessions per user', {
+    test('multiple sessions per user', {
         tag: '@core',
     }, async ({page}) => {
         const sessionAPage = new PlaywrightDevPage(page);
@@ -182,6 +192,13 @@ test.describe('end call', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
     const userIdx = getUserIdxForTest();
 
+    // MM-68570: end-call > widget and end-call > post card both go through
+    // the UI's "End call for everyone" confirmation, click "End call", and
+    // expect #calls-widget to disappear. On LiveKit the widget stays
+    // visible — the end-call broadcast doesn't tear down client state. This
+    // is the third place we've hit end-call cleanup on LiveKit (PR 2's
+    // /call end test + slash_commands flake had the same shape). Worth a
+    // dedicated follow-up ticket on end-call propagation.
     test.fixme('widget', async ({page}) => {
         // userA starts a call and userB joins
         const userAPage = new PlaywrightDevPage(page);
@@ -204,6 +221,7 @@ test.describe('end call', {tag: '@livekit'}, () => {
         await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
     });
 
+    // MM-68570: same end-call propagation issue as the widget variant above.
     test.fixme('post card', async ({page}) => {
         // userA starts a call and userB joins
         const userAPage = new PlaywrightDevPage(page);
@@ -228,6 +246,7 @@ test.describe('end call', {tag: '@livekit'}, () => {
         await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
     });
 
+    // MM-68570: popout window deferred until the feature ships.
     test.fixme('popout', async ({page}) => {
         const [_, popOut] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         await expect(popOut.page.locator('#calls-expanded-view')).toBeVisible();

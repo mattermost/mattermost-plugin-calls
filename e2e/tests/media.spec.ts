@@ -328,7 +328,7 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
 test.describe('sending voice', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test.fixme('unmuting', {
+    test('unmuting', {
         tag: '@core',
     }, async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
@@ -340,10 +340,15 @@ test.describe('sending voice', {tag: '@livekit'}, () => {
 
         await page.locator('#voice-mute-unmute').click();
 
+        // Wait for userB to have a remote voice track from userA, then assert
+        // the widget rendered an <audio data-testid={track.id}> for it.
+        // RTCD exposed remote tracks via callsClient.streams[1]; LiveKit
+        // exposes them through getRemoteVoiceTracks() (see
+        // call_client.ts:400).
         let voiceTrackID = await (await userPage.page.waitForFunction(() => {
-            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
+            return window.callsClient.getRemoteVoiceTracks()[0]?.id;
         })).evaluate(() => {
-            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
+            return window.callsClient.getRemoteVoiceTracks()[0]?.id;
         });
 
         await expect(userPage.page.getByTestId(voiceTrackID)).toBeHidden();
@@ -352,9 +357,9 @@ test.describe('sending voice', {tag: '@livekit'}, () => {
         await userPage.page.locator('#voice-mute-unmute').click();
 
         voiceTrackID = await (await devPage.page.waitForFunction(() => {
-            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
+            return window.callsClient.getRemoteVoiceTracks()[0]?.id;
         })).evaluate(() => {
-            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
+            return window.callsClient.getRemoteVoiceTracks()[0]?.id;
         });
 
         await expect(page.getByTestId(voiceTrackID)).toBeHidden();
@@ -363,6 +368,11 @@ test.describe('sending voice', {tag: '@livekit'}, () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
+    // MM-68570: PR 1 added `_e2eForceWebsocketClose()` so the close side is
+    // doable, but observing the reconnect event still needs an emitter on
+    // CallClient (the RTCD-era `callsClient.ws.on('open', …)` path is gone).
+    // Revisit once that hook lands; until then, the test would have no
+    // reliable signal that the WS came back before unmuting.
     test.fixme('unmuting after ws reconnect', {
         tag: '@core',
     }, async ({page}) => {
