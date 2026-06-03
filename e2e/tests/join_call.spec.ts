@@ -90,12 +90,7 @@ test.describe('join call', {tag: '@livekit'}, () => {
         await userPage.leaveCall();
     });
 
-    // MM-68570: the popover's #startCallButton is expected to be disabled
-    // while another participant has an active call, but on LiveKit userA's
-    // UI doesn't have userB's call info in time — the button stays enabled.
-    // Same state-propagation class as the host-state race we saw with /call
-    // end in PR 2. Needs a "remote call known" signal before the assertion.
-    test.fixme('user profile popover', async ({page}) => {
+    test('user profile popover', async ({page}) => {
         const userAPage = page;
         const userADevPage = new PlaywrightDevPage(page);
         await userADevPage.gotoDM(usernames[1]);
@@ -192,14 +187,7 @@ test.describe('end call', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
     const userIdx = getUserIdxForTest();
 
-    // MM-68570: end-call > widget and end-call > post card both go through
-    // the UI's "End call for everyone" confirmation, click "End call", and
-    // expect #calls-widget to disappear. On LiveKit the widget stays
-    // visible — the end-call broadcast doesn't tear down client state. This
-    // is the third place we've hit end-call cleanup on LiveKit (PR 2's
-    // /call end test + slash_commands flake had the same shape). Worth a
-    // dedicated follow-up ticket on end-call propagation.
-    test.fixme('widget', async ({page}) => {
+    test('widget', async ({page}) => {
         // userA starts a call and userB joins
         const userAPage = new PlaywrightDevPage(page);
         const [_, userBPage] = await Promise.all([
@@ -221,8 +209,7 @@ test.describe('end call', {tag: '@livekit'}, () => {
         await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
     });
 
-    // MM-68570: same end-call propagation issue as the widget variant above.
-    test.fixme('post card', async ({page}) => {
+    test('post card', async ({page}) => {
         // userA starts a call and userB joins
         const userAPage = new PlaywrightDevPage(page);
         const [_, userBPage] = await Promise.all([
