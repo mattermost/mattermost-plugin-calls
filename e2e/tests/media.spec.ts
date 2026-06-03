@@ -89,7 +89,14 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
-    test('presenter leaving and joining back', {
+    // MM-68570: flaky on the rejoin step. After leaveCall, when joinCall is
+    // immediately called again on the same page, window.callsClient races —
+    // the new CallClient instance's isConnected doesn't flip within 150s.
+    // Passed in one CI run, failed in the next on the same branch. MM-69018's
+    // teardown improved this but didn't fully fix it; needs a "new
+    // callsClient instance" detection in the helper rather than polling
+    // isConnected on whatever happens to be at window.callsClient.
+    test.fixme('presenter leaving and joining back', {
         tag: '@core',
     }, async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
