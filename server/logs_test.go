@@ -130,4 +130,51 @@ func TestHandleUploadLogsToBot(t *testing.T) {
 		require.Equal(t, "application/json", w.Header().Get("Content-Type"))
 		require.JSONEq(t, "{}", w.Body.String())
 	})
+
+	t.Run("accepts logs above the old 1MB body limit, leaving margin for JSON escaping", func(t *testing.T) {
+		p, mockAPI := newPlugin()
+		defer mockAPI.AssertExpectations(t)
+
+		postID := model.NewId()
+		fileID := model.NewId()
+
+		// 1.5MB of log text: comfortably over the client's 1MB cap once
+		// JSON-escaping overhead is added, yet under the upload limit. This
+		// used to trip the old 1MB server body limit and 400.
+		logs := strings.Repeat("a", 1536*1024)
+
+		mockAPI.On("GetDirectChannel", userID, botID).Return(&model.Channel{Id: dmChannelID}, nil).Once()
+		mockAPI.On("UploadFile", mock.Anything, dmChannelID, mock.Anything).Return(&model.FileInfo{Id: fileID}, nil).Once()
+		mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{Id: postID, ChannelId: dmChannelID, FileIds: []string{fileID}}, nil).Once()
+		mockAPI.On("GetTeam", teamID).Return(&model.Team{Id: teamID, Name: teamName}, nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{
+			ServiceSettings: model.ServiceSettings{SiteURL: model.NewPointer(siteURL)},
+		}).Once()
+		mockAPI.On("SendEphemeralPost", userID, mock.Anything).Return(&model.Post{}).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodPost, "/logs/upload", strings.NewReader(body(map[string]string{
+			"logs":       logs,
+			"channel_id": originChannelID,
+			"team_id":    teamID,
+		})))
+		r.Header.Set("Mattermost-User-Id", userID)
+		p.handleUploadLogsToBot(w, r)
+
+		require.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("rejects bodies beyond the upload size limit", func(t *testing.T) {
+		p, _ := newPlugin()
+		w := httptest.NewRecorder()
+		// A logs string larger than logsUploadMaxSizeBytes (2MB) on its own.
+		r := httptest.NewRequest(http.MethodPost, "/logs/upload", strings.NewReader(body(map[string]string{
+			"logs":       strings.Repeat("a", 3*1024*1024),
+			"channel_id": originChannelID,
+			"team_id":    teamID,
+		})))
+		r.Header.Set("Mattermost-User-Id", userID)
+		p.handleUploadLogsToBot(w, r)
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
 }

@@ -28,6 +28,12 @@ import (
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
+// logsUploadMaxSizeBytes is larger than the client's MAX_ACCUMULATED_LOG_SIZE
+// (1MB) to leave margin for JSON-escaping overhead: newlines, quotes and
+// control chars in the log text inflate the encoded body beyond the raw log
+// size, and the JSON wrapper fields add a little more on top.
+const logsUploadMaxSizeBytes = 2 * 1024 * 1024 // 2MB
+
 func (p *Plugin) handleGetVersion(w http.ResponseWriter, _ *http.Request) {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
@@ -586,7 +592,7 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 		ChannelID string `json:"channel_id"`
 		TeamID    string `json:"team_id"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, logsUploadMaxSizeBytes)).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
