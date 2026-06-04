@@ -290,7 +290,7 @@ describe('CallClient', () => {
             expect(client.isConnected).toBe(true);
             expect(client.isDisconnected).toBe(false);
 
-            await client.disconnect();
+            mockRoom.fire(RoomEvent.Disconnected);
             expect(client.isConnected).toBe(false);
             expect(client.isDisconnected).toBe(true);
         });

@@ -31,7 +31,6 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {generateId} from 'mattermost-redux/utils/helpers';
 import {
-    callEnd,
     incomingCallOnChannel,
     joinUser,
     leaveUser,
@@ -68,9 +67,11 @@ import {
 import {logErr} from './log';
 import {
     channelIDForCurrentCall,
+    getCallIDForChannel,
     profilesInCurrentCallMap,
     ringingEnabled,
 } from './selectors';
+import {callEnded} from './state/session/actions';
 import {Store} from './types/mattermost-webapp';
 import {
     followThread,
@@ -82,7 +83,10 @@ import {
 // state mutating operations.
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch(callEnd(channelID));
+    const callID = getCallIDForChannel(store.getState(), channelID);
+
+    store.dispatch(callEnded(channelID, callID));
+    store.dispatch(removeIncomingCallNotification(callID));
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
@@ -349,7 +353,7 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
     const removerUserID = ev.data.remover_id;
 
     if (removedUserID === currentUserID && channelID === channelIDForCurrentCall(store.getState())) {
-        getCallsClient()?.disconnect(removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr);
+        getCallsClient()?.leave(removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr);
     }
 }
 
@@ -468,7 +472,7 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControl
 
     const sessionID = client.getSessionID();
     if (ev.data.session_id === sessionID) {
-        getCallsClient()?.disconnect(new Error(hostRemovedMsg));
+        getCallsClient()?.leave(new Error(hostRemovedMsg));
         return;
     }
 

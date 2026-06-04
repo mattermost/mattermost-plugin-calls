@@ -7,7 +7,6 @@ import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {ClientConfig} from '@mattermost/types/config';
 import {EventEmitter} from 'events';
 import {
-    AudioPresets,
     ConnectionQuality,
     ConnectionState,
     DisconnectReason,
@@ -41,6 +40,7 @@ import {
     CALL_EVENT,
     CALL_MESSAGE_TOPICS,
     CALL_TOKEN_API_PATH,
+    TRACK_PUBLISHING_DEFAULTS,
     USER_ID_SESSION_ID_SEPARATOR,
 } from './constants';
 import {ConnectPayload, ReactionPayload, RtcTokenResponse} from './types';
@@ -56,6 +56,10 @@ export default class CallClient extends EventEmitter {
     private disconnected = false;
     private roomConnected = false;
     private connectPayload: ConnectPayload | null = null;
+
+    // Optional error stashed by leave(err) so handleDisconnected can surface it via
+    // CALL_EVENT.ERROR once RoomEvent.Disconnected fires (e.g. "you were removed").
+    private pendingDisconnectErr: Error | null = null;
 
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
@@ -90,11 +94,7 @@ export default class CallClient extends EventEmitter {
             dynacast: false,
             adaptiveStream: false,
             disconnectOnPageLeave: true,
-            publishDefaults: {
-                dtx: true,
-                red: true,
-                audioPreset: AudioPresets.speech,
-            },
+            publishDefaults: TRACK_PUBLISHING_DEFAULTS,
         });
         this.room = room;
         room.on(RoomEvent.Connected, this.handleConnected.bind(this));
@@ -231,37 +231,45 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    // Initiate a LiveKit disconnect. The full teardown (sendLeave, close pluginWS, free
-    // resources) is driven by the resulting RoomEvent.Disconnected -> CALL_EVENT.DISCONNECTED
-    // handler, which is the single source of truth for in-call UI teardown. UI "leave"
-    // surfaces should call this, NOT disconnect().
-    public leave(): Promise<void> | void {
-        return this.room?.disconnect();
+    // The single public entry point to end a call. Only initiates a LiveKit disconnect; the
+    // resulting RoomEvent.Disconnected drives the full teardown (free room, sendLeave, close
+    // pluginWS) via handleDisconnected -> teardown(). This is the single source of truth for
+    // in-call teardown, so every "leave" surface (UI buttons, slash command, WS error, host
+    // removal, plugin unload) routes through here.
+    //
+    // An optional error is surfaced to listeners (CALL_EVENT.ERROR) once disconnected — e.g.
+    // "you were removed from the call".
+    public leave(err?: Error): Promise<void> | void {
+        if (err) {
+            this.pendingDisconnectErr = err;
+        }
+
+        if (!this.room) {
+            // Nothing connected (already torn down, or never reached Connected): no
+            // RoomEvent.Disconnected will fire, so surface any error directly.
+            if (err) {
+                this.pendingDisconnectErr = null;
+                this.emit(CALL_EVENT.ERROR, err);
+            }
+            return undefined;
+        }
+
+        return this.room.disconnect();
     }
 
-    public async disconnect(err?: Error): Promise<void> {
+    // Releases the client's own resources. PRIVATE on purpose: the only caller is
+    // handleDisconnected, so teardown can never run out-of-band. By the time it runs the room
+    // has already disconnected (that's what triggered handleDisconnected), so we just drop the
+    // reference and close the plugin WS.
+    private async teardown(): Promise<void> {
         if (this.disconnected) {
-            logDebug('CallClient: already disconnected');
             return;
         }
 
         this.disconnected = true;
         this.roomConnected = false;
         this.connectPayload = null;
-
-        if (err) {
-            this.emit(CALL_EVENT.ERROR, err);
-        }
-
-        if (this.room) {
-            try {
-                await this.room.disconnect();
-            } catch (disconnectErr) {
-                logErr('CallClient: room disconnect error', disconnectErr);
-            } finally {
-                this.room = null;
-            }
-        }
+        this.room = null;
 
         if (this.websocketClient) {
             // Tell the server we're leaving — server then broadcasts user_left
@@ -559,10 +567,10 @@ export default class CallClient extends EventEmitter {
             break;
         case WebSocketErrorType.ReconnectTimeout:
             this.websocketClient = null;
-            this.disconnect(err);
+            this.leave(err);
             break;
         case WebSocketErrorType.Join:
-            this.disconnect(err);
+            this.leave(err);
             break;
         default:
         }
@@ -696,13 +704,28 @@ export default class CallClient extends EventEmitter {
         this.emit(CALL_EVENT.RECONNECTED);
     }
 
+    // The single driver of in-call teardown. Fires for every reason a client leaves the LiveKit
+    // room (user leave, host DeleteRoom/RemoveParticipant, network give-up, server shutdown), so
+    // all teardown converges here. We notify listeners first (they read session info and tear
+    // down UI/Redux) while the room is still available, then release our own resources.
     private handleDisconnected(reason?: DisconnectReason) {
         logDebug('CallClient: disconnected from room', reason);
 
         this.roomConnected = false;
         this.connectPayload = null;
 
-        this.emit(CALL_EVENT.DISCONNECTED, reason);
+        const err = this.pendingDisconnectErr;
+        this.pendingDisconnectErr = null;
+        if (err) {
+            this.emit(CALL_EVENT.ERROR, err);
+        }
+
+        try {
+            // getSessionID() (read by listeners) needs this.room, so emit before teardown().
+            this.emit(CALL_EVENT.DISCONNECTED, reason);
+        } finally {
+            void this.teardown();
+        }
     }
 
     /**

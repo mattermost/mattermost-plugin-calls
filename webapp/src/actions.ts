@@ -27,9 +27,9 @@ import {JOINED_USER_NOTIFICATION_TIMEOUT, RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
 import {
     callDismissedNotification,
-    calls,
+    getCallIDForChannel,
+    getCallIDForCurrentCall,
     hostChangeAtForCurrentCall,
-    idForCurrentCall,
     incomingCalls,
     numSessionsInCallInChannel,
     ringingEnabled,
@@ -377,7 +377,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
 
         // Never send a notification for a call you started yourself, or a call you are currently in.
         const currentUserID = getCurrentUserId(getState());
-        const currentCallID = idForCurrentCall(getState());
+        const currentCallID = getCallIDForCurrentCall(getState());
         if (currentUserID === callerID || currentCallID === callID) {
             return;
         }
@@ -422,7 +422,7 @@ export const joinUser = (channelID: string, userID: string, sessionID: string, i
 
         // Ringing should stop once you accept on one device, the other devices should stop ringing.
         if (ringingEnabled(state) && isSameUser) {
-            const callID = calls(state)[channelID]?.ID || '';
+            const callID = getCallIDForChannel(state, channelID);
             dispatch(removeIncomingCallNotification(callID));
             notificationsStopRinging();
         }
@@ -456,22 +456,10 @@ export const leaveUser = (channelID: string, userID: string, sessionID: string) 
         dispatch(userLeft(channelID, sessionID, userID));
 
         if (numSessionsInCallInChannel(getState(), channelID) === 0) {
-            dispatch(callEnd(channelID));
+            const callID = getCallIDForChannel(getState(), channelID);
+            dispatch(callEnded(channelID, callID));
+            dispatch(removeIncomingCallNotification(callID));
         }
-    };
-};
-
-export const callEnd = (channelID: string) => {
-    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
-        // callEnd updates channel-wide state only. The local in-call client (if this is the
-        // current call) tears itself down via RoomEvent.Disconnected from its own
-        // room.disconnect() — it must NOT be disconnected from here, or we get a redundant
-        // teardown path on the leaving client's own call_ended echo.
-        const callID = calls(getState())[channelID]?.ID || '';
-
-        dispatch(callEnded(channelID, callID));
-
-        dispatch(removeIncomingCallNotification(callID));
     };
 };
 

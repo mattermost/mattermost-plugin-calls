@@ -146,7 +146,7 @@ function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventDat
 
         if (getJobID() === data.job_id) {
             logInfo('received job stop event, disconnecting');
-            window.callsClient?.disconnect();
+            window.callsClient?.leave();
         }
 
         break;
@@ -157,9 +157,10 @@ function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventDat
 }
 
 function deinitRecording() {
+    // Resource teardown is driven internally by CallClient via RoomEvent.Disconnected
+    // (deinitRecording runs from the DISCONNECTED handler); here we only drop app-level state.
     recordingRoot?.unmount();
     recordingRoot = null;
-    void window.callsClient?.disconnect();
     delete window.callsClient;
 }
 

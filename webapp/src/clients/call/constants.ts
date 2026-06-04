@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {ConnectionQuality} from 'livekit-client';
+import {AudioCaptureOptions, AudioPresets, ConnectionQuality, TrackPublishDefaults} from 'livekit-client';
 
 /**
  * CallClient emitted public event names.
@@ -46,8 +46,14 @@ export {ConnectionQuality as CONNECTION_QUALITY};
 export const CALL_TOKEN_API_PATH = 'livekit-token';
 export const USER_ID_SESSION_ID_SEPARATOR = '___';
 
-export const AUDIO_CAPTURE_DEFAULTS = {
+export const AUDIO_CAPTURE_DEFAULTS: AudioCaptureOptions = {
     autoGainControl: true,
     echoCancellation: true,
     noiseSuppression: true,
+};
+
+export const TRACK_PUBLISHING_DEFAULTS: TrackPublishDefaults = {
+    dtx: true,
+    red: true,
+    audioPreset: AudioPresets.speech,
 };

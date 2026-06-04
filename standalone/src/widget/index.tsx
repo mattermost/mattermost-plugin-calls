@@ -144,7 +144,9 @@ function deinitWidget(err?: Error) {
     // Using setTimeout to give the app enough time to play the sound before
     // closing the widget window.
     setTimeout(() => {
-        void window.callsClient?.disconnect();
+        // Resource teardown is driven internally by CallClient via RoomEvent.Disconnected
+        // (deinitWidget runs from the DISCONNECTED handler / init-failure catch); here we only
+        // drop app-level state.
         delete window.callsClient;
         widgetRoot?.unmount();
         widgetRoot = null;

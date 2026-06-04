@@ -330,7 +330,7 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
     try {
         cfg.initCb({store, theme, channelID, startingCall: !active});
     } catch (err) {
-        void window.callsClient?.disconnect();
+        void window.callsClient?.leave();
         throw new Error(`initCb failed: ${err}`);
     }
 
