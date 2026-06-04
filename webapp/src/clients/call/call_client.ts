@@ -77,8 +77,18 @@ export default class CallClient extends EventEmitter {
 
         const room = new Room({
             audioCaptureDefaults: AUDIO_CAPTURE_DEFAULTS,
-            dynacast: true,
-            adaptiveStream: true,
+
+            // adaptiveStream/dynacast are disabled so screen shares always send
+            // full resolution (MM-69110). adaptiveStream picks a subscriber's
+            // layer from the rendered element size, but it observes via
+            // ResizeObserver in the window that owns the track — it cannot
+            // measure the popout's <video> (separate window) and only ever sees
+            // the tiny widget preview, so it pinned everyone to the lowest
+            // simulcast layer (540p). Screen share wants sharp text regardless
+            // of pane size, so element-driven adaptation is the wrong tradeoff
+            // here. dynacast is off too so the high layer is always encoded.
+            dynacast: false,
+            adaptiveStream: false,
             disconnectOnPageLeave: true,
             publishDefaults: {
                 dtx: true,
