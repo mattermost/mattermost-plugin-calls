@@ -74,7 +74,7 @@ const PostType = ({
         if (callsClient) {
             // NOTE: this also handles the desktop global widget case since the opener window
             // will have the client.
-            callsClient.disconnect();
+            callsClient.leave();
         } else if (window.desktopAPI?.leaveCall) {
             window.desktopAPI.leaveCall();
         }

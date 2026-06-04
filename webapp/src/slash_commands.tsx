@@ -116,7 +116,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             const win = getCallsWindow();
             const callsClient = getCallsClient();
             if (callsClient) {
-                callsClient.disconnect();
+                callsClient.leave();
                 return {};
             } else if (win.desktopAPI?.leaveCall) {
                 logDebug('desktopAPI.leaveCall');

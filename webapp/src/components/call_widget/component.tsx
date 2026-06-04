@@ -939,7 +939,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         if (window.callsClient) {
-            window.callsClient.disconnect();
+            window.callsClient.leave();
         }
     };
 

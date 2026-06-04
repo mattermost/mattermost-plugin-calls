@@ -84,14 +84,14 @@ const props: Props = {
 
 describe('CallWidget', () => {
     let originalCallsClient: typeof window.callsClient;
-    let disconnect: jest.Mock;
+    let leave: jest.Mock;
     let openSpy: jest.SpyInstance;
 
     beforeEach(() => {
         originalCallsClient = window.callsClient;
-        disconnect = jest.fn();
+        leave = jest.fn();
         window.callsClient = {
-            disconnect,
+            leave,
             channelID: 'channel-id',
             getRemoteVoiceTracks: () => [],
             getRemoteScreenStream: () => null,
@@ -107,7 +107,7 @@ describe('CallWidget', () => {
         openSpy.mockRestore();
     });
 
-    test('closes the popout and disconnects when the popout is still open', async () => {
+    test('closes the popout and leaves when the popout is still open', async () => {
         const fakePopout = {
             closed: false,
             close: jest.fn(),
@@ -130,10 +130,10 @@ describe('CallWidget', () => {
         await user.click(screen.getByRole('button', {name: /^leave call$/i}));
 
         expect(fakePopout.close).toHaveBeenCalledTimes(1);
-        expect(disconnect).toHaveBeenCalledTimes(1);
+        expect(leave).toHaveBeenCalledTimes(1);
     });
 
-    test('disconnects without calling close when the popout is already closed', async () => {
+    test('leaves without calling close when the popout is already closed', async () => {
         const fakePopout = {
             closed: true,
             close: jest.fn(),
@@ -154,10 +154,10 @@ describe('CallWidget', () => {
         await user.click(screen.getByRole('button', {name: /^leave call$/i}));
 
         expect(fakePopout.close).not.toHaveBeenCalled();
-        expect(disconnect).toHaveBeenCalledTimes(1);
+        expect(leave).toHaveBeenCalledTimes(1);
     });
 
-    test('disconnects when no popout was ever opened', async () => {
+    test('leaves when no popout was ever opened', async () => {
         const user = userEvent.setup();
 
         render(
@@ -170,6 +170,6 @@ describe('CallWidget', () => {
 
         await user.click(screen.getByRole('button', {name: /^leave call$/i}));
 
-        expect(disconnect).toHaveBeenCalledTimes(1);
+        expect(leave).toHaveBeenCalledTimes(1);
     });
 });

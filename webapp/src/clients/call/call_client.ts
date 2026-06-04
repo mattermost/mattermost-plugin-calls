@@ -167,6 +167,11 @@ export default class CallClient extends EventEmitter {
             logErr('CallClient: pluginWS connection error', err);
             this.connectPayload = null;
 
+            // RoomEvent.Disconnected never fires for a pre-Connected failure, so clean up
+            // our own partial state here to avoid leaking the plugin WS.
+            this.websocketClient?.close();
+            this.websocketClient = null;
+
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
         }
@@ -186,6 +191,11 @@ export default class CallClient extends EventEmitter {
         } catch (err) {
             logErr('CallClient: token fetch error', err);
             this.connectPayload = null;
+
+            // The plugin WS is already open at this point; close it so we don't leak it
+            // (RoomEvent.Disconnected won't fire to drive teardown before Connected).
+            this.websocketClient?.close();
+            this.websocketClient = null;
 
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
@@ -211,9 +221,22 @@ export default class CallClient extends EventEmitter {
             this.connectPayload = null;
             this.room = null;
 
+            // The plugin WS is already open at this point; close it so we don't leak it
+            // (RoomEvent.Disconnected won't fire to drive teardown before Connected).
+            this.websocketClient?.close();
+            this.websocketClient = null;
+
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
         }
+    }
+
+    // Initiate a LiveKit disconnect. The full teardown (sendLeave, close pluginWS, free
+    // resources) is driven by the resulting RoomEvent.Disconnected -> CALL_EVENT.DISCONNECTED
+    // handler, which is the single source of truth for in-call UI teardown. UI "leave"
+    // surfaces should call this, NOT disconnect().
+    public leave(): Promise<void> | void {
+        return this.room?.disconnect();
     }
 
     public async disconnect(err?: Error): Promise<void> {

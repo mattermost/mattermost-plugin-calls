@@ -27,7 +27,7 @@ import {JOINED_USER_NOTIFICATION_TIMEOUT, RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
 import {
     callDismissedNotification,
-    calls, channelIDForCurrentCall,
+    calls,
     hostChangeAtForCurrentCall,
     idForCurrentCall,
     incomingCalls,
@@ -463,10 +463,10 @@ export const leaveUser = (channelID: string, userID: string, sessionID: string) 
 
 export const callEnd = (channelID: string) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
-        if (channelIDForCurrentCall(getState()) === channelID) {
-            window.callsClient?.disconnect();
-        }
-
+        // callEnd updates channel-wide state only. The local in-call client (if this is the
+        // current call) tears itself down via RoomEvent.Disconnected from its own
+        // room.disconnect() — it must NOT be disconnected from here, or we get a redundant
+        // teardown path on the leaving client's own call_ended echo.
         const callID = calls(getState())[channelID]?.ID || '';
 
         dispatch(callEnded(channelID, callID));
