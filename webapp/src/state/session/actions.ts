@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {UserSessionState} from '@mattermost/calls-common/lib/types';
+import {Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
 
@@ -9,9 +9,13 @@ import {
     CALL_ENDED,
     SESSIONS_RECEIVED,
     UN_INITIALIZED,
+    USER_HAND_LOWERED,
+    USER_HAND_RAISED,
     USER_JOINED,
     USER_LEFT,
     USER_MUTED,
+    USER_REACTED,
+    USER_REACTED_TIMEOUT,
     USER_UNMUTED,
     USERS_VOICE_ACTIVITY_CHANGED,
 } from './action_types';
@@ -71,6 +75,50 @@ export const userUnmuted = (channelID: Channel['id'], sessionID: string, userID:
 });
 export type ActionUserUnmuted = ReturnType<typeof userUnmuted>
 
+export const userRaisedHand = (channelID: Channel['id'], sessionID: string, userID: string, raisedHandTimestamp: number) => ({
+    type: USER_HAND_RAISED,
+    data: {
+        channelID,
+        session_id: sessionID,
+        userID,
+        raised_hand: raisedHandTimestamp,
+    },
+});
+export type ActionUserRaisedHand = ReturnType<typeof userRaisedHand>
+
+export const userLoweredHand = (channelID: Channel['id'], sessionID: string, userID: string) => ({
+    type: USER_HAND_LOWERED,
+    data: {
+        channelID,
+        session_id: sessionID,
+        userID,
+        raised_hand: 0,
+    },
+});
+export type ActionUserLoweredHand = ReturnType<typeof userLoweredHand>
+
+export const userReacted = (channelID: Channel['id'], userID: string, sessionID: string, reaction: Reaction) => ({
+    type: USER_REACTED,
+    data: {
+        channelID,
+        userID,
+        session_id: sessionID,
+        reaction,
+    },
+});
+export type ActionUserReacted = ReturnType<typeof userReacted>
+
+export const userReactedTimeout = (channelID: Channel['id'], userID: string, sessionID: string, reaction: Reaction) => ({
+    type: USER_REACTED_TIMEOUT,
+    data: {
+        channelID,
+        userID,
+        session_id: sessionID,
+        reaction,
+    },
+});
+export type ActionUserReactedTimeout = ReturnType<typeof userReactedTimeout>
+
 export const userLeft = (channelID: Channel['id'], sessionID: string, userID: UserProfile['id']) => ({
     type: USER_LEFT,
     data: {
@@ -97,6 +145,10 @@ export type Actions =
   | ActionUsersVoiceActivityChanged
   | ActionUserMuted
   | ActionUserUnmuted
+  | ActionUserRaisedHand
+  | ActionUserLoweredHand
+  | ActionUserReacted
+  | ActionUserReactedTimeout
   | ActionUserLeft
   | ActionCallEnded
 

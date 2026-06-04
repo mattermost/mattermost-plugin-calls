@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {RTCStats} from '@mattermost/calls-common/lib/types';
+import type {EmojiData, RTCStats} from '@mattermost/calls-common/lib/types';
 
 export type RtcTokenResponse = {
     token: string;
@@ -34,3 +34,8 @@ export type ConnectPayload = {
      */
     jobID?: string;
 }
+
+export type ReactionPayload = {
+    emojiData: EmojiData;
+    timestamp: number;
+};

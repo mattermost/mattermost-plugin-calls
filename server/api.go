@@ -523,6 +523,7 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		RoomJoin: true,
 		Room:     requestingChannelID,
 	}
+	grant.SetCanUpdateOwnMetadata(true)
 	at.SetVideoGrant(grant).
 		SetIdentity(composeLivekitIdentity(requestingUserID, requestingSessionID)).
 		SetName(user.Id).

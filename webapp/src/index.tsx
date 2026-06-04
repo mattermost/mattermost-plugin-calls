@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
-import {CallChannelState} from '@mattermost/calls-common/lib/types';
+import {CallChannelState, EmojiData} from '@mattermost/calls-common/lib/types';
 import WebSocketClient from '@mattermost/client/websocket';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
@@ -103,7 +103,7 @@ import VideoDevicesSettingsSection from 'src/components/user_settings/video_devi
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
-import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userMuted, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
+import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
 import {getWSConnectionURL} from 'src/utils';
 import {modals} from 'src/webapp_globals';
@@ -163,6 +163,7 @@ import {
     shouldRenderDesktopWidget,
 } from './utils';
 import {
+    dispatchReaction,
     handleCallEnd,
     handleCallHostChanged,
     handleCallJobState,
@@ -751,6 +752,23 @@ export default class Plugin {
 
                 window.callsClient.on(CALL_EVENT.USER_LEFT, (session_id: string, userID: string) => {
                     store.dispatch(leaveUser(window.callsClient?.channelID ?? '', userID, session_id));
+                });
+
+                window.callsClient.on(CALL_EVENT.RAISE_HAND, (session_id: string, userID: string, raisedHandTimestamp: number) => {
+                    store.dispatch(userRaisedHand(window.callsClient?.channelID ?? '', session_id, userID, raisedHandTimestamp));
+                });
+
+                window.callsClient.on(CALL_EVENT.LOWER_HAND, (session_id: string, userID: string) => {
+                    store.dispatch(userLoweredHand(window.callsClient?.channelID ?? '', session_id, userID));
+                });
+
+                window.callsClient.on(CALL_EVENT.REACTION, (session_id: string, userID: string, emoji: EmojiData, timestamp: number) => {
+                    dispatchReaction(store, window.callsClient?.channelID ?? '', {
+                        user_id: userID,
+                        session_id,
+                        emoji,
+                        timestamp,
+                    });
                 });
 
                 store.dispatch(setClientConnecting(true));
