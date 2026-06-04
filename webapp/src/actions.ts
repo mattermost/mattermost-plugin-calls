@@ -451,6 +451,15 @@ export const joinUser = (channelID: string, userID: string, sessionID: string, i
     };
 };
 
+export const callEnd = (channelID: string) => {
+    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const callID = getCallIDForChannel(getState(), channelID);
+
+        dispatch(callEnded(channelID, callID));
+        dispatch(removeIncomingCallNotification(callID));
+    };
+};
+
 export const leaveUser = (channelID: string, userID: string, sessionID: string) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
         dispatch(userLeft(channelID, sessionID, userID));

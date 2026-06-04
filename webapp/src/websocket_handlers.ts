@@ -31,6 +31,7 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {generateId} from 'mattermost-redux/utils/helpers';
 import {
+    callEnd,
     incomingCallOnChannel,
     joinUser,
     leaveUser,
@@ -67,11 +68,9 @@ import {
 import {logErr} from './log';
 import {
     channelIDForCurrentCall,
-    getCallIDForChannel,
     profilesInCurrentCallMap,
     ringingEnabled,
 } from './selectors';
-import {callEnded} from './state/session/actions';
 import {Store} from './types/mattermost-webapp';
 import {
     followThread,
@@ -83,10 +82,7 @@ import {
 // state mutating operations.
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    const callID = getCallIDForChannel(store.getState(), channelID);
-
-    store.dispatch(callEnded(channelID, callID));
-    store.dispatch(removeIncomingCallNotification(callID));
+    store.dispatch(callEnd(channelID));
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of

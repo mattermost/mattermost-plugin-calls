@@ -55,7 +55,7 @@ const pluginReduxStateKey = `plugins-${pluginId}`;
 const pluginReduxStore = (state: GlobalState): RootState =>
     (state[pluginReduxStateKey as keyof GlobalState] as unknown as RootState) ?? initialRootState;
 
-export const callsStateInPluginReduxStore = (state: GlobalState): { [channelID: string]: callState } =>
+const callsStateInPluginReduxStore = (state: GlobalState): { [channelID: string]: callState } =>
     pluginReduxStore(state).calls;
 
 export const channelIDForCurrentCall: (state: GlobalState) => string =
