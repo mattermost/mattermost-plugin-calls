@@ -11,8 +11,10 @@ import {
     ConnectionQuality,
     ConnectionState,
     DisconnectReason,
+    LocalAudioTrack,
     LocalParticipant,
     LocalTrackPublication,
+    LocalVideoTrack,
     MediaDeviceFailure,
     Participant,
     RemoteParticipant,
@@ -33,7 +35,7 @@ import {
 } from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {CallsClientStats, MediaDevices} from 'src/types/types';
-import {getPluginPath} from 'src/utils';
+import {getPluginPath, getScreenStream} from 'src/utils';
 
 import {
     AUDIO_CAPTURE_DEFAULTS,
@@ -282,12 +284,39 @@ export default class CallClient extends EventEmitter {
         }
 
         try {
-            // Only hint systemAudio when audio capture is actually requested.
-            const captureOptions: ScreenShareCaptureOptions = {audio: Boolean(withAudio)};
-            if (withAudio) {
-                captureOptions.systemAudio = 'include';
+            if (window.desktop) {
+                // Desktop: the source was already chosen via Electron's desktopCapturer
+                // picker. LiveKit's setScreenShareEnabled() would call getDisplayMedia()
+                // and ignore the chosen sourceID, so capture that specific source ourselves
+                // (getScreenStream uses getUserMedia + chromeMediaSourceId) and publish the
+                // tracks tagged as ScreenShare, mirroring LiveKit's own createScreenTracks().
+                const screenStream = await getScreenStream(sourceID, withAudio);
+                if (!screenStream) {
+                    return null;
+                }
+
+                const [videoTrack] = screenStream.getVideoTracks();
+                if (videoTrack) {
+                    const screenVideo = new LocalVideoTrack(videoTrack, undefined, false);
+                    screenVideo.source = Track.Source.ScreenShare;
+                    await this.room.localParticipant.publishTrack(screenVideo);
+                }
+
+                const [audioTrack] = screenStream.getAudioTracks();
+                if (audioTrack) {
+                    const screenAudio = new LocalAudioTrack(audioTrack, undefined, false);
+                    screenAudio.source = Track.Source.ScreenShareAudio;
+                    await this.room.localParticipant.publishTrack(screenAudio);
+                }
+            } else {
+                // Browser: let LiveKit drive getDisplayMedia + its native picker / "Stop sharing" bar.
+                // Only hint systemAudio when audio capture is actually requested.
+                const captureOptions: ScreenShareCaptureOptions = {audio: Boolean(withAudio)};
+                if (withAudio) {
+                    captureOptions.systemAudio = 'include';
+                }
+                await this.room.localParticipant.setScreenShareEnabled(true, captureOptions);
             }
-            await this.room.localParticipant.setScreenShareEnabled(true, captureOptions);
 
             const stream = this.getLocalScreenStream();
 
