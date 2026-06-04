@@ -1,0 +1,12 @@
+# TLS termination for the LiveKit signaling WebSocket.
+# Presents the mounted cert/key and proxies to the plaintext LiveKit server.
+# Caddy upgrades the WebSocket automatically; media ports are not proxied.
+{
+	auto_https off
+	admin off
+}
+
+:7443 {
+	tls /etc/certs/cert.pem /etc/certs/key.pem
+	reverse_proxy livekit-dev:7880
+}
