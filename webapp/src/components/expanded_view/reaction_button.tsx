@@ -75,9 +75,7 @@ export const ReactionButton = forwardRef(({isHandRaised}: Props, ref) => {
     }, []);
 
     const callsClient = getCallsClient();
-    const addReactionText = showBar ?
-        formatMessage({defaultMessage: 'Close reactions'}) :
-        formatMessage({defaultMessage: 'Add reaction'});
+    const addReactionText = showBar ? formatMessage({defaultMessage: 'Close reactions'}) : formatMessage({defaultMessage: 'Add reaction'});
 
     const onRaiseHandToggle = () => {
         if (isHandRaised) {
@@ -86,9 +84,7 @@ export const ReactionButton = forwardRef(({isHandRaised}: Props, ref) => {
             callsClient?.raiseHand();
         }
     };
-    const raiseHandText = isHandRaised ?
-        formatMessage({defaultMessage: 'Lower hand'}) :
-        formatMessage({defaultMessage: 'Raise hand'});
+    const raiseHandText = isHandRaised ? formatMessage({defaultMessage: 'Lower hand'}) : formatMessage({defaultMessage: 'Raise hand'});
     const handIcon = isHandRaised ? (
         <UnraisedHandIcon
             style={{width: '20px', height: '20px', fill: 'var(--away-indicator)'}}
@@ -113,15 +109,14 @@ export const ReactionButton = forwardRef(({isHandRaised}: Props, ref) => {
             unified: ecd.unified.toLowerCase(),
             literal: ecd.emoji || '',
         };
-        callsClient?.sendUserReaction(emojiData);
+        callsClient?.sendReaction(emojiData);
 
         // hide everything
         setShowPicker(false);
         setShowBar(false);
     };
 
-    const openPickerLabel = showPicker ? formatMessage({defaultMessage: 'Close emoji picker'}) :
-        formatMessage({defaultMessage: 'Open emoji picker'});
+    const openPickerLabel = showPicker ? formatMessage({defaultMessage: 'Close emoji picker'}) : formatMessage({defaultMessage: 'Open emoji picker'});
 
     return (
         <div

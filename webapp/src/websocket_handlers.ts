@@ -48,13 +48,7 @@ import {
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
-import {
-    USER_LOWER_HAND,
-    USER_RAISE_HAND,
-    USER_REACTED,
-    USER_REACTED_TIMEOUT,
-} from 'src/state/session/action_types';
-import {userMuted, userUnmuted} from 'src/state/session/actions';
+import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/session/actions';
 import {
     HostControlNotice,
     HostControlNoticeType,
@@ -226,65 +220,40 @@ export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScree
 // state mutating operations.
 export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch({
-        type: USER_RAISE_HAND,
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            raised_hand: ev.data.raised_hand,
-            session_id: ev.data.session_id,
-        },
-    });
+    store.dispatch(userRaisedHand(channelID, ev.data.session_id, ev.data.userID, ev.data.raised_hand));
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
 export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch({
-        type: USER_LOWER_HAND,
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            raised_hand: ev.data.raised_hand,
-            session_id: ev.data.session_id,
-        },
-    });
+    store.dispatch(userLoweredHand(channelID, ev.data.session_id, ev.data.userID));
 }
 
-export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReactionData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-
+// dispatchReaction stores a reaction (with the sender's display name resolved from the
+// current call's profiles) in Redux and schedules its removal after the standard timeout.
+// Shared by the plugin-WS handler and the LiveKit data-message bridge so both transports
+// produce identical state.
+export function dispatchReaction(store: Store, channelID: string, data: UserReactionData) {
     if (channelIDForCurrentCall(store.getState()) !== channelID) {
         return;
     }
 
     const profiles = profilesInCurrentCallMap(store.getState());
-    const displayName = getUserDisplayName(profiles[ev.data.user_id]);
+    const displayName = getUserDisplayName(profiles[data.user_id]);
     const reaction: Reaction = {
-        ...ev.data,
+        ...data,
         displayName,
     };
-    store.dispatch({
-        type: USER_REACTED,
-        data: {
-            channelID,
-            userID: ev.data.user_id,
-            reaction,
-            session_id: ev.data.session_id,
-        },
-    });
+    store.dispatch(userReacted(channelID, data.user_id, data.session_id, reaction));
     setTimeout(() => {
-        store.dispatch({
-            type: USER_REACTED_TIMEOUT,
-            data: {
-                channelID,
-                userID: ev.data.user_id,
-                reaction,
-                session_id: ev.data.session_id,
-            },
-        });
+        store.dispatch(userReactedTimeout(channelID, data.user_id, data.session_id, reaction));
     }, REACTION_TIMEOUT_IN_REACTION_STREAM);
+}
+
+export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReactionData>) {
+    const channelID = ev.data.channelID || ev.broadcast.channel_id;
+    dispatchReaction(store, channelID, ev.data);
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of

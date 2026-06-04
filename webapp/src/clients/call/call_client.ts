@@ -39,11 +39,13 @@ import {getPluginPath, getScreenStream} from 'src/utils';
 
 import {
     AUDIO_CAPTURE_DEFAULTS,
+    CALL_ATTRIBUTES,
     CALL_EVENT,
+    CALL_MESSAGE_TOPICS,
     CALL_TOKEN_API_PATH,
     USER_ID_SESSION_ID_SEPARATOR,
 } from './constants';
-import {ConnectPayload, RtcTokenResponse} from './types';
+import {ConnectPayload, ReactionPayload, RtcTokenResponse} from './types';
 
 export default class CallClient extends EventEmitter {
     public channelID = '';
@@ -77,8 +79,18 @@ export default class CallClient extends EventEmitter {
 
         const room = new Room({
             audioCaptureDefaults: AUDIO_CAPTURE_DEFAULTS,
-            dynacast: true,
-            adaptiveStream: true,
+
+            // adaptiveStream/dynacast are disabled so screen shares always send
+            // full resolution (MM-69110). adaptiveStream picks a subscriber's
+            // layer from the rendered element size, but it observes via
+            // ResizeObserver in the window that owns the track — it cannot
+            // measure the popout's <video> (separate window) and only ever sees
+            // the tiny widget preview, so it pinned everyone to the lowest
+            // simulcast layer (540p). Screen share wants sharp text regardless
+            // of pane size, so element-driven adaptation is the wrong tradeoff
+            // here. dynacast is off too so the high layer is always encoded.
+            dynacast: false,
+            adaptiveStream: false,
             disconnectOnPageLeave: true,
             publishDefaults: {
                 dtx: true,
@@ -101,7 +113,9 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.TrackUnmuted, this.handleTrackUnmuted.bind(this));
         room.on(RoomEvent.ParticipantConnected, this.handleParticipantConnected.bind(this));
         room.on(RoomEvent.ParticipantDisconnected, this.handleParticipantDisconnected.bind(this));
+        room.on(RoomEvent.ParticipantAttributesChanged, this.handleParticipantAttributesChanged.bind(this));
         room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
+        room.on(RoomEvent.DataReceived, this.handleDataReceivedFromParticipant.bind(this));
         room.on(RoomEvent.MediaDevicesChanged, this.handleMediaDevicesChanged.bind(this));
         room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
         room.on(RoomEvent.ActiveDeviceChanged, this.handleActiveDeviceChanged.bind(this));
@@ -256,12 +270,28 @@ export default class CallClient extends EventEmitter {
         await this.room.localParticipant.setMicrophoneEnabled(true);
     }
 
-    public raiseHand(): void {
-        logErr('CallClient.raiseHand: not yet implemented');
+    public async raiseHand(): Promise<void> {
+        if (!this.room || !this.roomConnected) {
+            return;
+        }
+
+        try {
+            await this.room.localParticipant.setAttributes({[CALL_ATTRIBUTES.RAISED_HAND]: String(Date.now())});
+        } catch (err) {
+            logErr('CallClient.raiseHand: failed to set attribute', err);
+        }
     }
 
-    public unraiseHand(): void {
-        logErr('CallClient.unraiseHand: not yet implemented');
+    public async unraiseHand(): Promise<void> {
+        if (!this.room || !this.roomConnected) {
+            return;
+        }
+
+        try {
+            await this.room.localParticipant.setAttributes({[CALL_ATTRIBUTES.RAISED_HAND]: ''});
+        } catch (err) {
+            logErr('CallClient.unraiseHand: failed to set attribute', err);
+        }
     }
 
     public async shareScreen(sourceID?: string, withAudio?: boolean): Promise<MediaStream | null> {
@@ -402,8 +432,24 @@ export default class CallClient extends EventEmitter {
         this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
-    public sendUserReaction(_data: EmojiData): void {
-        logErr('CallClient.sendUserReaction: not yet implemented');
+    public async sendReaction(emojiData: EmojiData) {
+        if (!this.room || !this.roomConnected) {
+            return;
+        }
+
+        const localParticipant = this.room.localParticipant;
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(this.room.localParticipant);
+        const timestamp = Date.now();
+
+        try {
+            const reactionPayload: ReactionPayload = {emojiData, timestamp};
+            const encodedReactionPayload = new TextEncoder().encode(JSON.stringify(reactionPayload));
+            await localParticipant.publishData(encodedReactionPayload, {reliable: true, topic: CALL_MESSAGE_TOPICS.REACTION});
+
+            this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
+        } catch (err) {
+            logErr('CallClient.sendReaction: failed to publish reaction', err);
+        }
     }
 
     // Getters return safe defaults rather than throwing — they're called from
@@ -543,23 +589,57 @@ export default class CallClient extends EventEmitter {
         // handling is not blocked by the user's interaction.
         void this.requestMicrophonePermission();
 
-        // Seed the initial state for everyone already in the room (local + remote).
+        // Seed the initial state for everyone already in the room (local + remote):
+        // USER_JOINED creates the session, then the LiveKit-owned fields (mic mute +
+        // raised hand) are layered on top.
         const localParticipant = this.room.localParticipant;
         const {userID: localUserId, sessionID: localSessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
         this.emit(CALL_EVENT.USER_JOINED, localSessionID, localUserId, true);
-
-        const isLocalMicMuted = localParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-        this.emit(isLocalMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, localSessionID, localUserId);
+        this.emitLiveKitOwnedState(localParticipant);
 
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             const {userID: remoteUserId, sessionID: remoteSessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
             this.emit(CALL_EVENT.USER_JOINED, remoteSessionID, remoteUserId, true);
-
-            const isRemoteMicMuted = remoteParticipant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
-            this.emit(isRemoteMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, remoteSessionID, remoteUserId);
+            this.emitLiveKitOwnedState(remoteParticipant);
         }
 
         this.emit(CALL_EVENT.CONNECTED);
+    }
+
+    /**
+     * Emits the LiveKit-owned per-participant state — mic mute and raised hand —
+     * that the server no longer tracks (those moved to LiveKit, so the plugin-WS
+     * call_state ships stale values). Layered on top of an already-created session;
+     * does NOT emit USER_JOINED.
+     */
+    private emitLiveKitOwnedState(participant: Participant) {
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+
+        const isMicMuted = participant.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true;
+        this.emit(isMicMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
+
+        const raisedHand = Number(participant.attributes?.[CALL_ATTRIBUTES.RAISED_HAND]);
+        if (raisedHand > 0) {
+            this.emit(CALL_EVENT.RAISE_HAND, sessionID, userID, raisedHand);
+        }
+    }
+
+    /**
+     * Re-emits the LiveKit-owned mute + raised-hand state for every current
+     * participant, without re-emitting USER_JOINED (so existing sessions keep their
+     * voice/reaction state). Used by the expanded-view popout to overlay accurate
+     * state on top of its WS call_state seed, which carries stale unmuted/raised_hand
+     * because the server no longer tracks those fields after the LiveKit migration.
+     */
+    public reSyncMuteAndHandState() {
+        if (!this.room) {
+            return;
+        }
+
+        this.emitLiveKitOwnedState(this.room.localParticipant);
+        for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            this.emitLiveKitOwnedState(remoteParticipant);
+        }
     }
 
     private async requestMicrophonePermission() {
@@ -799,6 +879,49 @@ export default class CallClient extends EventEmitter {
         this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
         logDebug(`CallClient: participant disconnected ${userID}`);
+    }
+
+    /**
+     * Fires when any participant's attributes change, this includes the local participant as well
+     */
+    private handleParticipantAttributesChanged(changedAttributes: Participant['attributes'], participant: Participant) {
+        if (!participant) {
+            return;
+        }
+
+        if ((CALL_ATTRIBUTES.RAISED_HAND in changedAttributes)) {
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+            const isHandRaised = changedAttributes[CALL_ATTRIBUTES.RAISED_HAND]?.length > 0;
+            if (isHandRaised) {
+                this.emit(CALL_EVENT.RAISE_HAND, sessionID, userID, Number(changedAttributes[CALL_ATTRIBUTES.RAISED_HAND]));
+            } else {
+                this.emit(CALL_EVENT.LOWER_HAND, sessionID, userID);
+            }
+
+            logDebug(`CallClient: attributes changed for user ${userID}`, changedAttributes);
+        }
+    }
+
+    /**
+     * Fires when a participant publishes a data message.
+     */
+    private handleDataReceivedFromParticipant(payload: Uint8Array, participant?: RemoteParticipant, _kind?: number, topic?: string) {
+        if (!participant) {
+            return;
+        }
+
+        if (topic === CALL_MESSAGE_TOPICS.REACTION) {
+            try {
+                const {emojiData, timestamp} = JSON.parse(new TextDecoder().decode(payload)) as ReactionPayload;
+                const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+
+                this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
+
+                logDebug(`CallClient: reaction received from user ${userID}`, emojiData);
+            } catch (err) {
+                logErr('CallClient.handleDataReceivedFromParticipant: failed to parse reaction', err);
+            }
+        }
     }
 
     private handleMediaDevicesError(err: Error) {

@@ -1,6 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {ConnectionQuality, LocalAudioTrack, LocalVideoTrack, Room, RoomEvent, Track} from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {WEBSOCKET_EVENT, WebSocketClient} from 'src/clients/websocket';
@@ -94,7 +95,10 @@ function createMockRoom(): MockRoom {
             setMicrophoneEnabled: jest.fn().mockResolvedValue(null),
             setScreenShareEnabled: jest.fn().mockResolvedValue(null),
             publishTrack: jest.fn().mockResolvedValue(null),
+            setAttributes: jest.fn().mockResolvedValue(undefined),
+            publishData: jest.fn().mockResolvedValue(undefined),
             audioTrackPublications: new Map(),
+            attributes: {},
         },
         remoteParticipants: new Map(),
         fire: (event: string, ...args: any[]) => {
@@ -543,6 +547,196 @@ describe('CallClient', () => {
             mockRoom.fire(RoomEvent.ParticipantDisconnected, {sid: 'p1-sid', identity: 'user1___p1-session'});
 
             expect(userLeftListener).toHaveBeenCalledWith('p1-session', 'user1');
+        });
+    });
+
+    describe('raise / lower hand (participant attributes)', () => {
+        it('raiseHand sets the raised_hand attribute to a positive timestamp', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            await client.raiseHand();
+
+            expect(mockRoom.localParticipant.setAttributes).toHaveBeenCalledTimes(1);
+            const arg = mockRoom.localParticipant.setAttributes.mock.calls[0][0];
+            expect(Number(arg.raised_hand)).toBeGreaterThan(0);
+        });
+
+        it('unraiseHand clears the raised_hand attribute', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            await client.unraiseHand();
+
+            expect(mockRoom.localParticipant.setAttributes).toHaveBeenCalledWith({raised_hand: ''});
+        });
+
+        it('does nothing when the room is not connected', async () => {
+            await client.raiseHand();
+            await client.unraiseHand();
+
+            expect(mockRoom.localParticipant.setAttributes).not.toHaveBeenCalled();
+        });
+
+        it('emits RAISE_HAND (session_id, user_id, timestamp) when raised_hand becomes positive', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const raiseListener = jest.fn();
+            client.on(CALL_EVENT.RAISE_HAND, raiseListener);
+
+            mockRoom.fire(
+                RoomEvent.ParticipantAttributesChanged,
+                {raised_hand: '1700000000000'},
+                {sid: 'p1-sid', identity: 'user1___p1-session'},
+            );
+
+            expect(raiseListener).toHaveBeenCalledWith('p1-session', 'user1', 1700000000000);
+        });
+
+        it('emits LOWER_HAND when raised_hand is cleared', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const lowerListener = jest.fn();
+            client.on(CALL_EVENT.LOWER_HAND, lowerListener);
+
+            mockRoom.fire(
+                RoomEvent.ParticipantAttributesChanged,
+                {raised_hand: ''},
+                {sid: 'p1-sid', identity: 'user1___p1-session'},
+            );
+
+            expect(lowerListener).toHaveBeenCalledWith('p1-session', 'user1');
+        });
+
+        it('ignores attribute changes that do not touch raised_hand', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const raiseListener = jest.fn();
+            const lowerListener = jest.fn();
+            client.on(CALL_EVENT.RAISE_HAND, raiseListener);
+            client.on(CALL_EVENT.LOWER_HAND, lowerListener);
+
+            mockRoom.fire(
+                RoomEvent.ParticipantAttributesChanged,
+                {some_other_attr: 'x'},
+                {sid: 'p1-sid', identity: 'user1___p1-session'},
+            );
+
+            expect(raiseListener).not.toHaveBeenCalled();
+            expect(lowerListener).not.toHaveBeenCalled();
+        });
+
+        it('seeds RAISE_HAND on connect for a remote participant whose hand is already raised', async () => {
+            mockRoom.localParticipant.getTrackPublication.mockReturnValue({isMuted: false});
+            mockRoom.remoteParticipants.set('r1', {
+                sid: 'r1-sid',
+                identity: 'remote-1___r1-session',
+                getTrackPublication: jest.fn(() => ({isMuted: false})),
+                attributes: {raised_hand: '1700000000123'},
+            });
+            const raiseListener = jest.fn();
+            client.on(CALL_EVENT.RAISE_HAND, raiseListener);
+
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Connected);
+
+            expect(raiseListener).toHaveBeenCalledWith('r1-session', 'remote-1', 1700000000123);
+        });
+    });
+
+    describe('reactions (data messages)', () => {
+        const emoji: EmojiData = {name: '+1', unified: '1f44d', literal: '👍'};
+
+        it('publishes a reaction as a reliable data message on the reaction topic', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            await client.sendReaction(emoji);
+
+            expect(mockRoom.localParticipant.publishData).toHaveBeenCalledTimes(1);
+            const [payload, opts] = mockRoom.localParticipant.publishData.mock.calls[0];
+            expect(opts).toEqual(expect.objectContaining({reliable: true, topic: 'reaction'}));
+
+            const decoded = JSON.parse(new TextDecoder().decode(payload));
+            expect(decoded.emojiData).toEqual(emoji);
+            expect(typeof decoded.timestamp).toBe('number');
+        });
+
+        it('locally echoes the sender\'s own reaction (publishData does not loop back)', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const reactionListener = jest.fn();
+            client.on(CALL_EVENT.REACTION, reactionListener);
+
+            await client.sendReaction(emoji);
+
+            expect(reactionListener).toHaveBeenCalledWith('me-session', 'me-id', emoji, expect.any(Number));
+        });
+
+        it('does nothing when the room is not connected', async () => {
+            await client.sendReaction(emoji);
+
+            expect(mockRoom.localParticipant.publishData).not.toHaveBeenCalled();
+        });
+
+        it('emits REACTION on DataReceived for the reaction topic', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const reactionListener = jest.fn();
+            client.on(CALL_EVENT.REACTION, reactionListener);
+
+            const payload = new TextEncoder().encode(JSON.stringify({emojiData: emoji, timestamp: 1700000000000}));
+            mockRoom.fire(
+                RoomEvent.DataReceived,
+                payload,
+                {sid: 'p1-sid', identity: 'user1___p1-session'},
+                undefined,
+                'reaction',
+            );
+
+            expect(reactionListener).toHaveBeenCalledWith('p1-session', 'user1', emoji, 1700000000000);
+        });
+
+        it('ignores DataReceived for other topics', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const reactionListener = jest.fn();
+            client.on(CALL_EVENT.REACTION, reactionListener);
+
+            const payload = new TextEncoder().encode(JSON.stringify({emojiData: emoji, timestamp: 1}));
+            mockRoom.fire(
+                RoomEvent.DataReceived,
+                payload,
+                {sid: 'p1-sid', identity: 'user1___p1-session'},
+                undefined,
+                'some-other-topic',
+            );
+
+            expect(reactionListener).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('reSyncMuteAndHandState (popout overlay)', () => {
+        it('re-emits mute + raised-hand for all participants WITHOUT USER_JOINED', async () => {
+            mockRoom.localParticipant.getTrackPublication.mockReturnValue({isMuted: false});
+            mockRoom.localParticipant.attributes = {};
+            mockRoom.remoteParticipants.set('r1', {
+                sid: 'r1-sid',
+                identity: 'remote-1___r1-session',
+                getTrackPublication: jest.fn(() => ({isMuted: true})),
+                attributes: {raised_hand: '1700000000999'},
+            });
+
+            await client.connect({channelID: 'test-channel'});
+
+            const userJoinedListener = jest.fn();
+            const muteListener = jest.fn();
+            const unmuteListener = jest.fn();
+            const raiseListener = jest.fn();
+            client.on(CALL_EVENT.USER_JOINED, userJoinedListener);
+            client.on(CALL_EVENT.MUTE, muteListener);
+            client.on(CALL_EVENT.UNMUTE, unmuteListener);
+            client.on(CALL_EVENT.RAISE_HAND, raiseListener);
+
+            client.reSyncMuteAndHandState();
+
+            expect(unmuteListener).toHaveBeenCalledWith('me-session', 'me-id');
+            expect(muteListener).toHaveBeenCalledWith('r1-session', 'remote-1');
+            expect(raiseListener).toHaveBeenCalledWith('r1-session', 'remote-1', 1700000000999);
+
+            // Must NOT re-create sessions — that would reset voice/reaction state.
+            expect(userJoinedListener).not.toHaveBeenCalled();
         });
     });
 
