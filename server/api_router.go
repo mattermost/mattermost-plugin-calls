@@ -190,9 +190,25 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 				return
 			}
 
+			// Static asset serving (widget html/js/fonts) must not count against
+			// the per-user API limiter. On Desktop the global widget is a separate
+			// window that loads the whole standalone bundle over HTTP — html + js +
+			// several font files — which on a cold cache exhausted the burst before
+			// the join's API calls (notably /livekit-token) and 429'd them
+			// intermittently (MM-68569).
+			if standaloneRoute.Match(r, &mux.RouteMatch{}) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			if userID := r.Header.Get("Mattermost-User-Id"); userID != "" {
-				if err := p.checkAPIRateLimits(userID); err != nil {
-					http.Error(w, err.Error(), http.StatusTooManyRequests)
+				if !p.getAPILimiter(userID).Allow() {
+					// Observability: rate-limit rejections were previously silent
+					// (no log, and httpAudit runs only inside the handler, which
+					// never executes on a 429), making this failure invisible
+					// server-side.
+					p.LogWarn("plugin API rate limit exceeded", "userID", userID, "path", r.URL.Path)
+					http.Error(w, `{"message": "too many requests", "status_code": 429}`, http.StatusTooManyRequests)
 					return
 				}
 			}

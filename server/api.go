@@ -587,7 +587,10 @@ func (p *Plugin) handleEnv(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (p *Plugin) checkAPIRateLimits(userID string) error {
+// getAPILimiter returns the per-user plugin API rate limiter, creating it on
+// first use. Static asset routes (/standalone/) are exempted upstream in the
+// router middleware, so this limit only governs real API calls.
+func (p *Plugin) getAPILimiter(userID string) *rate.Limiter {
 	p.apiLimitersMut.RLock()
 	limiter := p.apiLimiters[userID]
 	p.apiLimitersMut.RUnlock()
@@ -597,12 +600,7 @@ func (p *Plugin) checkAPIRateLimits(userID string) error {
 		p.apiLimiters[userID] = limiter
 		p.apiLimitersMut.Unlock()
 	}
-
-	if !limiter.Allow() {
-		return fmt.Errorf(`{"message": "too many requests", "status_code": %d}`, http.StatusTooManyRequests)
-	}
-
-	return nil
+	return limiter
 }
 
 func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
