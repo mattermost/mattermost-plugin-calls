@@ -520,10 +520,10 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 
 	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 	grant := &auth.VideoGrant{
-		RoomJoin:             true,
-		Room:                 requestingChannelID,
-		CanUpdateOwnMetadata: new(true),
+		RoomJoin: true,
+		Room:     requestingChannelID,
 	}
+	grant.SetCanUpdateOwnMetadata(true)
 	at.SetVideoGrant(grant).
 		SetIdentity(composeLivekitIdentity(requestingUserID, requestingSessionID)).
 		SetName(user.Id).
