@@ -14,6 +14,7 @@ import {
     CallJobStateData,
     CallStartData,
     CallStateData,
+    EmojiData,
     EmptyData,
     HelloData,
     HostControlLowerHand,
@@ -22,13 +23,9 @@ import {
     UserDismissedNotification,
     UserJoinedData,
     UserLeftData,
-    UserMutedUnmutedData,
-    UserRaiseUnraiseHandData,
-    UserReactionData,
     UserRemovedData,
     UserScreenOnOffData,
     UserVideoOnOffData,
-    UserVoiceOnOffData,
     WebsocketEventData,
 } from '@mattermost/calls-common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
@@ -47,12 +44,14 @@ import {
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
+import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/session/actions';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getWSConnectionURL,
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
 import {
+    dispatchReaction,
     handleCallEnd,
     handleCallHostChanged,
     handleCallJobState,
@@ -65,18 +64,11 @@ import {
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
-    handleUserMuted,
-    handleUserRaisedHand,
-    handleUserReaction,
     handleUserRemovedFromChannel,
     handleUserScreenOff,
     handleUserScreenOn,
-    handleUserUnmuted,
-    handleUserUnraisedHand,
     handleUserVideoOff,
     handleUserVideoOn,
-    handleUserVoiceOff,
-    handleUserVoiceOn,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
 import {CurrentCallDataDefault} from 'src/types/types';
@@ -120,6 +112,60 @@ function connectCall(
         // Subscribe to raw plugin-WS events BEFORE connect() so 'hello' isn't missed.
         callClient.on(CALL_EVENT.WEBSOCKET_EVENT, wsEventHandler);
 
+        // Bridge LiveKit-owned per-participant state into the store. After the
+        // LiveKit migration mute/speaking/raised-hand/reactions no longer travel
+        // over the plugin WebSocket; CallClient re-emits them as CALL_EVENTs. The
+        // main webapp wires these in its own index.tsx and the popout reuses the
+        // opener's client — the standalone bundles (widget + recording) need the
+        // same bridge here so their indicators reflect real, live state.
+        callClient.on(CALL_EVENT.MUTE, (sessionID: string, userID: string) => {
+            store.dispatch(userMuted(callClient.channelID, sessionID, userID));
+        });
+        callClient.on(CALL_EVENT.UNMUTE, (sessionID: string, userID: string) => {
+            store.dispatch(userUnmuted(callClient.channelID, sessionID, userID));
+        });
+        callClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
+            store.dispatch(usersVoiceActivityChanged(callClient.channelID, sessionIDs, userIDs));
+        });
+        callClient.on(CALL_EVENT.RAISE_HAND, (sessionID: string, userID: string, raisedHandTimestamp: number) => {
+            store.dispatch(userRaisedHand(callClient.channelID, sessionID, userID, raisedHandTimestamp));
+        });
+        callClient.on(CALL_EVENT.LOWER_HAND, (sessionID: string, userID: string) => {
+            store.dispatch(userLoweredHand(callClient.channelID, sessionID, userID));
+        });
+        callClient.on(CALL_EVENT.REACTION, (sessionID: string, userID: string, emoji: EmojiData, timestamp: number) => {
+            dispatchReaction(store, callClient.channelID, {
+                user_id: userID,
+                session_id: sessionID,
+                emoji,
+                timestamp,
+            });
+        });
+
+        // The WS call_state seed carries the server's stale unmuted/voice/raised_hand
+        // (those fields moved to LiveKit). reSyncMuteAndHandState() replays the live
+        // state for every current participant, but only works once (a) the LiveKit
+        // room is connected and (b) the seed has populated the session list — the
+        // session reducers drop events for sessions they don't yet know about. The
+        // two can arrive in either order (notably the recording bot joining mid-call),
+        // so trigger the replay once both conditions hold.
+        let liveKitStateSynced = false;
+        let roomConnected = false;
+        let seedReceived = false;
+        const maybeReSyncLiveKitState = () => {
+            if (liveKitStateSynced || !roomConnected || !seedReceived) {
+                return;
+            }
+            liveKitStateSynced = true;
+            callClient.reSyncMuteAndHandState();
+        };
+        callClient.on(CALL_EVENT.WEBSOCKET_EVENT, (ev: WebSocketMessage<WebsocketEventData>) => {
+            if (ev.event === `custom_${pluginId}_call_state`) {
+                seedReceived = true;
+                maybeReSyncLiveKitState();
+            }
+        });
+
         let lastError: Error | undefined;
 
         callClient.on(CALL_EVENT.ERROR, (e: unknown) => {
@@ -127,7 +173,11 @@ function connectCall(
                 lastError = e;
             }
         });
-        callClient.on(CALL_EVENT.CONNECTED, () => store.dispatch(setClientConnecting(false)));
+        callClient.on(CALL_EVENT.CONNECTED, () => {
+            store.dispatch(setClientConnecting(false));
+            roomConnected = true;
+            maybeReSyncLiveKitState();
+        });
         callClient.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
             store.dispatch(setClientConnecting(false));
             if (window.callsClient) {
@@ -241,35 +291,14 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
         case `custom_${pluginId}_user_left`:
             handleUserLeft(store, ev as WebSocketMessage<UserLeftData>);
             break;
-        case `custom_${pluginId}_user_voice_on`:
-            handleUserVoiceOn(store, ev as WebSocketMessage<UserVoiceOnOffData>);
-            break;
-        case `custom_${pluginId}_user_voice_off`:
-            handleUserVoiceOff(store, ev as WebSocketMessage<UserVoiceOnOffData>);
-            break;
         case `custom_${pluginId}_user_screen_on`:
             handleUserScreenOn(store, ev as WebSocketMessage<UserScreenOnOffData>);
             break;
         case `custom_${pluginId}_user_screen_off`:
             handleUserScreenOff(store, ev as WebSocketMessage<UserScreenOnOffData>);
             break;
-        case `custom_${pluginId}_user_muted`:
-            handleUserMuted(store, ev as WebSocketMessage<UserMutedUnmutedData>);
-            break;
-        case `custom_${pluginId}_user_unmuted`:
-            handleUserUnmuted(store, ev as WebSocketMessage<UserMutedUnmutedData>);
-            break;
-        case `custom_${pluginId}_user_raise_hand`:
-            handleUserRaisedHand(store, ev as WebSocketMessage<UserRaiseUnraiseHandData>);
-            break;
-        case `custom_${pluginId}_user_unraise_hand`:
-            handleUserUnraisedHand(store, ev as WebSocketMessage<UserRaiseUnraiseHandData>);
-            break;
         case `custom_${pluginId}_call_host_changed`:
             handleCallHostChanged(store, ev as WebSocketMessage<CallHostChangedData>);
-            break;
-        case `custom_${pluginId}_user_reacted`:
-            handleUserReaction(store, ev as WebSocketMessage<UserReactionData>);
             break;
         case `custom_${pluginId}_call_job_state`:
             handleCallJobState(store, ev as WebSocketMessage<CallJobStateData>);
