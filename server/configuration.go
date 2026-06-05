@@ -318,6 +318,19 @@ func (c *configuration) getLiveKitURL() string {
 	return c.LiveKitURL
 }
 
+// getLiveKitURLForBot returns the LiveKit signaling URL handed to bot
+// (recorder/transcriber) job containers. They run in an environment that may not
+// share the browser's network view of LiveKit (e.g. host.docker.internal vs
+// localhost in local dev), so MM_CALLS_RECORDER_LIVEKIT_URL can override the URL
+// returned to bot token requests. Falls back to the standard URL when unset,
+// which is the common production case where one URL is reachable by everyone.
+func (c *configuration) getLiveKitURLForBot() string {
+	if url := os.Getenv("MM_CALLS_RECORDER_LIVEKIT_URL"); url != "" {
+		return url
+	}
+	return c.getLiveKitURL()
+}
+
 func (c *configuration) getJobServiceURL() string {
 	if url := os.Getenv("MM_CALLS_JOB_SERVICE_URL"); url != "" {
 		return url

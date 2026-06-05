@@ -469,7 +469,12 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Require the requesting user to have read permissions on the requested channel.
-	if !p.API.HasPermissionToChannel(requestingUserID, requestingChannelID, model.PermissionReadChannel) {
+	// The recording/transcribing bot is exempt: it's never a channel member, so it
+	// can't satisfy this check. Its authorization is instead established below by
+	// owning a valid call session tied to the active call, which it can only obtain
+	// through the job-gated bot join.
+	if requestingUserID != p.getBotID() &&
+		!p.API.HasPermissionToChannel(requestingUserID, requestingChannelID, model.PermissionReadChannel) {
 		res.Err = "Forbidden"
 		res.Code = http.StatusForbidden
 		return
@@ -511,6 +516,12 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Bot (recorder/transcriber) jobs may reach LiveKit at a different address than
+	// browser clients do, so hand them the bot-specific signaling URL if configured.
+	if requestingUserID == p.getBotID() {
+		lkURL = cfg.getLiveKitURLForBot()
+	}
+
 	user, appErr := p.API.GetUser(requestingUserID)
 	if appErr != nil {
 		res.Err = appErr.Error()
@@ -523,7 +534,17 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		RoomJoin: true,
 		Room:     requestingChannelID,
 	}
-	grant.SetCanUpdateOwnMetadata(true)
+	if requestingUserID == p.getBotID() {
+		// The recording/transcribing bot only consumes media — it never publishes
+		// tracks or data, and never updates its own metadata (no raised hand).
+		// Restrict its grant to subscribe-only so the bot token can't be used to
+		// inject audio, video, or data into the call.
+		grant.SetCanPublish(false)
+		grant.SetCanPublishData(false)
+		grant.SetCanSubscribe(true)
+	} else {
+		grant.SetCanUpdateOwnMetadata(true)
+	}
 	at.SetVideoGrant(grant).
 		SetIdentity(composeLivekitIdentity(requestingUserID, requestingSessionID)).
 		SetName(user.Id).
