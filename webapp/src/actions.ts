@@ -361,7 +361,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
             channel = res.data;
         }
 
-        if (!channel || !(isDMChannel(channel) || isGMChannel(channel))) {
+        if (!channel) {
             return;
         }
 
@@ -392,7 +392,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
                 channelID,
                 callerID,
                 startAt,
-                type: isDMChannel(channel) ? ChannelType.DM : ChannelType.GM,
+                type: isDMChannel(channel) ? ChannelType.DM : isGMChannel(channel) ? ChannelType.GM : ChannelType.CM,
             },
         });
     };

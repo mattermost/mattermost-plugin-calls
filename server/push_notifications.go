@@ -47,6 +47,9 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 		return nil, ""
 	}
 
+	// Mark as a calls notification so mobile clients ring for channel calls.
+	notification.SubType = model.PushSubTypeCalls
+
 	// If it's a regular channel, then the user must have notifications set to all.
 	// In that case, make the notification nicer.
 	if notification.IsIdLoaded {
