@@ -94,10 +94,11 @@ func (p *Plugin) hostMuteParticipant(requesterID, channelID, sessionID string) e
 		return ErrNotInCall
 	}
 
-	if !ust.Unmuted {
-		return nil
-	}
-
+	// NB: we deliberately do not gate on server-side mute state. Under LiveKit
+	// (v2) mute lives in the track state; the server's session.Unmuted is
+	// vestigial (never updated post-migration, see MM-69116) and would always
+	// read false here. livekitMuteParticipant is idempotent — it no-ops if the
+	// participant has no unmuted mic track.
 	if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(ust.UserID, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
 		p.LogError("hostMuteParticipant: failed to mute participant via LiveKit",
 			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
@@ -127,20 +128,26 @@ func (p *Plugin) hostMuteAllParticipants(requesterID, channelID string) error {
 		}
 	}
 
-	// Unmute anyone muted (who is not the host/requester).
-	// If there are no unmuted sessions, return without doing anything.
+	// Mute every participant except the host/requester. We deliberately do not
+	// gate on server-side mute state: under LiveKit (v2) mute lives in the track
+	// state and the server's session.Unmuted is vestigial (never updated
+	// post-migration, see MM-69116) — it would read false for everyone and skip
+	// the whole loop. livekitMuteParticipant is idempotent, so muting an
+	// already-muted participant is a harmless no-op.
 	for id, s := range state.sessions {
-		if s.Unmuted && s.UserID != requesterID {
-			if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(s.UserID, id)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-				p.LogError("hostMuteAllParticipants: failed to mute participant via LiveKit",
-					"channelID", channelID, "sessionID", id, "err", err.Error())
-			}
-
-			p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
-				"channel_id": channelID,
-				"session_id": id,
-			}, &WebSocketBroadcast{UserID: s.UserID, ReliableClusterSend: true})
+		if s.UserID == requesterID {
+			continue
 		}
+
+		if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(s.UserID, id)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+			p.LogError("hostMuteAllParticipants: failed to mute participant via LiveKit",
+				"channelID", channelID, "sessionID", id, "err", err.Error())
+		}
+
+		p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
+			"channel_id": channelID,
+			"session_id": id,
+		}, &WebSocketBroadcast{UserID: s.UserID, ReliableClusterSend: true})
 	}
 
 	return nil
@@ -200,8 +207,20 @@ func (p *Plugin) hostLowerParticipantHand(requesterID, channelID, sessionID stri
 		return ErrNotInCall
 	}
 
-	if ust.RaisedHand == 0 {
-		return nil
+	// NB: we deliberately do not gate on server-side raised-hand state. Under
+	// LiveKit (v2) the hand is a participant attribute the client owns; the
+	// server's session.RaisedHand is vestigial (never updated post-migration,
+	// see MM-69116) and would always read 0 here. Clearing an already-empty
+	// attribute is a harmless no-op.
+	//
+	// Clear the raised-hand attribute directly on the LiveKit server. This is the
+	// authoritative path: it propagates to every participant via
+	// ParticipantAttributesChanged. The WS event below still goes to the target
+	// client to surface the "host lowered your hand" notice (and acts as a fallback
+	// when LiveKit is not configured).
+	if err := p.livekitLowerParticipantHand(channelID, composeLivekitIdentity(ust.UserID, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+		p.LogError("hostLowerParticipantHand: failed to lower hand via LiveKit",
+			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 	}
 
 	p.publishWebSocketEvent(wsEventHostLowerHand, map[string]interface{}{
