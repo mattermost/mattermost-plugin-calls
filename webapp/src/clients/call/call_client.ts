@@ -57,10 +57,6 @@ export default class CallClient extends EventEmitter {
     private roomConnected = false;
     private connectPayload: ConnectPayload | null = null;
 
-    // Optional error stashed by leave(err) so handleDisconnected can surface it via
-    // CALL_EVENT.ERROR once RoomEvent.Disconnected fires (e.g. "you were removed").
-    private pendingDisconnectErr: Error | null = null;
-
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
 
@@ -168,7 +164,6 @@ export default class CallClient extends EventEmitter {
             this.connectPayload = null;
 
             // RoomEvent.Disconnected never fires for a pre-Connected failure, so clean up
-            // our own partial state here to avoid leaking the plugin WS.
             this.websocketClient?.close();
             this.websocketClient = null;
 
@@ -193,7 +188,6 @@ export default class CallClient extends EventEmitter {
             this.connectPayload = null;
 
             // The plugin WS is already open at this point; close it so we don't leak it
-            // (RoomEvent.Disconnected won't fire to drive teardown before Connected).
             this.websocketClient?.close();
             this.websocketClient = null;
 
@@ -202,15 +196,12 @@ export default class CallClient extends EventEmitter {
         }
 
         try {
-            // Warm DNS / WebSocket / ICE candidates before the final connect so the
-            // user-perceived join latency is lower. Safe to ignore failures here —
-            // they will resurface on the real connect call below.
-            try {
-                await this.room.prepareConnection(url, token);
-            } catch (prepareErr) {
-                logDebug('CallClient: prepareConnection failed (non-fatal)', prepareErr);
-            }
+            await this.room.prepareConnection(url, token);
+        } catch (prepareErr) {
+            logDebug('CallClient: prepareConnection failed though it is non-fatal', prepareErr);
+        }
 
+        try {
             await this.room.connect(url, token);
             this.roomConnected = true;
 
@@ -222,7 +213,6 @@ export default class CallClient extends EventEmitter {
             this.room = null;
 
             // The plugin WS is already open at this point; close it so we don't leak it
-            // (RoomEvent.Disconnected won't fire to drive teardown before Connected).
             this.websocketClient?.close();
             this.websocketClient = null;
 
@@ -231,57 +221,12 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    // The single public entry point to end a call. Only initiates a LiveKit disconnect; the
-    // resulting RoomEvent.Disconnected drives the full teardown (free room, sendLeave, close
-    // pluginWS) via handleDisconnected -> teardown(). This is the single source of truth for
-    // in-call teardown, so every "leave" surface (UI buttons, slash command, WS error, host
-    // removal, plugin unload) routes through here.
-    //
-    // An optional error is surfaced to listeners (CALL_EVENT.ERROR) once disconnected — e.g.
-    // "you were removed from the call".
-    public leave(err?: Error): Promise<void> | void {
-        if (err) {
-            this.pendingDisconnectErr = err;
-        }
-
-        if (!this.room) {
-            // Nothing connected (already torn down, or never reached Connected): no
-            // RoomEvent.Disconnected will fire, so surface any error directly.
-            if (err) {
-                this.pendingDisconnectErr = null;
-                this.emit(CALL_EVENT.ERROR, err);
-            }
-            return undefined;
-        }
-
-        return this.room.disconnect();
-    }
-
-    // Releases the client's own resources. PRIVATE on purpose: the only caller is
-    // handleDisconnected, so teardown can never run out-of-band. By the time it runs the room
-    // has already disconnected (that's what triggered handleDisconnected), so we just drop the
-    // reference and close the plugin WS.
-    private async teardown(): Promise<void> {
-        if (this.disconnected) {
-            return;
-        }
-
-        this.disconnected = true;
-        this.roomConnected = false;
-        this.connectPayload = null;
-        this.room = null;
-
-        if (this.websocketClient) {
-            // Tell the server we're leaving — server then broadcasts user_left
-            // and (if we were the last participant) call_ended.
-            try {
-                this.websocketClient.sendLeave();
-                this.websocketClient.close();
-            } catch (wsErr) {
-                logErr('CallClient: pluginWS teardown error', wsErr);
-            } finally {
-                this.websocketClient = null;
-            }
+    // The single public entry point to end a call. It ONLY initiates a LiveKit disconnect;
+    // it does no teardown itself. All teardown is driven by the resulting
+    // RoomEvent.Disconnected -> handleDisconnected().
+    public disconnect() {
+        if (this.room) {
+            return this.room.disconnect();
         }
     }
 
@@ -522,19 +467,19 @@ export default class CallClient extends EventEmitter {
 
     private handleWebsocketOpened(originalConnID: string, prevConnID: string, isReconnect: boolean) {
         if (!this.connectPayload) {
-            logErr('CallClient: ws open received without connect payload');
+            logErr('CallClient: pluginWS open received without connect payload');
             return;
         }
 
         if (isReconnect) {
-            logDebug('CallClient: ws reconnect, sending reconnect msg');
+            logDebug('CallClient: pluginWS reconnect, sending reconnect msg');
             this.websocketClient?.sendReconnect({
                 channelID: this.connectPayload.channelID,
                 originalConnID,
                 prevConnID,
             });
         } else {
-            logDebug('CallClient: ws open, sending join msg');
+            logDebug('CallClient: pluginWS open, sending join msg');
             this.websocketClient?.sendJoin(this.connectPayload);
         }
     }
@@ -547,11 +492,11 @@ export default class CallClient extends EventEmitter {
         try {
             const msg = JSON.parse(data);
             if (!msg) {
-                logErr('ws.on(message): invalid message', data);
+                logErr('CallClient: pluginWS on(message): invalid message', data);
             }
-            logDebug('ws.on(message): message received', msg);
+            logDebug('CallClient: pluginWS on(message): message received', msg);
         } catch (err) {
-            logErr('ws.on(message): failed to handle message', err, 'data:', data);
+            logErr('CallClient: pluginWS on(message): failed to handle message', err, 'data:', data);
         }
     }
 
@@ -560,24 +505,30 @@ export default class CallClient extends EventEmitter {
     }
 
     private handleWebsocketErrored(err: WebSocketError) {
-        logErr('CallClient: ws error', err);
+        logErr('CallClient: pluginWS errored', err);
 
         switch (err.type) {
-        case WebSocketErrorType.Native:
+        case WebSocketErrorType.Native:{
+            // This is transient state, reconnect will be attempted
             break;
-        case WebSocketErrorType.ReconnectTimeout:
+        }
+        case WebSocketErrorType.ReconnectTimeout: {
             this.websocketClient = null;
-            this.leave(err);
+            this.emit(CALL_EVENT.ERROR, err);
+            this.disconnect();
             break;
-        case WebSocketErrorType.Join:
-            this.leave(err);
+        }
+        case WebSocketErrorType.Join: {
+            this.emit(CALL_EVENT.ERROR, err);
+            this.disconnect();
             break;
+        }
         default:
         }
     }
 
     private handleWebsocketClosed(code?: number) {
-        logDebug(`CallClient: ws close: ${code}`);
+        logDebug(`CallClient: pluginWS close: ${code}`);
     }
 
     private handleConnected() {
@@ -704,27 +655,30 @@ export default class CallClient extends EventEmitter {
         this.emit(CALL_EVENT.RECONNECTED);
     }
 
-    // The single driver of in-call teardown. Fires for every reason a client leaves the LiveKit
-    // room (user leave, host DeleteRoom/RemoveParticipant, network give-up, server shutdown), so
-    // all teardown converges here. We notify listeners first (they read session info and tear
-    // down UI/Redux) while the room is still available, then release our own resources.
     private handleDisconnected(reason?: DisconnectReason) {
-        logDebug('CallClient: disconnected from room', reason);
+        logDebug('CallClient: room disconnected', reason);
 
-        this.roomConnected = false;
-        this.connectPayload = null;
-
-        const err = this.pendingDisconnectErr;
-        this.pendingDisconnectErr = null;
-        if (err) {
-            this.emit(CALL_EVENT.ERROR, err);
+        if (this.disconnected) {
+            return;
         }
 
-        try {
-            // getSessionID() (read by listeners) needs this.room, so emit before teardown().
-            this.emit(CALL_EVENT.DISCONNECTED, reason);
-        } finally {
-            void this.teardown();
+        this.emit(CALL_EVENT.DISCONNECTED, reason);
+
+        this.disconnected = true;
+        this.roomConnected = false;
+        this.connectPayload = null;
+        this.room = null;
+
+        if (this.websocketClient) {
+            try {
+                this.websocketClient.sendLeave();
+                this.websocketClient.close();
+            } catch (error) {
+                logErr('CallClient: pluginWS teardown error', error);
+            } finally {
+                this.websocketClient = null;
+                logDebug('CallClient: pluginWS disconnected');
+            }
         }
     }
 

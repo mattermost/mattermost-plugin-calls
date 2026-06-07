@@ -451,7 +451,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.props.hideExpandedView();
         const callsClient = getCallsClient();
         if (callsClient) {
-            callsClient.leave();
+            callsClient.disconnect();
             if (window.opener) {
                 window.close();
             }

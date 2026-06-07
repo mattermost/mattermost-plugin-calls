@@ -20,7 +20,7 @@ import {AnyAction, Dispatch} from 'redux';
 import {batchActions} from 'redux-batched-actions';
 import RestClient from 'src/clients/rest';
 import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from 'src/cloud_pricing/modals';
-import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
+import {ErrorModal, IdForErrorModel} from 'src/components/error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, RING_LENGTH} from 'src/constants';
@@ -265,8 +265,8 @@ export const endCall = (channelID: string) => {
 
 export const displayCallErrorModal = (err: Error, channelID?: string) => (dispatch: Dispatch) => {
     dispatch(modals.openModal({
-        modalId: CallErrorModalID,
-        dialogType: CallErrorModal,
+        modalId: IdForErrorModel,
+        dialogType: ErrorModal,
         dialogProps: {
             channelID,
             err,

@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {ComponentProps} from 'react';
-import {defineMessage, useIntl} from 'react-intl';
+import {FormattedMessage, useIntl} from 'react-intl';
 import {
     insecureContextErr,
     rtcPeerCloseErr,
@@ -11,6 +11,7 @@ import {
     userLeftChannelErr,
     userRemovedFromChannelErr,
 } from 'src/clients/calls';
+import {hostRemovedYouFromCallErr} from 'src/components/error_modal/error_messages';
 import {
     ColumnContainer,
     FooterContainer,
@@ -29,14 +30,9 @@ type CustomProps = {
 
 type Props = Partial<ComponentProps<typeof GenericModal>> & CustomProps;
 
-export const CallErrorModalID = 'call-error-modal';
+export const IdForErrorModel = 'call-error-modal';
 
-export const hostRemovedMsg = 'host-removed';
-export const removedMsgTitle = defineMessage({defaultMessage: 'You were removed from the call'});
-export const removedMsg = defineMessage({defaultMessage: 'The host removed you from the call.'});
-export const removedDismiss = defineMessage({defaultMessage: 'Dismiss'});
-
-export const CallErrorModal = (props: Props) => {
+export const ErrorModal = (props: Props) => {
     const {formatMessage} = useIntl();
 
     if (!props.err) {
@@ -69,7 +65,6 @@ export const CallErrorModal = (props: Props) => {
 
     const troubleShootingMsg = (
         <>
-            {/*@ts-ignore*/}
             {formatMessage(
                 {
                     defaultMessage: 'Check the <troubleShootingLink>troubleshooting section</troubleShootingLink> if the problem persists.',
@@ -109,7 +104,6 @@ export const CallErrorModal = (props: Props) => {
         );
         msg = (
             <span>
-                {/*@ts-ignore*/}
                 {formatMessage({defaultMessage: 'We couldn\'t join the call because the connection timed out. Please check your network connection and try again.'}, {
                     joinLink: (text: React.ReactNode) => (
                         <a
@@ -130,7 +124,6 @@ export const CallErrorModal = (props: Props) => {
         );
         msg = (
             <span>
-                {/*@ts-ignore*/}
                 {formatMessage({defaultMessage: 'There was an error with the connection to the call. Try to <joinLink>re-join</joinLink> the call.'}, {
                     joinLink: (text: React.ReactNode) => (
                         <a
@@ -185,21 +178,21 @@ export const CallErrorModal = (props: Props) => {
             </span>
         );
         break;
-    case hostRemovedMsg:
+    case hostRemovedYouFromCallErr.message:
         headerMsg = (
-            <>{formatMessage(removedMsgTitle)}</>
+            <FormattedMessage defaultMessage='You were removed from the call'/>
         );
         msg = (
-            <>{formatMessage(removedMsg)}</>
+            <FormattedMessage defaultMessage='The host removed you from the call.'/>
         );
-        confirmMsg = formatMessage(removedDismiss);
+        confirmMsg = formatMessage({defaultMessage: 'Dismiss'});
         break;
     }
 
     return (
         <StyledGenericModal
             {...modalProps}
-            id={CallErrorModalID}
+            id={IdForErrorModel}
             modalHeaderText={headerMsg}
             confirmButtonText={confirmMsg}
             onHide={() => null}

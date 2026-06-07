@@ -1010,7 +1010,7 @@ export default class Plugin {
 
         this.unsubscribers.push(() => {
             if (window.callsClient) {
-                window.callsClient.leave();
+                window.callsClient.disconnect();
             }
             logDebug('resetting state');
             store.dispatch(unInitialized());
