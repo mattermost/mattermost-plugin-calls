@@ -146,7 +146,7 @@ function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventDat
 
         if (getJobID() === data.job_id) {
             logInfo('received job stop event, disconnecting');
-            window.callsClient?.leave();
+            window.callsClient?.disconnect();
         }
 
         break;
