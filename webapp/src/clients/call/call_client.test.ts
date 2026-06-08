@@ -326,6 +326,9 @@ describe('CallClient', () => {
             await client.connect({channelID: 'test-channel'});
             mockRoom.state = ConnectionState.Connected;
 
+            const disconnectedListener = jest.fn();
+            client.on(CALL_EVENT.DISCONNECTED, disconnectedListener);
+
             client.disconnect();
             expect(mockRoom.disconnect).toHaveBeenCalled();
 
@@ -333,6 +336,7 @@ describe('CallClient', () => {
             mockRoom.fire(RoomEvent.Disconnected);
             expect(client.isDisconnected).toBe(true);
             expect(mockWebSocketClient.sendLeave).toHaveBeenCalled();
+            expect(disconnectedListener).toHaveBeenCalled();
         });
 
         it('before the room connects, tears down directly (livekit room.disconnect would not emit)', () => {
@@ -341,6 +345,9 @@ describe('CallClient', () => {
             // teardown itself or the call is left stuck on "Connecting…" (MM-69034).
             mockRoom.state = ConnectionState.Disconnected;
 
+            const disconnectedListener = jest.fn();
+            client.on(CALL_EVENT.DISCONNECTED, disconnectedListener);
+
             expect(client.isDisconnected).toBe(false);
             client.disconnect();
 
@@ -348,6 +355,7 @@ describe('CallClient', () => {
             expect(client.isDisconnected).toBe(true);
             expect(mockWebSocketClient.sendLeave).toHaveBeenCalled();
             expect(mockWebSocketClient.close).toHaveBeenCalled();
+            expect(disconnectedListener).toHaveBeenCalled();
         });
 
         it('cancelling mid-connect bails quietly without emitting ERROR', async () => {
