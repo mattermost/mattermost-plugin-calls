@@ -724,10 +724,10 @@ export default class Plugin {
 
                         store.dispatch(localSessionClose(window.callsClient.channelID));
 
+                        playSound('leave_self');
+
                         delete window.callsClient;
                         delete window.currentCallData;
-
-                        playSound('leave_self');
                     }
                 });
 
