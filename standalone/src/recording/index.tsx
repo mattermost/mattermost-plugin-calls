@@ -157,8 +157,6 @@ function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventDat
 }
 
 function deinitRecording() {
-    // Resource teardown is driven internally by CallClient via RoomEvent.Disconnected
-    // (deinitRecording runs from the DISCONNECTED handler); here we only drop app-level state.
     recordingRoot?.unmount();
     recordingRoot = null;
     delete window.callsClient;

@@ -724,10 +724,9 @@ export default class Plugin {
 
                         store.dispatch(localSessionClose(window.callsClient.channelID));
 
-                        // Resource teardown (close pluginWS, free room) is handled internally by
-                        // CallClient via RoomEvent.Disconnected; here we only drop app-level state.
                         delete window.callsClient;
                         delete window.currentCallData;
+
                         playSound('leave_self');
                     }
                 });
