@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {EmojiData} from '@mattermost/calls-common/lib/types';
-import {ConnectionQuality, Room, RoomEvent, Track} from 'livekit-client';
+import {ConnectionQuality, ConnectionState, Room, RoomEvent, Track} from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {WEBSOCKET_EVENT, WebSocketClient} from 'src/clients/websocket';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
@@ -55,6 +55,7 @@ type RoomEventHandler = (...args: any[]) => void;
 
 type MockRoom = {
     on: jest.Mock;
+    state?: ConnectionState;
     connect: jest.Mock;
     prepareConnection: jest.Mock;
     disconnect: jest.Mock;
@@ -293,6 +294,63 @@ describe('CallClient', () => {
 
             mockRoom.fire(RoomEvent.Disconnected);
             expect(client.isConnected).toBe(false);
+            expect(client.isDisconnected).toBe(true);
+        });
+    });
+
+    describe('disconnect', () => {
+        it('on a connected room, delegates to room.disconnect() so the LiveKit event drives teardown', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.state = ConnectionState.Connected;
+
+            client.disconnect();
+            expect(mockRoom.disconnect).toHaveBeenCalled();
+
+            // Teardown is driven by the resulting RoomEvent.Disconnected, not synchronously here.
+            mockRoom.fire(RoomEvent.Disconnected);
+            expect(client.isDisconnected).toBe(true);
+            expect(mockWebSocketClient.sendLeave).toHaveBeenCalled();
+        });
+
+        it('before the room connects, tears down directly (livekit room.disconnect would not emit)', () => {
+            // The room sits in its initial Disconnected state for the whole pre-connect window;
+            // livekit room.disconnect() is a silent no-op there, so disconnect() must drive
+            // teardown itself or the call is left stuck on "Connecting…" (MM-69034).
+            mockRoom.state = ConnectionState.Disconnected;
+
+            expect(client.isDisconnected).toBe(false);
+            client.disconnect();
+
+            expect(mockRoom.disconnect).not.toHaveBeenCalled();
+            expect(client.isDisconnected).toBe(true);
+            expect(mockWebSocketClient.sendLeave).toHaveBeenCalled();
+            expect(mockWebSocketClient.close).toHaveBeenCalled();
+        });
+
+        it('cancelling mid-connect bails quietly without emitting ERROR', async () => {
+            mockRoom.state = ConnectionState.Disconnected;
+
+            // Hold the WS handshake open so we can cancel while still "Connecting…".
+            let rejectReady: (e: Error) => void = () => {};
+            mockWebSocketClient.ready.mockImplementationOnce(
+                () => new Promise<string>((_resolve, reject) => {
+                    rejectReady = reject;
+                }),
+            );
+
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            const connectPromise = client.connect({channelID: 'test-channel'});
+
+            // User hangs up before the room connected → direct teardown.
+            client.disconnect();
+
+            // Teardown closed the WS, so the in-flight ready() rejects.
+            rejectReady(new Error('websocket closed'));
+
+            await expect(connectPromise).resolves.toBeUndefined();
+            expect(errorListener).not.toHaveBeenCalled();
             expect(client.isDisconnected).toBe(true);
         });
     });

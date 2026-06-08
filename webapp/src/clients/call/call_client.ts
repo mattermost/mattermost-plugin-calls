@@ -53,8 +53,9 @@ export default class CallClient extends EventEmitter {
 
     private websocketClient: WebSocketClient | null = null;
     private room: Room | null = null;
+    private connected = false;
+    private disconnecting = false;
     private disconnected = false;
-    private roomConnected = false;
     private connectPayload: ConnectPayload | null = null;
 
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
@@ -120,7 +121,7 @@ export default class CallClient extends EventEmitter {
     // reflects the media plane only; plugin call state (host/sessions) hydrates via WS
     // separately, so callers needing that should wait on it themselves (see MM-69019).
     public get isConnected(): boolean {
-        return this.roomConnected && !this.disconnected;
+        return this.connected && !this.disconnected;
     }
 
     public get isDisconnected(): boolean {
@@ -135,7 +136,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async connect(connectPayload: ConnectPayload): Promise<void> {
-        if (this.roomConnected) {
+        if (this.connected) {
             throw new Error('CallClient: room already connected');
         }
 
@@ -160,6 +161,11 @@ export default class CallClient extends EventEmitter {
 
             logDebug('CallClient: pluginWS ready with connection_id', connectionId);
         } catch (err) {
+            // If the user cancelled the call before it connected, we will have already teared down
+            if (this.disconnecting) {
+                return;
+            }
+
             logErr('CallClient: pluginWS connection error', err);
             this.connectPayload = null;
 
@@ -184,10 +190,17 @@ export default class CallClient extends EventEmitter {
 
             logDebug('CallClient: token fetched from token API', url);
         } catch (err) {
+            // If the user cancelled the network request before it connected, we will have already teared down
+            if (this.disconnecting) {
+                return;
+            }
+
             logErr('CallClient: token fetch error', err);
             this.connectPayload = null;
 
-            // The plugin WS is already open at this point; close it so we don't leak it
+            // The plugin WS is already open and the join was sent, so tell the server we're
+            // leaving before closing — otherwise it keeps the session until its own timeout.
+            this.websocketClient?.sendLeave();
             this.websocketClient?.close();
             this.websocketClient = null;
 
@@ -198,21 +211,33 @@ export default class CallClient extends EventEmitter {
         try {
             await this.room.prepareConnection(url, token);
         } catch (prepareErr) {
+            // A disconnect() may have raced in during the awaits above.
+            if (this.disconnecting) {
+                return;
+            }
+
             logDebug('CallClient: prepareConnection failed though it is non-fatal', prepareErr);
         }
 
         try {
             await this.room.connect(url, token);
-            this.roomConnected = true;
+            this.connected = true;
 
             logDebug('CallClient: room connected');
         } catch (err) {
+            // A cancel during room.connect() makes LiveKit reject with a Cancelled error.
+            if (this.disconnecting) {
+                return;
+            }
+
             logErr('CallClient: room connection error', err);
-            this.roomConnected = false;
+            this.connected = false;
             this.connectPayload = null;
             this.room = null;
 
-            // The plugin WS is already open at this point; close it so we don't leak it
+            // The plugin WS is already open and the join was sent, so tell the server we're
+            // leaving before closing — otherwise it keeps the session until its own timeout.
+            this.websocketClient?.sendLeave();
             this.websocketClient?.close();
             this.websocketClient = null;
 
@@ -221,24 +246,30 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    // The single public entry point to end a call. This method ONLY initiates a LiveKit disconnect;
-    // it does no teardown itself. All teardown is driven by the resulting
-    // RoomEvent.Disconnected -> handleDisconnected().
+    // The single public entry point to end a call. In the normal case it ONLY
+    // initiates a LiveKit disconnect and does no teardown itself; all teardown is
+    // driven by the resulting RoomEvent.Disconnected -> handleDisconnected().
     public disconnect() {
-        if (this.room) {
-            return this.room.disconnect();
+        this.disconnecting = true;
+
+        if (this.room && this.room.state !== ConnectionState.Disconnected) {
+            this.room.disconnect();
+        } else {
+            // But! If room is already disconnected, run handleDisconnected directly since room.disconnect()
+            //  will not emit the event. This ensures teardown still occurs.
+            this.handleDisconnected(DisconnectReason.CLIENT_INITIATED);
         }
     }
 
     public async mute(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
         await this.room.localParticipant.setMicrophoneEnabled(false);
     }
 
     public async unmute(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
 
@@ -255,7 +286,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async raiseHand(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
 
@@ -267,7 +298,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async unraiseHand(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
 
@@ -279,7 +310,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async shareScreen(sourceID?: string, withAudio?: boolean): Promise<MediaStream | null> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return null;
         }
 
@@ -325,7 +356,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async unshareScreen(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
 
@@ -346,7 +377,7 @@ export default class CallClient extends EventEmitter {
             return;
         }
 
-        if (!this.roomConnected) {
+        if (!this.connected) {
             return;
         }
 
@@ -388,7 +419,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async sendReaction(emojiData: EmojiData) {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
 
@@ -675,7 +706,7 @@ export default class CallClient extends EventEmitter {
         this.emit(CALL_EVENT.DISCONNECTED, reason);
 
         this.disconnected = true;
-        this.roomConnected = false;
+        this.connected = false;
         this.connectPayload = null;
         this.room = null;
 
