@@ -8,6 +8,7 @@ import type {CallsClientJoinData, EmojiData, RTPEncodingParameters, TrackInfo} f
 import {EventEmitter} from 'events';
 import {strToU8, zlibSync} from 'fflate';
 import {WebSocketClient, WebSocketError, WebSocketErrorType} from 'src/clients/websocket';
+import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     STORAGE_CALLS_CLIENT_STATS_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
@@ -22,7 +23,6 @@ import {getPersistentStorage, getScreenStream} from 'src/utils';
 
 import {CALL_EVENT} from '../call';
 
-export const AudioInputPermissionsError = new Error('missing audio input permissions');
 export const AudioInputMissingError = new Error('no audio input available');
 export const VideoInputPermissionsError = new Error('missing video input permissions');
 export const VideoInputMissingError = new Error('no video input available');
@@ -369,7 +369,7 @@ export default class CallsClient extends EventEmitter {
         } catch (err) {
             logErr(err);
             if (this.audioDevices.inputs.length > 0) {
-                throw AudioInputPermissionsError;
+                throw AudioInputPermissionsErr;
             }
             throw AudioInputMissingError;
         }

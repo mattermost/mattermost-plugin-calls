@@ -11,7 +11,7 @@ import {
     userLeftChannelErr,
     userRemovedFromChannelErr,
 } from 'src/clients/calls';
-import {hostRemovedYouFromCallErr} from 'src/components/error_modal/error_messages';
+import {HostRemovedYouFromCallErr} from 'src/components/error_modal/error_messages';
 import {
     ColumnContainer,
     FooterContainer,
@@ -178,7 +178,7 @@ export const ErrorModal = (props: Props) => {
             </span>
         );
         break;
-    case hostRemovedYouFromCallErr.message:
+    case HostRemovedYouFromCallErr.message:
         headerMsg = (
             <FormattedMessage defaultMessage='You were removed from the call'/>
         );

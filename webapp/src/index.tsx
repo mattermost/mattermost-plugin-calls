@@ -91,6 +91,7 @@ import {
 } from 'src/components/call_widget/end_call_confirmation';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
+import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     IDStopRecordingConfirmation,
     StopRecordingConfirmation,
@@ -733,6 +734,11 @@ export default class Plugin {
                 });
 
                 window.callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
+                    // Permission errors are surfaced as inline alerts
+                    if (err === AudioInputPermissionsErr) {
+                        return;
+                    }
+
                     store.dispatch(displayCallErrorModal(err, window.callsClient?.channelID));
                 });
 

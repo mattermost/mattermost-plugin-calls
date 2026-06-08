@@ -23,9 +23,9 @@ import {
     Track,
     TrackPublication,
 } from 'livekit-client';
-import {AudioInputPermissionsError} from 'src/clients/calls';
 import RestClient from 'src/clients/rest';
 import {WEBSOCKET_EVENT, WebSocketClient, WebSocketError, WebSocketErrorType} from 'src/clients/websocket';
+import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
@@ -221,7 +221,7 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    // The single public entry point to end a call. It ONLY initiates a LiveKit disconnect;
+    // The single public entry point to end a call. This method ONLY initiates a LiveKit disconnect;
     // it does no teardown itself. All teardown is driven by the resulting
     // RoomEvent.Disconnected -> handleDisconnected().
     public disconnect() {
@@ -241,7 +241,17 @@ export default class CallClient extends EventEmitter {
         if (!this.room || !this.roomConnected) {
             return;
         }
-        await this.room.localParticipant.setMicrophoneEnabled(true);
+
+        try {
+            await this.room.localParticipant.setMicrophoneEnabled(true);
+        } catch (err) {
+            if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
+                this.emit(CALL_EVENT.ERROR, AudioInputPermissionsErr);
+            } else {
+                logErr('CallClient: error unmuting microphone', err);
+                this.emit(CALL_EVENT.ERROR, err);
+            }
+        }
     }
 
     public async raiseHand(): Promise<void> {
@@ -304,8 +314,12 @@ export default class CallClient extends EventEmitter {
             logDebug('CallClient.shareScreen: stream started for sourceID', sourceID, 'withAudio', withAudio, 'stream.id', stream?.id);
             return stream;
         } catch (err) {
-            logErr('CallClient.shareScreen: failed', err);
-            this.emit(CALL_EVENT.ERROR, err);
+            if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
+                logDebug('CallClient: screen share was either cancelled or it\'s permissions were denied');
+            } else {
+                logErr('CallClient: failed to share screen', err);
+                this.emit(CALL_EVENT.ERROR, err);
+            }
             return null;
         }
     }
@@ -599,7 +613,7 @@ export default class CallClient extends EventEmitter {
         try {
             // Just request permission to the microphone and
             // stop the track immediately to avoid any audio being published
-            logDebug('CallClient: requesting microphone permission (getUserMedia)');
+            logDebug('CallClient: requesting microphone permission');
             const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true});
             mediaStream.getTracks().forEach((mediaStreamTrack) => {
                 mediaStreamTrack.stop();
@@ -631,11 +645,12 @@ export default class CallClient extends EventEmitter {
 
             this.emit(CALL_EVENT.INIT_AUDIO);
         } catch (err) {
-            // MediaDeviceFailure.getFailure classifies device errors across browsers
-            // more reliably than checking err.name strings directly.
-            const failure = MediaDeviceFailure.getFailure(err);
-            const isPermissionDenied = failure === MediaDeviceFailure.PermissionDenied;
-            this.emit(CALL_EVENT.ERROR, isPermissionDenied ? AudioInputPermissionsError : err);
+            if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
+                this.emit(CALL_EVENT.ERROR, AudioInputPermissionsErr);
+            } else {
+                logErr('CallClient: failed to request microphone permission', err);
+                this.emit(CALL_EVENT.ERROR, err);
+            }
         }
     }
 
@@ -895,10 +910,18 @@ export default class CallClient extends EventEmitter {
         }
     }
 
+    /**
+     * Fires when LiveKit encounters an error while attempting to create a track.
+     * It throws for any device error, could be audio, video, or screen share.
+     */
     private handleMediaDevicesError(err: Error) {
-        const failure = MediaDeviceFailure.getFailure(err);
-        logErr('CallClient: media device error', {failure, err});
-        this.emit(CALL_EVENT.ERROR, failure === MediaDeviceFailure.PermissionDenied ? AudioInputPermissionsError : err);
+        if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
+            // We already handle this error type in the respective handlers
+            return;
+        }
+
+        logErr('CallClient: media device error', err);
+        this.emit(CALL_EVENT.ERROR, err);
     }
 
     /**

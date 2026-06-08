@@ -40,7 +40,7 @@ import {
     removeIncomingCallNotification,
 } from 'src/actions';
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/clients/calls';
-import {hostRemovedYouFromCallErr} from 'src/components/error_modal/error_messages';
+import {HostRemovedYouFromCallErr} from 'src/components/error_modal/error_messages';
 import {
     HOST_CONTROL_NOTICE_TIMEOUT,
     JOB_TYPE_CAPTIONING,
@@ -471,7 +471,7 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControl
 
     const sessionID = client.getSessionID();
     if (ev.data.session_id === sessionID) {
-        store.dispatch(displayCallErrorModal(hostRemovedYouFromCallErr, channelID));
+        store.dispatch(displayCallErrorModal(HostRemovedYouFromCallErr, channelID));
         getCallsClient()?.disconnect();
         return;
     }

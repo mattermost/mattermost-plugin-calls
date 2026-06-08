@@ -18,11 +18,11 @@ import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
-import {AudioInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import CallDuration from 'src/components/call_widget/call_duration';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
+import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
 import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
 import {
@@ -749,7 +749,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.setAudioDevices(audioDevices);
         });
         onClient(CALL_EVENT.ERROR, (err: Error) => {
-            if (err === AudioInputPermissionsError) {
+            if (err === AudioInputPermissionsErr) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
