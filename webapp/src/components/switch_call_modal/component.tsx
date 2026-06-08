@@ -104,7 +104,7 @@ export default class SwitchCallModal extends React.PureComponent<Props> {
         this.props.hideSwitchCallModal();
         const win = getCallsWindow();
 
-        win.postMessage({type: 'connectCall', channelID: this.props.currentChannel?.id}, win.origin);
+        win.postMessage({type: 'connectCall', channelID: this.props.targetChannelID}, win.origin);
     };
 
     componentDidMount() {
