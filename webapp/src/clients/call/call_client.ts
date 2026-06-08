@@ -11,8 +11,11 @@ import {
     ConnectionQuality,
     ConnectionState,
     DisconnectReason,
+    LocalAudioTrack,
     LocalParticipant,
+    LocalTrack,
     LocalTrackPublication,
+    LocalVideoTrack,
     MediaDeviceFailure,
     Participant,
     RemoteParticipant,
@@ -33,7 +36,7 @@ import {
 } from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {CallsClientStats, MediaDevices} from 'src/types/types';
-import {getPluginPath} from 'src/utils';
+import {getPluginPath, getScreenStream} from 'src/utils';
 
 import {
     AUDIO_CAPTURE_DEFAULTS,
@@ -312,12 +315,17 @@ export default class CallClient extends EventEmitter {
         }
 
         try {
-            // Only hint systemAudio when audio capture is actually requested.
-            const captureOptions: ScreenShareCaptureOptions = {audio: Boolean(withAudio)};
-            if (withAudio) {
-                captureOptions.systemAudio = 'include';
+            if (window.desktop) {
+                await this.shareScreenInDesktop(sourceID, withAudio);
+            } else {
+                // Browser: let LiveKit drive getDisplayMedia + its native picker / "Stop sharing" bar.
+                // Only hint systemAudio when audio capture is actually requested.
+                const captureOptions: ScreenShareCaptureOptions = {audio: Boolean(withAudio)};
+                if (withAudio) {
+                    captureOptions.systemAudio = 'include';
+                }
+                await this.room.localParticipant.setScreenShareEnabled(true, captureOptions);
             }
-            await this.room.localParticipant.setScreenShareEnabled(true, captureOptions);
 
             const stream = this.getLocalScreenStream();
 
@@ -331,6 +339,50 @@ export default class CallClient extends EventEmitter {
             logErr('CallClient.shareScreen: failed', err);
             this.emit(CALL_EVENT.ERROR, err);
             return null;
+        }
+    }
+
+    // shareScreenInDesktop captures and publishes the source already chosen via
+    // Electron's desktopCapturer picker. LiveKit's setScreenShareEnabled() would
+    // call getDisplayMedia() and ignore the chosen sourceID, so we capture that
+    // specific source ourselves (getScreenStream uses getUserMedia +
+    // chromeMediaSourceId) and publish the tracks tagged as ScreenShare,
+    // mirroring LiveKit's own createScreenTracks().
+    private async shareScreenInDesktop(sourceID?: string, withAudio?: boolean): Promise<void> {
+        if (!this.room) {
+            return;
+        }
+
+        const screenStream = await getScreenStream(sourceID, withAudio);
+        if (!screenStream) {
+            return;
+        }
+
+        const publishedTracks: LocalTrack[] = [];
+        try {
+            const [videoTrack] = screenStream.getVideoTracks();
+            if (videoTrack) {
+                const screenVideo = new LocalVideoTrack(videoTrack, undefined, false);
+                screenVideo.source = Track.Source.ScreenShare;
+                await this.room.localParticipant.publishTrack(screenVideo);
+                publishedTracks.push(screenVideo);
+            }
+
+            const [audioTrack] = screenStream.getAudioTracks();
+            if (audioTrack) {
+                const screenAudio = new LocalAudioTrack(audioTrack, undefined, false);
+                screenAudio.source = Track.Source.ScreenShareAudio;
+                await this.room.localParticipant.publishTrack(screenAudio);
+                publishedTracks.push(screenAudio);
+            }
+        } catch (err) {
+            // Roll back any partial publishes so we don't leave a live ScreenShare
+            // track behind, which would desync LiveKit and plugin WS state. Use
+            // allSettled so a teardown failure can't mask the original publish
+            // error (err), which is what we actually want to surface.
+            await Promise.allSettled(publishedTracks.map((track) => this.room!.localParticipant.unpublishTrack(track, true)));
+            screenStream.getTracks().forEach((track) => track.stop());
+            throw err;
         }
     }
 
