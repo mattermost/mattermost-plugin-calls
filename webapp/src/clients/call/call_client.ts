@@ -441,17 +441,19 @@ export default class CallClient extends EventEmitter {
             return;
         }
 
-        if (store) {
-            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
-                deviceId: device.deviceId,
-                label: device.label,
-            }));
-        }
-        this.currentAudioInputDevice = device;
-
         // LiveKit handles the published-track swap; no manual replaceTrack needed.
+        // Only persist and update state after the switch succeeds, so a failure
+        // leaves the previous active device intact (no UI/state inconsistency).
         try {
             await this.room.switchActiveDevice('audioinput', device.deviceId, true);
+
+            if (store) {
+                window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
+                    deviceId: device.deviceId,
+                    label: device.label,
+                }));
+            }
+            this.currentAudioInputDevice = device;
 
             logDebug('CallClient: audio input device switch successful', {deviceId: device.deviceId, label: device.label});
             this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
@@ -764,12 +766,12 @@ export default class CallClient extends EventEmitter {
             return;
         }
 
-        this.emit(CALL_EVENT.DISCONNECTED, reason);
-
         this.disconnected = true;
         this.connected = false;
         this.connectPayload = null;
         this.room = null;
+
+        this.emit(CALL_EVENT.DISCONNECTED, reason);
 
         if (this.websocketClient) {
             try {

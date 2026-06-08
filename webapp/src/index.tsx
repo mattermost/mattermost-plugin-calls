@@ -783,7 +783,15 @@ export default class Plugin {
 
                 store.dispatch(setClientConnecting(true));
 
-                window.callsClient.connect({channelID, title, threadID: rootId}).catch((err: Error) => {
+                const connectingClient = window.callsClient;
+                connectingClient.connect({channelID, title, threadID: rootId}).catch((err: Error) => {
+                    // If a concurrent DISCONNECTED teardown already cleaned up (it deletes
+                    // window.callsClient) or a new call has since replaced this client, this
+                    // is a stale error — skip the error flow to avoid a spurious modal.
+                    if (window.callsClient !== connectingClient) {
+                        return;
+                    }
+
                     store.dispatch(setClientConnecting(false));
 
                     logErr(err);

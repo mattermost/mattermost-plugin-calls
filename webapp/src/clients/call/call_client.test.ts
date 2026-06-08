@@ -1021,6 +1021,22 @@ describe('CallClient', () => {
             expect(deviceChangeListener).toHaveBeenCalled();
         });
 
+        it('setAudioInputDevice leaves state unchanged when the LiveKit switch rejects', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const deviceChangeListener = jest.fn();
+            client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+            mockRoom.switchActiveDevice.mockRejectedValueOnce(new Error('device not found'));
+
+            await client.setAudioInputDevice(inputDevice);
+
+            expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('audioinput', 'mic-1', true);
+
+            // The switch failed, so the previous active device and storage must be untouched.
+            expect(client.currentAudioInputDevice).not.toBe(inputDevice);
+            expect(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY)).toBeNull();
+            expect(deviceChangeListener).not.toHaveBeenCalled();
+        });
+
         it('setAudioInputDevice with store=false skips the localStorage write', async () => {
             await client.connect({channelID: 'test-channel'});
 
