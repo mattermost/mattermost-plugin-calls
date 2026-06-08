@@ -22,7 +22,6 @@ import React from 'react';
 import {createRoot, Root} from 'react-dom/client';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
-import {userMuted, userUnmuted} from 'src/state/session/actions';
 
 import initialiseEmbedApp, {InitCbProps} from '../index';
 
@@ -58,14 +57,10 @@ async function initWidget({store, startingCall}: InitCbProps) {
 
     const locale = getCurrentUserLocale(store.getState()) || 'en';
 
-    window.callsClient?.on('mute', () => {
-        store.dispatch(userMuted(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? '', getCurrentUserId(store.getState())));
-    });
-
-    window.callsClient?.on('unmute', () => {
-        store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? '', getCurrentUserId(store.getState())));
-    });
-
+    // Mute/unmute (and speaking, raised-hand, reactions) are bridged centrally in
+    // connectCall() from the LiveKit-owned CALL_EVENTs, with the event's real
+    // session/userID — so remote participants update correctly, not just the local
+    // user. Only the local-only video state is wired here.
     window.callsClient?.on('video_on', () => {
         store.dispatch({
             type: 'USER_VIDEO_ON',

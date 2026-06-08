@@ -16,6 +16,13 @@ import (
 const userIDSessionIDSeparator = "___"
 const livekitAPITimeout = 5 * time.Second
 
+// livekitAttributeRaisedHand is the LiveKit participant attribute key that
+// carries raised-hand state. It mirrors CALL_ATTRIBUTES.RAISED_HAND on the
+// webapp; hand state is derived purely from this attribute, so server-side
+// host controls must mutate it directly rather than relying on a client
+// round-trip.
+const livekitAttributeRaisedHand = "raised_hand"
+
 var errLiveKitNotConfigured = errors.New("LiveKit is not configured")
 
 func composeLivekitIdentity(userID, sessionID string) string {
@@ -64,6 +71,31 @@ func (p *Plugin) livekitMuteParticipant(room, identity string) error {
 		}); err != nil {
 			return fmt.Errorf("livekit MutePublishedTrack: %w", err)
 		}
+	}
+	return nil
+}
+
+// livekitLowerParticipantHand clears the participant's raised-hand attribute on
+// the server. Setting the attribute to an empty string deletes it, which fires
+// RoomEvent.ParticipantAttributesChanged on every connected client, driving the
+// hand-lowered UI for all participants — the same propagation path as the user
+// lowering their own hand, but server-authoritative and not dependent on a WS
+// round-trip to the target client.
+func (p *Plugin) livekitLowerParticipantHand(room, identity string) error {
+	client, err := p.getLiveKitRoomClient()
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), livekitAPITimeout)
+	defer cancel()
+
+	if _, err := client.UpdateParticipant(ctx, &livekit.UpdateParticipantRequest{
+		Room:       room,
+		Identity:   identity,
+		Attributes: map[string]string{livekitAttributeRaisedHand: ""},
+	}); err != nil {
+		return fmt.Errorf("livekit UpdateParticipant: %w", err)
 	}
 	return nil
 }

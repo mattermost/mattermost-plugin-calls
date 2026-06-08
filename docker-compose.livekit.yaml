@@ -13,3 +13,21 @@ services:
       --node-ip=${LIVEKIT_NODE_IP}
     environment:
       - LIVEKIT_NODE_IP=${LIVEKIT_NODE_IP}
+
+  # TLS-terminating reverse proxy for the LiveKit signaling WebSocket.
+  # Only needed when external LAN machines connect to an HTTPS Mattermost
+  # (a secure page can't open an insecure ws:// signaling socket). Media
+  # (7881/7882) is DTLS-SRTP and bypasses this proxy entirely.
+  # Started via `make livekit-tls-docker-start`; not part of the plaintext
+  # `livekit-docker-start` flow.
+  livekit-proxy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "7443:7443"       # wss signaling (TLS) -> livekit-dev:7880
+    volumes:
+      - ./livekit-proxy.Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${LIVEKIT_TLS_CERT:-/dev/null}:/etc/certs/cert.pem:ro
+      - ${LIVEKIT_TLS_KEY:-/dev/null}:/etc/certs/key.pem:ro
+    depends_on:
+      - livekit-dev
