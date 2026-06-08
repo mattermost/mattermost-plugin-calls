@@ -248,7 +248,7 @@ export default class CallClient extends EventEmitter {
             if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
                 this.emit(CALL_EVENT.ERROR, AudioInputPermissionsErr);
             } else {
-                logErr('CallClient: error unmuting microphone', err);
+                logErr('CallClient: unmuting microphone failed', err);
                 this.emit(CALL_EVENT.ERROR, err);
             }
         }
@@ -262,7 +262,7 @@ export default class CallClient extends EventEmitter {
         try {
             await this.room.localParticipant.setAttributes({[CALL_ATTRIBUTES.RAISED_HAND]: String(Date.now())});
         } catch (err) {
-            logErr('CallClient.raiseHand: failed to set attribute', err);
+            logErr('CallClient: raising hand failed', err);
         }
     }
 
@@ -274,7 +274,7 @@ export default class CallClient extends EventEmitter {
         try {
             await this.room.localParticipant.setAttributes({[CALL_ATTRIBUTES.RAISED_HAND]: ''});
         } catch (err) {
-            logErr('CallClient.unraiseHand: failed to set attribute', err);
+            logErr('CallClient: unraising hand failed', err);
         }
     }
 
@@ -285,14 +285,14 @@ export default class CallClient extends EventEmitter {
 
         // If we're already sharing, return the existing stream.
         if (this.room.localParticipant.getTrackPublication(Track.Source.ScreenShare)) {
-            logDebug('CallClient.shareScreen: this client is already sharing, returning existing stream');
+            logDebug('CallClient: you are already sharing screen');
             return this.getLocalScreenStream();
         }
 
         // If another participant is already sharing, we skip.
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
-                logDebug('CallClient.shareScreen: another participant is already sharing, skipping');
+                logDebug('CallClient: another participant is already sharing screen');
                 return null;
             }
         }
@@ -311,13 +311,13 @@ export default class CallClient extends EventEmitter {
                 this.websocketClient.sendScreenOn({screenStreamID: stream.id});
             }
 
-            logDebug('CallClient.shareScreen: stream started for sourceID', sourceID, 'withAudio', withAudio, 'stream.id', stream?.id);
+            logDebug('CallClient: screen share stream started', {sourceID, withAudio, streamID: stream?.id});
             return stream;
         } catch (err) {
             if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
-                logDebug('CallClient: screen share was either cancelled or it\'s permissions were denied');
+                logDebug('CallClient: screen share was either cancelled or permissions were denied');
             } else {
-                logErr('CallClient: failed to share screen', err);
+                logErr('CallClient: sharing screen failed', err);
                 this.emit(CALL_EVENT.ERROR, err);
             }
             return null;
@@ -336,43 +336,38 @@ export default class CallClient extends EventEmitter {
             await this.room.localParticipant.setScreenShareEnabled(false);
             this.websocketClient?.sendScreenOff();
         } catch (err) {
-            logErr('CallClient.unshareScreen: failed', err);
+            logErr('CallClient: unsharing screen failed', err);
             this.emit(CALL_EVENT.ERROR, err);
         }
     }
 
     public async setAudioInputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
+        if (!this.room) {
+            return;
+        }
+
+        if (!this.roomConnected) {
+            return;
+        }
+
         if (store) {
             window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
                 deviceId: device.deviceId,
                 label: device.label,
             }));
         }
-
         this.currentAudioInputDevice = device;
 
         // LiveKit handles the published-track swap; no manual replaceTrack needed.
-        if (this.room && this.roomConnected) {
-            logDebug('CallClient.setAudioInputDevice: requesting switchActiveDevice', {requestedDeviceId: device.deviceId, requestedLabel: device.label});
-            try {
-                await this.room.switchActiveDevice('audioinput', device.deviceId, true);
+        try {
+            await this.room.switchActiveDevice('audioinput', device.deviceId, true);
 
-                const pub = this.room.localParticipant.getTrackPublication(Track.Source.Microphone);
-                const actualDeviceId = pub?.track?.mediaStreamTrack?.getSettings().deviceId;
-                if (actualDeviceId && actualDeviceId !== device.deviceId) {
-                    logErr('CallClient.setAudioInputDevice: device mismatch after switch',
-                        {requested: device.deviceId, actual: actualDeviceId, label: device.label});
-                } else {
-                    logDebug('CallClient.setAudioInputDevice: switch verified', {actualDeviceId: actualDeviceId ?? '(no track published yet)'});
-                }
-            } catch (err) {
-                logErr('CallClient.setAudioInputDevice: failed to switch device',
-                    {requestedDeviceId: device.deviceId, requestedLabel: device.label, errName: (err instanceof Error) ? err.name : 'unknown', err});
-            }
+            logDebug('CallClient: audio input device switch successful', {deviceId: device.deviceId, label: device.label});
+            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+        } catch (err) {
+            logErr('CallClient: audio input device switch failed',
+                {requestedDeviceId: device.deviceId, requestedLabel: device.label, errName: (err instanceof Error) ? err.name : 'unknown', err});
         }
-
-        logDebug('CallClient: emitting DEVICE_CHANGE for audio input', device.label, device.deviceId);
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
     public setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): void {
@@ -382,14 +377,13 @@ export default class CallClient extends EventEmitter {
                 label: device.label,
             }));
         }
-
         this.currentAudioOutputDevice = device;
 
         // Output sinkId routing is owned by call_widget — it applies setSinkId() on the
         // audio elements it creates after this method resolves. Calling LiveKit's
         // switchActiveDevice('audiooutput', …) here would create a second sinkId path.
 
-        logDebug('CallClient: emitting DEVICE_CHANGE for audio output', device.label, device.deviceId);
+        logDebug('CallClient: audio output device change requested', {deviceId: device.deviceId, label: device.label});
         this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
@@ -407,9 +401,10 @@ export default class CallClient extends EventEmitter {
             const encodedReactionPayload = new TextEncoder().encode(JSON.stringify(reactionPayload));
             await localParticipant.publishData(encodedReactionPayload, {reliable: true, topic: CALL_MESSAGE_TOPICS.REACTION});
 
+            logDebug('CallClient: reaction sent successfully', {emojiData, timestamp});
             this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
         } catch (err) {
-            logErr('CallClient.sendReaction: failed to publish reaction', err);
+            logErr('CallClient: reactions failed to send', err);
         }
     }
 
@@ -897,21 +892,21 @@ export default class CallClient extends EventEmitter {
         }
 
         if (topic === CALL_MESSAGE_TOPICS.REACTION) {
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             try {
                 const {emojiData, timestamp} = JSON.parse(new TextDecoder().decode(payload)) as ReactionPayload;
-                const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
 
                 this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
 
                 logDebug(`CallClient: reaction received from user ${userID}`, emojiData);
             } catch (err) {
-                logErr('CallClient.handleDataReceivedFromParticipant: failed to parse reaction', err);
+                logErr(`CallClient: reactions received from user ${userID} failed to parse`, err);
             }
         }
     }
 
     /**
-     * Fires when LiveKit encounters an error while attempting to create a track.
+     * Fires when LiveKit encounters an error while attempting to create a media track.
      * It throws for any device error, could be audio, video, or screen share.
      */
     private handleMediaDevicesError(err: Error) {
@@ -920,7 +915,7 @@ export default class CallClient extends EventEmitter {
             return;
         }
 
-        logErr('CallClient: media device error', err);
+        logErr('CallClient: media device error occurred', err);
         this.emit(CALL_EVENT.ERROR, err);
     }
 
@@ -1052,18 +1047,8 @@ export default class CallClient extends EventEmitter {
                 Room.getLocalDevices('audiooutput', false),
             ]);
             this.audioDevices = {inputs, outputs};
-
-            // Log a compact summary of what was returned. Empty labels mean
-            // permission has not yet been granted in this browsing context —
-            // matching localStorage against this list would pin a phantom
-            // "default" deviceId. (Gap #2.)
-            const summarize = (d: MediaDeviceInfo) => ({deviceId: d.deviceId, label: d.label});
-            logDebug('CallClient.enumerateDevices: result',
-                'inputs=', this.audioDevices.inputs.map(summarize),
-                'outputs=', this.audioDevices.outputs.map(summarize),
-                'labelsPopulated=', this.audioDevices.inputs.every((d) => d.label !== ''));
         } catch (err) {
-            logErr('CallClient: failed to enumerate devices', err);
+            logErr('CallClient: enumerating devices failed', err);
         }
         return this.audioDevices;
     }

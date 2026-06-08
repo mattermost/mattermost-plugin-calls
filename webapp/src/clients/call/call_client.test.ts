@@ -5,6 +5,7 @@ import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {ConnectionQuality, Room, RoomEvent, Track} from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {WEBSOCKET_EVENT, WebSocketClient} from 'src/clients/websocket';
+import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
@@ -1305,10 +1306,12 @@ describe('CallClient', () => {
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });
 
-        it('shareScreen returns null and emits ERROR when setScreenShareEnabled rejects', async () => {
+        it('shareScreen returns null and emits ERROR for a non-permission failure', async () => {
             await client.connect({channelID: 'test-channel'});
 
-            mockRoom.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(new Error('user denied'));
+            // A generic failure (name !== NotAllowedError) is not classified as PermissionDenied,
+            // so it still surfaces as a call error.
+            mockRoom.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(new Error('publish failed'));
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
@@ -1317,6 +1320,61 @@ describe('CallClient', () => {
             expect(stream).toBeNull();
             expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
+        });
+
+        it('shareScreen returns null and does NOT emit ERROR when the picker is cancelled/denied (PermissionDenied)', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            // Dismissing the screen picker rejects getDisplayMedia with NotAllowedError, which
+            // LiveKit re-throws from setScreenShareEnabled. MediaDeviceFailure classifies that as
+            // PermissionDenied (it reads err.name), so we must NOT raise the global error modal.
+            const notAllowed = Object.assign(new Error('Permission denied'), {name: 'NotAllowedError'});
+            mockRoom.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(notAllowed);
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            const stream = await client.shareScreen();
+
+            expect(stream).toBeNull();
+            expect(errorListener).not.toHaveBeenCalled();
+            expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('mute / unmute', () => {
+        it('unmute emits ERROR with AudioInputPermissionsErr (and does not throw) when mic permission is denied', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            // setMicrophoneEnabled rejects with NotAllowedError when the mic permission is
+            // denied/dismissed; MediaDeviceFailure classifies it as PermissionDenied (reads err.name).
+            const notAllowed = Object.assign(new Error('Permission dismissed'), {name: 'NotAllowedError'});
+            mockRoom.localParticipant.setMicrophoneEnabled.mockRejectedValueOnce(notAllowed);
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            // Resolves (no uncaught rejection) and surfaces the inline mic-permission alert.
+            await expect(client.unmute()).resolves.toBeUndefined();
+            expect(errorListener).toHaveBeenCalledWith(AudioInputPermissionsErr);
+        });
+
+        it('unmute emits ERROR with the underlying error for a non-permission failure', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const err = new Error('device in use');
+            mockRoom.localParticipant.setMicrophoneEnabled.mockRejectedValueOnce(err);
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            await client.unmute();
+
+            expect(errorListener).toHaveBeenCalledWith(err);
+        });
+
+        it('unmute is a no-op when not connected', async () => {
+            // No connect() — roomConnected stays false.
+            await client.unmute();
+
+            expect(mockRoom.localParticipant.setMicrophoneEnabled).not.toHaveBeenCalled();
         });
     });
 });
