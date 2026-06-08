@@ -716,16 +716,23 @@ export default class Plugin {
                     }
 
                     if (window.callsClient) {
+                        const callChannelID = window.callsClient.channelID;
                         const currentSessionID = window.callsClient.getSessionID();
                         const currentUserID = getCurrentUserId(store.getState());
-                        if (currentSessionID) {
-                            store.dispatch(leaveUser(window.callsClient.channelID, currentUserID, currentSessionID));
-                        }
 
-                        store.dispatch(localSessionClose(window.callsClient.channelID));
+                        // Tear down the global BEFORE dispatching. channelIDForCurrentCall
+                        // reads window.callsClient (a non-Redux global), so the dispatches
+                        // below must run against the cleared client to trigger a re-render
+                        // that flips the channel "Leave" button back to "Join". Deleting it
+                        // afterwards leaves the UI stale until some later incidental dispatch.
                         void window.callsClient.disconnect();
                         delete window.callsClient;
                         delete window.currentCallData;
+
+                        if (currentSessionID) {
+                            store.dispatch(leaveUser(callChannelID, currentUserID, currentSessionID));
+                        }
+                        store.dispatch(localSessionClose(callChannelID));
                         playSound('leave_self');
                     }
                 });
