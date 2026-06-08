@@ -658,19 +658,10 @@ export default class Plugin {
 
             try {
                 if (window.callsClient) {
-                    // A previous call is still active (e.g. Switch Call). window.callsClient is
-                    // not cleared synchronously — it's deleted by the DISCONNECTED handler below
-                    // once teardown completes — so chain the new call on that event rather than
-                    // bailing as "already initialized" (which silently dropped the switch).
-                    // disconnect() now always drives teardown, so DISCONNECTED is guaranteed.
-                    const existing = window.callsClient;
-                    existing.once(CALL_EVENT.DISCONNECTED, () => {
-                        // Re-enter on the next tick so the DISCONNECTED handler has finished
-                        // deleting window.callsClient before we start the new call.
-                        setTimeout(() => connectCall(channelID, title, rootId), 0);
-                    });
-                    existing.disconnect();
-                    return;
+                    // A previous call is still active (e.g. Switch Call). disconnect() resolves
+                    // once teardown completes — by then the DISCONNECTED handler below has deleted
+                    // window.callsClient — so we await it and fall through to start the new call.
+                    await window.callsClient.disconnect();
                 }
 
                 const state = store.getState();

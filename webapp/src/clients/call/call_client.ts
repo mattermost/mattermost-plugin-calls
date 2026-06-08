@@ -252,8 +252,14 @@ export default class CallClient extends EventEmitter {
     // The single public entry point to end a call. In the normal case it ONLY
     // initiates a LiveKit disconnect and does no teardown itself; all teardown is
     // driven by the resulting RoomEvent.Disconnected -> handleDisconnected().
-    public disconnect() {
+    public disconnect(): Promise<void> {
+        // Already torn down — nothing to wait for.
+        if (this.disconnected) {
+            return Promise.resolve();
+        }
         this.disconnecting = true;
+
+        const isDisconnectCompleted = new Promise<void>((resolve) => this.once(CALL_EVENT.DISCONNECTED, () => resolve()));
 
         if (this.room && this.room.state !== ConnectionState.Disconnected) {
             this.room.disconnect();
@@ -262,6 +268,8 @@ export default class CallClient extends EventEmitter {
             //  will not emit the event. This ensures teardown still occurs.
             this.handleDisconnected(DisconnectReason.CLIENT_INITIATED);
         }
+
+        return isDisconnectCompleted;
     }
 
     public async mute(): Promise<void> {
