@@ -377,8 +377,10 @@ export default class CallClient extends EventEmitter {
             }
         } catch (err) {
             // Roll back any partial publishes so we don't leave a live ScreenShare
-            // track behind, which would desync LiveKit and plugin WS state.
-            await Promise.all(publishedTracks.map((track) => this.room!.localParticipant.unpublishTrack(track, true)));
+            // track behind, which would desync LiveKit and plugin WS state. Use
+            // allSettled so a teardown failure can't mask the original publish
+            // error (err), which is what we actually want to surface.
+            await Promise.allSettled(publishedTracks.map((track) => this.room!.localParticipant.unpublishTrack(track, true)));
             screenStream.getTracks().forEach((track) => track.stop());
             throw err;
         }
