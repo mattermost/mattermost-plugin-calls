@@ -716,18 +716,19 @@ export default class Plugin {
                     }
 
                     if (window.callsClient) {
-                        const currentSessionID = window.callsClient.getSessionID();
+                        channelID = window.callsClient?.channelID ?? '';
+                        const currentSessionID = window.callsClient?.getSessionID();
                         const currentUserID = getCurrentUserId(store.getState());
-                        if (currentSessionID) {
-                            store.dispatch(leaveUser(window.callsClient.channelID, currentUserID, currentSessionID));
-                        }
-
-                        store.dispatch(localSessionClose(window.callsClient.channelID));
 
                         playSound('leave_self');
 
                         delete window.callsClient;
                         delete window.currentCallData;
+
+                        if (currentSessionID) {
+                            store.dispatch(leaveUser(channelID, currentUserID, currentSessionID));
+                        }
+                        store.dispatch(localSessionClose(channelID));
                     }
                 });
 
