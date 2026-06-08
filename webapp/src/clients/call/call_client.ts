@@ -131,6 +131,19 @@ export default class CallClient extends EventEmitter {
         return this.disconnected;
     }
 
+    // Back-compat aliases for the calls-recorder, which polls
+    // window.callsClient.connected and .closed to decide when to start/stop the
+    // ffmpeg capture. The recorder is media-stack-agnostic and shared across
+    // versions, so we satisfy its existing contract here rather than couple it to
+    // the v2 LiveKit naming.
+    public get connected(): boolean {
+        return this.isConnected;
+    }
+
+    public get closed(): boolean {
+        return this.isDisconnected;
+    }
+
     // _e2eForceWebsocketClose closes the plugin WebSocket without telling the
     // client to stay closed, so reconnect logic runs — used by E2E tests to
     // exercise the WS-reconnect path.
