@@ -387,6 +387,26 @@ describe('CallClient', () => {
     });
 
     describe('Connected event', () => {
+        it('exposes isConnected === true to CONNECTED subscribers even when Connected fires mid-connect', async () => {
+            // Real LiveKit emits RoomEvent.Connected synchronously inside room.connect(),
+            // before that promise resolves and before connect() can flip this.connected.
+            // Reproduce that ordering by firing it from within the mocked connect(): a
+            // CONNECTED subscriber must still observe isConnected === true.
+            let observedIsConnected: boolean | undefined;
+            client.on(CALL_EVENT.CONNECTED, () => {
+                observedIsConnected = client.isConnected;
+            });
+
+            mockRoom.connect.mockImplementationOnce(async () => {
+                mockRoom.fire(RoomEvent.Connected);
+                return null;
+            });
+
+            await client.connect({channelID: 'test-channel'});
+
+            expect(observedIsConnected).toBe(true);
+        });
+
         it('treats absent mic publication as muted', async () => {
             mockRoom.localParticipant.getTrackPublication.mockReturnValue(null);
             const muteListener = jest.fn();

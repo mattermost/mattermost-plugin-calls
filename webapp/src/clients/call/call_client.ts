@@ -636,6 +636,7 @@ export default class CallClient extends EventEmitter {
             return;
         }
 
+        this.connected = true;
         this.initTime = Date.now();
 
         // Request microphone permission in the background so connection
