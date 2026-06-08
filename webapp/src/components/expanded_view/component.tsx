@@ -749,7 +749,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.setAudioDevices(audioDevices);
         });
         onClient(CALL_EVENT.ERROR, (err: Error) => {
-            if (err === AudioInputPermissionsErr) {
+            if (err?.message === AudioInputPermissionsErr.message) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,
