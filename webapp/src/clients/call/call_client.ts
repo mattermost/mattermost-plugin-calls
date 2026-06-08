@@ -13,6 +13,7 @@ import {
     DisconnectReason,
     LocalAudioTrack,
     LocalParticipant,
+    LocalTrack,
     LocalTrackPublication,
     LocalVideoTrack,
     MediaDeviceFailure,
@@ -315,29 +316,7 @@ export default class CallClient extends EventEmitter {
 
         try {
             if (window.desktop) {
-                // Desktop: the source was already chosen via Electron's desktopCapturer
-                // picker. LiveKit's setScreenShareEnabled() would call getDisplayMedia()
-                // and ignore the chosen sourceID, so capture that specific source ourselves
-                // (getScreenStream uses getUserMedia + chromeMediaSourceId) and publish the
-                // tracks tagged as ScreenShare, mirroring LiveKit's own createScreenTracks().
-                const screenStream = await getScreenStream(sourceID, withAudio);
-                if (!screenStream) {
-                    return null;
-                }
-
-                const [videoTrack] = screenStream.getVideoTracks();
-                if (videoTrack) {
-                    const screenVideo = new LocalVideoTrack(videoTrack, undefined, false);
-                    screenVideo.source = Track.Source.ScreenShare;
-                    await this.room.localParticipant.publishTrack(screenVideo);
-                }
-
-                const [audioTrack] = screenStream.getAudioTracks();
-                if (audioTrack) {
-                    const screenAudio = new LocalAudioTrack(audioTrack, undefined, false);
-                    screenAudio.source = Track.Source.ScreenShareAudio;
-                    await this.room.localParticipant.publishTrack(screenAudio);
-                }
+                await this.shareScreenInDesktop(sourceID, withAudio);
             } else {
                 // Browser: let LiveKit drive getDisplayMedia + its native picker / "Stop sharing" bar.
                 // Only hint systemAudio when audio capture is actually requested.
@@ -360,6 +339,48 @@ export default class CallClient extends EventEmitter {
             logErr('CallClient.shareScreen: failed', err);
             this.emit(CALL_EVENT.ERROR, err);
             return null;
+        }
+    }
+
+    // shareScreenInDesktop captures and publishes the source already chosen via
+    // Electron's desktopCapturer picker. LiveKit's setScreenShareEnabled() would
+    // call getDisplayMedia() and ignore the chosen sourceID, so we capture that
+    // specific source ourselves (getScreenStream uses getUserMedia +
+    // chromeMediaSourceId) and publish the tracks tagged as ScreenShare,
+    // mirroring LiveKit's own createScreenTracks().
+    private async shareScreenInDesktop(sourceID?: string, withAudio?: boolean): Promise<void> {
+        if (!this.room) {
+            return;
+        }
+
+        const screenStream = await getScreenStream(sourceID, withAudio);
+        if (!screenStream) {
+            return;
+        }
+
+        const publishedTracks: LocalTrack[] = [];
+        try {
+            const [videoTrack] = screenStream.getVideoTracks();
+            if (videoTrack) {
+                const screenVideo = new LocalVideoTrack(videoTrack, undefined, false);
+                screenVideo.source = Track.Source.ScreenShare;
+                await this.room.localParticipant.publishTrack(screenVideo);
+                publishedTracks.push(screenVideo);
+            }
+
+            const [audioTrack] = screenStream.getAudioTracks();
+            if (audioTrack) {
+                const screenAudio = new LocalAudioTrack(audioTrack, undefined, false);
+                screenAudio.source = Track.Source.ScreenShareAudio;
+                await this.room.localParticipant.publishTrack(screenAudio);
+                publishedTracks.push(screenAudio);
+            }
+        } catch (err) {
+            // Roll back any partial publishes so we don't leave a live ScreenShare
+            // track behind, which would desync LiveKit and plugin WS state.
+            await Promise.all(publishedTracks.map((track) => this.room!.localParticipant.unpublishTrack(track, true)));
+            screenStream.getTracks().forEach((track) => track.stop());
+            throw err;
         }
     }
 
