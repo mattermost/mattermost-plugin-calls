@@ -2,11 +2,15 @@
 // See LICENSE.txt for license information.
 
 import type {EmojiData} from '@mattermost/calls-common/lib/types';
-<<<<<<< MM-69034-delete-teardown
-import {ConnectionQuality, ConnectionState, Room, RoomEvent, Track} from 'livekit-client';
-=======
-import {ConnectionQuality, LocalAudioTrack, LocalVideoTrack, Room, RoomEvent, Track} from 'livekit-client';
->>>>>>> v2
+import {
+    ConnectionQuality,
+    ConnectionState,
+    LocalAudioTrack,
+    LocalVideoTrack,
+    Room,
+    RoomEvent,
+    Track,
+} from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {WEBSOCKET_EVENT, WebSocketClient} from 'src/clients/websocket';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
