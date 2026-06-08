@@ -159,7 +159,6 @@ function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventDat
 function deinitRecording() {
     recordingRoot?.unmount();
     recordingRoot = null;
-    void window.callsClient?.disconnect();
     delete window.callsClient;
 }
 

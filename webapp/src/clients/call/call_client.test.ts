@@ -2,9 +2,18 @@
 // See LICENSE.txt for license information.
 
 import type {EmojiData} from '@mattermost/calls-common/lib/types';
-import {ConnectionQuality, LocalAudioTrack, LocalVideoTrack, Room, RoomEvent, Track} from 'livekit-client';
+import {
+    ConnectionQuality,
+    ConnectionState,
+    LocalAudioTrack,
+    LocalVideoTrack,
+    Room,
+    RoomEvent,
+    Track,
+} from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {WEBSOCKET_EVENT, WebSocketClient} from 'src/clients/websocket';
+import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
@@ -68,6 +77,7 @@ type RoomEventHandler = (...args: any[]) => void;
 
 type MockRoom = {
     on: jest.Mock;
+    state?: ConnectionState;
     connect: jest.Mock;
     prepareConnection: jest.Mock;
     disconnect: jest.Mock;
@@ -305,13 +315,98 @@ describe('CallClient', () => {
             expect(client.isConnected).toBe(true);
             expect(client.isDisconnected).toBe(false);
 
-            await client.disconnect();
+            mockRoom.fire(RoomEvent.Disconnected);
             expect(client.isConnected).toBe(false);
             expect(client.isDisconnected).toBe(true);
         });
     });
 
+    describe('disconnect', () => {
+        it('on a connected room, delegates to room.disconnect() so the LiveKit event drives teardown', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.state = ConnectionState.Connected;
+
+            const disconnectedListener = jest.fn();
+            client.on(CALL_EVENT.DISCONNECTED, disconnectedListener);
+
+            client.disconnect();
+            expect(mockRoom.disconnect).toHaveBeenCalled();
+
+            // Teardown is driven by the resulting RoomEvent.Disconnected, not synchronously here.
+            mockRoom.fire(RoomEvent.Disconnected);
+            expect(client.isDisconnected).toBe(true);
+            expect(mockWebSocketClient.sendLeave).toHaveBeenCalled();
+            expect(disconnectedListener).toHaveBeenCalled();
+        });
+
+        it('before the room connects, tears down directly (livekit room.disconnect would not emit)', () => {
+            // The room sits in its initial Disconnected state for the whole pre-connect window;
+            // livekit room.disconnect() is a silent no-op there, so disconnect() must drive
+            // teardown itself or the call is left stuck on "Connecting…" (MM-69034).
+            mockRoom.state = ConnectionState.Disconnected;
+
+            const disconnectedListener = jest.fn();
+            client.on(CALL_EVENT.DISCONNECTED, disconnectedListener);
+
+            expect(client.isDisconnected).toBe(false);
+            client.disconnect();
+
+            expect(mockRoom.disconnect).not.toHaveBeenCalled();
+            expect(client.isDisconnected).toBe(true);
+            expect(mockWebSocketClient.sendLeave).toHaveBeenCalled();
+            expect(mockWebSocketClient.close).toHaveBeenCalled();
+            expect(disconnectedListener).toHaveBeenCalled();
+        });
+
+        it('cancelling mid-connect bails quietly without emitting ERROR', async () => {
+            mockRoom.state = ConnectionState.Disconnected;
+
+            // Hold the WS handshake open so we can cancel while still "Connecting…".
+            let rejectReady: (e: Error) => void = () => {};
+            mockWebSocketClient.ready.mockImplementationOnce(
+                () => new Promise<string>((_resolve, reject) => {
+                    rejectReady = reject;
+                }),
+            );
+
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            const connectPromise = client.connect({channelID: 'test-channel'});
+
+            // User hangs up before the room connected → direct teardown.
+            client.disconnect();
+
+            // Teardown closed the WS, so the in-flight ready() rejects.
+            rejectReady(new Error('websocket closed'));
+
+            await expect(connectPromise).resolves.toBeUndefined();
+            expect(errorListener).not.toHaveBeenCalled();
+            expect(client.isDisconnected).toBe(true);
+        });
+    });
+
     describe('Connected event', () => {
+        it('exposes isConnected === true to CONNECTED subscribers even when Connected fires mid-connect', async () => {
+            // Real LiveKit emits RoomEvent.Connected synchronously inside room.connect(),
+            // before that promise resolves and before connect() can flip this.connected.
+            // Reproduce that ordering by firing it from within the mocked connect(): a
+            // CONNECTED subscriber must still observe isConnected === true.
+            let observedIsConnected: boolean | undefined;
+            client.on(CALL_EVENT.CONNECTED, () => {
+                observedIsConnected = client.isConnected;
+            });
+
+            mockRoom.connect.mockImplementationOnce(async () => {
+                mockRoom.fire(RoomEvent.Connected);
+                return null;
+            });
+
+            await client.connect({channelID: 'test-channel'});
+
+            expect(observedIsConnected).toBe(true);
+        });
+
         it('treats absent mic publication as muted', async () => {
             mockRoom.localParticipant.getTrackPublication.mockReturnValue(null);
             const muteListener = jest.fn();
@@ -926,6 +1021,22 @@ describe('CallClient', () => {
             expect(deviceChangeListener).toHaveBeenCalled();
         });
 
+        it('setAudioInputDevice leaves state unchanged when the LiveKit switch rejects', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const deviceChangeListener = jest.fn();
+            client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+            mockRoom.switchActiveDevice.mockRejectedValueOnce(new Error('device not found'));
+
+            await client.setAudioInputDevice(inputDevice);
+
+            expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('audioinput', 'mic-1', true);
+
+            // The switch failed, so the previous active device and storage must be untouched.
+            expect(client.currentAudioInputDevice).not.toBe(inputDevice);
+            expect(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY)).toBeNull();
+            expect(deviceChangeListener).not.toHaveBeenCalled();
+        });
+
         it('setAudioInputDevice with store=false skips the localStorage write', async () => {
             await client.connect({channelID: 'test-channel'});
 
@@ -1406,10 +1517,12 @@ describe('CallClient', () => {
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });
 
-        it('shareScreen returns null and emits ERROR when setScreenShareEnabled rejects', async () => {
+        it('shareScreen returns null and emits ERROR for a non-permission failure', async () => {
             await client.connect({channelID: 'test-channel'});
 
-            mockRoom.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(new Error('user denied'));
+            // A generic failure (name !== NotAllowedError) is not classified as PermissionDenied,
+            // so it still surfaces as a call error.
+            mockRoom.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(new Error('publish failed'));
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
@@ -1418,6 +1531,61 @@ describe('CallClient', () => {
             expect(stream).toBeNull();
             expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
+        });
+
+        it('shareScreen returns null and does NOT emit ERROR when the picker is cancelled/denied (PermissionDenied)', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            // Dismissing the screen picker rejects getDisplayMedia with NotAllowedError, which
+            // LiveKit re-throws from setScreenShareEnabled. MediaDeviceFailure classifies that as
+            // PermissionDenied (it reads err.name), so we must NOT raise the global error modal.
+            const notAllowed = Object.assign(new Error('Permission denied'), {name: 'NotAllowedError'});
+            mockRoom.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(notAllowed);
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            const stream = await client.shareScreen();
+
+            expect(stream).toBeNull();
+            expect(errorListener).not.toHaveBeenCalled();
+            expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('mute / unmute', () => {
+        it('unmute emits ERROR with AudioInputPermissionsErr (and does not throw) when mic permission is denied', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            // setMicrophoneEnabled rejects with NotAllowedError when the mic permission is
+            // denied/dismissed; MediaDeviceFailure classifies it as PermissionDenied (reads err.name).
+            const notAllowed = Object.assign(new Error('Permission dismissed'), {name: 'NotAllowedError'});
+            mockRoom.localParticipant.setMicrophoneEnabled.mockRejectedValueOnce(notAllowed);
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            // Resolves (no uncaught rejection) and surfaces the inline mic-permission alert.
+            await expect(client.unmute()).resolves.toBeUndefined();
+            expect(errorListener).toHaveBeenCalledWith(AudioInputPermissionsErr);
+        });
+
+        it('unmute emits ERROR with the underlying error for a non-permission failure', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const err = new Error('device in use');
+            mockRoom.localParticipant.setMicrophoneEnabled.mockRejectedValueOnce(err);
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            await client.unmute();
+
+            expect(errorListener).toHaveBeenCalledWith(err);
+        });
+
+        it('unmute is a no-op when not connected', async () => {
+            // No connect() — roomConnected stays false.
+            await client.unmute();
+
+            expect(mockRoom.localParticipant.setMicrophoneEnabled).not.toHaveBeenCalled();
         });
     });
 });

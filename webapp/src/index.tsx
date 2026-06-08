@@ -91,6 +91,7 @@ import {
 } from 'src/components/call_widget/end_call_confirmation';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
+import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     IDStopRecordingConfirmation,
     StopRecordingConfirmation,
@@ -657,8 +658,10 @@ export default class Plugin {
 
             try {
                 if (window.callsClient) {
-                    logErr('calls client is already initialized');
-                    return;
+                    // A previous call is still active (e.g. Switch Call). disconnect() resolves
+                    // once teardown completes — by then the DISCONNECTED handler below has deleted
+                    // window.callsClient — so we await it and fall through to start the new call.
+                    await window.callsClient.disconnect();
                 }
 
                 const state = store.getState();
@@ -716,21 +719,28 @@ export default class Plugin {
                     }
 
                     if (window.callsClient) {
-                        const currentSessionID = window.callsClient.getSessionID();
+                        channelID = window.callsClient?.channelID ?? '';
+                        const currentSessionID = window.callsClient?.getSessionID();
                         const currentUserID = getCurrentUserId(store.getState());
-                        if (currentSessionID) {
-                            store.dispatch(leaveUser(window.callsClient.channelID, currentUserID, currentSessionID));
-                        }
 
-                        store.dispatch(localSessionClose(window.callsClient.channelID));
-                        void window.callsClient.disconnect();
+                        playSound('leave_self');
+
                         delete window.callsClient;
                         delete window.currentCallData;
-                        playSound('leave_self');
+
+                        if (currentSessionID) {
+                            store.dispatch(leaveUser(channelID, currentUserID, currentSessionID));
+                        }
+                        store.dispatch(localSessionClose(channelID));
                     }
                 });
 
                 window.callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
+                    // Permission errors are surfaced as inline alerts
+                    if (err === AudioInputPermissionsErr) {
+                        return;
+                    }
+
                     store.dispatch(displayCallErrorModal(err, window.callsClient?.channelID));
                 });
 
@@ -773,7 +783,15 @@ export default class Plugin {
 
                 store.dispatch(setClientConnecting(true));
 
-                window.callsClient.connect({channelID, title, threadID: rootId}).catch((err: Error) => {
+                const connectingClient = window.callsClient;
+                connectingClient.connect({channelID, title, threadID: rootId}).catch((err: Error) => {
+                    // If a concurrent DISCONNECTED teardown already cleaned up (it deletes
+                    // window.callsClient) or a new call has since replaced this client, this
+                    // is a stale error — skip the error flow to avoid a spurious modal.
+                    if (window.callsClient !== connectingClient) {
+                        return;
+                    }
+
                     store.dispatch(setClientConnecting(false));
 
                     logErr(err);

@@ -105,7 +105,6 @@
       2,
       "never"
     ],
-    "consistent-return": 2,
     "consistent-this": [
       2,
       "self"

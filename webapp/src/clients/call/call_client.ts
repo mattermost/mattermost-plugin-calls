@@ -7,7 +7,6 @@ import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {ClientConfig} from '@mattermost/types/config';
 import {EventEmitter} from 'events';
 import {
-    AudioPresets,
     ConnectionQuality,
     ConnectionState,
     DisconnectReason,
@@ -27,9 +26,9 @@ import {
     Track,
     TrackPublication,
 } from 'livekit-client';
-import {AudioInputPermissionsError} from 'src/clients/calls';
 import RestClient from 'src/clients/rest';
 import {WEBSOCKET_EVENT, WebSocketClient, WebSocketError, WebSocketErrorType} from 'src/clients/websocket';
+import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
@@ -44,6 +43,7 @@ import {
     CALL_EVENT,
     CALL_MESSAGE_TOPICS,
     CALL_TOKEN_API_PATH,
+    TRACK_PUBLISHING_DEFAULTS,
     USER_ID_SESSION_ID_SEPARATOR,
 } from './constants';
 import {ConnectPayload, ReactionPayload, RtcTokenResponse} from './types';
@@ -56,8 +56,9 @@ export default class CallClient extends EventEmitter {
 
     private websocketClient: WebSocketClient | null = null;
     private room: Room | null = null;
+    private connected = false;
+    private disconnecting = false;
     private disconnected = false;
-    private roomConnected = false;
     private connectPayload: ConnectPayload | null = null;
 
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
@@ -93,11 +94,7 @@ export default class CallClient extends EventEmitter {
             dynacast: false,
             adaptiveStream: false,
             disconnectOnPageLeave: true,
-            publishDefaults: {
-                dtx: true,
-                red: true,
-                audioPreset: AudioPresets.speech,
-            },
+            publishDefaults: TRACK_PUBLISHING_DEFAULTS,
         });
         this.room = room;
         room.on(RoomEvent.Connected, this.handleConnected.bind(this));
@@ -127,7 +124,7 @@ export default class CallClient extends EventEmitter {
     // reflects the media plane only; plugin call state (host/sessions) hydrates via WS
     // separately, so callers needing that should wait on it themselves (see MM-69019).
     public get isConnected(): boolean {
-        return this.roomConnected && !this.disconnected;
+        return this.connected && !this.disconnected;
     }
 
     public get isDisconnected(): boolean {
@@ -142,7 +139,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async connect(connectPayload: ConnectPayload): Promise<void> {
-        if (this.roomConnected) {
+        if (this.connected) {
             throw new Error('CallClient: room already connected');
         }
 
@@ -167,8 +164,17 @@ export default class CallClient extends EventEmitter {
 
             logDebug('CallClient: pluginWS ready with connection_id', connectionId);
         } catch (err) {
+            // If the user cancelled the call before it connected, we will have already teared down
+            if (this.disconnecting) {
+                return;
+            }
+
             logErr('CallClient: pluginWS connection error', err);
             this.connectPayload = null;
+
+            // RoomEvent.Disconnected never fires for a pre-Connected failure, so clean up
+            this.websocketClient?.close();
+            this.websocketClient = null;
 
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
@@ -187,129 +193,148 @@ export default class CallClient extends EventEmitter {
 
             logDebug('CallClient: token fetched from token API', url);
         } catch (err) {
+            // If the user cancelled the network request before it connected, we will have already teared down
+            if (this.disconnecting) {
+                return;
+            }
+
             logErr('CallClient: token fetch error', err);
             this.connectPayload = null;
+
+            // The plugin WS is already open and the join was sent, so tell the server we're
+            // leaving before closing — otherwise it keeps the session until its own timeout.
+            this.websocketClient?.sendLeave();
+            this.websocketClient?.close();
+            this.websocketClient = null;
 
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
         }
 
         try {
-            // Warm DNS / WebSocket / ICE candidates before the final connect so the
-            // user-perceived join latency is lower. Safe to ignore failures here —
-            // they will resurface on the real connect call below.
-            try {
-                await this.room.prepareConnection(url, token);
-            } catch (prepareErr) {
-                logDebug('CallClient: prepareConnection failed (non-fatal)', prepareErr);
+            await this.room.prepareConnection(url, token);
+        } catch (prepareErr) {
+            // A disconnect() may have raced in during the awaits above.
+            if (this.disconnecting) {
+                return;
             }
 
+            logDebug('CallClient: prepareConnection failed though it is non-fatal', prepareErr);
+        }
+
+        try {
             await this.room.connect(url, token);
-            this.roomConnected = true;
+            this.connected = true;
 
             logDebug('CallClient: room connected');
         } catch (err) {
+            // A cancel during room.connect() makes LiveKit reject with a Cancelled error.
+            if (this.disconnecting) {
+                return;
+            }
+
             logErr('CallClient: room connection error', err);
-            this.roomConnected = false;
+            this.connected = false;
             this.connectPayload = null;
             this.room = null;
+
+            // The plugin WS is already open and the join was sent, so tell the server we're
+            // leaving before closing — otherwise it keeps the session until its own timeout.
+            this.websocketClient?.sendLeave();
+            this.websocketClient?.close();
+            this.websocketClient = null;
 
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
         }
     }
 
-    public async disconnect(err?: Error): Promise<void> {
+    // The single public entry point to end a call. In the normal case it ONLY
+    // initiates a LiveKit disconnect and does no teardown itself; all teardown is
+    // driven by the resulting RoomEvent.Disconnected -> handleDisconnected().
+    public disconnect(): Promise<void> {
+        // Already torn down — nothing to wait for.
         if (this.disconnected) {
-            logDebug('CallClient: already disconnected');
-            return;
+            return Promise.resolve();
+        }
+        this.disconnecting = true;
+
+        const isDisconnectCompleted = new Promise<void>((resolve) => this.once(CALL_EVENT.DISCONNECTED, () => resolve()));
+
+        if (this.room && this.room.state !== ConnectionState.Disconnected) {
+            this.room.disconnect();
+        } else {
+            // But! If room is already disconnected, run handleDisconnected directly since room.disconnect()
+            //  will not emit the event. This ensures teardown still occurs.
+            this.handleDisconnected(DisconnectReason.CLIENT_INITIATED);
         }
 
-        this.disconnected = true;
-        this.roomConnected = false;
-        this.connectPayload = null;
-
-        if (err) {
-            this.emit(CALL_EVENT.ERROR, err);
-        }
-
-        if (this.room) {
-            try {
-                await this.room.disconnect();
-            } catch (disconnectErr) {
-                logErr('CallClient: room disconnect error', disconnectErr);
-            } finally {
-                this.room = null;
-            }
-        }
-
-        if (this.websocketClient) {
-            // Tell the server we're leaving — server then broadcasts user_left
-            // and (if we were the last participant) call_ended.
-            try {
-                this.websocketClient.sendLeave();
-                this.websocketClient.close();
-            } catch (wsErr) {
-                logErr('CallClient: pluginWS teardown error', wsErr);
-            } finally {
-                this.websocketClient = null;
-            }
-        }
+        return isDisconnectCompleted;
     }
 
     public async mute(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
         await this.room.localParticipant.setMicrophoneEnabled(false);
     }
 
     public async unmute(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
-        await this.room.localParticipant.setMicrophoneEnabled(true);
+
+        try {
+            await this.room.localParticipant.setMicrophoneEnabled(true);
+        } catch (err) {
+            if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
+                this.emit(CALL_EVENT.ERROR, AudioInputPermissionsErr);
+            } else {
+                logErr('CallClient: unmuting microphone failed', err);
+                this.emit(CALL_EVENT.ERROR, err);
+            }
+        }
     }
 
     public async raiseHand(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
 
         try {
             await this.room.localParticipant.setAttributes({[CALL_ATTRIBUTES.RAISED_HAND]: String(Date.now())});
         } catch (err) {
-            logErr('CallClient.raiseHand: failed to set attribute', err);
+            logErr('CallClient: raising hand failed', err);
         }
     }
 
     public async unraiseHand(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
 
         try {
             await this.room.localParticipant.setAttributes({[CALL_ATTRIBUTES.RAISED_HAND]: ''});
         } catch (err) {
-            logErr('CallClient.unraiseHand: failed to set attribute', err);
+            logErr('CallClient: unraising hand failed', err);
         }
     }
 
     public async shareScreen(sourceID?: string, withAudio?: boolean): Promise<MediaStream | null> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return null;
         }
 
         // If we're already sharing, return the existing stream.
         if (this.room.localParticipant.getTrackPublication(Track.Source.ScreenShare)) {
-            logDebug('CallClient.shareScreen: this client is already sharing, returning existing stream');
+            logDebug('CallClient: you are already sharing screen');
             return this.getLocalScreenStream();
         }
 
         // If another participant is already sharing, we skip.
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
-                logDebug('CallClient.shareScreen: another participant is already sharing, skipping');
+                logDebug('CallClient: another participant is already sharing screen');
                 return null;
             }
         }
@@ -333,11 +358,15 @@ export default class CallClient extends EventEmitter {
                 this.websocketClient.sendScreenOn({screenStreamID: stream.id});
             }
 
-            logDebug('CallClient.shareScreen: stream started for sourceID', sourceID, 'withAudio', withAudio, 'stream.id', stream?.id);
+            logDebug('CallClient: screen share stream started', {sourceID, withAudio, streamID: stream?.id});
             return stream;
         } catch (err) {
-            logErr('CallClient.shareScreen: failed', err);
-            this.emit(CALL_EVENT.ERROR, err);
+            if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
+                logDebug('CallClient: screen share was either cancelled or permissions were denied');
+            } else {
+                logErr('CallClient: sharing screen failed', err);
+                this.emit(CALL_EVENT.ERROR, err);
+            }
             return null;
         }
     }
@@ -387,7 +416,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async unshareScreen(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
 
@@ -398,43 +427,40 @@ export default class CallClient extends EventEmitter {
             await this.room.localParticipant.setScreenShareEnabled(false);
             this.websocketClient?.sendScreenOff();
         } catch (err) {
-            logErr('CallClient.unshareScreen: failed', err);
+            logErr('CallClient: unsharing screen failed', err);
             this.emit(CALL_EVENT.ERROR, err);
         }
     }
 
     public async setAudioInputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
-        if (store) {
-            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
-                deviceId: device.deviceId,
-                label: device.label,
-            }));
+        if (!this.room) {
+            return;
         }
 
-        this.currentAudioInputDevice = device;
+        if (!this.connected) {
+            return;
+        }
 
         // LiveKit handles the published-track swap; no manual replaceTrack needed.
-        if (this.room && this.roomConnected) {
-            logDebug('CallClient.setAudioInputDevice: requesting switchActiveDevice', {requestedDeviceId: device.deviceId, requestedLabel: device.label});
-            try {
-                await this.room.switchActiveDevice('audioinput', device.deviceId, true);
+        // Only persist and update state after the switch succeeds, so a failure
+        // leaves the previous active device intact (no UI/state inconsistency).
+        try {
+            await this.room.switchActiveDevice('audioinput', device.deviceId, true);
 
-                const pub = this.room.localParticipant.getTrackPublication(Track.Source.Microphone);
-                const actualDeviceId = pub?.track?.mediaStreamTrack?.getSettings().deviceId;
-                if (actualDeviceId && actualDeviceId !== device.deviceId) {
-                    logErr('CallClient.setAudioInputDevice: device mismatch after switch',
-                        {requested: device.deviceId, actual: actualDeviceId, label: device.label});
-                } else {
-                    logDebug('CallClient.setAudioInputDevice: switch verified', {actualDeviceId: actualDeviceId ?? '(no track published yet)'});
-                }
-            } catch (err) {
-                logErr('CallClient.setAudioInputDevice: failed to switch device',
-                    {requestedDeviceId: device.deviceId, requestedLabel: device.label, errName: (err instanceof Error) ? err.name : 'unknown', err});
+            if (store) {
+                window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
+                    deviceId: device.deviceId,
+                    label: device.label,
+                }));
             }
-        }
+            this.currentAudioInputDevice = device;
 
-        logDebug('CallClient: emitting DEVICE_CHANGE for audio input', device.label, device.deviceId);
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+            logDebug('CallClient: audio input device switch successful', {deviceId: device.deviceId, label: device.label});
+            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+        } catch (err) {
+            logErr('CallClient: audio input device switch failed',
+                {requestedDeviceId: device.deviceId, requestedLabel: device.label, errName: (err instanceof Error) ? err.name : 'unknown', err});
+        }
     }
 
     public setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): void {
@@ -444,19 +470,18 @@ export default class CallClient extends EventEmitter {
                 label: device.label,
             }));
         }
-
         this.currentAudioOutputDevice = device;
 
         // Output sinkId routing is owned by call_widget — it applies setSinkId() on the
         // audio elements it creates after this method resolves. Calling LiveKit's
         // switchActiveDevice('audiooutput', …) here would create a second sinkId path.
 
-        logDebug('CallClient: emitting DEVICE_CHANGE for audio output', device.label, device.deviceId);
+        logDebug('CallClient: audio output device change requested', {deviceId: device.deviceId, label: device.label});
         this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
     public async sendReaction(emojiData: EmojiData) {
-        if (!this.room || !this.roomConnected) {
+        if (!this.room || !this.connected) {
             return;
         }
 
@@ -469,9 +494,10 @@ export default class CallClient extends EventEmitter {
             const encodedReactionPayload = new TextEncoder().encode(JSON.stringify(reactionPayload));
             await localParticipant.publishData(encodedReactionPayload, {reliable: true, topic: CALL_MESSAGE_TOPICS.REACTION});
 
+            logDebug('CallClient: reaction sent successfully', {emojiData, timestamp});
             this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
         } catch (err) {
-            logErr('CallClient.sendReaction: failed to publish reaction', err);
+            logErr('CallClient: reactions failed to send', err);
         }
     }
 
@@ -543,19 +569,19 @@ export default class CallClient extends EventEmitter {
 
     private handleWebsocketOpened(originalConnID: string, prevConnID: string, isReconnect: boolean) {
         if (!this.connectPayload) {
-            logErr('CallClient: ws open received without connect payload');
+            logErr('CallClient: pluginWS open received without connect payload');
             return;
         }
 
         if (isReconnect) {
-            logDebug('CallClient: ws reconnect, sending reconnect msg');
+            logDebug('CallClient: pluginWS reconnect, sending reconnect msg');
             this.websocketClient?.sendReconnect({
                 channelID: this.connectPayload.channelID,
                 originalConnID,
                 prevConnID,
             });
         } else {
-            logDebug('CallClient: ws open, sending join msg');
+            logDebug('CallClient: pluginWS open, sending join msg');
             this.websocketClient?.sendJoin(this.connectPayload);
         }
     }
@@ -568,11 +594,11 @@ export default class CallClient extends EventEmitter {
         try {
             const msg = JSON.parse(data);
             if (!msg) {
-                logErr('ws.on(message): invalid message', data);
+                logErr('CallClient: pluginWS on(message): invalid message', data);
             }
-            logDebug('ws.on(message): message received', msg);
+            logDebug('CallClient: pluginWS on(message): message received', msg);
         } catch (err) {
-            logErr('ws.on(message): failed to handle message', err, 'data:', data);
+            logErr('CallClient: pluginWS on(message): failed to handle message', err, 'data:', data);
         }
     }
 
@@ -581,24 +607,30 @@ export default class CallClient extends EventEmitter {
     }
 
     private handleWebsocketErrored(err: WebSocketError) {
-        logErr('CallClient: ws error', err);
+        logErr('CallClient: pluginWS errored', err);
 
         switch (err.type) {
-        case WebSocketErrorType.Native:
+        case WebSocketErrorType.Native:{
+            // This is transient state, reconnect will be attempted
             break;
-        case WebSocketErrorType.ReconnectTimeout:
+        }
+        case WebSocketErrorType.ReconnectTimeout: {
             this.websocketClient = null;
-            this.disconnect(err);
+            this.emit(CALL_EVENT.ERROR, err);
+            this.disconnect();
             break;
-        case WebSocketErrorType.Join:
-            this.disconnect(err);
+        }
+        case WebSocketErrorType.Join: {
+            this.emit(CALL_EVENT.ERROR, err);
+            this.disconnect();
             break;
+        }
         default:
         }
     }
 
     private handleWebsocketClosed(code?: number) {
-        logDebug(`CallClient: ws close: ${code}`);
+        logDebug(`CallClient: pluginWS close: ${code}`);
     }
 
     private handleConnected() {
@@ -606,6 +638,7 @@ export default class CallClient extends EventEmitter {
             return;
         }
 
+        this.connected = true;
         this.initTime = Date.now();
 
         // Request microphone permission in the background so connection
@@ -669,7 +702,7 @@ export default class CallClient extends EventEmitter {
         try {
             // Just request permission to the microphone and
             // stop the track immediately to avoid any audio being published
-            logDebug('CallClient: requesting microphone permission (getUserMedia)');
+            logDebug('CallClient: requesting microphone permission');
             const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true});
             mediaStream.getTracks().forEach((mediaStreamTrack) => {
                 mediaStreamTrack.stop();
@@ -701,11 +734,12 @@ export default class CallClient extends EventEmitter {
 
             this.emit(CALL_EVENT.INIT_AUDIO);
         } catch (err) {
-            // MediaDeviceFailure.getFailure classifies device errors across browsers
-            // more reliably than checking err.name strings directly.
-            const failure = MediaDeviceFailure.getFailure(err);
-            const isPermissionDenied = failure === MediaDeviceFailure.PermissionDenied;
-            this.emit(CALL_EVENT.ERROR, isPermissionDenied ? AudioInputPermissionsError : err);
+            if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
+                this.emit(CALL_EVENT.ERROR, AudioInputPermissionsErr);
+            } else {
+                logErr('CallClient: failed to request microphone permission', err);
+                this.emit(CALL_EVENT.ERROR, err);
+            }
         }
     }
 
@@ -726,12 +760,30 @@ export default class CallClient extends EventEmitter {
     }
 
     private handleDisconnected(reason?: DisconnectReason) {
-        logDebug('CallClient: disconnected from room', reason);
+        logDebug('CallClient: room disconnected', reason);
 
-        this.roomConnected = false;
+        if (this.disconnected) {
+            return;
+        }
+
+        this.disconnected = true;
+        this.connected = false;
         this.connectPayload = null;
+        this.room = null;
 
         this.emit(CALL_EVENT.DISCONNECTED, reason);
+
+        if (this.websocketClient) {
+            try {
+                this.websocketClient.sendLeave();
+                this.websocketClient.close();
+            } catch (error) {
+                logErr('CallClient: pluginWS teardown error', error);
+            } finally {
+                this.websocketClient = null;
+                logDebug('CallClient: pluginWS disconnected');
+            }
+        }
     }
 
     /**
@@ -934,23 +986,31 @@ export default class CallClient extends EventEmitter {
         }
 
         if (topic === CALL_MESSAGE_TOPICS.REACTION) {
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             try {
                 const {emojiData, timestamp} = JSON.parse(new TextDecoder().decode(payload)) as ReactionPayload;
-                const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
 
                 this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
 
                 logDebug(`CallClient: reaction received from user ${userID}`, emojiData);
             } catch (err) {
-                logErr('CallClient.handleDataReceivedFromParticipant: failed to parse reaction', err);
+                logErr(`CallClient: reactions received from user ${userID} failed to parse`, err);
             }
         }
     }
 
+    /**
+     * Fires when LiveKit encounters an error while attempting to create a media track.
+     * It throws for any device error, could be audio, video, or screen share.
+     */
     private handleMediaDevicesError(err: Error) {
-        const failure = MediaDeviceFailure.getFailure(err);
-        logErr('CallClient: media device error', {failure, err});
-        this.emit(CALL_EVENT.ERROR, failure === MediaDeviceFailure.PermissionDenied ? AudioInputPermissionsError : err);
+        if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
+            // We already handle this error type in the respective handlers
+            return;
+        }
+
+        logErr('CallClient: media device error occurred', err);
+        this.emit(CALL_EVENT.ERROR, err);
     }
 
     /**
@@ -1081,18 +1141,8 @@ export default class CallClient extends EventEmitter {
                 Room.getLocalDevices('audiooutput', false),
             ]);
             this.audioDevices = {inputs, outputs};
-
-            // Log a compact summary of what was returned. Empty labels mean
-            // permission has not yet been granted in this browsing context —
-            // matching localStorage against this list would pin a phantom
-            // "default" deviceId. (Gap #2.)
-            const summarize = (d: MediaDeviceInfo) => ({deviceId: d.deviceId, label: d.label});
-            logDebug('CallClient.enumerateDevices: result',
-                'inputs=', this.audioDevices.inputs.map(summarize),
-                'outputs=', this.audioDevices.outputs.map(summarize),
-                'labelsPopulated=', this.audioDevices.inputs.every((d) => d.label !== ''));
         } catch (err) {
-            logErr('CallClient: failed to enumerate devices', err);
+            logErr('CallClient: enumerating devices failed', err);
         }
         return this.audioDevices;
     }

@@ -139,7 +139,6 @@ function deinitWidget(err?: Error) {
     // Using setTimeout to give the app enough time to play the sound before
     // closing the widget window.
     setTimeout(() => {
-        void window.callsClient?.disconnect();
         delete window.callsClient;
         widgetRoot?.unmount();
         widgetRoot = null;

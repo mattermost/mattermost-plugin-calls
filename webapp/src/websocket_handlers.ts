@@ -32,6 +32,7 @@ import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/use
 import {generateId} from 'mattermost-redux/utils/helpers';
 import {
     callEnd,
+    displayCallErrorModal,
     incomingCallOnChannel,
     joinUser,
     leaveUser,
@@ -39,7 +40,7 @@ import {
     removeIncomingCallNotification,
 } from 'src/actions';
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/clients/calls';
-import {hostRemovedMsg} from 'src/components/call_error_modal';
+import {HostRemovedYouFromCallErr} from 'src/components/error_modal/error_messages';
 import {
     HOST_CONTROL_NOTICE_TIMEOUT,
     JOB_TYPE_CAPTIONING,
@@ -349,7 +350,9 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
     const removerUserID = ev.data.remover_id;
 
     if (removedUserID === currentUserID && channelID === channelIDForCurrentCall(store.getState())) {
-        getCallsClient()?.disconnect(removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr);
+        const errorMessage = removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr;
+        store.dispatch(displayCallErrorModal(errorMessage, channelID));
+        getCallsClient()?.disconnect();
     }
 }
 
@@ -468,7 +471,8 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControl
 
     const sessionID = client.getSessionID();
     if (ev.data.session_id === sessionID) {
-        getCallsClient()?.disconnect(new Error(hostRemovedMsg));
+        store.dispatch(displayCallErrorModal(HostRemovedYouFromCallErr, channelID));
+        getCallsClient()?.disconnect();
         return;
     }
 

@@ -17,12 +17,13 @@ import {compareSemVer} from 'semver-parser';
 import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call';
-import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/clients/calls';
+import {VideoInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
+import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     IDStopRecordingConfirmation,
     StopRecordingConfirmation,
@@ -625,7 +626,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
-            if (err === AudioInputPermissionsError) {
+            if (err === AudioInputPermissionsErr) {
                 this.setState({
                     alerts: {
                         ...this.state.alerts,

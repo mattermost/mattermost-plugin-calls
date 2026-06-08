@@ -20,16 +20,16 @@ import {AnyAction, Dispatch} from 'redux';
 import {batchActions} from 'redux-batched-actions';
 import RestClient from 'src/clients/rest';
 import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from 'src/cloud_pricing/modals';
-import {CallErrorModal, CallErrorModalID} from 'src/components/call_error_modal';
+import {ErrorModal, IdForErrorModel} from 'src/components/error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
 import {
     callDismissedNotification,
-    calls, channelIDForCurrentCall,
+    getCallIDForChannel,
+    getCallIDForCurrentCall,
     hostChangeAtForCurrentCall,
-    idForCurrentCall,
     incomingCalls,
     numSessionsInCallInChannel,
     ringingEnabled,
@@ -265,8 +265,8 @@ export const endCall = (channelID: string) => {
 
 export const displayCallErrorModal = (err: Error, channelID?: string) => (dispatch: Dispatch) => {
     dispatch(modals.openModal({
-        modalId: CallErrorModalID,
-        dialogType: CallErrorModal,
+        modalId: IdForErrorModel,
+        dialogType: ErrorModal,
         dialogProps: {
             channelID,
             err,
@@ -377,7 +377,7 @@ export function incomingCallOnChannel(channelID: string, callID: string, callerI
 
         // Never send a notification for a call you started yourself, or a call you are currently in.
         const currentUserID = getCurrentUserId(getState());
-        const currentCallID = idForCurrentCall(getState());
+        const currentCallID = getCallIDForCurrentCall(getState());
         if (currentUserID === callerID || currentCallID === callID) {
             return;
         }
@@ -422,7 +422,7 @@ export const joinUser = (channelID: string, userID: string, sessionID: string, i
 
         // Ringing should stop once you accept on one device, the other devices should stop ringing.
         if (ringingEnabled(state) && isSameUser) {
-            const callID = calls(state)[channelID]?.ID || '';
+            const callID = getCallIDForChannel(state, channelID);
             dispatch(removeIncomingCallNotification(callID));
             notificationsStopRinging();
         }
@@ -451,27 +451,24 @@ export const joinUser = (channelID: string, userID: string, sessionID: string, i
     };
 };
 
+export const callEnd = (channelID: string) => {
+    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const callID = getCallIDForChannel(getState(), channelID);
+
+        dispatch(callEnded(channelID, callID));
+        dispatch(removeIncomingCallNotification(callID));
+    };
+};
+
 export const leaveUser = (channelID: string, userID: string, sessionID: string) => {
     return (dispatch: DispatchFunc, getState: GetStateFunc) => {
         dispatch(userLeft(channelID, sessionID, userID));
 
         if (numSessionsInCallInChannel(getState(), channelID) === 0) {
-            dispatch(callEnd(channelID));
+            const callID = getCallIDForChannel(getState(), channelID);
+            dispatch(callEnded(channelID, callID));
+            dispatch(removeIncomingCallNotification(callID));
         }
-    };
-};
-
-export const callEnd = (channelID: string) => {
-    return (dispatch: DispatchFunc, getState: GetStateFunc) => {
-        if (channelIDForCurrentCall(getState()) === channelID) {
-            window.callsClient?.disconnect();
-        }
-
-        const callID = calls(getState())[channelID]?.ID || '';
-
-        dispatch(callEnded(channelID, callID));
-
-        dispatch(removeIncomingCallNotification(callID));
     };
 };
 
