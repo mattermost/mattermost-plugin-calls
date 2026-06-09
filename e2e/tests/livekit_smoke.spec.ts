@@ -50,6 +50,13 @@ test.describe('livekit framework smoke', {tag: '@livekit-smoke'}, () => {
             await expect(page.locator('#calls-widget')).toBeVisible();
             await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
 
+            // Wait for the plugin WS-driven call state (host/sessions) to land in Redux
+            // before interacting with the mute button. The server sends call_state on
+            // connect which dispatches sessionsReceived — if that arrives AFTER we unmute
+            // it overwrites unmuted:true back to false (server always has unmuted:false
+            // since the LiveKit client never sends the clientMessageTypeUnmute WS message).
+            await page.waitForFunction(() => window.e2eCallStateLoaded?.());
+
             // Joining a regular channel starts muted (auto-unmute only fires in
             // DM/GM channels), so the mic button's aria-label is "Unmute". Click
             // it and assert it flips to "Mute". The flip requires the round-trip
