@@ -19,6 +19,7 @@ type Props = {
     currentUserID?: string,
     profiles: IDMappedObjects<UserProfile>,
     sessions: UserSessionState[],
+    screenSharingSessionID?: string,
     onParticipantRemove?: (sessionID: string, userID: string) => void,
 
     // Used by the recorder client.
@@ -51,6 +52,7 @@ export default function ParticipantsGrid({
     currentUserID,
     profiles,
     sessions,
+    screenSharingSessionID,
     onParticipantRemove,
     profileImages,
 }: Props) {
@@ -164,7 +166,7 @@ export default function ParticipantsGrid({
                     callID={callID}
                     userID={session.user_id}
                     sessionID={session.session_id}
-                    isSharingScreen={false}
+                    isSharingScreen={Boolean(screenSharingSessionID) && session.session_id === screenSharingSessionID}
                     onRemove={() => {
                         if (onParticipantRemove) {
                             onParticipantRemove(session.session_id, session.user_id);
