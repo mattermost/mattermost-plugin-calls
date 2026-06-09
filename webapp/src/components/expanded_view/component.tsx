@@ -1353,7 +1353,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         currentUserID={this.props.currentUserID}
                         profiles={this.props.profiles}
                         sessions={this.props.sessions}
-                        screenSharingSessionID={this.props.screenSharingSession?.session_id}
                         onParticipantRemove={this.onRemove}
                     />
                     }
