@@ -56,7 +56,7 @@ export default class CallClient extends EventEmitter {
 
     private websocketClient: WebSocketClient | null = null;
     private room: Room | null = null;
-    private connected = false;
+    private roomConnected = false;
     private disconnecting = false;
     private disconnected = false;
     private connectPayload: ConnectPayload | null = null;
@@ -124,7 +124,7 @@ export default class CallClient extends EventEmitter {
     // reflects the media plane only; plugin call state (host/sessions) hydrates via WS
     // separately, so callers needing that should wait on it themselves (see MM-69019).
     public get isConnected(): boolean {
-        return this.connected && !this.disconnected;
+        return this.roomConnected && !this.disconnected;
     }
 
     public get isDisconnected(): boolean {
@@ -152,7 +152,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async connect(connectPayload: ConnectPayload): Promise<void> {
-        if (this.connected) {
+        if (this.roomConnected) {
             throw new Error('CallClient: room already connected');
         }
 
@@ -237,7 +237,7 @@ export default class CallClient extends EventEmitter {
 
         try {
             await this.room.connect(url, token);
-            this.connected = true;
+            this.roomConnected = true;
 
             logDebug('CallClient: room connected');
         } catch (err) {
@@ -247,7 +247,7 @@ export default class CallClient extends EventEmitter {
             }
 
             logErr('CallClient: room connection error', err);
-            this.connected = false;
+            this.roomConnected = false;
             this.connectPayload = null;
             this.room = null;
 
@@ -286,14 +286,14 @@ export default class CallClient extends EventEmitter {
     }
 
     public async mute(): Promise<void> {
-        if (!this.room || !this.connected) {
+        if (!this.room || !this.roomConnected) {
             return;
         }
         await this.room.localParticipant.setMicrophoneEnabled(false);
     }
 
     public async unmute(): Promise<void> {
-        if (!this.room || !this.connected) {
+        if (!this.room || !this.roomConnected) {
             return;
         }
 
@@ -310,7 +310,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async raiseHand(): Promise<void> {
-        if (!this.room || !this.connected) {
+        if (!this.room || !this.roomConnected) {
             return;
         }
 
@@ -322,7 +322,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async unraiseHand(): Promise<void> {
-        if (!this.room || !this.connected) {
+        if (!this.room || !this.roomConnected) {
             return;
         }
 
@@ -334,7 +334,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async shareScreen(sourceID?: string, withAudio?: boolean): Promise<MediaStream | null> {
-        if (!this.room || !this.connected) {
+        if (!this.room || !this.roomConnected) {
             return null;
         }
 
@@ -429,7 +429,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async unshareScreen(): Promise<void> {
-        if (!this.room || !this.connected) {
+        if (!this.room || !this.roomConnected) {
             return;
         }
 
@@ -450,7 +450,7 @@ export default class CallClient extends EventEmitter {
             return;
         }
 
-        if (!this.connected) {
+        if (!this.roomConnected) {
             return;
         }
 
@@ -494,7 +494,7 @@ export default class CallClient extends EventEmitter {
     }
 
     public async sendReaction(emojiData: EmojiData) {
-        if (!this.room || !this.connected) {
+        if (!this.room || !this.roomConnected) {
             return;
         }
 
@@ -651,7 +651,7 @@ export default class CallClient extends EventEmitter {
             return;
         }
 
-        this.connected = true;
+        this.roomConnected = true;
         this.initTime = Date.now();
 
         // Request microphone permission in the background so connection
@@ -780,7 +780,7 @@ export default class CallClient extends EventEmitter {
         }
 
         this.disconnected = true;
-        this.connected = false;
+        this.roomConnected = false;
         this.connectPayload = null;
         this.room = null;
 
