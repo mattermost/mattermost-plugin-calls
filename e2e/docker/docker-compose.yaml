@@ -35,7 +35,7 @@ services:
       - "8065:8065"
 
   livekit:
-    image: livekit/livekit-server:v1.7.2
+    image: livekit/livekit-server:v1.13.1
     restart: on-failure
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml

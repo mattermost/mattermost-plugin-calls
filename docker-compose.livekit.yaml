@@ -1,6 +1,6 @@
 services:
   livekit-dev:
-    image: livekit/livekit-server
+    image: livekit/livekit-server:v1.13.1
     restart: unless-stopped
     ports:
       - "7880:7880"       # Signaling (HTTP/WebSocket)
