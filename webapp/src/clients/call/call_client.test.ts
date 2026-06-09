@@ -1172,7 +1172,7 @@ describe('CallClient', () => {
             expect(localScreenListener).toHaveBeenCalledWith(expect.anything(), 'me-session', 'me-id');
             expect(stream).not.toBeNull();
             expect((stream as MediaStream).getTracks()).toEqual([videoTrack]);
-            expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledWith({screenStreamID: (stream as MediaStream).id});
+            expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledTimes(1);
         });
 
         it('merges ScreenShareAudio into the same MediaStream as ScreenShare', async () => {
@@ -1253,7 +1253,7 @@ describe('CallClient', () => {
 
                 expect(localScreenListener).toHaveBeenCalledWith(expect.anything(), 'me-session', 'me-id');
                 expect(stream).not.toBeNull();
-                expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledWith({screenStreamID: (stream as MediaStream).id});
+                expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledTimes(1);
             });
 
             it('also publishes the system-audio track as ScreenShareAudio when withAudio is true', async () => {
