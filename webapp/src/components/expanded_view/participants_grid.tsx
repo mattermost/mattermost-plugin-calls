@@ -19,7 +19,6 @@ type Props = {
     currentUserID?: string,
     profiles: IDMappedObjects<UserProfile>,
     sessions: UserSessionState[],
-    screenSharingSessionID?: string,
     onParticipantRemove?: (sessionID: string, userID: string) => void,
 
     // Used by the recorder client.
@@ -52,7 +51,6 @@ export default function ParticipantsGrid({
     currentUserID,
     profiles,
     sessions,
-    screenSharingSessionID,
     onParticipantRemove,
     profileImages,
 }: Props) {
@@ -166,7 +164,11 @@ export default function ParticipantsGrid({
                     callID={callID}
                     userID={session.user_id}
                     sessionID={session.session_id}
-                    isSharingScreen={Boolean(screenSharingSessionID) && session.session_id === screenSharingSessionID}
+
+                    // The grid is only rendered when nobody is screen-sharing (the parent
+                    // gates it on !screenSharingSession), so a grid tile never needs the
+                    // host menu's "Stop screen share" item — it is always false here.
+                    isSharingScreen={false}
                     onRemove={() => {
                         if (onParticipantRemove) {
                             onParticipantRemove(session.session_id, session.user_id);
