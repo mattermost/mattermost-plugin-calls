@@ -366,11 +366,6 @@ export default class CallClient extends EventEmitter {
             }
 
             const stream = this.getLocalScreenStream();
-
-            if (stream && this.websocketClient) {
-                this.websocketClient.sendScreenOn({screenStreamID: stream.id});
-            }
-
             logDebug('CallClient: screen share stream started', {sourceID, withAudio, streamID: stream?.id});
             return stream;
         } catch (err) {
@@ -821,6 +816,15 @@ export default class CallClient extends EventEmitter {
                 this.unshareScreen();
                 logDebug('CallClient: local screen share stream teared down by user action on native "Stop sharing" bar');
             };
+
+            // Notify the server that screen sharing has started. We do this here rather than in
+            // shareScreen() to guarantee the track is fully published and accessible before the
+            // server broadcasts user_screen_on to all participants. This avoids a race where
+            // getLocalScreenStream() could return null if called immediately after
+            // setScreenShareEnabled() resolves (e.g. when using fake media in E2E tests).
+            if (this.websocketClient) {
+                this.websocketClient.sendScreenOn({screenStreamID: localTrackPublication.track.mediaStreamTrack?.id ?? ''});
+            }
         }
 
         // LiveKit publishes ScreenShare (video) and ScreenShareAudio as two separate tracks, so this
