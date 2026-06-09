@@ -164,10 +164,6 @@ export default function ParticipantsGrid({
                     callID={callID}
                     userID={session.user_id}
                     sessionID={session.session_id}
-
-                    // The grid is only rendered when nobody is screen-sharing (the parent
-                    // gates it on !screenSharingSession), so a grid tile never needs the
-                    // host menu's "Stop screen share" item — it is always false here.
                     isSharingScreen={false}
                     onRemove={() => {
                         if (onParticipantRemove) {
