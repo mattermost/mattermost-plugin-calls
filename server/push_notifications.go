@@ -102,6 +102,7 @@ func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string
 			Version:     model.PushMessageV2,
 			Type:        model.PushTypeMessage,
 			SubType:     model.PushSubTypeCalls,
+			Transport:   model.PushTransportVoIP,
 			TeamId:      channel.TeamId,
 			ChannelId:   channelID,
 			PostId:      createdPostID,
