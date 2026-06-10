@@ -186,11 +186,8 @@ function connectCall(
             if (closeCb) {
                 let err = lastError;
 
-                // Server-driven disconnects that aren't failures: the user left, the
-                // host ended the call for everyone, or the host removed this user.
-                // These must not be fabricated into an error (otherwise Desktop shows
-                // a spurious "Something went wrong with calls" modal). Genuine media-
-                // plane failures still set lastError and report as before.
+                // Don't fabricate an error for clean server-driven disconnects (user
+                // left, host ended the call, host removed this user); only real failures set lastError.
                 const cleanReasons = [
                     DisconnectReason.CLIENT_INITIATED,
                     DisconnectReason.ROOM_DELETED,
