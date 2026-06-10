@@ -431,8 +431,13 @@ export function handleHostLowerHand(store: Store, ev: WebSocketMessage<HostContr
 
     client.unraiseHand();
 
-    const profiles = profilesInCurrentCallMap(store.getState());
-    const displayName = getUserDisplayName(profiles[ev.data.host_id]);
+    const hostID = ev.data.host_id;
+    const hostProfile = profilesInCurrentCallMap(store.getState())[hostID] || getUser(store.getState(), hostID);
+    if (!hostProfile) {
+        return;
+    }
+
+    const displayName = getUserDisplayName(hostProfile);
 
     const hostNotice: HostControlNotice = {
         type: HostControlNoticeType.LowerHand,
@@ -476,13 +481,13 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControl
         return;
     }
 
-    const profile = profilesInCurrentCallMap(store.getState())[ev.data.user_id] ||
-        getUser(store.getState(), ev.data.user_id);
-    if (!profile) {
+    const userID = ev.data.user_id;
+    const userProfile = profilesInCurrentCallMap(store.getState())[userID] || getUser(store.getState(), userID);
+    if (!userProfile) {
         return;
     }
 
-    const displayName = getUserDisplayName(profile);
+    const displayName = getUserDisplayName(userProfile);
 
     const hostNotice: HostControlNotice = {
         type: HostControlNoticeType.HostRemoved,

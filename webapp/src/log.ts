@@ -10,8 +10,23 @@ import {pluginId} from './manifest';
 
 let clientLogs = '';
 
+function stringifyLogArg(arg: unknown): string {
+    if (typeof arg === 'string') {
+        return arg;
+    }
+    if (arg instanceof Error) {
+        return arg.stack || `${arg.name}: ${arg.message}`;
+    }
+    try {
+        return JSON.stringify(arg) ?? String(arg);
+    } catch {
+        return String(arg);
+    }
+}
+
 function appendClientLog(level: string, ...args: unknown[]) {
-    clientLogs += `${level} [${new Date().toISOString()}] ${args}\n`;
+    const serialized = args.map(stringifyLogArg).join(' ');
+    clientLogs += `${level} [${new Date().toISOString()}] ${serialized}\n`;
 }
 
 export function persistClientLogs() {
