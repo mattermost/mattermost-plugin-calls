@@ -185,7 +185,15 @@ function connectCall(
             }
             if (closeCb) {
                 let err = lastError;
-                if (!err && typeof reason === 'number' && reason !== DisconnectReason.CLIENT_INITIATED) {
+
+                // Disconnect reasons expected in normal operation: the user left, the
+                // host ended the call, or the host removed this user.
+                const cleanReasons = [
+                    DisconnectReason.CLIENT_INITIATED,
+                    DisconnectReason.ROOM_DELETED,
+                    DisconnectReason.PARTICIPANT_REMOVED,
+                ];
+                if (!err && typeof reason === 'number' && !cleanReasons.includes(reason)) {
                     err = new Error(`disconnected from room (reason: ${DisconnectReason[reason]})`);
                 }
                 if (err) {
