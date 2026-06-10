@@ -186,8 +186,8 @@ function connectCall(
             if (closeCb) {
                 let err = lastError;
 
-                // Don't fabricate an error for clean server-driven disconnects (user
-                // left, host ended the call, host removed this user); only real failures set lastError.
+                // Disconnect reasons expected in normal operation: the user left, the
+                // host ended the call, or the host removed this user.
                 const cleanReasons = [
                     DisconnectReason.CLIENT_INITIATED,
                     DisconnectReason.ROOM_DELETED,
