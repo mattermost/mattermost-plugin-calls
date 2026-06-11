@@ -169,7 +169,9 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 	return sessionsMap, nil
 }
 
-func (s *Store) DeleteCallsSessions(callID string) error {
+// DeleteCallsSessions deletes all session rows for the given call and returns
+// the number of rows deleted.
+func (s *Store) DeleteCallsSessions(callID string) (int64, error) {
 	s.metrics.IncStoreOp("DeleteCallsSessions")
 	defer func(start time.Time) {
 		s.metrics.ObserveStoreMethodsTime("DeleteCallsSessions", time.Since(start).Seconds())
@@ -181,17 +183,23 @@ func (s *Store) DeleteCallsSessions(callID string) error {
 
 	q, args, err := qb.ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return 0, fmt.Errorf("failed to prepare query: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
 	defer cancel()
-	_, err = s.wDB.ExecContext(ctx, q, args...)
+	res, err := s.wDB.ExecContext(ctx, q, args...)
 	if err != nil {
-		return fmt.Errorf("failed to run query: %w", err)
+		return 0, fmt.Errorf("failed to run query: %w", err)
 	}
 
-	return nil
+	deleted, err := res.RowsAffected()
+	if err != nil {
+		// The rows were still deleted; we just couldn't get the count.
+		return 0, nil
+	}
+
+	return deleted, nil
 }
 
 func (s *Store) GetCallSessionsCount(callID string, opts GetCallSessionOpts) (int, error) {

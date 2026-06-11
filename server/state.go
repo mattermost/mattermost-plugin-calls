@@ -343,7 +343,7 @@ func (p *Plugin) cleanUpState() error {
 			continue
 		}
 
-		if err := p.cleanCallState(call); err != nil {
+		if err := p.cleanCallState(call, "cleanup_on_restart"); err != nil {
 			p.unlockCall(call.ChannelID)
 			return fmt.Errorf("failed to clean up state: %w", err)
 		}
@@ -355,8 +355,9 @@ func (p *Plugin) cleanUpState() error {
 }
 
 // NOTE: cleanCallState is meant to be called under lock (on channelID) so that
-// the operation can be performed atomically.
-func (p *Plugin) cleanCallState(call *public.Call) error {
+// the operation can be performed atomically. reason identifies what triggered
+// the call to end (e.g. host_end, cleanup_on_restart) for forensic logging.
+func (p *Plugin) cleanCallState(call *public.Call, reason string) error {
 	if call == nil {
 		return nil
 	}
@@ -369,9 +370,17 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 		setCallEnded(call)
 	}
 
-	if err := p.store.DeleteCallsSessions(call.ID); err != nil {
+	deleted, err := p.store.DeleteCallsSessions(call.ID)
+	if err != nil {
 		p.LogError("failed to delete calls sessions", "err", err.Error())
 	}
+
+	p.LogInfo("call ended",
+		"callID", call.ID,
+		"channelID", call.ChannelID,
+		"nodeID", p.nodeID,
+		"reason", reason,
+		"sessionsDeleted", deleted)
 
 	jobs, err := p.store.GetActiveCallJobs(call.ID, db.GetCallJobOpts{
 		FromWriter: true,

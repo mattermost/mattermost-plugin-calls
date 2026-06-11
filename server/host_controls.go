@@ -312,14 +312,26 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 		}
 	}
 
+	sessionCount := len(state.sessions)
+
 	// Destroy the LiveKit room. This forcibly disconnects every connected
 	// participant; each client's LiveKit SDK fires RoomEvent.Disconnected
 	// (reason=ROOM_DELETED), driving in-call UI teardown independently of
 	// plugin-WebSocket delivery.
+	roomDeleted := true
 	if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+		roomDeleted = false
 		p.LogError("hostEnd: failed to delete LiveKit room",
 			"channelID", channelID, "err", err.Error())
 	}
+
+	p.LogInfo("host ended call",
+		"callID", state.Call.ID,
+		"channelID", channelID,
+		"requesterID", requesterID,
+		"nodeID", p.nodeID,
+		"sessionCount", sessionCount,
+		"roomDeleted", roomDeleted)
 
 	// Notify the whole channel that the call has ended so bystander UI
 	// (toast, sidebar icon) clears immediately. In-call clients also receive
@@ -329,7 +341,7 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 		ReliableClusterSend: true,
 	})
 
-	if err := p.cleanCallState(&state.Call); err != nil {
+	if err := p.cleanCallState(&state.Call, "host_end"); err != nil {
 		return fmt.Errorf("failed to clean call state: %w", err)
 	}
 
