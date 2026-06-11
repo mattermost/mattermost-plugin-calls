@@ -481,7 +481,10 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Require the session to belong to the requesting user to prevent unauthorized token minting.
-	callSession, err := p.store.GetCallSession(requestingSessionID, db.GetCallSessionOpts{})
+	// Read from the writer: this is a security gate that immediately follows the join write
+	// (especially the recorder bot's job-gated join), and a read-replica lag under load would
+	// otherwise miss the just-written session and 403 a legitimate request.
+	callSession, err := p.store.GetCallSession(requestingSessionID, db.GetCallSessionOpts{FromWriter: true})
 	if err != nil && !errors.Is(err, db.ErrNotFound) {
 		p.LogError("failed to get call session", "err", err.Error(), "session_id", requestingSessionID)
 		res.Err = "Internal server error"
@@ -495,7 +498,8 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Require the session to belong to the active call in the requested channel.
-	activeCall, err := p.store.GetActiveCallByChannelID(requestingChannelID, db.GetCallOpts{})
+	// Read from the writer for the same reason as the session lookup above.
+	activeCall, err := p.store.GetActiveCallByChannelID(requestingChannelID, db.GetCallOpts{FromWriter: true})
 	if err != nil && !errors.Is(err, db.ErrNotFound) {
 		p.LogError("failed to get active call", "err", err.Error(), "channel_id", requestingChannelID)
 		res.Err = "Internal server error"
