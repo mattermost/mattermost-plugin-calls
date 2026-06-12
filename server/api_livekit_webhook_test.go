@@ -77,6 +77,10 @@ func TestHandleLiveKitWebhook(t *testing.T) {
 		mockAPI.On("GetLicense").Return(&model.License{SkuShortName: "enterprise"}, nil)
 		mockAPI.On("LogDebug", mock.AnythingOfType("string"), mock.Anything, mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+		mockAPI.On("LogInfo", mock.AnythingOfType("string"),
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
 		mockAPI.On("LogError", mock.AnythingOfType("string"), mock.Anything, mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
 		return p, mockAPI
