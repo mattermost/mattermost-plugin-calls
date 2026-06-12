@@ -1509,13 +1509,13 @@ func TestHandleClientMsgVideoStats(t *testing.T) {
 	t.Run("video on persists HasUsedVideo and VideoStartAt", func(t *testing.T) {
 		defer ResetTestStore(t, p.store)
 
-		channelID, _, connID, userID := setupCall(t)
+		channelID, callID, connID, userID := setupCall(t)
 		us := &session{
 			userID:         userID,
 			channelID:      channelID,
 			connID:         connID,
 			originalConnID: connID,
-			callID:         channelID,
+			callID:         callID,
 		}
 
 		err := p.handleClientMsg(us, clientMessage{Type: clientMessageTypeVideoOn}, handlerID)
@@ -1535,7 +1535,7 @@ func TestHandleClientMsgVideoStats(t *testing.T) {
 	t.Run("video off accumulates and persists VideoDuration", func(t *testing.T) {
 		defer ResetTestStore(t, p.store)
 
-		channelID, _, connID, userID := setupCall(t)
+		channelID, callID, connID, userID := setupCall(t)
 
 		// Simulate a video that was turned on 10 seconds ago and persisted, as
 		// the video_on handler would have done.
@@ -1555,7 +1555,7 @@ func TestHandleClientMsgVideoStats(t *testing.T) {
 			channelID:      channelID,
 			connID:         connID,
 			originalConnID: connID,
-			callID:         channelID,
+			callID:         callID,
 		}
 
 		err = p.handleClientMsg(us, clientMessage{Type: clientMessageTypeVideoOff}, handlerID)
