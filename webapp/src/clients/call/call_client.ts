@@ -23,6 +23,7 @@ import {
     Room,
     RoomEvent,
     ScreenShareCaptureOptions,
+    SubscriptionError,
     Track,
     TrackPublication,
 } from 'livekit-client';
@@ -30,12 +31,14 @@ import RestClient from 'src/clients/rest';
 import {WEBSOCKET_EVENT, WebSocketClient, WebSocketError, WebSocketErrorType} from 'src/clients/websocket';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
+    STORAGE_CALLS_CLIENT_STATS_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
-import {logDebug, logErr, logInfo, logWarn} from 'src/log';
-import {CallsClientStats, MediaDevices} from 'src/types/types';
-import {getPluginPath, getScreenStream} from 'src/utils';
+import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from 'src/log';
+import {parseRTCStats} from 'src/rtc_stats';
+import {CallsClientStats, MediaDevices, TrackMetadata} from 'src/types/types';
+import {getPersistentStorage, getPluginPath, getScreenStream} from 'src/utils';
 
 import {
     AUDIO_CAPTURE_DEFAULTS,
@@ -47,6 +50,46 @@ import {
     USER_ID_SESSION_ID_SEPARATOR,
 } from './constants';
 import {ConnectPayload, ReactionPayload, RtcTokenResponse} from './types';
+
+// trackMetadata extracts the diagnostic fields getStats() reports for a track,
+// from its underlying MediaStreamTrack. Mirrors the shape produced by the legacy
+// pion client so the --- Call Stats --- block looks the same on both paths.
+function trackMetadata(track: LocalTrack | RemoteTrack): TrackMetadata {
+    const mst = track.mediaStreamTrack;
+    return {
+        streamID: track.mediaStream?.id ?? '',
+        id: mst.id,
+        kind: mst.kind,
+        label: mst.label,
+        enabled: mst.enabled,
+        readyState: mst.readyState,
+    };
+}
+
+// mergeStatsReports flattens the per-track RTCStatsReports returned by the
+// LiveKit SDK into a single map keyed by stat id. RTCRtpSender/Receiver.getStats()
+// each return the full chain for their RTP stream — including the shared
+// transport and candidate-pair entries — so the same candidate-pair id appears
+// in every report on a given PeerConnection; keying by id dedupes those while
+// preserving the distinct publisher/subscriber transports. The result is a
+// Map, which satisfies RTCStatsReport (a ReadonlyMap) for parseRTCStats().
+function mergeStatsReports(reports: RTCStatsReport[]): RTCStatsReport {
+    // RTCStatsReport is a ReadonlyMap<string, any>; the per-stat value type is
+    // inherently any (it varies by stat type), matching the DOM lib definition.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const merged = new Map<string, any>();
+    for (const report of reports) {
+        report.forEach((stat, id) => {
+            merged.set(id, stat);
+        });
+    }
+    return merged;
+}
+
+// How often we sample RTC stats during a live call, so a last-known-good sample
+// is available to log if the call is torn down remotely. Matches the v1 client's
+// RTCMonitor cadence.
+const statsPollIntervalMs = 10000;
 
 export default class CallClient extends EventEmitter {
     public channelID = '';
@@ -60,6 +103,13 @@ export default class CallClient extends EventEmitter {
     private disconnecting = false;
     private disconnected = false;
     private connectPayload: ConnectPayload | null = null;
+
+    // Most recent periodic stats sample, captured while the call is live. On a
+    // remote-initiated teardown (host ends the call, network drop) the peer
+    // connections are already gone by the time we learn about it, so this is the
+    // best stats we can log for forensics. See startStatsPolling().
+    private lastStats: CallsClientStats | null = null;
+    private statsPollTimer: ReturnType<typeof setInterval> | null = null;
 
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
@@ -118,6 +168,8 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.MediaDevicesError, this.handleMediaDevicesError.bind(this));
         room.on(RoomEvent.ActiveDeviceChanged, this.handleActiveDeviceChanged.bind(this));
         room.on(RoomEvent.ConnectionQualityChanged, this.handleConnectionQualityChanged.bind(this));
+        room.on(RoomEvent.TrackSubscriptionFailed, this.handleTrackSubscriptionFailed.bind(this));
+        room.on(RoomEvent.EncryptionError, this.handleEncryptionError.bind(this));
     }
 
     // trackPubSummary returns a compact, log-friendly view of a track publication.
@@ -299,8 +351,9 @@ export default class CallClient extends EventEmitter {
     }
 
     // The single public entry point to end a call. In the normal case it ONLY
-    // initiates a LiveKit disconnect and does no teardown itself; all teardown is
-    // driven by the resulting RoomEvent.Disconnected -> handleDisconnected().
+    // initiates a LiveKit disconnect and does no teardown itself; all teardown —
+    // including the final stats/log flush — is driven by the resulting
+    // RoomEvent.Disconnected -> handleDisconnected().
     public disconnect(): Promise<void> {
         // Already torn down — nothing to wait for.
         if (this.disconnected) {
@@ -313,13 +366,49 @@ export default class CallClient extends EventEmitter {
         if (this.room && this.room.state !== ConnectionState.Disconnected) {
             this.room.disconnect();
         } else {
-            // But! If room is already disconnected, run handleDisconnected directly since room.disconnect()
-            //  will not emit the event. This ensures teardown still occurs.
+            // room.disconnect() will not emit the event in this state, so run
+            // handleDisconnected directly to ensure teardown still occurs.
             this.handleDisconnected(DisconnectReason.CLIENT_INITIATED);
         }
 
         return isDisconnectCompleted;
     }
+
+    // startStatsPolling samples RTC stats on an interval while the call is live,
+    // keeping the latest in lastStats. This is the sole stats source flushed at
+    // teardown: by the time we learn a call ended (especially a remote teardown)
+    // the peer connections are gone, so a fresh read is not possible.
+    private startStatsPolling(): void {
+        this.stopStatsPolling();
+
+        // Take an immediate sample rather than waiting a full interval, so a call
+        // that fails early still has stats — in particular the ICE candidate pairs,
+        // which are the key diagnostic for a connection that never stabilized.
+        void this.pollStats();
+
+        this.statsPollTimer = setInterval(this.pollStats, statsPollIntervalMs);
+    }
+
+    private stopStatsPolling(): void {
+        if (this.statsPollTimer) {
+            clearInterval(this.statsPollTimer);
+            this.statsPollTimer = null;
+        }
+    }
+
+    // pollStats captures one stats sample into lastStats. Arrow-bound so it can be
+    // handed directly to setInterval. Failures are logged at debug and swallowed —
+    // a transient read failure just means we keep the previous sample.
+    private pollStats = async (): Promise<void> => {
+        try {
+            const stats = await this.getStats();
+            if (stats) {
+                this.lastStats = stats;
+            }
+        } catch (err) {
+            logDebug('CallClient: periodic stats capture failed', err);
+        }
+    };
 
     public async mute(): Promise<void> {
         if (!this.room || !this.roomConnected) {
@@ -601,7 +690,50 @@ export default class CallClient extends EventEmitter {
     }
 
     public async getStats(): Promise<CallsClientStats | null> {
-        return null;
+        if (!this.room) {
+            return null;
+        }
+
+        const tracksInfo: TrackMetadata[] = [];
+        const reports: RTCStatsReport[] = [];
+
+        const collect = async (track: LocalTrack | RemoteTrack) => {
+            tracksInfo.push(trackMetadata(track));
+            try {
+                const report = await track.getRTCStatsReport();
+                if (report) {
+                    reports.push(report);
+                }
+            } catch (err) {
+                logWarn(`CallClient: failed to get RTC stats for track ${track.sid} (${track.source})`, err);
+            }
+        };
+
+        // Our published tracks (microphone, screen video/audio).
+        const collecting: Promise<void>[] = [];
+        for (const pub of this.room.localParticipant.trackPublications.values()) {
+            if (pub.track) {
+                collecting.push(collect(pub.track));
+            }
+        }
+
+        // Tracks we're subscribed to from remote participants.
+        for (const participant of this.room.remoteParticipants.values()) {
+            for (const pub of participant.trackPublications.values()) {
+                if (pub.track) {
+                    collecting.push(collect(pub.track));
+                }
+            }
+        }
+
+        await Promise.all(collecting);
+
+        return {
+            initTime: this.initTime,
+            channelID: this.channelID,
+            tracksInfo,
+            rtcStats: reports.length ? parseRTCStats(mergeStatsReports(reports)) : null,
+        };
     }
 
     public getSessionID() {
@@ -693,6 +825,10 @@ export default class CallClient extends EventEmitter {
 
         this.roomConnected = true;
         this.initTime = Date.now();
+
+        // Start sampling RTC stats so we have a last-known-good snapshot to log if
+        // the call is torn down remotely (see lastStats / startStatsPolling).
+        this.startStatsPolling();
 
         // Request microphone permission in the background so connection
         // handling is not blocked by the user's interaction.
@@ -826,6 +962,7 @@ export default class CallClient extends EventEmitter {
         this.roomConnected = false;
         this.connectPayload = null;
         this.room = null;
+        this.stopStatsPolling();
 
         this.emit(CALL_EVENT.DISCONNECTED, reason);
 
@@ -839,6 +976,15 @@ export default class CallClient extends EventEmitter {
                 this.websocketClient = null;
                 logDebug('CallClient: pluginWS disconnected');
             }
+        }
+
+        // Persist final diagnostics: the last periodic stats sample (lastStats is
+        // null for a call torn down within the first poll interval) folded into the
+        // log buffer that `/call logs` uploads, plus a copy under
+        // STORAGE_CALLS_CLIENT_STATS_KEY for `/call stats`, mirroring the v1 client.
+        flushLogsToAccumulated(this.lastStats);
+        if (this.lastStats) {
+            getPersistentStorage().setItem(STORAGE_CALLS_CLIENT_STATS_KEY, JSON.stringify(this.lastStats));
         }
     }
 
@@ -854,6 +1000,10 @@ export default class CallClient extends EventEmitter {
             this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
 
             logDebug(`CallClient: local voice stream published for user ${userID}`, this.trackPubSummary(localTrackPublication));
+
+            // The mic is usually the first track on the transport, so sample now to
+            // capture ICE candidate pairs as soon as they exist (see startStatsPolling).
+            void this.pollStats();
         }
 
         // Browser renders a native "Stop sharing" bar when sharing screen which has dismiss/stop button.
@@ -1076,6 +1226,22 @@ export default class CallClient extends EventEmitter {
 
         logErr('CallClient: media device error occurred', err);
         this.emit(CALL_EVENT.ERROR, err);
+    }
+
+    // Fires when the SDK fails to subscribe to a remote track — the media-layer
+    // cause behind "I can't hear/see someone". Logged for forensics; LiveKit
+    // retries subscription on its own, so we don't surface it to the user.
+    private handleTrackSubscriptionFailed(trackSid: string, participant: RemoteParticipant, reason?: SubscriptionError) {
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+        const reasonName = reason === undefined ? 'unknown' : SubscriptionError[reason];
+        logErr(`CallClient: track subscription failed for track ${trackSid} from user ${userID} (session ${sessionID}), reason: ${reasonName}`);
+    }
+
+    // Fires on an E2EE failure. Calls does not enable end-to-end encryption today,
+    // so this should not occur — logged defensively in case it ever does.
+    private handleEncryptionError(err: Error, participant?: Participant) {
+        const who = participant ? ` for user ${this.parseUserIdAndSessionIdFromIdentity(participant).userID}` : '';
+        logErr(`CallClient: encryption error${who}`, err);
     }
 
     /**

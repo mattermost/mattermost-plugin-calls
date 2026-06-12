@@ -15,10 +15,13 @@ import RestClient from 'src/clients/rest';
 import {WEBSOCKET_EVENT, WebSocketClient} from 'src/clients/websocket';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
+    STORAGE_CALLS_CLIENT_LOGS_KEY,
+    STORAGE_CALLS_CLIENT_STATS_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
-import {getScreenStream} from 'src/utils';
+import {flushLogsToAccumulated} from 'src/log';
+import {getPersistentStorage, getScreenStream} from 'src/utils';
 
 import CallClient from './call_client';
 import {CALL_EVENT} from './constants';
@@ -108,6 +111,7 @@ function createMockRoom(): MockRoom {
             setAttributes: jest.fn().mockResolvedValue(undefined),
             publishData: jest.fn().mockResolvedValue(undefined),
             audioTrackPublications: new Map(),
+            trackPublications: new Map(),
             attributes: {},
         },
         remoteParticipants: new Map(),
@@ -219,6 +223,9 @@ describe('CallClient', () => {
     });
 
     afterEach(() => {
+        // handleConnected starts a stats-polling interval; clear it so tests that
+        // fire RoomEvent.Connected without disconnecting don't leak a live timer.
+        (client as unknown as {stopStatsPolling(): void}).stopStatsPolling();
         jest.clearAllMocks();
     });
 
@@ -337,6 +344,138 @@ describe('CallClient', () => {
             expect(client.isDisconnected).toBe(true);
             expect(mockWebSocketClient.sendLeave).toHaveBeenCalled();
             expect(disconnectedListener).toHaveBeenCalled();
+        });
+
+        // Builds a publication whose track returns the given stats report, and seeds
+        // a single poll sample into lastStats — the same path the interval drives.
+        const seedStatsSample = async (channelID: string, ssrc: number, bytesSent: number) => {
+            const report = new Map<string, any>([
+                ['out-1', {id: 'out-1', type: 'outbound-rtp', ssrc, kind: 'audio', bytesSent}],
+            ]);
+            mockRoom.localParticipant.trackPublications = new Map([
+                ['pub-0', {track: {
+                    sid: 'mic',
+                    source: 'microphone',
+                    kind: 'audio',
+                    mediaStream: {id: 's'},
+                    mediaStreamTrack: {id: 'm', kind: 'audio', label: '', enabled: true, readyState: 'live'},
+                    getRTCStatsReport: jest.fn().mockResolvedValue(report),
+                }}],
+            ]);
+            client.channelID = channelID;
+            await (client as any).pollStats();
+        };
+
+        it('flushes the last sampled stats on a clean (user-initiated) disconnect', async () => {
+            await client.connect({channelID: 'clean'});
+            mockRoom.state = ConnectionState.Connected;
+            mockRoom.fire(RoomEvent.Connected);
+
+            await seedStatsSample('clean', 99, 42);
+
+            const storage = getPersistentStorage();
+            storage.removeItem(STORAGE_CALLS_CLIENT_STATS_KEY);
+            storage.removeItem(STORAGE_CALLS_CLIENT_LOGS_KEY);
+
+            client.disconnect();
+            expect(mockRoom.disconnect).toHaveBeenCalled();
+
+            // Teardown (and the stats/log flush) is driven by the resulting room event.
+            mockRoom.fire(RoomEvent.Disconnected);
+
+            const stored = JSON.parse(storage.getItem(STORAGE_CALLS_CLIENT_STATS_KEY) || '{}');
+            expect(stored.channelID).toBe('clean');
+            expect(stored.rtcStats.ssrcStats[99].local.out).toMatchObject({bytesSent: 42});
+            expect(storage.getItem(STORAGE_CALLS_CLIENT_LOGS_KEY)).toContain('--- Call Stats ---');
+        });
+
+        it('samples stats while connected and logs the last sample on remote teardown', async () => {
+            await client.connect({channelID: 'remote-end'});
+            mockRoom.fire(RoomEvent.Connected);
+
+            // Polling is active while the call is connected.
+            expect((client as any).statsPollTimer).not.toBeNull();
+
+            await seedStatsSample('remote-end', 7, 123);
+
+            const storage = getPersistentStorage();
+            storage.removeItem(STORAGE_CALLS_CLIENT_STATS_KEY);
+            storage.removeItem(STORAGE_CALLS_CLIENT_LOGS_KEY);
+
+            // Remote teardown: Disconnected arrives without disconnect() being called,
+            // so a fresh getStats() could no longer reach the (gone) peer connections.
+            mockRoom.fire(RoomEvent.Disconnected);
+
+            // Polling stopped, and the last sample was persisted + folded into the log buffer.
+            expect((client as any).statsPollTimer).toBeNull();
+            const stored = JSON.parse(storage.getItem(STORAGE_CALLS_CLIENT_STATS_KEY) || '{}');
+            expect(stored.channelID).toBe('remote-end');
+            expect(stored.rtcStats.ssrcStats[7].local.out).toMatchObject({bytesSent: 123});
+            expect(storage.getItem(STORAGE_CALLS_CLIENT_LOGS_KEY)).toContain('--- Call Stats ---');
+        });
+
+        it('takes an immediate stats sample with ICE candidate pairs on connect', async () => {
+            await client.connect({channelID: 'ice'});
+
+            // A subscribed track present at connect time, whose report carries a
+            // candidate pair — so the very first sample includes ICE stats.
+            const report = new Map<string, any>([
+                ['cp-1', {id: 'cp-1', type: 'candidate-pair', state: 'succeeded', nominated: true, localCandidateId: 'lc', remoteCandidateId: 'rc'}],
+                ['lc', {id: 'lc', type: 'local-candidate', candidateType: 'host'}],
+                ['rc', {id: 'rc', type: 'remote-candidate', candidateType: 'srflx'}],
+            ]);
+            mockRoom.localParticipant.trackPublications = new Map([
+                ['pub-0', {track: {
+                    sid: 'mic',
+                    source: 'microphone',
+                    kind: 'audio',
+                    mediaStream: {id: 's'},
+                    mediaStreamTrack: {id: 'm', kind: 'audio', label: '', enabled: true, readyState: 'live'},
+                    getRTCStatsReport: jest.fn().mockResolvedValue(report),
+                }}],
+            ]);
+
+            // handleConnected starts polling, which takes an immediate sample.
+            mockRoom.fire(RoomEvent.Connected);
+
+            // Let the immediate poll's microtasks settle — no timer advance needed.
+            await new Promise((resolve) => setImmediate(resolve));
+
+            expect((client as any).lastStats.rtcStats.iceStats.succeeded).toHaveLength(1);
+            expect((client as any).lastStats.rtcStats.iceStats.succeeded[0]).toMatchObject({
+                local: {candidateType: 'host'},
+                remote: {candidateType: 'srflx'},
+            });
+        });
+
+        it('samples stats when the local mic publishes (first track on the transport)', async () => {
+            await client.connect({channelID: 'mic-publish'});
+            client.channelID = 'mic-publish';
+
+            const report = new Map<string, any>([
+                ['out-1', {id: 'out-1', type: 'outbound-rtp', ssrc: 55, kind: 'audio', bytesSent: 9}],
+            ]);
+            mockRoom.localParticipant.trackPublications = new Map([
+                ['pub-0', {track: {
+                    sid: 'mic',
+                    source: 'microphone',
+                    kind: 'audio',
+                    mediaStream: {id: 's'},
+                    mediaStreamTrack: {id: 'm', kind: 'audio', label: '', enabled: true, readyState: 'live'},
+                    getRTCStatsReport: jest.fn().mockResolvedValue(report),
+                }}],
+            ]);
+
+            // Fire LocalTrackPublished for the mic, which should trigger an immediate sample.
+            mockRoom.fire(
+                RoomEvent.LocalTrackPublished,
+                {source: Track.Source.Microphone, isMuted: false, trackSid: 'mic', kind: 'audio', mimeType: 'audio/opus', track: {mediaStreamTrack: {id: 'm'}}},
+                mockRoom.localParticipant,
+            );
+
+            await new Promise((resolve) => setImmediate(resolve));
+
+            expect((client as any).lastStats.rtcStats.ssrcStats[55].local.out).toMatchObject({bytesSent: 9});
         });
 
         it('before the room connects, tears down directly (livekit room.disconnect would not emit)', () => {
@@ -1588,6 +1727,169 @@ describe('CallClient', () => {
             await client.unmute();
 
             expect(mockRoom.localParticipant.setMicrophoneEnabled).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('SDK error logging', () => {
+        it('logs an error when a remote track subscription fails', () => {
+            const storage = getPersistentStorage();
+            storage.removeItem(STORAGE_CALLS_CLIENT_LOGS_KEY);
+
+            mockRoom.fire(RoomEvent.TrackSubscriptionFailed, 'TR_abc', {identity: 'user1___sess1'}, undefined);
+
+            flushLogsToAccumulated();
+            const logs = storage.getItem(STORAGE_CALLS_CLIENT_LOGS_KEY) || '';
+            expect(logs).toContain('track subscription failed for track TR_abc');
+            expect(logs).toContain('user1');
+        });
+
+        it('logs an error on an encryption error', () => {
+            const storage = getPersistentStorage();
+            storage.removeItem(STORAGE_CALLS_CLIENT_LOGS_KEY);
+
+            mockRoom.fire(RoomEvent.EncryptionError, new Error('boom'));
+
+            flushLogsToAccumulated();
+            expect(storage.getItem(STORAGE_CALLS_CLIENT_LOGS_KEY) || '').toContain('encryption error');
+        });
+    });
+
+    describe('getStats', () => {
+        // makeTrack builds a minimal stand-in for a LiveKit Local/RemoteTrack:
+        // the fields trackMetadata() reads plus a getRTCStatsReport() returning
+        // the given W3C stats map.
+        const makeTrack = (opts: {
+            sid: string;
+            source: string;
+            mstId: string;
+            kind: string;
+            streamID?: string;
+            label?: string;
+            enabled?: boolean;
+            readyState?: string;
+            report?: Map<string, any> | undefined;
+            reportErr?: Error;
+        }) => ({
+            sid: opts.sid,
+            source: opts.source,
+            kind: opts.kind,
+            mediaStream: opts.streamID ? {id: opts.streamID} : undefined,
+            mediaStreamTrack: {
+                id: opts.mstId,
+                kind: opts.kind,
+                label: opts.label ?? '',
+                enabled: opts.enabled ?? true,
+                readyState: opts.readyState ?? 'live',
+            },
+            getRTCStatsReport: opts.reportErr ?
+                jest.fn().mockRejectedValue(opts.reportErr) :
+                jest.fn().mockResolvedValue(opts.report),
+        });
+
+        const setPublications = (local: any[], remote: any[]) => {
+            mockRoom.localParticipant.trackPublications = new Map(
+                local.map((track, i) => [`local-pub-${i}`, {track}]),
+            );
+            mockRoom.remoteParticipants = new Map([
+                ['remote-1', {
+                    trackPublications: new Map(
+                        remote.map((track, i) => [`remote-pub-${i}`, {track}]),
+                    ),
+                }],
+            ]);
+        };
+
+        it('returns null when there is no room', async () => {
+            (client as any).room = null;
+
+            expect(await client.getStats()).toBeNull();
+        });
+
+        it('reports track metadata and parsed rtc stats from local and remote tracks', async () => {
+            client.initTime = 1234;
+            client.channelID = 'channel-abc';
+
+            const localReport = new Map<string, any>([
+                ['out-1', {id: 'out-1', type: 'outbound-rtp', ssrc: 111, kind: 'audio', bytesSent: 500}],
+                ['cp-1', {id: 'cp-1', type: 'candidate-pair', state: 'succeeded', nominated: true, priority: 10, localCandidateId: 'lc-1', remoteCandidateId: 'rc-1'}],
+                ['lc-1', {id: 'lc-1', type: 'local-candidate', candidateType: 'host'}],
+                ['rc-1', {id: 'rc-1', type: 'remote-candidate', candidateType: 'srflx'}],
+            ]);
+            const remoteReport = new Map<string, any>([
+                ['in-1', {id: 'in-1', type: 'inbound-rtp', ssrc: 222, kind: 'audio', bytesReceived: 700}],
+            ]);
+
+            const micTrack = makeTrack({sid: 'mic-sid', source: 'microphone', kind: 'audio', mstId: 'mic-mst', streamID: 'mic-stream', label: 'Default Mic', report: localReport});
+            const remoteTrack = makeTrack({sid: 'rem-sid', source: 'microphone', kind: 'audio', mstId: 'rem-mst', streamID: 'rem-stream', report: remoteReport});
+            setPublications([micTrack], [remoteTrack]);
+
+            const stats = await client.getStats();
+
+            expect(stats).not.toBeNull();
+            expect(stats!.initTime).toBe(1234);
+            expect(stats!.channelID).toBe('channel-abc');
+
+            expect(stats!.tracksInfo).toEqual([
+                {streamID: 'mic-stream', id: 'mic-mst', kind: 'audio', label: 'Default Mic', enabled: true, readyState: 'live'},
+                {streamID: 'rem-stream', id: 'rem-mst', kind: 'audio', label: '', enabled: true, readyState: 'live'},
+            ]);
+
+            // SSRC stats from both reports are merged.
+            expect(stats!.rtcStats!.ssrcStats[111].local.out).toMatchObject({bytesSent: 500, kind: 'audio'});
+            expect(stats!.rtcStats!.ssrcStats[222].local.in).toMatchObject({bytesReceived: 700, kind: 'audio'});
+
+            // ICE candidate-pair was parsed and its local/remote candidates resolved.
+            expect(stats!.rtcStats!.iceStats.succeeded).toHaveLength(1);
+            expect(stats!.rtcStats!.iceStats.succeeded[0]).toMatchObject({
+                id: 'cp-1',
+                nominated: true,
+                local: {id: 'lc-1', candidateType: 'host'},
+                remote: {id: 'rc-1', candidateType: 'srflx'},
+            });
+        });
+
+        it('falls back to empty streamID when a track has no mediaStream', async () => {
+            const track = makeTrack({sid: 's', source: 'microphone', kind: 'audio', mstId: 'm', report: new Map()});
+            setPublications([track], []);
+
+            const stats = await client.getStats();
+
+            expect(stats!.tracksInfo[0].streamID).toBe('');
+        });
+
+        it('skips publications without a track', async () => {
+            mockRoom.localParticipant.trackPublications = new Map([['pub-0', {track: undefined}]]);
+            mockRoom.remoteParticipants = new Map();
+
+            const stats = await client.getStats();
+
+            expect(stats!.tracksInfo).toEqual([]);
+            expect(stats!.rtcStats).toBeNull();
+        });
+
+        it('continues when a track fails to produce a stats report', async () => {
+            const goodReport = new Map<string, any>([
+                ['out-1', {id: 'out-1', type: 'outbound-rtp', ssrc: 111, kind: 'audio', bytesSent: 1}],
+            ]);
+            const good = makeTrack({sid: 'good', source: 'microphone', kind: 'audio', mstId: 'good-mst', report: goodReport});
+            const bad = makeTrack({sid: 'bad', source: 'screen_share', kind: 'video', mstId: 'bad-mst', reportErr: new Error('peer gone')});
+            setPublications([good, bad], []);
+
+            const stats = await client.getStats();
+
+            // Both tracks are still described; only the good report contributes stats.
+            expect(stats!.tracksInfo).toHaveLength(2);
+            expect(stats!.rtcStats!.ssrcStats[111].local.out).toMatchObject({bytesSent: 1});
+        });
+
+        it('returns null rtcStats when no track yields a report', async () => {
+            const track = makeTrack({sid: 's', source: 'microphone', kind: 'audio', mstId: 'm', report: undefined});
+            setPublications([track], []);
+
+            const stats = await client.getStats();
+
+            expect(stats!.tracksInfo).toHaveLength(1);
+            expect(stats!.rtcStats).toBeNull();
         });
     });
 });
