@@ -46,6 +46,11 @@ func TestAddUserSession(t *testing.T) {
 	p.store = store
 
 	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
+	mockAPI.On("LogInfo", mock.AnythingOfType("string"),
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything).Maybe()
 
 	t.Run("not enabled", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)

@@ -80,7 +80,8 @@ func TestHandleLiveKitWebhook(t *testing.T) {
 		mockAPI.On("LogInfo", mock.AnythingOfType("string"),
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
-			mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything).Maybe()
 		mockAPI.On("LogError", mock.AnythingOfType("string"), mock.Anything, mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
 		return p, mockAPI
@@ -217,6 +218,11 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+		mockAPI.On("LogInfo", mock.AnythingOfType("string"),
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything).Maybe()
 		mockAPI.On("LogError", mock.AnythingOfType("string"),
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
