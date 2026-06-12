@@ -29,6 +29,12 @@ import (
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
+// logsUploadMaxSizeBytes is larger than the client's MAX_ACCUMULATED_LOG_SIZE
+// (1MB) to leave margin for JSON-escaping overhead: newlines, quotes and
+// control chars in the log text inflate the encoded body beyond the raw log
+// size, and the JSON wrapper fields add a little more on top.
+const logsUploadMaxSizeBytes = 2 * 1024 * 1024 // 2MB
+
 func (p *Plugin) handleGetVersion(w http.ResponseWriter, _ *http.Request) {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
@@ -837,4 +843,80 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 		"user_id":    identity,
 		"session_id": sid,
 	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+}
+
+func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-Id")
+	if userID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		Logs      string `json:"logs"`
+		ChannelID string `json:"channel_id"`
+		TeamID    string `json:"team_id"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, logsUploadMaxSizeBytes)).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if !model.IsValidId(req.ChannelID) || !model.IsValidId(req.TeamID) {
+		http.Error(w, "Invalid channel_id or team_id", http.StatusBadRequest)
+		return
+	}
+
+	if p.botSession == nil {
+		http.Error(w, "Bot user not available", http.StatusInternalServerError)
+		return
+	}
+	botID := p.botSession.UserId
+
+	dmChannel, appErr := p.API.GetDirectChannel(userID, botID)
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to get DM channel: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	filename := fmt.Sprintf("call_logs_%s.txt", time.Now().UTC().Format("2006-01-02T15-04-05Z"))
+
+	fileInfo, appErr := p.API.UploadFile([]byte(req.Logs), dmChannel.Id, filename)
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to upload file: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	post, appErr := p.API.CreatePost(&model.Post{
+		UserId:    botID,
+		ChannelId: dmChannel.Id,
+		FileIds:   []string{fileInfo.Id},
+	})
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to create post: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	team, appErr := p.API.GetTeam(req.TeamID)
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to get team: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	siteURL := p.API.GetConfig().ServiceSettings.SiteURL
+	if siteURL == nil || *siteURL == "" {
+		http.Error(w, "Site URL not configured", http.StatusInternalServerError)
+		return
+	}
+
+	permalink := fmt.Sprintf("%s/%s/pl/%s", *siteURL, team.Name, post.Id)
+	p.API.SendEphemeralPost(userID, &model.Post{
+		ChannelId: req.ChannelID,
+		Message:   fmt.Sprintf("Call logs uploaded — [view in your @calls DM](%s)", permalink),
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write([]byte("{}")); err != nil {
+		p.LogError("failed to write logs upload response", "error", err.Error())
+	}
 }

@@ -4,6 +4,7 @@
 import {CommandArgs} from '@mattermost/types/integrations';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionResult} from 'mattermost-redux/types/actions';
 import {defineMessage} from 'react-intl';
@@ -12,6 +13,7 @@ import {
     startCallRecording,
     stopCallRecording,
 } from 'src/actions';
+import RestClient from 'src/clients/rest';
 import {
     EndCallConfirmation,
     IDEndCallConfirmation,
@@ -22,7 +24,7 @@ import {
 } from 'src/constants';
 import {modals} from 'src/webapp_globals';
 
-import {getClientLogs, logDebug} from './log';
+import {flushLogsToAccumulated, getClientLogs, logDebug} from './log';
 import {
     areGroupCallsAllowed,
     channelHasCall,
@@ -32,7 +34,7 @@ import {
     isRecordingInCurrentCall,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
-import {getCallsClient, getCallsWindow, getPersistentStorage, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
+import {getCallsClient, getCallsWindow, getPersistentStorage, getPluginPath, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
 type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string) => void;
 
@@ -175,7 +177,36 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         return {message: `/call stats ${btoa(data)}`, args};
     }
     case 'logs': {
-        return {message: `/call logs ${btoa(getClientLogs())}`, args};
+        flushLogsToAccumulated();
+        const allLogs = getClientLogs();
+
+        if (!allLogs || allLogs.trim().length === 0) {
+            return {error: {message: 'No call logs available'}};
+        }
+
+        // In DM/GM channels args.team_id is empty (there is no team), so fall
+        // back to the current team. The server needs a valid team to build the
+        // permalink to the @calls bot DM; the permalink resolves regardless of
+        // the team name in the URL as long as the user is a member of it.
+        const teamID = args.team_id || getCurrentTeamId(store.getState());
+
+        try {
+            await RestClient.fetch(
+                `${getPluginPath()}/logs/upload`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        logs: allLogs,
+                        channel_id: args.channel_id,
+                        team_id: teamID,
+                    }),
+                    headers: {'Content-Type': 'application/json'},
+                },
+            );
+            return {};
+        } catch (err) {
+            return {error: {message: `Failed to upload logs: ${(err as Error).message}`}};
+        }
     }
     case 'recording': {
         if (fields.length < 3 || (fields[2] !== 'start' && fields[2] !== 'stop')) {

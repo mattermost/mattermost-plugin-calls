@@ -5,6 +5,7 @@ import React, {ComponentProps} from 'react';
 import {useIntl} from 'react-intl';
 import {endCall} from 'src/actions';
 import GenericModal from 'src/components/generic_modal';
+import {logDebug} from 'src/log';
 import styled from 'styled-components';
 
 export const IDEndCallConfirmation = 'end_call_confirmation';
@@ -29,7 +30,10 @@ export const EndCallConfirmation = ({channelID, ...modalProps}: Props) => {
             confirmButtonText={confirmText}
             cancelButtonText={cancelText}
             isConfirmDestructive={true}
-            handleConfirm={() => endCall(channelID)}
+            handleConfirm={() => {
+                logDebug('EndCallConfirmation: host ending call for everyone');
+                endCall(channelID);
+            }}
             showCancel={true}
             onHide={() => null}
             components={{FooterContainer}}

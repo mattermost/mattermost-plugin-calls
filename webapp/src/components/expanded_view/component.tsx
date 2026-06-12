@@ -451,6 +451,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.props.hideExpandedView();
         const callsClient = getCallsClient();
         if (callsClient) {
+            logDebug('ExpandedView.onDisconnectClick: user left call');
             callsClient.disconnect();
             if (window.opener) {
                 window.close();
@@ -499,6 +500,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 },
             });
         } else {
+            logDebug('ExpandedView.onRecordToggle: starting recording');
             await this.props.startCallRecording(this.props.channel.id);
         }
     };
@@ -534,8 +536,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     onRaiseHandToggle = () => {
         const callsClient = getCallsClient();
         if (this.isHandRaised()) {
+            logDebug('ExpandedView.onRaiseHandToggle: lowering hand');
             callsClient?.unraiseHand();
         } else {
+            logDebug('ExpandedView.onRaiseHandToggle: raising hand');
             callsClient?.raiseHand();
         }
     };
@@ -885,6 +889,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     onRemoveConfirm = () => {
+        logDebug(`ExpandedView.onRemoveConfirm: host removing session ${this.state.removeConfirmation?.sessionID}`);
         hostRemove(this.props.channel?.id, this.state.removeConfirmation?.sessionID);
         this.setState({
             removeConfirmation: null,
@@ -1534,7 +1539,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <span>{formatMessage({defaultMessage: 'Participants'})}</span>
                                 <ToTheRight/>
                                 {showMuteOthers &&
-                                    <MuteOthersButton onClick={() => hostMuteOthers(this.props.channel?.id)}>
+                                    <MuteOthersButton
+                                        onClick={() => {
+                                            logDebug('ExpandedView: host muting all other participants');
+                                            hostMuteOthers(this.props.channel?.id);
+                                        }}
+                                    >
                                         <MutedIcon
                                             fill='var(--button-bg)'
                                             style={{width: '12px', height: '12px'}}

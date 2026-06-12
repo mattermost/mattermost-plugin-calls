@@ -20,6 +20,7 @@ import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import {StyledTooltip} from 'src/components/shared';
 import Shortcut from 'src/components/shortcut';
 import {EmojiIndicesByAlias} from 'src/emojis/emoji';
+import {logDebug} from 'src/log';
 import {MAKE_REACTION, RAISE_LOWER_HAND, reverseKeyMappings} from 'src/shortcuts';
 import {getCallsClient} from 'src/utils';
 import styled, {css} from 'styled-components';
@@ -79,8 +80,10 @@ export const ReactionButton = forwardRef(({isHandRaised}: Props, ref) => {
 
     const onRaiseHandToggle = () => {
         if (isHandRaised) {
+            logDebug('ReactionButton.onRaiseHandToggle: lowering hand');
             callsClient?.unraiseHand();
         } else {
+            logDebug('ReactionButton.onRaiseHandToggle: raising hand');
             callsClient?.raiseHand();
         }
     };
@@ -109,6 +112,7 @@ export const ReactionButton = forwardRef(({isHandRaised}: Props, ref) => {
             unified: ecd.unified.toLowerCase(),
             literal: ecd.emoji || '',
         };
+        logDebug(`ReactionButton.handleUserPicksEmoji: sending reaction '${emojiData.name}'`);
         callsClient?.sendReaction(emojiData);
 
         // hide everything

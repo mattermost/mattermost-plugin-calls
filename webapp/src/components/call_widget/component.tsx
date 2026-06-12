@@ -940,6 +940,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         if (window.callsClient) {
+            logDebug('CallWidget.onDisconnectClick: user left call');
             window.callsClient.disconnect();
         }
     };
@@ -965,6 +966,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     onAudioInputDeviceClick = (device: MediaDeviceInfo) => {
         if (device.deviceId !== this.state.currentAudioInputDevice?.deviceId) {
+            logDebug(`CallWidget.onAudioInputDeviceClick: switching audio input to '${device.label}'`);
             window.callsClient?.setAudioInputDevice(device);
         }
         this.setState({showAudioInputDevicesMenu: false, currentAudioInputDevice: device});
@@ -972,6 +974,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     onAudioOutputDeviceClick = (device: MediaDeviceInfo) => {
         if (device.deviceId !== this.state.currentAudioOutputDevice?.deviceId) {
+            logDebug(`CallWidget.onAudioOutputDeviceClick: switching audio output to '${device.label}'`);
             window.callsClient?.setAudioOutputDevice(device);
             const ps = [];
             for (const audioEl of this.state.audioEls) {
@@ -995,6 +998,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     onRemoveConfirm = () => {
+        logDebug(`CallWidget.onRemoveConfirm: host removing session ${this.state.removeConfirmation?.sessionID}`);
         hostRemove(this.props.channel?.id, this.state.removeConfirmation?.sessionID);
         this.setState({
             removeConfirmation: null,
@@ -2118,8 +2122,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
 
         if (this.isHandRaised()) {
+            logDebug('CallWidget.onRaiseHandToggle: lowering hand');
             window.callsClient.unraiseHand();
         } else {
+            logDebug('CallWidget.onRaiseHandToggle: raising hand');
             window.callsClient.raiseHand();
         }
     };

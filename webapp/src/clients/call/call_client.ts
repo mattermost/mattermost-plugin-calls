@@ -48,6 +48,38 @@ import {
 } from './constants';
 import {ConnectPayload, ReactionPayload, RtcTokenResponse} from './types';
 
+// trackPubSummary returns a compact, log-friendly view of a track publication.
+// We deliberately avoid logging the raw LiveKit publication object: it serializes
+// to several KB (EventEmitter internals, logger config, full trackInfo/options),
+// which floods the client log buffer. Media-performance fields (bitrate, bytes,
+// jitter) are intentionally omitted — those belong to the RTC stats report.
+// Remote publications also carry subscription/permission state, which has no
+// local equivalent and is not surfaced by getStats().
+function trackPubSummary(pub: TrackPublication) {
+    const summary: Record<string, unknown> = {
+        sid: pub.trackSid,
+        source: pub.source,
+        kind: pub.kind,
+        muted: pub.isMuted,
+        mimeType: pub.mimeType,
+    };
+    if (pub instanceof RemoteTrackPublication) {
+        summary.subscribed = pub.isSubscribed;
+        summary.permission = pub.permissionStatus;
+    }
+    return summary;
+}
+
+// trackSummary is the equivalent compact view for a subscribed remote track.
+function trackSummary(track: RemoteTrack) {
+    return {
+        sid: track.sid,
+        source: track.source,
+        kind: track.kind,
+        streamState: track.streamState,
+    };
+}
+
 export default class CallClient extends EventEmitter {
     public channelID = '';
     public initTime = 0;
@@ -821,7 +853,7 @@ export default class CallClient extends EventEmitter {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
             this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
 
-            logDebug(`CallClient: local voice stream published for user ${userID}`, localTrackPublication);
+            logDebug(`CallClient: local voice stream published for user ${userID}`, trackPubSummary(localTrackPublication));
         }
 
         // Browser renders a native "Stop sharing" bar when sharing screen which has dismiss/stop button.
@@ -854,7 +886,7 @@ export default class CallClient extends EventEmitter {
             if (screenShareStream) {
                 const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
                 this.emit(CALL_EVENT.LOCAL_SCREEN_STREAM, screenShareStream, sessionID, userID);
-                logDebug(`CallClient: local screen share stream published for user ${userID}`, localTrackPublication);
+                logDebug(`CallClient: local screen share stream published for user ${userID}`, trackPubSummary(localTrackPublication));
             }
         }
     }
@@ -869,12 +901,12 @@ export default class CallClient extends EventEmitter {
 
         if (localTrackPublication.source === Track.Source.Microphone) {
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
-            logDebug(`CallClient: local voice stream unpublished for user ${userID}`, localTrackPublication);
+            logDebug(`CallClient: local voice stream unpublished for user ${userID}`, trackPubSummary(localTrackPublication));
         }
 
         if (localTrackPublication.source === Track.Source.ScreenShare) {
             this.emit(CALL_EVENT.LOCAL_SCREEN_STREAM_OFF, sessionID, userID);
-            logDebug(`CallClient: local screen share stream unpublished for user ${userID}`, localTrackPublication);
+            logDebug(`CallClient: local screen share stream unpublished for user ${userID}`, trackPubSummary(localTrackPublication));
         }
     }
 
@@ -888,14 +920,14 @@ export default class CallClient extends EventEmitter {
 
         if (remoteTrackPublication.source === Track.Source.Microphone) {
             this.emit(remoteTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
-            logDebug(`CallClient: remote voice stream published for user ${userID}`, remoteTrackPublication);
+            logDebug(`CallClient: remote voice stream published for user ${userID}`, trackPubSummary(remoteTrackPublication));
         }
 
         if (remoteTrackPublication.source === Track.Source.ScreenShare || remoteTrackPublication.source === Track.Source.ScreenShareAudio) {
             // Screen-share publications do not carry stream state before subscription:
             // `remoteTrackPublication.track` is undefined here. The actual MediaStreamTrack arrives in
             // handleRemoteTrackSubscribed, which is where we compose and emit REMOTE_SCREEN_STREAM.
-            logDebug(`CallClient: remote screen share stream announced (awaiting subscription) for user ${userID}`, remoteTrackPublication);
+            logDebug(`CallClient: remote screen share stream announced (awaiting subscription) for user ${userID}`, trackPubSummary(remoteTrackPublication));
         }
     }
 
@@ -910,14 +942,14 @@ export default class CallClient extends EventEmitter {
         if (remoteTrack.source === Track.Source.Microphone) {
             const stream = new MediaStream([remoteTrack.mediaStreamTrack]);
             this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, stream, sessionID, userID);
-            logDebug(`CallClient: remote voice stream subscribed for user ${userID}`, remoteTrack);
+            logDebug(`CallClient: remote voice stream subscribed for user ${userID}`, trackSummary(remoteTrack));
         }
 
         if (remoteTrack.source === Track.Source.ScreenShare || remoteTrack.source === Track.Source.ScreenShareAudio) {
             const screenShareStream = this.composeScreenShareStream(remoteParticipant);
             if (screenShareStream) {
                 this.emit(CALL_EVENT.REMOTE_SCREEN_STREAM, screenShareStream, sessionID, userID);
-                logDebug(`CallClient: remote screen share stream subscribed for user ${userID}`, remoteTrack);
+                logDebug(`CallClient: remote screen share stream subscribed for user ${userID}`, trackSummary(remoteTrack));
             }
         }
     }
@@ -932,12 +964,12 @@ export default class CallClient extends EventEmitter {
 
         if (remoteTrackPublication.source === Track.Source.Microphone) {
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
-            logDebug(`CallClient: remote voice stream unpublished for user ${userID}`, remoteTrackPublication);
+            logDebug(`CallClient: remote voice stream unpublished for user ${userID}`, trackPubSummary(remoteTrackPublication));
         }
 
         if (remoteTrackPublication.source === Track.Source.ScreenShare) {
             this.emit(CALL_EVENT.REMOTE_SCREEN_STREAM_OFF, sessionID, userID);
-            logDebug(`CallClient: remote screen share stream unpublished for user ${userID}`, remoteTrackPublication);
+            logDebug(`CallClient: remote screen share stream unpublished for user ${userID}`, trackPubSummary(remoteTrackPublication));
         }
     }
 
@@ -950,7 +982,7 @@ export default class CallClient extends EventEmitter {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
 
-            logDebug(`CallClient: track muted for user ${userID}`, trackPublication);
+            logDebug(`CallClient: track muted for user ${userID}`, trackPubSummary(trackPublication));
         }
     }
 
@@ -963,7 +995,7 @@ export default class CallClient extends EventEmitter {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.UNMUTE, sessionID, userID);
 
-            logDebug(`CallClient: track unmuted for user ${userID}`, trackPublication);
+            logDebug(`CallClient: track unmuted for user ${userID}`, trackPubSummary(trackPublication));
         }
     }
 
