@@ -13,21 +13,26 @@ import {getCurrentUser, getUser, makeGetProfilesInChannel} from 'mattermost-redu
 import {isChannelMuted} from 'mattermost-redux/utils/channel_utils';
 import {isMinimumServerVersion} from 'mattermost-redux/utils/helpers';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
-import {useEffect} from 'react';
+import {useEffect, useRef} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 import {DID_NOTIFY_FOR_CALL, DID_RING_FOR_CALL} from 'src/action_types';
-import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal} from 'src/actions';
+import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal, stopRingingForCall} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import {DEFAULT_RING_SOUND} from 'src/constants';
+import {DEFAULT_RING_SOUND, DEFAULT_RINGBACK_SOUND, RINGBACK_TIMEOUT} from 'src/constants';
 import {logDebug, logWarn} from 'src/log';
 import {
+    calls,
     channelIDForCurrentCall,
     currentlyRinging,
     didNotifyForCall,
     didRingForCall,
     getStatusForCurrentUser,
+    idForCurrentCall,
+    ringingEnabled,
     ringingForCall,
+    sessionsForOtherUsersInCall,
+    sessionsInCurrentCall,
     teamForCurrentCall,
 } from 'src/selectors';
 import {ChannelType, IncomingCallNotification, UserStatuses} from 'src/types/types';
@@ -36,6 +41,7 @@ import {
     getCallsClient,
     getChannelURL,
     isDesktopApp,
+    isDmGmChannel,
     notificationsStopRinging,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
@@ -291,4 +297,103 @@ export const useOnChannelLinkClick = (call: IncomingCallNotification) => {
         notificationsStopRinging();
         navigateToURL(channelURL);
     };
+};
+
+// useRingback plays a ringback tone to the caller of a DM/GM call while they are
+// waiting for the first other participant to answer. It reuses the same ring
+// mechanism as incoming calls (gated by the EnableRinging setting) and is the
+// caller-side counterpart to useRingingAndNotification. Unlike the incoming
+// ringtone, the ringback uses a fixed tone rather than the user's personal
+// ringtone preference, matching how ringback tones work on phone networks.
+//
+// The ringback stops as soon as another user joins, when the call ends, or after
+// RINGBACK_TIMEOUT elapses with nobody having joined. On timeout the caller is
+// disconnected, which ends the (still solo) call — i.e. the call is cancelled.
+export const useRingback = () => {
+    const dispatch = useDispatch();
+    const enabled = useSelector(ringingEnabled);
+    const currentUser = useSelector(getCurrentUser);
+    const connectedChannelID = useSelector(channelIDForCurrentCall);
+    const callID = useSelector(idForCurrentCall);
+    const call = useSelector((state: GlobalState) => (connectedChannelID ? calls(state)[connectedChannelID] : undefined));
+    const channel = useSelector((state: GlobalState) => (connectedChannelID ? getChannel(state, connectedChannelID) : undefined));
+    const otherSessionsCount = useSelector((state: GlobalState) => sessionsForOtherUsersInCall(state).length);
+
+    // Whether the caller's own session is present in the call yet. We gate the
+    // ringback on this so it starts only *after* our join has been processed.
+    // handleUserJoined() calls notificationsStopRinging() (to tear down incoming
+    // ringing) right before it dispatches USER_JOINED, so starting any earlier
+    // races with — and gets silenced by — that teardown.
+    const selfSessionPresent = useSelector((state: GlobalState) =>
+        sessionsInCurrentCall(state).some((session) => session.user_id === currentUser.id));
+
+    // Tracks whether the ringback is currently playing, the cancellation timer, and
+    // which call we've already handled, so that we ring back at most once per call
+    // (and never again if everyone leaves and we're left alone a second time).
+    const ringbackActiveRef = useRef(false);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const handledCallRef = useRef<string | null>(null);
+
+    // Only the call owner (the caller who started it) hears the ringback, and only
+    // in DM/GM channels, once their own session has joined.
+    const amOwner = Boolean(call) && call?.ownerID === currentUser.id;
+    const active = enabled && Boolean(callID) && amOwner && isDmGmChannel(channel) && selfSessionPresent;
+
+    // TEMP instrumentation for debugging ringback not playing — remove before PR.
+    logDebug('ringback gate', JSON.stringify({
+        enabled,
+        callID,
+        connectedChannelID,
+        amOwner,
+        ownerID: call?.ownerID,
+        currentUserID: currentUser.id,
+        channelType: channel?.type,
+        isDmGm: isDmGmChannel(channel),
+        selfSessionPresent,
+        otherSessionsCount,
+        active,
+    }));
+
+    useEffect(() => {
+        const stopRingback = () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
+            if (ringbackActiveRef.current && callID) {
+                dispatch(stopRingingForCall(callID));
+            }
+            ringbackActiveRef.current = false;
+        };
+
+        if (!active || !callID) {
+            // Not in a ringback situation (not connected, not the owner, not a
+            // DM/GM, or ringing disabled): make sure any ringback is stopped.
+            stopRingback();
+        } else if (otherSessionsCount > 0) {
+            // Someone else answered: stop the ringback and don't ring back again
+            // for this call.
+            stopRingback();
+            handledCallRef.current = callID;
+        } else if (handledCallRef.current !== callID && !ringbackActiveRef.current) {
+            // Caller is alone in a fresh call: start the ringback and arm the
+            // cancellation timer.
+            logDebug('ringback START', callID); // TEMP — remove before PR.
+            ringbackActiveRef.current = true;
+            dispatch(ringForCall(callID, DEFAULT_RINGBACK_SOUND));
+
+            const timeout = window.e2eRingLength ? window.e2eRingLength : RINGBACK_TIMEOUT;
+            timerRef.current = setTimeout(() => {
+                logDebug('ringback timed out, cancelling call');
+                handledCallRef.current = callID;
+                dispatch(stopRingingForCall(callID));
+                ringbackActiveRef.current = false;
+                timerRef.current = null;
+                getCallsClient()?.disconnect();
+            }, timeout);
+        }
+
+        // On re-run (deps change) or unmount, clear the timer and stop the ringback.
+        return () => stopRingback();
+    }, [active, callID, otherSessionsCount, dispatch]);
 };

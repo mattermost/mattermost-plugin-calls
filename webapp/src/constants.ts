@@ -9,7 +9,16 @@ export const REACTION_TIMEOUT_IN_REACTION_STREAM = 10000;
 export const JOINED_USER_NOTIFICATION_TIMEOUT = 5000;
 export const MAX_CHANNEL_LINK_TOOLTIP_NAMES = 8;
 export const RING_LENGTH = 30000;
+
+// RINGBACK_TIMEOUT is how long the caller of a DM/GM call hears the ringback
+// tone before the call is automatically cancelled if nobody has joined.
+export const RINGBACK_TIMEOUT = 20000;
 export const DEFAULT_RING_SOUND = 'Calm';
+
+// DEFAULT_RINGBACK_SOUND is the fixed tone the caller hears while waiting for the
+// other party to answer. It is intentionally decoupled from the caller's personal
+// (incoming) ringtone preference, since a ringback tone is a standardized tone.
+export const DEFAULT_RINGBACK_SOUND = 'Calm';
 export const CALL_START_POST_TYPE = 'custom_calls';
 export const CALL_RECORDING_POST_TYPE = 'custom_calls_recording';
 export const CALL_TRANSCRIPTION_POST_TYPE = 'custom_calls_transcription';
