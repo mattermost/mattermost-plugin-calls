@@ -450,8 +450,11 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage, handlerID strin
 			return fmt.Errorf("failed to update call session: %w", err)
 		}
 
-		// Note: Video stats are persisted when users leave or call ends,
-		// no need to write to DB on every toggle for performance.
+		// Persist HasUsedVideo and VideoStartAt: getCallState reloads from the DB
+		// each invocation, so without this write the stats are lost (MM-69233).
+		if err := p.store.UpdateCall(&state.Call); err != nil {
+			return fmt.Errorf("failed to update call: %w", err)
+		}
 
 		evType := wsEventUserVideoOn
 		if msg.Type == clientMessageTypeVideoOff {

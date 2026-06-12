@@ -14,6 +14,7 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-calls/server/batching"
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
@@ -1433,5 +1434,139 @@ func TestHandleJoin(t *testing.T) {
 
 		// We need to give it some time as leaving happens in a goroutine.
 		time.Sleep(2 * time.Second)
+	})
+}
+
+// TestHandleClientMsgVideoStats guards against the MM-69233 regression: the
+// video on/off handler must persist Stats.HasUsedVideo and Props.VideoStartAt
+// via UpdateCall. Because every handler reloads call state from the DB
+// (lockCallReturnState -> getCallState), in-memory mutations that aren't
+// written back are lost on the next handler invocation, the leave path, and
+// call-end finalization — which is exactly how video metrics silently zeroed
+// out. The assertions deliberately re-read state from the store to exercise
+// that reload-from-DB boundary.
+func TestHandleClientMsgVideoStats(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	mockMetrics := &serverMocks.MockMetrics{}
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		callsClusterLocks: map[string]*cluster.Mutex{},
+		metrics:           mockMetrics,
+		nodeID:            "nodeA",
+		sessions:          map[string]*session{},
+	}
+
+	store, tearDown := NewTestStore(t)
+	t.Cleanup(tearDown)
+	p.store = store
+
+	// The handler relays to another node (handlerID != nodeID), so it goes
+	// through the cluster message path rather than requiring a live RTC peer.
+	const handlerID = "nodeB"
+
+	mockAPI.On("LogDebug", "creating cluster mutex for call", "origin", mock.Anything, "channelID", mock.Anything)
+	mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
+	mockAPI.On("KVDelete", mock.Anything).Return(nil)
+	mockAPI.On("PublishWebSocketEvent", mock.Anything, mock.Anything, mock.Anything)
+	mockAPI.On("PublishPluginClusterEvent", mock.Anything, mock.Anything).Return(nil)
+
+	mockMetrics.On("IncWebSocketEvent", mock.AnythingOfType("string"), mock.AnythingOfType("string"))
+	mockMetrics.On("IncClusterEvent", mock.AnythingOfType("string"))
+	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))
+	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64"))
+	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
+
+	// setupCall creates an active call with a single joined session and returns
+	// its identifiers.
+	setupCall := func(t *testing.T) (channelID, callID, connID, userID string) {
+		t.Helper()
+		channelID = model.NewId()
+		callID = model.NewId()
+		connID = model.NewId()
+		userID = model.NewId()
+
+		require.NoError(t, p.store.CreateCall(&public.Call{
+			ID:        callID,
+			CreateAt:  time.Now().UnixMilli(),
+			ChannelID: channelID,
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  model.NewId(),
+			OwnerID:   userID,
+		}))
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID:     connID,
+			CallID: callID,
+			UserID: userID,
+			JoinAt: time.Now().UnixMilli(),
+		}))
+		return
+	}
+
+	t.Run("video on persists HasUsedVideo and VideoStartAt", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
+
+		channelID, callID, connID, userID := setupCall(t)
+		us := &session{
+			userID:         userID,
+			channelID:      channelID,
+			connID:         connID,
+			originalConnID: connID,
+			callID:         callID,
+		}
+
+		err := p.handleClientMsg(us, clientMessage{Type: clientMessageTypeVideoOn}, handlerID)
+		require.NoError(t, err)
+
+		// Re-read from the DB (fromWriter=false) to confirm the stats survived
+		// the reload boundary that previously discarded them.
+		state, err := p.getCallState(channelID, false)
+		require.NoError(t, err)
+		require.NotNil(t, state)
+		require.True(t, state.Call.Stats.HasUsedVideo, "HasUsedVideo must be persisted")
+		require.NotNil(t, state.Call.Props.VideoStartAt)
+		require.Greater(t, state.Call.Props.VideoStartAt[connID], int64(0), "VideoStartAt must be persisted")
+		require.True(t, state.sessions[connID].Video, "session video flag must be persisted")
+	})
+
+	t.Run("video off accumulates and persists VideoDuration", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
+
+		channelID, callID, connID, userID := setupCall(t)
+
+		// Simulate a video that was turned on 10 seconds ago and persisted, as
+		// the video_on handler would have done.
+		call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{})
+		require.NoError(t, err)
+		call.Stats.HasUsedVideo = true
+		call.Props.VideoStartAt = map[string]int64{connID: time.Now().Unix() - 10}
+		require.NoError(t, p.store.UpdateCall(call))
+
+		sess, err := p.store.GetCallSession(connID, db.GetCallSessionOpts{})
+		require.NoError(t, err)
+		sess.Video = true
+		require.NoError(t, p.store.UpdateCallSession(sess))
+
+		us := &session{
+			userID:         userID,
+			channelID:      channelID,
+			connID:         connID,
+			originalConnID: connID,
+			callID:         callID,
+		}
+
+		err = p.handleClientMsg(us, clientMessage{Type: clientMessageTypeVideoOff}, handlerID)
+		require.NoError(t, err)
+
+		state, err := p.getCallState(channelID, false)
+		require.NoError(t, err)
+		require.NotNil(t, state)
+		require.True(t, state.Call.Stats.HasUsedVideo, "HasUsedVideo must remain set")
+		require.Greater(t, state.Call.Stats.VideoDuration, int64(0), "VideoDuration must be accumulated and persisted")
+		require.NotContains(t, state.Call.Props.VideoStartAt, connID, "VideoStartAt entry must be cleared on video off")
+		require.False(t, state.sessions[connID].Video, "session video flag must be cleared")
 	})
 }
