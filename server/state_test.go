@@ -576,6 +576,12 @@ func TestCleanUpState(t *testing.T) {
 			mockAPI.On("LogDebug", "creating cluster mutex for call",
 				"origin", mock.AnythingOfType("string"), "channelID", channelID).Once()
 
+			mockAPI.On("LogInfo", "call ended",
+				"origin", mock.AnythingOfType("string"),
+				"callID", mock.Anything, "channelID", mock.Anything,
+				"nodeID", mock.Anything, "reason", mock.Anything,
+				"sessionsDeleted", mock.Anything).Once()
+
 			mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
 
 			mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64"))

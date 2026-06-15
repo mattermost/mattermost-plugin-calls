@@ -785,6 +785,12 @@ func TestHandleJoin(t *testing.T) {
 		"xForwardedFor", mock.AnythingOfType("string"),
 	)
 
+	mockAPI.On("LogInfo", mock.AnythingOfType("string"),
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything).Maybe()
+
 	store, tearDown := NewTestStore(t)
 	t.Cleanup(tearDown)
 	p.store = store

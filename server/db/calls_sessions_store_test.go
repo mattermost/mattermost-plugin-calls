@@ -201,8 +201,9 @@ func testGetCallSessions(t *testing.T, store *Store) {
 
 func testDeleteCallsSessions(t *testing.T, store *Store) {
 	t.Run("no sessions", func(t *testing.T) {
-		err := store.DeleteCallsSessions(model.NewId())
+		deleted, err := store.DeleteCallsSessions(model.NewId())
 		require.NoError(t, err)
+		require.Zero(t, deleted)
 	})
 
 	t.Run("multiple sessions", func(t *testing.T) {
@@ -222,8 +223,9 @@ func testDeleteCallsSessions(t *testing.T, store *Store) {
 			require.NoError(t, err)
 		}
 
-		err := store.DeleteCallsSessions(callID)
+		deleted, err := store.DeleteCallsSessions(callID)
 		require.NoError(t, err)
+		require.EqualValues(t, 10, deleted)
 
 		sessions, err := store.GetCallSessions(callID, GetCallSessionOpts{})
 		require.NoError(t, err)

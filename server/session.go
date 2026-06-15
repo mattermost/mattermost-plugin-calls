@@ -209,6 +209,12 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 		if err := p.store.CreateCall(&state.Call); err != nil {
 			return nil, fmt.Errorf("failed to create call: %w", err)
 		}
+
+		p.LogInfo("call created",
+			"callID", state.Call.ID,
+			"channelID", channelID,
+			"userID", userID,
+			"nodeID", p.nodeID)
 	} else {
 		if err := p.store.UpdateCall(&state.Call); err != nil {
 			return nil, fmt.Errorf("failed to update call: %w", err)
@@ -217,6 +223,14 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 	if err := p.store.CreateCallSession(state.sessions[connID]); err != nil {
 		return nil, fmt.Errorf("failed to create call session: %w", err)
 	}
+
+	p.LogInfo("call session joined",
+		"callID", state.Call.ID,
+		"channelID", channelID,
+		"sessionID", connID,
+		"userID", userID,
+		"nodeID", p.nodeID,
+		"sessionCount", len(state.sessions))
 
 	return state, nil
 }
@@ -276,7 +290,13 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		return fmt.Errorf("failed to delete call session: %w", err)
 	}
 	delete(state.sessions, originalConnID)
-	p.LogDebug("session was removed from state", "userID", userID, "connID", connID, "originalConnID", originalConnID)
+	p.LogInfo("call session left",
+		"callID", state.Call.ID,
+		"channelID", channelID,
+		"sessionID", originalConnID,
+		"userID", userID,
+		"nodeID", p.nodeID,
+		"sessionCount", len(state.sessions))
 
 	// Check if leaving session was screen sharing.
 	if state.Call.Props.ScreenSharingSessionID == originalConnID {
@@ -435,6 +455,13 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
 		}
 		setCallEnded(&state.Call)
+
+		p.LogInfo("call ended",
+			"callID", state.Call.ID,
+			"channelID", channelID,
+			"nodeID", p.nodeID,
+			"reason", "last_left",
+			"sessionCount", 0)
 
 		p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
 			ChannelID:           channelID,

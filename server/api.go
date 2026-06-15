@@ -669,21 +669,32 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p.LogDebug("handleLiveKitWebhook: received event",
+	// Log every received webhook event at INFO regardless of whether the plugin
+	// acts on it, so the forensic audit trail is complete. LiveKit webhook
+	// delivery is at-least-once and not order-guaranteed (events are retried),
+	// so these logs may contain occasional duplicate or slightly out-of-order
+	// events — a retry should not be misread as a distinct event. See MM-69216.
+	fields := []any{
 		"event", event.GetEvent(),
-		"room", event.GetRoom().GetName())
+		"channelID", event.GetRoom().GetName(),
+		"nodeID", p.nodeID,
+	}
+	if participant := event.GetParticipant(); participant != nil {
+		fields = append(fields, "identity", participant.GetIdentity(), "sid", participant.GetSid())
+		// The disconnect reason (CLIENT_INITIATED, DUPLICATE_IDENTITY,
+		// ROOM_DELETED, SERVER_SHUTDOWN, ...) is the highest-value field for
+		// explaining a failed teardown.
+		if event.GetEvent() == webhook.EventParticipantLeft {
+			fields = append(fields, "disconnectReason", participant.GetDisconnectReason().String())
+		}
+	}
+	p.LogInfo("handleLiveKitWebhook: received event", fields...)
 
 	switch event.GetEvent() {
 	case webhook.EventParticipantJoined:
 		p.handleLiveKitSIPParticipantJoined(event)
 	case webhook.EventParticipantLeft:
 		p.handleLiveKitSIPParticipantLeft(event)
-	case webhook.EventRoomStarted, webhook.EventRoomFinished:
-		p.LogDebug("handleLiveKitWebhook: room lifecycle event (informational only)",
-			"event", event.GetEvent(),
-			"room", event.GetRoom().GetName())
-	default:
-		p.LogDebug("handleLiveKitWebhook: ignoring event", "event", event.GetEvent())
 	}
 
 	w.WriteHeader(http.StatusOK)
