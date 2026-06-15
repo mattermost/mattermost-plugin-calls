@@ -190,6 +190,37 @@ describe('log', () => {
             expect(accumulated.length).toBeLessThanOrEqual(MAX_ACCUMULATED_LOG_SIZE);
         });
 
+        test('should keep UTF-8 byte size within the limit for multi-byte logs', () => {
+            // Emoji are 4 UTF-8 bytes but 2 UTF-16 code units each, so a buffer
+            // under the char limit can still exceed the byte limit.
+            const multibyte = '🎉'.repeat(MAX_ACCUMULATED_LOG_SIZE);
+            mockStorage.set(STORAGE_CALLS_CLIENT_LOGS_KEY, multibyte);
+
+            logDebug('new message');
+            flushLogsToAccumulated();
+
+            const accumulated = getClientLogs();
+            const byteSize = new TextEncoder().encode(accumulated).length;
+            expect(byteSize).toBeLessThanOrEqual(MAX_ACCUMULATED_LOG_SIZE);
+            expect(accumulated).toContain('[... older logs truncated ...]');
+        });
+
+        test('should not throw when storage fails, and still clear the in-memory buffer', () => {
+            const setSpy = jest.spyOn(mockStorage, 'set').mockImplementationOnce(() => {
+                throw new Error('QuotaExceededError');
+            });
+
+            logDebug('message that cannot be persisted');
+            expect(() => flushLogsToAccumulated()).not.toThrow();
+
+            setSpy.mockRestore();
+
+            // The in-memory buffer must be cleared even when the write failed,
+            // so a subsequent successful flush does not re-include it.
+            flushLogsToAccumulated();
+            expect(getClientLogs()).not.toContain('message that cannot be persisted');
+        });
+
         test('should handle truncation with stats', () => {
             // Fill storage near the limit
             const largeLogs = 'log line\n'.repeat(MAX_ACCUMULATED_LOG_SIZE / 10);

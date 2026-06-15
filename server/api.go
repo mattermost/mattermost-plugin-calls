@@ -855,16 +855,45 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Logs      string `json:"logs"`
 		ChannelID string `json:"channel_id"`
-		TeamID    string `json:"team_id"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, logsUploadMaxSizeBytes)).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	if !model.IsValidId(req.ChannelID) || !model.IsValidId(req.TeamID) {
-		http.Error(w, "Invalid channel_id or team_id", http.StatusBadRequest)
+	if !model.IsValidId(req.ChannelID) {
+		http.Error(w, "Invalid channel_id", http.StatusBadRequest)
 		return
+	}
+
+	// Confirm the requester is a member of the channel they want the
+	// confirmation posted to, then resolve the team server-side. The client is
+	// not trusted to supply a team: a regular channel carries its own TeamId,
+	// and DM/GM channels (which have none) fall back to any team the user
+	// belongs to, since the permalink only needs a team the user can access.
+	if _, appErr := p.API.GetChannelMember(req.ChannelID, userID); appErr != nil {
+		http.Error(w, "Not a member of the channel", http.StatusForbidden)
+		return
+	}
+
+	channel, appErr := p.API.GetChannel(req.ChannelID)
+	if appErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to get channel: %s", appErr.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	teamID := channel.TeamId
+	if teamID == "" {
+		teams, appErr := p.API.GetTeamsForUser(userID)
+		if appErr != nil {
+			http.Error(w, fmt.Sprintf("Failed to get teams: %s", appErr.Error()), http.StatusInternalServerError)
+			return
+		}
+		if len(teams) == 0 {
+			http.Error(w, "User is not a member of any team", http.StatusForbidden)
+			return
+		}
+		teamID = teams[0].Id
 	}
 
 	if p.botSession == nil {
@@ -897,7 +926,7 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	team, appErr := p.API.GetTeam(req.TeamID)
+	team, appErr := p.API.GetTeam(teamID)
 	if appErr != nil {
 		http.Error(w, fmt.Sprintf("Failed to get team: %s", appErr.Error()), http.StatusInternalServerError)
 		return

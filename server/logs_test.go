@@ -51,7 +51,6 @@ func TestHandleUploadLogsToBot(t *testing.T) {
 		r := httptest.NewRequest(http.MethodPost, "/logs/upload", strings.NewReader(body(map[string]string{
 			"logs":       "test",
 			"channel_id": originChannelID,
-			"team_id":    teamID,
 		})))
 		p.handleUploadLogsToBot(w, r)
 		require.Equal(t, http.StatusUnauthorized, w.Code)
@@ -72,24 +71,26 @@ func TestHandleUploadLogsToBot(t *testing.T) {
 		r := httptest.NewRequest(http.MethodPost, "/logs/upload", strings.NewReader(body(map[string]string{
 			"logs":       "test",
 			"channel_id": "too-short",
-			"team_id":    teamID,
 		})))
 		r.Header.Set("Mattermost-User-Id", userID)
 		p.handleUploadLogsToBot(w, r)
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("rejects invalid team_id", func(t *testing.T) {
-		p, _ := newPlugin()
+	t.Run("rejects requester not a member of the channel", func(t *testing.T) {
+		p, mockAPI := newPlugin()
+		defer mockAPI.AssertExpectations(t)
+
+		mockAPI.On("GetChannelMember", originChannelID, userID).Return(nil, model.NewAppError("GetChannelMember", "not_found", nil, "", http.StatusNotFound)).Once()
+
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodPost, "/logs/upload", strings.NewReader(body(map[string]string{
 			"logs":       "test",
 			"channel_id": originChannelID,
-			"team_id":    "",
 		})))
 		r.Header.Set("Mattermost-User-Id", userID)
 		p.handleUploadLogsToBot(w, r)
-		require.Equal(t, http.StatusBadRequest, w.Code)
+		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 
 	t.Run("happy path uploads, posts, and emits ephemeral with permalink", func(t *testing.T) {
@@ -100,6 +101,8 @@ func TestHandleUploadLogsToBot(t *testing.T) {
 		fileID := model.NewId()
 		filenameRE := regexp.MustCompile(`^call_logs_\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z\.txt$`)
 
+		mockAPI.On("GetChannelMember", originChannelID, userID).Return(&model.ChannelMember{ChannelId: originChannelID, UserId: userID}, nil).Once()
+		mockAPI.On("GetChannel", originChannelID).Return(&model.Channel{Id: originChannelID, TeamId: teamID}, nil).Once()
 		mockAPI.On("GetDirectChannel", userID, botID).Return(&model.Channel{Id: dmChannelID}, nil).Once()
 		mockAPI.On("UploadFile", mock.Anything, dmChannelID, mock.MatchedBy(func(name string) bool {
 			return filenameRE.MatchString(name)
@@ -121,7 +124,6 @@ func TestHandleUploadLogsToBot(t *testing.T) {
 		r := httptest.NewRequest(http.MethodPost, "/logs/upload", strings.NewReader(body(map[string]string{
 			"logs":       "test content",
 			"channel_id": originChannelID,
-			"team_id":    teamID,
 		})))
 		r.Header.Set("Mattermost-User-Id", userID)
 		p.handleUploadLogsToBot(w, r)
@@ -129,6 +131,60 @@ func TestHandleUploadLogsToBot(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, "application/json", w.Header().Get("Content-Type"))
 		require.JSONEq(t, "{}", w.Body.String())
+	})
+
+	t.Run("DM/GM channel falls back to one of the user's teams", func(t *testing.T) {
+		p, mockAPI := newPlugin()
+		defer mockAPI.AssertExpectations(t)
+
+		postID := model.NewId()
+		fileID := model.NewId()
+
+		// A DM/GM channel has no TeamId, so the team is resolved from the
+		// requester's own memberships rather than from the channel.
+		mockAPI.On("GetChannelMember", originChannelID, userID).Return(&model.ChannelMember{ChannelId: originChannelID, UserId: userID}, nil).Once()
+		mockAPI.On("GetChannel", originChannelID).Return(&model.Channel{Id: originChannelID, TeamId: ""}, nil).Once()
+		mockAPI.On("GetTeamsForUser", userID).Return([]*model.Team{{Id: teamID, Name: teamName}}, nil).Once()
+		mockAPI.On("GetDirectChannel", userID, botID).Return(&model.Channel{Id: dmChannelID}, nil).Once()
+		mockAPI.On("UploadFile", mock.Anything, dmChannelID, mock.Anything).Return(&model.FileInfo{Id: fileID}, nil).Once()
+		mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{Id: postID, ChannelId: dmChannelID, FileIds: []string{fileID}}, nil).Once()
+		mockAPI.On("GetTeam", teamID).Return(&model.Team{Id: teamID, Name: teamName}, nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{
+			ServiceSettings: model.ServiceSettings{SiteURL: model.NewPointer(siteURL)},
+		}).Once()
+
+		expectedPermalink := fmt.Sprintf("%s/%s/pl/%s", siteURL, teamName, postID)
+		mockAPI.On("SendEphemeralPost", userID, mock.MatchedBy(func(post *model.Post) bool {
+			return post.ChannelId == originChannelID && strings.Contains(post.Message, expectedPermalink)
+		})).Return(&model.Post{}).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodPost, "/logs/upload", strings.NewReader(body(map[string]string{
+			"logs":       "test content",
+			"channel_id": originChannelID,
+		})))
+		r.Header.Set("Mattermost-User-Id", userID)
+		p.handleUploadLogsToBot(w, r)
+
+		require.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("DM/GM channel with no team membership is rejected", func(t *testing.T) {
+		p, mockAPI := newPlugin()
+		defer mockAPI.AssertExpectations(t)
+
+		mockAPI.On("GetChannelMember", originChannelID, userID).Return(&model.ChannelMember{ChannelId: originChannelID, UserId: userID}, nil).Once()
+		mockAPI.On("GetChannel", originChannelID).Return(&model.Channel{Id: originChannelID, TeamId: ""}, nil).Once()
+		mockAPI.On("GetTeamsForUser", userID).Return([]*model.Team{}, nil).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodPost, "/logs/upload", strings.NewReader(body(map[string]string{
+			"logs":       "test",
+			"channel_id": originChannelID,
+		})))
+		r.Header.Set("Mattermost-User-Id", userID)
+		p.handleUploadLogsToBot(w, r)
+		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 
 	t.Run("accepts logs above the old 1MB body limit, leaving margin for JSON escaping", func(t *testing.T) {
@@ -143,6 +199,8 @@ func TestHandleUploadLogsToBot(t *testing.T) {
 		// used to trip the old 1MB server body limit and 400.
 		logs := strings.Repeat("a", 1536*1024)
 
+		mockAPI.On("GetChannelMember", originChannelID, userID).Return(&model.ChannelMember{ChannelId: originChannelID, UserId: userID}, nil).Once()
+		mockAPI.On("GetChannel", originChannelID).Return(&model.Channel{Id: originChannelID, TeamId: teamID}, nil).Once()
 		mockAPI.On("GetDirectChannel", userID, botID).Return(&model.Channel{Id: dmChannelID}, nil).Once()
 		mockAPI.On("UploadFile", mock.Anything, dmChannelID, mock.Anything).Return(&model.FileInfo{Id: fileID}, nil).Once()
 		mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{Id: postID, ChannelId: dmChannelID, FileIds: []string{fileID}}, nil).Once()
@@ -156,7 +214,6 @@ func TestHandleUploadLogsToBot(t *testing.T) {
 		r := httptest.NewRequest(http.MethodPost, "/logs/upload", strings.NewReader(body(map[string]string{
 			"logs":       logs,
 			"channel_id": originChannelID,
-			"team_id":    teamID,
 		})))
 		r.Header.Set("Mattermost-User-Id", userID)
 		p.handleUploadLogsToBot(w, r)
@@ -171,7 +228,6 @@ func TestHandleUploadLogsToBot(t *testing.T) {
 		r := httptest.NewRequest(http.MethodPost, "/logs/upload", strings.NewReader(body(map[string]string{
 			"logs":       strings.Repeat("a", 3*1024*1024),
 			"channel_id": originChannelID,
-			"team_id":    teamID,
 		})))
 		r.Header.Set("Mattermost-User-Id", userID)
 		p.handleUploadLogsToBot(w, r)

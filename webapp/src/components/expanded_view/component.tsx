@@ -1541,8 +1541,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 {showMuteOthers &&
                                     <MuteOthersButton
                                         onClick={() => {
+                                            if (!this.props.channel) {
+                                                logErr('channel should be defined');
+                                                return;
+                                            }
                                             logDebug('ExpandedView: host muting all other participants');
-                                            hostMuteOthers(this.props.channel?.id);
+                                            hostMuteOthers(this.props.channel.id);
                                         }}
                                     >
                                         <MutedIcon

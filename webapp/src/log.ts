@@ -49,26 +49,45 @@ export function flushLogsToAccumulated(stats?: CallsClientStats | null) {
         return; // Nothing to flush
     }
 
-    const storage = getPersistentStorage();
+    // Logging is best-effort: a storage failure (e.g. quota exceeded) must
+    // never block callers such as connectCall, so swallow any error here. The
+    // in-memory buffer is always cleared so it can't grow unbounded.
+    try {
+        const storage = getPersistentStorage();
 
-    // Get accumulated buffer
-    let accumulated = storage.getItem(STORAGE_CALLS_CLIENT_LOGS_KEY) || '';
+        // Get accumulated buffer
+        let accumulated = storage.getItem(STORAGE_CALLS_CLIENT_LOGS_KEY) || '';
 
-    // Append in-memory logs to end
-    accumulated += clientLogs;
+        // Append in-memory logs to end
+        accumulated += clientLogs;
 
-    // Truncate from start if exceeds max
-    if (accumulated.length > MAX_ACCUMULATED_LOG_SIZE) {
-        const keepSize = MAX_ACCUMULATED_LOG_SIZE - 50;
-        const truncated = accumulated.slice(-keepSize);
-        accumulated = '[... older logs truncated ...]\n\n' + truncated;
+        // Truncate from start if exceeds max. We measure UTF-8 byte size rather
+        // than string length (UTF-16 code units) so the buffer stays within the
+        // server's byte limit even when logs contain multi-byte characters.
+        const bytes = new TextEncoder().encode(accumulated);
+        if (bytes.length > MAX_ACCUMULATED_LOG_SIZE) {
+            const marker = '[... older logs truncated ...]\n\n';
+            const keepSize = MAX_ACCUMULATED_LOG_SIZE - marker.length;
+
+            // Advance the cut point past any partial multi-byte sequence (leading
+            // UTF-8 continuation bytes, 0b10xxxxxx) so decoding starts on a
+            // character boundary and produces no replacement characters.
+            let start = bytes.length - keepSize;
+            while (start < bytes.length && (bytes[start] & 0xc0) === 0x80) {
+                start++;
+            }
+            const truncated = new TextDecoder().decode(bytes.slice(start));
+            accumulated = marker + truncated;
+        }
+
+        // Save back
+        storage.setItem(STORAGE_CALLS_CLIENT_LOGS_KEY, accumulated);
+    } catch (err) {
+        console.error(`${pluginId}: failed to flush logs to storage`, err);
+    } finally {
+        // Clear memory
+        clientLogs = '';
     }
-
-    // Save back
-    storage.setItem(STORAGE_CALLS_CLIENT_LOGS_KEY, accumulated);
-
-    // Clear memory
-    clientLogs = '';
 }
 
 export function persistClientLogs() {

@@ -4,7 +4,6 @@
 import {CommandArgs} from '@mattermost/types/integrations';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionResult} from 'mattermost-redux/types/actions';
 import {defineMessage} from 'react-intl';
@@ -184,12 +183,6 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             return {error: {message: 'No call logs available'}};
         }
 
-        // In DM/GM channels args.team_id is empty (there is no team), so fall
-        // back to the current team. The server needs a valid team to build the
-        // permalink to the @calls bot DM; the permalink resolves regardless of
-        // the team name in the URL as long as the user is a member of it.
-        const teamID = args.team_id || getCurrentTeamId(store.getState());
-
         try {
             await RestClient.fetch(
                 `${getPluginPath()}/logs/upload`,
@@ -198,7 +191,6 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
                     body: JSON.stringify({
                         logs: allLogs,
                         channel_id: args.channel_id,
-                        team_id: teamID,
                     }),
                     headers: {'Content-Type': 'application/json'},
                 },
