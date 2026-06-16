@@ -1159,7 +1159,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             />
         );
 
-        if (hasRecStarted) {
+        if (hasRecStarted && isHost) {
             const {formatMessage} = this.props.intl;
             return (
                 <OverlayTrigger
