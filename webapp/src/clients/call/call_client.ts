@@ -982,9 +982,13 @@ export default class CallClient extends EventEmitter {
         // null for a call torn down within the first poll interval) folded into the
         // log buffer that `/call logs` uploads, plus a copy under
         // STORAGE_CALLS_CLIENT_STATS_KEY for `/call stats`, mirroring the v1 client.
+        // When this call captured no sample, clear the key so `/call stats` shows
+        // empty rather than leaking a previous call's stats.
         flushLogsToAccumulated(this.lastStats);
         if (this.lastStats) {
             getPersistentStorage().setItem(STORAGE_CALLS_CLIENT_STATS_KEY, JSON.stringify(this.lastStats));
+        } else {
+            getPersistentStorage().removeItem(STORAGE_CALLS_CLIENT_STATS_KEY);
         }
     }
 

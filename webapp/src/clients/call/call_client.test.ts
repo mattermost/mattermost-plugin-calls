@@ -414,6 +414,20 @@ describe('CallClient', () => {
             expect(storage.getItem(STORAGE_CALLS_CLIENT_LOGS_KEY)).toContain('--- Call Stats ---');
         });
 
+        it('clears stale persisted stats when the call tears down before any sample', () => {
+            const storage = getPersistentStorage();
+
+            // Stats left over from an earlier call.
+            storage.setItem(STORAGE_CALLS_CLIENT_STATS_KEY, JSON.stringify({channelID: 'old-call'}));
+
+            // Disconnect before RoomEvent.Connected ever fired (failed/cancelled join):
+            // polling never started, so lastStats is null and there is no fresh sample.
+            mockRoom.fire(RoomEvent.Disconnected);
+
+            // The stale entry is cleared rather than served by a later `/call stats`.
+            expect(storage.getItem(STORAGE_CALLS_CLIENT_STATS_KEY)).toBeNull();
+        });
+
         it('takes an immediate stats sample with ICE candidate pairs on connect', async () => {
             await client.connect({channelID: 'ice'});
 
@@ -1781,9 +1795,7 @@ describe('CallClient', () => {
                 enabled: opts.enabled ?? true,
                 readyState: opts.readyState ?? 'live',
             },
-            getRTCStatsReport: opts.reportErr ?
-                jest.fn().mockRejectedValue(opts.reportErr) :
-                jest.fn().mockResolvedValue(opts.report),
+            getRTCStatsReport: opts.reportErr ? jest.fn().mockRejectedValue(opts.reportErr) : jest.fn().mockResolvedValue(opts.report),
         });
 
         const setPublications = (local: any[], remote: any[]) => {
