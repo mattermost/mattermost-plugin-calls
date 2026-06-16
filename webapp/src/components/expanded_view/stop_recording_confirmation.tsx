@@ -6,6 +6,7 @@ import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {stopCallRecording} from 'src/actions';
 import GenericModal from 'src/components/generic_modal';
+import {logDebug} from 'src/log';
 import {transcriptionsEnabled} from 'src/selectors';
 import styled from 'styled-components';
 
@@ -37,7 +38,10 @@ export const StopRecordingConfirmation = ({channelID, ...modalProps}: Props) => 
             confirmButtonText={confirmText}
             cancelButtonText={cancelText}
             isConfirmDestructive={true}
-            handleConfirm={() => stopCallRecording(channelID)}
+            handleConfirm={() => {
+                logDebug('StopRecordingConfirmation: stopping recording');
+                stopCallRecording(channelID);
+            }}
             showCancel={true}
             onHide={() => null}
             components={{FooterContainer}}

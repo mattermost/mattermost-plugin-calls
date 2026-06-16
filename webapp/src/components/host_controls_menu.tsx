@@ -10,6 +10,7 @@ import MonitorAccount from 'src/components/icons/monitor_account';
 import MutedIcon from 'src/components/icons/muted_icon';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
+import {logDebug} from 'src/log';
 import styled from 'styled-components';
 
 type Props = {
@@ -40,7 +41,12 @@ export const HostControlsMenu = ({
     }
 
     const muteUnmute = isMuted ? null : (
-        <DropdownMenuItem onClick={() => hostMute(callID, sessionID)}>
+        <DropdownMenuItem
+            onClick={() => {
+                logDebug(`HostControlsMenu: mute participant ${sessionID}`);
+                hostMute(callID, sessionID);
+            }}
+        >
             <MutedIcon
                 data-testid={'host-mute'}
                 fill='var(--center-channel-color-56)'
@@ -56,7 +62,12 @@ export const HostControlsMenu = ({
         <>
             {muteUnmute}
             {isSharingScreen &&
-                <DropdownMenuItem onClick={() => hostScreenOff(callID, sessionID)}>
+                <DropdownMenuItem
+                    onClick={() => {
+                        logDebug(`HostControlsMenu: stop screen share for ${sessionID}`);
+                        hostScreenOff(callID, sessionID);
+                    }}
+                >
                     <UnshareScreenIcon
                         fill='var(--center-channel-color-56)'
                         style={{width: '16px', height: '16px'}}
@@ -65,7 +76,12 @@ export const HostControlsMenu = ({
                 </DropdownMenuItem>
             }
             {isHandRaised &&
-                <DropdownMenuItem onClick={() => hostLowerHand(callID, sessionID)}>
+                <DropdownMenuItem
+                    onClick={() => {
+                        logDebug(`HostControlsMenu: lower hand for ${sessionID}`);
+                        hostLowerHand(callID, sessionID);
+                    }}
+                >
                     <UnraisedHandIcon
                         fill='var(--center-channel-color-56)'
                         style={{width: '16px', height: '16px'}}
@@ -74,7 +90,12 @@ export const HostControlsMenu = ({
                 </DropdownMenuItem>
             }
             {!isHost &&
-                <DropdownMenuItem onClick={() => hostMake(callID, userID)}>
+                <DropdownMenuItem
+                    onClick={() => {
+                        logDebug(`HostControlsMenu: make host ${userID}`);
+                        hostMake(callID, userID);
+                    }}
+                >
                     <MonitorAccount
                         fill='var(--center-channel-color-56)'
                         style={{width: '16px', height: '16px'}}
