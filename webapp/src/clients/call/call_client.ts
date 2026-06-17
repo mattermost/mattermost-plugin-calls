@@ -1381,6 +1381,11 @@ export default class CallClient extends EventEmitter {
                 Room.getLocalDevices('audiooutput', false),
             ]);
             this.audioDevices = {inputs, outputs};
+
+            // Log the resolved counts so a "zero audio input devices" condition
+            // (which silently disables the mic button) can be confirmed directly
+            // from downloaded logs rather than inferred from absent log lines.
+            logDebug(`CallClient: enumerated audio devices: ${inputs.length} input(s), ${outputs.length} output(s)`);
         } catch (err) {
             logErr('CallClient: enumerating devices failed', err);
         }

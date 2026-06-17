@@ -360,4 +360,65 @@ describe('log', () => {
             expect(logs).toBe('test logs');
         });
     });
+
+    describe('popout write-through', () => {
+        const originalOpener = Object.getOwnPropertyDescriptor(window, 'opener');
+
+        const setOpener = (opener: unknown) => {
+            Object.defineProperty(window, 'opener', {value: opener, configurable: true, writable: true});
+        };
+
+        afterEach(() => {
+            if (originalOpener) {
+                Object.defineProperty(window, 'opener', originalOpener);
+            } else {
+                setOpener(null);
+            }
+        });
+
+        test('routes logs to opener buffer when running as a popout', () => {
+            const append = jest.fn();
+            setOpener({callsClientLogAppend: append});
+
+            logInfo('popout gesture');
+            flushLogsToAccumulated();
+
+            // The formatted line went to the opener, not this realm's buffer.
+            expect(append).toHaveBeenCalledTimes(1);
+            expect(append.mock.calls[0][0]).toContain('popout gesture');
+            expect(append.mock.calls[0][0]).toContain('info');
+            expect(getClientLogs()).not.toContain('popout gesture');
+        });
+
+        test('falls back to local buffer when opener is same-origin without appender', () => {
+            setOpener({});
+
+            logInfo('no appender');
+            flushLogsToAccumulated();
+
+            expect(getClientLogs()).toContain('no appender');
+        });
+
+        test('falls back to local buffer when opener access throws (cross-origin)', () => {
+            setOpener(new Proxy({}, {
+                get() {
+                    throw new Error('Blocked a frame with origin');
+                },
+            }));
+
+            logInfo('cross origin opener');
+            flushLogsToAccumulated();
+
+            expect(getClientLogs()).toContain('cross origin opener');
+        });
+
+        test('does not route to itself when there is no opener', () => {
+            setOpener(null);
+
+            logInfo('main window');
+            flushLogsToAccumulated();
+
+            expect(getClientLogs()).toContain('main window');
+        });
+    });
 });
