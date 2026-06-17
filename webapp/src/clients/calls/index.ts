@@ -3,7 +3,7 @@
 
 /* eslint-disable max-lines */
 
-import {parseRTCStats, RTCPeer} from '@mattermost/calls-common';
+import {RTCPeer} from '@mattermost/calls-common';
 import type {CallsClientJoinData, EmojiData, RTPEncodingParameters, TrackInfo} from '@mattermost/calls-common/lib/types';
 import {EventEmitter} from 'events';
 import {strToU8, zlibSync} from 'fflate';
@@ -17,6 +17,7 @@ import {
 } from 'src/constants';
 import {type BgBlurData, getBgBlurData} from 'src/local_storage';
 import {logDebug, logErr, logInfo, logWarn, persistClientLogs} from 'src/log';
+import {parseRTCStats} from 'src/rtc_stats';
 import Segmenter from 'src/segmenter';
 import {CallsClientConfig, CallsClientStats, MediaDevices, TrackMetadata} from 'src/types/types';
 import {getPersistentStorage, getScreenStream} from 'src/utils';
@@ -1195,7 +1196,7 @@ export default class CallsClient extends EventEmitter {
 
         return {
             initTime: this.initTime,
-            callID: this.channelID,
+            channelID: this.channelID,
             tracksInfo,
             rtcStats: stats ? parseRTCStats(stats) : null,
         };

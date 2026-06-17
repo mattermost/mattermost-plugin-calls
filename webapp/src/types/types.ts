@@ -1,8 +1,9 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallsConfig, LiveCaption, RTCStats, TranscribeAPI} from '@mattermost/calls-common/lib/types';
+import {CallsConfig, LiveCaption, TranscribeAPI} from '@mattermost/calls-common/lib/types';
 import {MessageDescriptor} from 'react-intl';
+import {RTCStats} from 'src/types/webrtc';
 
 export const CallsConfigDefault: CallsConfig = {
     ICEServers: [],
@@ -58,7 +59,7 @@ export type TrackMetadata = {
 
 export type CallsClientStats = {
     initTime: number;
-    callID: string;
+    channelID: string;
     tracksInfo: TrackMetadata[];
     rtcStats: RTCStats | null;
 }
