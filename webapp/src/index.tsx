@@ -176,6 +176,8 @@ import {
     handleHostRemoved,
     handleHostScreenOff,
     handleUserDismissedNotification,
+    handleUserJoined,
+    handleUserLeft,
     handleUserRaisedHand,
     handleUserReaction,
     handleUserRemovedFromChannel,
@@ -221,6 +223,17 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_ended`, (ev) => {
             handleCallEnd(store, ev);
+        });
+
+        // Channel-wide join/leave broadcasts keep the call post's participant list live for
+        // observers who haven't joined the call. Connected users get session state from the
+        // LiveKit room instead; the handlers ignore broadcasts for that channel.
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_joined`, (ev) => {
+            handleUserJoined(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_left`, (ev) => {
+            handleUserLeft(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_on`, (ev) => {

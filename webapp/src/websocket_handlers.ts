@@ -153,6 +153,12 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
 // state mutating operations.
 export function handleUserLeft(store: Store, ev: WebSocketMessage<UserLeftData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
+
+    // For the call we're connected to, the LiveKit room is the source of truth for session
+    // state; ignore the channel-wide broadcast to avoid racing the local participant feed.
+    if (channelIDForCurrentCall(store.getState()) === channelID) {
+        return;
+    }
     store.dispatch(leaveUser(channelID, ev.data.user_id, ev.data.session_id));
 }
 
@@ -162,6 +168,12 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
     const userID = ev.data.user_id;
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     const sessionID = ev.data.session_id;
+
+    // For the call we're connected to, the LiveKit room is the source of truth for session
+    // state; ignore the channel-wide broadcast to avoid racing the local participant feed.
+    if (channelIDForCurrentCall(store.getState()) === channelID) {
+        return;
+    }
     store.dispatch(joinUser(channelID, userID, sessionID, false));
 }
 
