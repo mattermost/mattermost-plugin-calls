@@ -29,7 +29,7 @@ type State = {
 
 const emptyState: State = {};
 
-export const reducer: Reducer<State, Actions> = (initialState = emptyState, action) : State => {
+export const reducer: Reducer<State, Actions> = (currentState = emptyState, action) : State => {
     switch (action.type) {
     case UN_INITIALIZED: {
         return emptyState;
@@ -37,16 +37,16 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
 
     case SESSIONS_RECEIVED: {
         return {
-            ...initialState,
+            ...currentState,
             [action.data.channelID]: action.data.sessions,
         };
     }
 
     case USER_JOINED: {
         return {
-            ...initialState,
+            ...currentState,
             [action.data.channelID]: {
-                ...initialState[action.data.channelID],
+                ...currentState[action.data.channelID],
                 [action.data.session_id]: {
                     session_id: action.data.session_id,
                     user_id: action.data.userID,
@@ -60,10 +60,10 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
     }
 
     case USERS_VOICE_ACTIVITY_CHANGED: {
-        const allSessions = initialState[action.data.channelID];
+        const allSessions = currentState[action.data.channelID];
 
         if (!allSessions) {
-            return initialState;
+            return currentState;
         }
 
         // With this flag we avoid creating a new state object if no changes are made
@@ -88,25 +88,25 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
         }
 
         if (!stateChanged) {
-            return initialState;
+            return currentState;
         }
 
         return {
-            ...initialState,
+            ...currentState,
             [action.data.channelID]: nextState,
         };
     }
 
     case USER_MUTED: {
-        const allSessions = initialState[action.data.channelID];
+        const allSessions = currentState[action.data.channelID];
         const currentSession = allSessions?.[action.data.session_id];
 
         if (!currentSession) {
-            return initialState;
+            return currentState;
         }
 
         return {
-            ...initialState,
+            ...currentState,
             [action.data.channelID]: {
                 ...allSessions,
                 [action.data.session_id]: {
@@ -118,15 +118,15 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
     }
 
     case USER_UNMUTED: {
-        const allSessions = initialState[action.data.channelID];
+        const allSessions = currentState[action.data.channelID];
         const currentSession = allSessions?.[action.data.session_id];
 
         if (!currentSession) {
-            return initialState;
+            return currentState;
         }
 
         return {
-            ...initialState,
+            ...currentState,
             [action.data.channelID]: {
                 ...allSessions,
                 [action.data.session_id]: {
@@ -138,15 +138,15 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
     }
 
     case USER_HAND_RAISED: {
-        const allSessions = initialState[action.data.channelID];
+        const allSessions = currentState[action.data.channelID];
         const currentSession = allSessions?.[action.data.session_id];
 
         if (!currentSession) {
-            return initialState;
+            return currentState;
         }
 
         return {
-            ...initialState,
+            ...currentState,
             [action.data.channelID]: {
                 ...allSessions,
                 [action.data.session_id]: {
@@ -158,15 +158,15 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
     }
 
     case USER_HAND_LOWERED: {
-        const allSessions = initialState[action.data.channelID];
+        const allSessions = currentState[action.data.channelID];
         const currentSession = allSessions?.[action.data.session_id];
 
         if (!currentSession) {
-            return initialState;
+            return currentState;
         }
 
         return {
-            ...initialState,
+            ...currentState,
             [action.data.channelID]: {
                 ...allSessions,
                 [action.data.session_id]: {
@@ -178,15 +178,15 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
     }
 
     case USER_REACTED: {
-        const allSessions = initialState[action.data.channelID];
+        const allSessions = currentState[action.data.channelID];
         const currentSession = allSessions?.[action.data.session_id];
 
         if (!currentSession) {
-            return initialState;
+            return currentState;
         }
 
         return {
-            ...initialState,
+            ...currentState,
             [action.data.channelID]: {
                 ...allSessions,
                 [action.data.session_id]: {
@@ -198,17 +198,17 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
     }
 
     case USER_REACTED_TIMEOUT: {
-        const allSessions = initialState[action.data.channelID];
+        const allSessions = currentState[action.data.channelID];
         const currentSession = allSessions?.[action.data.session_id];
 
         // Only clear if the timing-out reaction is still the one displayed — a newer
         // reaction within the window must not be cleared by an older reaction's timeout.
         if (!currentSession || currentSession.reaction?.timestamp !== action.data.reaction.timestamp) {
-            return initialState;
+            return currentState;
         }
 
         return {
-            ...initialState,
+            ...currentState,
             [action.data.channelID]: {
                 ...allSessions,
                 [action.data.session_id]: {
@@ -220,27 +220,27 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
     }
 
     case USER_LEFT: {
-        if (!initialState[action.data.channelID]?.[action.data.session_id]) {
-            return initialState;
+        if (!currentState[action.data.channelID]?.[action.data.session_id]) {
+            return currentState;
         }
 
-        const nextChannelSessions = {...initialState[action.data.channelID]};
+        const nextChannelSessions = {...currentState[action.data.channelID]};
         delete nextChannelSessions[action.data.session_id];
 
         return {
-            ...initialState,
+            ...currentState,
             [action.data.channelID]: nextChannelSessions,
         };
     }
 
     case CALL_ENDED: {
-        const nextState = {...initialState};
+        const nextState = {...currentState};
         delete nextState[action.data.channelID];
 
         return nextState;
     }
 
     default:
-        return initialState;
+        return currentState;
     }
 };
