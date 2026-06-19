@@ -63,9 +63,9 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
     missingScreenPermissions: {
         type: CallAlertType.Error,
         icon: 'monitor-off',
-        bannerText: defineMessage({defaultMessage: 'Screen recording access is not currently allowed or was canceled.'}),
+        bannerText: defineMessage({defaultMessage: 'Screen sharing access is not currently allowed or was canceled.'}),
         tooltipText: defineMessage({defaultMessage: 'No screen sharing permissions'}),
-        tooltipSubtext: defineMessage({defaultMessage: 'Allow screen recording access to Mattermost.'}),
+        tooltipSubtext: defineMessage({defaultMessage: 'Allow screen sharing access to Mattermost.'}),
         dismissable: true,
     },
     degradedCallQuality: {
