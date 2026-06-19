@@ -14,7 +14,7 @@ export default function ScreenSharingSettingsSection() {
     const description = formatMessage({defaultMessage: 'Configure your screen sharing settings.'});
     const editLabel = formatMessage({defaultMessage: 'Edit'});
 
-    const [shareAudio, setShareAudio] = useState(window.localStorage.getItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN) || 'off');
+    const [shareAudio, setShareAudio] = useState(window.localStorage.getItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN) || 'on');
 
     const onLabel = formatMessage({defaultMessage: 'On'});
     const offLabel = formatMessage({defaultMessage: 'Off'});
