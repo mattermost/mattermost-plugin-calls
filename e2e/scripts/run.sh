@@ -11,6 +11,11 @@ function print_logs {
 		docker logs ${CONTAINER_PROXY}
 		docker logs ${CONTAINER_LIVEKIT}
 
+		# SIP harness (compose-generated names) — best effort, for @sip-smoke triage.
+		docker logs "$(docker ps -aqf name=livekit-sip)" 2>/dev/null || true
+		# SIPp logs SIP messages to files, not stdout — dump them from the container.
+		docker exec "$(docker ps -aqf name=sipp)" sh -c 'cat /var/log/sipp/*_messages.log /var/log/sipp/*_errors.log 2>/dev/null' || true
+
 		# Log all containers
 		docker ps -a
 	fi
@@ -80,11 +85,18 @@ echo "Spawning playwright image ..."
 # test.skip'd as each PR in the MM-68570 series lands; only the smoke test
 # actually executes today. Constrained to chromium because that's the browser
 # both the smoke test and the early MM-68570 specs were authored against.
+# LiveKit SIP API endpoint + the SIP-bridge credentials (the `devkey` pair shared
+# with sip.yaml) + the SIPp sink address, consumed by the @sip-smoke test. The
+# SDK needs an http(s) URL, so this is not MM_CALLS_LIVE_KIT_URL (ws://).
 docker run -d --name playwright-e2e \
 	--network=container:${CONTAINER_PROXY} \
 	--entrypoint "" \
+	-e LIVEKIT_HOST="http://livekit:7880" \
+	-e LIVEKIT_API_KEY="devkey" \
+	-e LIVEKIT_API_SECRET="this-is-a-32-plus-character-dev-secret" \
+	-e SIP_SINK_ADDRESS="sipp:5060" \
 	mm-playwright \
-	bash -c "npm ci && npx playwright install && npx playwright test --project=chromium --grep '@livekit-smoke|@livekit' --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
+	bash -c "npm ci && npx playwright install && npx playwright test --project=chromium --grep '@livekit-smoke|@livekit|@sip-smoke' --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
 
 docker logs -f playwright-e2e
 

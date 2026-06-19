@@ -7,7 +7,10 @@ services:
       - "7881:7881"       # TURN/TCP fallback
       - "7882:7882/udp"   # WebRTC/UDP media
     volumes:
-      - ./livekit.yaml:/etc/livekit.yaml
+      # Default is the lean, no-redis config. The SIP make targets override
+      # LIVEKIT_CONFIG=./livekit-sip.yaml to add the `redis:` block (distributed
+      # mode) the SIP bridge requires.
+      - ${LIVEKIT_CONFIG:-./livekit.yaml}:/etc/livekit.yaml
     command: >
       --config /etc/livekit.yaml
       --node-ip=${LIVEKIT_NODE_IP}
@@ -31,3 +34,55 @@ services:
       - ${LIVEKIT_TLS_KEY:-/dev/null}:/etc/certs/key.pem:ro
     depends_on:
       - livekit-dev
+
+  # --- SIP outbound dialing infra (opt-in via the `sip` profile) ---------------
+  # Brought up by `make livekit-sip-docker-start`, which also points livekit-dev
+  # at livekit-sip.yaml (redis-enabled). These never start on the default
+  # `make livekit-docker-start` path.
+
+  # Dedicated Redis for the LiveKit <-> SIP PSRPC bus. Deliberately NOT
+  # Mattermost's Redis: avoids an availability dependency on MM's (optional)
+  # local Redis and a pub/sub cross-DB collision (Redis pub/sub isn't namespaced
+  # by db index).
+  redis:
+    image: redis:7-alpine
+    profiles: ["sip"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+  # LiveKit SIP bridge. Originates outbound INVITEs to the destination set at
+  # runtime via the LiveKit API (outbound trunk + dispatch rule) — either the
+  # bundled Asterisk sink (`sink` profile) or an external provider.
+  livekit-sip:
+    image: livekit/sip:v1.5.0
+    profiles: ["sip"]
+    restart: unless-stopped
+    volumes:
+      - ./sip.yaml:/etc/sip.yaml
+    command: --config /etc/sip.yaml
+    # To dial an EXTERNAL provider instead of the bundled sink, publish the SIP
+    # signaling + RTP ports to the host and flip use_external_ip in sip.yaml:
+    # ports:
+    #   - "5060:5060/udp"
+    #   - "10000-10100:10000-10100/udp"
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit-dev:
+        condition: service_started
+
+  # --- Auto-answer SIP sink (opt-in via the `sink` profile) --------------------
+  # Brought up by `make livekit-sip-sink-docker-start`. Anonymous auto-answering
+  # UAS that Answer()s, plays a greeting, then Echo()s the caller's RTP back to
+  # confirm bidirectional media. For human/manual validation only.
+  asterisk:
+    image: andrius/asterisk:20
+    profiles: ["sink"]
+    restart: unless-stopped
+    volumes:
+      - ./docker/asterisk/pjsip.conf:/etc/asterisk/pjsip.conf:ro
+      - ./docker/asterisk/extensions.conf:/etc/asterisk/extensions.conf:ro

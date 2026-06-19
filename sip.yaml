@@ -1,0 +1,21 @@
+# LiveKit SIP bridge config. Shared between the dev compose
+# (docker-compose.livekit.yaml, `sip` profile) and the E2E stack
+# (e2e/docker/) so the two paths can't drift.
+#
+# api_key/api_secret MUST match a pair in the LiveKit server `keys:` block
+# (livekit-sip.yaml); the bridge signs its own JWTs to call the LiveKit API.
+api_key: devkey
+api_secret: this-is-a-32-plus-character-dev-secret
+ws_url: ws://livekit-dev:7880
+redis:
+  address: redis:6379
+sip_port: 5060
+rtp_port: 10000-10100
+# false advertises the bridge's own container IP in SDP, which the bundled
+# Asterisk sink reaches directly over the compose network (the default
+# `sink`-loopback path). To dial an EXTERNAL provider, set this true (advertise
+# the host's STUN-discovered public IP) and publish the SIP/RTP ports on the
+# livekit-sip service in docker-compose.livekit.yaml.
+use_external_ip: false
+logging:
+  level: info

@@ -580,6 +580,26 @@ livekit-tls-docker-start:
 livekit-tls-docker-stop:
 	LIVEKIT_NODE_IP=$$(ipconfig getifaddr en0) docker compose -f docker-compose.livekit.yaml down
 
+## Start LiveKit + Redis + SIP bridge (outbound SIP; dial an external provider). Set the LiveKit outbound trunk URI to the provider at runtime.
+.PHONY: livekit-sip-docker-start
+livekit-sip-docker-start:
+	LIVEKIT_NODE_IP=$$(ipconfig getifaddr en0) LIVEKIT_CONFIG=./livekit-sip.yaml \
+		docker compose -f docker-compose.livekit.yaml up livekit-dev redis livekit-sip
+
+## Start LiveKit + Redis + SIP bridge + bundled Asterisk auto-answer sink (outbound SIP loopback for manual media testing)
+.PHONY: livekit-sip-sink-docker-start
+livekit-sip-sink-docker-start:
+	LIVEKIT_NODE_IP=$$(ipconfig getifaddr en0) LIVEKIT_CONFIG=./livekit-sip.yaml \
+		docker compose -f docker-compose.livekit.yaml up livekit-dev redis livekit-sip asterisk
+
+## Stop the SIP stack (LiveKit + Redis + SIP bridge + Asterisk sink)
+.PHONY: livekit-sip-docker-stop
+livekit-sip-docker-stop:
+	# --profile flags are required: `down` won't remove containers belonging to
+	# profiles that aren't activated.
+	LIVEKIT_NODE_IP=$$(ipconfig getifaddr en0) \
+		docker compose --profile sip --profile sink -f docker-compose.livekit.yaml down
+
 # Help documentation à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:
 	@cat Makefile build/*.mk | grep -v '\.PHONY' |  grep -v '\help:' | grep -B1 -E '^[a-zA-Z0-9_.-]+:.*' | sed -e "s/:.*//" | sed -e "s/^## //" |  grep -v '\-\-' | sed '1!G;h;$$!d' | awk 'NR%2{printf "\033[36m%-30s\033[0m",$$0;next;}1' | sort
