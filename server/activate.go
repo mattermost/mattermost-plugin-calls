@@ -148,6 +148,11 @@ func (p *Plugin) OnActivate() (retErr error) {
 		}()
 	}
 
+	// One-shot diagnostic: warn the operator if we're about to advertise only
+	// private ICE host candidates from inside a container with no override
+	// configured. Pre-flight check, no behavioural change. See issue #1143.
+	p.checkICEDockerMisconfiguration(cfg.ICEHostOverride)
+
 	// rtcServer and rtcdManager are mutually exclusive throughout the entire lifetime of the plugin.
 	// Which one is used is decided here, during activation.
 	// We first check if RTCD is configured and allowed by the license. If so
