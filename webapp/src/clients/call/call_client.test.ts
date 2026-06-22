@@ -1158,6 +1158,38 @@ describe('CallClient', () => {
             });
         });
 
+        it('logs the resolved audio input/output device counts after enumeration', async () => {
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([
+                inputDevice,
+                outputDevice,
+                inputDevice2,
+            ]);
+            const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
+
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Connected);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            const logged = debugSpy.mock.calls.map((args) => args.join(' '));
+            expect(logged).toEqual(expect.arrayContaining([expect.stringContaining('enumerated audio devices: 2 input(s), 1 output(s)')]));
+
+            debugSpy.mockRestore();
+        });
+
+        it('logs zero input devices so the inert-mic-button condition is visible', async () => {
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([outputDevice]);
+            const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
+
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Connected);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            const logged = debugSpy.mock.calls.map((args) => args.join(' '));
+            expect(logged).toEqual(expect.arrayContaining([expect.stringContaining('enumerated audio devices: 0 input(s), 1 output(s)')]));
+
+            debugSpy.mockRestore();
+        });
+
         it('setAudioInputDevice persists, switches the LiveKit device, and emits DEVICE_CHANGE', async () => {
             await client.connect({channelID: 'test-channel'});
             const deviceChangeListener = jest.fn();
