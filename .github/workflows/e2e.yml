@@ -16,6 +16,13 @@ env:
   COMPOSE_PROJECT_NAME: "${{ github.run_id }}_playwright_1"
   # Control testing parallelism
   PARALLELISM: 1
+  # Pinned Mattermost server release for E2E. We pin to a fixed ESR so that
+  # unrelated changes in mattermost `master` can't turn Calls E2E red — E2E
+  # should surface regressions in Calls, not transient breakage upstream.
+  # This single var drives BOTH the server image tag (IMAGE_SERVER) and the
+  # mattermost/mattermost checkout ref (used for config generation); the two
+  # must stay in sync. Bump deliberately when a new ESR is designated (~yearly).
+  MM_SERVER_IMAGE_TAG: release-11.7
 
 jobs:
   build-mattermost-plugin-calls:
@@ -75,7 +82,6 @@ jobs:
       CONTAINER_SERVER: playwright_tests_server
       CONTAINER_PROXY: playwright_tests_proxy
       CONTAINER_LIVEKIT: playwright_tests_livekit
-      IMAGE_SERVER: mattermostdevelopment/mattermost-enterprise-edition:master
       IMAGE_CURL: curlimages/curl:8.7.1
       # LiveKit credentials match e2e/docker/livekit.yaml.
       MM_CALLS_LIVE_KIT_URL: ws://livekit:7880
@@ -90,10 +96,19 @@ jobs:
       - name: e2e/checkout-mattermost-plugin-calls-repo
         uses: actions/checkout@v4
 
+      # Compose IMAGE_SERVER from the pinned tag here: the `env` context can't be
+      # referenced inside a job-level `env:` block, so we build it via $GITHUB_ENV.
+      - name: e2e/set-server-image
+        run: echo "IMAGE_SERVER=mattermostdevelopment/mattermost-enterprise-edition:${MM_SERVER_IMAGE_TAG}" >> "${GITHUB_ENV}"
+
       - name: e2e/checkout-mattermost-repo
         uses: actions/checkout@v4
         with:
           repository: mattermost/mattermost
+          # Must match IMAGE_SERVER's tag: this checkout only feeds config
+          # generation, so a mismatch would generate config against the wrong
+          # server version.
+          ref: ${{ env.MM_SERVER_IMAGE_TAG }}
           path: mattermost
 
       - name: e2e/setup-docker-buildx
