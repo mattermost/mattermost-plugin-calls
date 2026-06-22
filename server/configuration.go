@@ -56,6 +56,8 @@ type configuration struct {
 	LiveKitAPIKey string
 	// The API secret used to authenticate with the LiveKit server.
 	LiveKitAPISecret string
+	// SIP outbound trunk ID for outbound phone calls (e.g., ST_xxx). Empty disables outbound dialing.
+	LiveKitSIPOutboundTrunkID string
 	// When set to true live captions will be enabled when starting transcription jobs.
 	EnableLiveCaptions *bool
 	// The speech-to-text model size to use to transcribe live captions.
@@ -97,6 +99,9 @@ type ClientConfig struct {
 	EnableSimulcast *bool
 	// When set to true it enables ringing for DM/GM channels.
 	EnableRinging *bool
+	// When set to true it enables outbound SIP phone dialing. Requires a configured
+	// LiveKitSIPOutboundTrunkID; this toggle disables dialing without clearing it.
+	EnableSIPOutbound *bool
 	// (Cloud) License information that isn't exposed to clients yet on the webapp
 	SkuShortName string `json:"sku_short_name"`
 	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
@@ -149,6 +154,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.EnableRinging == nil {
 		c.EnableRinging = model.NewPointer(false)
+	}
+	if c.EnableSIPOutbound == nil {
+		c.EnableSIPOutbound = model.NewPointer(false)
 	}
 	if c.TranscriberModelSize == "" {
 		c.TranscriberModelSize = transcriber.ModelSizeDefault
@@ -244,6 +252,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveKitURL = c.LiveKitURL
 	cfg.LiveKitAPIKey = c.LiveKitAPIKey
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
+	cfg.LiveKitSIPOutboundTrunkID = c.LiveKitSIPOutboundTrunkID
 
 	// AllowEnableCalls is always true
 	cfg.AllowEnableCalls = model.NewPointer(true)
@@ -286,6 +295,10 @@ func (c *configuration) Clone() *configuration {
 
 	if c.EnableRinging != nil {
 		cfg.EnableRinging = model.NewPointer(*c.EnableRinging)
+	}
+
+	if c.EnableSIPOutbound != nil {
+		cfg.EnableSIPOutbound = model.NewPointer(*c.EnableSIPOutbound)
 	}
 
 	if c.LiveCaptionsNumTranscribers != nil {
@@ -378,6 +391,7 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		MaxRecordingDuration: c.MaxRecordingDuration,
 		EnableSimulcast:      c.EnableSimulcast,
 		EnableRinging:        c.EnableRinging,
+		EnableSIPOutbound:    c.EnableSIPOutbound,
 		SkuShortName:         skuShortName,
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
 		EnableAV1:            c.EnableAV1,
@@ -566,6 +580,7 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 
 	cfg.JobServiceURL = strings.TrimSpace(cfg.JobServiceURL)
 	cfg.LiveKitURL = strings.TrimSpace(cfg.LiveKitURL)
+	cfg.LiveKitSIPOutboundTrunkID = strings.TrimSpace(cfg.LiveKitSIPOutboundTrunkID)
 }
 
 func (p *Plugin) isSingleHandler() bool {

@@ -20,6 +20,7 @@ const (
 	joinCommandTrigger      = "join"
 	leaveCommandTrigger     = "leave"
 	linkCommandTrigger      = "link"
+	dialCommandTrigger      = "dial"
 	statsCommandTrigger     = "stats"
 	endCommandTrigger       = "end"
 	recordingCommandTrigger = "recording"
@@ -32,6 +33,7 @@ var subCommands = []string{
 	joinCommandTrigger,
 	leaveCommandTrigger,
 	linkCommandTrigger,
+	dialCommandTrigger,
 	endCommandTrigger,
 	statsCommandTrigger,
 	recordingCommandTrigger,
@@ -47,6 +49,9 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(joinCommandTrigger, "", "Joins a call in the current channel"))
 	data.AddCommand(model.NewAutocompleteData(leaveCommandTrigger, "", "Leave a call in the current channel."))
 	data.AddCommand(model.NewAutocompleteData(linkCommandTrigger, "", "Generate a link to join a call in the current channel."))
+	dialCmdData := model.NewAutocompleteData(dialCommandTrigger, "[phone number]", "Dial an outbound phone number.")
+	dialCmdData.AddTextArgument("[phone number]", "Phone number to dial", "")
+	data.AddCommand(dialCmdData)
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Show client-generated statistics about the call."))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately."))
 	data.AddCommand(model.NewAutocompleteData(logsCommandTrigger, "", "Show client logs."))
@@ -210,6 +215,15 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == endCommandTrigger {
 		return buildCommandResponse(p.handleEndCallCommand())
+	}
+
+	if subCmd == dialCommandTrigger {
+		// The webapp intercepts /call dial client-side. Reaching the server
+		// means the client didn't handle it (e.g. mobile), so just inform.
+		return &model.CommandResponse{
+			ResponseType: model.CommandResponseTypeEphemeral,
+			Text:         "Outbound dialing is only supported in the web/desktop app.",
+		}, nil
 	}
 
 	if subCmd == recordingCommandTrigger {

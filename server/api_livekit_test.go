@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -421,5 +422,88 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 
 		resp := w.Result()
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+}
+
+func TestHandlePhoneCall(t *testing.T) {
+	setupPlugin := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI) {
+		t.Helper()
+		mockAPI := &pluginMocks.MockAPI{}
+		mockMetrics := &serverMocks.MockMetrics{}
+
+		p := &Plugin{
+			MattermostPlugin:  plugin.MattermostPlugin{API: mockAPI},
+			metrics:           mockMetrics,
+			apiLimiters:       map[string]*rate.Limiter{},
+			callsClusterLocks: map[string]*cluster.Mutex{},
+			sessions:          map[string]*session{},
+		}
+		p.licenseChecker = enterprise.NewLicenseChecker(p.API)
+
+		mockMetrics.On("Handler").Return(nil)
+		mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Maybe()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil)
+		mockAPI.On("LogDebug", "handlePhoneCall",
+			"origin", mock.AnythingOfType("string"), mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+
+		return p, mockAPI
+	}
+
+	doRequest := func(t *testing.T, p *Plugin, number string) *http.Response {
+		t.Helper()
+		apiRouter := p.newAPIRouter()
+		body, err := json.Marshal(map[string]string{"number": number})
+		require.NoError(t, err)
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/phone-call", bytes.NewReader(body))
+		r.Header.Set("Mattermost-User-Id", model.NewId())
+		apiRouter.ServeHTTP(w, r)
+		return w.Result()
+	}
+
+	t.Run("number required", func(t *testing.T) {
+		p, _ := setupPlugin(t)
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.EnableSIPOutbound = model.NewPointer(true)
+		cfg.LiveKitSIPOutboundTrunkID = "ST_test"
+		p.configuration = cfg
+
+		resp := doRequest(t, p, "")
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		var res httpResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
+		require.Equal(t, "number is required", res.Msg)
+	})
+
+	t.Run("disabled toggle rejects even with trunk configured", func(t *testing.T) {
+		p, _ := setupPlugin(t)
+		cfg := &configuration{}
+		cfg.SetDefaults() // EnableSIPOutbound defaults to false
+		cfg.LiveKitSIPOutboundTrunkID = "ST_test"
+		p.configuration = cfg
+
+		resp := doRequest(t, p, "+14155551234")
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		var res httpResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
+		require.Equal(t, "outbound dialing is disabled. Enable it in the admin console.", res.Msg)
+	})
+
+	t.Run("enabled but no trunk configured", func(t *testing.T) {
+		p, _ := setupPlugin(t)
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.EnableSIPOutbound = model.NewPointer(true) // trunk left empty
+		p.configuration = cfg
+
+		resp := doRequest(t, p, "+14155551234")
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		var res httpResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
+		require.Equal(t, "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console.", res.Msg)
 	})
 }

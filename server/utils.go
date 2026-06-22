@@ -223,6 +223,30 @@ func getUserIDsFromSessions(sessions map[string]*public.CallSession) []string {
 	return userIDs
 }
 
+// sipParticipantsRemain reports whether any SIP participant session is still present.
+func sipParticipantsRemain(sessions map[string]*public.CallSession) bool {
+	for _, session := range sessions {
+		if session.IsSIPParticipant {
+			return true
+		}
+	}
+	return false
+}
+
+// onlySIPParticipantsRemain reports whether there is at least one session left
+// and every remaining session is a SIP participant (i.e. no humans remain).
+func onlySIPParticipantsRemain(sessions map[string]*public.CallSession) bool {
+	if len(sessions) == 0 {
+		return false
+	}
+	for _, session := range sessions {
+		if !session.IsSIPParticipant {
+			return false
+		}
+	}
+	return true
+}
+
 func (p *Plugin) getTranslationFunc(locale string) i18n.TranslateFunc {
 	if locale != "" {
 		return i18n.GetUserTranslations(locale)

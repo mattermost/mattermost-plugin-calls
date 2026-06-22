@@ -449,6 +449,29 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 	}
 
+	// Outbound phone calls (bot-DM containers) are 1:1: once the last human
+	// leaves, any lingering SIP participant has no one to talk to. Hang up the
+	// phone by deleting the LiveKit room (which sends a SIP BYE) and drop the SIP
+	// session(s), so the call ends below instead of orphaning the PSTN leg. The
+	// resulting participant_left webhook finds the call already ended and no-ops.
+	if onlySIPParticipantsRemain(state.sessions) && p.isPhoneCallChannel(channelID) {
+		p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
+			"callID", state.Call.ID, "channelID", channelID)
+
+		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+			p.LogError("removeUserSession: failed to delete LiveKit room",
+				"channelID", channelID, "err", err.Error())
+		}
+
+		for sid := range state.sessions {
+			if err := p.store.DeleteCallSession(sid); err != nil {
+				p.LogError("removeUserSession: failed to delete SIP session",
+					"channelID", channelID, "sid", sid, "err", err.Error())
+			}
+			delete(state.sessions, sid)
+		}
+	}
+
 	// Call has ended
 	if len(state.sessions) == 0 {
 		if state.Call.Props.ScreenStartAt > 0 {
