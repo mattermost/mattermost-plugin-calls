@@ -32,9 +32,44 @@ function stringifyLogArg(arg: unknown): string {
     }
 }
 
+// Appends a fully-formatted log line to this realm's in-memory buffer. Exposed
+// on `window` (below) so the expanded-view popout can write through to its
+// opener's buffer rather than persisting separately.
+function appendLogLine(line: string) {
+    clientLogs += line;
+}
+
 function appendClientLog(level: string, ...args: unknown[]) {
+    // Serialize in the originating realm: Error/object args belong to this
+    // window's realm and would fail `instanceof Error` checks if handed to the
+    // opener's realm to format.
     const serialized = args.map(stringifyLogArg).join(' ');
-    clientLogs += `${level} [${new Date().toISOString()}] ${serialized}\n`;
+    const line = `${level} [${new Date().toISOString()}] ${serialized}\n`;
+
+    // In the expanded-view popout, route the line to the opener's buffer so
+    // popout-realm logs ride the main window's existing flush machinery (single
+    // source of truth, no cross-window localStorage read-modify-write race).
+    // Don't call isCallsPopOut()/logErr here — that would recurse back through
+    // appendClientLog. Inline the opener check and swallow the cross-origin
+    // SecurityError, mirroring getCallsWindow().
+    try {
+        const opener = window.opener as Window | null;
+        if (opener && opener !== window && typeof opener.callsClientLogAppend === 'function') {
+            opener.callsClientLogAppend(line);
+            return;
+        }
+    } catch {
+        // Cross-origin opener (e.g. MM opened from a calendar link): fall
+        // through to this realm's local buffer.
+    }
+
+    clientLogs += line;
+}
+
+// Expose this realm's appender so an expanded-view popout can write its logs
+// through to this (the opener's) buffer via window.opener.
+if (typeof window !== 'undefined') {
+    window.callsClientLogAppend = appendLogLine;
 }
 
 export function flushLogsToAccumulated(stats?: CallsClientStats | null) {

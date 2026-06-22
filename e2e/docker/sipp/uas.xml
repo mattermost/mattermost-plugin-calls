@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<!-- Auto-answering UAS sink for the LiveKit SIP harness (CI).
+     Answers any inbound INVITE with 180 then 200 OK (G.711 SDP), accepts the
+     ACK, and waits for the BYE that LiveKit sends when the room is torn down.
+     SIPp runs this in server mode (no call limit) so it keeps answering across
+     test retries. Exit code stays 0 while the scenario completes cleanly.
+
+     This is the shared template for MM-69369's SIP-layer coverage: <recv>
+     elements can grow `regexp`-matched asserts on INVITE headers/SDP to turn a
+     received message into a hard pass/fail. -->
+<scenario name="LiveKit SIP smoke sink (UAS)">
+  <recv request="INVITE" crlf="true"/>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 180 Ringing
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <send retrans="500">
+    <![CDATA[
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Type: application/sdp
+      Content-Length: [len]
+
+      v=0
+      o=sink 53655765 2353687637 IN IP[local_ip_type] [local_ip]
+      s=-
+      c=IN IP[local_ip_type] [local_ip]
+      t=0 0
+      m=audio [media_port] RTP/AVP 0 8
+      a=rtpmap:0 PCMU/8000
+      a=rtpmap:8 PCMA/8000
+
+    ]]>
+  </send>
+
+  <recv request="ACK" rtd="true" crlf="true"/>
+
+  <recv request="BYE"/>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <timewait milliseconds="2000"/>
+
+  <ResponseTimeRepartition value="10, 20, 30, 40, 50, 100, 150, 200"/>
+  <CallLengthRepartition value="10, 50, 100, 500, 1000, 5000, 10000"/>
+</scenario>
