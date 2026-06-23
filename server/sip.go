@@ -13,7 +13,12 @@ import (
 	"github.com/livekit/protocol/auth"
 	"github.com/livekit/protocol/livekit"
 	"github.com/twitchtv/twirp"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
+
+// sipOutboundRingingTimeout cancels an unanswered outbound call so a ringing
+// leg doesn't hold a trunk channel indefinitely.
+const sipOutboundRingingTimeout = 60 * time.Second
 
 // livekitHTTPURL converts the configured LiveKit WebSocket URL to an HTTP URL
 // suitable for Twirp API calls.
@@ -54,6 +59,7 @@ func (p *Plugin) createSIPParticipant(trunkID, phoneNumber, roomName, displayNam
 		ParticipantIdentity: "sip:" + phoneNumber,
 		ParticipantName:     displayName,
 		PlayDialtone:        true,
+		RingingTimeout:      durationpb.New(sipOutboundRingingTimeout),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create SIP participant: %w", err)
