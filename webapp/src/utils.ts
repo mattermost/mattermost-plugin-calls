@@ -97,6 +97,13 @@ export function getCallsClientChannelID(): string {
     return getCallsClient()?.channelID || '';
 }
 
+// True when this renderer owns the live LiveKit client for the channel (directly via
+// window.callsClient, or the opener's in a popout). When so, participant state is driven by
+// LiveKit events and the channel-wide join/leave broadcast must be ignored to avoid racing it.
+export function hasLiveCallClient(channelID: string): boolean {
+    return getCallsClient()?.channelID === channelID;
+}
+
 export function getCallsClientSessionID(): string {
     return getCallsClient()?.getSessionID() || '';
 }

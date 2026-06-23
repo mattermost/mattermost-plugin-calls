@@ -16,6 +16,7 @@ import {
     getPlatformInfo,
     getWebappUtils,
     getWSConnectionURL,
+    hasLiveCallClient,
     maxAttemptsReachedErr,
     runWithRetry,
     shouldRenderCallsIncoming,
@@ -537,6 +538,38 @@ describe('utils', () => {
             const callsClient = getCallsClient();
             expect(callsClient).toBeUndefined();
             global.window = originalWindow;
+        });
+    });
+
+    describe('hasLiveCallClient', () => {
+        beforeEach(() => {
+            delete window.callsClient;
+            delete global.window.opener;
+        });
+        afterEach(() => {
+            delete window.callsClient;
+            delete global.window.opener;
+        });
+
+        test('no client: false', () => {
+            expect(hasLiveCallClient('channelID')).toBe(false);
+        });
+
+        test('own client, channel matches: true', () => {
+            window.callsClient = {channelID: 'channelID'} as CallClient;
+            expect(hasLiveCallClient('channelID')).toBe(true);
+        });
+
+        test('own client, channel differs: false', () => {
+            window.callsClient = {channelID: 'other-channel'} as CallClient;
+            expect(hasLiveCallClient('channelID')).toBe(false);
+        });
+
+        test('popout (opener client), channel matches: true', () => {
+            global.window.opener = {
+                callsClient: {channelID: 'channelID'} as CallClient,
+            };
+            expect(hasLiveCallClient('channelID')).toBe(true);
         });
     });
 
