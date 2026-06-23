@@ -38,7 +38,7 @@ import {
     RootState,
     usersReactionsState,
 } from 'src/reducers';
-import {SipCallDetails} from 'src/state/sip_call_details/reducer';
+import {SipCallDetails} from 'src/state/sip_details/reducer';
 import {
     CallJobReduxState,
     CallsUserPreferences,

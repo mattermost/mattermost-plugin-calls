@@ -107,7 +107,7 @@ import slashCommandsHandler from 'src/slash_commands';
 import {ACTIVE_CALL_REGISTERED} from 'src/state/active_calls/action_types';
 import {unInitialized} from 'src/state/common_actions';
 import {getSessionsMapFromSessions, sessionsReceived, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/sessions/actions';
-import {sipCallDetailsReceived} from 'src/state/sip_call_details/actions';
+import {sipCallDetailsReceived} from 'src/state/sip_details/actions';
 import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
 import {getSipCallDetailsFromCallState, getWSConnectionURL} from 'src/utils';
 import {modals} from 'src/webapp_globals';

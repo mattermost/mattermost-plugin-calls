@@ -1,13 +1,12 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {UserSessionState} from '@mattermost/calls-common/lib/types';
-import {Channel} from '@mattermost/types/channels';
-import {UserProfile} from '@mattermost/types/users';
+import {type UserSessionState} from '@mattermost/calls-common/lib/types';
+import {type Channel} from '@mattermost/types/channels';
+import {type UserProfile} from '@mattermost/types/users';
+import {type ActionCallEnded, type ActionUnInitialized} from 'src/state/common_actions';
 import {
-    ActionCallEnded,
-    ActionUnInitialized,
-    ActionUserLeft,
+    type ActionUserLeft,
 } from 'src/state/sessions/actions';
 
 import {USER_SCREEN_OFF, USER_SCREEN_ON} from './action_types';

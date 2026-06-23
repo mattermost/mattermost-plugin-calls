@@ -40,7 +40,7 @@ import {ACTIVE_CALL_REGISTERED} from 'src/state/active_calls/action_types';
 import {callEnded} from 'src/state/common_actions';
 import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/sessions/actions';
-import {sipCallDetailsReceived} from 'src/state/sip_call_details/actions';
+import {sipCallDetailsReceived} from 'src/state/sip_details/actions';
 import {CallsStats, ChannelType} from 'src/types/types';
 import {
     getCallsClientSessionID,

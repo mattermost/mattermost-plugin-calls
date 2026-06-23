@@ -6,7 +6,7 @@ import {Post} from '@mattermost/types/posts';
 import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
 import type CallClient from 'src/clients/call';
-import {CallDirection} from 'src/state/sip_call_details/reducer';
+import {CallDirection} from 'src/state/sip_details/reducer';
 
 import {pluginId} from './manifest';
 import {

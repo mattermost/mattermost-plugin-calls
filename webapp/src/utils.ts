@@ -21,7 +21,7 @@ import {parseSemVer} from 'semver-parser';
 import type CallClient from 'src/clients/call';
 import RestClient from 'src/clients/rest';
 import {STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
-import {CallDirection, PHONE_CALL_TYPE, SipCallDetails} from 'src/state/sip_call_details/reducer';
+import {CallDirection, PHONE_CALL_TYPE, SipCallDetails} from 'src/state/sip_details/reducer';
 import {DesktopMessage} from 'src/types/types';
 import {notificationSounds} from 'src/webapp_globals';
 

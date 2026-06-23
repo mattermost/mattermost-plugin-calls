@@ -1,9 +1,9 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {UserSessionState} from '@mattermost/calls-common/lib/types';
-import {Channel} from '@mattermost/types/channels';
-import {Reducer} from 'redux';
+import {type UserSessionState} from '@mattermost/calls-common/lib/types';
+import {type Channel} from '@mattermost/types/channels';
+import {type Reducer} from 'redux';
 import {CALL_ENDED, UN_INITIALIZED} from 'src/state/common_action_types';
 
 import {
@@ -18,7 +18,7 @@ import {
     USER_UNMUTED,
     USERS_VOICE_ACTIVITY_CHANGED,
 } from './action_types';
-import {Actions} from './actions';
+import {type Actions} from './actions';
 
 type State = {
     [channelID: Channel['id']]: {
