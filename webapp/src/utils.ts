@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@mattermost/calls-common';
-import {CallJobMetadata, CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallJobMetadata, CallPostProps, CallRecordingPostProps, CallState, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
 import {Post} from '@mattermost/types/posts';
@@ -21,6 +21,7 @@ import {parseSemVer} from 'semver-parser';
 import type CallClient from 'src/clients/call';
 import RestClient from 'src/clients/rest';
 import {STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
+import {CallDirection, PHONE_CALL_TYPE, SipCallDetails} from 'src/state/sip_call_details/reducer';
 import {DesktopMessage} from 'src/types/types';
 import {notificationSounds} from 'src/webapp_globals';
 
@@ -600,6 +601,27 @@ export function getCallPropsFromPost(post: Post): CallPostProps {
         recordings: isValidObject(post.props?.recordings) ? getJobMetadataMap(post.props.recordings) : {},
         transcriptions: isValidObject(post.props?.transcriptions) ? getJobMetadataMap(post.props.transcriptions) : {},
         participants: Array.isArray(post.props?.participants) ? post.props.participants : [],
+    };
+}
+
+// getSipCallDetailsFromCallState defensively reads the server's `call.props` off a
+// CallState and projects the SIP/phone contact metadata. The calls-common
+// CallState type does not declare `props` yet (server proposal P1), so we read
+// it through a narrow local view and guard every field. Returns undefined for
+// any non-SIP call (no props, or props whose `type` is not the 'phone' wire
+// value) — its presence is what marks a call as phone/SIP for the
+// sipCallDetails slice and the isPhoneCall selector.
+export function getSipCallDetailsFromCallState(call: CallState): SipCallDetails | undefined {
+    const props = (call as {props?: Record<string, unknown>}).props;
+    if (!props || !isValidObject(props) || props.type !== PHONE_CALL_TYPE) {
+        return undefined;
+    }
+    return {
+        direction: props.direction === CallDirection.Inbound ? CallDirection.Inbound : CallDirection.Outbound,
+        phone_number: typeof props.phone_number === 'string' ? props.phone_number : '',
+        display_number: typeof props.display_number === 'string' ? props.display_number : '',
+        label: typeof props.label === 'string' ? props.label : '',
+        user_id: typeof props.user_id === 'string' ? props.user_id : '',
     };
 }
 

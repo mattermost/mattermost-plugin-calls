@@ -4,11 +4,10 @@
 import {Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
+import {ActionCallEnded, ActionUnInitialized} from 'src/state/common_actions';
 
 import {
-    CALL_ENDED,
     SESSIONS_RECEIVED,
-    UN_INITIALIZED,
     USER_HAND_LOWERED,
     USER_HAND_RAISED,
     USER_JOINED,
@@ -19,11 +18,6 @@ import {
     USER_UNMUTED,
     USERS_VOICE_ACTIVITY_CHANGED,
 } from './action_types';
-
-export const unInitialized = () => ({
-    type: UN_INITIALIZED,
-});
-export type ActionUnInitialized = ReturnType<typeof unInitialized>
 
 export const sessionsReceived = (channelID: Channel['id'], sessions: {[session_id: string]: UserSessionState}) => ({
     type: SESSIONS_RECEIVED,
@@ -128,15 +122,6 @@ export const userLeft = (channelID: Channel['id'], sessionID: string, userID: Us
     },
 });
 export type ActionUserLeft = ReturnType<typeof userLeft>
-
-export const callEnded = (channelID: Channel['id'], callID: string) => ({
-    type: CALL_ENDED,
-    data: {
-        channelID,
-        callID,
-    },
-});
-export type ActionCallEnded = ReturnType<typeof callEnded>
 
 export type Actions =
   | ActionUnInitialized

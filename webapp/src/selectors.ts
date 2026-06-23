@@ -38,6 +38,7 @@ import {
     RootState,
     usersReactionsState,
 } from 'src/reducers';
+import {SipCallDetails} from 'src/state/sip_call_details/reducer';
 import {
     CallJobReduxState,
     CallsUserPreferences,
@@ -55,8 +56,11 @@ const pluginReduxStateKey = `plugins-${pluginId}`;
 const pluginReduxStore = (state: GlobalState): RootState =>
     (state[pluginReduxStateKey as keyof GlobalState] as unknown as RootState) ?? initialRootState;
 
-const callsStateInPluginReduxStore = (state: GlobalState): { [channelID: string]: callState } =>
-    pluginReduxStore(state).calls;
+const activeCallsInPluginReduxStore = (state: GlobalState): { [channelID: string]: callState } =>
+    pluginReduxStore(state).activeCalls;
+
+const sipCallDetailsInPluginReduxStore = (state: GlobalState): { [channelID: string]: SipCallDetails } =>
+    pluginReduxStore(state).sipCallDetails;
 
 export const channelIDForCurrentCall: (state: GlobalState) => string =
     createSelector(
@@ -77,19 +81,19 @@ export const channelForCurrentCall: (state: GlobalState) => Channel | undefined 
 export const getCallIDForCurrentCall: (state: GlobalState) => string | undefined =
     createSelector(
         'getCallIDForCurrentCall',
-        callsStateInPluginReduxStore,
+        activeCallsInPluginReduxStore,
         channelIDForCurrentCall,
-        (callsStates, channelID) => callsStates[channelID]?.ID,
+        (callsStates, channelID) => callsStates[channelID]?.callID,
     );
 
 export const getCallIDForChannel = (state: GlobalState, channelID: string) => {
-    return callsStateInPluginReduxStore(state)[channelID]?.ID ?? '';
+    return activeCallsInPluginReduxStore(state)[channelID]?.callID ?? '';
 };
 
 export const threadIDForCurrentCall: (state: GlobalState) => string | undefined =
     createSelector(
         'threadIDForCurrentCall',
-        callsStateInPluginReduxStore,
+        activeCallsInPluginReduxStore,
         channelIDForCurrentCall,
         (callsStates, channelID) => callsStates[channelID]?.threadID,
     );
@@ -169,13 +173,13 @@ export const numSessionsInCallInChannel = (state: GlobalState, channelID: string
 };
 
 export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
-    return Boolean(callsStateInPluginReduxStore(state)[channelId]);
+    return Boolean(activeCallsInPluginReduxStore(state)[channelId]);
 };
 
 export const currentChannelHasCall: (state: GlobalState) => boolean =
     createSelector(
         'currentChannelHasCall',
-        callsStateInPluginReduxStore,
+        activeCallsInPluginReduxStore,
         getCurrentChannelId,
         (callsStates, currChannelId) => Boolean(callsStates[currChannelId]),
     );
@@ -238,13 +242,13 @@ export const liveCaptionsInCurrentCall: (state: GlobalState) => LiveCaptions =
     );
 
 export const callStartAtForCallInChannel = (state: GlobalState, channelID: string): number => {
-    return pluginReduxStore(state).calls[channelID]?.startAt || 0;
+    return pluginReduxStore(state).activeCalls[channelID]?.startAt || 0;
 };
 
 export const callStartAtForCurrentCall: (state: GlobalState) => number =
     createSelector(
         'callStartAtForCurrentCall',
-        callsStateInPluginReduxStore,
+        activeCallsInPluginReduxStore,
         channelIDForCurrentCall,
         getCallsClientInitTime,
         (callsStates, channelID, initTime) => callsStates[channelID]?.startAt || initTime || 0,
@@ -253,18 +257,37 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
     createSelector(
         'callInCurrentChannel',
-        callsStateInPluginReduxStore,
+        activeCallsInPluginReduxStore,
         getCurrentChannelId,
         (callsStates, currChannelId) => callsStates[currChannelId],
     );
 
 export const idForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
-    return pluginReduxStore(state).calls[channelID]?.ID;
+    return pluginReduxStore(state).activeCalls[channelID]?.callID;
 };
 
 export const callOwnerIDForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
-    return pluginReduxStore(state).calls[channelID]?.ownerID;
+    return pluginReduxStore(state).activeCalls[channelID]?.ownerID;
 };
+
+export const sipCallDetailsForCallInChannel = (state: GlobalState, channelID: string): SipCallDetails | undefined => {
+    return pluginReduxStore(state).sipCallDetails[channelID];
+};
+
+// isPhoneCall is true only for SIP/phone calls. The sipCallDetails slice holds an entry
+// only for such calls (populated from the server's call props), so presence of
+// an entry is the signal. Regular WebRTC calls have no entry and read as false.
+export const isPhoneCall = (state: GlobalState, channelID: string): boolean => {
+    return Boolean(sipCallDetailsForCallInChannel(state, channelID));
+};
+
+export const isPhoneCallForCurrentCall: (state: GlobalState) => boolean =
+    createSelector(
+        'isPhoneCallForCurrentCall',
+        sipCallDetailsInPluginReduxStore,
+        channelIDForCurrentCall,
+        (sipStates, channelID) => Boolean(sipStates[channelID]),
+    );
 
 const hostsInCalls = (state: GlobalState): hostsState => {
     return pluginReduxStore(state).hosts;
@@ -308,7 +331,7 @@ export const screenSharingSessionForCurrentCall: (state: GlobalState) => UserSes
     );
 
 export const threadIDForCallInChannel = (state: GlobalState, channelID: string) => {
-    return pluginReduxStore(state).calls[channelID]?.threadID || '';
+    return pluginReduxStore(state).activeCalls[channelID]?.threadID || '';
 };
 
 const recordingsForCalls = (state: GlobalState): callsJobState => {
@@ -407,7 +430,7 @@ export const dismissedCallForCurrentChannel: (state: GlobalState) => boolean =
         'dismissedCallForCurrentChannel',
         dismissedCalls,
         callInCurrentChannel,
-        (dismissed, call) => Boolean(dismissed[call?.ID || '']),
+        (dismissed, call) => Boolean(dismissed[call?.callID || '']),
     );
 
 export const ringingForCall = (state: GlobalState, callID: string): boolean =>

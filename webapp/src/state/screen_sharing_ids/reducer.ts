@@ -3,7 +3,8 @@
 
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Reducer} from 'redux';
-import {CALL_ENDED, UN_INITIALIZED, USER_LEFT} from 'src/state/session/action_types';
+import {CALL_ENDED, UN_INITIALIZED} from 'src/state/common_action_types';
+import {USER_LEFT} from 'src/state/sessions/action_types';
 
 import {USER_SCREEN_OFF, USER_SCREEN_ON} from './action_types';
 import {Actions} from './actions';

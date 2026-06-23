@@ -1,14 +1,17 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {CallState} from '@mattermost/calls-common/lib/types';
 import {Post} from '@mattermost/types/posts';
 import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
 import type CallClient from 'src/clients/call';
+import {CallDirection} from 'src/state/sip_call_details/reducer';
 
 import {pluginId} from './manifest';
 import {
     callStartedTimestampFn,
+    getSipCallDetailsFromCallState,
     getCallPropsFromPost,
     getCallRecordingPropsFromPost,
     getCallsClient,
@@ -688,6 +691,60 @@ describe('utils', () => {
                 expect(getPlatformInfo()).toBe(expectedPlatform);
             },
         );
+    });
+
+    describe('getSipCallDetailsFromCallState', () => {
+        // The calls-common CallState type does not declare `props`, so cast
+        // when injecting fixture props (this mirrors the real wire payload).
+        const withProps = (props: unknown) => ({props} as unknown as CallState);
+
+        it('returns sip details for a phone call, defaulting direction to outbound', () => {
+            const call = withProps({
+                type: 'phone',
+                phone_number: '+15551234567',
+                display_number: '(555) 123-4567',
+                label: 'DSN',
+                user_id: 'user1',
+            });
+            expect(getSipCallDetailsFromCallState(call)).toEqual({
+                direction: CallDirection.Outbound,
+                phone_number: '+15551234567',
+                display_number: '(555) 123-4567',
+                label: 'DSN',
+                user_id: 'user1',
+            });
+        });
+
+        it('reads an inbound direction from the wire', () => {
+            const call = withProps({type: 'phone', direction: 'inbound'});
+            expect(getSipCallDetailsFromCallState(call)?.direction).toBe(CallDirection.Inbound);
+        });
+
+        it('returns undefined for any non-phone call', () => {
+            expect(getSipCallDetailsFromCallState({} as CallState)).toBeUndefined();
+            expect(getSipCallDetailsFromCallState(withProps(undefined))).toBeUndefined();
+            expect(getSipCallDetailsFromCallState(withProps(null))).toBeUndefined();
+
+            // Regular WebRTC calls carry props (hosts, screen sharing, etc.) but
+            // no phone type, so they must not produce sip details.
+            expect(getSipCallDetailsFromCallState(withProps({type: 'something-else'}))).toBeUndefined();
+            expect(getSipCallDetailsFromCallState(withProps({hosts: ['user1']}))).toBeUndefined();
+        });
+
+        it('coerces non-string fields to empty strings for a phone call', () => {
+            expect(getSipCallDetailsFromCallState(withProps({
+                type: 'phone',
+                phone_number: {},
+                display_number: null,
+                label: 123,
+            }))).toEqual({
+                direction: CallDirection.Outbound,
+                phone_number: '',
+                display_number: '',
+                label: '',
+                user_id: '',
+            });
+        });
     });
 });
 

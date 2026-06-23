@@ -104,13 +104,15 @@ import VideoDevicesSettingsSection from 'src/components/user_settings/video_devi
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
-import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
+import {ACTIVE_CALL_REGISTERED} from 'src/state/active_calls/action_types';
+import {unInitialized} from 'src/state/common_actions';
+import {getSessionsMapFromSessions, sessionsReceived, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/sessions/actions';
+import {sipCallDetailsReceived} from 'src/state/sip_call_details/actions';
 import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
-import {getWSConnectionURL} from 'src/utils';
+import {getSipCallDetailsFromCallState, getWSConnectionURL} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 
 import {
-    CALL_STATE,
     DISMISS_CALL,
     RECEIVED_CHANNEL_STATE,
 } from './action_types';
@@ -902,15 +904,20 @@ export default class Plugin {
 
                     if (!callStartAtForCallInChannel(store.getState(), data[i].channel_id)) {
                         actions.push({
-                            type: CALL_STATE,
+                            type: ACTIVE_CALL_REGISTERED,
                             data: {
-                                ID: call.id,
+                                callID: call.id,
                                 channelID: data[i].channel_id,
                                 startAt: call.start_at,
                                 ownerID: call.owner_id,
                                 threadID: call.thread_id,
                             },
                         });
+
+                        const sipCallDetails = getSipCallDetailsFromCallState(call);
+                        if (sipCallDetails) {
+                            actions.push(sipCallDetailsReceived(data[i].channel_id, sipCallDetails));
+                        }
 
                         actions.push(sessionsReceived(data[i].channel_id, getSessionsMapFromSessions(call.sessions)));
 

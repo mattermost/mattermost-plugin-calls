@@ -48,8 +48,9 @@ import {
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
+import {ACTIVE_CALL_REGISTERED} from 'src/state/active_calls/action_types';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
-import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/session/actions';
+import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/sessions/actions';
 import {
     HostControlNotice,
     HostControlNoticeType,
@@ -59,7 +60,6 @@ import {
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_RECORDING_STATE,
-    CALL_STATE,
     DISMISS_CALL,
     HOST_CONTROL_NOTICE,
     HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
@@ -119,9 +119,9 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
     });
 
     store.dispatch({
-        type: CALL_STATE,
+        type: ACTIVE_CALL_REGISTERED,
         data: {
-            ID: ev.data.id,
+            callID: ev.data.id,
             channelID,
             startAt: ev.data.start_at,
             ownerID: ev.data.owner_id,

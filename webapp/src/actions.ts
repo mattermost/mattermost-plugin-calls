@@ -36,12 +36,16 @@ import {
     ringingForCall,
     shouldPlayJoinUserSound,
 } from 'src/selectors';
+import {ACTIVE_CALL_REGISTERED} from 'src/state/active_calls/action_types';
+import {callEnded} from 'src/state/common_actions';
 import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
-import {callEnded, getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/session/actions';
+import {getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/sessions/actions';
+import {sipCallDetailsReceived} from 'src/state/sip_call_details/actions';
 import {CallsStats, ChannelType} from 'src/types/types';
 import {
     getCallsClientSessionID,
     getPluginPath,
+    getSipCallDetailsFromCallState,
     getUserIDsForSessions,
     isDMChannel,
     isGMChannel,
@@ -56,7 +60,6 @@ import {
     CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
-    CALL_STATE,
     CLIENT_CONNECTING,
     DID_RING_FOR_CALL,
     DISMISS_CALL,
@@ -562,15 +565,20 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
     const actions: AnyAction[] = [];
 
     actions.push({
-        type: CALL_STATE,
+        type: ACTIVE_CALL_REGISTERED,
         data: {
-            ID: call.id,
+            callID: call.id,
             channelID,
             startAt: call.start_at,
             ownerID: call.owner_id,
             threadID: call.thread_id,
         },
     });
+
+    const sipCallDetails = getSipCallDetailsFromCallState(call);
+    if (sipCallDetails) {
+        actions.push(sipCallDetailsReceived(channelID, sipCallDetails));
+    }
 
     actions.push({
         type: CALL_RECORDING_STATE,

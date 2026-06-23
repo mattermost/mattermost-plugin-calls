@@ -3,7 +3,6 @@
 
 import {pluginId} from './manifest';
 
-export const CALL_STATE = pluginId + '_call_state';
 export const CALL_HOST = pluginId + '_call_host';
 export const CALL_RECORDING_STATE = pluginId + '_call_recording_state';
 export const CALL_LIVE_CAPTIONS_STATE = pluginId + '_call_live_captions_state';

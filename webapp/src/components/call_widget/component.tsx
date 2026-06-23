@@ -140,6 +140,7 @@ interface Props {
     openModal: <P>(modalData: ModalData<P>) => void;
     openCallsUserSettings: () => void;
     connectedDMUser: UserProfile | undefined,
+    isPhoneCall: boolean,
 }
 
 interface DraggingState {

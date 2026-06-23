@@ -6,16 +6,15 @@
 import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
-import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
+import {reducer as activeCalls} from 'src/state/active_calls/reducer';
 import {
     CALL_ENDED,
     UN_INITIALIZED,
-    USER_JOINED,
-    USER_LEFT,
-    USER_REACTED,
-    USER_REACTED_TIMEOUT,
-} from 'src/state/session/action_types';
-import {reducer as sessions} from 'src/state/session/reducer';
+} from 'src/state/common_action_types';
+import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
+import {USER_JOINED, USER_LEFT, USER_REACTED, USER_REACTED_TIMEOUT} from 'src/state/sessions/action_types';
+import {reducer as sessions} from 'src/state/sessions/reducer';
+import {reducer as sipCallDetails} from 'src/state/sip_call_details/reducer';
 import {
     CallsConfigDefault,
     CallsUserPreferences,
@@ -34,7 +33,6 @@ import {
     CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
-    CALL_STATE,
     CLIENT_CONNECTING,
     DESKTOP_WIDGET_CONNECTED,
     DID_NOTIFY_FOR_CALL,
@@ -373,42 +371,12 @@ const callLiveCaptionsState = (state: callsJobState = {}, action: jobStateAction
 // callState should only hold immutable data, meaning those
 // fields that don't change for the whole duration of a call.
 export type callState = {
-    ID: string;
+    callID: string;
     startAt: number;
     channelID: string;
     threadID: string;
     ownerID: string;
 }
-
-type callStateAction = {
-    type: string;
-    data: callState;
-}
-
-type callsState = {
-    [channelID: string]: callState;
-}
-
-const calls = (state: callsState = {}, action: callStateAction) => {
-    switch (action.type) {
-    case UN_INITIALIZED:
-        return {};
-    case CALL_STATE:
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...action.data,
-            },
-        };
-    case CALL_ENDED: {
-        const nextState = {...state};
-        delete nextState[action.data.channelID];
-        return nextState;
-    }
-    default:
-        return state;
-    }
-};
 
 export type hostsState = {
     [channelID: string]: {
@@ -760,9 +728,10 @@ const rootReducer = combineReducers({
     clientStateReducer,
     reactions,
     sessions,
-    calls,
+    activeCalls,
     hosts,
     screenSharingIDs,
+    sipCallDetails,
     expandedView,
     switchCallModal,
     screenSourceModal,

@@ -8,7 +8,7 @@ import {
     ActionCallEnded,
     ActionUnInitialized,
     ActionUserLeft,
-} from 'src/state/session/actions';
+} from 'src/state/sessions/actions';
 
 import {USER_SCREEN_OFF, USER_SCREEN_ON} from './action_types';
 

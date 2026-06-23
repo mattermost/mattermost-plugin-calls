@@ -4,11 +4,10 @@
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Reducer} from 'redux';
+import {CALL_ENDED, UN_INITIALIZED} from 'src/state/common_action_types';
 
 import {
-    CALL_ENDED,
     SESSIONS_RECEIVED,
-    UN_INITIALIZED,
     USER_HAND_LOWERED,
     USER_HAND_RAISED,
     USER_JOINED,
