@@ -623,7 +623,9 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The call is hosted on the user<->bot DM channel (the phone-call container).
+	// The call is hosted on the user<->bot DM channel. The client creates/joins
+	// the call on this channel before calling /phone-call, so the SIP leg dials
+	// into the existing call's room and the join webhook finds an active call.
 	dmChannel, appErr := p.API.GetDirectChannel(userID, botID)
 	if appErr != nil {
 		res.Err = fmt.Errorf("failed to get bot DM channel: %w", appErr).Error()
