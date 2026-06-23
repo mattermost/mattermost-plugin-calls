@@ -11,12 +11,12 @@ import {CallDirection} from 'src/state/sip_details/reducer';
 import {pluginId} from './manifest';
 import {
     callStartedTimestampFn,
-    getSipCallDetailsFromCallState,
     getCallPropsFromPost,
     getCallRecordingPropsFromPost,
     getCallsClient,
     getCallsWindow,
     getPlatformInfo,
+    getSipCallDetailsFromCallState,
     getWebappUtils,
     getWSConnectionURL,
     maxAttemptsReachedErr,
