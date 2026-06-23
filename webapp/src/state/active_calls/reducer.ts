@@ -17,6 +17,7 @@ export type State = {
         channelID: Channel['id'];
         threadID: UserThread['id'];
         ownerID: UserProfile['id'];
+        hostID: UserProfile['id'];
     };
 }
 

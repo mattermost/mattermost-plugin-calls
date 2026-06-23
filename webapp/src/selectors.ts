@@ -60,7 +60,7 @@ const activeCallsInPluginReduxStore = (state: GlobalState): { [channelID: string
     pluginReduxStore(state).activeCalls;
 
 const sipCallDetailsInPluginReduxStore = (state: GlobalState): { [channelID: string]: SipCallDetails } =>
-    pluginReduxStore(state).sipCallDetails;
+    pluginReduxStore(state).sipDetails;
 
 export const channelIDForCurrentCall: (state: GlobalState) => string =
     createSelector(
@@ -271,7 +271,7 @@ export const callOwnerIDForCallInChannel = (state: GlobalState, channelID: strin
 };
 
 export const sipCallDetailsForCallInChannel = (state: GlobalState, channelID: string): SipCallDetails | undefined => {
-    return pluginReduxStore(state).sipCallDetails[channelID];
+    return pluginReduxStore(state).sipDetails[channelID];
 };
 
 // isPhoneCall is true only for SIP/phone calls. The sipCallDetails slice holds an entry

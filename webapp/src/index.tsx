@@ -104,7 +104,6 @@ import VideoDevicesSettingsSection from 'src/components/user_settings/video_devi
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
-import {ACTIVE_CALL_REGISTERED} from 'src/state/active_calls/action_types';
 import {unInitialized} from 'src/state/common_actions';
 import {getSessionsMapFromSessions, sessionsReceived, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/sessions/actions';
 import {sipCallDetailsReceived} from 'src/state/sip_details/actions';
@@ -150,6 +149,7 @@ import {
     sessionsInCurrentCall,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
+import {activeCallRegistered} from './state/active_calls/actions';
 import {convertStatsToPanels} from './stats';
 import {PluginRegistry, Store} from './types/mattermost-webapp';
 import {
@@ -903,16 +903,14 @@ export default class Plugin {
                     store.dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(call.sessions)));
 
                     if (!callStartAtForCallInChannel(store.getState(), data[i].channel_id)) {
-                        actions.push({
-                            type: ACTIVE_CALL_REGISTERED,
-                            data: {
+                        actions.push(
+                            activeCallRegistered(data[i].channel_id, {
                                 callID: call.id,
-                                channelID: data[i].channel_id,
                                 startAt: call.start_at,
                                 ownerID: call.owner_id,
                                 threadID: call.thread_id,
-                            },
-                        });
+                                hostID: call.host_id,
+                            }));
 
                         const sipCallDetails = getSipCallDetailsFromCallState(call);
                         if (sipCallDetails) {

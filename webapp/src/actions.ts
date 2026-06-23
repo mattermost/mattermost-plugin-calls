@@ -36,7 +36,7 @@ import {
     ringingForCall,
     shouldPlayJoinUserSound,
 } from 'src/selectors';
-import {ACTIVE_CALL_REGISTERED} from 'src/state/active_calls/action_types';
+import {activeCallRegistered} from 'src/state/active_calls/actions';
 import {callEnded} from 'src/state/common_actions';
 import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/sessions/actions';
@@ -564,16 +564,15 @@ export const loadProfilesByIdsIfMissing = (ids: string[]) => {
 export const loadCallState = (channelID: string, call: CallState) => (dispatch: DispatchFunc, getState: GetStateFunc) => {
     const actions: AnyAction[] = [];
 
-    actions.push({
-        type: ACTIVE_CALL_REGISTERED,
-        data: {
+    actions.push(
+        activeCallRegistered(channelID, {
             callID: call.id,
-            channelID,
             startAt: call.start_at,
-            ownerID: call.owner_id,
             threadID: call.thread_id,
-        },
-    });
+            ownerID: call.owner_id,
+            hostID: call.host_id,
+        }),
+    );
 
     const sipCallDetails = getSipCallDetailsFromCallState(call);
     if (sipCallDetails) {

@@ -15,6 +15,7 @@ export const activeCallRegistered = (channelID: Channel['id'], activeCall: Omit<
         channelID,
         threadID: activeCall.threadID,
         ownerID: activeCall.ownerID,
+        hostID: activeCall.hostID,
     },
 });
 export type ActionActiveCallRegistered = ReturnType<typeof activeCallRegistered>

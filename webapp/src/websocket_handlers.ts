@@ -48,7 +48,6 @@ import {
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
-import {ACTIVE_CALL_REGISTERED} from 'src/state/active_calls/action_types';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/sessions/actions';
 import {
@@ -72,6 +71,7 @@ import {
     profilesInCurrentCallMap,
     ringingEnabled,
 } from './selectors';
+import {activeCallRegistered} from './state/active_calls/actions';
 import {Store} from './types/mattermost-webapp';
 import {
     followThread,
@@ -118,17 +118,14 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         },
     });
 
-    store.dispatch({
-        type: ACTIVE_CALL_REGISTERED,
-        data: {
+    store.dispatch(
+        activeCallRegistered(channelID, {
             callID: ev.data.id,
-            channelID,
             startAt: ev.data.start_at,
             ownerID: ev.data.owner_id,
             hostID: ev.data.host_id,
             threadID: ev.data.thread_id,
-        },
-    });
+        }));
     store.dispatch({
         type: CALL_HOST,
         data: {
