@@ -73,11 +73,6 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 	}
 }
 
-// errTranscriptionNotSupported gates the transcription entry points while the
-// transcriber is being migrated to LiveKit. The orchestration logic below the
-// gate is kept intact so it can be re-enabled by deleting the guard.
-var errTranscriptionNotSupported = fmt.Errorf("transcription is not yet supported on this version")
-
 func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst *JobStateClient, rcode int, rerr error) {
 	if state.Recording != nil && state.Recording.EndAt == 0 {
 		return nil, http.StatusForbidden, fmt.Errorf("recording already in progress")
