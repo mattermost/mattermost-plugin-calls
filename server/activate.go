@@ -39,6 +39,11 @@ func (p *Plugin) createBotSession() (*model.Session, error) {
 		return nil, err
 	}
 
+	// Cache the bot user ID before creating the (per-node, possibly-lagging)
+	// session so getBotID never depends on botSession being set. See botID in
+	// plugin.go.
+	p.botID = botID
+
 	session, appErr := p.API.CreateSession(&model.Session{
 		UserId:    botID,
 		ExpiresAt: 0,

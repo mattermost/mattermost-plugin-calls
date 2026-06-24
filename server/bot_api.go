@@ -18,10 +18,7 @@ import (
 )
 
 func (p *Plugin) getBotID() string {
-	if p.botSession != nil {
-		return p.botSession.UserId
-	}
-	return ""
+	return p.botID
 }
 
 func (p *Plugin) isBot(userID string) bool {

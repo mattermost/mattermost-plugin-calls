@@ -23,6 +23,12 @@ const livekitAPITimeout = 5 * time.Second
 // round-trip.
 const livekitAttributeRaisedHand = "raised_hand"
 
+// livekitAttributeBot is the LiveKit participant attribute key that marks the
+// recording/transcribing bot. It mirrors CALL_ATTRIBUTES.BOT on the webapp and
+// is server-set on the bot's token grant so clients can filter the bot out of
+// the participant list independently of the plugin-WS bot filter.
+const livekitAttributeBot = "bot"
+
 var errLiveKitNotConfigured = errors.New("LiveKit is not configured")
 
 func composeLivekitIdentity(userID, sessionID string) string {

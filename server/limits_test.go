@@ -118,6 +118,7 @@ func TestSendConcurrentSessionsWarning(t *testing.T) {
 			API: mockAPI,
 		},
 		metrics: mockMetrics,
+		botID:   "botID",
 		botSession: &model.Session{
 			UserId: "botID",
 		},
