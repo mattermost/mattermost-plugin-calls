@@ -1,7 +1,6 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import {FormattedMessage} from 'react-intl';
 import {useSelector} from 'react-redux';
@@ -10,9 +9,7 @@ import {callsAvailableInCurrentChannelWithDefault} from 'src/state/calls_availab
 export default function ChannelHeaderMenuItem() {
     const isEnabled = useSelector(callsAvailableInCurrentChannelWithDefault);
 
-    const isAdmin = useSelector(isCurrentUserSystemAdmin);
-
-    if (isEnabled || isAdmin) {
+    if (isEnabled) {
         return (
             <FormattedMessage defaultMessage='Disable calls'/>
         );
