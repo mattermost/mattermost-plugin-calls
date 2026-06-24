@@ -38,8 +38,8 @@ import {
     ringingForCall,
     shouldPlayJoinUserSound,
 } from 'src/selectors';
-import {activeCallRegistered} from 'src/state/active_calls/actions';
-import {channelCallsAvailabilityUpdated} from 'src/state/call_availability/actions';
+import {activeCallAdded} from 'src/state/active_calls/actions';
+import {channelCallsAvailabilityUpdated} from 'src/state/calls_availability/actions';
 import {callEnded} from 'src/state/common_actions';
 import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/sessions/actions';
@@ -600,7 +600,7 @@ export const hydradeCallsAndChannelStatesExcept = (skipChannelID?: string) => {
 
             if (!callStartAtForCallInChannel(getState(), callAndChannelState.channel_id)) {
                 actions.push(
-                    activeCallRegistered(callAndChannelState.channel_id, {
+                    activeCallAdded(callAndChannelState.channel_id, {
                         callID: callAndChannelState.call.id,
                         startAt: callAndChannelState.call.start_at,
                         ownerID: callAndChannelState.call.owner_id,
@@ -653,7 +653,7 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
     const actions: AnyAction[] = [];
 
     actions.push(
-        activeCallRegistered(channelID, {
+        activeCallAdded(channelID, {
             callID: call.id,
             startAt: call.start_at,
             threadID: call.thread_id,

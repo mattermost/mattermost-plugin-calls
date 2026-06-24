@@ -5,7 +5,7 @@ import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/user
 import React from 'react';
 import {FormattedMessage} from 'react-intl';
 import {useSelector} from 'react-redux';
-import {callsAvailableInCurrentChannelWithDefault} from 'src/state/call_availability/selectors';
+import {callsAvailableInCurrentChannelWithDefault} from 'src/state/calls_availability/selectors';
 
 export default function ChannelHeaderMenuItem() {
     const isEnabled = useSelector(callsAvailableInCurrentChannelWithDefault);

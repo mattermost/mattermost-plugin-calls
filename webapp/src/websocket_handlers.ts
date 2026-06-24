@@ -71,7 +71,7 @@ import {
     profilesInCurrentCallMap,
     ringingEnabled,
 } from './selectors';
-import {activeCallRegistered} from './state/active_calls/actions';
+import {activeCallAdded} from './state/active_calls/actions';
 import {Store} from './types/mattermost-webapp';
 import {
     followThread,
@@ -119,7 +119,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
     });
 
     store.dispatch(
-        activeCallRegistered(channelID, {
+        activeCallAdded(channelID, {
             callID: ev.data.id,
             startAt: ev.data.start_at,
             ownerID: ev.data.owner_id,

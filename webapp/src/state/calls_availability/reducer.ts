@@ -8,16 +8,16 @@ import {UN_INITIALIZED} from 'src/state/common_action_types';
 import {CHANNEL_CALLS_AVAILABILITY_UPDATED} from './action_types';
 import {type Actions} from './actions';
 
-type State = {
+type CallsAvailability = {
     [channelID: Channel['id']]: {
         channelID: Channel['id'];
         enabled: boolean;
     };
 };
 
-const emptyState: State = {};
+const emptyState: CallsAvailability = {};
 
-export const reducer: Reducer<State, Actions> = (initialState = emptyState, action) => {
+export const reducer: Reducer<CallsAvailability, Actions> = (initialState = emptyState, action) => {
     switch (action.type) {
     case UN_INITIALIZED: {
         return emptyState;

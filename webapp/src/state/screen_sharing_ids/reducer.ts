@@ -9,13 +9,13 @@ import {USER_LEFT} from 'src/state/sessions/action_types';
 import {USER_SCREEN_OFF, USER_SCREEN_ON} from './action_types';
 import {type Actions} from './actions';
 
-type State = {
+type ScreenSharingIDs = {
     [channelID: string]: UserSessionState['session_id'];
 }
 
-const emptyState: State = {};
+const emptyState: ScreenSharingIDs = {};
 
-export const reducer: Reducer<State, Actions> = (initialState = emptyState, action) : State => {
+export const reducer: Reducer<ScreenSharingIDs, Actions> = (initialState = emptyState, action) : ScreenSharingIDs => {
     switch (action.type) {
     case UN_INITIALIZED:{
         return emptyState;

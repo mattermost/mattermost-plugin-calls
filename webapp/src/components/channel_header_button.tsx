@@ -20,7 +20,7 @@ import {
     isLimitRestricted,
     maxParticipants,
 } from 'src/selectors';
-import {shouldShowCallsButtonInChannelHeader} from 'src/state/call_availability/selectors';
+import {shouldShowCallsButtonInChannelHeader} from 'src/state/calls_availability/selectors';
 import {getUserIdFromDM, isDMChannel} from 'src/utils';
 import styled, {css} from 'styled-components';
 

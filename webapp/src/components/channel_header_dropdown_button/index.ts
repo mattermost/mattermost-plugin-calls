@@ -13,7 +13,7 @@ import {
     isLimitRestricted,
     maxParticipants,
 } from 'src/selectors';
-import {shouldShowCallsButtonInChannelHeader} from 'src/state/call_availability/selectors';
+import {shouldShowCallsButtonInChannelHeader} from 'src/state/calls_availability/selectors';
 
 import ChannelHeaderDropdownButton from './component';
 

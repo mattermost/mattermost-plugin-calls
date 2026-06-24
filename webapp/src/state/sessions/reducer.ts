@@ -20,15 +20,15 @@ import {
 } from './action_types';
 import {type Actions} from './actions';
 
-type State = {
+type Sessions = {
     [channelID: Channel['id']]: {
         [session_id: UserSessionState['session_id']]: UserSessionState;
     }
 }
 
-const emptyState: State = {};
+const emptyState: Sessions = {};
 
-export const reducer: Reducer<State, Actions> = (initialState = emptyState, action) : State => {
+export const reducer: Reducer<Sessions, Actions> = (initialState = emptyState, action) : Sessions => {
     switch (action.type) {
     case UN_INITIALIZED: {
         return emptyState;
@@ -68,7 +68,7 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
         // With this flag we avoid creating a new state object if no changes are made
         let stateChanged = false;
 
-        const nextState: State[Channel['id']] = {};
+        const nextState: Sessions[Channel['id']] = {};
 
         // Walk every session in the channel — sessions present in the active-speakers list
         // get voice: true, sessions absent from it get voice: false.

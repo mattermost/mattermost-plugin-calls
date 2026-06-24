@@ -7,10 +7,10 @@ import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/common';
 import {getPluginStore} from 'src/state/common_selectors';
 
 export const callsAvailableInChannel = (state: GlobalState, channelID: Channel['id']) =>
-    getPluginStore(state).callAvailability?.[channelID]?.enabled === true;
+    getPluginStore(state).callsAvailability?.[channelID]?.enabled === true;
 
 export const callsNotAvailableInChannel = (state: GlobalState, channelID: Channel['id']) =>
-    getPluginStore(state).callAvailability?.[channelID]?.enabled === false;
+    getPluginStore(state).callsAvailability?.[channelID]?.enabled === false;
 
 export const callsAvailableInChannelWithDefault = (state: GlobalState, channelID: Channel['id']): boolean => {
     if (callsNotAvailableInChannel(state, channelID)) {

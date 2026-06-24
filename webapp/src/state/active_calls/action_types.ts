@@ -3,4 +3,4 @@
 
 import {pluginId} from 'src/manifest';
 
-export const ACTIVE_CALL_REGISTERED = `${pluginId}_active_call_registered` as const;
+export const ACTIVE_CALL_ADDED = `${pluginId}_active_call_added` as const;

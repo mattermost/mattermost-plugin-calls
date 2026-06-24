@@ -7,7 +7,7 @@ import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, Tran
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {reducer as activeCalls} from 'src/state/active_calls/reducer';
-import {reducer as callAvailability} from 'src/state/call_availability/reducer';
+import {reducer as callsAvailability} from 'src/state/calls_availability/reducer';
 import {
     CALL_ENDED,
     UN_INITIALIZED,
@@ -701,7 +701,7 @@ const hostControlNotices = (state: hostControlNoticeState = {},
 };
 
 const rootReducer = combineReducers({
-    callAvailability,
+    callsAvailability,
     clientStateReducer,
     reactions,
     sessions,

@@ -103,8 +103,8 @@ import VideoDevicesSettingsSection from 'src/components/user_settings/video_devi
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
-import {channelCallsAvailabilityUpdated, toggleCallsAvailabilityForChannel} from 'src/state/call_availability/actions';
-import {callsAvailableInChannelWithDefault, callsNotAvailableInChannel} from 'src/state/call_availability/selectors';
+import {channelCallsAvailabilityUpdated, toggleCallsAvailabilityForChannel} from 'src/state/calls_availability/actions';
+import {callsAvailableInChannelWithDefault, callsNotAvailableInChannel} from 'src/state/calls_availability/selectors';
 import {unInitialized} from 'src/state/common_actions';
 import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/sessions/actions';
 import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';

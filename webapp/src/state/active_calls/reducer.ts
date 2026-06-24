@@ -7,10 +7,10 @@ import {type UserProfile} from '@mattermost/types/users';
 import {type Reducer} from 'redux';
 import {CALL_ENDED, UN_INITIALIZED} from 'src/state/common_action_types';
 
-import {ACTIVE_CALL_REGISTERED} from './action_types';
+import {ACTIVE_CALL_ADDED} from './action_types';
 import {type Actions} from './actions';
 
-export type State = {
+export type ActiveCalls = {
     [channelID: string]: {
         callID: string;
         startAt: number;
@@ -20,15 +20,15 @@ export type State = {
     };
 }
 
-const emptyState: State = {};
+const emptyState: ActiveCalls = {};
 
-export const reducer: Reducer<State, Actions> = (initialState = emptyState, action) : State => {
+export const reducer: Reducer<ActiveCalls, Actions> = (initialState = emptyState, action) : ActiveCalls => {
     switch (action.type) {
     case UN_INITIALIZED:{
         return emptyState;
     }
 
-    case ACTIVE_CALL_REGISTERED: {
+    case ACTIVE_CALL_ADDED: {
         return {
             ...initialState,
             [action.data.channelID]: {
