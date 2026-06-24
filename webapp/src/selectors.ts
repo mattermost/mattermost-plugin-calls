@@ -37,7 +37,6 @@ import {
     usersReactionsState,
 } from 'src/reducers';
 import {getPluginStore} from 'src/state/common_selectors';
-import {SipCallDetails} from 'src/state/sip_details/reducer';
 import {
     CallJobReduxState,
     CallsUserPreferences,
@@ -49,9 +48,6 @@ import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID
 
 const activeCallsIngetPluginStore = (state: GlobalState): { [channelID: string]: callState } =>
     getPluginStore(state).activeCalls;
-
-const sipCallDetailsIngetPluginStore = (state: GlobalState): { [channelID: string]: SipCallDetails } =>
-    getPluginStore(state).sipDetails;
 
 export const channelIDForCurrentCall: (state: GlobalState) => string =
     createSelector(
@@ -260,25 +256,6 @@ export const idForCallInChannel = (state: GlobalState, channelID: string): strin
 export const callOwnerIDForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
     return getPluginStore(state).activeCalls[channelID]?.ownerID;
 };
-
-export const sipCallDetailsForCallInChannel = (state: GlobalState, channelID: string): SipCallDetails | undefined => {
-    return getPluginStore(state).sipDetails[channelID];
-};
-
-// isPhoneCall is true only for SIP/phone calls. The sipCallDetails slice holds an entry
-// only for such calls (populated from the server's call props), so presence of
-// an entry is the signal. Regular WebRTC calls have no entry and read as false.
-export const isPhoneCall = (state: GlobalState, channelID: string): boolean => {
-    return Boolean(sipCallDetailsForCallInChannel(state, channelID));
-};
-
-export const isPhoneCallForCurrentCall: (state: GlobalState) => boolean =
-    createSelector(
-        'isPhoneCallForCurrentCall',
-        sipCallDetailsIngetPluginStore,
-        channelIDForCurrentCall,
-        (sipStates, channelID) => Boolean(sipStates[channelID]),
-    );
 
 const hostsInCalls = (state: GlobalState): hostsState => {
     return getPluginStore(state).hosts;

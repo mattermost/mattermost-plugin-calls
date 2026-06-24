@@ -43,12 +43,10 @@ import {channelCallsAvailabilityUpdated} from 'src/state/call_availability/actio
 import {callEnded} from 'src/state/common_actions';
 import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/sessions/actions';
-import {sipCallDetailsReceived} from 'src/state/sip_details/actions';
 import {CallsStats, ChannelType} from 'src/types/types';
 import {
     getCallsClientSessionID,
     getPluginPath,
-    getSipCallDetailsFromCallState,
     getUserIDsFromSessions,
     isDMChannel,
     isGMChannel,
@@ -662,11 +660,6 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
             ownerID: call.owner_id,
         }),
     );
-
-    const sipCallDetails = getSipCallDetailsFromCallState(call);
-    if (sipCallDetails) {
-        actions.push(sipCallDetailsReceived(channelID, sipCallDetails));
-    }
 
     actions.push({
         type: CALL_RECORDING_STATE,

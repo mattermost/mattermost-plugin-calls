@@ -15,7 +15,6 @@ import {
 import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
 import {USER_JOINED, USER_LEFT, USER_REACTED, USER_REACTED_TIMEOUT} from 'src/state/sessions/action_types';
 import {reducer as sessions} from 'src/state/sessions/reducer';
-import {reducer as sipDetails} from 'src/state/sip_details/reducer';
 import {
     CallsConfigDefault,
     CallsUserPreferences,
@@ -709,7 +708,6 @@ const rootReducer = combineReducers({
     activeCalls,
     hosts,
     screenSharingIDs,
-    sipDetails,
     expandedView,
     switchCallModal,
     screenSourceModal,
