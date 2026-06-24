@@ -6,7 +6,6 @@ import {getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {connect} from 'react-redux';
 import {
-    callsShowButton,
     channelIDForCurrentCall,
     currentChannelHasCall,
     isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial,
@@ -14,6 +13,7 @@ import {
     isLimitRestricted,
     maxParticipants,
 } from 'src/selectors';
+import {shouldShowCallsButtonInChannelHeader} from 'src/state/call_availability/selectors';
 
 import ChannelHeaderDropdownButton from './component';
 
@@ -21,7 +21,7 @@ const mapStateToProps = (state: GlobalState) => {
     const channel = getCurrentChannel(state);
 
     return {
-        show: callsShowButton(state, channel?.id),
+        show: shouldShowCallsButtonInChannelHeader(state, channel?.id),
         inCall: Boolean(channelIDForCurrentCall(state) && channelIDForCurrentCall(state) === channel?.id),
         hasCall: currentChannelHasCall(state),
         isAdmin: isCurrentUserSystemAdmin(state),

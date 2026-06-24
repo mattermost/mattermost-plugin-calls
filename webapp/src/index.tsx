@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
-import {CallChannelState, EmojiData} from '@mattermost/calls-common/lib/types';
+import {EmojiData} from '@mattermost/calls-common/lib/types';
 import WebSocketClient from '@mattermost/client/websocket';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
@@ -17,8 +17,6 @@ import React, {useEffect} from 'react';
 import {createRoot, Root} from 'react-dom/client';
 import {FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
-import {AnyAction} from 'redux';
-import {batchActions} from 'redux-batched-actions';
 import {
     displayCallErrorModal,
     displayCallsTestModeUser,
@@ -27,7 +25,7 @@ import {
     getCallsConfigEnvOverrides,
     getCallsStats,
     getCallsVersionInfo,
-    incomingCallOnChannel,
+    hydradeCallsAndChannelStatesExcept,
     joinUser,
     leaveUser,
     loadProfilesByIdsIfMissing,
@@ -89,6 +87,7 @@ import {
     EndCallConfirmation,
     IDEndCallConfirmation,
 } from 'src/components/call_widget/end_call_confirmation';
+import ChannelHeaderMenuItem from 'src/components/channel_header_menu_item';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
@@ -104,22 +103,18 @@ import VideoDevicesSettingsSection from 'src/components/user_settings/video_devi
 import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
+import {channelCallsAvailabilityUpdated, toggleCallsAvailabilityForChannel} from 'src/state/call_availability/actions';
+import {callsAvailableInChannelWithDefault, callsNotAvailableInChannel} from 'src/state/call_availability/selectors';
 import {unInitialized} from 'src/state/common_actions';
-import {getSessionsMapFromSessions, sessionsReceived, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/sessions/actions';
-import {sipCallDetailsReceived} from 'src/state/sip_details/actions';
+import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/sessions/actions';
 import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
-import {getSipCallDetailsFromCallState, getWSConnectionURL} from 'src/utils';
+import {getWSConnectionURL} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 
-import {
-    DISMISS_CALL,
-    RECEIVED_CHANNEL_STATE,
-} from './action_types';
 import CallWidget from './components/call_widget';
 import ChannelCallToast from './components/channel_call_toast';
 import ChannelHeaderButton from './components/channel_header_button';
 import ChannelHeaderDropdownButton from './components/channel_header_dropdown_button';
-import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import ChannelLinkLabel from './components/channel_link_label';
 import PostType from './components/custom_post_types/post_type';
 import {PostTypeTranscription} from './components/custom_post_types/post_type_transcription';
@@ -135,30 +130,23 @@ import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
     callsConfig,
-    callsExplicitlyDisabled,
-    callsExplicitlyEnabled,
-    callStartAtForCallInChannel,
     channelHasCall,
     channelIDForCurrentCall,
-    defaultEnabled,
     hasPermissionsToEnableCalls,
     hostIDForCallInChannel,
     isCloudStarter,
     isLimitRestricted,
-    ringingEnabled,
     sessionsInCurrentCall,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
-import {activeCallRegistered} from './state/active_calls/actions';
 import {convertStatsToPanels} from './stats';
 import {PluginRegistry, Store} from './types/mattermost-webapp';
 import {
     followThread,
     getCallsClient,
     getChannelURL,
-    getPluginPath,
     getTranslations,
-    getUserIDsForSessions,
+    getUserIDsFromSessions,
     isCallsPopOut,
     playSound,
     sendDesktopEvent,
@@ -204,17 +192,11 @@ export default class Plugin {
 
     private registerWebSocketEvents(registry: PluginRegistry, store: Store) {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_enable_voice`, (ev) => {
-            store.dispatch({
-                type: RECEIVED_CHANNEL_STATE,
-                data: {id: ev.broadcast.channel_id, enabled: true},
-            });
+            store.dispatch(channelCallsAvailabilityUpdated(ev.broadcast.channel_id, true));
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_channel_disable_voice`, (ev) => {
-            store.dispatch({
-                type: RECEIVED_CHANNEL_STATE,
-                data: {id: ev.broadcast.channel_id, enabled: false},
-            });
+            store.dispatch(channelCallsAvailabilityUpdated(ev.broadcast.channel_id, false));
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_start`, (ev) => {
@@ -423,11 +405,7 @@ export default class Plugin {
             //   - sysadmins can start a call, but they receive an ephemeral message (server-side)
             //   - non-sysadmins cannot start a call and are shown a prompt
 
-            const explicitlyEnabled = callsExplicitlyEnabled(store.getState(), channelId);
-            const explicitlyDisabled = callsExplicitlyDisabled(store.getState(), channelId);
-
-            // Note: not super happy with using explicitlyDisabled both here and below, but wanted to keep the "able to start" logic confined to one place.
-            if (channelHasCall(store.getState(), channelId) || explicitlyEnabled || (!explicitlyDisabled && defaultEnabled(store.getState()))) {
+            if (channelHasCall(store.getState(), channelId) || callsAvailableInChannelWithDefault(store.getState(), channelId)) {
                 if (isLimitRestricted(store.getState())) {
                     if (isCloudStarter(store.getState())) {
                         store.dispatch(displayFreeTrial());
@@ -442,7 +420,7 @@ export default class Plugin {
                 return;
             }
 
-            if (explicitlyDisabled) {
+            if (callsNotAvailableInChannel(store.getState(), channelId)) {
                 // UI should not have shown, so this is a response to a slash command.
                 throw DisabledCallsErr;
             }
@@ -853,96 +831,9 @@ export default class Plugin {
         let channelHeaderMenuID: string;
         const registerChannelHeaderMenuAction = () => {
             channelHeaderMenuID = registry.registerChannelHeaderMenuAction(
-                ChannelHeaderMenuButton,
-                async () => {
-                    try {
-                        const data = await RestClient.fetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
-                            method: 'post',
-                            body: JSON.stringify({enabled: callsExplicitlyDisabled(store.getState(), currChannelId)}),
-                        });
-
-                        store.dispatch({
-                            type: RECEIVED_CHANNEL_STATE,
-                            data: {id: currChannelId, enabled: data.enabled},
-                        });
-                    } catch (err) {
-                        logErr(err);
-                    }
-                },
+                ChannelHeaderMenuItem,
+                () => store.dispatch(toggleCallsAvailabilityForChannel()),
             );
-        };
-
-        const fetchChannels = async (skipChannelID?: string): Promise<AnyAction[]> => {
-            const actions = [];
-            try {
-                const data = await RestClient.fetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
-
-                for (let i = 0; i < data.length; i++) {
-                    // Skipping the channel for the current call here is important
-                    // as it can avoid an inconsistent state for the current call due to a race.
-                    // State for the current call should ONLY be mutated as a result of websocket events, not HTTP calls.
-                    if (skipChannelID === data[i].channel_id) {
-                        logDebug('skipping channel from state loading', skipChannelID);
-                        continue;
-                    }
-
-                    actions.push({
-                        type: RECEIVED_CHANNEL_STATE,
-                        data: {
-                            id: data[i].channel_id,
-                            enabled: data[i].enabled,
-                        },
-                    });
-
-                    const call = data[i].call;
-
-                    if (!call || !call.sessions?.length) {
-                        continue;
-                    }
-
-                    store.dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(call.sessions)));
-
-                    if (!callStartAtForCallInChannel(store.getState(), data[i].channel_id)) {
-                        actions.push(
-                            activeCallRegistered(data[i].channel_id, {
-                                callID: call.id,
-                                startAt: call.start_at,
-                                ownerID: call.owner_id,
-                                threadID: call.thread_id,
-                                hostID: call.host_id,
-                            }));
-
-                        const sipCallDetails = getSipCallDetailsFromCallState(call);
-                        if (sipCallDetails) {
-                            actions.push(sipCallDetailsReceived(data[i].channel_id, sipCallDetails));
-                        }
-
-                        actions.push(sessionsReceived(data[i].channel_id, getSessionsMapFromSessions(call.sessions)));
-
-                        if (ringingEnabled(store.getState()) && data[i].call) {
-                            // dismissedNotification is populated after the actions array has been batched, so manually check:
-                            const dismissed = call.dismissed_notification;
-                            if (dismissed) {
-                                const currentUserID = getCurrentUserId(store.getState());
-                                if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
-                                    actions.push({
-                                        type: DISMISS_CALL,
-                                        data: {
-                                            callID: call.id,
-                                        },
-                                    });
-                                    continue;
-                                }
-                            }
-                            store.dispatch(incomingCallOnChannel(data[i].channel_id, call.id, call.owner_id, call.start_at));
-                        }
-                    }
-                }
-            } catch (err) {
-                logErr(err);
-            }
-
-            return actions;
         };
 
         const registerHeaderMenuComponentIfNeeded = async (channelID: string) => {
@@ -1010,7 +901,7 @@ export default class Plugin {
             // from the ExpandedView component itself.
             if (isCallsPopOut()) {
                 await Promise.all([
-                    store.dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(sessionsInCurrentCall(store.getState())))),
+                    store.dispatch(loadProfilesByIdsIfMissing(getUserIDsFromSessions(sessionsInCurrentCall(store.getState())))),
                     store.dispatch(getChannelAction(currentCallChannelID)),
                 ]);
                 return;
@@ -1018,9 +909,8 @@ export default class Plugin {
 
             // We pass currentCallChannelID so that we
             // can skip loading its state as a result of the HTTP calls in
-            // fetchChannels since it would be racy.
-            const actions = await fetchChannels(currentCallChannelID);
-            store.dispatch(batchActions(actions));
+            // hydradeCallsAndChannelStatesExcept since it would be racy.
+            await store.dispatch(hydradeCallsAndChannelStatesExcept(currentCallChannelID));
 
             // If indeed we are in a call we should request the up-to-date
             // state from websocket.

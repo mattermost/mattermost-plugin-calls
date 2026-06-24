@@ -11,7 +11,7 @@ import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getPluginPath,
     getTranslations,
-    getUserIDsForSessions,
+    getUserIDsFromSessions,
     runWithRetry,
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
@@ -125,7 +125,7 @@ function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventDat
 
         if (call.sessions?.length > 0) {
             runWithRetry(() => {
-                return fetchProfileImages(getUserIDsForSessions(call.sessions));
+                return fetchProfileImages(getUserIDsFromSessions(call.sessions));
             }).then((images) => {
                 store.dispatch({
                     type: RECEIVED_CALL_PROFILE_IMAGES,

@@ -3,10 +3,11 @@
 
 /* eslint-disable max-lines */
 
-import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, TranscribeAPI, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {reducer as activeCalls} from 'src/state/active_calls/reducer';
+import {reducer as callAvailability} from 'src/state/call_availability/reducer';
 import {
     CALL_ENDED,
     UN_INITIALIZED,
@@ -19,7 +20,6 @@ import {
     CallsConfigDefault,
     CallsUserPreferences,
     CallsUserPreferencesDefault,
-    ChannelState,
     ChannelType,
     HostControlNotice,
     HostControlNoticeTimeout,
@@ -51,7 +51,6 @@ import {
     RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CALLS_VERSION_INFO,
-    RECEIVED_CHANNEL_STATE,
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
     RINGING_FOR_CALL,
@@ -63,27 +62,6 @@ import {
     TRANSCRIPTIONS_ENABLED,
     USER_JOINED_TIMEOUT,
 } from './action_types';
-
-type channelsState = {
-    [channelID: string]: ChannelState;
-}
-
-type channelsStateAction = {
-    type: string;
-    data: ChannelState;
-}
-
-const channels = (state: channelsState = {}, action: channelsStateAction) => {
-    switch (action.type) {
-    case RECEIVED_CHANNEL_STATE:
-        return {
-            ...state,
-            [action.data.id]: action.data,
-        };
-    default:
-        return state;
-    }
-};
 
 type clientState = {
     channelID: string;
@@ -465,18 +443,18 @@ const screenSourceModal = (state = false, action: { type: string }) => {
     }
 };
 
-const callsConfig = (state = CallsConfigDefault, action: { type: string, data: CallsConfig }) => {
+const callsConfig = (state = CallsConfigDefault, action: { type: string, data: CallsConfig | boolean | string}): CallsConfig => {
     switch (action.type) {
     case RECEIVED_CALLS_CONFIG:
-        return action.data;
+        return action.data as CallsConfig;
     case RECORDINGS_ENABLED:
-        return {...state, EnableRecordings: action.data};
+        return {...state, EnableRecordings: action.data as boolean};
     case TRANSCRIPTIONS_ENABLED:
-        return {...state, EnableTranscriptions: action.data};
+        return {...state, EnableTranscriptions: action.data as boolean};
     case LIVE_CAPTIONS_ENABLED:
-        return {...state, EnableLiveCaptions: action.data};
+        return {...state, EnableLiveCaptions: action.data as boolean};
     case TRANSCRIBE_API:
-        return {...state, TranscribeAPI: action.data};
+        return {...state, TranscribeAPI: action.data as TranscribeAPI};
     default:
         return state;
     }
@@ -724,7 +702,7 @@ const hostControlNotices = (state: hostControlNoticeState = {},
 };
 
 const rootReducer = combineReducers({
-    channels,
+    callAvailability,
     clientStateReducer,
     reactions,
     sessions,
@@ -755,9 +733,6 @@ const rootReducer = combineReducers({
 
 export default rootReducer;
 
-export const initialRootState = rootReducer(
-    {} as Parameters<typeof rootReducer>[0],
-    {type: '@@INIT'} as Parameters<typeof rootReducer>[1],
-);
+export type RootReducer = ReturnType<typeof rootReducer>;
 
-export type RootState = ReturnType<typeof rootReducer>;
+export const emptyRootReducer: RootReducer = rootReducer(undefined, {type: '@@INIT'});

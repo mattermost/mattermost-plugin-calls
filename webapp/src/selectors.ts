@@ -32,41 +32,32 @@ import {
     callState,
     hostControlNoticeState,
     hostsState,
-    initialRootState,
     liveCaptionState,
     recentlyJoinedUsersState,
-    RootState,
     usersReactionsState,
 } from 'src/reducers';
+import {getPluginStore} from 'src/state/common_selectors';
 import {SipCallDetails} from 'src/state/sip_details/reducer';
 import {
     CallJobReduxState,
     CallsUserPreferences,
-    ChannelState,
     HostControlNotice,
     IncomingCallNotification,
     LiveCaptions,
 } from 'src/types/types';
 import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL} from 'src/utils';
 
-import {pluginId} from './manifest';
+const activeCallsIngetPluginStore = (state: GlobalState): { [channelID: string]: callState } =>
+    getPluginStore(state).activeCalls;
 
-const pluginReduxStateKey = `plugins-${pluginId}`;
-
-const pluginReduxStore = (state: GlobalState): RootState =>
-    (state[pluginReduxStateKey as keyof GlobalState] as unknown as RootState) ?? initialRootState;
-
-const activeCallsInPluginReduxStore = (state: GlobalState): { [channelID: string]: callState } =>
-    pluginReduxStore(state).activeCalls;
-
-const sipCallDetailsInPluginReduxStore = (state: GlobalState): { [channelID: string]: SipCallDetails } =>
-    pluginReduxStore(state).sipDetails;
+const sipCallDetailsIngetPluginStore = (state: GlobalState): { [channelID: string]: SipCallDetails } =>
+    getPluginStore(state).sipDetails;
 
 export const channelIDForCurrentCall: (state: GlobalState) => string =
     createSelector(
         'channelIDForCurrentCall',
         getCallsClientChannelID,
-        (state: GlobalState) => pluginReduxStore(state).clientStateReducer,
+        (state: GlobalState) => getPluginStore(state).clientStateReducer,
         (channelID, cState) => channelID || cState?.channelID || '',
     );
 
@@ -81,19 +72,19 @@ export const channelForCurrentCall: (state: GlobalState) => Channel | undefined 
 export const getCallIDForCurrentCall: (state: GlobalState) => string | undefined =
     createSelector(
         'getCallIDForCurrentCall',
-        activeCallsInPluginReduxStore,
+        activeCallsIngetPluginStore,
         channelIDForCurrentCall,
         (callsStates, channelID) => callsStates[channelID]?.callID,
     );
 
 export const getCallIDForChannel = (state: GlobalState, channelID: string) => {
-    return activeCallsInPluginReduxStore(state)[channelID]?.callID ?? '';
+    return activeCallsIngetPluginStore(state)[channelID]?.callID ?? '';
 };
 
 export const threadIDForCurrentCall: (state: GlobalState) => string | undefined =
     createSelector(
         'threadIDForCurrentCall',
-        activeCallsInPluginReduxStore,
+        activeCallsIngetPluginStore,
         channelIDForCurrentCall,
         (callsStates, channelID) => callsStates[channelID]?.threadID,
     );
@@ -110,8 +101,8 @@ export const teamForCurrentCall: (state: GlobalState) => Team | null =
         },
     );
 
-const sessionsInCalls = (state: GlobalState): RootState['sessions'] => {
-    return pluginReduxStore(state).sessions;
+const sessionsInCalls = (state: GlobalState) => {
+    return getPluginStore(state).sessions;
 };
 
 const userProfiles = (state: GlobalState) => state.entities.users.profiles;
@@ -173,13 +164,13 @@ export const numSessionsInCallInChannel = (state: GlobalState, channelID: string
 };
 
 export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
-    return Boolean(activeCallsInPluginReduxStore(state)[channelId]);
+    return Boolean(activeCallsIngetPluginStore(state)[channelId]);
 };
 
 export const currentChannelHasCall: (state: GlobalState) => boolean =
     createSelector(
         'currentChannelHasCall',
-        activeCallsInPluginReduxStore,
+        activeCallsIngetPluginStore,
         getCurrentChannelId,
         (callsStates, currChannelId) => Boolean(callsStates[currChannelId]),
     );
@@ -218,7 +209,7 @@ export const sessionForCurrentCall: (state: GlobalState) => UserSessionState =
     );
 
 const reactionsInCalls = (state: GlobalState): usersReactionsState => {
-    return pluginReduxStore(state).reactions;
+    return getPluginStore(state).reactions;
 };
 
 export const reactionsInCurrentCall: (state: GlobalState) => Reaction[] =
@@ -230,7 +221,7 @@ export const reactionsInCurrentCall: (state: GlobalState) => Reaction[] =
     );
 
 const liveCaptionsInCalls = (state: GlobalState): liveCaptionState => {
-    return pluginReduxStore(state).liveCaptions;
+    return getPluginStore(state).liveCaptions;
 };
 
 export const liveCaptionsInCurrentCall: (state: GlobalState) => LiveCaptions =
@@ -242,13 +233,13 @@ export const liveCaptionsInCurrentCall: (state: GlobalState) => LiveCaptions =
     );
 
 export const callStartAtForCallInChannel = (state: GlobalState, channelID: string): number => {
-    return pluginReduxStore(state).activeCalls[channelID]?.startAt || 0;
+    return getPluginStore(state).activeCalls[channelID]?.startAt || 0;
 };
 
 export const callStartAtForCurrentCall: (state: GlobalState) => number =
     createSelector(
         'callStartAtForCurrentCall',
-        activeCallsInPluginReduxStore,
+        activeCallsIngetPluginStore,
         channelIDForCurrentCall,
         getCallsClientInitTime,
         (callsStates, channelID, initTime) => callsStates[channelID]?.startAt || initTime || 0,
@@ -257,21 +248,21 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
     createSelector(
         'callInCurrentChannel',
-        activeCallsInPluginReduxStore,
+        activeCallsIngetPluginStore,
         getCurrentChannelId,
         (callsStates, currChannelId) => callsStates[currChannelId],
     );
 
 export const idForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
-    return pluginReduxStore(state).activeCalls[channelID]?.callID;
+    return getPluginStore(state).activeCalls[channelID]?.callID;
 };
 
 export const callOwnerIDForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
-    return pluginReduxStore(state).activeCalls[channelID]?.ownerID;
+    return getPluginStore(state).activeCalls[channelID]?.ownerID;
 };
 
 export const sipCallDetailsForCallInChannel = (state: GlobalState, channelID: string): SipCallDetails | undefined => {
-    return pluginReduxStore(state).sipDetails[channelID];
+    return getPluginStore(state).sipDetails[channelID];
 };
 
 // isPhoneCall is true only for SIP/phone calls. The sipCallDetails slice holds an entry
@@ -284,13 +275,13 @@ export const isPhoneCall = (state: GlobalState, channelID: string): boolean => {
 export const isPhoneCallForCurrentCall: (state: GlobalState) => boolean =
     createSelector(
         'isPhoneCallForCurrentCall',
-        sipCallDetailsInPluginReduxStore,
+        sipCallDetailsIngetPluginStore,
         channelIDForCurrentCall,
         (sipStates, channelID) => Boolean(sipStates[channelID]),
     );
 
 const hostsInCalls = (state: GlobalState): hostsState => {
-    return pluginReduxStore(state).hosts;
+    return getPluginStore(state).hosts;
 };
 
 export const hostIDForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
@@ -314,11 +305,11 @@ export const hostChangeAtForCurrentCall: (state: GlobalState) => number =
     );
 
 export const callDismissedNotification = (state: GlobalState, channelID: string) => {
-    return Boolean(pluginReduxStore(state).dismissedCalls[channelID]);
+    return Boolean(getPluginStore(state).dismissedCalls[channelID]);
 };
 
-const screenSharingIDsForCalls = (state: GlobalState): RootState['screenSharingIDs'] => {
-    return pluginReduxStore(state).screenSharingIDs;
+const screenSharingIDsForCalls = (state: GlobalState) => {
+    return getPluginStore(state).screenSharingIDs;
 };
 
 export const screenSharingSessionForCurrentCall: (state: GlobalState) => UserSessionState | undefined =
@@ -331,11 +322,11 @@ export const screenSharingSessionForCurrentCall: (state: GlobalState) => UserSes
     );
 
 export const threadIDForCallInChannel = (state: GlobalState, channelID: string) => {
-    return pluginReduxStore(state).activeCalls[channelID]?.threadID || '';
+    return getPluginStore(state).activeCalls[channelID]?.threadID || '';
 };
 
 const recordingsForCalls = (state: GlobalState): callsJobState => {
-    return pluginReduxStore(state).recordings;
+    return getPluginStore(state).recordings;
 };
 
 export const recordingForCurrentCall: (state: GlobalState) => CallJobReduxState =
@@ -347,7 +338,7 @@ export const recordingForCurrentCall: (state: GlobalState) => CallJobReduxState 
     );
 
 export const hostControlNoticesForCalls = (state: GlobalState): hostControlNoticeState => {
-    return pluginReduxStore(state).hostControlNotices;
+    return getPluginStore(state).hostControlNotices;
 };
 
 export const hostControlNoticesForCurrentCall: (state: GlobalState) => HostControlNotice[] =
@@ -359,7 +350,7 @@ export const hostControlNoticesForCurrentCall: (state: GlobalState) => HostContr
     );
 
 const liveCaptionsStateForCalls = (state: GlobalState): callsJobState => {
-    return pluginReduxStore(state).callLiveCaptionsState;
+    return getPluginStore(state).callLiveCaptionsState;
 };
 
 export const liveCaptionsStateForCurrentCall: (state: GlobalState) => CallJobReduxState =
@@ -383,7 +374,7 @@ export const areLiveCaptionsAvailableInCurrentCall: (state: GlobalState) => bool
     );
 
 const recentlyJoinedUsersInCalls = (state: GlobalState): recentlyJoinedUsersState => {
-    return pluginReduxStore(state).recentlyJoinedUsers;
+    return getPluginStore(state).recentlyJoinedUsers;
 };
 
 export const recentlyJoinedUsersInCurrentCall: (state: GlobalState) => string[] =
@@ -413,7 +404,7 @@ export const isRecordingInCurrentCall: (state: GlobalState) => boolean =
     );
 
 export const incomingCalls = (state: GlobalState): IncomingCallNotification[] =>
-    pluginReduxStore(state).incomingCalls;
+    getPluginStore(state).incomingCalls;
 
 export const sortedIncomingCalls: (state: GlobalState) => IncomingCallNotification[] =
     createSelector(
@@ -423,7 +414,7 @@ export const sortedIncomingCalls: (state: GlobalState) => IncomingCallNotificati
     );
 
 export const dismissedCalls = (state: GlobalState): { [callID: string]: boolean } =>
-    pluginReduxStore(state).dismissedCalls;
+    getPluginStore(state).dismissedCalls;
 
 export const dismissedCallForCurrentChannel: (state: GlobalState) => boolean =
     createSelector(
@@ -434,10 +425,10 @@ export const dismissedCallForCurrentChannel: (state: GlobalState) => boolean =
     );
 
 export const ringingForCall = (state: GlobalState, callID: string): boolean =>
-    pluginReduxStore(state).ringingForCalls[callID] || false;
+    getPluginStore(state).ringingForCalls[callID] || false;
 
 export const currentlyRinging = (state: GlobalState): boolean => {
-    for (const val of Object.values(pluginReduxStore(state).ringingForCalls)) {
+    for (const val of Object.values(getPluginStore(state).ringingForCalls)) {
         if (val) {
             return true;
         }
@@ -446,16 +437,16 @@ export const currentlyRinging = (state: GlobalState): boolean => {
 };
 
 export const didRingForCall = (state: GlobalState, callID: string): boolean =>
-    pluginReduxStore(state).didRingForCalls[callID] || false;
+    getPluginStore(state).didRingForCalls[callID] || false;
 
 export const didNotifyForCall = (state: GlobalState, callID: string): boolean =>
-    pluginReduxStore(state).didNotifyForCalls[callID] || false;
+    getPluginStore(state).didNotifyForCalls[callID] || false;
 
 //
 // Config logic
 //
 export const callsConfig = (state: GlobalState): CallsConfig =>
-    pluginReduxStore(state).callsConfig;
+    getPluginStore(state).callsConfig;
 
 export const iceServers = (state: GlobalState): RTCIceServer[] =>
     callsConfig(state).ICEServersConfigs || [];
@@ -491,7 +482,7 @@ export const recordingMaxDuration = (state: GlobalState) =>
     callsConfig(state).MaxRecordingDuration;
 
 export const rtcdEnabled = (state: GlobalState) =>
-    pluginReduxStore(state).rtcdEnabled;
+    getPluginStore(state).rtcdEnabled;
 
 export const ringingEnabled = (state: GlobalState) =>
     callsConfig(state).EnableRinging;
@@ -500,32 +491,7 @@ export const transcribeAPI = (state: GlobalState) =>
     callsConfig(state).TranscribeAPI;
 
 export const callsConfigEnvOverrides = (state: GlobalState): Record<string, string> =>
-    pluginReduxStore(state).callsConfigEnvOverrides;
-
-//
-// Calls enabled/disabled logic
-//
-export const channelState = (state: GlobalState, channelId: string): ChannelState =>
-    pluginReduxStore(state).channels[channelId];
-
-export const callsExplicitlyEnabled = (state: GlobalState, channelId: string): boolean =>
-    Boolean(channelState(state, channelId)?.enabled);
-
-export const callsExplicitlyDisabled = (state: GlobalState, channelId: string): boolean => {
-    const enabled = channelState(state, channelId)?.enabled;
-    return (typeof enabled !== 'undefined') && !enabled;
-};
-
-export const callsEnabledInCurrentChannel = (state: GlobalState): boolean => {
-    const channelId = getCurrentChannelId(state);
-    if (callsExplicitlyDisabled(state, channelId)) {
-        return false;
-    }
-    return callsExplicitlyEnabled(state, channelId) || defaultEnabled(state) || isCurrentUserSystemAdmin(state);
-};
-
-export const callsShowButton = (state: GlobalState, channelId?: string): boolean =>
-    !callsExplicitlyDisabled(state, channelId || '');
+    getPluginStore(state).callsConfigEnvOverrides;
 
 export const hasPermissionsToEnableCalls = (state: GlobalState, channelId: string): boolean => {
     if (isCurrentUserSystemAdmin(state)) {
@@ -596,7 +562,7 @@ export const isCloudTrialNeverStarted = (state: GlobalState): boolean =>
     getSubscription(state)?.trial_end_at === 0;
 
 export const callsUserPreferences = (state: GlobalState): CallsUserPreferences =>
-    pluginReduxStore(state).callsUserPreferences;
+    getPluginStore(state).callsUserPreferences;
 
 export const shouldPlayJoinUserSound = (state: GlobalState): boolean =>
     profilesInCurrentCall(state).length < callsUserPreferences(state).joinSoundParticipantsThreshold;
@@ -657,20 +623,20 @@ export const getStatusForCurrentUser: (state: GlobalState) => string =
 // modals
 
 export const expandedView = (state: GlobalState) => {
-    return pluginReduxStore(state).expandedView;
+    return getPluginStore(state).expandedView;
 };
 
 export const switchCallModal = (state: GlobalState) => {
-    return pluginReduxStore(state).switchCallModal;
+    return getPluginStore(state).switchCallModal;
 };
 
 export const screenSourceModal = (state: GlobalState) => {
-    return pluginReduxStore(state).screenSourceModal;
+    return getPluginStore(state).screenSourceModal;
 };
 
 export const clientConnecting = (state: GlobalState) => {
-    return pluginReduxStore(state).clientConnecting;
+    return getPluginStore(state).clientConnecting;
 };
 
 export const callsVersionInfo = (state: GlobalState): CallsVersionInfo =>
-    pluginReduxStore(state).callsVersionInfo;
+    getPluginStore(state).callsVersionInfo;

@@ -44,7 +44,7 @@ import {
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
-import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/session/actions';
+import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/sessions/actions';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getWSConnectionURL,

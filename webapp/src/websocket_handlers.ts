@@ -123,7 +123,6 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
             callID: ev.data.id,
             startAt: ev.data.start_at,
             ownerID: ev.data.owner_id,
-            hostID: ev.data.host_id,
             threadID: ev.data.thread_id,
         }));
     store.dispatch({

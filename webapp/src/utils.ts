@@ -331,12 +331,17 @@ export async function getProfilesByIds(state: GlobalState, ids: string[]): Promi
     return profiles;
 }
 
-export function getUserIDsForSessions(sessions: SessionState[]) {
-    const idsMap: {[id: string]: boolean} = {};
+/**
+ * Retrieves a deduplicated list of user IDs from call sessions.
+ * Since a user can have multiple sessions (e.g., desktop and mobile), duplicate user IDs are removed.
+ */
+export function getUserIDsFromSessions(sessions: SessionState[]): Array<UserProfile['id']> {
+    const userIDsSet = new Set<UserProfile['id']>();
     for (const session of sessions) {
-        idsMap[session.user_id] = true;
+        userIDsSet.add(session.user_id);
     }
-    return Object.keys(idsMap);
+
+    return Array.from(userIDsSet);
 }
 
 export function getUserIdFromDM(dmName: string, currentUserId: string) {
