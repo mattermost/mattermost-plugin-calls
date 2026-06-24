@@ -80,7 +80,6 @@ const props: Props = {
     openModal: jest.fn(),
     openCallsUserSettings: jest.fn(),
     connectedDMUser: undefined,
-    isPhoneCall: false,
 };
 
 describe('CallWidget', () => {
