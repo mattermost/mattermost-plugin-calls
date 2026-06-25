@@ -6,6 +6,7 @@ package main
 import (
 	"testing"
 
+	"github.com/livekit/protocol/livekit"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,6 +33,35 @@ func TestNormalizePhoneNumber(t *testing.T) {
 			require.Equal(t, tc.expected, normalizePhoneNumber(tc.input))
 		})
 	}
+}
+
+func TestSIPTerminalReason(t *testing.T) {
+	tests := []struct {
+		name          string
+		dr            livekit.DisconnectReason
+		reachedActive bool
+		expected      string
+	}{
+		{"no answer", livekit.DisconnectReason_USER_UNAVAILABLE, false, sipReasonNoAnswer},
+		{"busy/reject", livekit.DisconnectReason_USER_REJECTED, false, sipReasonBusy},
+		{"trunk failure", livekit.DisconnectReason_SIP_TRUNK_FAILURE, false, sipReasonFailed},
+		{"client hangup after answer", livekit.DisconnectReason_CLIENT_INITIATED, true, sipReasonEnded},
+		{"client hangup before answer", livekit.DisconnectReason_CLIENT_INITIATED, false, sipReasonCanceled},
+		{"room deleted after answer", livekit.DisconnectReason_ROOM_DELETED, true, sipReasonEnded},
+		{"removed before answer", livekit.DisconnectReason_PARTICIPANT_REMOVED, false, sipReasonCanceled},
+		{"unknown after answer", livekit.DisconnectReason_UNKNOWN_REASON, true, sipReasonEnded},
+		{"unknown before answer", livekit.DisconnectReason_UNKNOWN_REASON, false, sipReasonFailed},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, sipTerminalReason(tc.dr, tc.reachedActive))
+		})
+	}
+}
+
+func TestSIPParticipantIdentity(t *testing.T) {
+	require.Equal(t, "sip:+17813078753", sipParticipantIdentity("+17813078753"))
 }
 
 func TestLivekitHTTPURL(t *testing.T) {

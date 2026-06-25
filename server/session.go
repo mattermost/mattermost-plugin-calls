@@ -103,7 +103,13 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 		}
 	}
 
+	// callCreatedNow tracks whether this invocation is the one that creates the
+	// Call row. For an outbound phone call the row is pre-created server-side by
+	// handlePhoneCall, so the caller's later join must UpdateCall rather than
+	// re-CreateCall (and must not re-create the post / re-broadcast call_start).
+	callCreatedNow := false
 	if state == nil {
+		callCreatedNow = true
 		state = &callState{
 			Call: public.Call{
 				ID:        model.NewId(),
@@ -205,7 +211,7 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 		state.Call.Props.Participants[userID] = struct{}{}
 	}
 
-	if len(state.sessions) == 1 {
+	if callCreatedNow {
 		if err := p.store.CreateCall(&state.Call); err != nil {
 			return nil, fmt.Errorf("failed to create call: %w", err)
 		}
@@ -451,24 +457,44 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 
 	// Outbound phone calls (bot-DM containers) are 1:1: once the last human
 	// leaves, any lingering SIP participant has no one to talk to. Hang up the
-	// phone by deleting the LiveKit room (which sends a SIP BYE) and drop the SIP
-	// session(s), so the call ends below instead of orphaning the PSTN leg. The
-	// resulting participant_left webhook finds the call already ended and no-ops.
-	if onlySIPParticipantsRemain(state.sessions) && p.isPhoneCallChannel(channelID) {
-		p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
-			"callID", state.Call.ID, "channelID", channelID)
+	// phone leg (RemoveParticipant sends a BYE if the call was answered, a CANCEL
+	// if it was still ringing) and drop the SIP session(s), so the call ends
+	// below instead of orphaning the PSTN leg. The resulting participant_left
+	// webhook finds the call already ended and no-ops.
+	if onlySIPParticipantsRemain(state.sessions) && state.Call.Props.Type == callTypePhone {
+		// Whether the leg was answered determines the terminal reason: ended
+		// (post-answer hangup) vs canceled (caller gave up while it was ringing).
+		reason := sipReasonCanceled
+		for sid, session := range state.sessions {
+			status, err := p.livekitGetSIPCallStatus(channelID, session.UserID)
+			if err != nil {
+				p.LogError("removeUserSession: failed to get SIP call status",
+					"channelID", channelID, "identity", session.UserID, "err", err.Error())
+			} else if status == sipCallStatusActive {
+				reason = sipReasonEnded
+			}
 
-		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-			p.LogError("removeUserSession: failed to delete LiveKit room",
-				"channelID", channelID, "err", err.Error())
-		}
+			if err := p.livekitRemoveParticipant(channelID, session.UserID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+				p.LogError("removeUserSession: failed to remove SIP participant",
+					"channelID", channelID, "identity", session.UserID, "err", err.Error())
+			}
 
-		for sid := range state.sessions {
 			if err := p.store.DeleteCallSession(sid); err != nil {
 				p.LogError("removeUserSession: failed to delete SIP session",
 					"channelID", channelID, "sid", sid, "err", err.Error())
 			}
 			delete(state.sessions, sid)
+		}
+		state.Call.Props.EndReason = reason
+
+		p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
+			"callID", state.Call.ID, "channelID", channelID, "reason", reason)
+
+		// Tear down the room so the (already-departed) human's other sessions and
+		// the SIP leg drop at the media layer.
+		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+			p.LogError("removeUserSession: failed to delete LiveKit room",
+				"channelID", channelID, "err", err.Error())
 		}
 	}
 
@@ -486,13 +512,12 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			"reason", "last_left",
 			"sessionCount", 0)
 
-		p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
-			ChannelID:           channelID,
-			ReliableClusterSend: true,
-		})
+		p.broadcastCallEnded(&state.Call)
 
+		reason := state.Call.Props.EndReason
+		participants := mapKeys(state.Call.Props.Participants)
 		defer func() {
-			_, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))
+			_, err := p.updateCallPostEnded(state.Call.PostID, participants, reason)
 			if err != nil {
 				p.LogError("failed to update call post ended", "err", err.Error(), "channelID", channelID)
 			}

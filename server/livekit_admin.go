@@ -100,6 +100,30 @@ func (p *Plugin) livekitLowerParticipantHand(room, identity string) error {
 	return nil
 }
 
+// livekitGetSIPCallStatus returns the SIP participant's sip.callStatus
+// attribute (sipCallStatusActive once the call is answered), or "" if the
+// attribute is absent. It errors if the participant cannot be fetched (e.g. the
+// leg is already gone).
+func (p *Plugin) livekitGetSIPCallStatus(room, identity string) (string, error) {
+	client, err := p.getLiveKitRoomClient()
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), livekitAPITimeout)
+	defer cancel()
+
+	info, err := client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{
+		Room:     room,
+		Identity: identity,
+	})
+	if err != nil {
+		return "", fmt.Errorf("livekit GetParticipant: %w", err)
+	}
+
+	return info.GetAttributes()[livekit.AttrSIPCallStatus], nil
+}
+
 func (p *Plugin) livekitRemoveParticipant(room, identity string) error {
 	client, err := p.getLiveKitRoomClient()
 	if err != nil {

@@ -168,8 +168,8 @@ func TestAddUserSession(t *testing.T) {
 	})
 }
 
-// TestRemoveUserSessionPhoneCall verifies scenario 1: when the last human leaves
-// an outbound phone call (bot-DM container), the lingering SIP participant is
+// TestRemoveUserSessionPhoneCall verifies that when the last human leaves an
+// outbound phone call (props.Type=="phone"), the lingering SIP participant is
 // hung up and the call ends, instead of orphaning the PSTN leg.
 func TestRemoveUserSessionPhoneCall(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
@@ -222,7 +222,7 @@ func TestRemoveUserSessionPhoneCall(t *testing.T) {
 		PostID:    postID,
 		ThreadID:  model.NewId(),
 		OwnerID:   humanUserID,
-		Props:     public.CallProps{NodeID: "test-node"},
+		Props:     public.CallProps{NodeID: "test-node", Type: callTypePhone},
 	}
 	require.NoError(t, store.CreateCall(call))
 
@@ -236,9 +236,7 @@ func TestRemoveUserSessionPhoneCall(t *testing.T) {
 		sessions: map[string]*public.CallSession{humanConnID: humanSession, sipSid: sipSession},
 	}
 
-	// The DM is a phone-call container (bot is a member).
-	mockAPI.On("GetChannel", channelID).Return(&model.Channel{Id: channelID, Type: model.ChannelTypeDirect}, nil)
-	mockAPI.On("GetChannelMembers", channelID, 0, 10).Return(model.ChannelMembers{{ChannelId: channelID, UserId: botID}}, nil)
+	// The phone-teardown rules are gated on the call type (props.Type=="phone").
 	mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil)
 
 	err := p.removeUserSession(state, humanUserID, humanConnID, humanConnID, channelID)
@@ -253,6 +251,11 @@ func TestRemoveUserSessionPhoneCall(t *testing.T) {
 	sessions, err := store.GetCallSessions(callID, db.GetCallSessionOpts{})
 	require.NoError(t, err)
 	require.Empty(t, sessions)
+
+	// With LiveKit unconfigured the leg's answered-state can't be determined, so
+	// the terminal reason defaults to "canceled" (caller gave up) and is
+	// persisted as the durable phone-call log.
+	require.Equal(t, sipReasonCanceled, ended.Props.EndReason)
 
 	mockAPI.AssertCalled(t, "PublishWebSocketEvent", wsEventCallEnd, mock.Anything, mock.Anything)
 }

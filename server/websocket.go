@@ -552,8 +552,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 				"connID": connID,
 			}, &WebSocketBroadcast{ConnectionID: connID, ReliableClusterSend: true})
 			return state
-		} else if len(state.sessions) == 1 {
+		} else if len(state.sessions) == 1 && state.Call.PostID == "" {
 			// new call has started
+			// (a pre-created phone call already has a post and broadcast
+			// call_start in handlePhoneCall, so PostID is already set — skip)
 
 			// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
 			if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
@@ -580,15 +582,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			}
 
 			// TODO: send all the info attached to a call.
-			p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
-				"id":        state.Call.ID,
-				"channelID": channelID,
-				"start_at":  state.Call.StartAt,
-				"thread_id": threadID,
-				"post_id":   postID,
-				"owner_id":  state.Call.OwnerID,
-				"host_id":   state.Call.GetHostID(),
-			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+			p.broadcastCallStarted(&state.Call)
 		}
 
 		p.LogDebug("session has joined call",

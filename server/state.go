@@ -362,7 +362,7 @@ func (p *Plugin) cleanCallState(call *public.Call, reason string) error {
 		return nil
 	}
 
-	if _, err := p.updateCallPostEnded(call.PostID, mapKeys(call.Props.Participants)); err != nil {
+	if _, err := p.updateCallPostEnded(call.PostID, mapKeys(call.Props.Participants), call.Props.EndReason); err != nil {
 		p.LogError("failed to update call post", "err", err.Error())
 	}
 
@@ -414,4 +414,58 @@ func setCallEnded(call *public.Call) {
 	call.Props.NodeID = ""
 	call.Props.Hosts = nil
 	call.Props.Participants = nil
+	// Note: the phone-call props (Type/PhoneNumber/DisplayNumber/EndReason) are
+	// intentionally preserved — they are the durable phone-call log.
+}
+
+// broadcastCallStarted notifies the whole channel that a call is active so
+// channel-wide UI (toast, sidebar icon, post card, "Join call" button) updates
+// for every member, whether or not they are in the call.
+func (p *Plugin) broadcastCallStarted(call *public.Call) {
+	p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
+		"id":        call.ID,
+		"channelID": call.ChannelID,
+		"start_at":  call.StartAt,
+		"thread_id": call.ThreadID,
+		"post_id":   call.PostID,
+		"owner_id":  call.OwnerID,
+		"host_id":   call.GetHostID(),
+	}, &WebSocketBroadcast{ChannelID: call.ChannelID, ReliableClusterSend: true})
+}
+
+// broadcastCallEnded notifies the whole channel that the call has ended so
+// bystander UI (toast, sidebar icon, post card) clears immediately. For phone
+// calls the payload carries the server-authoritative terminal reason; the
+// reason is messaging-only and never gates client teardown (that is driven by
+// LiveKit's RoomEvent.Disconnected).
+func (p *Plugin) broadcastCallEnded(call *public.Call) {
+	data := map[string]interface{}{}
+	if call.Props.EndReason != "" {
+		data["reason"] = call.Props.EndReason
+	}
+	p.publishWebSocketEvent(wsEventCallEnd, data, &WebSocketBroadcast{
+		ChannelID:           call.ChannelID,
+		ReliableClusterSend: true,
+	})
+}
+
+// endPhoneCall ends an outbound phone call with a server-authoritative terminal
+// reason. It must be called under the call lock. It tears down the LiveKit room
+// (so the caller's widget disconnects via RoomEvent.Disconnected), broadcasts
+// call_ended carrying the reason, and reconciles DB/post state. forensicReason
+// is the internal log label, distinct from the user-facing terminal reason.
+func (p *Plugin) endPhoneCall(state *callState, reason, forensicReason string) {
+	state.Call.Props.EndReason = reason
+
+	if err := p.livekitDeleteRoom(state.Call.ChannelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+		p.LogError("endPhoneCall: failed to delete LiveKit room",
+			"channelID", state.Call.ChannelID, "err", err.Error())
+	}
+
+	p.broadcastCallEnded(&state.Call)
+
+	if err := p.cleanCallState(&state.Call, forensicReason); err != nil {
+		p.LogError("endPhoneCall: failed to clean call state",
+			"channelID", state.Call.ChannelID, "err", err.Error())
+	}
 }

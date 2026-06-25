@@ -70,6 +70,13 @@ type CallProps struct {
 	NodeID                 string              `json:"node_id,omitempty"`
 	Participants           map[string]struct{} `json:"participants,omitempty"`
 	HostLockedUserID       string              `json:"host_locked_user_id,omitempty"`
+	// Outbound phone call (props.Type == "phone") fields. Unlike the transient
+	// props above, these are durable: setCallEnded must not clear them, so the
+	// bot-DM post card can render the phone-call log after the call has ended.
+	Type          string `json:"type,omitempty"`           // "phone" for outbound SIP calls
+	PhoneNumber   string `json:"phone_number,omitempty"`   // normalized E.164 number dialed
+	DisplayNumber string `json:"display_number,omitempty"` // number as the caller entered it
+	EndReason     string `json:"end_reason,omitempty"`     // terminal reason for a phone call (server-authoritative)
 }
 
 type CallStats struct {

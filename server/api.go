@@ -576,10 +576,16 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handlePhoneCall dials an external phone number via LiveKit SIP and joins the
-// remote party to a call hosted on the requesting user's DM channel with the
-// Calls bot. LiveKit auto-creates the room on demand, so we dial in a goroutine
-// without waiting for the user's own join flow to create the room first.
+// handlePhoneCall starts a server-initiated outbound 1:1 phone call. The remote
+// party is reached via LiveKit SIP and the call is hosted on the requesting
+// user's DM channel with the Calls bot.
+//
+// Unlike a normal join, the server owns call creation here: it resolves the bot
+// DM, creates the Call row and call-started post FIRST (so the SIP
+// participant_joined webhook always finds an active call — no ordering race),
+// then dials. The call_start broadcast is deferred until the dial RPC succeeds,
+// so a failed dial rolls the call back invisibly with no call_start/call_ended
+// flicker. The caller auto-joins channel_id afterward via the normal join flow.
 func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handlePhoneCall", &res, w, r)
@@ -623,9 +629,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The call is hosted on the user<->bot DM channel. The client creates/joins
-	// the call on this channel before calling /phone-call, so the SIP leg dials
-	// into the existing call's room and the join webhook finds an active call.
+	// The call is hosted on the user<->bot DM channel.
 	dmChannel, appErr := p.API.GetDirectChannel(userID, botID)
 	if appErr != nil {
 		res.Err = fmt.Errorf("failed to get bot DM channel: %w", appErr).Error()
@@ -634,16 +638,90 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	}
 	channelID := dmChannel.Id
 
-	go func() {
-		if err := p.createSIPParticipant(trunkID, number, channelID, req.Number); err != nil {
-			p.LogError("handlePhoneCall: failed to create SIP participant",
-				"err", err.Error(), "number", number, "channelID", channelID)
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer p.unlockCall(channelID)
+
+	if state != nil {
+		res.Err = "a call is already in progress in this channel"
+		res.Code = http.StatusConflict
+		return
+	}
+
+	// Create the Call row before dialing so the participant_joined webhook
+	// always finds an active call. props.Type=="phone" gates the phone-call
+	// lifecycle (1:1 teardown rules) in the leave/webhook paths.
+	now := time.Now().UnixMilli()
+	call := public.Call{
+		ID:        model.NewId(),
+		CreateAt:  now,
+		StartAt:   now,
+		OwnerID:   userID,
+		ChannelID: channelID,
+		Props: public.CallProps{
+			NodeID:        p.nodeID,
+			Hosts:         []string{userID},
+			Participants:  map[string]struct{}{userID: {}},
+			Type:          callTypePhone,
+			PhoneNumber:   number,
+			DisplayNumber: req.Number,
+		},
+	}
+	if err := p.store.CreateCall(&call); err != nil {
+		res.Err = fmt.Errorf("failed to create call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	postID, threadID, err := p.createCallStartedPost(&callState{Call: call}, userID, channelID, "", "")
+	if err != nil {
+		p.LogError("handlePhoneCall: failed to create call started post", "err", err.Error(), "channelID", channelID)
+	}
+	call.PostID = postID
+	call.ThreadID = threadID
+	if err := p.store.UpdateCall(&call); err != nil {
+		res.Err = fmt.Errorf("failed to update call: %w", err).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	p.LogInfo("phone call created",
+		"callID", call.ID, "channelID", channelID, "userID", userID, "nodeID", p.nodeID)
+
+	// Dial. This returns at INVITE time (WaitUntilAnswered=false), not on answer.
+	sipCallID, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
+	if err != nil {
+		// Roll the call back. No call_start was broadcast, so the rolled-back
+		// call is invisible — no flicker for channel members.
+		p.LogError("handlePhoneCall: failed to create SIP participant, rolling back call",
+			"err", err.Error(), "number", number, "channelID", channelID)
+		if derr := p.store.DeleteCall(call.ID); derr != nil {
+			p.LogError("handlePhoneCall: failed to roll back call", "err", derr.Error(), "channelID", channelID)
 		}
-	}()
+		if postID != "" {
+			if derr := p.API.DeletePost(postID); derr != nil {
+				p.LogError("handlePhoneCall: failed to roll back call post", "err", derr.Error(), "postID", postID)
+			}
+		}
+		res.Err = "failed to dial the outbound call"
+		res.Code = http.StatusBadGateway
+		return
+	}
+
+	// Dial accepted: announce the call channel-wide and arm the server-owned
+	// no-answer timer.
+	p.broadcastCallStarted(&call)
+	p.armSIPNoAnswerTimer(channelID, sipParticipantIdentity(number))
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
-		"channel_id": channelID,
+		"call_id":     call.ID,
+		"channel_id":  channelID,
+		"sip_call_id": sipCallID,
 	}); err != nil {
 		p.LogError("failed to encode phone-call response", "err", err.Error())
 	}
@@ -755,37 +833,6 @@ func normalizePhoneNumber(raw string) string {
 		num = "+" + num
 	}
 	return num
-}
-
-// isPhoneCallChannel reports whether the channel is a DM with the Calls bot,
-// i.e. an outbound phone-call container rather than a regular channel (where a
-// SIP participant would be an inbound dial-in guest).
-func (p *Plugin) isPhoneCallChannel(channelID string) bool {
-	botID := p.getBotID()
-	if botID == "" {
-		return false
-	}
-
-	channel, appErr := p.API.GetChannel(channelID)
-	if appErr != nil {
-		p.LogError("isPhoneCallChannel: failed to get channel", "channelID", channelID, "err", appErr.Error())
-		return false
-	}
-	if channel.Type != model.ChannelTypeDirect {
-		return false
-	}
-
-	members, appErr := p.API.GetChannelMembers(channelID, 0, 10)
-	if appErr != nil {
-		p.LogError("isPhoneCallChannel: failed to get channel members", "channelID", channelID, "err", appErr.Error())
-		return false
-	}
-	for _, m := range members {
-		if m.UserId == botID {
-			return true
-		}
-	}
-	return false
 }
 
 func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
@@ -957,26 +1004,22 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 
 	// Outbound phone calls live in the user<->bot DM channel. When the last SIP
 	// participant hangs up, end the call so the remaining MM user is dropped too.
-	if !sipParticipantsRemain(state.sessions) && p.isPhoneCallChannel(channelID) {
+	if !sipParticipantsRemain(state.sessions) && state.Call.Props.Type == callTypePhone {
+		// Derive the server-authoritative terminal reason from the SIP leg's
+		// LiveKit DisconnectReason. A CLIENT_INITIATED disconnect (a SIP BYE)
+		// means the call had been answered.
+		dr := participant.GetDisconnectReason()
+		reachedActive := participant.GetAttributes()[livekit.AttrSIPCallStatus] == sipCallStatusActive ||
+			dr == livekit.DisconnectReason_CLIENT_INITIATED
+		reason := sipTerminalReason(dr, reachedActive)
+
 		p.LogInfo("handleLiveKitSIPParticipantLeft: last SIP participant left phone call, ending call",
-			"channelID", channelID, "callID", state.Call.ID)
+			"channelID", channelID, "callID", state.Call.ID, "disconnectReason", dr.String(), "reason", reason)
 
-		// Tear down the media room so the MM user's client disconnects, mirroring
-		// the host-end path; clients also get wsEventCallEnd as a fallback.
-		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-			p.LogError("handleLiveKitSIPParticipantLeft: failed to delete LiveKit room",
-				"channelID", channelID, "err", err.Error())
-		}
-
-		p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
-			ChannelID:           channelID,
-			ReliableClusterSend: true,
-		})
-
-		if err := p.cleanCallState(&state.Call, "sip_hangup"); err != nil {
-			p.LogError("handleLiveKitSIPParticipantLeft: failed to clean call state",
-				"channelID", channelID, "err", err.Error())
-		}
+		// endPhoneCall deletes the room (so the MM user's client disconnects via
+		// RoomEvent.Disconnected), broadcasts call_ended{reason}, and reconciles
+		// DB/post state.
+		p.endPhoneCall(state, reason, "sip_hangup")
 		return
 	}
 

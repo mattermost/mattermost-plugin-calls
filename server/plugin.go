@@ -200,7 +200,11 @@ func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, titl
 	return createdPost.Id, threadID, nil
 }
 
-func (p *Plugin) updateCallPostEnded(postID string, participants []string) (float64, error) {
+// updateCallPostEnded rewrites the call-started post to its ended state. For a
+// phone call, reason carries the server-authoritative terminal reason, which is
+// persisted to the post props as the durable phone-call log; it is empty for
+// ordinary calls.
+func (p *Plugin) updateCallPostEnded(postID string, participants []string, reason string) (float64, error) {
 	if postID == "" {
 		return 0, fmt.Errorf("postID should not be empty")
 	}
@@ -224,6 +228,9 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 	post.AddProp("attachments", []*model.SlackAttachment{&slackAttachment})
 	post.AddProp("end_at", time.Now().UnixMilli())
 	post.AddProp("participants", participants)
+	if reason != "" {
+		post.AddProp("reason", reason)
+	}
 
 	if _, appErr := p.API.UpdatePost(post); appErr != nil {
 		return 0, appErr

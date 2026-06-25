@@ -406,7 +406,7 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
-	t.Run("last SIP participant left in bot DM ends the phone call", func(t *testing.T) {
+	t.Run("last SIP participant left phone call ends the call", func(t *testing.T) {
 		p, mockAPI, mockMetrics := setupPlugin(t)
 		defer ResetTestStore(t, p.store)
 
@@ -416,6 +416,9 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 		channelID := model.NewId()
 		postID := model.NewId()
 		call := createActiveCall(t, p, channelID, postID)
+		// The phone-teardown rules are gated on the call type, not the channel.
+		call.Props.Type = callTypePhone
+		require.NoError(t, p.store.UpdateCall(call))
 
 		// A human session remains; only the SIP participant is leaving.
 		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
@@ -427,18 +430,19 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 		}))
 
 		setupLock(mockAPI, mockMetrics, channelID)
-		mockAPI.On("GetChannel", channelID).Return(&model.Channel{Id: channelID, Type: model.ChannelTypeDirect}, nil)
-		mockAPI.On("GetChannelMembers", channelID, 0, 10).Return(model.ChannelMembers{{ChannelId: channelID, UserId: botID}}, nil)
 		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil)
 		mockAPI.On("GetConfig").Return(&model.Config{}, nil)
 
+		// A CLIENT_INITIATED disconnect is a SIP BYE: the phone answered and then
+		// hung up, so the terminal reason is "ended".
 		event := &livekit.WebhookEvent{
 			Event: "participant_left",
 			Room:  &livekit.Room{Name: channelID},
 			Participant: &livekit.ParticipantInfo{
-				Sid:      sipSid,
-				Identity: "+14155551234",
-				Kind:     livekit.ParticipantInfo_SIP,
+				Sid:              sipSid,
+				Identity:         "+14155551234",
+				Kind:             livekit.ParticipantInfo_SIP,
+				DisconnectReason: livekit.DisconnectReason_CLIENT_INITIATED,
 			},
 		}
 
@@ -453,11 +457,12 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 		ended, err := p.store.GetCall(call.ID, db.GetCallOpts{})
 		require.NoError(t, err)
 		require.Greater(t, ended.EndAt, int64(0))
+		require.Equal(t, sipReasonEnded, ended.Props.EndReason)
 
 		mockAPI.AssertCalled(t, "PublishWebSocketEvent", wsEventCallEnd, mock.Anything, mock.Anything)
 	})
 
-	t.Run("non-bot-DM channel does not end the call on SIP left", func(t *testing.T) {
+	t.Run("non-phone call does not end the call on SIP left", func(t *testing.T) {
 		p, mockAPI, mockMetrics := setupPlugin(t)
 		defer ResetTestStore(t, p.store)
 
@@ -466,6 +471,8 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 
 		channelID := model.NewId()
 		postID := model.NewId()
+		// A regular call (inbound SIP dial-in), not props.Type=="phone": the
+		// phone-specific teardown rules must not apply.
 		call := createActiveCall(t, p, channelID, postID)
 
 		sipSid := model.NewId()
@@ -474,8 +481,6 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 		}))
 
 		setupLock(mockAPI, mockMetrics, channelID)
-		// Regular channel (inbound SIP dial-in), not a phone-call container.
-		mockAPI.On("GetChannel", channelID).Return(&model.Channel{Id: channelID, Type: model.ChannelTypeOpen}, nil)
 
 		event := &livekit.WebhookEvent{
 			Event: "participant_left",
