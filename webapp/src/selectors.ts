@@ -34,6 +34,7 @@ import {
     recentlyJoinedUsersState,
     usersReactionsState,
 } from 'src/reducers';
+import {ActiveCall} from 'src/state/active_calls/reducer';
 import {getPluginStore} from 'src/state/common_selectors';
 import {
     CallJobReduxState,
@@ -43,8 +44,6 @@ import {
     LiveCaptions,
 } from 'src/types/types';
 import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL} from 'src/utils';
-
-import {ActiveCalls} from './state/active_calls/reducer';
 
 const activeCallsIngetPluginStore = (state: GlobalState) =>
     getPluginStore(state).activeCalls;
@@ -241,7 +240,7 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
         (callsStates, channelID, initTime) => callsStates[channelID]?.startAt || initTime || 0,
     );
 
-export const callInCurrentChannel: (state: GlobalState) => ActiveCalls[Channel['id']] | undefined =
+export const callInCurrentChannel: (state: GlobalState) => ActiveCall | undefined =
     createSelector(
         'callInCurrentChannel',
         activeCallsIngetPluginStore,

@@ -10,19 +10,21 @@ import {CALL_ENDED, UN_INITIALIZED} from 'src/state/common_action_types';
 import {ACTIVE_CALL_ADDED} from './action_types';
 import {type Actions} from './actions';
 
+export type ActiveCall = {
+    callID: string;
+    startAt: number;
+    channelID: Channel['id'];
+    threadID: UserThread['id'];
+    ownerID: UserProfile['id'];
+}
+
 export type ActiveCalls = {
-    [channelID: string]: {
-        callID: string;
-        startAt: number;
-        channelID: Channel['id'];
-        threadID: UserThread['id'];
-        ownerID: UserProfile['id'];
-    };
+    [channelID: string]: ActiveCall;
 }
 
 const emptyState: ActiveCalls = {};
 
-export const reducer: Reducer<ActiveCalls, Actions> = (initialState = emptyState, action) : ActiveCalls => {
+export const reducer: Reducer<ActiveCalls, Actions> = (initialState = emptyState, action) => {
     switch (action.type) {
     case UN_INITIALIZED:{
         return emptyState;

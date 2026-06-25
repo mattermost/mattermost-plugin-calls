@@ -16,7 +16,6 @@ import React, {useEffect, useState} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
-import {hostMuteOthers, hostRemove} from 'src/actions';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
@@ -58,6 +57,7 @@ import {
     reverseKeyMappings,
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
+import {hostMuteAllParticipants, hostRemoveParticipant} from 'src/state/hosts/actions';
 import {ModalData} from 'src/types/mattermost-webapp';
 import {
     CallAlertStates,
@@ -390,6 +390,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             ev.preventDefault();
             ev.stopImmediatePropagation();
         }
+    };
+
+    handleMuteOthers = () => {
+        if (!this.props.channel) {
+            logErr('ExpandedView: host muting other failed, channel should be defined');
+            return;
+        }
+
+        logDebug('ExpandedView: host muting others');
+        hostMuteAllParticipants(this.props.channel.id);
     };
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
@@ -890,7 +900,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     onRemoveConfirm = () => {
         logDebug(`ExpandedView.onRemoveConfirm: host removing session ${this.state.removeConfirmation?.sessionID}`);
-        hostRemove(this.props.channel?.id, this.state.removeConfirmation?.sessionID);
+        hostRemoveParticipant(this.props.channel?.id, this.state.removeConfirmation?.sessionID);
         this.setState({
             removeConfirmation: null,
         });
@@ -1540,14 +1550,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 <ToTheRight/>
                                 {showMuteOthers &&
                                     <MuteOthersButton
-                                        onClick={() => {
-                                            if (!this.props.channel) {
-                                                logErr('channel should be defined');
-                                                return;
-                                            }
-                                            logDebug('ExpandedView: host muting all other participants');
-                                            hostMuteOthers(this.props.channel.id);
-                                        }}
+                                        onClick={this.handleMuteOthers}
                                     >
                                         <MutedIcon
                                             fill='var(--button-bg)'

@@ -8,10 +8,11 @@ import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import React from 'react';
 import {useIntl} from 'react-intl';
-import {hostMuteOthers} from 'src/actions';
 import {Participant} from 'src/components/call_widget/participant';
 import {useHostControls} from 'src/components/expanded_view/hooks';
 import MutedIcon from 'src/components/icons/muted_icon';
+import {logDebug} from 'src/log';
+import {hostMuteAllParticipants} from 'src/state/hosts/actions';
 import styled from 'styled-components';
 
 type Props = {
@@ -54,6 +55,11 @@ export const ParticipantsList = ({
         ));
     };
 
+    function handleMuteOthers() {
+        logDebug('ParticipantsList: mute others');
+        hostMuteAllParticipants(callID);
+    }
+
     return (
         <div
             id='calls-widget-participants-menu'
@@ -70,7 +76,7 @@ export const ParticipantsList = ({
                 >
                     {formatMessage({defaultMessage: 'Participants'})}
                     {showMuteOthers &&
-                        <MuteOthersButton onClick={() => hostMuteOthers(callID)}>
+                        <MuteOthersButton onClick={handleMuteOthers}>
                             <MutedIcon
                                 fill='var(--button-bg)'
                                 style={{width: '12px', height: '12px'}}

@@ -14,7 +14,6 @@ import {Client4} from 'mattermost-redux/client';
 import React, {CSSProperties, useEffect, useState} from 'react';
 import {FormattedMessage, IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
-import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call';
 import {VideoInputPermissionsError} from 'src/clients/calls';
@@ -68,6 +67,7 @@ import {
     reverseKeyMappings,
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
+import {hostRemoveParticipant} from 'src/state/hosts/actions';
 import {ModalData} from 'src/types/mattermost-webapp';
 import {
     CallAlertStates,
@@ -999,7 +999,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
     onRemoveConfirm = () => {
         logDebug(`CallWidget.onRemoveConfirm: host removing session ${this.state.removeConfirmation?.sessionID}`);
-        hostRemove(this.props.channel?.id, this.state.removeConfirmation?.sessionID);
+        hostRemoveParticipant(this.props.channel?.id, this.state.removeConfirmation?.sessionID);
         this.setState({
             removeConfirmation: null,
         });

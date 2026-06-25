@@ -655,6 +655,9 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
         }),
     );
 
+    const hostChangeAt = getHostChangeAt(getState(), channelID) ?? call.start_at;
+    actions.push(hostChanged(channelID, call.host_id, hostChangeAt));
+
     actions.push({
         type: CALL_RECORDING_STATE,
         data: {
@@ -677,9 +680,6 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
             actions.push(userScreenShared(channelID, call.screen_sharing_session_id, screenSharer.user_id));
         }
     }
-
-    const hostChangeAt = getHostChangeAt(getState(), channelID) ?? call.start_at;
-    actions.push(hostChanged(channelID, call.host_id, hostChangeAt));
 
     const dismissed = call.dismissed_notification;
     if (dismissed) {
@@ -710,71 +710,6 @@ export const setClientConnecting = (value: boolean) => (dispatch: Dispatch) => {
         type: CLIENT_CONNECTING,
         data: value,
     });
-};
-
-export const hostMake = async (callID: string, newHostID: string) => {
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/make`,
-        {
-            method: 'post',
-            body: JSON.stringify({new_host_id: newHostID}),
-        },
-    );
-};
-
-export const hostMute = async (callID: string, sessionID: string) => {
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/mute`,
-        {
-            method: 'post',
-            body: JSON.stringify({session_id: sessionID}),
-        },
-    );
-};
-
-export const hostScreenOff = async (callID: string, sessionID: string) => {
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/screen-off`,
-        {
-            method: 'post',
-            body: JSON.stringify({session_id: sessionID}),
-        },
-    );
-};
-
-export const hostLowerHand = async (callID: string, sessionID: string) => {
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/lower-hand`,
-        {
-            method: 'post',
-            body: JSON.stringify({session_id: sessionID}),
-        },
-    );
-};
-
-export const hostRemove = async (callID?: string, sessionID?: string) => {
-    if (!callID || !sessionID) {
-        return {};
-    }
-
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/remove`,
-        {
-            method: 'post',
-            body: JSON.stringify({session_id: sessionID}),
-        },
-    );
-};
-
-export const hostMuteOthers = async (callID?: string) => {
-    if (!callID) {
-        return {};
-    }
-
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/mute-others`,
-        {method: 'post'},
-    );
 };
 
 export const getCallsStats = async () => {
