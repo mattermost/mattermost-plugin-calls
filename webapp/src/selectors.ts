@@ -29,9 +29,7 @@ import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
 import {
     callsJobState,
-    callState,
     hostControlNoticeState,
-    hostsState,
     liveCaptionState,
     recentlyJoinedUsersState,
     usersReactionsState,
@@ -46,7 +44,9 @@ import {
 } from 'src/types/types';
 import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL} from 'src/utils';
 
-const activeCallsIngetPluginStore = (state: GlobalState): { [channelID: string]: callState } =>
+import {ActiveCalls} from './state/active_calls/reducer';
+
+const activeCallsIngetPluginStore = (state: GlobalState) =>
     getPluginStore(state).activeCalls;
 
 export const channelIDForCurrentCall: (state: GlobalState) => string =
@@ -241,7 +241,7 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
         (callsStates, channelID, initTime) => callsStates[channelID]?.startAt || initTime || 0,
     );
 
-export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
+export const callInCurrentChannel: (state: GlobalState) => ActiveCalls[Channel['id']] | undefined =
     createSelector(
         'callInCurrentChannel',
         activeCallsIngetPluginStore,
@@ -256,30 +256,6 @@ export const idForCallInChannel = (state: GlobalState, channelID: string): strin
 export const callOwnerIDForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
     return getPluginStore(state).activeCalls[channelID]?.ownerID;
 };
-
-const hostsInCalls = (state: GlobalState): hostsState => {
-    return getPluginStore(state).hosts;
-};
-
-export const hostIDForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
-    return hostsInCalls(state)[channelID]?.hostID;
-};
-
-export const hostIDForCurrentCall: (state: GlobalState) => string =
-    createSelector(
-        'hostIDForCurrentCall',
-        hostsInCalls,
-        channelIDForCurrentCall,
-        (hosts, channelID) => hosts[channelID]?.hostID || '',
-    );
-
-export const hostChangeAtForCurrentCall: (state: GlobalState) => number =
-    createSelector(
-        'hostChangeAtForCurrentCall',
-        hostsInCalls,
-        channelIDForCurrentCall,
-        (hosts, channelID) => hosts[channelID]?.hostChangeAt || 0,
-    );
 
 export const callDismissedNotification = (state: GlobalState, channelID: string) => {
     return Boolean(getPluginStore(state).dismissedCalls[channelID]);

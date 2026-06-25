@@ -23,9 +23,7 @@ import {
     clientConnecting,
     expandedView,
     getChannelUrlAndDisplayName,
-    hostChangeAtForCurrentCall,
     hostControlNoticesForCurrentCall,
-    hostIDForCurrentCall,
     isRecordingInCurrentCall,
     profilesInCurrentCallMap,
     recentlyJoinedUsersInCurrentCall,
@@ -40,6 +38,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
+import {getHostChangeAtForCurrentChannel, getHostIDForCurrentChannel} from 'src/state/hosts/selectors';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 
@@ -81,8 +80,8 @@ const mapStateToProps = (state: GlobalState) => {
         currentSession: sessionForCurrentCall(state),
         profiles,
         callStartAt: callStartAtForCurrentCall(state),
-        callHostID: hostIDForCurrentCall(state),
-        callHostChangeAt: hostChangeAtForCurrentCall(state),
+        callHostID: getHostIDForCurrentChannel(state),
+        callHostChangeAt: getHostChangeAtForCurrentChannel(state),
         callRecording: recordingForCurrentCall(state),
         isRecording: isRecordingInCurrentCall(state),
         screenSharingSession,

@@ -24,8 +24,6 @@ import {
     channelForCurrentCall,
     expandedView,
     getChannelUrlAndDisplayName,
-    hostChangeAtForCurrentCall,
-    hostIDForCurrentCall,
     isRecordingInCurrentCall,
     profilesInCurrentCallMap,
     recordingForCurrentCall,
@@ -39,6 +37,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
+import {getHostChangeAtForCurrentChannel, getHostIDForCurrentChannel} from 'src/state/hosts/selectors';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, usersVoiceActivityChanged, userUnmuted} from 'src/state/sessions/actions';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, modals, selectRhsPost} from 'src/webapp_globals';
@@ -77,8 +76,8 @@ const mapStateToProps = (state: GlobalState) => {
         sessionsMap: sessionsInCurrentCallMap(state),
         currentSession: sessionForCurrentCall(state),
         callStartAt: callStartAtForCurrentCall(state),
-        callHostID: hostIDForCurrentCall(state),
-        callHostChangeAt: hostChangeAtForCurrentCall(state),
+        callHostID: getHostIDForCurrentChannel(state),
+        callHostChangeAt: getHostChangeAtForCurrentChannel(state),
         callRecording: recordingForCurrentCall(state),
         isRecording: isRecordingInCurrentCall(state),
         screenSharingSession,

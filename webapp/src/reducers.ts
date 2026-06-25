@@ -12,6 +12,7 @@ import {
     CALL_ENDED,
     UN_INITIALIZED,
 } from 'src/state/common_action_types';
+import {reducer as hosts} from 'src/state/hosts/reducer';
 import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
 import {USER_JOINED, USER_LEFT, USER_REACTED, USER_REACTED_TIMEOUT} from 'src/state/sessions/action_types';
 import {reducer as sessions} from 'src/state/sessions/reducer';
@@ -28,7 +29,6 @@ import {
 
 import {
     ADD_INCOMING_CALL,
-    CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
@@ -339,56 +339,6 @@ const callLiveCaptionsState = (state: callsJobState = {}, action: jobStateAction
                 ...action.data.jobState,
             },
         };
-    }
-    default:
-        return state;
-    }
-};
-
-// callState should only hold immutable data, meaning those
-// fields that don't change for the whole duration of a call.
-export type callState = {
-    callID: string;
-    startAt: number;
-    channelID: string;
-    threadID: string;
-    ownerID: string;
-}
-
-export type hostsState = {
-    [channelID: string]: {
-        hostID: string;
-        hostChangeAt?: number;
-    };
-}
-
-type hostsStateAction = {
-    type: string;
-    data: {
-        channelID: string;
-        hostID: string;
-        hostChangeAt: number;
-    };
-}
-
-const hosts = (state: hostsState = {}, action: hostsStateAction) => {
-    switch (action.type) {
-    case UN_INITIALIZED: {
-        return {};
-    }
-    case CALL_HOST: {
-        return {
-            ...state,
-            [action.data.channelID]: {
-                hostID: action.data.hostID,
-                hostChangeAt: action.data.hostChangeAt,
-            },
-        };
-    }
-    case CALL_ENDED: {
-        const nextState = {...state};
-        delete nextState[action.data.channelID];
-        return nextState;
     }
     default:
         return state;

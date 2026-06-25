@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
+
 import {CallChannelState, CallsConfig, CallState, CallsVersionInfo} from '@mattermost/calls-common/lib/types';
 import {ClientError} from '@mattermost/client';
 import {Channel} from '@mattermost/types/channels';
@@ -31,7 +32,6 @@ import {
     callStartAtForCallInChannel,
     getCallIDForChannel,
     getCallIDForCurrentCall,
-    hostChangeAtForCurrentCall,
     incomingCalls,
     numSessionsInCallInChannel,
     ringingEnabled,
@@ -41,13 +41,15 @@ import {
 import {activeCallAdded} from 'src/state/active_calls/actions';
 import {channelCallsAvailabilityUpdated} from 'src/state/calls_availability/actions';
 import {callEnded} from 'src/state/common_actions';
+import {hostChanged} from 'src/state/hosts/actions';
+import {getHostChangeAt} from 'src/state/hosts/selectors';
 import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/sessions/actions';
+import {getUserIDsFromSessions} from 'src/state/sessions/selectors';
 import {CallsStats, ChannelType} from 'src/types/types';
 import {
     getCallsClientSessionID,
     getPluginPath,
-    getUserIDsFromSessions,
     isDMChannel,
     isGMChannel,
     notificationsStopRinging,
@@ -57,7 +59,6 @@ import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
     ADD_INCOMING_CALL,
-    CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
@@ -608,14 +609,7 @@ export const hydradeCallsAndChannelStatesExcept = (skipChannelID?: string) => {
                     }),
                 );
 
-                actions.push({
-                    type: CALL_HOST,
-                    data: {
-                        channelID: callAndChannelState.channel_id,
-                        hostID: callAndChannelState.call.host_id,
-                        hostChangeAt: callAndChannelState.call.start_at,
-                    },
-                });
+                actions.push(hostChanged(callAndChannelState.channel_id, callAndChannelState.call.host_id, callAndChannelState.call.start_at));
 
                 actions.push(sessionsReceived(callAndChannelState.channel_id, getSessionsMapFromSessions(callAndChannelState.call.sessions)));
 
@@ -684,14 +678,8 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
         }
     }
 
-    actions.push({
-        type: CALL_HOST,
-        data: {
-            channelID,
-            hostID: call.host_id,
-            hostChangeAt: hostChangeAtForCurrentCall(getState()) || call.start_at,
-        },
-    });
+    const hostChangeAt = getHostChangeAt(getState(), channelID) ?? call.start_at;
+    actions.push(hostChanged(channelID, call.host_id, hostChangeAt));
 
     const dismissed = call.dismissed_notification;
     if (dismissed) {

@@ -107,6 +107,7 @@ import {channelCallsAvailabilityUpdated, toggleCallsAvailabilityForChannel} from
 import {callsAvailableInChannelWithDefault, callsNotAvailableInChannel} from 'src/state/calls_availability/selectors';
 import {unInitialized} from 'src/state/common_actions';
 import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/sessions/actions';
+import {getUserIDsFromSessions} from 'src/state/sessions/selectors';
 import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
 import {getWSConnectionURL} from 'src/utils';
 import {modals} from 'src/webapp_globals';
@@ -133,12 +134,12 @@ import {
     channelHasCall,
     channelIDForCurrentCall,
     hasPermissionsToEnableCalls,
-    hostIDForCallInChannel,
     isCloudStarter,
     isLimitRestricted,
     sessionsInCurrentCall,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
+import {getHostID} from './state/hosts/selectors';
 import {convertStatsToPanels} from './stats';
 import {PluginRegistry, Store} from './types/mattermost-webapp';
 import {
@@ -146,7 +147,6 @@ import {
     getCallsClient,
     getChannelURL,
     getTranslations,
-    getUserIDsFromSessions,
     isCallsPopOut,
     playSound,
     sendDesktopEvent,
@@ -293,7 +293,7 @@ export default class Plugin {
         window.e2eCallStateLoaded = (channelID?: string) => {
             const state = store.getState();
             const cid = channelID || channelIDForCurrentCall(state);
-            return Boolean(cid && hostIDForCallInChannel(state, cid));
+            return Boolean(cid && getHostID(state, cid));
         };
 
         const theme = getTheme(store.getState());
