@@ -601,7 +601,12 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	number := normalizePhoneNumber(req.Number)
+	number, err := normalizePhoneNumber(req.Number)
+	if err != nil {
+		res.Err = "invalid phone number"
+		res.Code = http.StatusBadRequest
+		return
+	}
 	if number == "" {
 		res.Err = "number is required"
 		res.Code = http.StatusBadRequest
@@ -652,9 +657,12 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create the Call row before dialing so the participant_joined webhook
-	// always finds an active call. props.Type=="phone" gates the phone-call
-	// lifecycle (1:1 teardown rules) in the leave/webhook paths.
+	// Create the Call row before dialing so the participant_joined webhook always
+	// finds an active call. Only the row is needed for that race — the post,
+	// call_start broadcast, and no-answer timer are deferred until the dial
+	// succeeds (below), so a failed dial rolls back with zero observable trace
+	// (no post flicker, no call_start/call_ended). props.Type=="phone" gates the
+	// phone-call lifecycle (1:1 teardown rules) in the leave/webhook paths.
 	now := time.Now().UnixMilli()
 	call := public.Call{
 		ID:        model.NewId(),
@@ -677,6 +685,24 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Dial. This returns at INVITE time (WaitUntilAnswered=false), not on answer.
+	sipCallID, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
+	if err != nil {
+		// Roll the call back. Nothing observable was created yet (no post, no
+		// call_start), so the rolled-back call leaves no trace for any client.
+		p.LogError("handlePhoneCall: failed to create SIP participant, rolling back call",
+			"err", err.Error(), "number", number, "channelID", channelID)
+		if derr := p.store.DeleteCall(call.ID); derr != nil {
+			p.LogError("handlePhoneCall: failed to roll back call", "err", derr.Error(), "channelID", channelID)
+		}
+		res.Err = "failed to dial the outbound call"
+		res.Code = http.StatusBadGateway
+		return
+	}
+
+	// Dial accepted. Now create the call-started post, announce the call
+	// channel-wide, and arm the server-owned no-answer timer. Post creation is
+	// best-effort: a failure leaves the call without a post but doesn't abort it.
 	postID, threadID, err := p.createCallStartedPost(&callState{Call: call}, userID, channelID, "", "")
 	if err != nil {
 		p.LogError("handlePhoneCall: failed to create call started post", "err", err.Error(), "channelID", channelID)
@@ -684,44 +710,21 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	call.PostID = postID
 	call.ThreadID = threadID
 	if err := p.store.UpdateCall(&call); err != nil {
-		res.Err = fmt.Errorf("failed to update call: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return
+		p.LogError("handlePhoneCall: failed to update call with post", "err", err.Error(), "channelID", channelID)
 	}
 
 	p.LogInfo("phone call created",
 		"callID", call.ID, "channelID", channelID, "userID", userID, "nodeID", p.nodeID)
 
-	// Dial. This returns at INVITE time (WaitUntilAnswered=false), not on answer.
-	sipCallID, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
-	if err != nil {
-		// Roll the call back. No call_start was broadcast, so the rolled-back
-		// call is invisible — no flicker for channel members.
-		p.LogError("handlePhoneCall: failed to create SIP participant, rolling back call",
-			"err", err.Error(), "number", number, "channelID", channelID)
-		if derr := p.store.DeleteCall(call.ID); derr != nil {
-			p.LogError("handlePhoneCall: failed to roll back call", "err", derr.Error(), "channelID", channelID)
-		}
-		if postID != "" {
-			if derr := p.API.DeletePost(postID); derr != nil {
-				p.LogError("handlePhoneCall: failed to roll back call post", "err", derr.Error(), "postID", postID)
-			}
-		}
-		res.Err = "failed to dial the outbound call"
-		res.Code = http.StatusBadGateway
-		return
-	}
-
-	// Dial accepted: announce the call channel-wide and arm the server-owned
-	// no-answer timer.
 	p.broadcastCallStarted(&call)
 	p.armSIPNoAnswerTimer(channelID, sipParticipantIdentity(number))
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
-		"call_id":     call.ID,
-		"channel_id":  channelID,
-		"sip_call_id": sipCallID,
+		"call_id":      call.ID,
+		"channel_id":   channelID,
+		"sip_call_id":  sipCallID,
+		"phone_number": number,
 	}); err != nil {
 		p.LogError("failed to encode phone-call response", "err", err.Error())
 	}
@@ -818,8 +821,18 @@ func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 //	"1-781-307-8753"    -> "+17813078753"
 //	"+1 (555) 123-4567" -> "+15551234567"
 //	"tel:+17813078753"  -> "+17813078753"
-func normalizePhoneNumber(raw string) string {
+//
+// Letters are rejected with an error rather than stripped: a vanity number like
+// "1-800-GET-HELP" must not be silently mangled into a wrong number. We don't
+// translate A–Z to dialpad digits (a typo'd letter would dial a wrong number).
+func normalizePhoneNumber(raw string) (string, error) {
 	s := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), "tel:"))
+
+	for _, c := range s {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			return "", fmt.Errorf("number contains invalid characters")
+		}
+	}
 
 	var b strings.Builder
 	for i, c := range s {
@@ -832,7 +845,7 @@ func normalizePhoneNumber(raw string) string {
 	if len(num) >= 10 && num[0] != '+' {
 		num = "+" + num
 	}
-	return num
+	return num, nil
 }
 
 func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {

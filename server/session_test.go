@@ -254,7 +254,10 @@ func TestRemoveUserSessionPhoneCall(t *testing.T) {
 
 	// With LiveKit unconfigured the leg's answered-state can't be determined, so
 	// the terminal reason defaults to "canceled" (caller gave up) and is
-	// persisted as the durable phone-call log.
+	// persisted as the durable phone-call log. props.Type must also survive
+	// setCallEnded (it's deliberately exempt from the prop-clearing) so the call
+	// remains identifiable as a phone call after it ends.
+	require.Equal(t, callTypePhone, ended.Props.Type)
 	require.Equal(t, sipReasonCanceled, ended.Props.EndReason)
 
 	mockAPI.AssertCalled(t, "PublishWebSocketEvent", wsEventCallEnd, mock.Anything, mock.Anything)

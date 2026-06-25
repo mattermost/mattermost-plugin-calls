@@ -479,6 +479,21 @@ func TestHandlePhoneCall(t *testing.T) {
 		require.Equal(t, "number is required", res.Msg)
 	})
 
+	t.Run("alpha/vanity number rejected", func(t *testing.T) {
+		p, _ := setupPlugin(t)
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.EnableSIPOutbound = model.NewPointer(true)
+		cfg.LiveKitSIPOutboundTrunkID = "ST_test"
+		p.configuration = cfg
+
+		resp := doRequest(t, p, "1-800-GET-HELP")
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		var res httpResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
+		require.Equal(t, "invalid phone number", res.Msg)
+	})
+
 	t.Run("disabled toggle rejects even with trunk configured", func(t *testing.T) {
 		p, _ := setupPlugin(t)
 		cfg := &configuration{}

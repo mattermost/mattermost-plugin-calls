@@ -12,25 +12,34 @@ import (
 
 func TestNormalizePhoneNumber(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		expected string
+		name      string
+		input     string
+		expected  string
+		expectErr bool
 	}{
-		{"empty", "", ""},
-		{"plain digits short", "12345", "12345"},
-		{"dashes prepends plus", "1-781-307-8753", "+17813078753"},
-		{"parens and spaces", "+1 (555) 123-4567", "+15551234567"},
-		{"tel prefix", "tel:+17813078753", "+17813078753"},
-		{"tel prefix no plus", "tel:17813078753", "+17813078753"},
-		{"already e164", "+447911123456", "+447911123456"},
-		{"surrounding whitespace", "  +1 555 0000  ", "+15550000"},
-		{"plus only first position kept", "1+555", "1555"},
-		{"letters stripped", "1-800-FLOWERS", "1800"},
+		{name: "empty", input: "", expected: ""},
+		{name: "plain digits short", input: "12345", expected: "12345"},
+		{name: "dashes prepends plus", input: "1-781-307-8753", expected: "+17813078753"},
+		{name: "parens and spaces", input: "+1 (555) 123-4567", expected: "+15551234567"},
+		{name: "tel prefix", input: "tel:+17813078753", expected: "+17813078753"},
+		{name: "tel prefix no plus", input: "tel:17813078753", expected: "+17813078753"},
+		{name: "already e164", input: "+447911123456", expected: "+447911123456"},
+		{name: "surrounding whitespace", input: "  +1 555 0000  ", expected: "+15550000"},
+		{name: "plus only first position kept", input: "1+555", expected: "1555"},
+		// Vanity numbers are rejected, not silently mangled into a wrong number.
+		{name: "vanity letters rejected", input: "1-800-FLOWERS", expectErr: true},
+		{name: "vanity get-help rejected", input: "1-800-GET-HELP", expectErr: true},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.expected, normalizePhoneNumber(tc.input))
+			got, err := normalizePhoneNumber(tc.input)
+			if tc.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, got)
 		})
 	}
 }

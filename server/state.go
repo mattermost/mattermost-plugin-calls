@@ -457,12 +457,17 @@ func (p *Plugin) broadcastCallEnded(call *public.Call) {
 func (p *Plugin) endPhoneCall(state *callState, reason, forensicReason string) {
 	state.Call.Props.EndReason = reason
 
+	// Broadcast call_ended (carrying the terminal reason) before tearing down the
+	// LiveKit room, so the reason is en route before the client's
+	// RoomEvent.Disconnected fires and bystander UI clears without waiting on the
+	// DeleteRoom RPC. (Teardown is still driven by RoomEvent.Disconnected; the
+	// reason is messaging-only and never gates it.)
+	p.broadcastCallEnded(&state.Call)
+
 	if err := p.livekitDeleteRoom(state.Call.ChannelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
 		p.LogError("endPhoneCall: failed to delete LiveKit room",
 			"channelID", state.Call.ChannelID, "err", err.Error())
 	}
-
-	p.broadcastCallEnded(&state.Call)
 
 	if err := p.cleanCallState(&state.Call, forensicReason); err != nil {
 		p.LogError("endPhoneCall: failed to clean call state",
