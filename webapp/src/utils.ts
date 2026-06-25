@@ -4,7 +4,7 @@
 /* eslint-disable max-lines */
 
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@mattermost/calls-common';
-import {CallJobMetadata, CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallJobMetadata, CallPostProps, CallRecordingPostProps, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
 import {Post} from '@mattermost/types/posts';
