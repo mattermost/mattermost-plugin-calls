@@ -1164,7 +1164,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 isHost={this.props.callHostID === session.user_id}
                 isSharingScreen={this.props.screenSharingSession?.session_id === session.session_id}
                 iAmHost={this.props.currentSession?.user_id === this.props.callHostID}
-                callID={this.props.channel?.id}
+                callID={this.props.channel?.id ?? ''}
                 onRemove={() => this.onRemove(session.session_id, session.user_id)}
             />
         ));

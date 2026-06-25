@@ -12,6 +12,7 @@ import {Participant} from 'src/components/call_widget/participant';
 import {useHostControls} from 'src/components/expanded_view/hooks';
 import MutedIcon from 'src/components/icons/muted_icon';
 import {logDebug} from 'src/log';
+import {type ActiveCall} from 'src/state/active_calls/reducer';
 import {hostMuteAllParticipants} from 'src/state/hosts/actions';
 import styled from 'styled-components';
 
@@ -22,7 +23,7 @@ type Props = {
     onRemove: (sessionID: string, userID: string) => void;
     currentSession?: UserSessionState;
     screenSharingSession?: UserSessionState;
-    callID?: string;
+    callID: ActiveCall['callID'];
 };
 
 export const ParticipantsList = ({

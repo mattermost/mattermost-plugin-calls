@@ -19,6 +19,7 @@ import ScreenIcon from 'src/components/icons/screen_icon';
 import {ThreeDotsButton} from 'src/components/icons/three_dots';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import VideoOnIcon from 'src/components/icons/video_on';
+import {type ActiveCall} from 'src/state/active_calls/reducer';
 import {getUserDisplayName} from 'src/utils';
 import styled, {css} from 'styled-components';
 
@@ -30,7 +31,7 @@ type Props = {
     iAmHost: boolean,
     isSharingScreen: boolean;
     onRemove: () => void;
-    callID?: string;
+    callID: ActiveCall['callID'];
 };
 
 const CallParticipantRHS = ({session, profile, isYou, isHost, iAmHost, isSharingScreen, onRemove, callID}: Props) => {
