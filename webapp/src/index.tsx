@@ -178,14 +178,10 @@ import {
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
-    handleUserRaisedHand,
     handleUserReaction,
     handleUserRemovedFromChannel,
     handleUserScreenOff,
     handleUserScreenOn,
-    handleUserUnraisedHand,
-    handleUserVideoOff,
-    handleUserVideoOn,
 } from './websocket_handlers';
 
 export default class Plugin {
@@ -244,14 +240,6 @@ export default class Plugin {
             handleUserScreenOff(store, ev);
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_raise_hand`, (ev) => {
-            handleUserRaisedHand(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unraise_hand`, (ev) => {
-            handleUserUnraisedHand(store, ev);
-        });
-
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_reacted`, (ev) => {
             handleUserReaction(store, ev);
         });
@@ -294,14 +282,6 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_host_removed`, (ev) => {
             handleHostRemoved(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_video_on`, (ev) => {
-            handleUserVideoOn(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_video_off`, (ev) => {
-            handleUserVideoOff(store, ev);
         });
     }
 
