@@ -119,6 +119,22 @@
             "help_text": "The API secret used to authenticate with the LiveKit server.",
             "default": "",
             "hosting": "on-prem"
+          },
+          {
+            "key": "EnableSIPOutbound",
+            "display_name": "Enable outbound phone dialing",
+            "type": "bool",
+            "default": false,
+            "help_text": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a configured SIP Outbound Trunk ID.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "LiveKitSIPOutboundTrunkID",
+            "display_name": "SIP Outbound Trunk ID",
+            "type": "text",
+            "default": "",
+            "help_text": "LiveKit outbound SIP trunk ID (e.g., ST_xxx). The trunk is created in LiveKit (via CLI or Cloud dashboard) with the SIP provider address and credentials. Leave empty to disable outbound dialing.",
+            "hosting": "on-prem"
           }
         ]
       },
@@ -344,6 +360,22 @@
         "type": "text",
         "help_text": "The API secret used to authenticate with the LiveKit server.",
         "default": "",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "EnableSIPOutbound",
+        "display_name": "Enable outbound phone dialing",
+        "type": "bool",
+        "default": false,
+        "help_text": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a configured SIP Outbound Trunk ID.",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "LiveKitSIPOutboundTrunkID",
+        "display_name": "SIP Outbound Trunk ID",
+        "type": "text",
+        "default": "",
+        "help_text": "LiveKit outbound SIP trunk ID (e.g., ST_xxx). The trunk is created in LiveKit (via CLI or Cloud dashboard) with the SIP provider address and credentials. Leave empty to disable outbound dialing.",
         "hosting": "on-prem"
       },
       {

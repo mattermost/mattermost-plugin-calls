@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
@@ -165,4 +166,93 @@ func TestAddUserSession(t *testing.T) {
 			require.NotNil(t, retState.sessions["connA"])
 		})
 	})
+}
+
+// TestRemoveUserSessionPhoneCall verifies scenario 1: when the last human leaves
+// an outbound phone call (bot-DM container), the lingering SIP participant is
+// hung up and the call ends, instead of orphaning the PSTN leg.
+func TestRemoveUserSessionPhoneCall(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	mockMetrics := &serverMocks.MockMetrics{}
+
+	botID := model.NewId()
+	p := Plugin{
+		MattermostPlugin:  plugin.MattermostPlugin{API: mockAPI},
+		callsClusterLocks: map[string]*cluster.Mutex{},
+		metrics:           mockMetrics,
+		configuration:     &configuration{}, // no LiveKitURL: livekitDeleteRoom is a no-op
+		botSession:        &model.Session{UserId: botID},
+		sessions:          map[string]*session{},
+	}
+	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
+
+	store, tearDown := NewTestStore(t)
+	t.Cleanup(tearDown)
+	p.store = store
+
+	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Maybe()
+	mockMetrics.On("IncWebSocketEvent", mock.Anything, mock.Anything).Maybe()
+	// Generous matcher counts: the LogInfo/LogDebug/LogError wrappers prepend an
+	// "origin" pair, and testify tolerates extra expected matchers but not extra
+	// actual args, so over-provide mock.Anything to match any key-value count.
+	anys := make([]interface{}, 18)
+	for i := range anys {
+		anys[i] = mock.Anything
+	}
+	mockAPI.On("LogInfo", append([]interface{}{mock.AnythingOfType("string")}, anys...)...).Maybe()
+	mockAPI.On("LogDebug", append([]interface{}{mock.AnythingOfType("string")}, anys...)...).Maybe()
+	mockAPI.On("LogError", append([]interface{}{mock.AnythingOfType("string")}, anys...)...).Maybe()
+	mockAPI.On("PublishWebSocketEvent", mock.AnythingOfType("string"), mock.Anything,
+		mock.AnythingOfType("*model.WebsocketBroadcast")).Maybe()
+	mockAPI.On("GetConfig").Return(&model.Config{}, nil)
+
+	channelID := model.NewId()
+	postID := model.NewId()
+	humanConnID := model.NewId()
+	humanUserID := model.NewId()
+	sipSid := model.NewId()
+	callID := model.NewId()
+
+	createPost(t, store, postID, humanUserID, channelID)
+	call := &public.Call{
+		ID:        callID,
+		CreateAt:  time.Now().UnixMilli(),
+		StartAt:   time.Now().UnixMilli(),
+		ChannelID: channelID,
+		PostID:    postID,
+		ThreadID:  model.NewId(),
+		OwnerID:   humanUserID,
+		Props:     public.CallProps{NodeID: "test-node"},
+	}
+	require.NoError(t, store.CreateCall(call))
+
+	humanSession := &public.CallSession{ID: humanConnID, CallID: callID, UserID: humanUserID, JoinAt: time.Now().UnixMilli()}
+	sipSession := &public.CallSession{ID: sipSid, CallID: callID, UserID: "+14155551234", JoinAt: time.Now().UnixMilli(), IsSIPParticipant: true}
+	require.NoError(t, store.CreateCallSession(humanSession))
+	require.NoError(t, store.CreateCallSession(sipSession))
+
+	state := &callState{
+		Call:     *call,
+		sessions: map[string]*public.CallSession{humanConnID: humanSession, sipSid: sipSession},
+	}
+
+	// The DM is a phone-call container (bot is a member).
+	mockAPI.On("GetChannel", channelID).Return(&model.Channel{Id: channelID, Type: model.ChannelTypeDirect}, nil)
+	mockAPI.On("GetChannelMembers", channelID, 0, 10).Return(model.ChannelMembers{{ChannelId: channelID, UserId: botID}}, nil)
+	mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil)
+
+	err := p.removeUserSession(state, humanUserID, humanConnID, humanConnID, channelID)
+	require.NoError(t, err)
+
+	// The SIP session was dropped and the call ended.
+	require.Empty(t, state.sessions)
+	ended, err := store.GetCall(callID, db.GetCallOpts{})
+	require.NoError(t, err)
+	require.Greater(t, ended.EndAt, int64(0))
+
+	sessions, err := store.GetCallSessions(callID, db.GetCallSessionOpts{})
+	require.NoError(t, err)
+	require.Empty(t, sessions)
+
+	mockAPI.AssertCalled(t, "PublishWebSocketEvent", wsEventCallEnd, mock.Anything, mock.Anything)
 }
