@@ -469,9 +469,13 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 		p.LogDebug("reconnected, returning", "userID", userID, "connID", connID, "channelID", channelID)
 
 		// Clearing the previous session since it gets copied over after
-		// successful reconnect.
+		// successful reconnect. Only delete if it's still our (old) session:
+		// a same-connID reconnect on the same node installs a new session
+		// under this connID, and deleting unconditionally would orphan it.
 		p.mut.Lock()
-		delete(p.sessions, connID)
+		if p.sessions[connID] == us {
+			delete(p.sessions, connID)
+		}
 		p.mut.Unlock()
 		return nil
 	case <-us.leaveCh:
