@@ -1,6 +1,8 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+/* eslint-disable max-lines */
+
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@mattermost/calls-common';
 import {CallJobMetadata, CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
@@ -582,7 +584,7 @@ export function notificationsStopRinging() {
     }
 }
 
-function isValidObject(v: any) {
+function isValidObject(v: unknown): v is {[key: string]: CallJobMetadata} {
     return typeof v === 'object' && !Array.isArray(v) && v !== null;
 }
 
@@ -604,8 +606,8 @@ export function getCallPropsFromPost(post: Post): CallPostProps {
         title: typeof post.props?.title === 'string' ? post.props.title : '',
         start_at: typeof post.props?.start_at === 'number' ? post.props.start_at : 0,
         end_at: typeof post.props?.end_at === 'number' ? post.props.end_at : 0,
-        recordings: isValidObject(post.props?.recordings) ? getJobMetadataMap(post.props.recordings) : {},
-        transcriptions: isValidObject(post.props?.transcriptions) ? getJobMetadataMap(post.props.transcriptions) : {},
+        recordings: isValidObject(post.props?.recordings) ? getJobMetadataMap(post.props?.recordings) : {},
+        transcriptions: isValidObject(post.props?.transcriptions) ? getJobMetadataMap(post.props?.transcriptions) : {},
         participants: Array.isArray(post.props?.participants) ? post.props.participants : [],
     };
 }
