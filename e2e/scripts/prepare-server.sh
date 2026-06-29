@@ -20,7 +20,12 @@ docker rmi -f ${IMAGE_SERVER}
 
 docker network create ${DOCKER_NETWORK}
 
-# Start server dependencies (postgres, haproxy, livekit).
+# Build the SIPp sink image up front (the other services use prebuilt images).
+echo "Building SIP test sink image ... "
+docker compose -f ${DOCKER_COMPOSE_FILE} build sipp
+
+# Start server dependencies (postgres, haproxy, livekit, + the SIP harness:
+# redis, livekit-sip, sipp).
 echo "Starting server dependencies ... "
 DOCKER_NETWORK=${DOCKER_NETWORK} CONTAINER_PROXY=${CONTAINER_PROXY} docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
 timeout --foreground 90s bash -c "until docker compose -f ${DOCKER_COMPOSE_FILE} exec -T postgres pg_isready ; do sleep 5 ; done"

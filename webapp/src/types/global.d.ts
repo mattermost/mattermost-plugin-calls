@@ -11,6 +11,11 @@ import type {CallActions, CurrentCallData} from 'src/types/types';
 declare global {
     interface Window {
         callsClient?: CallClient,
+
+        // Appends a pre-formatted log line to this realm's in-memory client-log
+        // buffer. Exposed so the expanded-view popout can write through to its
+        // opener's buffer (single source of truth). See src/log.ts.
+        callsClientLogAppend?: (line: string) => void,
         webkitAudioContext: AudioContext,
         basename: string,
         desktop?: {

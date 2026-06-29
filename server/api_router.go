@@ -160,6 +160,9 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	// LiveKit
 	router.HandleFunc("/livekit-token", p.handleGetLiveKitToken).Methods("GET")
 
+	// Outbound phone call
+	router.HandleFunc("/phone-call", p.handlePhoneCall).Methods("POST")
+
 	// Cloud
 	router.HandleFunc("/cloud-notify-admins", func(w http.ResponseWriter, r *http.Request) {
 		// End user has requested to notify their admin about upgrading for calls

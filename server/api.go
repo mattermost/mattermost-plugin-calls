@@ -552,6 +552,12 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		grant.SetCanPublish(false)
 		grant.SetCanPublishData(false)
 		grant.SetCanSubscribe(true)
+
+		// Flag the bot on the LiveKit side so clients can filter it out of the
+		// participant list regardless of how they learn about participants. The
+		// attribute is server-set (does not require CanUpdateOwnMetadata, which is
+		// deliberately off for the bot) and surfaces on RemoteParticipant.attributes.
+		at.SetAttributes(map[string]string{livekitAttributeBot: "true"})
 	} else {
 		grant.SetCanUpdateOwnMetadata(true)
 	}
@@ -573,6 +579,79 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		"url":   lkURL,
 	}); err != nil {
 		p.LogError("failed to encode LiveKit token response", "err", err.Error())
+	}
+}
+
+// handlePhoneCall dials an external phone number via LiveKit SIP and joins the
+// remote party to a call hosted on the requesting user's DM channel with the
+// Calls bot. LiveKit auto-creates the room on demand, so we dial in a goroutine
+// without waiting for the user's own join flow to create the room first.
+func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handlePhoneCall", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	var req struct {
+		Number string `json:"number"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&req); err != nil {
+		res.Err = "invalid request body"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	number := normalizePhoneNumber(req.Number)
+	if number == "" {
+		res.Err = "number is required"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	cfg := p.getConfiguration()
+	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
+		res.Err = "outbound dialing is disabled. Enable it in the admin console."
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	trunkID := cfg.LiveKitSIPOutboundTrunkID
+	if trunkID == "" {
+		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console."
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	botID := p.getBotID()
+	if botID == "" {
+		res.Err = "bot not initialized"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	// The call is hosted on the user<->bot DM channel. The client creates/joins
+	// the call on this channel before calling /phone-call, so the SIP leg dials
+	// into the existing call's room and the join webhook finds an active call.
+	dmChannel, appErr := p.API.GetDirectChannel(userID, botID)
+	if appErr != nil {
+		res.Err = fmt.Errorf("failed to get bot DM channel: %w", appErr).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	channelID := dmChannel.Id
+
+	go func() {
+		if err := p.createSIPParticipant(trunkID, number, channelID, req.Number); err != nil {
+			p.LogError("handlePhoneCall: failed to create SIP participant",
+				"err", err.Error(), "number", number, "channelID", channelID)
+		}
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"channel_id": channelID,
+	}); err != nil {
+		p.LogError("failed to encode phone-call response", "err", err.Error())
 	}
 }
 
@@ -658,6 +737,61 @@ func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 	}
 
 	return nil
+}
+
+// normalizePhoneNumber strips formatting from a phone number, keeping only
+// digits and a leading '+'. A number with no '+' prefix and >= 10 digits is
+// assumed to be E.164 and gets a '+' prepended. Examples:
+//
+//	"1-781-307-8753"    -> "+17813078753"
+//	"+1 (555) 123-4567" -> "+15551234567"
+//	"tel:+17813078753"  -> "+17813078753"
+func normalizePhoneNumber(raw string) string {
+	s := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), "tel:"))
+
+	var b strings.Builder
+	for i, c := range s {
+		if (c == '+' && i == 0) || (c >= '0' && c <= '9') {
+			b.WriteRune(c)
+		}
+	}
+
+	num := b.String()
+	if len(num) >= 10 && num[0] != '+' {
+		num = "+" + num
+	}
+	return num
+}
+
+// isPhoneCallChannel reports whether the channel is a DM with the Calls bot,
+// i.e. an outbound phone-call container rather than a regular channel (where a
+// SIP participant would be an inbound dial-in guest).
+func (p *Plugin) isPhoneCallChannel(channelID string) bool {
+	botID := p.getBotID()
+	if botID == "" {
+		return false
+	}
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.LogError("isPhoneCallChannel: failed to get channel", "channelID", channelID, "err", appErr.Error())
+		return false
+	}
+	if channel.Type != model.ChannelTypeDirect {
+		return false
+	}
+
+	members, appErr := p.API.GetChannelMembers(channelID, 0, 10)
+	if appErr != nil {
+		p.LogError("isPhoneCallChannel: failed to get channel members", "channelID", channelID, "err", appErr.Error())
+		return false
+	}
+	for _, m := range members {
+		if m.UserId == botID {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
@@ -826,6 +960,31 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 		return
 	}
 	delete(state.sessions, sid)
+
+	// Outbound phone calls live in the user<->bot DM channel. When the last SIP
+	// participant hangs up, end the call so the remaining MM user is dropped too.
+	if !sipParticipantsRemain(state.sessions) && p.isPhoneCallChannel(channelID) {
+		p.LogInfo("handleLiveKitSIPParticipantLeft: last SIP participant left phone call, ending call",
+			"channelID", channelID, "callID", state.Call.ID)
+
+		// Tear down the media room so the MM user's client disconnects, mirroring
+		// the host-end path; clients also get wsEventCallEnd as a fallback.
+		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+			p.LogError("handleLiveKitSIPParticipantLeft: failed to delete LiveKit room",
+				"channelID", channelID, "err", err.Error())
+		}
+
+		p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
+			ChannelID:           channelID,
+			ReliableClusterSend: true,
+		})
+
+		if err := p.cleanCallState(&state.Call, "sip_hangup"); err != nil {
+			p.LogError("handleLiveKitSIPParticipantLeft: failed to clean call state",
+				"channelID", channelID, "err", err.Error())
+		}
+		return
+	}
 
 	if state.Call.GetHostID() == identity && len(state.sessions) > 0 {
 		if newHostID := state.getHostID(p.getBotID()); newHostID != identity {

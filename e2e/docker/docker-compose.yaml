@@ -40,10 +40,58 @@ services:
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml
     command: --config /etc/livekit.yaml
+    depends_on:
+      - redis
     networks:
       default:
         aliases:
           - livekit
+          # The shared ../../sip.yaml dials LiveKit at ws://livekit-dev:7880
+          # (the dev compose's service name); this alias makes it resolve here too.
+          - livekit-dev
+
+  # --- SIP outbound test harness (MM-69368) -----------------------------------
+  # Dedicated Redis for the LiveKit <-> SIP PSRPC bus (see the design note in the
+  # root docker-compose.livekit.yaml for why it isn't shared with anything else).
+  redis:
+    image: redis:7-alpine
+    restart: on-failure
+    networks:
+      default:
+        aliases:
+          - redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+  # LiveKit SIP bridge. Shares the dev compose's config (../../sip.yaml) so the
+  # two paths can't drift; the smoke test drives it via the LiveKit SIP API.
+  livekit-sip:
+    image: livekit/sip:v1.5.0
+    restart: on-failure
+    volumes:
+      - ../../sip.yaml:/etc/sip.yaml
+    command: --config /etc/sip.yaml
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+    networks:
+      default:
+        aliases:
+          - livekit-sip
+
+  # Auto-answering SIPp UAS — the deterministic CI sink the bridge dials.
+  sipp:
+    build: ./sipp
+    restart: on-failure
+    networks:
+      default:
+        aliases:
+          - sipp
 
   start_dependencies:
     image: mattermost/mattermost-wait-for-dep:latest
@@ -51,6 +99,9 @@ services:
       - postgres
       - haproxy
       - livekit
+      - redis
+      - livekit-sip
+      - sipp
     command: postgres:5432
     networks:
       default:

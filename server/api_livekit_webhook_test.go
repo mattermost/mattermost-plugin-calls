@@ -405,6 +405,102 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
+
+	t.Run("last SIP participant left in bot DM ends the phone call", func(t *testing.T) {
+		p, mockAPI, mockMetrics := setupPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		botID := model.NewId()
+		p.botSession = &model.Session{UserId: botID}
+
+		channelID := model.NewId()
+		postID := model.NewId()
+		call := createActiveCall(t, p, channelID, postID)
+
+		// A human session remains; only the SIP participant is leaving.
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID: model.NewId(), CallID: call.ID, UserID: model.NewId(), JoinAt: time.Now().UnixMilli(),
+		}))
+		sipSid := model.NewId()
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID: sipSid, CallID: call.ID, UserID: "+14155551234", JoinAt: time.Now().UnixMilli(), IsSIPParticipant: true,
+		}))
+
+		setupLock(mockAPI, mockMetrics, channelID)
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{Id: channelID, Type: model.ChannelTypeDirect}, nil)
+		mockAPI.On("GetChannelMembers", channelID, 0, 10).Return(model.ChannelMembers{{ChannelId: channelID, UserId: botID}}, nil)
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil)
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil)
+
+		event := &livekit.WebhookEvent{
+			Event: "participant_left",
+			Room:  &livekit.Room{Name: channelID},
+			Participant: &livekit.ParticipantInfo{
+				Sid:      sipSid,
+				Identity: "+14155551234",
+				Kind:     livekit.ParticipantInfo_SIP,
+			},
+		}
+
+		apiRouter := p.newAPIRouter()
+		r := newSignedWebhookRequest(t, testAPIKey, testAPISecret, event)
+		w := httptest.NewRecorder()
+		apiRouter.ServeHTTP(w, r)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+		// The call is ended even though a human session remained.
+		ended, err := p.store.GetCall(call.ID, db.GetCallOpts{})
+		require.NoError(t, err)
+		require.Greater(t, ended.EndAt, int64(0))
+
+		mockAPI.AssertCalled(t, "PublishWebSocketEvent", wsEventCallEnd, mock.Anything, mock.Anything)
+	})
+
+	t.Run("non-bot-DM channel does not end the call on SIP left", func(t *testing.T) {
+		p, mockAPI, mockMetrics := setupPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		botID := model.NewId()
+		p.botSession = &model.Session{UserId: botID}
+
+		channelID := model.NewId()
+		postID := model.NewId()
+		call := createActiveCall(t, p, channelID, postID)
+
+		sipSid := model.NewId()
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID: sipSid, CallID: call.ID, UserID: "+14155551234", JoinAt: time.Now().UnixMilli(), IsSIPParticipant: true,
+		}))
+
+		setupLock(mockAPI, mockMetrics, channelID)
+		// Regular channel (inbound SIP dial-in), not a phone-call container.
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{Id: channelID, Type: model.ChannelTypeOpen}, nil)
+
+		event := &livekit.WebhookEvent{
+			Event: "participant_left",
+			Room:  &livekit.Room{Name: channelID},
+			Participant: &livekit.ParticipantInfo{
+				Sid:      sipSid,
+				Identity: "+14155551234",
+				Kind:     livekit.ParticipantInfo_SIP,
+			},
+		}
+
+		apiRouter := p.newAPIRouter()
+		r := newSignedWebhookRequest(t, testAPIKey, testAPISecret, event)
+		w := httptest.NewRecorder()
+		apiRouter.ServeHTTP(w, r)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+		// The call is still active; only user_left was published.
+		active, err := p.store.GetCall(call.ID, db.GetCallOpts{})
+		require.NoError(t, err)
+		require.Equal(t, int64(0), active.EndAt)
+
+		mockAPI.AssertCalled(t, "PublishWebSocketEvent", wsEventUserLeft, mock.Anything, mock.Anything)
+	})
 }
 
 func TestGetHostIDSIPDeprioritization(t *testing.T) {

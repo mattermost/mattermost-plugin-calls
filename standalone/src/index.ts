@@ -35,7 +35,7 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {getCallsConfig, getCallsVersionInfo, localSessionClose, setClientConnecting} from 'plugin/actions';
+import {getCallsConfig, getCallsVersionInfo, joinUser, leaveUser, localSessionClose, setClientConnecting} from 'plugin/actions';
 import CallClient, {CALL_EVENT, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
 import RestClient from 'plugin/clients/rest';
 import {
@@ -114,11 +114,20 @@ function connectCall(
         callClient.on(CALL_EVENT.WEBSOCKET_EVENT, wsEventHandler);
 
         // Bridge LiveKit-owned per-participant state into the store. After the
-        // LiveKit migration mute/speaking/raised-hand/reactions no longer travel
-        // over the plugin WebSocket; CallClient re-emits them as CALL_EVENTs. The
-        // main webapp wires these in its own index.tsx and the popout reuses the
-        // opener's client — the standalone bundles (widget + recording) need the
-        // same bridge here so their indicators reflect real, live state.
+        // LiveKit migration session membership and mute/speaking/raised-hand/reactions
+        // no longer travel over the plugin WebSocket; CallClient re-emits them as
+        // CALL_EVENTs. The main webapp wires these in its own index.tsx and the popout
+        // reuses the opener's client — the standalone bundles (widget + recording) need
+        // the same bridge here so their participant list and indicators reflect real,
+        // live state. (The channel-wide user_joined/user_left WS broadcast is gated off
+        // for a renderer that owns the live client, so these LiveKit events are the only
+        // source of session join/leave here.)
+        callClient.on(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {
+            store.dispatch(joinUser(callClient.channelID, userID, sessionID, Boolean(isFromInitialSync)));
+        });
+        callClient.on(CALL_EVENT.USER_LEFT, (sessionID: string, userID: string) => {
+            store.dispatch(leaveUser(callClient.channelID, userID, sessionID));
+        });
         callClient.on(CALL_EVENT.MUTE, (sessionID: string, userID: string) => {
             store.dispatch(userMuted(callClient.channelID, sessionID, userID));
         });

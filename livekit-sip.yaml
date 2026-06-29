@@ -1,0 +1,20 @@
+# LiveKit config for the SIP dev path (`make livekit-sip-docker-start`).
+#
+# Identical to livekit.yaml EXCEPT for the `redis:` block. The LiveKit SIP
+# service talks to LiveKit only over Redis (PSRPC bus), and a `redis:` block
+# flips LiveKit into distributed mode — it refuses to boot if Redis is
+# unreachable. That's why this can't be a conditional block in livekit.yaml
+# and lives in its own file instead.
+port: 7880
+bind_addresses:
+  - "0.0.0.0"
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_ice_lite: true
+redis:
+  address: redis:6379
+keys:
+  devkey: this-is-a-32-plus-character-dev-secret
+logging:
+  level: info

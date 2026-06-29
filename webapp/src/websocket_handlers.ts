@@ -77,6 +77,7 @@ import {
     followThread,
     getCallsClient,
     getUserDisplayName,
+    hasLiveCallClient,
 } from './utils';
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
@@ -143,6 +144,13 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
 // state mutating operations.
 export function handleUserLeft(store: Store, ev: WebSocketMessage<UserLeftData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
+
+    // The channel-wide join/leave broadcast keeps the call post's participant list live for
+    // observers. Where this renderer owns the live LiveKit client, that state arrives via LiveKit
+    // events instead, so skip the broadcast to avoid racing it.
+    if (hasLiveCallClient(channelID)) {
+        return;
+    }
     store.dispatch(leaveUser(channelID, ev.data.user_id, ev.data.session_id));
 }
 
@@ -152,6 +160,13 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
     const userID = ev.data.user_id;
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     const sessionID = ev.data.session_id;
+
+    // The channel-wide join/leave broadcast keeps the call post's participant list live for
+    // observers. Where this renderer owns the live LiveKit client, that state arrives via LiveKit
+    // events instead, so skip the broadcast to avoid racing it.
+    if (hasLiveCallClient(channelID)) {
+        return;
+    }
     store.dispatch(joinUser(channelID, userID, sessionID, false));
 }
 
