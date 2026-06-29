@@ -511,10 +511,14 @@ func TestPublishWebSocketEvent(t *testing.T) {
 	botUserID := model.NewId()
 
 	t.Run("bot", func(t *testing.T) {
+		p.botID = botUserID
 		p.botSession = &model.Session{
 			UserId: botUserID,
 		}
-		defer func() { p.botSession = nil }()
+		defer func() {
+			p.botID = ""
+			p.botSession = nil
+		}()
 
 		t.Run("wsEventUserJoined/wsEventUserLeft", func(t *testing.T) {
 			p.publishWebSocketEvent(wsEventUserJoined, map[string]any{

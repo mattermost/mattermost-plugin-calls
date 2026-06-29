@@ -34,6 +34,7 @@ func TestHandleUploadLogsToBot(t *testing.T) {
 		mockAPI := &pluginMocks.MockAPI{}
 		p := &Plugin{
 			MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
+			botID:            botID,
 			botSession:       &model.Session{UserId: botID},
 		}
 		return p, mockAPI

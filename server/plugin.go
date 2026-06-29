@@ -59,6 +59,11 @@ type Plugin struct {
 	apiLimiters    map[string]*rate.Limiter
 	apiLimitersMut sync.RWMutex
 
+	// botID is the Calls bot's user ID, resolved via EnsureBotUser at activation.
+	// It is cached independently of botSession so the bot filter (getBotID) keeps
+	// working even while botSession is nil (e.g. a node's activation window during
+	// a rolling restart), rather than silently returning "" and no-opping.
+	botID      string
 	botSession *model.Session
 
 	// A map of callID -> *cluster.Mutex to guarantee atomicity of call state

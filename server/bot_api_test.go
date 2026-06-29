@@ -34,6 +34,7 @@ func TestHandleBotGetProfileForSession(t *testing.T) {
 			API: mockAPI,
 		},
 		metrics: mockMetrics,
+		botID:   botUserID,
 		botSession: &model.Session{
 			UserId: botUserID,
 		},
@@ -228,6 +229,7 @@ func TestHandleBotUploadData(t *testing.T) {
 			API: mockAPI,
 		},
 		metrics: mockMetrics,
+		botID:   botUserID,
 		botSession: &model.Session{
 			UserId: botUserID,
 		},

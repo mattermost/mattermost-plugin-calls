@@ -552,6 +552,12 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		grant.SetCanPublish(false)
 		grant.SetCanPublishData(false)
 		grant.SetCanSubscribe(true)
+
+		// Flag the bot on the LiveKit side so clients can filter it out of the
+		// participant list regardless of how they learn about participants. The
+		// attribute is server-set (does not require CanUpdateOwnMetadata, which is
+		// deliberately off for the bot) and surfaces on RemoteParticipant.attributes.
+		at.SetAttributes(map[string]string{livekitAttributeBot: "true"})
 	} else {
 		grant.SetCanUpdateOwnMetadata(true)
 	}

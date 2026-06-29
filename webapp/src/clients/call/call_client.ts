@@ -843,6 +843,10 @@ export default class CallClient extends EventEmitter {
         this.emitLiveKitOwnedState(localParticipant);
 
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            // The bot is not a call participant; keep it out of the list.
+            if (this.isBotParticipant(remoteParticipant)) {
+                continue;
+            }
             const {userID: remoteUserId, sessionID: remoteSessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
             this.emit(CALL_EVENT.USER_JOINED, remoteSessionID, remoteUserId, true);
             this.emitLiveKitOwnedState(remoteParticipant);
@@ -1158,6 +1162,10 @@ export default class CallClient extends EventEmitter {
      * Emits USER_JOINED so the dispatcher can populate Redux + play the join sound.
      */
     private handleParticipantConnected(remoteParticipant: RemoteParticipant) {
+        // The bot is not a call participant; keep it out of the list.
+        if (this.isBotParticipant(remoteParticipant)) {
+            return;
+        }
         const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
         this.emit(CALL_EVENT.USER_JOINED, sessionID, userID);
 
@@ -1169,6 +1177,11 @@ export default class CallClient extends EventEmitter {
      * Emits USER_LEFT so the dispatcher can drop the session from Redux.
      */
     private handleParticipantDisconnected(remoteParticipant: RemoteParticipant) {
+        // The bot was never added to the list (see handleParticipantConnected),
+        // so don't emit USER_LEFT for it.
+        if (this.isBotParticipant(remoteParticipant)) {
+            return;
+        }
         const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
         this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
@@ -1358,6 +1371,17 @@ export default class CallClient extends EventEmitter {
         }
 
         return new MediaStream([video, audio]);
+    }
+
+    /**
+     * Whether a participant is the recording/transcribing bot. The bot is flagged
+     * server-side with a LiveKit attribute on its token grant (see
+     * livekitAttributeBot), so this works regardless of how the participant was
+     * discovered and is robust to multi-node. Used to keep the bot out of the
+     * participant list (no USER_JOINED/USER_LEFT, no join/leave sound or tile).
+     */
+    private isBotParticipant(p: Participant): boolean {
+        return p.attributes?.[CALL_ATTRIBUTES.BOT] === 'true';
     }
 
     private parseUserIdAndSessionIdFromIdentity(p: Participant): {userID: string; sessionID: string} {
