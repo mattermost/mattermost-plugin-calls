@@ -181,6 +181,7 @@ func TestRemoveUserSessionPhoneCall(t *testing.T) {
 		callsClusterLocks: map[string]*cluster.Mutex{},
 		metrics:           mockMetrics,
 		configuration:     &configuration{}, // no LiveKitURL: livekitDeleteRoom is a no-op
+		botID:             botID,
 		botSession:        &model.Session{UserId: botID},
 		sessions:          map[string]*session{},
 	}
