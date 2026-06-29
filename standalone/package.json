@@ -43,10 +43,10 @@
     "@babel/preset-react": "7.16.0",
     "@babel/preset-typescript": "7.16.0",
     "@formatjs/cli": "6.0.4",
-    "@mattermost/client": "9.10.0",
+    "@mattermost/client": "9.11.0",
     "@mattermost/desktop-api": "5.10.0-1",
     "@mattermost/eslint-plugin": "1.1.0-0",
-    "@mattermost/types": "9.10.0",
+    "@mattermost/types": "9.11.0",
     "@types/jest": "27.0.2",
     "@types/lodash": "4.14.182",
     "@types/luxon": "3.3.0",
@@ -87,8 +87,8 @@
     "webpack-cli": "4.10.0"
   },
   "overrides": {
-    "@mattermost/client": "9.10.0",
-    "@mattermost/types": "9.10.0",
+    "@mattermost/client": "9.11.0",
+    "@mattermost/types": "9.11.0",
     "@mattermost/desktop-api": {
       "typescript": "$typescript"
     },
