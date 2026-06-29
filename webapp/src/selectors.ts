@@ -6,18 +6,15 @@ import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
-import {getAllChannels, getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
+import {getAllChannels, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
-import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/entities/roles';
 import {getCurrentTeamId, getTeams} from 'mattermost-redux/selectors/entities/teams';
 import {
     getCurrentUserId,
     getUserIdsInChannels,
     getUsers,
     getUserStatuses,
-    isCurrentUserSystemAdmin,
 } from 'mattermost-redux/selectors/entities/users';
 import {
     getGroupDisplayNameFromUserIds,
@@ -48,6 +45,7 @@ import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID
 const activeCallsIngetPluginStore = (state: GlobalState) =>
     getPluginStore(state).activeCalls;
 
+// TODO: this should be a selector for the ActiveCall type moved to active_calls/selectors.ts
 export const channelIDForCurrentCall: (state: GlobalState) => string =
     createSelector(
         'channelIDForCurrentCall',
@@ -444,29 +442,6 @@ export const transcribeAPI = (state: GlobalState) =>
 
 export const callsConfigEnvOverrides = (state: GlobalState): Record<string, string> =>
     getPluginStore(state).callsConfigEnvOverrides;
-
-export const hasPermissionsToEnableCalls = (state: GlobalState, channelId: string): boolean => {
-    if (isCurrentUserSystemAdmin(state)) {
-        return true;
-    }
-    if (!defaultEnabled(state)) {
-        return false;
-    }
-
-    const channelRoles = getMyChannelRoles(state);
-    const channel = getChannel(state, channelId);
-    if (!channel) {
-        return false;
-    }
-
-    const teamRoles = getMyTeamRoles(state)[channel.team_id];
-    const cm = getMyChannelMemberships(state)[channelId];
-
-    return (isDirectChannel(channel) || isGroupChannel(channel)) ||
-        cm?.scheme_admin === true ||
-        channelRoles[channel.id]?.has('channel_admin') ||
-        teamRoles.has('team_admin');
-};
 
 //
 // Selectors for Cloud and beta limits:

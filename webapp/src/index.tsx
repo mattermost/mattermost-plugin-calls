@@ -104,7 +104,7 @@ import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
 import {channelCallsAvailabilityUpdated, toggleCallsAvailabilityForChannel} from 'src/state/calls_availability/actions';
-import {callsAvailableInChannelWithDefault, callsNotAvailableInChannel} from 'src/state/calls_availability/selectors';
+import {callsAvailableInChannelWithDefault, callsNotAvailableInChannel, hasPermissionToRenderCallsButtonInChannelHeader} from 'src/state/calls_availability/selectors';
 import {unInitialized} from 'src/state/common_actions';
 import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/sessions/actions';
 import {getUserIDsFromSessions} from 'src/state/sessions/selectors';
@@ -133,7 +133,6 @@ import {
     callsConfig,
     channelHasCall,
     channelIDForCurrentCall,
-    hasPermissionsToEnableCalls,
     isCloudStarter,
     isLimitRestricted,
     sessionsInCurrentCall,
@@ -839,7 +838,7 @@ export default class Plugin {
         const registerHeaderMenuComponentIfNeeded = async (channelID: string) => {
             try {
                 registry.unregisterComponent(channelHeaderMenuID);
-                if (hasPermissionsToEnableCalls(store.getState(), channelID)) {
+                if (hasPermissionToRenderCallsButtonInChannelHeader(store.getState(), channelID)) {
                     registerChannelHeaderMenuAction();
                 }
             } catch (err) {

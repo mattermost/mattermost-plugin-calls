@@ -11,7 +11,6 @@ import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getPluginPath,
     getTranslations,
-    getUserIDsFromSessions,
     runWithRetry,
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
@@ -22,6 +21,7 @@ import {Provider} from 'react-redux';
 import RestClient from 'src/clients/rest';
 import {getJobID} from 'src/common';
 import recordingReducer from 'src/recording/reducers';
+import {getUserIDsFromSessions} from 'src/state/sessions/selectors';
 
 import initialiseEmbedApp, {InitCbProps} from '../index';
 import {

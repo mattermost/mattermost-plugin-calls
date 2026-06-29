@@ -3,7 +3,11 @@
 
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
-import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/common';
+import {getChannel, getCurrentChannelId, getMyChannelMemberships} from 'mattermost-redux/selectors/entities/channels';
+import {getMyChannelRoles, getMyTeamRoles} from 'mattermost-redux/selectors/entities/roles';
+import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {isDirectChannel, isGroupChannel} from 'mattermost-redux/utils/channel_utils';
+import {defaultEnabled} from 'src/selectors';
 import {getPluginStore} from 'src/state/common_selectors';
 
 export const callsAvailableInChannel = (state: GlobalState, channelID: Channel['id']) =>
@@ -32,3 +36,27 @@ export const callsAvailableInCurrentChannelWithDefault = (state: GlobalState): b
  */
 export const shouldShowCallsButtonInChannelHeader = (state: GlobalState, channelId?: Channel['id']) =>
     !callsNotAvailableInChannel(state, channelId || '');
+
+export const hasPermissionToRenderCallsButtonInChannelHeader = (state: GlobalState, channelId: Channel['id']) => {
+    if (isCurrentUserSystemAdmin(state)) {
+        return true;
+    }
+    if (!defaultEnabled(state)) {
+        return false;
+    }
+
+    const channelRoles = getMyChannelRoles(state);
+    const channel = getChannel(state, channelId);
+    if (!channel) {
+        return false;
+    }
+
+    const teamRoles = getMyTeamRoles(state)[channel.team_id];
+    const channelMemberships = getMyChannelMemberships(state)[channelId];
+
+    return (isDirectChannel(channel) || isGroupChannel(channel)) ||
+        channelMemberships?.scheme_admin === true ||
+        channelRoles[channel.id]?.has('channel_admin') ||
+        teamRoles.has('team_admin');
+};
+
