@@ -24,6 +24,7 @@
     "@mattermost/calls-common": "github:mattermost/calls-common#af309ceb0571ce43cc47ccc754fdb7bbeaf3da83",
     "@mediapipe/tasks-vision": "0.10.22-rc.20250304",
     "@msgpack/msgpack": "2.7.1",
+    "classnames": "2.5.1",
     "core-js": "3.26.1",
     "emoji-picker-react": "4.4.7",
     "fflate": "0.8.2",
@@ -36,12 +37,10 @@
     "redux": "4.2.0",
     "redux-batched-actions": "0.5.0",
     "semver-parser": "4.0.0",
-    "styled-components": "6.1.8",
-    "stylis": "4.3.1"
+    "styled-components": "6.1.8"
   },
   "devDependencies": {
     "@babel/core": "7.16.0",
-    "@babel/eslint-parser": "7.19.1",
     "@babel/plugin-proposal-object-rest-spread": "7.16.0",
     "@babel/plugin-proposal-optional-chaining": "7.14.5",
     "@babel/plugin-syntax-dynamic-import": "7.8.3",

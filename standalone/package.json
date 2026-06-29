@@ -35,7 +35,6 @@
   },
   "devDependencies": {
     "@babel/core": "7.16.0",
-    "@babel/eslint-parser": "7.19.1",
     "@babel/plugin-proposal-object-rest-spread": "7.16.0",
     "@babel/plugin-proposal-optional-chaining": "7.14.5",
     "@babel/plugin-syntax-dynamic-import": "7.8.3",
