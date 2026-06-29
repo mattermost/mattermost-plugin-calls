@@ -1,7 +1,7 @@
 {
   "private": true,
   "engines": {
-    "node": "^24.14",
+    "node": "^24.18",
     "npm": "^11"
   },
   "scripts": {
@@ -51,10 +51,10 @@
     "@babel/preset-react": "7.16.0",
     "@babel/preset-typescript": "7.16.0",
     "@formatjs/cli": "5.0.7",
-    "@mattermost/client": "file:mattermost-webapp/webapp/platform/client",
+    "@mattermost/client": "9.10.0",
     "@mattermost/desktop-api": "6.2.0-1",
     "@mattermost/eslint-plugin": "1.1.0-0",
-    "@mattermost/types": "file:mattermost-webapp/webapp/platform/types",
+    "@mattermost/types": "9.10.0",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "14.2.1",
     "@testing-library/user-event": "14.5.2",
@@ -99,6 +99,8 @@
     "webpack-cli": "4.10.0"
   },
   "overrides": {
+    "@mattermost/client": "9.10.0",
+    "@mattermost/types": "9.10.0",
     "@mattermost/desktop-api": {
       "typescript": "$typescript"
     },

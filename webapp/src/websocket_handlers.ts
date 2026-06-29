@@ -26,7 +26,7 @@ import {
     UserVideoOnOffData,
     UserVoiceOnOffData,
 } from '@mattermost/calls-common/lib/types';
-import {WebSocketMessage} from '@mattermost/client/websocket';
+import {WebSocketMessage} from '@mattermost/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {generateId} from 'mattermost-redux/utils/helpers';

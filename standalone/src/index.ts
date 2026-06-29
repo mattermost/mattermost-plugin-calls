@@ -28,7 +28,7 @@ import {
     UserVideoOnOffData,
     WebsocketEventData,
 } from '@mattermost/calls-common/lib/types';
-import {WebSocketMessage} from '@mattermost/client/websocket';
+import {WebSocketMessage} from '@mattermost/client';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
