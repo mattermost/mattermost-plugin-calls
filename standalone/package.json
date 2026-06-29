@@ -87,6 +87,8 @@
     "webpack-cli": "4.10.0"
   },
   "overrides": {
+    "@mattermost/client": "9.10.0",
+    "@mattermost/types": "9.10.0",
     "@mattermost/desktop-api": {
       "typescript": "$typescript"
     },
