@@ -149,10 +149,18 @@ interface State {
 }
 
 const StyledMediaController = styled(MediaController)`
+    width: 100%;
+    height: 100%;
     max-height: calc(100% - 32px);
     background-color: transparent;
     margin-top: auto;
     margin-bottom: auto;
+
+    #screen-player {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
 `;
 
 const StyledMediaControlBar = styled(MediaControlBar)`
