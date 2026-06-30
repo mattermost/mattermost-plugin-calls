@@ -2,7 +2,6 @@
 // See LICENSE.txt for license information.
 
 import {DateTime} from 'luxon';
-import HandsSvg from 'mattermost-webapp/src/components/common/svg_images_components/hands_svg';
 import React, {ComponentProps} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {NavLink} from 'react-router-dom';
@@ -13,6 +12,7 @@ import {
     ModalTitle,
     StyledModal,
 } from 'src/components/admin_console_settings/common';
+import HandsSvg from 'src/components/admin_console_settings/hands_svg';
 import GenericModal from 'src/components/generic_modal';
 import {VerticalSpacer} from 'src/components/shared';
 

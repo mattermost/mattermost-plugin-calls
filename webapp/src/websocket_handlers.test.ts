@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {HostControlRemoved, UserRemovedData} from '@mattermost/calls-common/lib/types';
-import {WebSocketMessage} from '@mattermost/client/websocket';
+import {WebSocketMessage} from '@mattermost/client';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {displayCallErrorModal, joinUser, leaveUser} from 'src/actions';
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/clients/calls';

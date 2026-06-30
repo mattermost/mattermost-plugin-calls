@@ -85,8 +85,6 @@ module.exports = {
     resolve: {
         alias: {
             src: path.resolve(__dirname, './src/'),
-            '@mattermost/types': path.resolve(__dirname, '../webapp/mattermost-webapp/webapp/platform/types/src/'),
-            '@mattermost/client': path.resolve(__dirname, '../webapp/mattermost-webapp/webapp/platform/client/src/'),
             'mattermost-redux': path.resolve(__dirname, '../webapp/mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/'),
             reselect: path.resolve(__dirname, '../webapp/mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/selectors/create_selector/index'),
             'mattermost-webapp': path.resolve(__dirname, '../webapp/mattermost-webapp/webapp/channels/src/'),

@@ -1,7 +1,7 @@
 {
   "private": true,
   "engines": {
-    "node": "^24.14",
+    "node": "^24.18",
     "npm": "^11"
   },
   "scripts": {
@@ -22,6 +22,7 @@
   "dependencies": {
     "@floating-ui/react": "0.26.12",
     "@mattermost/calls-common": "github:mattermost/calls-common#af309ceb0571ce43cc47ccc754fdb7bbeaf3da83",
+    "@mattermost/client": "9.11.0",
     "@mediapipe/tasks-vision": "0.10.22-rc.20250304",
     "@msgpack/msgpack": "2.7.1",
     "@redux-devtools/extension": "3.2.3",
@@ -51,10 +52,9 @@
     "@babel/preset-react": "7.16.0",
     "@babel/preset-typescript": "7.16.0",
     "@formatjs/cli": "5.0.7",
-    "@mattermost/client": "file:mattermost-webapp/webapp/platform/client",
     "@mattermost/desktop-api": "6.2.0-1",
     "@mattermost/eslint-plugin": "1.1.0-0",
-    "@mattermost/types": "file:mattermost-webapp/webapp/platform/types",
+    "@mattermost/types": "9.11.0",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "14.2.1",
     "@testing-library/user-event": "14.5.2",
@@ -99,6 +99,8 @@
     "webpack-cli": "4.10.0"
   },
   "overrides": {
+    "@mattermost/client": "9.11.0",
+    "@mattermost/types": "9.11.0",
     "@mattermost/desktop-api": {
       "typescript": "$typescript"
     },
