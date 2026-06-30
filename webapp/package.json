@@ -42,7 +42,7 @@
     "stylis": "4.3.1"
   },
   "devDependencies": {
-    "@babel/core": "7.16.0",
+    "@babel/core": "7.22.0",
     "@babel/eslint-parser": "7.19.1",
     "@babel/plugin-proposal-object-rest-spread": "7.16.0",
     "@babel/plugin-proposal-optional-chaining": "7.14.5",
@@ -72,6 +72,7 @@
     "babel-plugin-formatjs": "10.3.7",
     "babel-plugin-styled-components": "2.1.4",
     "babel-plugin-typescript-to-proptypes": "2.1.0",
+    "canvas": "file:test_stubs/canvas",
     "css-loader": "5.2.6",
     "eslint": "8.57.0",
     "eslint-import-resolver-webpack": "0.13.8",

@@ -26,9 +26,11 @@ const config = {
         '^src/segmenter$': '<rootDir>/src/segmenter/__mocks__/index.ts',
     },
     moduleDirectories: [
-        '',
         'node_modules',
-        'non_npm_dependencies',
+    ],
+    modulePaths: [
+        '<rootDir>',
+        '<rootDir>/non_npm_dependencies',
     ],
     reporters: [
         'default',
