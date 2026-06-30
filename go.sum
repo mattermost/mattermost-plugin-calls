@@ -824,8 +824,8 @@ github.com/mattermost/mattermost/server/public v0.4.2 h1:odRsJWb4biFZ22L3J1Rvls7
 github.com/mattermost/mattermost/server/public v0.4.2/go.mod h1:2z08gasPXqIIbzl/xf2/2Sfn5ITFLGC6tplhOklyAAQ=
 github.com/mattermost/morph v1.1.0 h1:Q9vrJbeM3s2jfweGheq12EFIzdNp9a/6IovcbvOQ6Cw=
 github.com/mattermost/morph v1.1.0/go.mod h1:gD+EaqX2UMyyuzmF4PFh4r33XneQ8Nzi+0E8nXjMa3A=
-github.com/mattermost/rtcd v1.2.5 h1:edhYO5Fv82q1V5py5ZHnipEUD2ZoCXj+34VTw8ZAk7s=
-github.com/mattermost/rtcd v1.2.5/go.mod h1:u58OGqE0LFI8eUB3q8eFXO1hKvQwV8LsdxhUyjpe0ZU=
+github.com/mattermost/rtcd v1.2.6 h1:BQvZ1aBNID21JnZTpPgESG67S8XUjnuoA05orgOGcq0=
+github.com/mattermost/rtcd v1.2.6/go.mod h1:u58OGqE0LFI8eUB3q8eFXO1hKvQwV8LsdxhUyjpe0ZU=
 github.com/mattermost/squirrel v0.2.0 h1:8ZWeyf+MWQ2cL7hu9REZgLtz2IJi51qqZEovI3T3TT8=
 github.com/mattermost/squirrel v0.2.0/go.mod h1:NPPtk+CdpWre4GxMGoOpzEVFVc0ZoEFyJBZGCtn9nSU=
 github.com/mattermost/xml-roundtrip-validator v0.1.0 h1:RXbVD2UAl7A7nOTR4u7E3ILa4IbtvKBHw64LDsmu9hU=
