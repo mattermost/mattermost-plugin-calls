@@ -182,6 +182,7 @@ func TestRemoveUserSessionPhoneCall(t *testing.T) {
 		metrics:           mockMetrics,
 		configuration:     &configuration{}, // no LiveKitURL: livekitDeleteRoom is a no-op
 		botSession:        &model.Session{UserId: botID},
+		botID:             botID, // getBotID reads p.botID, not botSession
 		sessions:          map[string]*session{},
 	}
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
