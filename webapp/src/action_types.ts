@@ -3,8 +3,6 @@
 
 import {pluginId} from './manifest';
 
-export const CALL_STATE = pluginId + '_call_state';
-export const CALL_HOST = pluginId + '_call_host';
 export const CALL_RECORDING_STATE = pluginId + '_call_recording_state';
 export const CALL_LIVE_CAPTIONS_STATE = pluginId + '_call_live_captions_state';
 export const CALL_REC_PROMPT_DISMISSED = pluginId + '_call_rec_prompt_dismissed';
@@ -35,7 +33,6 @@ export const TRANSCRIPTIONS_ENABLED = pluginId + '_transcriptions_enabled';
 export const LIVE_CAPTIONS_ENABLED = pluginId + '_live_captions_enabled';
 export const RTCD_ENABLED = pluginId + '_rtcd_enabled';
 export const TRANSCRIBE_API = pluginId + '_transcribe_api';
-export const RECEIVED_CHANNEL_STATE = pluginId + 'received_channel_state';
 export const RECEIVED_CALLS_USER_PREFERENCES = pluginId + '_received_calls_user_preferences';
 
 export const DESKTOP_WIDGET_CONNECTED = pluginId + '_desktop_widget_connected';

@@ -3,7 +3,6 @@
 
 import React from 'react';
 import {useIntl} from 'react-intl';
-import {hostLowerHand, hostMake, hostMute, hostScreenOff} from 'src/actions';
 import {DropdownMenuItem, DropdownMenuSeparator} from 'src/components/dot_menu/dot_menu';
 import MinusCircleOutlineIcon from 'src/components/icons/minus_circle_outline';
 import MonitorAccount from 'src/components/icons/monitor_account';
@@ -11,10 +10,12 @@ import MutedIcon from 'src/components/icons/muted_icon';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {logDebug} from 'src/log';
+import {ActiveCall} from 'src/state/active_calls/reducer';
+import {hostLowerParticipantHand, hostMakeParticipantHost, hostMuteParticipant, hostSwitchParticipantScreenOff} from 'src/state/hosts/actions';
 import styled from 'styled-components';
 
 type Props = {
-    callID?: string;
+    callID: ActiveCall['callID'];
     userID: string;
     sessionID: string;
     isMuted: boolean;
@@ -40,33 +41,45 @@ export const HostControlsMenu = ({
         return null;
     }
 
-    const muteUnmute = isMuted ? null : (
-        <DropdownMenuItem
-            onClick={() => {
-                logDebug(`HostControlsMenu: mute participant ${sessionID}`);
-                hostMute(callID, sessionID);
-            }}
-        >
-            <MutedIcon
-                data-testid={'host-mute'}
-                fill='var(--center-channel-color-56)'
-                style={{width: '16px', height: '16px'}}
-            />
-            {formatMessage({defaultMessage: 'Mute participant'})}
-        </DropdownMenuItem>
-    );
+    function handlehostMuteParticipant() {
+        logDebug(`HostControlsMenu: mute participant ${sessionID}`);
+        hostMuteParticipant(callID, sessionID);
+    }
+
+    function handlehostMakeParticipantHost() {
+        logDebug(`HostControlsMenu: make host ${userID}`);
+        hostMakeParticipantHost(callID, userID);
+    }
+
+    function handleStopParticipantScreenShare() {
+        logDebug(`HostControlsMenu: stop screen share for ${sessionID}`);
+        hostSwitchParticipantScreenOff(callID, sessionID);
+    }
+
+    function handleLowerParticipantHand() {
+        logDebug(`HostControlsMenu: lower hand for ${sessionID}`);
+        hostLowerParticipantHand(callID, sessionID);
+    }
 
     const showingAtLeastOne = !isMuted || isSharingScreen || isHandRaised || !isHost;
 
     return (
         <>
-            {muteUnmute}
+            {!isMuted && (
+                <DropdownMenuItem
+                    onClick={handlehostMuteParticipant}
+                >
+                    <MutedIcon
+                        data-testid={'host-mute'}
+                        fill='var(--center-channel-color-56)'
+                        style={{width: '16px', height: '16px'}}
+                    />
+                    {formatMessage({defaultMessage: 'Mute participant'})}
+                </DropdownMenuItem>
+            )}
             {isSharingScreen &&
                 <DropdownMenuItem
-                    onClick={() => {
-                        logDebug(`HostControlsMenu: stop screen share for ${sessionID}`);
-                        hostScreenOff(callID, sessionID);
-                    }}
+                    onClick={handleStopParticipantScreenShare}
                 >
                     <UnshareScreenIcon
                         fill='var(--center-channel-color-56)'
@@ -77,10 +90,7 @@ export const HostControlsMenu = ({
             }
             {isHandRaised &&
                 <DropdownMenuItem
-                    onClick={() => {
-                        logDebug(`HostControlsMenu: lower hand for ${sessionID}`);
-                        hostLowerHand(callID, sessionID);
-                    }}
+                    onClick={handleLowerParticipantHand}
                 >
                     <UnraisedHandIcon
                         fill='var(--center-channel-color-56)'
@@ -91,10 +101,7 @@ export const HostControlsMenu = ({
             }
             {!isHost &&
                 <DropdownMenuItem
-                    onClick={() => {
-                        logDebug(`HostControlsMenu: make host ${userID}`);
-                        hostMake(callID, userID);
-                    }}
+                    onClick={handlehostMakeParticipantHost}
                 >
                     <MonitorAccount
                         fill='var(--center-channel-color-56)'

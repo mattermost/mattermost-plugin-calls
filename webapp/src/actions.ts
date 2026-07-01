@@ -2,9 +2,11 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
-import {CallsConfig, CallState, CallsVersionInfo} from '@mattermost/calls-common/lib/types';
+
+import {CallChannelState, CallsConfig, CallState, CallsVersionInfo} from '@mattermost/calls-common/lib/types';
 import {ClientError} from '@mattermost/client';
 import {Channel} from '@mattermost/types/channels';
+import {UserProfile} from '@mattermost/types/users';
 import {UserTypes} from 'mattermost-redux/action_types';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
@@ -27,22 +29,27 @@ import {JOINED_USER_NOTIFICATION_TIMEOUT, RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
 import {
     callDismissedNotification,
+    callStartAtForCallInChannel,
     getCallIDForChannel,
     getCallIDForCurrentCall,
-    hostChangeAtForCurrentCall,
     incomingCalls,
     numSessionsInCallInChannel,
     ringingEnabled,
     ringingForCall,
     shouldPlayJoinUserSound,
 } from 'src/selectors';
+import {activeCallAdded} from 'src/state/active_calls/actions';
+import {channelCallsAvailabilityUpdated} from 'src/state/calls_availability/actions';
+import {callEnded} from 'src/state/common_actions';
+import {hostChanged} from 'src/state/hosts/actions';
+import {getHostChangeAt} from 'src/state/hosts/selectors';
 import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
-import {callEnded, getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/session/actions';
+import {getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/sessions/actions';
+import {getUserIDsFromSessions} from 'src/state/sessions/selectors';
 import {CallsStats, ChannelType} from 'src/types/types';
 import {
     getCallsClientSessionID,
     getPluginPath,
-    getUserIDsForSessions,
     isDMChannel,
     isGMChannel,
     notificationsStopRinging,
@@ -52,11 +59,9 @@ import {modals, notificationSounds, openPricingModal} from 'src/webapp_globals';
 
 import {
     ADD_INCOMING_CALL,
-    CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
-    CALL_STATE,
     CLIENT_CONNECTING,
     DID_RING_FOR_CALL,
     DISMISS_CALL,
@@ -147,18 +152,6 @@ export const getCallsVersionInfo = (): ActionFuncAsync<CallsVersionInfo> => {
         ),
         onSuccess: [RECEIVED_CALLS_VERSION_INFO],
     });
-};
-
-export const getCallActive = async (channelID: string) => {
-    try {
-        const res = await RestClient.fetch<{ active: boolean }>(
-            `${getPluginPath()}/calls/${channelID}/active`,
-            {method: 'get'},
-        );
-        return res.active;
-    } catch (e) {
-        return false;
-    }
 };
 
 export const setRecordingsEnabled = (enabled: boolean) => (dispatch: Dispatch) => {
@@ -539,38 +532,119 @@ export const stopRingingForCall = (callID: string): ActionFunc => {
     };
 };
 
-export const loadProfilesByIdsIfMissing = (ids: string[]) => {
+/**
+ * Loads user profiles for any users not present in the Mattermost redux store and adds them.
+ */
+export const loadProfilesByIdsIfMissing = (userIDs: Array<UserProfile['id']>) => {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
-        const missingIds = [];
-        for (const id of ids) {
-            if (!getState().entities.users.profiles[id]) {
-                missingIds.push(id);
+        const missingUserIDs = [];
+        for (const userID of userIDs) {
+            if (!getUser(getState(), userID)) {
+                missingUserIDs.push(userID);
             }
         }
-        if (missingIds.length > 0) {
-            dispatch({type: UserTypes.RECEIVED_PROFILES, data: await RestClient.getProfilesByIds(missingIds)});
+
+        if (missingUserIDs.length === 0) {
+            return;
         }
+
+        try {
+            const missedUserProfiles = await RestClient.getProfilesByIds(missingUserIDs);
+            dispatch({type: UserTypes.RECEIVED_PROFILES, data: missedUserProfiles});
+        } catch (err) {
+            logErr(err);
+        }
+    };
+};
+
+export const hydradeCallsAndChannelStatesExcept = (skipChannelID?: string) => {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+        const actions: AnyAction[] = [];
+
+        let callsAndChannelStates: CallChannelState[] = [];
+        try {
+            callsAndChannelStates = await RestClient.fetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
+        } catch (err) {
+            logErr(err);
+            return;
+        }
+
+        for (const callAndChannelState of callsAndChannelStates) {
+            if (!callAndChannelState) {
+                continue;
+            }
+
+            // State for the current call should only be mutated from websocket events.
+            if (skipChannelID && callAndChannelState.channel_id && skipChannelID === callAndChannelState.channel_id) {
+                continue;
+            }
+
+            actions.push(channelCallsAvailabilityUpdated(callAndChannelState.channel_id, callAndChannelState.enabled));
+
+            if (!callAndChannelState.call || !callAndChannelState.call.sessions || callAndChannelState.call.sessions.length === 0) {
+                continue;
+            }
+
+            dispatch(loadProfilesByIdsIfMissing(getUserIDsFromSessions(callAndChannelState.call.sessions)));
+
+            if (!callStartAtForCallInChannel(getState(), callAndChannelState.channel_id)) {
+                actions.push(
+                    activeCallAdded(callAndChannelState.channel_id, {
+                        callID: callAndChannelState.call.id,
+                        startAt: callAndChannelState.call.start_at,
+                        ownerID: callAndChannelState.call.owner_id,
+                        threadID: callAndChannelState.call.thread_id,
+                    }),
+                );
+
+                actions.push(hostChanged(callAndChannelState.channel_id, callAndChannelState.call.host_id, callAndChannelState.call.start_at));
+
+                actions.push(sessionsReceived(callAndChannelState.channel_id, getSessionsMapFromSessions(callAndChannelState.call.sessions)));
+
+                if (ringingEnabled(getState())) {
+                    // dismissedNotification is populated after the actions array has been batched, so manually check:
+                    const dismissed = callAndChannelState.call.dismissed_notification;
+                    if (dismissed) {
+                        const currentUserID = getCurrentUserId(getState());
+                        if (Object.hasOwn(dismissed, currentUserID) && dismissed[currentUserID]) {
+                            actions.push({
+                                type: DISMISS_CALL,
+                                data: {
+                                    callID: callAndChannelState.call.id,
+                                },
+                            });
+                            continue;
+                        }
+                    }
+                    dispatch(incomingCallOnChannel(callAndChannelState.channel_id, callAndChannelState.call.id, callAndChannelState.call.owner_id, callAndChannelState.call.start_at));
+                }
+            }
+        }
+
+        dispatch(batchActions(actions));
     };
 };
 
 /**
  * This is the hydration action for the call state. It is used to set the initial state of the call when the page is loaded.
  * It is used to set the initial state of the call when the page is loaded when for example user joins an ongoing call,
- * or a client drop the connection and reconnects after a period of time.
+ * or a client drop the connection and reconnects after a period of time. It contains all the required
+ * information to set the initial state of the call.
  */
 export const loadCallState = (channelID: string, call: CallState) => (dispatch: DispatchFunc, getState: GetStateFunc) => {
     const actions: AnyAction[] = [];
 
-    actions.push({
-        type: CALL_STATE,
-        data: {
-            ID: call.id,
-            channelID,
+    actions.push(
+        activeCallAdded(channelID, {
+            callID: call.id,
             startAt: call.start_at,
-            ownerID: call.owner_id,
             threadID: call.thread_id,
-        },
-    });
+            ownerID: call.owner_id,
+        }),
+    );
+
+    const hostChangeAt = getHostChangeAt(getState(), channelID) ?? call.start_at;
+    actions.push(hostChanged(channelID, call.host_id, hostChangeAt));
 
     actions.push({
         type: CALL_RECORDING_STATE,
@@ -595,15 +669,6 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
         }
     }
 
-    actions.push({
-        type: CALL_HOST,
-        data: {
-            channelID,
-            hostID: call.host_id,
-            hostChangeAt: hostChangeAtForCurrentCall(getState()) || call.start_at,
-        },
-    });
-
     const dismissed = call.dismissed_notification;
     if (dismissed) {
         const currentUserID = getCurrentUserId(getState());
@@ -620,7 +685,7 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
     if (call.sessions.length > 0) {
         // This is async, which is expected as we are okay with setting the state while we wait
         // for any missing user profiles.
-        dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(call.sessions)));
+        dispatch(loadProfilesByIdsIfMissing(getUserIDsFromSessions(call.sessions)));
     }
 
     actions.push(sessionsReceived(channelID, getSessionsMapFromSessions(call.sessions)));
@@ -633,71 +698,6 @@ export const setClientConnecting = (value: boolean) => (dispatch: Dispatch) => {
         type: CLIENT_CONNECTING,
         data: value,
     });
-};
-
-export const hostMake = async (callID: string, newHostID: string) => {
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/make`,
-        {
-            method: 'post',
-            body: JSON.stringify({new_host_id: newHostID}),
-        },
-    );
-};
-
-export const hostMute = async (callID: string, sessionID: string) => {
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/mute`,
-        {
-            method: 'post',
-            body: JSON.stringify({session_id: sessionID}),
-        },
-    );
-};
-
-export const hostScreenOff = async (callID: string, sessionID: string) => {
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/screen-off`,
-        {
-            method: 'post',
-            body: JSON.stringify({session_id: sessionID}),
-        },
-    );
-};
-
-export const hostLowerHand = async (callID: string, sessionID: string) => {
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/lower-hand`,
-        {
-            method: 'post',
-            body: JSON.stringify({session_id: sessionID}),
-        },
-    );
-};
-
-export const hostRemove = async (callID?: string, sessionID?: string) => {
-    if (!callID || !sessionID) {
-        return {};
-    }
-
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/remove`,
-        {
-            method: 'post',
-            body: JSON.stringify({session_id: sessionID}),
-        },
-    );
-};
-
-export const hostMuteOthers = async (callID?: string) => {
-    if (!callID) {
-        return {};
-    }
-
-    return RestClient.fetch(
-        `${getPluginPath()}/calls/${callID}/host/mute-others`,
-        {method: 'post'},
-    );
 };
 
 export const getCallsStats = async () => {

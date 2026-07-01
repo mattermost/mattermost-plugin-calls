@@ -1,14 +1,13 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {UserSessionState} from '@mattermost/calls-common/lib/types';
-import {Channel} from '@mattermost/types/channels';
-import {Reducer} from 'redux';
+import {type UserSessionState} from '@mattermost/calls-common/lib/types';
+import {type Channel} from '@mattermost/types/channels';
+import {type Reducer} from 'redux';
+import {CALL_ENDED, UN_INITIALIZED} from 'src/state/common_action_types';
 
 import {
-    CALL_ENDED,
     SESSIONS_RECEIVED,
-    UN_INITIALIZED,
     USER_HAND_LOWERED,
     USER_HAND_RAISED,
     USER_JOINED,
@@ -19,17 +18,17 @@ import {
     USER_UNMUTED,
     USERS_VOICE_ACTIVITY_CHANGED,
 } from './action_types';
-import {Actions} from './actions';
+import {type Actions} from './actions';
 
-type State = {
+type Sessions = {
     [channelID: Channel['id']]: {
         [session_id: UserSessionState['session_id']]: UserSessionState;
     }
 }
 
-const emptyState: State = {};
+const emptyState: Sessions = {};
 
-export const reducer: Reducer<State, Actions> = (initialState = emptyState, action) : State => {
+export const reducer: Reducer<Sessions, Actions> = (initialState = emptyState, action) : Sessions => {
     switch (action.type) {
     case UN_INITIALIZED: {
         return emptyState;
@@ -69,7 +68,7 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
         // With this flag we avoid creating a new state object if no changes are made
         let stateChanged = false;
 
-        const nextState: State[Channel['id']] = {};
+        const nextState: Sessions[Channel['id']] = {};
 
         // Walk every session in the channel — sessions present in the active-speakers list
         // get voice: true, sessions absent from it get voice: false.

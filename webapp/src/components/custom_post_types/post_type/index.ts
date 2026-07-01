@@ -11,11 +11,11 @@ import PostType from 'src/components/custom_post_types/post_type/component';
 import {MESSAGE_DISPLAY, MESSAGE_DISPLAY_COMPACT, MESSAGE_DISPLAY_DEFAULT} from 'src/constants';
 import {
     channelIDForCurrentCall,
-    hostIDForCallInChannel,
     isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial,
     maxParticipants,
     profilesInCallInChannel,
 } from 'src/selectors';
+import {getHostID} from 'src/state/hosts/selectors';
 
 interface OwnProps {
     post: Post,
@@ -31,7 +31,7 @@ const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
         maxParticipants: maxParticipants(state),
         militaryTime: getBool(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.USE_MILITARY_TIME, false),
         compactDisplay: get(state, Preferences.CATEGORY_DISPLAY_SETTINGS, MESSAGE_DISPLAY, MESSAGE_DISPLAY_DEFAULT) === MESSAGE_DISPLAY_COMPACT,
-        isHost: hostIDForCallInChannel(state, ownProps.post.channel_id) === getCurrentUserId(state),
+        isHost: getHostID(state, ownProps.post.channel_id) === getCurrentUserId(state),
     };
 };
 

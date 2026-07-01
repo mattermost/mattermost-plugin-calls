@@ -12,7 +12,6 @@ import CompassIcon from 'src/components/icons/compassIcon';
 import {Header, Spinner, SubHeader} from 'src/components/shared';
 import {
     areGroupCallsAllowed,
-    callsShowButton,
     channelIDForCurrentCall,
     clientConnecting,
     currentChannelHasCall,
@@ -21,6 +20,7 @@ import {
     isLimitRestricted,
     maxParticipants,
 } from 'src/selectors';
+import {shouldShowCallsButtonInChannelHeader} from 'src/state/calls_availability/selectors';
 import {getUserIdFromDM, isDMChannel} from 'src/utils';
 import styled, {css} from 'styled-components';
 
@@ -30,7 +30,7 @@ const ChannelHeaderButton = () => {
     const otherUserID = getUserIdFromDM(channel?.name || '', currentUserID);
     const otherUser = useSelector((state: GlobalState) => getUser(state, otherUserID));
     const isDeactivatedDM = isDMChannel(channel) && otherUser?.delete_at > 0;
-    const show = useSelector((state: GlobalState) => callsShowButton(state, channel?.id || ''));
+    const show = useSelector((state: GlobalState) => shouldShowCallsButtonInChannelHeader(state, channel?.id));
     const inCall = useSelector(channelIDForCurrentCall) === channel?.id;
     const hasCall = useSelector(currentChannelHasCall);
     const isAdmin = useSelector(isCurrentUserSystemAdmin);

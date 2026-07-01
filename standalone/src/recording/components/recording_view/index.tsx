@@ -16,11 +16,11 @@ import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import Timestamp from 'src/components/timestamp';
 import {callProfileImages} from 'src/recording/selectors';
 import {
-    hostIDForCurrentCall,
     profilesInCurrentCallMap,
     screenSharingSessionForCurrentCall,
     sessionsInCurrentCall,
 } from 'src/selectors';
+import {getHostIDForCurrentChannel} from 'src/state/hosts/selectors';
 
 const RecordingView = () => {
     const {formatMessage} = useIntl();
@@ -35,7 +35,7 @@ const RecordingView = () => {
         .sort(stateSortSessions(screenSharingSession?.session_id || '', true)));
     const profileImages = useSelector((state: GlobalState) => callProfileImages(state, callsClient?.channelID || ''));
 
-    const hostID = useSelector((state: GlobalState) => hostIDForCurrentCall(state));
+    const hostID = useSelector(getHostIDForCurrentChannel);
 
     const attachVoiceTracks = (tracks: MediaStreamTrack[]) => {
         for (const track of tracks) {

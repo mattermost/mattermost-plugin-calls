@@ -27,7 +27,7 @@ const ChannelCallToast = () => {
     const limitRestricted = useSelector(isLimitRestricted);
     const dismissed = useSelector(dismissedCallForCurrentChannel);
 
-    const callID = useSelector(callInCurrentChannel)?.ID || '';
+    const callID = useSelector(callInCurrentChannel)?.callID || '';
     const [onDismiss, onJoin] = useDismissJoin(currChannelID, callID);
 
     const hasCall = (call && currChannelID !== connectedID);

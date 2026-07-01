@@ -3,20 +3,19 @@
 
 import React from 'react';
 import {FormattedMessage} from 'react-intl';
+import {useSelector} from 'react-redux';
+import {callsAvailableInCurrentChannelWithDefault} from 'src/state/calls_availability/selectors';
 
-interface Props {
-    enabled: boolean,
-}
+export default function ChannelHeaderMenuItem() {
+    const isEnabled = useSelector(callsAvailableInCurrentChannelWithDefault);
 
-const ChannelHeaderMenuButton = (props: Props) => {
-    if (props.enabled) {
+    if (isEnabled) {
         return (
             <FormattedMessage defaultMessage='Disable calls'/>
         );
     }
+
     return (
         <FormattedMessage defaultMessage='Enable calls'/>
     );
-};
-
-export default ChannelHeaderMenuButton;
+}

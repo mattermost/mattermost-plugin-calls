@@ -28,10 +28,9 @@ import {
     areGroupCallsAllowed,
     channelHasCall,
     channelIDForCurrentCall,
-    hostIDForCallInChannel,
-    hostIDForCurrentCall,
     isRecordingInCurrentCall,
 } from './selectors';
+import {getHostID, getHostIDForCurrentChannel} from './state/hosts/selectors';
 import {Store} from './types/mattermost-webapp';
 import {getCallsClient, getCallsWindow, getPersistentStorage, getPluginPath, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
@@ -144,7 +143,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         if (!isCurrentUserSystemAdmin(store.getState()) &&
-                    getCurrentUserId(store.getState()) !== hostIDForCallInChannel(store.getState(), args.channel_id)) {
+                    getCurrentUserId(store.getState()) !== getHostID(store.getState(), args.channel_id)) {
             store.dispatch(displayGenericErrorModal(
                 defineMessage({defaultMessage: 'Unable to end the call'}),
                 defineMessage({defaultMessage: 'You don\'t have permission to end the call. Please ask the call owner to end call.'}),
@@ -217,7 +216,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         const state = store.getState();
-        const isHost = hostIDForCurrentCall(state) === getCurrentUserId(state);
+        const isHost = getHostIDForCurrentChannel(state) === getCurrentUserId(state);
 
         if (fields[2] === 'start') {
             if (!isHost) {

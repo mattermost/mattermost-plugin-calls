@@ -11,7 +11,6 @@ import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getPluginPath,
     getTranslations,
-    getUserIDsForSessions,
     runWithRetry,
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
@@ -22,6 +21,7 @@ import {Provider} from 'react-redux';
 import RestClient from 'src/clients/rest';
 import {getJobID} from 'src/common';
 import recordingReducer from 'src/recording/reducers';
+import {getUserIDsFromSessions} from 'src/state/sessions/selectors';
 
 import initialiseEmbedApp, {InitCbProps} from '../index';
 import {
@@ -125,7 +125,7 @@ function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventDat
 
         if (call.sessions?.length > 0) {
             runWithRetry(() => {
-                return fetchProfileImages(getUserIDsForSessions(call.sessions));
+                return fetchProfileImages(getUserIDsFromSessions(call.sessions));
             }).then((images) => {
                 store.dispatch({
                     type: RECEIVED_CALL_PROFILE_IMAGES,
