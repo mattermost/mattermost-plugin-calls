@@ -171,7 +171,8 @@ export type CallActions = {
 
 export enum ChannelType {
     DM,
-    GM
+    GM,
+    CM
 }
 
 export type IncomingCallNotification = {

@@ -176,6 +176,7 @@ func TestNotificationWillBePushed(t *testing.T) {
 				PostType:    callStartPostType,
 				ChannelType: model.ChannelTypeOpen,
 				SenderId:    "senderID",
+				SubType:     model.PushSubTypeCalls,
 				Message:     "\u200bapp.push_notification.inviting_message",
 			}, res)
 			require.Empty(t, msg)
@@ -191,6 +192,7 @@ func TestNotificationWillBePushed(t *testing.T) {
 					PostType:    callStartPostType,
 					ChannelType: model.ChannelTypeOpen,
 					SenderId:    "senderID",
+					SubType:     model.PushSubTypeCalls,
 					IsIdLoaded:  true,
 					Message:     "app.push_notification.generic_message",
 				}, res)
