@@ -70,8 +70,13 @@ const config: PlaywrightTestConfig = {
             },
         },
     ],
+
+    // Emit a "blob" report per shard so the reports can be recombined with
+    // Playwright's built-in `merge-reports` in the E2E Report Generation
+    // workflow. (The old standalone-HTML format was merged by a third-party
+    // library that no longer supports current Playwright releases.)
     reporter: process.env.CI ? [
-        ['html', {open: 'never'}],
+        ['blob'],
         ['json', {outputFile: 'pw-results.json'}],
         ['list'],
     ] : 'list',
