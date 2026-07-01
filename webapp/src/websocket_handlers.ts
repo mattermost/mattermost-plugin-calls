@@ -18,12 +18,9 @@ import {
     UserDismissedNotification,
     UserJoinedData,
     UserLeftData,
-    UserMutedUnmutedData,
-    UserRaiseUnraiseHandData,
     UserReactionData,
     UserRemovedData,
     UserScreenOnOffData,
-    UserVideoOnOffData,
     UserVoiceOnOffData,
 } from '@mattermost/calls-common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
@@ -49,7 +46,7 @@ import {
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
-import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/session/actions';
+import {userReacted, userReactedTimeout} from 'src/state/session/actions';
 import {
     HostControlNotice,
     HostControlNoticeType,
@@ -180,20 +177,6 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
     store.dispatch(joinUser(channelID, userID, sessionID, false));
 }
 
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleUserMuted(store: Store, ev: WebSocketMessage<UserMutedUnmutedData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch(userMuted(channelID, ev.data.session_id, ev.data.userID));
-}
-
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleUserUnmuted(store: Store, ev: WebSocketMessage<UserMutedUnmutedData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch(userUnmuted(channelID, ev.data.session_id, ev.data.userID));
-}
-
 export function handleUserVoiceOn(store: Store, ev: WebSocketMessage<UserVoiceOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch({
@@ -230,20 +213,6 @@ export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreen
 export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScreenOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch(userScreenUnshared(channelID, ev.data.session_id, ev.data.userID));
-}
-
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch(userRaisedHand(channelID, ev.data.session_id, ev.data.userID, ev.data.raised_hand));
-}
-
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch(userLoweredHand(channelID, ev.data.session_id, ev.data.userID));
 }
 
 // dispatchReaction stores a reaction (with the sender's display name resolved from the
@@ -525,28 +494,4 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControl
             },
         });
     }, HOST_CONTROL_NOTICE_TIMEOUT);
-}
-
-export function handleUserVideoOn(store: Store, ev: WebSocketMessage<UserVideoOnOffData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch({
-        type: 'USER_VIDEO_ON',
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            session_id: ev.data.session_id,
-        },
-    });
-}
-
-export function handleUserVideoOff(store: Store, ev: WebSocketMessage<UserVideoOnOffData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch({
-        type: 'USER_VIDEO_OFF',
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            session_id: ev.data.session_id,
-        },
-    });
 }

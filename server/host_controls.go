@@ -94,10 +94,9 @@ func (p *Plugin) hostMuteParticipant(requesterID, channelID, sessionID string) e
 		return ErrNotInCall
 	}
 
-	// NB: we deliberately do not gate on server-side mute state. Under LiveKit
-	// (v2) mute lives in the track state; the server's session.Unmuted is
-	// vestigial (never updated post-migration, see MM-69116) and would always
-	// read false here. livekitMuteParticipant is idempotent — it no-ops if the
+	// NB: there is no server-side mute state to gate on. Under LiveKit (v2) mute
+	// lives in the track state (the vestigial session.Unmuted was removed in
+	// MM-69116). livekitMuteParticipant is idempotent — it no-ops if the
 	// participant has no unmuted mic track.
 	if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(ust.UserID, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
 		p.LogError("hostMuteParticipant: failed to mute participant via LiveKit",
@@ -128,12 +127,11 @@ func (p *Plugin) hostMuteAllParticipants(requesterID, channelID string) error {
 		}
 	}
 
-	// Mute every participant except the host/requester. We deliberately do not
-	// gate on server-side mute state: under LiveKit (v2) mute lives in the track
-	// state and the server's session.Unmuted is vestigial (never updated
-	// post-migration, see MM-69116) — it would read false for everyone and skip
-	// the whole loop. livekitMuteParticipant is idempotent, so muting an
-	// already-muted participant is a harmless no-op.
+	// Mute every participant except the host/requester. There is no server-side
+	// mute state to gate on: under LiveKit (v2) mute lives in the track state
+	// (the vestigial session.Unmuted was removed in MM-69116).
+	// livekitMuteParticipant is idempotent, so muting an already-muted
+	// participant is a harmless no-op.
 	for id, s := range state.sessions {
 		if s.UserID == requesterID {
 			continue
@@ -207,10 +205,9 @@ func (p *Plugin) hostLowerParticipantHand(requesterID, channelID, sessionID stri
 		return ErrNotInCall
 	}
 
-	// NB: we deliberately do not gate on server-side raised-hand state. Under
-	// LiveKit (v2) the hand is a participant attribute the client owns; the
-	// server's session.RaisedHand is vestigial (never updated post-migration,
-	// see MM-69116) and would always read 0 here. Clearing an already-empty
+	// NB: there is no server-side raised-hand state to gate on. Under LiveKit
+	// (v2) the hand is a participant attribute the client owns (the vestigial
+	// session.RaisedHand was removed in MM-69116). Clearing an already-empty
 	// attribute is a harmless no-op.
 	//
 	// Clear the raised-hand attribute directly on the LiveKit server. This is the

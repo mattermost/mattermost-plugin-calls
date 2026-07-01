@@ -25,7 +25,6 @@ import {
     UserLeftData,
     UserRemovedData,
     UserScreenOnOffData,
-    UserVideoOnOffData,
     WebsocketEventData,
 } from '@mattermost/calls-common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
@@ -67,8 +66,6 @@ import {
     handleUserRemovedFromChannel,
     handleUserScreenOff,
     handleUserScreenOn,
-    handleUserVideoOff,
-    handleUserVideoOn,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
 import {CurrentCallDataDefault} from 'src/types/types';
@@ -337,12 +334,6 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_host_removed`:
             handleHostRemoved(store, ev as WebSocketMessage<HostControlRemoved>);
-            break;
-        case `custom_${pluginId}_user_video_on`:
-            handleUserVideoOn(store, ev as WebSocketMessage<UserVideoOnOffData>);
-            break;
-        case `custom_${pluginId}_user_video_off`:
-            handleUserVideoOff(store, ev as WebSocketMessage<UserVideoOnOffData>);
             break;
         case 'user_removed':
             handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);

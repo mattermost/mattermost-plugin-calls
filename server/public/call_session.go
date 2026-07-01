@@ -12,9 +12,6 @@ type CallSession struct {
 	CallID           string `json:"call_id"`
 	UserID           string `json:"user_id"`
 	JoinAt           int64  `json:"join_at"`
-	Unmuted          bool   `json:"unmuted"`
-	RaisedHand       int64  `json:"raised_hand"`
-	Video            bool   `json:"video"`
 	IsSIPParticipant bool   `json:"is_sip_participant,omitempty"`
 }
 
