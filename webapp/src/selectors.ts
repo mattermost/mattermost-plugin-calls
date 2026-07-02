@@ -6,7 +6,6 @@ import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
-import {createSelector} from 'mattermost-redux/selectors/create_selector';
 import {getAllChannels, getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/common';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
@@ -27,6 +26,7 @@ import {
     isGroupChannel,
 } from 'mattermost-redux/utils/channel_utils';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
+import {createSelector} from 'reselect';
 import {
     callsJobState,
     callState,
@@ -60,7 +60,6 @@ const callsStateInPluginReduxStore = (state: GlobalState): { [channelID: string]
 
 export const channelIDForCurrentCall: (state: GlobalState) => string =
     createSelector(
-        'channelIDForCurrentCall',
         getCallsClientChannelID,
         (state: GlobalState) => pluginReduxStore(state).clientStateReducer,
         (channelID, cState) => channelID || cState?.channelID || '',
@@ -68,7 +67,6 @@ export const channelIDForCurrentCall: (state: GlobalState) => string =
 
 export const channelForCurrentCall: (state: GlobalState) => Channel | undefined =
     createSelector(
-        'channelForCurrentCall',
         getAllChannels,
         channelIDForCurrentCall,
         (channels, id) => channels[id],
@@ -76,7 +74,6 @@ export const channelForCurrentCall: (state: GlobalState) => Channel | undefined 
 
 export const getCallIDForCurrentCall: (state: GlobalState) => string | undefined =
     createSelector(
-        'getCallIDForCurrentCall',
         callsStateInPluginReduxStore,
         channelIDForCurrentCall,
         (callsStates, channelID) => callsStates[channelID]?.ID,
@@ -88,7 +85,6 @@ export const getCallIDForChannel = (state: GlobalState, channelID: string) => {
 
 export const threadIDForCurrentCall: (state: GlobalState) => string | undefined =
     createSelector(
-        'threadIDForCurrentCall',
         callsStateInPluginReduxStore,
         channelIDForCurrentCall,
         (callsStates, channelID) => callsStates[channelID]?.threadID,
@@ -96,7 +92,6 @@ export const threadIDForCurrentCall: (state: GlobalState) => string | undefined 
 
 export const teamForCurrentCall: (state: GlobalState) => Team | null =
     createSelector(
-        'teamForCurrentCall',
         getTeams,
         channelForCurrentCall,
         getCurrentTeamId,
@@ -124,7 +119,6 @@ const getProfilesMapFromSessions = (sessions: Record<string, UserSessionState>, 
 
 export const profilesInCurrentCall: (state: GlobalState) => UserProfile[] =
     createSelector(
-        'profilesInCurrentCall',
         userProfiles,
         sessionsInCalls,
         channelIDForCurrentCall,
@@ -135,7 +129,6 @@ export const profilesInCurrentCall: (state: GlobalState) => UserProfile[] =
 
 export const profilesInCallInCurrentChannel: (state: GlobalState) => UserProfile[] =
     createSelector(
-        'profilesInCallInCurrentChannel',
         userProfiles,
         sessionsInCalls,
         getCurrentChannelId,
@@ -147,7 +140,6 @@ export const profilesInCallInCurrentChannel: (state: GlobalState) => UserProfile
 // profilesInCurrentCallMap creates an id->UserProfile object for the currently connected call.
 export const profilesInCurrentCallMap: (state: GlobalState) => { [id: string]: UserProfile } =
     createSelector(
-        'profilesInCurrentCallMap',
         userProfiles,
         sessionsInCalls,
         channelIDForCurrentCall,
@@ -174,7 +166,6 @@ export const channelHasCall = (state: GlobalState, channelId: string): boolean =
 
 export const currentChannelHasCall: (state: GlobalState) => boolean =
     createSelector(
-        'currentChannelHasCall',
         callsStateInPluginReduxStore,
         getCurrentChannelId,
         (callsStates, currChannelId) => Boolean(callsStates[currChannelId]),
@@ -182,7 +173,6 @@ export const currentChannelHasCall: (state: GlobalState) => boolean =
 
 export const sessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
     createSelector(
-        'sessionsInCurrentCall',
         sessionsInCalls,
         channelIDForCurrentCall,
         (sessions, channelID) => Object.values(sessions[channelID] || {}),
@@ -190,7 +180,6 @@ export const sessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
 
 export const sessionsForOtherUsersInCall: (state: GlobalState) => UserSessionState[] =
     createSelector(
-        'sessionsForOtherUsersInCall',
         getCurrentUserId,
         sessionsInCurrentCall,
         (currentUserID, sessions) => sessions.filter((session) => session.user_id !== currentUserID),
@@ -198,7 +187,6 @@ export const sessionsForOtherUsersInCall: (state: GlobalState) => UserSessionSta
 
 export const sessionsInCurrentCallMap: (state: GlobalState) => { [sessionID: string]: UserSessionState } =
     createSelector(
-        'sessionsInCurrentCallMap',
         sessionsInCalls,
         channelIDForCurrentCall,
         (sessions, channelID) => sessions[channelID],
@@ -206,7 +194,6 @@ export const sessionsInCurrentCallMap: (state: GlobalState) => { [sessionID: str
 
 export const sessionForCurrentCall: (state: GlobalState) => UserSessionState =
     createSelector(
-        'sessionsInCurrentCall',
         sessionsInCalls,
         channelIDForCurrentCall,
         getCallsClientSessionID,
@@ -219,7 +206,6 @@ const reactionsInCalls = (state: GlobalState): usersReactionsState => {
 
 export const reactionsInCurrentCall: (state: GlobalState) => Reaction[] =
     createSelector(
-        'reactionsInCurrentCall',
         reactionsInCalls,
         channelIDForCurrentCall,
         (reactions, channelID) => reactions[channelID]?.reactions || [],
@@ -231,7 +217,6 @@ const liveCaptionsInCalls = (state: GlobalState): liveCaptionState => {
 
 export const liveCaptionsInCurrentCall: (state: GlobalState) => LiveCaptions =
     createSelector(
-        'liveCaptionsInCurrentCall',
         liveCaptionsInCalls,
         channelIDForCurrentCall,
         (liveCaptions, channelID) => liveCaptions[channelID] || {},
@@ -243,7 +228,6 @@ export const callStartAtForCallInChannel = (state: GlobalState, channelID: strin
 
 export const callStartAtForCurrentCall: (state: GlobalState) => number =
     createSelector(
-        'callStartAtForCurrentCall',
         callsStateInPluginReduxStore,
         channelIDForCurrentCall,
         getCallsClientInitTime,
@@ -252,7 +236,6 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
 
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
     createSelector(
-        'callInCurrentChannel',
         callsStateInPluginReduxStore,
         getCurrentChannelId,
         (callsStates, currChannelId) => callsStates[currChannelId],
@@ -276,7 +259,6 @@ export const hostIDForCallInChannel = (state: GlobalState, channelID: string): s
 
 export const hostIDForCurrentCall: (state: GlobalState) => string =
     createSelector(
-        'hostIDForCurrentCall',
         hostsInCalls,
         channelIDForCurrentCall,
         (hosts, channelID) => hosts[channelID]?.hostID || '',
@@ -284,7 +266,6 @@ export const hostIDForCurrentCall: (state: GlobalState) => string =
 
 export const hostChangeAtForCurrentCall: (state: GlobalState) => number =
     createSelector(
-        'hostChangeAtForCurrentCall',
         hostsInCalls,
         channelIDForCurrentCall,
         (hosts, channelID) => hosts[channelID]?.hostChangeAt || 0,
@@ -300,7 +281,6 @@ const screenSharingIDsForCalls = (state: GlobalState): RootState['screenSharingI
 
 export const screenSharingSessionForCurrentCall: (state: GlobalState) => UserSessionState | undefined =
     createSelector(
-        'screenSharingSessionForCurrentCall',
         screenSharingIDsForCalls,
         channelIDForCurrentCall,
         sessionsInCalls,
@@ -317,7 +297,6 @@ const recordingsForCalls = (state: GlobalState): callsJobState => {
 
 export const recordingForCurrentCall: (state: GlobalState) => CallJobReduxState =
     createSelector(
-        'recordingForCurrentCall',
         recordingsForCalls,
         channelIDForCurrentCall,
         (recordings, channelID) => recordings[channelID] || {},
@@ -329,7 +308,6 @@ export const hostControlNoticesForCalls = (state: GlobalState): hostControlNotic
 
 export const hostControlNoticesForCurrentCall: (state: GlobalState) => HostControlNotice[] =
     createSelector(
-        'hostControlNoticesForCurrentCall',
         hostControlNoticesForCalls,
         getCallIDForCurrentCall,
         (notices, id) => (id ? notices[id] || [] : []),
@@ -341,7 +319,6 @@ const liveCaptionsStateForCalls = (state: GlobalState): callsJobState => {
 
 export const liveCaptionsStateForCurrentCall: (state: GlobalState) => CallJobReduxState =
     createSelector(
-        'liveCaptionsStateForCurrentCall',
         liveCaptionsStateForCalls,
         channelIDForCurrentCall,
         (liveCaptions, channelID) => liveCaptions[channelID] || {},
@@ -349,7 +326,6 @@ export const liveCaptionsStateForCurrentCall: (state: GlobalState) => CallJobRed
 
 export const areLiveCaptionsAvailableInCurrentCall: (state: GlobalState) => boolean =
     createSelector(
-        'areLiveCaptionsAvailableInCurrentCall',
         liveCaptionsStateForCurrentCall,
         (liveCaptions) => {
             if (!liveCaptions?.start_at) {
@@ -365,7 +341,6 @@ const recentlyJoinedUsersInCalls = (state: GlobalState): recentlyJoinedUsersStat
 
 export const recentlyJoinedUsersInCurrentCall: (state: GlobalState) => string[] =
     createSelector(
-        'recentlyJoinedUsersInCurrentCall',
         recentlyJoinedUsersInCalls,
         channelIDForCurrentCall,
         (users, channelID) => users[channelID] || [],
@@ -373,7 +348,6 @@ export const recentlyJoinedUsersInCurrentCall: (state: GlobalState) => string[] 
 
 export const isRecordingInCurrentCall: (state: GlobalState) => boolean =
     createSelector(
-        'isRecordingInCurrentCall',
         recordingsForCalls,
         channelIDForCurrentCall,
         (recordings, channelID) => {
@@ -394,7 +368,6 @@ export const incomingCalls = (state: GlobalState): IncomingCallNotification[] =>
 
 export const sortedIncomingCalls: (state: GlobalState) => IncomingCallNotification[] =
     createSelector(
-        'sortedIncomingCalls',
         incomingCalls,
         (callsStates) => [...callsStates].sort((a, b) => b.startAt - a.startAt),
     );
@@ -404,7 +377,6 @@ export const dismissedCalls = (state: GlobalState): { [callID: string]: boolean 
 
 export const dismissedCallForCurrentChannel: (state: GlobalState) => boolean =
     createSelector(
-        'dismissedCallForCurrentChannel',
         dismissedCalls,
         callInCurrentChannel,
         (dismissed, call) => Boolean(dismissed[call?.ID || '']),
@@ -625,7 +597,6 @@ export const getChannelUrlAndDisplayName = (state: GlobalState, channel?: Channe
 
 export const getStatusForCurrentUser: (state: GlobalState) => string =
     createSelector(
-        'getStatusForCurrentUser',
         getCurrentUserId,
         getUserStatuses,
         (id, statuses) => statuses[id],
