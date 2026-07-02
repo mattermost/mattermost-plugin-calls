@@ -1,13 +1,16 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import './user_settings.scss';
+
 import {isFirefox} from '@mattermost/calls-common/lib/utils';
 import React, {forwardRef, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
+import ReactSelect from 'react-select';
 import {DefaultVideoTrackOptions} from 'src/clients/calls';
 import {
     Description, type DevicesSelectionHandle, type DevicesSelectionProps, Fieldset,
-    SelectionWrapper, SelectLabel, type SelectOption, StyledReactSelect} from 'src/components/user_settings/common';
+    SelectionWrapper, SelectLabel, type SelectOption} from 'src/components/user_settings/common';
 import {
     STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY,
     STORAGE_CALLS_MIRROR_VIDEO_KEY,
@@ -18,7 +21,7 @@ import Segmenter from 'src/segmenter';
 import {untranslatable} from 'src/utils';
 import styled, {css} from 'styled-components';
 
-const VideoDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectionProps>(({devices, onSelectionChange}: DevicesSelectionProps, ref) => {
+const VideoDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectionProps>(({deviceType, devices, onSelectionChange}: DevicesSelectionProps, ref) => {
     const {formatMessage} = useIntl();
     const [selectedOption, setSelectedOption] = useState<SelectOption|null>(null);
     const [initalSet, setInitialSet] = useState(false);
@@ -87,24 +90,23 @@ const VideoDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
     return (
         <SelectionWrapper>
             <SelectLabel
-                id={name + 'Label'}
-                htmlFor={name + 'Select'}
+                id={deviceType + 'Label'}
+                htmlFor={deviceType + 'Select'}
             >
                 {label}
             </SelectLabel>
-            <StyledReactSelect
-                inputId={name + 'Select'}
-                aria-labelledby={name + 'Label'}
-                className='react-select singleSelect'
+            <ReactSelect
+                inputId={deviceType + 'Select'}
+                aria-labelledby={deviceType + 'Label'}
+                className='react-select singleSelect devices_settings_select'
                 classNamePrefix='react-select'
                 options={options}
-                clearable={false}
                 isClearable={false}
                 isSearchable={false}
                 components={{IndicatorSeparator: () => null}}
                 value={getOption()}
-                onChange={(opt: SelectOption) => {
-                    if (onSelectionChange) {
+                onChange={(opt) => {
+                    if (onSelectionChange && opt) {
                         onSelectionChange(opt);
                     }
                     setSelectedOption(opt);
@@ -389,7 +391,7 @@ export default function VideoDevicesSettingsSection() {
                                     id='mirror'
                                     name='mirror'
                                     checked={mirrorVideo}
-                                    onChange={e => setMirrorVideo(e.target.checked)}
+                                    onChange={(e) => setMirrorVideo(e.target.checked)}
                                 />
                                 <label htmlFor='mirror'>{formatMessage({defaultMessage: 'Mirror video'})}</label>
                             </CheckBoxContainer>
@@ -400,7 +402,7 @@ export default function VideoDevicesSettingsSection() {
                                     id='blur-background'
                                     name='blur-background'
                                     checked={blurBackground}
-                                    onChange={e => setBlurBackground(e.target.checked)}
+                                    onChange={(e) => setBlurBackground(e.target.checked)}
                                 />
                                 <label htmlFor='blur-background'>{formatMessage({defaultMessage: 'Blur background'})}</label>
                             </CheckBoxContainer>
@@ -415,7 +417,7 @@ export default function VideoDevicesSettingsSection() {
                                         min='1'
                                         max='20'
                                         value={blurIntensity}
-                                        onChange={e => setBlurIntensity(parseInt(e.target.value, 10))}
+                                        onChange={(e) => setBlurIntensity(parseInt(e.target.value, 10))}
                                     />
                                     <span className='slider-value'>{untranslatable(`${blurIntensity}px`)}</span>
                                 </SliderContainer>

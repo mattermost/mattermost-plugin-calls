@@ -1,11 +1,14 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import './user_settings.scss';
+
 import React, {forwardRef, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
+import ReactSelect from 'react-select';
 import {
     Description, type DevicesSelectionHandle, type DevicesSelectionProps, Fieldset,
-    SelectionWrapper, SelectLabel, type SelectOption, StyledReactSelect} from 'src/components/user_settings/common';
+    SelectionWrapper, SelectLabel, type SelectOption} from 'src/components/user_settings/common';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
@@ -16,9 +19,7 @@ const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
     const {formatMessage} = useIntl();
     const [selectedOption, setSelectedOption] = useState<SelectOption|null>(null);
 
-    const label = deviceType === 'inputs' ?
-        formatMessage({defaultMessage: 'Microphone input'}) :
-        formatMessage({defaultMessage: 'Speaker output'});
+    const label = deviceType === 'inputs' ? formatMessage({defaultMessage: 'Microphone input'}) : formatMessage({defaultMessage: 'Speaker output'});
 
     const options = devices.map((device) => {
         return {
@@ -32,9 +33,7 @@ const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
             return selectedOption;
         }
 
-        const defaultDeviceData = deviceType === 'inputs' ?
-            window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY) :
-            window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY);
+        const defaultDeviceData = deviceType === 'inputs' ? window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY) : window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY);
 
         let defaultDevice: {deviceId: string; label?: string} = {
             deviceId: '',
@@ -80,23 +79,22 @@ const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
     return (
         <SelectionWrapper>
             <SelectLabel
-                id={name + 'Label'}
-                htmlFor={name + 'Select'}
+                id={deviceType + 'Label'}
+                htmlFor={deviceType + 'Select'}
             >
                 {label}
             </SelectLabel>
-            <StyledReactSelect
-                inputId={name + 'Select'}
-                aria-labelledby={name + 'Label'}
-                className='react-select singleSelect'
+            <ReactSelect
+                inputId={deviceType + 'Select'}
+                aria-labelledby={deviceType + 'Label'}
+                className='react-select singleSelect devices_settings_select'
                 classNamePrefix='react-select'
                 options={options}
-                clearable={false}
                 isClearable={false}
                 isSearchable={false}
                 components={{IndicatorSeparator: () => null}}
                 value={getOption()}
-                onChange={(opt: SelectOption) => setSelectedOption(opt)}
+                onChange={(opt) => setSelectedOption(opt)}
             />
         </SelectionWrapper>
     );
