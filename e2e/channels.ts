@@ -1,8 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {expect} from '@playwright/test';
-import {APIRequestContext} from 'playwright-core';
+import {APIRequestContext, expect} from '@playwright/test';
 
 import {baseURL, defaultTeam} from './constants';
 import {getHTTPHeaders} from './utils';

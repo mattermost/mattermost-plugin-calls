@@ -10,8 +10,6 @@
     "check-types": "tsc"
   },
   "devDependencies": {
-    "@babel/core": "7.29.0",
-    "@babel/eslint-parser": "7.28.6",
     "@livekit/protocol": "1.47.0",
     "@mattermost/types": "11.4.0",
     "@playwright/test": "1.59.1",

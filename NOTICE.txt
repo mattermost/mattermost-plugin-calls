@@ -1431,21 +1431,6 @@ This is the golang client integration for Pyroscope
 
 ---
 
-## highlight.js
-
-This product contains 'highlight.js' by Josh Goebel.
-
-Syntax highlighting with language autodetection.
-
-* HOMEPAGE:
-  * https://highlightjs.org/
-
-* LICENSE: BSD-3-Clause
-
-
-
----
-
 ## jmoiron/sqlx
 
 This product contains 'jmoiron/sqlx' by Jason Moiron.

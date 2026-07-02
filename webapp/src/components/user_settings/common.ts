@@ -1,7 +1,6 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import ReactSelect from 'react-select';
 import styled from 'styled-components';
 
 export type SelectOption = {
@@ -18,10 +17,6 @@ export type DevicesSelectionProps = {
 export type DevicesSelectionHandle = {
     getOption: () => SelectOption;
 };
-
-export const StyledReactSelect = styled(ReactSelect)`
-  width: 260px;
-`;
 
 export const SelectionWrapper = styled.div`
   display: flex;

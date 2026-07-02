@@ -2,9 +2,8 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable no-process-env */
-import {chromium, Page, test} from '@playwright/test';
+import {APIRequestContext, chromium, Page, test} from '@playwright/test';
 import * as fs from 'fs';
-import {APIRequestContext} from 'playwright-core';
 
 import {baseURL, channelPrefix, defaultTeam, userPrefix} from './constants';
 import PlaywrightDevPage from './page';
