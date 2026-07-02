@@ -35,7 +35,7 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {getCallActive, getCallsConfig, getCallsVersionInfo, joinUser, leaveUser, localSessionClose, setClientConnecting} from 'plugin/actions';
+import {getCallsConfig, getCallsVersionInfo, joinUser, leaveUser, localSessionClose, setClientConnecting} from 'plugin/actions';
 import CallClient, {CALL_EVENT, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
 import RestClient from 'plugin/clients/rest';
 import {
@@ -44,7 +44,8 @@ import {
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
-import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/session/actions';
+import {fetchIsCallActiveInChannel} from 'plugin/state/active_calls/actions';
+import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/sessions/actions';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getWSConnectionURL,
@@ -282,10 +283,10 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
 
     let active = false;
     try {
-        [, active] = await Promise.all([
+        [, , active] = await Promise.all([
             store.dispatch(getCallsConfig()),
             store.dispatch(getCallsVersionInfo()),
-            getCallActive(channelID),
+            fetchIsCallActiveInChannel(channelID),
         ]);
     } catch (e) {
         throw new Error(`failed to fetch channel data: ${e}`);

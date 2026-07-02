@@ -3,24 +3,23 @@
 
 /* eslint-disable max-lines */
 
-import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, TranscribeAPI, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
-import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
+import {reducer as activeCalls} from 'src/state/active_calls/reducer';
+import {reducer as callsAvailability} from 'src/state/calls_availability/reducer';
 import {
     CALL_ENDED,
     UN_INITIALIZED,
-    USER_JOINED,
-    USER_LEFT,
-    USER_REACTED,
-    USER_REACTED_TIMEOUT,
-} from 'src/state/session/action_types';
-import {reducer as sessions} from 'src/state/session/reducer';
+} from 'src/state/common_action_types';
+import {reducer as hosts} from 'src/state/hosts/reducer';
+import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
+import {USER_JOINED, USER_LEFT, USER_REACTED, USER_REACTED_TIMEOUT} from 'src/state/sessions/action_types';
+import {reducer as sessions} from 'src/state/sessions/reducer';
 import {
     CallsConfigDefault,
     CallsUserPreferences,
     CallsUserPreferencesDefault,
-    ChannelState,
     ChannelType,
     HostControlNotice,
     HostControlNoticeTimeout,
@@ -30,11 +29,9 @@ import {
 
 import {
     ADD_INCOMING_CALL,
-    CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_REC_PROMPT_DISMISSED,
     CALL_RECORDING_STATE,
-    CALL_STATE,
     CLIENT_CONNECTING,
     DESKTOP_WIDGET_CONNECTED,
     DID_NOTIFY_FOR_CALL,
@@ -53,7 +50,6 @@ import {
     RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
     RECEIVED_CALLS_USER_PREFERENCES,
     RECEIVED_CALLS_VERSION_INFO,
-    RECEIVED_CHANNEL_STATE,
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
     RINGING_FOR_CALL,
@@ -65,27 +61,6 @@ import {
     TRANSCRIPTIONS_ENABLED,
     USER_JOINED_TIMEOUT,
 } from './action_types';
-
-type channelsState = {
-    [channelID: string]: ChannelState;
-}
-
-type channelsStateAction = {
-    type: string;
-    data: ChannelState;
-}
-
-const channels = (state: channelsState = {}, action: channelsStateAction) => {
-    switch (action.type) {
-    case RECEIVED_CHANNEL_STATE:
-        return {
-            ...state,
-            [action.data.id]: action.data,
-        };
-    default:
-        return state;
-    }
-};
 
 type clientState = {
     channelID: string;
@@ -370,86 +345,6 @@ const callLiveCaptionsState = (state: callsJobState = {}, action: jobStateAction
     }
 };
 
-// callState should only hold immutable data, meaning those
-// fields that don't change for the whole duration of a call.
-export type callState = {
-    ID: string;
-    startAt: number;
-    channelID: string;
-    threadID: string;
-    ownerID: string;
-}
-
-type callStateAction = {
-    type: string;
-    data: callState;
-}
-
-type callsState = {
-    [channelID: string]: callState;
-}
-
-const calls = (state: callsState = {}, action: callStateAction) => {
-    switch (action.type) {
-    case UN_INITIALIZED:
-        return {};
-    case CALL_STATE:
-        return {
-            ...state,
-            [action.data.channelID]: {
-                ...action.data,
-            },
-        };
-    case CALL_ENDED: {
-        const nextState = {...state};
-        delete nextState[action.data.channelID];
-        return nextState;
-    }
-    default:
-        return state;
-    }
-};
-
-export type hostsState = {
-    [channelID: string]: {
-        hostID: string;
-        hostChangeAt?: number;
-    };
-}
-
-type hostsStateAction = {
-    type: string;
-    data: {
-        channelID: string;
-        hostID: string;
-        hostChangeAt: number;
-    };
-}
-
-const hosts = (state: hostsState = {}, action: hostsStateAction) => {
-    switch (action.type) {
-    case UN_INITIALIZED: {
-        return {};
-    }
-    case CALL_HOST: {
-        return {
-            ...state,
-            [action.data.channelID]: {
-                hostID: action.data.hostID,
-                hostChangeAt: action.data.hostChangeAt,
-            },
-        };
-    }
-    case CALL_ENDED: {
-        const nextState = {...state};
-        delete nextState[action.data.channelID];
-        return nextState;
-    }
-    default:
-        return state;
-    }
-};
-
 const expandedView = (state = false, action: { type: string }) => {
     switch (action.type) {
     case UN_INITIALIZED:
@@ -497,18 +392,18 @@ const screenSourceModal = (state = false, action: { type: string }) => {
     }
 };
 
-const callsConfig = (state = CallsConfigDefault, action: { type: string, data: CallsConfig }) => {
+const callsConfig = (state = CallsConfigDefault, action: { type: string, data: CallsConfig | boolean | string}): CallsConfig => {
     switch (action.type) {
     case RECEIVED_CALLS_CONFIG:
-        return action.data;
+        return action.data as CallsConfig;
     case RECORDINGS_ENABLED:
-        return {...state, EnableRecordings: action.data};
+        return {...state, EnableRecordings: action.data as boolean};
     case TRANSCRIPTIONS_ENABLED:
-        return {...state, EnableTranscriptions: action.data};
+        return {...state, EnableTranscriptions: action.data as boolean};
     case LIVE_CAPTIONS_ENABLED:
-        return {...state, EnableLiveCaptions: action.data};
+        return {...state, EnableLiveCaptions: action.data as boolean};
     case TRANSCRIBE_API:
-        return {...state, TranscribeAPI: action.data};
+        return {...state, TranscribeAPI: action.data as TranscribeAPI};
     default:
         return state;
     }
@@ -756,11 +651,11 @@ const hostControlNotices = (state: hostControlNoticeState = {},
 };
 
 const rootReducer = combineReducers({
-    channels,
+    callsAvailability,
     clientStateReducer,
     reactions,
     sessions,
-    calls,
+    activeCalls,
     hosts,
     screenSharingIDs,
     expandedView,
@@ -786,9 +681,6 @@ const rootReducer = combineReducers({
 
 export default rootReducer;
 
-export const initialRootState = rootReducer(
-    {} as Parameters<typeof rootReducer>[0],
-    {type: '@@INIT'} as Parameters<typeof rootReducer>[1],
-);
+export type RootReducer = ReturnType<typeof rootReducer>;
 
-export type RootState = ReturnType<typeof rootReducer>;
+export const emptyRootReducer: RootReducer = rootReducer(undefined, {type: '@@INIT'});

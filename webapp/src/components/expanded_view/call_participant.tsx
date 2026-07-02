@@ -15,6 +15,7 @@ import HandEmoji from 'src/components/icons/hand';
 import MutedIcon from 'src/components/icons/muted_icon';
 import {ThreeDotsButton} from 'src/components/icons/three_dots';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import {type ActiveCall} from 'src/state/active_calls/reducer';
 import styled, {css} from 'styled-components';
 
 export enum TileSize {
@@ -35,7 +36,7 @@ export type Props = {
     isYou: boolean,
     isHost: boolean,
     iAmHost: boolean,
-    callID?: string,
+    callID: ActiveCall['callID'],
     userID: string,
     sessionID: string,
     onRemove: () => void,

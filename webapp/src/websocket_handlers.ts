@@ -48,18 +48,17 @@ import {
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
+import {hostChanged} from 'src/state/hosts/actions';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
-import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/session/actions';
+import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/sessions/actions';
 import {
     HostControlNotice,
     HostControlNoticeType,
 } from 'src/types/types';
 
 import {
-    CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_RECORDING_STATE,
-    CALL_STATE,
     DISMISS_CALL,
     HOST_CONTROL_NOTICE,
     HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
@@ -72,6 +71,7 @@ import {
     profilesInCurrentCallMap,
     ringingEnabled,
 } from './selectors';
+import {activeCallAdded} from './state/active_calls/actions';
 import {Store} from './types/mattermost-webapp';
 import {
     followThread,
@@ -119,25 +119,15 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
         },
     });
 
-    store.dispatch({
-        type: CALL_STATE,
-        data: {
-            ID: ev.data.id,
-            channelID,
+    store.dispatch(
+        activeCallAdded(channelID, {
+            callID: ev.data.id,
             startAt: ev.data.start_at,
             ownerID: ev.data.owner_id,
-            hostID: ev.data.host_id,
             threadID: ev.data.thread_id,
-        },
-    });
-    store.dispatch({
-        type: CALL_HOST,
-        data: {
-            channelID,
-            hostID: ev.data.host_id,
-            hostChangeAt: ev.data.start_at,
-        },
-    });
+        }));
+
+    store.dispatch(hostChanged(channelID, ev.data.host_id, ev.data.start_at));
 
     if (getCallsClient()?.channelID === channelID) {
         const channel = getChannel(store.getState(), channelID);
@@ -277,14 +267,7 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
 export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHostChangedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
-    store.dispatch({
-        type: CALL_HOST,
-        data: {
-            channelID,
-            hostID: ev.data.hostID,
-            hostChangeAt: Date.now(),
-        },
-    });
+    store.dispatch(hostChanged(channelID, ev.data.hostID, Date.now()));
 
     const hostProfile = profilesInCurrentCallMap(store.getState())[ev.data.hostID] ||
         getUser(store.getState(), ev.data.hostID);

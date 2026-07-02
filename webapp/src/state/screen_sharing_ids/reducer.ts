@@ -1,20 +1,21 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {UserSessionState} from '@mattermost/calls-common/lib/types';
-import {Reducer} from 'redux';
-import {CALL_ENDED, UN_INITIALIZED, USER_LEFT} from 'src/state/session/action_types';
+import {type UserSessionState} from '@mattermost/calls-common/lib/types';
+import {type Reducer} from 'redux';
+import {CALL_ENDED, UN_INITIALIZED} from 'src/state/common_action_types';
+import {USER_LEFT} from 'src/state/sessions/action_types';
 
 import {USER_SCREEN_OFF, USER_SCREEN_ON} from './action_types';
-import {Actions} from './actions';
+import {type Actions} from './actions';
 
-type State = {
+type ScreenSharingIDs = {
     [channelID: string]: UserSessionState['session_id'];
 }
 
-const emptyState: State = {};
+const emptyState: ScreenSharingIDs = {};
 
-export const reducer: Reducer<State, Actions> = (initialState = emptyState, action) : State => {
+export const reducer: Reducer<ScreenSharingIDs, Actions> = (initialState = emptyState, action) : ScreenSharingIDs => {
     switch (action.type) {
     case UN_INITIALIZED:{
         return emptyState;

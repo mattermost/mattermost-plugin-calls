@@ -1,8 +1,10 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+/* eslint-disable max-lines */
+
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@mattermost/calls-common';
-import {CallJobMetadata, CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallJobMetadata, CallPostProps, CallRecordingPostProps, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
 import {Post} from '@mattermost/types/posts';
@@ -335,14 +337,6 @@ export async function getProfilesByIds(state: GlobalState, ids: string[]): Promi
         profiles.push(...(await RestClient.getProfilesByIds(missingIds)));
     }
     return profiles;
-}
-
-export function getUserIDsForSessions(sessions: SessionState[]) {
-    const idsMap: {[id: string]: boolean} = {};
-    for (const session of sessions) {
-        idsMap[session.user_id] = true;
-    }
-    return Object.keys(idsMap);
 }
 
 export function getUserIdFromDM(dmName: string, currentUserId: string) {

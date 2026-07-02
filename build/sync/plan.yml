@@ -35,7 +35,6 @@ actions:
       - webapp/tsconfig.json
       - webapp/webpack.config.js
       - webapp/src/manifest.test.tsx
-      - webapp/tests/setup.tsx
     actions:
       - type: overwrite_file
         params:
