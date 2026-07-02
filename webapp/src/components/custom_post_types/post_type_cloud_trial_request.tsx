@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {Channel} from '@mattermost/types/channels';
+import {MessageAttachment} from '@mattermost/types/message_attachments';
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
@@ -30,7 +31,7 @@ interface Props {
 export const PostTypeCloudTrialRequest = ({post}: Props) => {
     const dispatch = useDispatch();
     const isCloudLicense = useSelector(isCloud);
-    const attachments = post.props.attachments[0];
+    const attachments = (post.props.attachments as MessageAttachment[])[0];
 
     const channel = useSelector<GlobalState, Channel|undefined>((state) => getChannel(state, post.channel_id));
     const team = useSelector<GlobalState, Team|undefined>((state) => getTeam(state, channel?.team_id || ''));
@@ -42,7 +43,7 @@ export const PostTypeCloudTrialRequest = ({post}: Props) => {
 
     // Remove the footer (which starts with the Upgrade now link),
     // and the separator, both used as fallback for mobile
-    const text = attachments.text.split('[Upgrade now]')[0].replace(/---/g, '');
+    const text = attachments?.text?.split('[Upgrade now]')[0].replace(/---/g, '');
 
     return (
         <>

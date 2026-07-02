@@ -31,12 +31,6 @@
     "paths": {
       "src": [
         "src"
-      ],
-      "mattermost-redux/*": [
-        "./mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/*"
-      ],
-      "reselect": [
-        "./mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/selectors/create_selector/index"
       ]
     }
   },
