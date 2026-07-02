@@ -27,6 +27,9 @@ import (
 
 const (
 	channelNameMaxLength = 24
+	// sdpDataMaxSize is the maximum allowed size of a decompressed SDP payload.
+	// Legitimate SDP offers/answers are a few KB; 64 KB is a generous upper bound.
+	sdpDataMaxSize = 64 * 1024
 )
 
 // filenameSanitizationRE matches any character NOT in the allowlist.
@@ -99,9 +102,12 @@ func unpackSDPData(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create reader: %w", err)
 	}
-	unpacked, err := io.ReadAll(rd)
+	unpacked, err := io.ReadAll(io.LimitReader(rd, sdpDataMaxSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read data: %w", err)
+	}
+	if len(unpacked) > sdpDataMaxSize {
+		return nil, fmt.Errorf("decompressed SDP data exceeds maximum allowed size")
 	}
 	return unpacked, nil
 }
