@@ -27,7 +27,6 @@ const config = {
         '^@mattermost/client$': '<rootDir>/mattermost-webapp/webapp/platform/client/src/index',
         '^@mattermost/client/(.*)$': '<rootDir>/mattermost-webapp/webapp/platform/client/src/$1',
         '^mattermost-redux(.*)$': '<rootDir>/mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src$1',
-        '^reselect': '<rootDir>/mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/selectors/create_selector/index',
         '^src/segmenter$': '<rootDir>/src/segmenter/__mocks__/index.ts',
     },
     moduleDirectories: [
