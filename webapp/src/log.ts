@@ -66,10 +66,29 @@ function appendClientLog(level: string, ...args: unknown[]) {
     clientLogs += line;
 }
 
-// Expose this realm's appender so an expanded-view popout can write its logs
-// through to this (the opener's) buffer via window.opener.
+// Expose this realm's appender and flush+getter so an expanded-view popout can
+// write logs through to (and read them back from) the opener's realm.
 if (typeof window !== 'undefined') {
     window.callsClientLogAppend = appendLogLine;
+    window.callsClientFlushAndGetLogs = flushAndGetLogs;
+
+    // Wire uncaught JS errors and unhandled promise rejections into the client-
+    // log buffer. Without this, exceptions that crash a handler go only to
+    // console.error and never appear in /call logs uploads.
+    window.addEventListener('error', (event: ErrorEvent) => {
+        const {message, filename, lineno, colno, error} = event;
+        const errStr = error instanceof Error ?
+            (error.stack || `${error.name}: ${error.message}`) :
+            String(error || message);
+        appendClientLog('error', `[uncaught] ${errStr} (${filename}:${lineno}:${colno})`);
+    });
+
+    window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+        const reason = event.reason instanceof Error ?
+            (event.reason.stack || `${event.reason.name}: ${event.reason.message}`) :
+            String(event.reason);
+        appendClientLog('error', `[unhandledrejection] ${reason}`);
+    });
 }
 
 export function flushLogsToAccumulated(stats?: CallsClientStats | null) {
@@ -131,6 +150,14 @@ export function persistClientLogs() {
 
 export function getClientLogs() {
     return getPersistentStorage().getItem(STORAGE_CALLS_CLIENT_LOGS_KEY) || '';
+}
+
+// Flushes this realm's in-memory buffer to storage and returns the full
+// accumulated log string. Exposed on `window` so a popout can delegate the
+// entire flush+read to its opener's realm in one call.
+export function flushAndGetLogs(): string {
+    flushLogsToAccumulated();
+    return getClientLogs();
 }
 
 export function logErr(...args: unknown[]) {
