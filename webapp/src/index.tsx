@@ -139,6 +139,7 @@ import {
     callStartAtForCallInChannel,
     channelHasCall,
     channelIDForCurrentCall,
+    clientConnecting,
     defaultEnabled,
     hasPermissionsToEnableCalls,
     hostIDForCallInChannel,
@@ -411,6 +412,9 @@ export default class Plugin {
         });
 
         const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
+            if (clientConnecting(store.getState())) {
+                return;
+            }
             if (!channelIDForCurrentCall(store.getState())) {
                 connectCall(channelId, title, rootId);
 
