@@ -196,6 +196,34 @@ export class WebSocketClient extends EventEmitter {
         this.send('leave');
     }
 
+    /**
+     * Sends a leave message and closes the connection. When the WS is
+     * reconnecting (CONNECTING state), queues the leave to fire as soon as
+     * the pending connection opens before closing. This prevents a ~100s
+     * server-side session orphan when LiveKit fails while the plugin WS is
+     * mid-reconnect and sendLeave() would otherwise be silently dropped.
+     */
+    public sendLeaveAndClose() {
+        if (this.ws?.readyState === WebSocket.OPEN) {
+            this.send('leave');
+            this.close();
+            return;
+        }
+        if (this.closed) {
+            this.close();
+            return;
+        }
+
+        // WS is reconnecting. Stop further reconnect attempts, then queue
+        // leave+cleanup for when the current connection attempt opens.
+        this.closed = true;
+        this.once('open', () => {
+            this.send('leave');
+            this.ws?.close();
+            this.ws = null;
+        });
+    }
+
     public sendScreenOn(payload: {screenStreamID: string}) {
         this.send('screen_on', {data: JSON.stringify(payload)});
     }

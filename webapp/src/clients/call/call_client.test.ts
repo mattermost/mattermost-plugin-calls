@@ -135,6 +135,7 @@ type MockWebSocketClient = {
     sendJoin: jest.Mock;
     sendReconnect: jest.Mock;
     sendLeave: jest.Mock;
+    sendLeaveAndClose: jest.Mock;
     sendScreenOn: jest.Mock;
     sendScreenOff: jest.Mock;
     close: jest.Mock;
@@ -154,6 +155,7 @@ function createMockWebSocketClient(): MockWebSocketClient {
         sendJoin: jest.fn(),
         sendReconnect: jest.fn(),
         sendLeave: jest.fn(),
+        sendLeaveAndClose: jest.fn(),
         sendScreenOn: jest.fn(),
         sendScreenOff: jest.fn(),
         close: jest.fn(),
@@ -342,7 +344,7 @@ describe('CallClient', () => {
             // Teardown is driven by the resulting RoomEvent.Disconnected, not synchronously here.
             mockRoom.fire(RoomEvent.Disconnected);
             expect(client.isDisconnected).toBe(true);
-            expect(mockWebSocketClient.sendLeave).toHaveBeenCalled();
+            expect(mockWebSocketClient.sendLeaveAndClose).toHaveBeenCalled();
             expect(disconnectedListener).toHaveBeenCalled();
         });
 
@@ -506,8 +508,7 @@ describe('CallClient', () => {
 
             expect(mockRoom.disconnect).not.toHaveBeenCalled();
             expect(client.isDisconnected).toBe(true);
-            expect(mockWebSocketClient.sendLeave).toHaveBeenCalled();
-            expect(mockWebSocketClient.close).toHaveBeenCalled();
+            expect(mockWebSocketClient.sendLeaveAndClose).toHaveBeenCalled();
             expect(disconnectedListener).toHaveBeenCalled();
         });
 
