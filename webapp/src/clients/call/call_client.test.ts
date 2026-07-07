@@ -134,7 +134,6 @@ type MockWebSocketClient = {
     ready: jest.Mock;
     sendJoin: jest.Mock;
     sendReconnect: jest.Mock;
-    sendLeave: jest.Mock;
     sendLeaveAndClose: jest.Mock;
     sendScreenOn: jest.Mock;
     sendScreenOff: jest.Mock;
@@ -154,7 +153,6 @@ function createMockWebSocketClient(): MockWebSocketClient {
         ready: jest.fn().mockResolvedValue('orig-conn-id'),
         sendJoin: jest.fn(),
         sendReconnect: jest.fn(),
-        sendLeave: jest.fn(),
         sendLeaveAndClose: jest.fn(),
         sendScreenOn: jest.fn(),
         sendScreenOff: jest.fn(),
