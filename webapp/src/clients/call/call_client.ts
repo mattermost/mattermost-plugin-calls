@@ -302,8 +302,7 @@ export default class CallClient extends EventEmitter {
 
             // The plugin WS is already open and the join was sent, so tell the server we're
             // leaving before closing — otherwise it keeps the session until its own timeout.
-            this.websocketClient?.sendLeave();
-            this.websocketClient?.close();
+            this.websocketClient?.sendLeaveAndClose();
             this.websocketClient = null;
 
             this.emit(CALL_EVENT.ERROR, err);
@@ -341,8 +340,7 @@ export default class CallClient extends EventEmitter {
 
             // The plugin WS is already open and the join was sent, so tell the server we're
             // leaving before closing — otherwise it keeps the session until its own timeout.
-            this.websocketClient?.sendLeave();
-            this.websocketClient?.close();
+            this.websocketClient?.sendLeaveAndClose();
             this.websocketClient = null;
 
             this.emit(CALL_EVENT.ERROR, err);
@@ -798,7 +796,6 @@ export default class CallClient extends EventEmitter {
         }
         case WebSocketErrorType.ReconnectTimeout: {
             logErr('CallClient: pluginWS reconnect timed out, disconnecting', err);
-            this.websocketClient = null;
             this.emit(CALL_EVENT.ERROR, err);
             this.disconnect();
             break;
@@ -972,8 +969,7 @@ export default class CallClient extends EventEmitter {
 
         if (this.websocketClient) {
             try {
-                this.websocketClient.sendLeave();
-                this.websocketClient.close();
+                this.websocketClient.sendLeaveAndClose();
             } catch (error) {
                 logErr('CallClient: pluginWS teardown error', error);
             } finally {
