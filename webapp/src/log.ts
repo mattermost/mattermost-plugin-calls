@@ -17,6 +17,18 @@ let clientLogs = '';
 // usually more useful, entries. Strings and Error stacks are not capped.
 const maxObjectLogLength = 256;
 
+// Flush the in-memory buffer to storage once it exceeds this size. Keeps
+// memory bounded between calls and during plugin-inactive periods when the
+// window error/unhandledrejection listeners are still writing to the buffer.
+// String .length is O(1) in JS so this check is cheap on every write.
+const maxInMemoryLogSize = 50 * 1024;
+
+function maybeFlush() {
+    if (clientLogs.length > maxInMemoryLogSize) {
+        flushLogsToAccumulated();
+    }
+}
+
 function stringifyLogArg(arg: unknown): string {
     if (typeof arg === 'string') {
         return arg;
@@ -37,6 +49,7 @@ function stringifyLogArg(arg: unknown): string {
 // opener's buffer rather than persisting separately.
 function appendLogLine(line: string) {
     clientLogs += line;
+    maybeFlush();
 }
 
 function appendClientLog(level: string, ...args: unknown[]) {
@@ -64,12 +77,32 @@ function appendClientLog(level: string, ...args: unknown[]) {
     }
 
     clientLogs += line;
+    maybeFlush();
 }
 
-// Expose this realm's appender so an expanded-view popout can write its logs
-// through to this (the opener's) buffer via window.opener.
+// Expose this realm's appender and flush+getter so an expanded-view popout can
+// write logs through to (and read them back from) the opener's realm.
 if (typeof window !== 'undefined') {
     window.callsClientLogAppend = appendLogLine;
+    window.callsClientFlushAndGetLogs = flushAndGetLogs;
+
+    // Wire uncaught JS errors and unhandled promise rejections into the client-
+    // log buffer. Without this, exceptions that crash a handler go only to
+    // console.error and never appear in /call logs uploads.
+    window.addEventListener('error', (event: ErrorEvent) => {
+        const {message, filename, lineno, colno, error} = event;
+        const errStr = error instanceof Error ?
+            (error.stack || `${error.name}: ${error.message}`) :
+            String(error || message);
+        appendClientLog('error', `[uncaught] ${errStr} (${filename}:${lineno}:${colno})`);
+    });
+
+    window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+        const reason = event.reason instanceof Error ?
+            (event.reason.stack || `${event.reason.name}: ${event.reason.message}`) :
+            String(event.reason);
+        appendClientLog('error', `[unhandledrejection] ${reason}`);
+    });
 }
 
 export function flushLogsToAccumulated(stats?: CallsClientStats | null) {
@@ -131,6 +164,14 @@ export function persistClientLogs() {
 
 export function getClientLogs() {
     return getPersistentStorage().getItem(STORAGE_CALLS_CLIENT_LOGS_KEY) || '';
+}
+
+// Flushes this realm's in-memory buffer to storage and returns the full
+// accumulated log string. Exposed on `window` so a popout can delegate the
+// entire flush+read to its opener's realm in one call.
+export function flushAndGetLogs(): string {
+    flushLogsToAccumulated();
+    return getClientLogs();
 }
 
 export function logErr(...args: unknown[]) {

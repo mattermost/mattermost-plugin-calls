@@ -16,6 +16,11 @@ declare global {
         // buffer. Exposed so the expanded-view popout can write through to its
         // opener's buffer (single source of truth). See src/log.ts.
         callsClientLogAppend?: (line: string) => void,
+
+        // Flushes this realm's in-memory buffer to storage and returns the full
+        // accumulated log string. Exposed so a popout can delegate /call logs
+        // flush+read to the opener's realm in one call. See src/log.ts.
+        callsClientFlushAndGetLogs?: () => string,
         webkitAudioContext: AudioContext,
         basename: string,
         desktop?: {
