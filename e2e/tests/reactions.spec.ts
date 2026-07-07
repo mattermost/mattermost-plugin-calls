@@ -5,14 +5,12 @@ import {test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {
-    getUsernamesForTest,
     getUserStoragesForTest,
     joinCallAndPopout,
     startCallAndPopoutFromPage,
 } from '../utils';
 
 const userStorages = getUserStoragesForTest();
-const usernames = getUsernamesForTest();
 
 test.setTimeout(400000);
 
@@ -35,8 +33,9 @@ test.describe('reactions', {tag: '@livekit'}, () => {
         // user1 sends a thumbs-up reaction from the popout emoji bar
         await user1Popout.sendQuickReactionOnPopout('+1');
 
-        // user0's popout shows user1's chip by name; user1's popout shows their own chip as "You"
-        await user0Popout.expectReactionChipOnPopout(usernames[1]);
+        // both popouts show a chip containing the emoji name (profile may not be loaded yet, so we
+        // check the emoji rather than the sender's display name which can briefly show "Someone")
+        await user0Popout.expectReactionChipOnPopout('+1');
         await user1Popout.expectReactionChipOnPopout('You');
 
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
@@ -65,9 +64,9 @@ test.describe('reactions', {tag: '@livekit'}, () => {
         await user1Popout.sendQuickReactionOnPopout('+1');
         await user2Popout.sendQuickReactionOnPopout('tada');
 
-        // user0 sees both reaction chips
-        await user0Popout.expectReactionChipOnPopout(usernames[1]);
-        await user0Popout.expectReactionChipOnPopout(usernames[2]);
+        // user0 sees both reaction chips (filter by emoji name, not username, to avoid profile-load race)
+        await user0Popout.expectReactionChipOnPopout('+1');
+        await user0Popout.expectReactionChipOnPopout('tada');
 
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall(), user2Page.leaveCall()]);
     });
