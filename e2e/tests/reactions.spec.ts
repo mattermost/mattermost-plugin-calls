@@ -60,9 +60,11 @@ test.describe('reactions', {tag: '@livekit'}, () => {
         const [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
         const [user2Page, user2Popout] = await joinCallAndPopout(userStorages[2]);
 
-        // user1 sends thumbs-up, user2 sends tada
-        await user1Popout.sendQuickReactionOnPopout('+1');
-        await user2Popout.sendQuickReactionOnPopout('tada');
+        // send both reactions in parallel so both chips are live at the same time
+        await Promise.all([
+            user1Popout.sendQuickReactionOnPopout('+1'),
+            user2Popout.sendQuickReactionOnPopout('tada'),
+        ]);
 
         // user0 sees both reaction chips (filter by emoji name, not username, to avoid profile-load race)
         await user0Popout.expectReactionChipOnPopout('+1');
