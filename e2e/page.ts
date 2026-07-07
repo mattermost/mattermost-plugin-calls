@@ -427,14 +427,11 @@ export default class PlaywrightDevPage {
     async expectScreenSharedOnPopout() {
         await expect(this.page.locator('#screen-player')).toBeVisible();
 
-        const screenStreamID = await (await this.page.waitForFunction(() => {
+        // Track ID format differs between v1 (screen_ prefix) and v2 (LiveKit); just verify the stream exists.
+        await this.page.waitForFunction(() => {
             const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
-            return callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
-        })).evaluate(() => {
-            const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
-            return callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+            return Boolean(callsClient.getRemoteScreenStream()?.getVideoTracks()[0]);
         });
-        expect(screenStreamID).toContain('screen_');
     }
 
     async openRHSOnPopout() {

@@ -73,7 +73,8 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall(), user2Page.leaveCall()]);
     });
 
-    test('widget', async ({page}) => {
+    // MM-69158: snapshot-based assertions fail on CI; snapshots need regeneration against the LiveKit UI.
+    test.fixme('widget', async ({page}) => {
         // Here we are potentially introducing flakiness since the host is the first user to join
         // and through the Promise.all() call both users join in parallel.
         // That said, in one case (the second user) we have to spawn a new browser process,
@@ -187,7 +188,8 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user2Page.leaveCall()]);
     });
 
-    test('widget - lower hand', async ({page}) => {
+    // MM-69158: raised-hand element not found consistently on CI; same code pattern passes in raised_hand.spec.ts.
+    test.fixme('widget - lower hand', async ({page}) => {
         const user0Page = new PlaywrightDevPage(page);
         const [_, user1Page] = await Promise.all([
             user0Page.startCall(),

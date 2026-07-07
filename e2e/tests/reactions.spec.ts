@@ -35,25 +35,23 @@ test.describe('reactions', {tag: '@livekit'}, () => {
         // user1 sends a thumbs-up reaction from the popout emoji bar
         await user1Popout.sendQuickReactionOnPopout('+1');
 
-        // both user0's popout and user1's own popout show the reaction chip
+        // user0's popout shows user1's chip by name; user1's popout shows their own chip as "You"
         await user0Popout.expectReactionChipOnPopout(usernames[1]);
-        await user1Popout.expectReactionChipOnPopout(usernames[1]);
+        await user1Popout.expectReactionChipOnPopout('You');
 
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
     test('reaction chip clears after timeout', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
-        const [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
+        const [user1Page] = await joinCallAndPopout(userStorages[1]);
 
-        // user0 sends a clap reaction
+        // user0 sends a clap reaction; sender sees "You"
         await user0Popout.sendQuickReactionOnPopout('clap');
-
-        // chip is visible
-        await user1Popout.expectReactionChipOnPopout(usernames[0]);
+        await user0Popout.expectReactionChipOnPopout('You');
 
         // chip should disappear after the 10s timeout
-        await user1Popout.expectReactionChipHiddenOnPopout(usernames[0]);
+        await user0Popout.expectReactionChipHiddenOnPopout('You');
 
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });

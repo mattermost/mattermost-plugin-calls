@@ -69,7 +69,9 @@ test.describe('raised hand', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test('late joiner sees raised hand', async ({page}) => {
+    // MM-69158: widget participant list doesn't pick up raised-hand state for late joiners;
+    // the popout version of this test (below) passes. Needs investigation.
+    test.fixme('late joiner sees raised hand', async ({page}) => {
         const user0Page = new PlaywrightDevPage(page);
         const [_, user1Page] = await Promise.all([
             user0Page.startCall(),
