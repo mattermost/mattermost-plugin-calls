@@ -17,6 +17,18 @@ let clientLogs = '';
 // usually more useful, entries. Strings and Error stacks are not capped.
 const maxObjectLogLength = 256;
 
+// Flush the in-memory buffer to storage once it exceeds this size. Keeps
+// memory bounded between calls and during plugin-inactive periods when the
+// window error/unhandledrejection listeners are still writing to the buffer.
+// String .length is O(1) in JS so this check is cheap on every write.
+const maxInMemoryLogSize = 50 * 1024;
+
+function maybeFlush() {
+    if (clientLogs.length > maxInMemoryLogSize) {
+        flushLogsToAccumulated();
+    }
+}
+
 function stringifyLogArg(arg: unknown): string {
     if (typeof arg === 'string') {
         return arg;
@@ -37,6 +49,7 @@ function stringifyLogArg(arg: unknown): string {
 // opener's buffer rather than persisting separately.
 function appendLogLine(line: string) {
     clientLogs += line;
+    maybeFlush();
 }
 
 function appendClientLog(level: string, ...args: unknown[]) {
@@ -64,6 +77,7 @@ function appendClientLog(level: string, ...args: unknown[]) {
     }
 
     clientLogs += line;
+    maybeFlush();
 }
 
 // Expose this realm's appender and flush+getter so an expanded-view popout can
