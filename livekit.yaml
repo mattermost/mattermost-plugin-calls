@@ -7,5 +7,16 @@ rtc:
   use_ice_lite: true
 keys:
   devkey: this-is-a-32-plus-character-dev-secret
+# LiveKit POSTs participant/room lifecycle events to the plugin's webhook
+# receiver (server/api.go handleLiveKitWebhook), signed with the secret for
+# `api_key` below — which must name a key in `keys:` (the plugin verifies with
+# the same key/secret). `host.docker.internal` resolves from inside the
+# container to the host running `make run-server` (Docker Desktop on macOS); on
+# plain Linux Docker add `extra_hosts: ["host.docker.internal:host-gateway"]`
+# or use the host LAN IP (the same one passed as LIVEKIT_NODE_IP).
+webhook:
+  api_key: devkey
+  urls:
+    - http://host.docker.internal:8065/plugins/com.mattermost.calls/livekit-webhook
 logging:
   level: info
