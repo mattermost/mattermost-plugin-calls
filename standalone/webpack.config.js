@@ -87,8 +87,12 @@ module.exports = {
             src: path.resolve(__dirname, './src/'),
             'mattermost-webapp': path.resolve(__dirname, '../webapp/mattermost-webapp/webapp/channels/src/'),
             plugin: path.resolve(__dirname, '../webapp/src'),
+
+            // Resolves `@import 'utils/...'` and `url(images/...)` inside the cloned
+            // mattermost-webapp SCSS (imported in src/index.ts). Used by SASS only,
             utils: path.resolve(__dirname, '../webapp/mattermost-webapp/webapp/channels/src/sass/utils/'),
             images: path.resolve(__dirname, '../webapp/mattermost-webapp/webapp/channels/src/images/'),
+
             react: path.resolve(__dirname, './node_modules/react'),
             'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
             'react-bootstrap': path.resolve(__dirname, './node_modules/react-bootstrap'),
