@@ -30,7 +30,10 @@ test.afterEach(async ({page}) => {
 test.describe('raised hand', {tag: '@livekit'}, () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    test('widget - round trip', async ({page}) => {
+    // MM-69158: widget raised-hand indicators are flaky in CI under parallel load — LiveKit
+    // attribute updates don't always reach the widget participant list within 60s when multiple
+    // calls are running concurrently. The popout - round trip test covers the same feature reliably.
+    test.fixme('widget - round trip', async ({page}) => {
         const user0Page = new PlaywrightDevPage(page);
         const [_, user1Page] = await Promise.all([
             user0Page.startCall(),
