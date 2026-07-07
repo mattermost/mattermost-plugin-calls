@@ -30,12 +30,7 @@ test.afterEach(async ({page}) => {
 test.describe('host controls', {tag: '@livekit'}, () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
-    // MM-68570: retried after MM-69019, still burns the 400s test timeout.
-    // The host-change WS event propagation across 3 participants chains is
-    // a different surface from the connect-time hydration MM-69019 fixed —
-    // each /call host transfer's host_changed event needs to land in every
-    // participant's Redux. Needs a dedicated follow-up.
-    test.fixme('host change', async ({page}) => {
+    test('host change', async ({page}) => {
         const user0Page = new PlaywrightDevPage(page);
 
         // Here we are potentially introducing flakiness since the host is the first user to join
@@ -58,7 +53,6 @@ test.describe('host controls', {tag: '@livekit'}, () => {
 
         // Host can change to another.
         await user0Page.sendSlashCommand(`/call host ${usernames[1]}`);
-        await user0Page.wait(1000);
         await expect(user0Page.page.getByTestId('participant-list-host')).toContainText(usernames[1]);
 
         // Non-host cannot change the host.
@@ -70,23 +64,16 @@ test.describe('host controls', {tag: '@livekit'}, () => {
 
         // When the host leaves, the longest member becomes host.
         await user1Page.leaveCall();
-        await user0Page.wait(1000);
         await expect(user0Page.page.getByTestId('participant-list-host')).toContainText(usernames[0]);
 
         // When the assigned host returns, the designated host regains host control.
         await user1Page.joinCall();
-        await user0Page.wait(1000);
         await expect(user0Page.page.getByTestId('participant-list-host')).toContainText(usernames[1]);
 
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall(), user2Page.leaveCall()]);
     });
 
-    // MM-68570: retried after MM-69019, still fails at expectMuted after
-    // clickHostControlOnWidget(Mute) — host-mute action goes through but
-    // the participant card's data-testid="muted" never flips within 60s.
-    // The cross-participant mute-state WS event isn't reaching the
-    // observer's UI; MM-69019's hydration probe is connect-time only.
-    test.fixme('widget', async ({page}) => {
+    test('widget', async ({page}) => {
         // Here we are potentially introducing flakiness since the host is the first user to join
         // and through the Promise.all() call both users join in parallel.
         // That said, in one case (the second user) we have to spawn a new browser process,
@@ -200,10 +187,7 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user2Page.leaveCall()]);
     });
 
-    // MM-68570: lower-hand is split out so the rest of widget host controls can
-    // run. raiseHand() is a client-side stub on LiveKit (call_client.ts:237)
-    // — there's no hand to lower yet. Revisit once raise-hand is implemented.
-    test.fixme('widget - lower hand', async ({page}) => {
+    test('widget - lower hand', async ({page}) => {
         const user0Page = new PlaywrightDevPage(page);
         const [_, user1Page] = await Promise.all([
             user0Page.startCall(),
@@ -226,7 +210,7 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test.fixme('popout - participant card - make host', async ({page}) => {
+    test('popout - participant card - make host', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         const [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
 
@@ -262,7 +246,7 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test.fixme('popout - participant card - mute, lower hand', async ({page}) => {
+    test('popout - participant card - mute, lower hand', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         const [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
 
@@ -302,7 +286,7 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test.fixme('popout - participant card - remove, stop screenshare', async ({page}) => {
+    test('popout - participant card - remove, stop screenshare', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -337,7 +321,7 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test.fixme('popout - RHS - make host', async ({page}) => {
+    test('popout - RHS - make host', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -380,7 +364,7 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test.fixme('popout - RHS - mute, lower hand', async ({page}) => {
+    test('popout - RHS - mute, lower hand', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
@@ -452,7 +436,7 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall(), user2Page.leaveCall()]);
     });
 
-    test.fixme('popout - RHS - remove, stop screenshare', async ({page}) => {
+    test('popout - RHS - remove, stop screenshare', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);

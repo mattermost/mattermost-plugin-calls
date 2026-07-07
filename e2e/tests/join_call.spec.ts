@@ -90,13 +90,7 @@ test.describe('join call', {tag: '@livekit'}, () => {
         await userPage.leaveCall();
     });
 
-    // MM-68570: this test's later sections assert that userA's popover Start
-    // Call button is DISABLED while userB has a call (in another channel or
-    // in the DM). MM-69019's e2eCallStateLoaded probe fires inside
-    // startCall/joinCall, but userA never joins anything here — she observes
-    // userB's call state passively. Needs a different probe: a cross-user
-    // "remote call known in Redux" wait. Until that lands, fixme.
-    test.fixme('user profile popover', async ({page}) => {
+    test('user profile popover', async ({page}) => {
         const userAPage = page;
         const userADevPage = new PlaywrightDevPage(page);
         await userADevPage.gotoDM(usernames[1]);
@@ -131,6 +125,10 @@ test.describe('join call', {tag: '@livekit'}, () => {
 
         // We then verify that call button is disabled if the other user is already in a call with us.
         await userBPage.startCall();
+
+        // Wait for userA's Redux to receive the call-start WS event for this channel.
+        const dmChannelID = await userBPage.page.evaluate(() => window.callsClient?.channelID);
+        await userADevPage.waitForChannelCallState(dmChannelID);
 
         // We have both users send a message so it's much easier to
         // consistently find the proper selector to open the profile.

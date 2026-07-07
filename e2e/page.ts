@@ -336,6 +336,58 @@ export default class PlaywrightDevPage {
         await expect(list.getByText(name).locator('..').getByTestId('raised-hand')).toBeHidden();
     }
 
+    async raiseHandOnPopout() {
+        if (!await this.page.locator('#calls-popout-emoji-bar').isVisible()) {
+            await this.page.locator('#calls-popout-emoji-picker-button').click();
+        }
+        await expect(this.page.locator('#calls-popout-emoji-bar')).toBeVisible();
+        await this.page.getByTestId('raise-hand-button').click();
+    }
+
+    async lowerHandOnPopout() {
+        if (!await this.page.locator('#calls-popout-emoji-bar').isVisible()) {
+            await this.page.locator('#calls-popout-emoji-picker-button').click();
+        }
+        await expect(this.page.locator('#calls-popout-emoji-bar')).toBeVisible();
+        await this.page.getByTestId('lower-hand-button').click();
+    }
+
+    async sendQuickReactionOnPopout(emojiName: string) {
+        if (!await this.page.locator('#calls-popout-emoji-bar').isVisible()) {
+            await this.page.locator('#calls-popout-emoji-picker-button').click();
+        }
+        await expect(this.page.locator('#calls-popout-emoji-bar')).toBeVisible();
+        await this.page.getByTestId(`reaction-quick-${emojiName}`).click();
+    }
+
+    async expectReactionChipOnPopout(text: string) {
+        const stream = this.page.getByTestId('reaction-stream');
+        await expect(stream.getByTestId('reaction-chip').filter({hasText: text})).toBeVisible();
+    }
+
+    async expectReactionChipHiddenOnPopout(text: string) {
+        const stream = this.page.getByTestId('reaction-stream');
+        await expect(stream.getByTestId('reaction-chip').filter({hasText: text})).toBeHidden();
+    }
+
+    async expectRaisedHandChipOnPopout(user: string) {
+        const stream = this.page.getByTestId('reaction-stream');
+        await expect(stream.getByTestId('raised-hand-chip')).toContainText(user);
+    }
+
+    async expectRaisedHandChipHiddenOnPopout() {
+        const stream = this.page.getByTestId('reaction-stream');
+        await expect(stream.getByTestId('raised-hand-chip')).toBeHidden();
+    }
+
+    async waitForChannelCallState(channelID: string) {
+        await this.page.waitForFunction(
+            (cid) => Boolean(cid && window.e2eCallStateLoaded?.(cid)),
+            channelID,
+            {timeout: 10000},
+        );
+    }
+
     async expectMuted(name: string, muted: boolean) {
         const list = await this.getWidgetParticipantList();
         await expect(list).toBeVisible();
