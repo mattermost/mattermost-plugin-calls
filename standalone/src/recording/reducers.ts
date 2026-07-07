@@ -50,4 +50,4 @@ const callProfileImages = (state: callProfileImagesState = {}, action: callProfi
 
 export default combineReducers({
     callProfileImages,
-}) as Reducer;
+}) as unknown as Reducer;
