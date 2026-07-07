@@ -139,6 +139,7 @@ import {
     callStartAtForCallInChannel,
     channelHasCall,
     channelIDForCurrentCall,
+    clientConnecting,
     defaultEnabled,
     hasPermissionsToEnableCalls,
     hostIDForCallInChannel,
@@ -411,6 +412,9 @@ export default class Plugin {
         });
 
         const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
+            if (clientConnecting(store.getState())) {
+                return;
+            }
             if (!channelIDForCurrentCall(store.getState())) {
                 connectCall(channelId, title, rootId);
 
@@ -1066,7 +1070,11 @@ export default class Plugin {
                 // eslint-disable-next-line max-nested-callbacks
                 this.registerReconnectHandler(registry, store, () => {
                     logDebug('websocket reconnect handler');
-                    if (!getCallsClient()) {
+
+                    // On Desktop, callsClient lives in the widget renderer so getCallsClient()
+                    // is always falsy in the main-window renderer. Guard on channelIDForCurrentCall
+                    // too so we don't wipe clientStateReducer while a call is active.
+                    if (!getCallsClient() && !channelIDForCurrentCall(store.getState())) {
                         logDebug('resetting state');
                         store.dispatch(unInitialized());
                     }
