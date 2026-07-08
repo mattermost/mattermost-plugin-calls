@@ -4,7 +4,10 @@
 package main
 
 import (
+	"bytes"
+	"compress/zlib"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
@@ -14,6 +17,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func zlibCompress(data []byte) []byte {
+	var buf bytes.Buffer
+	w := zlib.NewWriter(&buf)
+	_, _ = w.Write(data)
+	_ = w.Close()
+	return buf.Bytes()
+}
 
 func TestCheckMinVersion(t *testing.T) {
 	tcs := []struct {
@@ -249,6 +260,40 @@ func TestPlugin_canSendPushNotifications(t *testing.T) {
 			assert.Equalf(t, tt.want, p.canSendPushNotifications(tt.config, tt.license), "test: %s", tt.name)
 		})
 	}
+}
+
+func TestUnpackSDPData(t *testing.T) {
+	t.Run("valid small payload", func(t *testing.T) {
+		payload := []byte("v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\n")
+		unpacked, err := unpackSDPData(zlibCompress(payload))
+		require.NoError(t, err)
+		require.Equal(t, payload, unpacked)
+	})
+
+	t.Run("invalid zlib data", func(t *testing.T) {
+		_, err := unpackSDPData([]byte("not zlib data"))
+		require.Error(t, err)
+	})
+
+	t.Run("payload at exact limit passes", func(t *testing.T) {
+		payload := []byte(strings.Repeat("a", sdpDataMaxSize))
+		unpacked, err := unpackSDPData(zlibCompress(payload))
+		require.NoError(t, err)
+		require.Equal(t, sdpDataMaxSize, len(unpacked))
+	})
+
+	t.Run("payload exceeding limit rejected", func(t *testing.T) {
+		payload := []byte(strings.Repeat("a", sdpDataMaxSize+1))
+		_, err := unpackSDPData(zlibCompress(payload))
+		require.ErrorContains(t, err, "exceeds maximum allowed size")
+	})
+
+	t.Run("bomb payload rejected", func(t *testing.T) {
+		// Highly compressible data simulating a zip-bomb style attack.
+		payload := []byte(strings.Repeat("A", 1024*1024))
+		_, err := unpackSDPData(zlibCompress(payload))
+		require.ErrorContains(t, err, "exceeds maximum allowed size")
+	})
 }
 
 func TestGetUserIDsFromSessions(t *testing.T) {
