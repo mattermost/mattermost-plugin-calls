@@ -4,14 +4,14 @@
 import React from 'react';
 
 type SvgProps = {
-    width: number;
-    height: number;
+    width?: number;
+    height?: number;
 }
 
 const HandsSvg = (props: SvgProps) => (
     <svg
-        width={props.width ? props.width.toString() : '110'}
-        height={props.height ? props.height.toString() : '100'}
+        width={props?.width?.toString() ?? '110'}
+        height={props?.height?.toString() ?? '100'}
         viewBox='0 0 110 100'
         fill='none'
         xmlns='http://www.w3.org/2000/svg'
