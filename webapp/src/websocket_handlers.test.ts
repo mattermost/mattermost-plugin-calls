@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {HostControlRemoved, UserRemovedData} from '@mattermost/calls-common/lib/types';
-import {WebSocketMessage} from '@mattermost/client';
+import {BaseWebSocketMessage} from '@mattermost/client';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {displayCallErrorModal, joinUser, leaveUser} from 'src/actions';
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/clients/calls';
@@ -11,6 +11,8 @@ import {HostRemovedYouFromCallErr} from 'src/components/error_modal/error_messag
 import {channelIDForCurrentCall} from './selectors';
 import {getCallsClient, hasLiveCallClient} from './utils';
 import {handleHostRemoved, handleUserJoined, handleUserLeft, handleUserRemovedFromChannel} from './websocket_handlers';
+
+type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 
 jest.mock('src/actions', () => ({
     displayCallErrorModal: jest.fn((err, channelID) => ({type: 'mock/displayCallErrorModal', err, channelID})),

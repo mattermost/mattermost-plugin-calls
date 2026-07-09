@@ -26,7 +26,7 @@ import {
     UserVideoOnOffData,
     UserVoiceOnOffData,
 } from '@mattermost/calls-common/lib/types';
-import {WebSocketMessage} from '@mattermost/client';
+import {BaseWebSocketMessage} from '@mattermost/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {generateId} from 'mattermost-redux/utils/helpers';
@@ -79,6 +79,8 @@ import {
     getUserDisplayName,
     hasLiveCallClient,
 } from './utils';
+
+type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
