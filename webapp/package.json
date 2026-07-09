@@ -105,6 +105,8 @@
     },
     "react": "$react",
     "react-dom": "$react-dom",
-    "react-redux": "$react-redux"
+    "react-redux": "$react-redux",
+    "immutable": "4.3.8",
+    "lodash": "4.18.1"
   }
 }
