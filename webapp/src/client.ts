@@ -522,6 +522,9 @@ export default class CallsClient extends EventEmitter {
         });
 
         ws.on('join', async () => {
+            if (this.closed) {
+                return;
+            }
             logDebug('join ack received, initializing connection');
 
             const peer = new RTCPeer({
