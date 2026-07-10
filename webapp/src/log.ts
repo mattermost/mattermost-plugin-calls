@@ -9,6 +9,13 @@ import {getPersistentStorage} from 'src/utils';
 
 import {pluginId} from './manifest';
 
+declare global {
+    interface Window {
+        callsClientLogAppend?: (line: string) => void;
+        callsClientFlushAndGetLogs?: () => string;
+    }
+}
+
 let clientLogs = '';
 
 const maxArgLength = 256;
