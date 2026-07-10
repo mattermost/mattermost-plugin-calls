@@ -1871,6 +1871,7 @@ describe('CallClient', () => {
             await client.unmuteWithTrack(audioMST);
 
             expect(LocalAudioTrack).toHaveBeenCalledWith(audioMST, undefined, false);
+
             // mock.instances[0] is the internal `this` of the constructor, not the returned
             // object literal from mockImplementation — use the first publishTrack argument instead.
             const published = mockRoom.localParticipant.publishTrack.mock.calls[0][0];
