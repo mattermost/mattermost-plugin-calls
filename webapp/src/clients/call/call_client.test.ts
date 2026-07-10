@@ -84,6 +84,7 @@ type MockRoom = {
     connect: jest.Mock;
     prepareConnection: jest.Mock;
     disconnect: jest.Mock;
+    removeAllListeners: jest.Mock;
     switchActiveDevice: jest.Mock;
     localParticipant: any;
     remoteParticipants: Map<string, any>;
@@ -100,6 +101,7 @@ function createMockRoom(): MockRoom {
         connect: jest.fn().mockResolvedValue(null),
         prepareConnection: jest.fn().mockResolvedValue(null),
         disconnect: jest.fn().mockResolvedValue(null),
+        removeAllListeners: jest.fn().mockReturnValue(null),
         switchActiveDevice: jest.fn().mockResolvedValue(null),
         localParticipant: {
             sid: 'me-sid',
@@ -490,6 +492,16 @@ describe('CallClient', () => {
             await new Promise((resolve) => setImmediate(resolve));
 
             expect((client as any).lastStats.rtcStats.ssrcStats[55].local.out).toMatchObject({bytesSent: 9});
+        });
+
+        it('calls room.removeAllListeners() on disconnect to stop post-call devicechange events', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.state = ConnectionState.Connected;
+
+            client.disconnect();
+            mockRoom.fire(RoomEvent.Disconnected);
+
+            expect(mockRoom.removeAllListeners).toHaveBeenCalled();
         });
 
         it('before the room connects, tears down directly (livekit room.disconnect would not emit)', () => {
@@ -1735,6 +1747,177 @@ describe('CallClient', () => {
             expect(stream).toBeNull();
             expect(errorListener).not.toHaveBeenCalled();
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('shareScreenWithStream', () => {
+        beforeEach(() => {
+            (LocalVideoTrack as unknown as jest.Mock).mockClear();
+            (LocalAudioTrack as unknown as jest.Mock).mockClear();
+        });
+
+        it('publishes video track as ScreenShare and returns true', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const videoTrack = {stop: jest.fn()} as unknown as MediaStreamTrack;
+            const stream = {
+                getVideoTracks: () => [videoTrack],
+                getAudioTracks: () => [],
+                getTracks: () => [videoTrack],
+                id: 'stream-id',
+            } as unknown as MediaStream;
+
+            const ok = await client.shareScreenWithStream(stream);
+
+            expect(ok).toBe(true);
+            expect(LocalVideoTrack).toHaveBeenCalledWith(videoTrack, undefined, false);
+            const publishedVideo = mockRoom.localParticipant.publishTrack.mock.calls[0][0];
+            expect(publishedVideo.source).toBe(Track.Source.ScreenShare);
+        });
+
+        it('also publishes audio track as ScreenShareAudio', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const videoTrack = {stop: jest.fn()} as unknown as MediaStreamTrack;
+            const audioTrack = {stop: jest.fn()} as unknown as MediaStreamTrack;
+            const stream = {
+                getVideoTracks: () => [videoTrack],
+                getAudioTracks: () => [audioTrack],
+                getTracks: () => [videoTrack, audioTrack],
+                id: 'stream-id',
+            } as unknown as MediaStream;
+
+            const ok = await client.shareScreenWithStream(stream);
+
+            expect(ok).toBe(true);
+            const sources = mockRoom.localParticipant.publishTrack.mock.calls.map((c: any[]) => c[0].source);
+            expect(sources).toEqual([Track.Source.ScreenShare, Track.Source.ScreenShareAudio]);
+        });
+
+        it('returns false and stops tracks when a remote participant is already sharing', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.remoteParticipants.set('other', {
+                getTrackPublication: (source: Track.Source) => source === Track.Source.ScreenShare ? {} : null,
+            });
+
+            const stopFn = jest.fn();
+            const stream = {
+                getVideoTracks: () => [],
+                getAudioTracks: () => [],
+                getTracks: () => [{stop: stopFn}],
+            } as unknown as MediaStream;
+
+            const ok = await client.shareScreenWithStream(stream);
+
+            expect(ok).toBe(false);
+            expect(stopFn).toHaveBeenCalled();
+            expect(mockRoom.localParticipant.publishTrack).not.toHaveBeenCalled();
+
+            mockRoom.remoteParticipants.clear();
+        });
+
+        it('returns false, unpublishes any partial tracks, and stops on publishTrack error', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const videoTrack = {} as MediaStreamTrack;
+            const stopFn = jest.fn();
+            const stream = {
+                getVideoTracks: () => [videoTrack],
+                getAudioTracks: () => [],
+                getTracks: () => [{stop: stopFn}],
+            } as unknown as MediaStream;
+
+            mockRoom.localParticipant.publishTrack.mockRejectedValueOnce(new Error('publish failed'));
+            mockRoom.localParticipant.unpublishTrack = jest.fn().mockResolvedValue(undefined);
+
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            const ok = await client.shareScreenWithStream(stream);
+
+            expect(ok).toBe(false);
+            expect(stopFn).toHaveBeenCalled();
+            expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
+        });
+    });
+
+    describe('hasMicTrackPublished / unmuteWithTrack', () => {
+        it('hasMicTrackPublished returns false when no mic publication exists', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.localParticipant.getTrackPublication.mockReturnValue(null);
+
+            expect(client.hasMicTrackPublished()).toBe(false);
+        });
+
+        it('hasMicTrackPublished returns true when a mic publication exists', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.localParticipant.getTrackPublication.mockImplementation((source: Track.Source) =>
+                source === Track.Source.Microphone ? {isMuted: false} : null,
+            );
+
+            expect(client.hasMicTrackPublished()).toBe(true);
+        });
+
+        it('unmuteWithTrack publishes the provided track as Microphone when none exists', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.localParticipant.getTrackPublication.mockReturnValue(null);
+            (LocalAudioTrack as unknown as jest.Mock).mockClear();
+
+            const audioMST = {} as MediaStreamTrack;
+            await client.unmuteWithTrack(audioMST);
+
+            expect(LocalAudioTrack).toHaveBeenCalledWith(audioMST, undefined, false);
+            // mock.instances[0] is the internal `this` of the constructor, not the returned
+            // object literal from mockImplementation — use the first publishTrack argument instead.
+            const published = mockRoom.localParticipant.publishTrack.mock.calls[0][0];
+            expect(published.source).toBe(Track.Source.Microphone);
+            expect(mockRoom.localParticipant.publishTrack).toHaveBeenCalledWith(published);
+        });
+
+        it('unmuteWithTrack stops the provided track and calls unmute when mic is already published', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.localParticipant.getTrackPublication.mockImplementation((source: Track.Source) =>
+                source === Track.Source.Microphone ? {isMuted: true} : null,
+            );
+
+            const stopFn = jest.fn();
+            const audioMST = {stop: stopFn} as unknown as MediaStreamTrack;
+            await client.unmuteWithTrack(audioMST);
+
+            expect(stopFn).toHaveBeenCalled();
+            expect(mockRoom.localParticipant.setMicrophoneEnabled).toHaveBeenCalledWith(true);
+            expect(mockRoom.localParticipant.publishTrack).not.toHaveBeenCalled();
+        });
+
+        it('unmuteWithTrack stops the track and emits ERROR on publish failure', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.localParticipant.getTrackPublication.mockReturnValue(null);
+            mockRoom.localParticipant.publishTrack.mockRejectedValueOnce(new Error('publish failed'));
+
+            const stopFn = jest.fn();
+            const audioMST = {stop: stopFn} as unknown as MediaStreamTrack;
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            await client.unmuteWithTrack(audioMST);
+
+            expect(stopFn).toHaveBeenCalled();
+            expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
+        });
+
+        it('unmuteWithTrack is a no-op (stops track) when not connected', async () => {
+            const stopFn = jest.fn();
+            const audioMST = {stop: stopFn} as unknown as MediaStreamTrack;
+            await client.unmuteWithTrack(audioMST);
+
+            expect(stopFn).toHaveBeenCalled();
+            expect(mockRoom.localParticipant.publishTrack).not.toHaveBeenCalled();
         });
     });
 

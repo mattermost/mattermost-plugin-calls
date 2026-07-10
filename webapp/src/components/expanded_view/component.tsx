@@ -68,6 +68,7 @@ import {
 } from 'src/types/types';
 import {
     getCallsClient,
+    getScreenStream,
     getUserDisplayName,
     isDMChannel,
     sendDesktopEvent,
@@ -467,14 +468,33 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     };
 
-    onMuteToggle = () => {
+    onMuteToggle = async () => {
         if (this.pushToTalk) {
             return;
         }
         const callsClient = getCallsClient();
         if (this.isMuted()) {
             logDebug('ExpandedView.onMuteToggle: unmuting (user toggled on)');
-            callsClient?.unmute();
+
+            // Firefox blocks getUserMedia in an unfocused window. The Room lives in
+            // the opener, so setMicrophoneEnabled would try to capture there — but
+            // the opener is unfocused when the user acts from the popout. Capture in
+            // this (focused) window and hand the track to the room via unmuteWithTrack.
+            if (window.opener && callsClient && !callsClient.hasMicTrackPublished()) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        audio: {autoGainControl: true, echoCancellation: true, noiseSuppression: true},
+                    });
+                    const [audioMST] = stream.getAudioTracks();
+                    if (audioMST) {
+                        await callsClient.unmuteWithTrack(audioMST);
+                    }
+                } catch (err) {
+                    logErr('ExpandedView.onMuteToggle: mic capture failed in popout', err);
+                }
+            } else {
+                callsClient?.unmute();
+            }
         } else {
             logDebug('ExpandedView.onMuteToggle: muting (user toggled off)');
             callsClient?.mute();
@@ -527,12 +547,25 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             if (window.desktopAPI?.openScreenShareModal) {
                 logDebug('desktopAPI.openScreenShareModal');
                 window.desktopAPI.openScreenShareModal();
+            } else if (window.opener) {
+                // Popout: Firefox blocks getDisplayMedia in the unfocused opener where
+                // the Room lives. Capture here (focused), then publish via shareScreenWithStream.
+                const preCapture = await getScreenStream('', shareAudioWithScreen());
+                if (preCapture) {
+                    const ok = await callsClient?.shareScreenWithStream(preCapture);
+                    if (ok) {
+                        window.screenSharingTrackId = preCapture.getVideoTracks()[0]?.id ?? '';
+                        this.setMissingScreenPermissions(false, true);
+                    } else {
+                        this.setMissingScreenPermissions(true, true);
+                    }
+                } else {
+                    this.setMissingScreenPermissions(true, true);
+                }
             } else {
+                // Main window: LiveKit drives getDisplayMedia in the same (focused) window.
                 const stream = await callsClient?.shareScreen('', shareAudioWithScreen());
                 if (stream) {
-                    if (window.opener) {
-                        window.screenSharingTrackId = stream.getVideoTracks()[0].id;
-                    }
                     this.setMissingScreenPermissions(false, true);
                 } else {
                     this.setMissingScreenPermissions(true, true);

@@ -438,6 +438,48 @@ export default class CallClient extends EventEmitter {
         }
     }
 
+    // hasMicTrackPublished returns true if a local microphone track is currently
+    // published (muted or not). Used by the popout to decide whether to pre-capture
+    // getUserMedia in the focused window before calling unmute.
+    public hasMicTrackPublished(): boolean {
+        return Boolean(this.room?.localParticipant.getTrackPublication(Track.Source.Microphone));
+    }
+
+    // unmuteWithTrack publishes an already-captured audio track as the local microphone.
+    // Use this when getUserMedia was called in the focused window (e.g. the popout) and
+    // the resulting track needs to be published to the room that lives in the opener.
+    // Firefox blocks getUserMedia in an unfocused window, so the capture must happen
+    // in the popout; this method handles the publish step in the opener's realm.
+    public async unmuteWithTrack(audioMST: MediaStreamTrack): Promise<void> {
+        if (!this.room || !this.roomConnected) {
+            audioMST.stop();
+            return;
+        }
+
+        // If a mic track is already published, just unmute it — discard the provided one.
+        if (this.room.localParticipant.getTrackPublication(Track.Source.Microphone)) {
+            audioMST.stop();
+            await this.unmute();
+            return;
+        }
+
+        try {
+            const localAudioTrack = new LocalAudioTrack(audioMST, undefined, false);
+            localAudioTrack.source = Track.Source.Microphone;
+            await this.room.localParticipant.publishTrack(localAudioTrack);
+            logDebug('CallClient: unmuteWithTrack published mic from pre-captured track');
+        } catch (err) {
+            audioMST.stop();
+            if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
+                logDebug('CallClient: unmuteWithTrack denied, missing audio input permission');
+                this.emit(CALL_EVENT.ERROR, AudioInputPermissionsErr);
+            } else {
+                logErr('CallClient: unmuteWithTrack failed', err);
+                this.emit(CALL_EVENT.ERROR, err);
+            }
+        }
+    }
+
     public async raiseHand(): Promise<void> {
         if (!this.room || !this.roomConnected) {
             return;
@@ -505,6 +547,55 @@ export default class CallClient extends EventEmitter {
                 this.emit(CALL_EVENT.ERROR, err);
             }
             return null;
+        }
+    }
+
+    // shareScreenWithStream publishes an already-captured screen stream. Use this when
+    // getDisplayMedia was called in the focused window (e.g. the popout) and the stream
+    // needs to be published to the room that lives in the opener.
+    // Firefox blocks getDisplayMedia in an unfocused window; the caller captures in the
+    // focused popout and delegates the publish step here.
+    public async shareScreenWithStream(stream: MediaStream): Promise<boolean> {
+        if (!this.room || !this.roomConnected) {
+            stream.getTracks().forEach((t) => t.stop());
+            return false;
+        }
+
+        // Bail if another participant is already sharing screen.
+        for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
+                logDebug('CallClient: another participant is already sharing screen');
+                stream.getTracks().forEach((t) => t.stop());
+                return false;
+            }
+        }
+
+        const publishedTracks: LocalTrack[] = [];
+        try {
+            const [videoTrack] = stream.getVideoTracks();
+            if (videoTrack) {
+                const screenVideo = new LocalVideoTrack(videoTrack, undefined, false);
+                screenVideo.source = Track.Source.ScreenShare;
+                await this.room.localParticipant.publishTrack(screenVideo);
+                publishedTracks.push(screenVideo);
+            }
+
+            const [audioTrack] = stream.getAudioTracks();
+            if (audioTrack) {
+                const screenAudio = new LocalAudioTrack(audioTrack, undefined, false);
+                screenAudio.source = Track.Source.ScreenShareAudio;
+                await this.room.localParticipant.publishTrack(screenAudio);
+                publishedTracks.push(screenAudio);
+            }
+
+            logDebug('CallClient: shareScreenWithStream published', {streamID: stream.id});
+            return true;
+        } catch (err) {
+            await Promise.allSettled(publishedTracks.map((track) => this.room!.localParticipant.unpublishTrack(track, true)));
+            stream.getTracks().forEach((t) => t.stop());
+            logErr('CallClient: shareScreenWithStream failed', err);
+            this.emit(CALL_EVENT.ERROR, err);
+            return false;
         }
     }
 
@@ -962,7 +1053,17 @@ export default class CallClient extends EventEmitter {
         this.disconnected = true;
         this.roomConnected = false;
         this.connectPayload = null;
+
+        // Sever our EventEmitter listeners from the room before releasing the reference.
+        // LiveKit's internal devicechange listener uses a WeakRef/AbortController pattern
+        // that defeats its own removeEventListener, so the native OS event keeps reaching
+        // the Room and re-emitting MediaDevicesChanged long after the call ends. Calling
+        // removeAllListeners() here ensures our handleMediaDevicesChanged (→ enumerateDevices
+        // → log) stops firing even while the Room object awaits GC.
+        const room = this.room;
         this.room = null;
+        room?.removeAllListeners();
+
         this.stopStatsPolling();
 
         this.emit(CALL_EVENT.DISCONNECTED, reason);
