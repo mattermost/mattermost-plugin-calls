@@ -697,7 +697,7 @@ export default class Plugin {
                 window.callsClient = new CallClient({
                     websocketURL: getWSConnectionURL(websocketURLInConfig),
                 });
-                window.currentCallData = CurrentCallDataDefault;
+                window.currentCallData = {...CurrentCallDataDefault};
 
                 const locale = getCurrentUserLocale(state) || 'en';
 

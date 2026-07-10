@@ -793,14 +793,37 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     private shareScreen = async (sourceID: string, withAudio: boolean) => {
-        const stream = await window.callsClient?.shareScreen(sourceID, withAudio);
-        if (stream) {
-            logDebug(`CallWidget.shareScreen: stream received with ${stream.getVideoTracks().length} video tracks and ${stream.getAudioTracks().length} audio tracks`);
-            this.setState({screenStream: stream});
-            this.setMissingScreenPermissions(false, true);
-        } else {
-            logDebug('CallWidget.shareScreen: no stream received');
-            this.setMissingScreenPermissions(true, true);
+        this.setMissingScreenPermissions(false, true);
+        this.setState({
+            alerts: {
+                ...this.state.alerts,
+                screenShareBlockedByRemote: {active: false, show: false},
+                screenShareCaptureError: {active: false, show: false},
+            },
+        });
+        const result = await window.callsClient?.shareScreen(sourceID, withAudio);
+        if (result?.kind === 'stream') {
+            logDebug(`CallWidget.shareScreen: stream received with ${result.stream.getVideoTracks().length} video tracks and ${result.stream.getAudioTracks().length} audio tracks`);
+            this.setState({screenStream: result.stream});
+        } else if (result?.kind === 'error') {
+            logDebug('CallWidget.shareScreen: share failed', result.reason);
+            if (result.reason === 'already-sharing') {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        screenShareBlockedByRemote: {active: true, show: true},
+                    },
+                });
+            } else if (result.reason === 'permission-denied') {
+                this.setMissingScreenPermissions(true, true);
+            } else if (result.reason === 'capture-error') {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        screenShareCaptureError: {active: true, show: true},
+                    },
+                });
+            }
         }
     };
 
