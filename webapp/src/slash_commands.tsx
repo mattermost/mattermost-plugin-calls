@@ -24,7 +24,7 @@ import {
 import RestClient from 'src/rest_client';
 import {modals} from 'src/webapp_globals';
 
-import {flushLogsToAccumulated, getClientLogs, logDebug} from './log';
+import {flushAndGetLogs, logDebug} from './log';
 import {
     areGroupCallsAllowed,
     channelHasCall,
@@ -177,8 +177,24 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         return {message: `/call stats ${btoa(data)}`, args};
     }
     case 'logs': {
-        flushLogsToAccumulated();
-        const allLogs = getClientLogs();
+        // When running in the expanded-view popout, delegate flush+read to the
+        // opener's realm. The popout's own in-memory buffer is ~empty (every
+        // appended line is forwarded to opener.callsClientLogAppend), and on
+        // web sessionStorage is per-window so a local read would miss the
+        // opener's accumulated logs entirely.
+        let allLogs: string;
+        try {
+            const opener = window.opener as Window | null;
+            if (opener && opener !== window && typeof opener.callsClientFlushAndGetLogs === 'function') {
+                allLogs = opener.callsClientFlushAndGetLogs();
+            } else {
+                allLogs = flushAndGetLogs();
+            }
+        } catch {
+            // Cross-origin opener (SecurityError) or missing function — fall
+            // back to the local realm.
+            allLogs = flushAndGetLogs();
+        }
 
         if (!allLogs || allLogs.trim().length === 0) {
             return {error: {message: 'No call logs available'}};
