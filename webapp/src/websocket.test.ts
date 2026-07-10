@@ -513,7 +513,6 @@ describe('WebSocketClient', () => {
         });
 
         it('should queue leave for when WS opens if CONNECTING, then close', () => {
-            // WS starts CONNECTING (default for MockWebSocket)
             expect(mockWebSocket.readyState).toBe(WebSocket.CONNECTING);
 
             const sendSpy = jest.spyOn(mockWebSocket, 'send');
@@ -526,7 +525,7 @@ describe('WebSocketClient', () => {
             // leave not yet sent (WS still connecting)
             expect(sendSpy).not.toHaveBeenCalled();
 
-            // Simulate WS opening (reconnect path emits 'open' on onopen)
+            // Simulate WS opening
             mockWebSocket.readyState = WebSocket.OPEN;
 
             // Simulate hello message to trigger the 'open' event
@@ -560,6 +559,7 @@ describe('WebSocketClient', () => {
 
         it('should call close without sending leave when WS is already CLOSED', () => {
             mockWebSocket.readyState = WebSocket.CLOSED;
+
             // Prevent the close() → ws.close() → onclose loop from causing issues
             mockWebSocket.onclose = null;
 
