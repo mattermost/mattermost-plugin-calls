@@ -494,7 +494,6 @@ export default class CallsClient extends EventEmitter {
             case WebSocketErrorType.Native:
                 break;
             case WebSocketErrorType.ReconnectTimeout:
-                this.ws = null;
                 this.disconnect(err);
                 break;
             case WebSocketErrorType.Join:
@@ -866,8 +865,7 @@ export default class CallsClient extends EventEmitter {
         this.cleanup();
 
         if (this.ws) {
-            this.ws.send('leave');
-            this.ws.close();
+            this.ws.sendLeaveAndClose();
             this.ws = null;
         }
 
