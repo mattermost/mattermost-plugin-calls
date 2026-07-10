@@ -437,5 +437,17 @@ describe('log', () => {
             expect(logs).toContain('[unhandledrejection]');
             expect(logs).toContain('rejected promise');
         });
+
+        test('unhandledrejection with non-Error reason uses formatArg (not [object Object])', () => {
+            const event = new Event('unhandledrejection') as PromiseRejectionEvent;
+            Object.defineProperty(event, 'reason', {value: {code: 42, msg: 'oops'}});
+            window.dispatchEvent(event);
+            flushLogsToAccumulated();
+
+            const logs = getClientLogs();
+            expect(logs).toContain('[unhandledrejection]');
+            expect(logs).toContain('"code":42');
+            expect(logs).not.toContain('[object Object]');
+        });
     });
 });

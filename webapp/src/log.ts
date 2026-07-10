@@ -21,7 +21,12 @@ const maxInMemoryLogSize = 50 * 1024;
 
 function maybeFlush() {
     if (clientLogs.length > maxInMemoryLogSize) {
-        flushLogsToAccumulated();
+        try {
+            flushLogsToAccumulated();
+        } catch {
+            // Storage quota or security error — keep only the most recent portion in memory.
+            clientLogs = clientLogs.slice(-maxInMemoryLogSize);
+        }
     }
 }
 
@@ -90,7 +95,7 @@ if (typeof window !== 'undefined') {
     window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
         const reason = event.reason instanceof Error ?
             (event.reason.stack || `${event.reason.name}: ${event.reason.message}`) :
-            String(event.reason);
+            formatArg(event.reason);
         appendClientLog('error', `[unhandledrejection] ${reason}`);
     });
 }
