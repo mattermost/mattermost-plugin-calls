@@ -148,6 +148,7 @@ import {
     callsVersionInfo,
     channelHasCall,
     channelIDForCurrentCall,
+    clientConnecting,
     defaultEnabled,
     hasPermissionsToEnableCalls,
     iceServers,
@@ -430,6 +431,10 @@ export default class Plugin {
         });
 
         const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
+            if (clientConnecting(store.getState())) {
+                return;
+            }
+
             // Prefer the live window.callsClient over Redux state: the client
             // is the concrete "I am literally in a call right now" signal,
             // while Redux can be transiently stale during reload reconnect.
