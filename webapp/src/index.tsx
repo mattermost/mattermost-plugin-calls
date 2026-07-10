@@ -443,7 +443,11 @@ export default class Plugin {
             const effectiveCurrentChannel = window.callsClient?.channelID ?? channelIDForCurrentCall(store.getState());
 
             if (!effectiveCurrentChannel) {
-                // Not in any call - join the new one
+                // Not in any call - join the new one.
+                // Set connecting state synchronously before the first await in
+                // connectCall so the re-entrancy guard above is effective even
+                // on rapid subsequent clicks.
+                store.dispatch(setClientConnecting(true));
                 connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
