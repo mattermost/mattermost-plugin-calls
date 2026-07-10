@@ -561,6 +561,12 @@ export default class CallClient extends EventEmitter {
             return false;
         }
 
+        // Bail if we're already sharing to avoid publishing a duplicate ScreenShare track.
+        if (this.room.localParticipant.getTrackPublication(Track.Source.ScreenShare)) {
+            stream.getTracks().forEach((t) => t.stop());
+            return false;
+        }
+
         // Bail if another participant is already sharing screen.
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {

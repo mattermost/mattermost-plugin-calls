@@ -482,9 +482,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             // this (focused) window and hand the track to the room via unmuteWithTrack.
             if (window.opener && callsClient && !callsClient.hasMicTrackPublished()) {
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        audio: {autoGainControl: true, echoCancellation: true, noiseSuppression: true},
-                    });
+                    const audioConstraints: MediaTrackConstraints = {autoGainControl: true, echoCancellation: true, noiseSuppression: true};
+                    if (callsClient.currentAudioInputDevice?.deviceId) {
+                        audioConstraints.deviceId = {exact: callsClient.currentAudioInputDevice.deviceId};
+                    }
+                    const stream = await navigator.mediaDevices.getUserMedia({audio: audioConstraints});
                     const [audioMST] = stream.getAudioTracks();
                     if (audioMST) {
                         await callsClient.unmuteWithTrack(audioMST);
