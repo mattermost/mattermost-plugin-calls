@@ -362,7 +362,7 @@ export function isFirefox() {
 
 export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
     let modifier = 'AS';
-    if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
+    if (isFirefox()) {
         bandwidth = (bandwidth >>> 0) * 1000;
         modifier = 'TIAS';
     }
