@@ -642,6 +642,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         ...this.state.alerts,
                     },
                 });
+            } else {
+                this.setState({micPermissionPending: false});
             }
         });
 
