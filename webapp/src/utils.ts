@@ -356,6 +356,10 @@ export function getUserIdFromDM(dmName: string, currentUserId: string) {
     return otherUserId;
 }
 
+export function isFirefox() {
+    return navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+}
+
 export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
     let modifier = 'AS';
     if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {

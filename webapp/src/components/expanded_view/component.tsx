@@ -71,6 +71,7 @@ import {
     getScreenStream,
     getUserDisplayName,
     isDMChannel,
+    isFirefox,
     sendDesktopEvent,
     setCallsGlobalCSSVars,
     shareAudioWithScreen,
@@ -80,6 +81,7 @@ import styled, {createGlobalStyle, css} from 'styled-components';
 
 import {CallSettingsButton} from './call_settings';
 import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './controls_button';
+import GenericModal from 'src/components/generic_modal';
 import GlobalBanner from './global_banner';
 import ParticipantsGrid from './participants_grid';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
@@ -144,6 +146,8 @@ interface State {
     otherVideoStream: MediaStream | null,
     showParticipantsList: boolean,
     showLiveCaptions: boolean,
+    showFirefoxScreenShareWarning: boolean,
+    micPermissionPending: boolean,
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
     viewState: 'grid' | 'speaker',
@@ -308,6 +312,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             otherVideoStream: null,
             showParticipantsList: false,
             showLiveCaptions: false,
+            showFirefoxScreenShareWarning: false,
+            micPermissionPending: true,
             alerts: CallAlertStatesDefault,
             removeConfirmation: null,
             viewState: 'speaker',
@@ -468,35 +474,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     };
 
-    onMuteToggle = async () => {
+    onMuteToggle = () => {
         if (this.pushToTalk) {
             return;
         }
         const callsClient = getCallsClient();
         if (this.isMuted()) {
             logDebug('ExpandedView.onMuteToggle: unmuting (user toggled on)');
-
-            // Firefox blocks getUserMedia in an unfocused window. The Room lives in
-            // the opener, so setMicrophoneEnabled would try to capture there — but
-            // the opener is unfocused when the user acts from the popout. Capture in
-            // this (focused) window and hand the track to the room via unmuteWithTrack.
-            if (window.opener && callsClient && !callsClient.hasMicTrackPublished()) {
-                try {
-                    const audioConstraints: MediaTrackConstraints = {autoGainControl: true, echoCancellation: true, noiseSuppression: true};
-                    if (callsClient.currentAudioInputDevice?.deviceId) {
-                        audioConstraints.deviceId = {exact: callsClient.currentAudioInputDevice.deviceId};
-                    }
-                    const stream = await navigator.mediaDevices.getUserMedia({audio: audioConstraints});
-                    const [audioMST] = stream.getAudioTracks();
-                    if (audioMST) {
-                        await callsClient.unmuteWithTrack(audioMST);
-                    }
-                } catch (err) {
-                    logErr('ExpandedView.onMuteToggle: mic capture failed in popout', err);
-                }
-            } else {
-                callsClient?.unmute();
-            }
+            callsClient?.unmute();
         } else {
             logDebug('ExpandedView.onMuteToggle: muting (user toggled off)');
             callsClient?.mute();
@@ -535,6 +520,37 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     };
 
+    doShareScreen = async () => {
+        const callsClient = getCallsClient();
+        if (window.desktopAPI?.openScreenShareModal) {
+            logDebug('desktopAPI.openScreenShareModal');
+            window.desktopAPI.openScreenShareModal();
+        } else if (window.opener) {
+            // Popout: Firefox blocks getDisplayMedia in the unfocused opener where
+            // the Room lives. Capture here (focused), then publish via shareScreenWithStream.
+            const preCapture = await getScreenStream('', shareAudioWithScreen());
+            if (preCapture) {
+                const ok = await callsClient?.shareScreenWithStream(preCapture);
+                if (ok) {
+                    window.screenSharingTrackId = preCapture.getVideoTracks()[0]?.id ?? '';
+                    this.setMissingScreenPermissions(false, true);
+                } else {
+                    this.setMissingScreenPermissions(true, true);
+                }
+            } else {
+                this.setMissingScreenPermissions(true, true);
+            }
+        } else {
+            // Main window: LiveKit drives getDisplayMedia in the same (focused) window.
+            const stream = await callsClient?.shareScreen('', shareAudioWithScreen());
+            if (stream) {
+                this.setMissingScreenPermissions(false, true);
+            } else {
+                this.setMissingScreenPermissions(true, true);
+            }
+        }
+    };
+
     onShareScreenToggle = async () => {
         if (!this.props.allowScreenSharing) {
             return;
@@ -546,32 +562,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 screenStream: null,
             });
         } else if (!this.props.screenSharingSession) {
-            if (window.desktopAPI?.openScreenShareModal) {
-                logDebug('desktopAPI.openScreenShareModal');
-                window.desktopAPI.openScreenShareModal();
-            } else if (window.opener) {
-                // Popout: Firefox blocks getDisplayMedia in the unfocused opener where
-                // the Room lives. Capture here (focused), then publish via shareScreenWithStream.
-                const preCapture = await getScreenStream('', shareAudioWithScreen());
-                if (preCapture) {
-                    const ok = await callsClient?.shareScreenWithStream(preCapture);
-                    if (ok) {
-                        window.screenSharingTrackId = preCapture.getVideoTracks()[0]?.id ?? '';
-                        this.setMissingScreenPermissions(false, true);
-                    } else {
-                        this.setMissingScreenPermissions(true, true);
-                    }
-                } else {
-                    this.setMissingScreenPermissions(true, true);
-                }
+            if (window.opener && isFirefox()) {
+                this.setState({showFirefoxScreenShareWarning: true});
             } else {
-                // Main window: LiveKit drives getDisplayMedia in the same (focused) window.
-                const stream = await callsClient?.shareScreen('', shareAudioWithScreen());
-                if (stream) {
-                    this.setMissingScreenPermissions(false, true);
-                } else {
-                    this.setMissingScreenPermissions(true, true);
-                }
+                await this.doShareScreen();
             }
         }
     };
@@ -794,10 +788,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         onClient(CALL_EVENT.DEVICE_CHANGE, (audioDevices: MediaDevices) => {
             this.setAudioDevices(audioDevices);
+            if (audioDevices.inputs.length === 0) {
+                this.setState({micPermissionPending: false});
+            }
         });
         onClient(CALL_EVENT.ERROR, (err: Error) => {
             if (err?.message === AudioInputPermissionsErr.message) {
                 this.setState({
+                    micPermissionPending: false,
                     alerts: {
                         ...this.state.alerts,
                         missingAudioInputPermissions: {
@@ -806,11 +804,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         },
                     },
                 });
+            } else {
+                this.setState({micPermissionPending: false});
             }
         });
 
         onClient(CALL_EVENT.INIT_AUDIO, () => {
             this.setState({
+                micPermissionPending: false,
                 alerts: {
                     ...this.state.alerts,
                     missingAudioInputPermissions: {
@@ -826,6 +827,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
+            micPermissionPending: !callsClient.isMicTrackPublished(),
             alerts: {
                 ...this.state.alerts,
                 missingAudioInputPermissions: {
@@ -1281,8 +1283,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
+        const micPermissionPending = this.state.micPermissionPending;
         const isMuted = this.isMuted();
-        const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
+        const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions && !micPermissionPending ? MutedIcon : UnmutedIcon;
 
         let muteTooltipText = isMuted ? formatMessage({defaultMessage: 'Unmute'}) : formatMessage({defaultMessage: 'Mute'});
         let muteTooltipSubtext = isMuted ? formatMessage({defaultMessage: 'Or hold space bar'}) : '';
@@ -1449,11 +1452,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 dataTestId={isMuted ? 'calls-popout-muted' : 'calls-popout-unmuted'}
                                 ariaLabel={muteTooltipText}
                                 // eslint-disable-next-line no-undefined
-                                onToggle={noInputDevices ? undefined : this.onMuteToggle}
+                                onToggle={noInputDevices || micPermissionPending ? undefined : this.onMuteToggle}
                                 tooltipText={muteTooltipText}
                                 tooltipSubtext={muteTooltipSubtext}
                                 // eslint-disable-next-line no-undefined
-                                shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
+                                shortcut={noInputDevices || noAudioPermissions || micPermissionPending ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
                                 bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
                                 bgColorHover={isMuted ? '' : 'rgba(61, 184, 135, 0.20)'}
                                 iconFill={isMuted ? '' : 'rgba(61, 184, 135, 0.80)'}
@@ -1466,7 +1469,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         }}
                                     />
                                 }
-                                unavailable={noInputDevices || noAudioPermissions}
+                                unavailable={noInputDevices || noAudioPermissions || micPermissionPending}
                             />
 
                             {this.props.allowScreenSharing &&
@@ -1628,6 +1631,23 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         promptDismissed={this.dismissRecordingPrompt}
                         transcriptionsEnabled={this.props.transcriptionsEnabled}
                     />
+                    {this.state.showFirefoxScreenShareWarning &&
+                        <GenericModal
+                            id='calls-firefox-screenshare-warning'
+                            modalHeaderText={this.props.intl.formatMessage({defaultMessage: 'Screen share will stop when this window is closed'})}
+                            confirmButtonText={this.props.intl.formatMessage({defaultMessage: 'Share screen'})}
+                            cancelButtonText={this.props.intl.formatMessage({defaultMessage: 'Cancel'})}
+                            showCancel={true}
+                            onHide={() => this.setState({showFirefoxScreenShareWarning: false})}
+                            handleCancel={() => this.setState({showFirefoxScreenShareWarning: false})}
+                            handleConfirm={() => {
+                                this.setState({showFirefoxScreenShareWarning: false});
+                                void this.doShareScreen();
+                            }}
+                        >
+                            {this.props.intl.formatMessage({defaultMessage: 'Starting a screen share from the expanded view in Firefox means the share will automatically stop if you close this window. To share without this limitation, close the expanded view and share from the main window.'})}
+                        </GenericModal>
+                    }
                     {Boolean(this.state.removeConfirmation) &&
                         Boolean(this.props.sessionsMap[this.state.removeConfirmation?.sessionID || '']) &&
                         <RemoveConfirmation
