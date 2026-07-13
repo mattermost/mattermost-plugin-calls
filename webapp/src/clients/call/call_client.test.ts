@@ -13,7 +13,6 @@ import {
 } from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {WEBSOCKET_EVENT, WebSocketClient} from 'src/clients/websocket';
-import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     STORAGE_CALLS_CLIENT_LOGS_KEY,
     STORAGE_CALLS_CLIENT_STATS_KEY,

@@ -409,7 +409,7 @@ export default class CallClient extends EventEmitter {
     };
 
     public isMicTrackPublished(): boolean {
-        return !!this.room?.localParticipant.getTrackPublication(Track.Source.Microphone);
+        return Boolean(this.room?.localParticipant.getTrackPublication(Track.Source.Microphone));
     }
 
     public async mute(): Promise<void> {

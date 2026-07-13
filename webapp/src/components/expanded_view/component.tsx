@@ -29,6 +29,7 @@ import {
     IDStopRecordingConfirmation,
     StopRecordingConfirmation,
 } from 'src/components/expanded_view/stop_recording_confirmation';
+import GenericModal from 'src/components/generic_modal';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CollapseIcon from 'src/components/icons/collapse';
 import CompassIcon from 'src/components/icons/compassIcon';
@@ -81,7 +82,6 @@ import styled, {createGlobalStyle, css} from 'styled-components';
 
 import {CallSettingsButton} from './call_settings';
 import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './controls_button';
-import GenericModal from 'src/components/generic_modal';
 import GlobalBanner from './global_banner';
 import ParticipantsGrid from './participants_grid';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
