@@ -1365,8 +1365,9 @@ describe('CallClient', () => {
 
             expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(true, {audio: false});
             expect(localScreenListener).toHaveBeenCalledWith(expect.anything(), 'me-session', 'me-id');
-            expect(result.kind).toBe('stream');
-            expect((result as {kind: 'stream'; stream: MediaStream}).stream.getTracks()).toEqual([videoTrack]);
+            const [stream] = result;
+            expect(stream).not.toBeNull();
+            expect(stream!.getTracks()).toEqual([videoTrack]);
             expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledTimes(1);
             expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledWith({screenStreamID: expect.any(String)});
         });
@@ -1395,8 +1396,9 @@ describe('CallClient', () => {
 
             const result = await client.shareScreen('', true);
 
-            expect(result.kind).toBe('stream');
-            expect((result as {kind: 'stream'; stream: MediaStream}).stream.getTracks()).toEqual([videoTrack, audioTrack]);
+            const [stream] = result;
+            expect(stream).not.toBeNull();
+            expect(stream!.getTracks()).toEqual([videoTrack, audioTrack]);
         });
 
         describe('desktop (Electron) source picker', () => {
@@ -1448,7 +1450,7 @@ describe('CallClient', () => {
                 expect(publishedVideo.source).toBe(Track.Source.ScreenShare);
 
                 expect(localScreenListener).toHaveBeenCalledWith(expect.anything(), 'me-session', 'me-id');
-                expect(result.kind).toBe('stream');
+                expect(result[0]).not.toBeNull();
                 expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledTimes(1);
                 expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledWith({screenStreamID: expect.any(String)});
             });
@@ -1480,7 +1482,7 @@ describe('CallClient', () => {
 
                 const result = await client.shareScreen('screen:1:0', false);
 
-                expect(result).toEqual({kind: 'error', reason: 'capture-error'});
+                expect(result).toEqual([null, 'capture-error']);
                 expect(mockRoom.localParticipant.publishTrack).not.toHaveBeenCalled();
                 expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
             });
@@ -1686,8 +1688,9 @@ describe('CallClient', () => {
 
             const result = await client.shareScreen();
 
-            expect(result.kind).toBe('stream');
-            expect((result as {kind: 'stream'; stream: MediaStream}).stream.getTracks()).toEqual([videoTrack]);
+            const [stream] = result;
+            expect(stream).not.toBeNull();
+            expect(stream!.getTracks()).toEqual([videoTrack]);
             expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });
@@ -1709,7 +1712,7 @@ describe('CallClient', () => {
 
             const result = await client.shareScreen();
 
-            expect(result).toEqual({kind: 'error', reason: 'already-sharing'});
+            expect(result).toEqual([null, 'already-sharing']);
             expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });
@@ -1725,7 +1728,7 @@ describe('CallClient', () => {
 
             const result = await client.shareScreen();
 
-            expect(result).toEqual({kind: 'error', reason: 'capture-error'});
+            expect(result).toEqual([null, 'capture-error']);
             expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });
@@ -1743,7 +1746,7 @@ describe('CallClient', () => {
 
             const result = await client.shareScreen();
 
-            expect(result).toEqual({kind: 'error', reason: 'permission-denied'});
+            expect(result).toEqual([null, 'permission-denied']);
             expect(errorListener).not.toHaveBeenCalled();
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });

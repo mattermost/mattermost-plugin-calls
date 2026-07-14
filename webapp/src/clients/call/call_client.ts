@@ -37,7 +37,7 @@ import {
 } from 'src/constants';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from 'src/log';
 import {parseRTCStats} from 'src/rtc_stats';
-import {CallsClientStats, MediaDevices, ShareScreenOutcome, TrackMetadata} from 'src/types/types';
+import {CallsClientStats, MediaDevices, ShareScreenError, ShareScreenResult, TrackMetadata} from 'src/types/types';
 import {getPersistentStorage, getPluginPath, getScreenStream} from 'src/utils';
 
 import {
@@ -462,9 +462,11 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    public async shareScreen(sourceID?: string, withAudio?: boolean): Promise<ShareScreenOutcome> {
+    public async shareScreen(sourceID?: string, withAudio?: boolean): Promise<ShareScreenResult> {
+        const fail = (reason: ShareScreenError): ShareScreenResult => [null, reason];
+
         if (!this.room || !this.roomConnected) {
-            return {kind: 'error', reason: 'not-connected'};
+            return fail('not-connected');
         }
 
         // If we're already sharing, return the existing stream.
@@ -472,9 +474,9 @@ export default class CallClient extends EventEmitter {
             logDebug('CallClient: you are already sharing screen');
             const stream = this.getLocalScreenStream();
             if (stream) {
-                return {kind: 'stream', stream};
+                return [stream, null];
             }
-            return {kind: 'error', reason: 'capture-error'};
+            return fail('capture-error');
         }
 
         // If another participant is already sharing, report it distinctly so callers can show a
@@ -482,7 +484,7 @@ export default class CallClient extends EventEmitter {
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
                 logDebug('CallClient: another participant is already sharing screen');
-                return {kind: 'error', reason: 'already-sharing'};
+                return fail('already-sharing');
             }
         }
 
@@ -502,17 +504,17 @@ export default class CallClient extends EventEmitter {
             const stream = this.getLocalScreenStream();
             logDebug('CallClient: screen share stream started', {sourceID, withAudio, streamID: stream?.id});
             if (stream) {
-                return {kind: 'stream', stream};
+                return [stream, null];
             }
-            return {kind: 'error', reason: 'capture-error'};
+            return fail('capture-error');
         } catch (err) {
             if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
                 logDebug('CallClient: screen share was either cancelled or permissions were denied');
-                return {kind: 'error', reason: 'permission-denied'};
+                return fail('permission-denied');
             }
             logErr('CallClient: sharing screen failed', err);
             this.emit(CALL_EVENT.ERROR, err);
-            return {kind: 'error', reason: 'capture-error'};
+            return fail('capture-error');
         }
     }
 

@@ -187,9 +187,9 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
                 withAudio: shareAudioWithScreen() && this.state.shareSystemAudio,
             });
         } else {
-            const result = await window.callsClient?.shareScreen(this.state.selected, shareAudioWithScreen());
-            if (result?.kind === 'error') {
-                logDebug('ScreenSourceModal.shareScreen: share failed', result.reason);
+            const [, err] = await window.callsClient?.shareScreen(this.state.selected, shareAudioWithScreen()) ?? [null, null];
+            if (err) {
+                logDebug('ScreenSourceModal.shareScreen: share failed', err);
             }
         }
         this.hide();

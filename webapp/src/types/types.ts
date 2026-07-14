@@ -149,9 +149,8 @@ export type CallJobReduxState = {
     prompt_dismissed_at?: number;
 }
 
-export type ShareScreenOutcome =
-    | { kind: 'stream'; stream: MediaStream }
-    | { kind: 'error'; reason: 'not-connected' | 'already-sharing' | 'permission-denied' | 'capture-error' };
+export type ShareScreenError = 'not-connected' | 'already-sharing' | 'permission-denied' | 'capture-error';
+export type ShareScreenResult = [stream: MediaStream | null, error: ShareScreenError | null];
 
 export type CapturerSource = {
     id: string;

@@ -811,22 +811,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (window.currentCallData) {
             window.currentCallData.missingScreenPermissions = false;
         }
-        const result = await window.callsClient?.shareScreen(sourceID, withAudio);
-        if (result?.kind === 'stream') {
-            logDebug(`CallWidget.shareScreen: stream received with ${result.stream.getVideoTracks().length} video tracks and ${result.stream.getAudioTracks().length} audio tracks`);
-            this.setState({screenStream: result.stream});
-        } else if (result?.kind === 'error') {
-            logDebug('CallWidget.shareScreen: share failed', result.reason);
-            if (result.reason === 'already-sharing') {
+        const [stream, err] = await window.callsClient?.shareScreen(sourceID, withAudio) ?? [null, null];
+        if (stream) {
+            logDebug(`CallWidget.shareScreen: stream received with ${stream.getVideoTracks().length} video tracks and ${stream.getAudioTracks().length} audio tracks`);
+            this.setState({screenStream: stream});
+        } else if (err) {
+            logDebug('CallWidget.shareScreen: share failed', err);
+            if (err === 'already-sharing') {
                 this.setState((prevState) => ({
                     alerts: {
                         ...prevState.alerts,
                         screenShareBlockedByRemote: {active: true, show: true},
                     },
                 }));
-            } else if (result.reason === 'permission-denied') {
+            } else if (err === 'permission-denied') {
                 this.setMissingScreenPermissions(true, true);
-            } else if (result.reason === 'capture-error') {
+            } else if (err === 'capture-error') {
                 this.setState((prevState) => ({
                     alerts: {
                         ...prevState.alerts,
