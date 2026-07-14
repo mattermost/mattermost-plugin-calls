@@ -1137,7 +1137,7 @@ export default class Plugin {
                 // eslint-disable-next-line max-nested-callbacks
                 this.registerReconnectHandler(registry, store, () => {
                     logDebug('websocket reconnect handler');
-                    if (!getCallsClient()) {
+                    if (!getCallsClient() && !channelIDForCurrentCall(store.getState())) {
                         logDebug('resetting state');
                         store.dispatch({
                             type: UNINIT,
