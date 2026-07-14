@@ -197,6 +197,82 @@ func getField(obj interface{}, fieldName string) reflect.Value {
 	return val.FieldByName(fieldName)
 }
 
+func TestSetOverridesDeprecatedRTCDURL(t *testing.T) {
+	originalEnv := os.Environ()
+	defer func() {
+		os.Clearenv()
+		for _, e := range originalEnv {
+			pair := splitEnvPair(e)
+			os.Setenv(pair[0], pair[1])
+		}
+	}()
+
+	setup := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI) {
+		t.Helper()
+		mockAPI := &pluginMocks.MockAPI{}
+		mockAPI.On("GetLicense").Return(nil)
+		// Allow LogError calls (e.g. from applyEnvOverrides on parse failures) without requiring them.
+		mockAPI.On("LogError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return().Maybe()
+		p := &Plugin{
+			MattermostPlugin: plugin.MattermostPlugin{
+				API: mockAPI,
+			},
+			configEnvOverrides: make(map[string]string),
+		}
+		return p, mockAPI
+	}
+
+	t.Run("deprecated MM_CALLS_RTCD_URL sets override and logs warning", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		mockAPI.On("LogWarn", "MM_CALLS_RTCD_URL is deprecated and will be removed in a future release, please use MM_CALLS_RTCD_SERVICE_URL instead", "origin", mock.AnythingOfType("string")).Return()
+		defer mockAPI.AssertExpectations(t)
+
+		os.Clearenv()
+		os.Setenv("MM_CALLS_RTCD_URL", "http://rtcd.example.com:8045")
+
+		cfg := &configuration{}
+		cfg.SetDefaults()
+
+		p.setOverrides(cfg)
+
+		require.Equal(t, "http://rtcd.example.com:8045", cfg.RTCDServiceURL)
+		require.Equal(t, "http://rtcd.example.com:8045", p.configEnvOverrides["RTCDServiceURL"])
+	})
+
+	t.Run("canonical MM_CALLS_RTCD_SERVICE_URL wins over deprecated MM_CALLS_RTCD_URL", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+
+		os.Clearenv()
+		os.Setenv("MM_CALLS_RTCD_SERVICE_URL", "http://canonical.example.com:8045")
+		os.Setenv("MM_CALLS_RTCD_URL", "http://deprecated.example.com:8045")
+
+		cfg := &configuration{}
+		cfg.SetDefaults()
+
+		p.setOverrides(cfg)
+
+		require.Equal(t, "http://canonical.example.com:8045", cfg.RTCDServiceURL)
+		require.Equal(t, "http://canonical.example.com:8045", p.configEnvOverrides["RTCDServiceURL"])
+	})
+
+	t.Run("no env var set leaves RTCDServiceURL from config", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+
+		os.Clearenv()
+
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.RTCDServiceURL = "http://console.example.com:8045"
+
+		p.setOverrides(cfg)
+
+		require.Equal(t, "http://console.example.com:8045", cfg.RTCDServiceURL)
+		require.Empty(t, p.configEnvOverrides["RTCDServiceURL"])
+	})
+}
+
 // Helper function to split environment variable pairs
 func splitEnvPair(pair string) []string {
 	for i := 0; i < len(pair); i++ {

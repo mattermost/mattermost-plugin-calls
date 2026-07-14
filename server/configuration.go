@@ -716,6 +716,16 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 		}
 	}
 
+	// v1.8.0 (MM-62732) MM_CALLS_RTCD_URL is DEPRECATED in favor of MM_CALLS_RTCD_SERVICE_URL.
+	// If the canonical env var didn't win, check the deprecated one and surface it so /env reflects reality.
+	if _, alreadySet := p.configEnvOverrides["RTCDServiceURL"]; !alreadySet {
+		if url := os.Getenv("MM_CALLS_RTCD_URL"); url != "" {
+			p.LogWarn("MM_CALLS_RTCD_URL is deprecated and will be removed in a future release, please use MM_CALLS_RTCD_SERVICE_URL instead")
+			cfg.RTCDServiceURL = url
+			p.configEnvOverrides["RTCDServiceURL"] = url
+		}
+	}
+
 	cfg.ICEHostOverride = strings.TrimSpace(cfg.ICEHostOverride)
 	cfg.UDPServerAddress = strings.TrimSpace(cfg.UDPServerAddress)
 	cfg.TCPServerAddress = strings.TrimSpace(cfg.TCPServerAddress)
