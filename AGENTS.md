@@ -3,11 +3,11 @@
 ## Build commands
 
 - `make apply` — Propagate plugin manifest into server/ and webapp/
-- `MM_SERVICESETTINGS_ENABLEDEVELOPER=true MM_DEBUG=true make dist` — Build plugin bundle (native arch, faster for local/cloud deploy)
+- `MM_DEBUG= MM_SERVICESETTINGS_ENABLEDEVELOPER=true make dist` — Build a browser-compatible plugin bundle for the native architecture
 - `make check-style` — Run all linters (Go + webapp + standalone + e2e)
 - `make test` — Run unit tests (Go + webapp)
 - `make test-e2e` — Playwright e2e (needs running Mattermost)
-- `make dist` — Build all platform assets
+- `MM_DEBUG= make dist` — Build all platform assets without eval-based source maps
 
 ## Cursor Cloud Agents
 

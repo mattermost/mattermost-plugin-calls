@@ -116,27 +116,27 @@ Mattermost is on port `8065`. The Enterprise license comes from the Cloud Agent 
 
 ## Deploy The Plugin
 
-Prefer developer mode so the server binary matches the container arch:
+Build without `MM_DEBUG` for browser testing. Debug webapp bundles use eval-based source maps that Mattermost's CSP blocks.
 
 ```bash
 export MM_SERVICESETTINGS_SITEURL=http://localhost:8065
 export MM_ADMIN_USERNAME=admin
 export MM_ADMIN_PASSWORD=Password123
 
-MM_SERVICESETTINGS_ENABLEDEVELOPER=true MM_DEBUG=true make deploy
+MM_DEBUG= MM_SERVICESETTINGS_ENABLEDEVELOPER=true make deploy
 ```
 
 Or build then deploy explicitly:
 
 ```bash
-MM_SERVICESETTINGS_ENABLEDEVELOPER=true MM_DEBUG=true make dist
+MM_DEBUG= MM_SERVICESETTINGS_ENABLEDEVELOPER=true make dist
 ./build/bin/pluginctl deploy com.mattermost.calls dist/com.mattermost.calls-*.tar.gz
 ```
 
 For iterative webapp work:
 
 ```bash
-MM_SERVICESETTINGS_ENABLEDEVELOPER=true MM_DEBUG=true make watch
+MM_DEBUG= MM_SERVICESETTINGS_ENABLEDEVELOPER=true make watch
 ```
 
 ## Lint, Test, and Type Check
@@ -145,7 +145,7 @@ MM_SERVICESETTINGS_ENABLEDEVELOPER=true MM_DEBUG=true make watch
 |------|---------|
 | Full style check | `make check-style` |
 | Unit tests (Go + webapp) | `make test` |
-| Plugin bundle | `MM_SERVICESETTINGS_ENABLEDEVELOPER=true MM_DEBUG=true make dist` |
+| Plugin bundle | `MM_DEBUG= MM_SERVICESETTINGS_ENABLEDEVELOPER=true make dist` |
 | Playwright e2e (needs running MM) | `make test-e2e` |
 | Go workspace (optional) | `make setup-go-work` |
 
@@ -199,7 +199,9 @@ Do not print AWS credentials. If `aws sts get-caller-identity` fails, report mis
 ## Gotchas
 
 - **Enterprise license** — use `MM_TEST_LICENSE` (Cloud Agent secret) as `MM_LICENSE` with `MM_SERVICEENVIRONMENT=test`. Do not upload via mmctl unless that env is missing.
+- **Debug webapp CSP** — `MM_DEBUG=true` uses eval-based source maps that current Mattermost CSP blocks. Use production-mode builds for browser testing.
 - **Embedded RTC ports** — default UDP/TCP `8443` must be published on the Mattermost container for media from the host/browser. Nested Docker/ICE can still fail in cloud VMs; UI-only checks do not need media.
+- **Cloud desktop audio** — the browser may have no audio input device. Calls UI and signaling can still be tested, but microphone capture needs a real or virtual input device.
 - **RTCD vs embedded** — local plugin iteration usually uses embedded RTC (no RTCD). Set `RTCDServiceURL` only when running an external RTCD.
 - **standalone depends on webapp** — always `npm ci --prefix webapp` before standalone; `make dist` orders this correctly.
 - **Plugin upload size** — `MM_FILESETTINGS_MAXFILESIZE=256000000` avoids `Uploaded plugin size exceeds limit`. Raise later with: `docker exec mattermost mmctl --local config set FileSettings.MaxFileSize 256000000 && docker exec mattermost mmctl --local config reload`.
