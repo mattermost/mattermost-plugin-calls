@@ -793,14 +793,47 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     private shareScreen = async (sourceID: string, withAudio: boolean) => {
-        const stream = await window.callsClient?.shareScreen(sourceID, withAudio);
+        this.setState((prevState) => ({
+            alerts: {
+                ...prevState.alerts,
+                missingScreenPermissions: {
+                    ...prevState.alerts.missingScreenPermissions,
+                    active: false,
+                    show: false,
+                },
+                screenShareBlockedByRemote: {active: false, show: false},
+                screenShareCaptureError: {active: false, show: false},
+            },
+        }));
+        if (this.expandedViewWindowRef.current) {
+            this.expandedViewWindowRef.current.callActions?.setMissingScreenPermissions(false);
+        }
+        if (window.currentCallData) {
+            window.currentCallData.missingScreenPermissions = false;
+        }
+        const [stream, err] = await window.callsClient?.shareScreen(sourceID, withAudio) ?? [null, null];
         if (stream) {
             logDebug(`CallWidget.shareScreen: stream received with ${stream.getVideoTracks().length} video tracks and ${stream.getAudioTracks().length} audio tracks`);
             this.setState({screenStream: stream});
-            this.setMissingScreenPermissions(false, true);
-        } else {
-            logDebug('CallWidget.shareScreen: no stream received');
-            this.setMissingScreenPermissions(true, true);
+        } else if (err) {
+            logDebug('CallWidget.shareScreen: share failed', err);
+            if (err === 'already-sharing') {
+                this.setState((prevState) => ({
+                    alerts: {
+                        ...prevState.alerts,
+                        screenShareBlockedByRemote: {active: true, show: true},
+                    },
+                }));
+            } else if (err === 'permission-denied') {
+                this.setMissingScreenPermissions(true, true);
+            } else if (err === 'capture-error') {
+                this.setState((prevState) => ({
+                    alerts: {
+                        ...prevState.alerts,
+                        screenShareCaptureError: {active: true, show: true},
+                    },
+                }));
+            }
         }
     };
 

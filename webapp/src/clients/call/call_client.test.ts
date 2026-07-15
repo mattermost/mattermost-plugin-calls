@@ -1361,12 +1361,13 @@ describe('CallClient', () => {
             const localScreenListener = jest.fn();
             client.on(CALL_EVENT.LOCAL_SCREEN_STREAM, localScreenListener);
 
-            const stream = await client.shareScreen('', false);
+            const result = await client.shareScreen('', false);
 
             expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(true, {audio: false});
             expect(localScreenListener).toHaveBeenCalledWith(expect.anything(), 'me-session', 'me-id');
+            const [stream] = result;
             expect(stream).not.toBeNull();
-            expect((stream as MediaStream).getTracks()).toEqual([videoTrack]);
+            expect(stream!.getTracks()).toEqual([videoTrack]);
             expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledTimes(1);
             expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledWith({screenStreamID: expect.any(String)});
         });
@@ -1393,10 +1394,11 @@ describe('CallClient', () => {
                 return Promise.resolve();
             });
 
-            const stream = await client.shareScreen('', true);
+            const result = await client.shareScreen('', true);
 
+            const [stream] = result;
             expect(stream).not.toBeNull();
-            expect((stream as MediaStream).getTracks()).toEqual([videoTrack, audioTrack]);
+            expect(stream!.getTracks()).toEqual([videoTrack, audioTrack]);
         });
 
         describe('desktop (Electron) source picker', () => {
@@ -1437,7 +1439,7 @@ describe('CallClient', () => {
                 const localScreenListener = jest.fn();
                 client.on(CALL_EVENT.LOCAL_SCREEN_STREAM, localScreenListener);
 
-                const stream = await client.shareScreen('screen:1:0', false);
+                const result = await client.shareScreen('screen:1:0', false);
 
                 expect(getScreenStream).toHaveBeenCalledWith('screen:1:0', false);
                 expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
@@ -1448,7 +1450,7 @@ describe('CallClient', () => {
                 expect(publishedVideo.source).toBe(Track.Source.ScreenShare);
 
                 expect(localScreenListener).toHaveBeenCalledWith(expect.anything(), 'me-session', 'me-id');
-                expect(stream).not.toBeNull();
+                expect(result[0]).not.toBeNull();
                 expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledTimes(1);
                 expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledWith({screenStreamID: expect.any(String)});
             });
@@ -1473,14 +1475,14 @@ describe('CallClient', () => {
                 expect(sources).toEqual([Track.Source.ScreenShare, Track.Source.ScreenShareAudio]);
             });
 
-            it('returns null without publishing when getScreenStream yields no stream (user cancelled)', async () => {
+            it('returns capture-error without publishing when getScreenStream yields no stream (user cancelled)', async () => {
                 await client.connect({channelID: 'test-channel'});
 
                 (getScreenStream as jest.Mock).mockResolvedValue(null);
 
-                const stream = await client.shareScreen('screen:1:0', false);
+                const result = await client.shareScreen('screen:1:0', false);
 
-                expect(stream).toBeNull();
+                expect(result).toEqual([null, 'capture-error']);
                 expect(mockRoom.localParticipant.publishTrack).not.toHaveBeenCalled();
                 expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
             });
@@ -1684,10 +1686,11 @@ describe('CallClient', () => {
             // Simulate that this client already has an active screen share publication.
             setLocalScreenPublications({mediaStreamTrack: videoTrack});
 
-            const stream = await client.shareScreen();
+            const result = await client.shareScreen();
 
+            const [stream] = result;
             expect(stream).not.toBeNull();
-            expect((stream as MediaStream).getTracks()).toEqual([videoTrack]);
+            expect(stream!.getTracks()).toEqual([videoTrack]);
             expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });
@@ -1701,20 +1704,20 @@ describe('CallClient', () => {
             expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(true, {audio: true, systemAudio: 'include'});
         });
 
-        it('shareScreen returns null without publishing when a remote participant is already sharing', async () => {
+        it('shareScreen returns already-sharing error without publishing when a remote participant is already sharing', async () => {
             await client.connect({channelID: 'test-channel'});
 
             const otherSharer = makeRemoteParticipant('user1___p1-session', {mediaStreamTrack: {} as MediaStreamTrack});
             mockRoom.remoteParticipants.set('p1', otherSharer);
 
-            const stream = await client.shareScreen();
+            const result = await client.shareScreen();
 
-            expect(stream).toBeNull();
+            expect(result).toEqual([null, 'already-sharing']);
             expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });
 
-        it('shareScreen returns null and emits ERROR for a non-permission failure', async () => {
+        it('shareScreen returns capture-error and emits ERROR for a non-permission failure', async () => {
             await client.connect({channelID: 'test-channel'});
 
             // A generic failure (name !== NotAllowedError) is not classified as PermissionDenied,
@@ -1723,14 +1726,14 @@ describe('CallClient', () => {
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
-            const stream = await client.shareScreen();
+            const result = await client.shareScreen();
 
-            expect(stream).toBeNull();
+            expect(result).toEqual([null, 'capture-error']);
             expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });
 
-        it('shareScreen returns null and does NOT emit ERROR when the picker is cancelled/denied (PermissionDenied)', async () => {
+        it('shareScreen returns permission-denied and does NOT emit ERROR when the picker is cancelled/denied (PermissionDenied)', async () => {
             await client.connect({channelID: 'test-channel'});
 
             // Dismissing the screen picker rejects getDisplayMedia with NotAllowedError, which
@@ -1741,9 +1744,9 @@ describe('CallClient', () => {
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
-            const stream = await client.shareScreen();
+            const result = await client.shareScreen();
 
-            expect(stream).toBeNull();
+            expect(result).toEqual([null, 'permission-denied']);
             expect(errorListener).not.toHaveBeenCalled();
             expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });

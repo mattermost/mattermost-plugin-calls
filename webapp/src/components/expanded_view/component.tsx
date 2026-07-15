@@ -542,7 +542,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         } else {
             // Main window: LiveKit drives getDisplayMedia in the same (focused) window.
-            const stream = await callsClient?.shareScreen('', shareAudioWithScreen());
+            const [stream] = await callsClient?.shareScreen('', shareAudioWithScreen()) ?? [null, null];
             if (stream) {
                 this.setMissingScreenPermissions(false, true);
             } else {

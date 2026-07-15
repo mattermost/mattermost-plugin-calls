@@ -118,6 +118,14 @@ export const CallAlertStatesDefault = {
         active: false,
         show: false,
     },
+    screenShareBlockedByRemote: {
+        active: false,
+        show: false,
+    },
+    screenShareCaptureError: {
+        active: false,
+        show: false,
+    },
     degradedCallQuality: {
         active: false,
         show: false,
@@ -140,6 +148,9 @@ export type CallJobReduxState = {
     error_at?: number;
     prompt_dismissed_at?: number;
 }
+
+export type ShareScreenError = 'not-connected' | 'already-sharing' | 'permission-denied' | 'capture-error';
+export type ShareScreenResult = [stream: MediaStream | null, error: ShareScreenError | null];
 
 export type CapturerSource = {
     id: string;
