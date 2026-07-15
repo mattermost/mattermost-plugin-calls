@@ -41,7 +41,10 @@ export const ReactionStream = () => {
         const user = reaction.user_id === currentUserID ? formatMessage({defaultMessage: 'You'}) : getUserDisplayName(profileMap[reaction.user_id], true) || formatMessage({defaultMessage: 'Someone'});
 
         return (
-            <ReactionChipOverlay key={reaction.timestamp + reaction.user_id}>
+            <ReactionChipOverlay
+                key={reaction.timestamp + reaction.user_id}
+                data-testid='reaction-chip'
+            >
                 <ReactionChip>
                     <span>{emoji}</span>
                     <span>{user}</span>
@@ -68,6 +71,7 @@ export const ReactionStream = () => {
             <ReactionChip
                 key={'hands'}
                 $highlight={true}
+                data-testid='raised-hand-chip'
             >
                 <HandEmoji
                     style={{
@@ -87,7 +91,7 @@ export const ReactionStream = () => {
     }
 
     return (
-        <ReactionStreamList>
+        <ReactionStreamList data-testid='reaction-stream'>
             {hostNotices.length > 0 && <HostNotices/>}
             {handsUp}
             {reactions}

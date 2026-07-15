@@ -251,7 +251,10 @@ const QuickSelect = ({emoji, handleClick}: QuickSelectProps) => {
     };
 
     return (
-        <QuickSelectButton onClick={onClick}>
+        <QuickSelectButton
+            data-testid={`reaction-quick-${emoji.name}`}
+            onClick={onClick}
+        >
             <Emoji
                 emoji={emoji}
                 size={24}
