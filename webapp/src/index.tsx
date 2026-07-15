@@ -416,6 +416,7 @@ export default class Plugin {
                 return;
             }
             if (!channelIDForCurrentCall(store.getState())) {
+                store.dispatch(setClientConnecting(true));
                 connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
