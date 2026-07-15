@@ -169,6 +169,7 @@ interface State {
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
     leaveMenuOpen: boolean,
+    micPermissionPending: boolean,
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
@@ -319,6 +320,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             selfVideoStream: null,
             otherVideoStream: null,
             initializingSelfVideo: false,
+            micPermissionPending: true,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -558,6 +560,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.setState({
                 ...state,
                 devices,
+                ...(devices.inputs.length === 0 && {micPermissionPending: false}),
                 alerts: {
                     ...this.state.alerts,
                     missingAudioInput: {
@@ -617,10 +620,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }
             }
 
-            if (isDMChannel(this.props.channel) || isGMChannel(this.props.channel)) {
-                callsClient?.unmute();
-            }
-
             this.setState({currentAudioInputDevice: callsClient?.currentAudioInputDevice});
             this.setState({currentAudioOutputDevice: callsClient?.currentAudioOutputDevice});
         });
@@ -628,6 +627,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         window.callsClient.on(CALL_EVENT.ERROR, (err: Error) => {
             if (err === AudioInputPermissionsErr) {
                 this.setState({
+                    micPermissionPending: false,
                     alerts: {
                         ...this.state.alerts,
                         missingAudioInputPermissions: {
@@ -642,11 +642,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         ...this.state.alerts,
                     },
                 });
+            } else {
+                this.setState({micPermissionPending: false});
             }
         });
 
         window.callsClient.on(CALL_EVENT.INIT_AUDIO, () => {
             this.setState({
+                micPermissionPending: false,
                 alerts: {
                     ...this.state.alerts,
                     missingAudioInputPermissions: {
@@ -655,6 +658,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     },
                 },
             });
+
+            // DM/GM calls auto-unmute the local participant. Doing this here (after
+            // INIT_AUDIO) rather than in CONNECTED avoids a race where setMicrophoneEnabled
+            // is called before our pre-published muted track is registered, causing
+            // LiveKit to publish a second mic track that bypasses mute controls.
+            if (isDMChannel(this.props.channel) || isGMChannel(this.props.channel)) {
+                window.callsClient?.unmute();
+            }
         });
 
         window.callsClient.on('initvideo', () => {
@@ -2377,8 +2388,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const noInputDevices = this.state.alerts.missingAudioInput.active;
         const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
+        const micPermissionPending = this.state.micPermissionPending;
 
-        const MuteIcon = this.isMuted() && !noInputDevices && !noAudioPermissions ? MutedIcon : UnmutedIcon;
+        const MuteIcon = this.isMuted() && !noInputDevices && !noAudioPermissions && !micPermissionPending ? MutedIcon : UnmutedIcon;
 
         let muteTooltipText = this.isMuted() ? formatMessage({defaultMessage: 'Unmute'}) : formatMessage({defaultMessage: 'Mute'});
         let muteTooltipSubtext = '';
@@ -2530,9 +2542,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             id='voice-mute-unmute'
                             ariaLabel={muteTooltipText}
                             // eslint-disable-next-line no-undefined
-                            onToggle={noInputDevices ? undefined : this.onMuteToggle}
+                            onToggle={noInputDevices || micPermissionPending ? undefined : this.onMuteToggle}
                             // eslint-disable-next-line no-undefined
-                            shortcut={noInputDevices || noAudioPermissions ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
+                            shortcut={noInputDevices || noAudioPermissions || micPermissionPending ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
                             tooltipText={muteTooltipText}
                             tooltipSubtext={muteTooltipSubtext}
                             bgColor={this.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
@@ -2543,7 +2555,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                     }}
                                 />
                             }
-                            unavailable={noInputDevices || noAudioPermissions}
+                            unavailable={noInputDevices || noAudioPermissions || micPermissionPending}
                         />
 
                         {!isDMChannel(this.props.channel) &&

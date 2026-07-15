@@ -13,7 +13,6 @@ import {
 } from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {WEBSOCKET_EVENT, WebSocketClient} from 'src/clients/websocket';
-import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     STORAGE_CALLS_CLIENT_LOGS_KEY,
     STORAGE_CALLS_CLIENT_STATS_KEY,
@@ -84,6 +83,7 @@ type MockRoom = {
     connect: jest.Mock;
     prepareConnection: jest.Mock;
     disconnect: jest.Mock;
+    removeAllListeners: jest.Mock;
     switchActiveDevice: jest.Mock;
     localParticipant: any;
     remoteParticipants: Map<string, any>;
@@ -100,6 +100,7 @@ function createMockRoom(): MockRoom {
         connect: jest.fn().mockResolvedValue(null),
         prepareConnection: jest.fn().mockResolvedValue(null),
         disconnect: jest.fn().mockResolvedValue(null),
+        removeAllListeners: jest.fn().mockReturnValue(null),
         switchActiveDevice: jest.fn().mockResolvedValue(null),
         localParticipant: {
             sid: 'me-sid',
@@ -490,6 +491,16 @@ describe('CallClient', () => {
             await new Promise((resolve) => setImmediate(resolve));
 
             expect((client as any).lastStats.rtcStats.ssrcStats[55].local.out).toMatchObject({bytesSent: 9});
+        });
+
+        it('calls room.removeAllListeners() on disconnect to stop post-call devicechange events', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.state = ConnectionState.Connected;
+
+            client.disconnect();
+            mockRoom.fire(RoomEvent.Disconnected);
+
+            expect(mockRoom.removeAllListeners).toHaveBeenCalled();
         });
 
         it('before the room connects, tears down directly (livekit room.disconnect would not emit)', () => {
@@ -1146,7 +1157,7 @@ describe('CallClient', () => {
 
             await client.connect({channelID: 'test-channel'});
 
-            // Enumeration runs from handleConnected → requestMicrophonePermission,
+            // Enumeration runs from handleConnected → ensureMicrophoneTrack,
             // which only fires after LiveKit emits Connected.
             mockRoom.fire(RoomEvent.Connected);
             await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1252,7 +1263,7 @@ describe('CallClient', () => {
 
             await client.connect({channelID: 'test-channel'});
 
-            // Device restore runs from handleConnected → requestMicrophonePermission,
+            // Device restore runs from handleConnected → ensureMicrophoneTrack,
             // which only fires after LiveKit emits Connected.
             mockRoom.fire(RoomEvent.Connected);
             await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1738,40 +1749,149 @@ describe('CallClient', () => {
         });
     });
 
+    describe('shareScreenWithStream', () => {
+        beforeEach(() => {
+            (LocalVideoTrack as unknown as jest.Mock).mockClear();
+            (LocalAudioTrack as unknown as jest.Mock).mockClear();
+        });
+
+        it('publishes video track as ScreenShare and returns true', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const videoTrack = {stop: jest.fn()} as unknown as MediaStreamTrack;
+            const stream = {
+                getVideoTracks: () => [videoTrack],
+                getAudioTracks: () => [],
+                getTracks: () => [videoTrack],
+                id: 'stream-id',
+            } as unknown as MediaStream;
+
+            const ok = await client.shareScreenWithStream(stream);
+
+            expect(ok).toBe(true);
+            expect(LocalVideoTrack).toHaveBeenCalledWith(videoTrack, undefined, false);
+            const publishedVideo = mockRoom.localParticipant.publishTrack.mock.calls[0][0];
+            expect(publishedVideo.source).toBe(Track.Source.ScreenShare);
+        });
+
+        it('also publishes audio track as ScreenShareAudio', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const videoTrack = {stop: jest.fn()} as unknown as MediaStreamTrack;
+            const audioTrack = {stop: jest.fn()} as unknown as MediaStreamTrack;
+            const stream = {
+                getVideoTracks: () => [videoTrack],
+                getAudioTracks: () => [audioTrack],
+                getTracks: () => [videoTrack, audioTrack],
+                id: 'stream-id',
+            } as unknown as MediaStream;
+
+            const ok = await client.shareScreenWithStream(stream);
+
+            expect(ok).toBe(true);
+            const sources = mockRoom.localParticipant.publishTrack.mock.calls.map((c: any[]) => c[0].source);
+            expect(sources).toEqual([Track.Source.ScreenShare, Track.Source.ScreenShareAudio]);
+        });
+
+        it('returns false and stops tracks when a remote participant is already sharing', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.remoteParticipants.set('other', {
+                getTrackPublication: (source: Track.Source) => source === Track.Source.ScreenShare ? {} : null,
+            });
+
+            const stopFn = jest.fn();
+            const stream = {
+                getVideoTracks: () => [],
+                getAudioTracks: () => [],
+                getTracks: () => [{stop: stopFn}],
+            } as unknown as MediaStream;
+
+            const ok = await client.shareScreenWithStream(stream);
+
+            expect(ok).toBe(false);
+            expect(stopFn).toHaveBeenCalled();
+            expect(mockRoom.localParticipant.publishTrack).not.toHaveBeenCalled();
+
+            mockRoom.remoteParticipants.clear();
+        });
+
+        it('returns false, unpublishes any partial tracks, and stops on publishTrack error', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const videoTrack = {} as MediaStreamTrack;
+            const stopFn = jest.fn();
+            const stream = {
+                getVideoTracks: () => [videoTrack],
+                getAudioTracks: () => [],
+                getTracks: () => [{stop: stopFn}],
+            } as unknown as MediaStream;
+
+            mockRoom.localParticipant.publishTrack.mockRejectedValueOnce(new Error('publish failed'));
+            mockRoom.localParticipant.unpublishTrack = jest.fn().mockResolvedValue(undefined);
+
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            const ok = await client.shareScreenWithStream(stream);
+
+            expect(ok).toBe(false);
+            expect(stopFn).toHaveBeenCalled();
+            expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
+        });
+    });
+
     describe('mute / unmute', () => {
-        it('unmute emits ERROR with AudioInputPermissionsErr (and does not throw) when mic permission is denied', async () => {
+        it('unmute calls pub.unmute() on the existing mic publication', async () => {
             await client.connect({channelID: 'test-channel'});
 
-            // setMicrophoneEnabled rejects with NotAllowedError when the mic permission is
-            // denied/dismissed; MediaDeviceFailure classifies it as PermissionDenied (reads err.name).
-            const notAllowed = Object.assign(new Error('Permission dismissed'), {name: 'NotAllowedError'});
-            mockRoom.localParticipant.setMicrophoneEnabled.mockRejectedValueOnce(notAllowed);
+            const mockPub = {mute: jest.fn().mockResolvedValue(undefined), unmute: jest.fn().mockResolvedValue(undefined)};
+            mockRoom.localParticipant.getTrackPublication.mockReturnValueOnce(mockPub);
+
+            await client.unmute();
+
+            expect(mockPub.unmute).toHaveBeenCalledTimes(1);
+        });
+
+        it('mute calls pub.mute() on the existing mic publication', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const mockPub = {mute: jest.fn().mockResolvedValue(undefined), unmute: jest.fn().mockResolvedValue(undefined)};
+            mockRoom.localParticipant.getTrackPublication.mockReturnValueOnce(mockPub);
+
+            await client.mute();
+
+            expect(mockPub.mute).toHaveBeenCalledTimes(1);
+        });
+
+        it('unmute is a no-op when no mic track is published', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            // getTrackPublication returns undefined by default — no track published yet.
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
-            // Resolves (no uncaught rejection) and surfaces the inline mic-permission alert.
             await expect(client.unmute()).resolves.toBeUndefined();
-            expect(errorListener).toHaveBeenCalledWith(AudioInputPermissionsErr);
+
+            expect(errorListener).not.toHaveBeenCalled();
         });
 
-        it('unmute emits ERROR with the underlying error for a non-permission failure', async () => {
+        it('mute/unmute do not emit ERROR when pub throws', async () => {
             await client.connect({channelID: 'test-channel'});
 
-            const err = new Error('device in use');
-            mockRoom.localParticipant.setMicrophoneEnabled.mockRejectedValueOnce(err);
+            const mockPub = {
+                mute: jest.fn().mockRejectedValue(new Error('device in use')),
+                unmute: jest.fn().mockRejectedValue(new Error('device in use')),
+            };
+            mockRoom.localParticipant.getTrackPublication.mockReturnValue(mockPub);
+
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
-            await client.unmute();
+            await expect(client.mute()).resolves.toBeUndefined();
+            await expect(client.unmute()).resolves.toBeUndefined();
 
-            expect(errorListener).toHaveBeenCalledWith(err);
-        });
-
-        it('unmute is a no-op when not connected', async () => {
-            // No connect() — roomConnected stays false.
-            await client.unmute();
-
-            expect(mockRoom.localParticipant.setMicrophoneEnabled).not.toHaveBeenCalled();
+            expect(errorListener).not.toHaveBeenCalled();
         });
     });
 
