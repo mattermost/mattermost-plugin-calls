@@ -110,6 +110,7 @@ export default class CallClient extends EventEmitter {
     // best stats we can log for forensics. See startStatsPolling().
     private lastStats: CallsClientStats | null = null;
     private statsPollTimer: ReturnType<typeof setInterval> | null = null;
+    private micTrackEnsureInProgress = false;
 
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
@@ -961,6 +962,11 @@ export default class CallClient extends EventEmitter {
     // the popout. The main window is always focused at join time, so capture is safe here.
     // Idempotent: skips publication if a mic track is already published (e.g. on hot-plug).
     private async ensureMicrophoneTrack() {
+        if (this.micTrackEnsureInProgress) {
+            logDebug('CallClient: ensureMicrophoneTrack already in progress, skipping');
+            return;
+        }
+        this.micTrackEnsureInProgress = true;
         try {
             logDebug('CallClient: ensuring microphone track');
             const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true});
@@ -1022,6 +1028,8 @@ export default class CallClient extends EventEmitter {
                 logErr('CallClient: failed to request microphone permission', err);
                 this.emit(CALL_EVENT.ERROR, err);
             }
+        } finally {
+            this.micTrackEnsureInProgress = false;
         }
     }
 
