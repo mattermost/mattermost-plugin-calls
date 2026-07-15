@@ -1328,7 +1328,9 @@ describe('CallClient', () => {
             // resolve it. Second call (if the mutex fails) would resolve immediately with a
             // track, proving a second publishTrack was attempted.
             (navigator.mediaDevices.getUserMedia as jest.Mock)
-                .mockReturnValueOnce(new Promise((resolve) => { resolveGetUserMedia = resolve; }))
+                .mockReturnValueOnce(new Promise((resolve) => {
+                    resolveGetUserMedia = resolve;
+                }))
                 .mockResolvedValueOnce({getTracks: () => [{stop: jest.fn()}]});
 
             // Simulate Safari: no inputs visible before permission.

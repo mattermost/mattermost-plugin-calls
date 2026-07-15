@@ -110,6 +110,9 @@ export default class CallClient extends EventEmitter {
     // best stats we can log for forensics. See startStatsPolling().
     private lastStats: CallsClientStats | null = null;
     private statsPollTimer: ReturnType<typeof setInterval> | null = null;
+
+    // Mutex for ensureMicrophoneTrack — set synchronously before the first await so
+    // concurrent callers are blocked immediately.
     private micTrackEnsureInProgress = false;
 
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
@@ -967,6 +970,7 @@ export default class CallClient extends EventEmitter {
             return;
         }
         this.micTrackEnsureInProgress = true;
+        let notFound = false;
         try {
             logDebug('CallClient: ensuring microphone track');
             const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true});
@@ -1022,14 +1026,21 @@ export default class CallClient extends EventEmitter {
                 this.emit(CALL_EVENT.ERROR, AudioInputPermissionsErr);
             } else if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.NotFound) {
                 logDebug('CallClient: no audio input device found');
-                await this.enumerateDevices();
-                this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+                notFound = true;
             } else {
                 logErr('CallClient: failed to request microphone permission', err);
                 this.emit(CALL_EVENT.ERROR, err);
             }
         } finally {
             this.micTrackEnsureInProgress = false;
+        }
+
+        if (notFound) {
+            // Enumerate and emit outside the micTrackEnsureInProgress mutex so a concurrent
+            // MediaDevicesChanged (e.g. user plugs in a mic immediately after joining) is not blocked.
+            // DEVICE_CHANGE triggers the missing-audio-input alert in the UI.
+            await this.enumerateDevices();
+            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
         }
     }
 
