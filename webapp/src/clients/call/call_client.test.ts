@@ -1313,6 +1313,54 @@ describe('CallClient', () => {
         });
     });
 
+    describe('ensureMicrophoneTrack', () => {
+        it('mutex prevents double publishTrack when Connected and MediaDevicesChanged race concurrently (Safari)', async () => {
+            // Safari does not expose mic devices via enumerateDevices() until permission is
+            // granted, so the initial input count is 0. When the user clicks Allow, Safari
+            // fires mediadeviceschange — which triggers a second ensureMicrophoneTrack() call
+            // while the first (from handleConnected) is still suspended inside getUserMedia().
+            // Both calls would otherwise race past the !getTrackPublication guard and publish
+            // two tracks. The micTrackEnsureInProgress mutex must block the second call.
+
+            let resolveGetUserMedia!: (stream: any) => void;
+
+            // First getUserMedia call (from handleConnected) is deferred until we manually
+            // resolve it. Second call (if the mutex fails) would resolve immediately with a
+            // track, proving a second publishTrack was attempted.
+            (navigator.mediaDevices.getUserMedia as jest.Mock)
+                .mockReturnValueOnce(new Promise((resolve) => { resolveGetUserMedia = resolve; }))
+                .mockResolvedValueOnce({getTracks: () => [{stop: jest.fn()}]});
+
+            // Simulate Safari: no inputs visible before permission.
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([]);
+
+            await client.connect({channelID: 'test-channel'});
+
+            // RoomEvent.Connected triggers the first ensureMicrophoneTrack(), which suspends
+            // at the deferred getUserMedia and sets micTrackEnsureInProgress = true.
+            mockRoom.fire(RoomEvent.Connected);
+
+            // Permission is granted — Safari fires mediadeviceschange with the new input.
+            // handleMediaDevicesChanged sees prevInputCount=0 → newCount=1 → no published
+            // track → calls ensureMicrophoneTrack() again. The mutex must block it.
+            const safariInputDevice: MediaDeviceInfo = {
+                deviceId: 'mic-1', kind: 'audioinput', label: 'Built-in Mic', groupId: 'g1', toJSON: () => ({}),
+            } as MediaDeviceInfo;
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([safariInputDevice]);
+            mockRoom.fire(RoomEvent.MediaDevicesChanged);
+
+            // Let handleMediaDevicesChanged's enumerateDevices await settle.
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            // Resolve getUserMedia — the first ensureMicrophoneTrack() completes and
+            // publishes exactly one track.
+            resolveGetUserMedia({getTracks: () => [{stop: jest.fn()}]});
+            await new Promise((resolve) => setImmediate(resolve));
+
+            expect(mockRoom.localParticipant.publishTrack).toHaveBeenCalledTimes(1);
+        });
+    });
+
     describe('screen share', () => {
         // Models LiveKit's behavior: by the time LocalTrackPublished / TrackSubscribed
         // fires, the participant's getTrackPublication already returns the publication.
