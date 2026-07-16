@@ -35,7 +35,7 @@ docker build --check -f .cursor/Dockerfile .cursor
 docker build -f .cursor/Dockerfile .cursor/
 ```
 
-The Dockerfile fetches `mattermostdevelopment/mattermost-enterprise-edition:master` (linux/amd64) and `postgres:14` during image build so startup can `docker load` them without a live pull. The Mattermost development `master` tag does not publish arm64.
+The Dockerfile fetches `mattermost/mattermost-enterprise-edition:11.7.6` (latest 11.7.* ESR, linux/amd64) and `postgres:14` during image build so startup can `docker load` them without a live pull. Override `MATTERMOST_IMAGE` / `MATTERMOST_IMAGE_TAG` for master or other versions.
 
 ## Expected Secrets
 

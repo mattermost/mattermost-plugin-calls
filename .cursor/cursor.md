@@ -34,7 +34,8 @@ Plugin bundles land at `dist/com.mattermost.calls-<version>.tar.gz`.
 After cloud-agent startup, Docker should be ready and Mattermost/Postgres images loaded:
 
 ```bash
-export MM_IMAGE="${MATTERMOST_IMAGE:-mattermostdevelopment/mattermost-enterprise-edition}:${MATTERMOST_IMAGE_TAG:-master}"
+# Pin to latest 11.7.* ESR for stability (override MATTERMOST_IMAGE[_TAG] for master/server work).
+export MM_IMAGE="${MATTERMOST_IMAGE:-mattermost/mattermost-enterprise-edition}:${MATTERMOST_IMAGE_TAG:-11.7.6}"
 export MM_PLATFORM="${MATTERMOST_PLATFORM:-linux/amd64}"
 export POSTGRES_IMAGE="${POSTGRES_IMAGE:-postgres}:${POSTGRES_IMAGE_TAG:-14}"
 export MM_DB_USER=mmuser
@@ -60,9 +61,17 @@ docker run -d \
   -v mm-postgres-data:/var/lib/postgresql/data \
   "$POSTGRES_IMAGE"
 
-until [ "$(docker inspect -f '{{.State.Health.Status}}' mm-postgres)" = "healthy" ]; do
+for _ in $(seq 1 60); do
+  if [ "$(docker inspect -f '{{.State.Health.Status}}' mm-postgres)" = "healthy" ]; then
+    break
+  fi
   sleep 2
 done
+if [ "$(docker inspect -f '{{.State.Health.Status}}' mm-postgres)" != "healthy" ]; then
+  echo "Postgres did not become healthy within 120s" >&2
+  docker logs mm-postgres >&2 || true
+  exit 1
+fi
 
 mkdir -p /tmp/mattermost/{config,data,logs,plugins,client-plugins,bleve-indexes}
 chmod -R 777 /tmp/mattermost
@@ -100,9 +109,17 @@ docker run -d \
 Wait for Mattermost, then create a system admin:
 
 ```bash
-until curl -fsS http://localhost:8065/api/v4/system/ping | jq -e '.status == "OK"' >/dev/null; do
+for _ in $(seq 1 90); do
+  if curl -fsS http://localhost:8065/api/v4/system/ping | jq -e '.status == "OK"' >/dev/null 2>&1; then
+    break
+  fi
   sleep 2
 done
+if ! curl -fsS http://localhost:8065/api/v4/system/ping | jq -e '.status == "OK"' >/dev/null 2>&1; then
+  echo "Mattermost did not become ready within 180s" >&2
+  docker logs mattermost >&2 || true
+  exit 1
+fi
 
 docker exec mattermost mmctl --local user search "$MM_ADMIN_USERNAME" | grep -q "$MM_ADMIN_USERNAME" || \
   docker exec mattermost mmctl --local user create \
