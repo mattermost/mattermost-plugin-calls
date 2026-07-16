@@ -29,7 +29,7 @@ func newDMTimerTestPlugin(t *testing.T) (*Plugin, *pluginMocks.MockAPI, *serverM
 	mockMetrics := &serverMocks.MockMetrics{}
 
 	p := &Plugin{
-		MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
+		MattermostPlugin:  plugin.MattermostPlugin{API: mockAPI},
 		callsClusterLocks: map[string]*cluster.Mutex{},
 		metrics:           mockMetrics,
 		dmNoAnswerTimers:  map[string]*time.Timer{},
