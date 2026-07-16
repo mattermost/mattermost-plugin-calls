@@ -833,8 +833,16 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 		}
 
-		if len(state.sessions) == 2 && !p.isBot(userID) && channel.Type == model.ChannelTypeDirect {
-			p.cancelDMNoAnswerTimer(channelID)
+		if !p.isBot(userID) && channel.Type == model.ChannelTypeDirect {
+			humanUsers := make(map[string]struct{})
+			for _, s := range state.sessions {
+				if !p.isBot(s.UserID) {
+					humanUsers[s.UserID] = struct{}{}
+				}
+			}
+			if len(humanUsers) == 2 {
+				p.cancelDMNoAnswerTimer(channelID)
+			}
 		}
 
 		p.LogDebug("session has joined call",
