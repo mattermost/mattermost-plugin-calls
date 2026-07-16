@@ -242,6 +242,12 @@ func (p *Plugin) OnDeactivate() error {
 		p.LogError(err.Error())
 	}
 
+	p.dmNoAnswerTimersMut.Lock()
+	for _, t := range p.dmNoAnswerTimers {
+		t.Stop()
+	}
+	p.dmNoAnswerTimersMut.Unlock()
+
 	if p.rtcdManager != nil {
 		if err := p.rtcdManager.Close(); err != nil {
 			p.LogError(err.Error())

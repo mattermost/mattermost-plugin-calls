@@ -359,7 +359,7 @@ func (p *Plugin) cleanCallState(call *public.Call) error {
 		return nil
 	}
 
-	if _, err := p.updateCallPostEnded(call.PostID, mapKeys(call.Props.Participants)); err != nil {
+	if _, err := p.updateCallPostEnded(call.PostID, mapKeys(call.Props.Participants), callEndReasonNormal); err != nil {
 		p.LogError("failed to update call post", "err", err.Error())
 	}
 

@@ -806,7 +806,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 				)
 			}
 
-			postID, threadID, err := p.createCallStartedPost(state, userID, channelID, joinData.Title, joinData.ThreadID)
+			postID, threadID, err := p.createCallStartedPost(state, userID, channelID, joinData.Title, joinData.ThreadID, channel.Type)
 			if err != nil {
 				p.LogError(err.Error())
 			}
@@ -815,6 +815,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			state.Call.ThreadID = threadID
 			if err := p.store.UpdateCall(&state.Call); err != nil {
 				p.LogError(err.Error())
+			}
+
+			if channel.Type == model.ChannelTypeDirect {
+				p.startDMNoAnswerTimer(channelID, state.Call.ID)
 			}
 
 			// TODO: send all the info attached to a call.
@@ -827,6 +831,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 				"owner_id":  state.Call.OwnerID,
 				"host_id":   state.Call.GetHostID(),
 			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+		}
+
+		if len(state.sessions) == 2 && !p.isBot(userID) && channel.Type == model.ChannelTypeDirect {
+			p.cancelDMNoAnswerTimer(channelID)
 		}
 
 		p.LogDebug("session has joined call",

@@ -73,6 +73,9 @@ type Plugin struct {
 	callsClusterLocks    map[string]*cluster.Mutex
 	callsClusterLocksMut sync.RWMutex
 
+	dmNoAnswerTimers    map[string]*time.Timer
+	dmNoAnswerTimersMut sync.Mutex
+
 	// Database
 	store *db.Store
 
@@ -301,7 +304,7 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, title, threadID string) (string, string, error) {
+func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, title, threadID string, channelType model.ChannelType) (string, string, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return "", "", appErr
@@ -329,17 +332,22 @@ func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, titl
 		Text:     postMsg,
 	}
 
+	props := map[string]interface{}{
+		"attachments": []*model.MessageAttachment{&msgAttachment},
+		"start_at":    state.Call.StartAt,
+		"title":       title,
+	}
+	if channelType == model.ChannelTypeDirect {
+		props["call_status"] = callStatusCalling
+	}
+
 	post := &model.Post{
 		UserId:    userID,
 		ChannelId: channelID,
 		RootId:    threadID,
 		Message:   postMsg,
 		Type:      callStartPostType,
-		Props: map[string]interface{}{
-			"attachments": []*model.MessageAttachment{&msgAttachment},
-			"start_at":    state.Call.StartAt,
-			"title":       title,
-		},
+		Props:     props,
 	}
 
 	createdPost, appErr := p.API.CreatePost(post)
@@ -355,7 +363,7 @@ func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, titl
 	return createdPost.Id, threadID, nil
 }
 
-func (p *Plugin) updateCallPostEnded(postID string, participants []string) (float64, error) {
+func (p *Plugin) updateCallPostEnded(postID string, participants []string, reason callEndReason) (float64, error) {
 	if postID == "" {
 		return 0, fmt.Errorf("postID should not be empty")
 	}
@@ -367,7 +375,19 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 
 	T := p.getTranslationFunc("")
 
-	postMsg := T("app.call.ended_message")
+	var postMsg, callStatus string
+	switch reason {
+	case callEndReasonNoAnswer:
+		postMsg = T("app.call.no_answer_message")
+		callStatus = callStatusNoAnswer
+	case callEndReasonCanceledByCaller:
+		postMsg = T("app.call.canceled_by_caller_message")
+		callStatus = callStatusCanceledByCaller
+	default:
+		postMsg = T("app.call.ended_message")
+		callStatus = callStatusEnded
+	}
+
 	msgAttachment := model.MessageAttachment{
 		Fallback: postMsg,
 		Title:    postMsg,
@@ -378,6 +398,7 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 	post.DelProp("attachments")
 	post.AddProp("attachments", []*model.MessageAttachment{&msgAttachment})
 	post.AddProp("end_at", time.Now().UnixMilli())
+	post.AddProp("call_status", callStatus)
 	post.AddProp("participants", participants)
 
 	if _, appErr := p.API.UpdatePost(post); appErr != nil {

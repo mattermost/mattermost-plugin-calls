@@ -786,6 +786,7 @@ func TestHandleJoin(t *testing.T) {
 		sessions:               map[string]*session{},
 		addSessionsBatchers:    map[string]*batching.Batcher{},
 		removeSessionsBatchers: map[string]*batching.Batcher{},
+		dmNoAnswerTimers:       map[string]*time.Timer{},
 	}
 
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
