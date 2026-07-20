@@ -366,12 +366,10 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 	setCallEnded(&state.Call)
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
-		p.unlockCall(channelID)
-		return http.StatusInternalServerError, fmt.Errorf("failed to update call: %w", err)
+		p.LogError("declineCall: failed to update call", "channelID", channelID, "err", err.Error())
 	}
 	if err := p.store.DeleteCallsSessions(callID); err != nil {
-		p.unlockCall(channelID)
-		return http.StatusInternalServerError, fmt.Errorf("failed to delete call sessions: %w", err)
+		p.LogError("declineCall: failed to delete call sessions", "channelID", channelID, "err", err.Error())
 	}
 
 	p.cancelDMNoAnswerTimer(channelID)
