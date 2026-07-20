@@ -123,6 +123,42 @@ func TestRemoveUserSessionDMAutoEnd(t *testing.T) {
 		require.Len(t, state.sessions, 1)
 	})
 
+	t.Run("DM: does not publish call_end when the bot leaves with a real user still connected", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		botID := model.NewId()
+		p.botSession = &model.Session{UserId: botID}
+		defer func() { p.botSession = nil }()
+
+		channelID := model.NewId()
+		state := buildDMCallState(t, channelID)
+
+		// Add a bot session alongside the two real users.
+		botConnID := model.NewId()
+		err := p.store.CreateCallSession(&public.CallSession{
+			ID:     botConnID,
+			CallID: state.Call.ID,
+			UserID: botID,
+			JoinAt: time.Now().UnixMilli(),
+		})
+		require.NoError(t, err)
+		state.sessions[botConnID] = &public.CallSession{
+			ID:     botConnID,
+			CallID: state.Call.ID,
+			UserID: botID,
+		}
+
+		err = p.removeUserSession(state, botID, botConnID, botConnID, channelID)
+		require.NoError(t, err)
+
+		// wsEventUserLeft and wsEventCallEnd must NOT be published: publishWebSocketEvent
+		// suppresses wsEventUserLeft for the bot, and the DM auto-end block skips bot departures.
+		require.Zero(t, state.Call.EndAt)
+		require.Len(t, state.sessions, 2)
+	})
+
 	t.Run("non-DM: does not publish call_end when a user leaves with another user still connected", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)

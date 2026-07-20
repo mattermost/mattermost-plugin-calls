@@ -1069,6 +1069,13 @@ func TestHandleJoin(t *testing.T) {
 
 		// Session leaving call path
 
+		// removeUserSession calls GetChannel for DM auto-end check when sessions remain.
+		// Channel is open (not DM), so auto-end won't fire, but the call must be handled.
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
+		}, nil)
+
 		mockMetrics.On("DecWebSocketConn").Times(10)
 		mockRTCMetrics.On("DecRTCSessions", "default").Times(10)
 		mockRTCMetrics.On("IncRTCConnState", "closed").Times(10)
