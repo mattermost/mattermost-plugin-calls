@@ -318,6 +318,10 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 // and updating the call post to reflect the declined state.
 // Callers must ensure channelID belongs to a DM channel before calling.
 func (p *Plugin) declineCall(channelID, userID string) (int, error) {
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+		return http.StatusForbidden, fmt.Errorf("forbidden")
+	}
+
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("failed to lock call: %w", err)
