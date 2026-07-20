@@ -383,6 +383,9 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string, reaso
 	case callEndReasonCanceledByCaller:
 		postMsg = T("app.call.canceled_by_caller_message")
 		callStatus = callStatusCanceledByCaller
+	case callEndReasonDeclined:
+		postMsg = T("app.call.declined_message")
+		callStatus = callStatusDeclined
 	default:
 		postMsg = T("app.call.ended_message")
 		callStatus = callStatusEnded
