@@ -483,6 +483,46 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}()
 	}
 
+	// DM auto-end: end the call when a real user leaves and another real user is still connected.
+	if len(state.sessions) > 0 && !state.onlyUserLeft(p.getBotID()) {
+		ch, appErr := p.API.GetChannel(channelID)
+		if appErr != nil {
+			p.LogError("failed to get channel for DM auto-end check", "err", appErr.Error(), "channelID", channelID)
+		} else if ch.Type == model.ChannelTypeDirect {
+			p.LogDebug("DM auto-end: participant left, ending call", "channelID", channelID, "userID", userID)
+			p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
+				ChannelID: channelID, ReliableClusterSend: true,
+			})
+
+			callID := state.Call.ID
+			nodeID := state.Call.Props.NodeID
+
+			go func() {
+				time.Sleep(5 * time.Second)
+
+				call, err := p.store.GetCall(callID, db.GetCallOpts{})
+				if err != nil {
+					p.LogError("DM auto-end: failed to get call", "err", err.Error())
+				}
+
+				sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})
+				if err != nil {
+					p.LogError("DM auto-end: failed to get call sessions", "err", err.Error())
+				}
+
+				for _, s := range sessions {
+					if err := p.closeRTCSession(s.UserID, s.ID, channelID, nodeID, callID); err != nil {
+						p.LogError("DM auto-end: failed to close RTC session", "err", err.Error())
+					}
+				}
+
+				if err := p.cleanCallState(call); err != nil {
+					p.LogError("DM auto-end: failed to clean call state", "err", err.Error())
+				}
+			}()
+		}
+	}
+
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		return fmt.Errorf("failed to update call: %w", err)
 	}
