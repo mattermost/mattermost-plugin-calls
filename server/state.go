@@ -80,11 +80,8 @@ func (cs *callState) Clone() *callState {
 }
 
 type UserStateClient struct {
-	SessionID  string `json:"session_id"`
-	UserID     string `json:"user_id"`
-	Unmuted    bool   `json:"unmuted"`
-	RaisedHand int64  `json:"raised_hand"`
-	Video      bool   `json:"video"`
+	SessionID string `json:"session_id"`
+	UserID    string `json:"user_id"`
 }
 
 type CallStateClient struct {
@@ -254,11 +251,8 @@ func (cs *callState) getStates(botID string) []UserStateClient {
 			continue
 		}
 		states = append(states, UserStateClient{
-			SessionID:  session.ID,
-			UserID:     session.UserID,
-			Unmuted:    session.Unmuted,
-			RaisedHand: session.RaisedHand,
-			Video:      session.Video,
+			SessionID: session.ID,
+			UserID:    session.UserID,
 		})
 	}
 	return states

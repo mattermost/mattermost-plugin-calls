@@ -23,17 +23,11 @@ import (
 const (
 	wsEventUserJoined                = "user_joined"
 	wsEventUserLeft                  = "user_left"
-	wsEventUserMuted                 = "user_muted"
-	wsEventUserUnmuted               = "user_unmuted"
 	wsEventUserScreenOn              = "user_screen_on"
 	wsEventUserScreenOff             = "user_screen_off"
-	wsEventUserVideoOn               = "user_video_on"
-	wsEventUserVideoOff              = "user_video_off"
 	wsEventCallStart                 = "call_start"
 	wsEventCallState                 = "call_state"
 	wsEventCallEnd                   = "call_ended"
-	wsEventUserRaiseHand             = "user_raise_hand"
-	wsEventUserUnraiseHand           = "user_unraise_hand"
 	wsEventUserReacted               = "user_reacted"
 	wsEventJoin                      = "join"
 	wsEventError                     = "error"
@@ -230,115 +224,10 @@ func (p *Plugin) handleClientMsg(us *session, msg clientMessage) error {
 	case clientMessageTypeICE:
 		// No-op: LiveKit SDK handles ICE candidates directly.
 		p.LogDebug("received ice (ignored, LiveKit handles signaling)", "connID", us.connID, "userID", us.userID)
-	case clientMessageTypeMute, clientMessageTypeUnmute:
-		// State-update-only: update DB and broadcast WS event.
-		// LiveKit SDK handles the actual media track muting on the client.
-		state, err := p.lockCallReturnState(us.channelID)
-		if err != nil {
-			return fmt.Errorf("failed to lock call: %w", err)
-		}
-		defer p.unlockCall(us.channelID)
-		if state == nil {
-			return fmt.Errorf("no call ongoing")
-		}
-		session := state.sessions[us.originalConnID]
-		if session == nil {
-			return fmt.Errorf("user state is missing from call state")
-		}
-		session.Unmuted = msg.Type == clientMessageTypeUnmute
-
-		if err := p.store.UpdateCallSession(session); err != nil {
-			return fmt.Errorf("failed to update call session: %w", err)
-		}
-
-		evType := wsEventUserUnmuted
-		if msg.Type == clientMessageTypeMute {
-			evType = wsEventUserMuted
-		}
-		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID":     us.userID,
-			"session_id": us.originalConnID,
-		}, &WebSocketBroadcast{
-			ChannelID:           us.channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
 	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
 		if err := p.handleClientMessageTypeScreen(us, msg); err != nil {
 			return err
 		}
-	case clientMessageTypeVideoOn, clientMessageTypeVideoOff:
-		// State-update-only: update DB and broadcast WS event.
-		// LiveKit SDK handles the actual video track on the client.
-		state, err := p.lockCallReturnState(us.channelID)
-		if err != nil {
-			return fmt.Errorf("failed to lock call: %w", err)
-		}
-		defer p.unlockCall(us.channelID)
-		if state == nil {
-			return fmt.Errorf("channel state is missing from store")
-		}
-		session := state.sessions[us.originalConnID]
-		if session == nil {
-			return fmt.Errorf("user session is missing from call state")
-		}
-		session.Video = msg.Type == clientMessageTypeVideoOn
-
-		if err := p.store.UpdateCallSession(session); err != nil {
-			return fmt.Errorf("failed to update call session: %w", err)
-		}
-
-		evType := wsEventUserVideoOn
-		if msg.Type == clientMessageTypeVideoOff {
-			evType = wsEventUserVideoOff
-		}
-		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID":     us.userID,
-			"session_id": us.originalConnID,
-		}, &WebSocketBroadcast{
-			ChannelID:           us.channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
-	case clientMessageTypeRaiseHand, clientMessageTypeUnraiseHand:
-		evType := wsEventUserUnraiseHand
-		if msg.Type == clientMessageTypeRaiseHand {
-			evType = wsEventUserRaiseHand
-		}
-
-		state, err := p.lockCallReturnState(us.channelID)
-		if err != nil {
-			return fmt.Errorf("failed to lock call: %w", err)
-		}
-		defer p.unlockCall(us.channelID)
-		if state == nil {
-			return fmt.Errorf("no call ongoing")
-		}
-
-		session := state.sessions[us.originalConnID]
-		if session == nil {
-			return fmt.Errorf("user session is missing from call state")
-		}
-
-		if msg.Type == clientMessageTypeRaiseHand {
-			session.RaisedHand = time.Now().UnixMilli()
-		} else {
-			session.RaisedHand = 0
-		}
-
-		if err := p.store.UpdateCallSession(session); err != nil {
-			return fmt.Errorf("failed to update call session: %w", err)
-		}
-
-		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID":      us.userID,
-			"session_id":  us.originalConnID,
-			"raised_hand": session.RaisedHand,
-		}, &WebSocketBroadcast{
-			ChannelID:           us.channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
 	case clientMessageTypeReact:
 		evType := wsEventUserReacted
 
@@ -1012,7 +901,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 		msg.Data = data
-	case clientMessageTypeICE, clientMessageTypeScreenOn, clientMessageTypeVideoOn:
+	case clientMessageTypeICE, clientMessageTypeScreenOn:
 		msgData, ok := req.Data["data"].(string)
 		if !ok {
 			p.LogError("invalid or missing data")
