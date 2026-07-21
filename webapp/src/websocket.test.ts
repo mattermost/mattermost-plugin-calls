@@ -491,6 +491,99 @@ describe('WebSocketClient', () => {
         });
     });
 
+    describe('sendLeaveAndClose', () => {
+        it('should send leave and close when WS is OPEN', () => {
+            mockWebSocket.readyState = WebSocket.OPEN;
+
+            // Establish connection state
+            mockWebSocket.onmessage!(new MessageEvent('message', {
+                data: JSON.stringify({event: 'hello', data: {connection_id: 'conn-1'}, seq: 1}),
+            }));
+
+            const sendSpy = jest.spyOn(mockWebSocket, 'send');
+            const closeSpy = jest.spyOn(mockWebSocket, 'close');
+
+            client.sendLeaveAndClose();
+
+            expect(sendSpy).toHaveBeenCalledWith(
+                expect.stringContaining('"action":"custom_com.mattermost.calls_leave"'),
+            );
+            expect(closeSpy).toHaveBeenCalled();
+            expect((client as any).closed).toBe(true);
+        });
+
+        it('should queue leave for when WS opens if CONNECTING, then close', () => {
+            expect(mockWebSocket.readyState).toBe(WebSocket.CONNECTING);
+
+            const sendSpy = jest.spyOn(mockWebSocket, 'send');
+
+            client.sendLeaveAndClose();
+
+            // closed flag set immediately to prevent further reconnects
+            expect((client as any).closed).toBe(true);
+
+            // leave not yet sent (WS still connecting)
+            expect(sendSpy).not.toHaveBeenCalled();
+
+            // Simulate WS opening
+            mockWebSocket.readyState = WebSocket.OPEN;
+
+            // Simulate hello message to trigger the 'open' event
+            mockWebSocket.onmessage!(new MessageEvent('message', {
+                data: JSON.stringify({event: 'hello', data: {connection_id: 'conn-2'}, seq: 1}),
+            }));
+
+            // leave should now have been sent
+            expect(sendSpy).toHaveBeenCalledWith(
+                expect.stringContaining('"action":"custom_com.mattermost.calls_leave"'),
+            );
+
+            // client should be fully closed
+            expect((client as any).ws).toBeNull();
+        });
+
+        it('should not start a zombie ping interval when closing from CONNECTING state', () => {
+            expect(mockWebSocket.readyState).toBe(WebSocket.CONNECTING);
+
+            client.sendLeaveAndClose();
+
+            // Simulate hello arriving (open event fires, once handler runs, close() is called)
+            mockWebSocket.readyState = WebSocket.OPEN;
+            mockWebSocket.onmessage!(new MessageEvent('message', {
+                data: JSON.stringify({event: 'hello', data: {connection_id: 'conn-3'}, seq: 1}),
+            }));
+
+            // After close(), pingInterval must not be running
+            expect((client as any).pingInterval).toBeNull();
+        });
+
+        it('should call close without sending leave when WS is already CLOSED', () => {
+            mockWebSocket.readyState = WebSocket.CLOSED;
+
+            // Prevent the close() → ws.close() → onclose loop from causing issues
+            mockWebSocket.onclose = null;
+
+            const sendSpy = jest.spyOn(mockWebSocket, 'send');
+
+            client.sendLeaveAndClose();
+
+            expect(sendSpy).not.toHaveBeenCalled();
+            expect((client as any).closed).toBe(true);
+        });
+
+        it('should call close without sending leave when WS is CLOSING', () => {
+            mockWebSocket.readyState = WebSocket.CLOSING;
+            mockWebSocket.onclose = null;
+
+            const sendSpy = jest.spyOn(mockWebSocket, 'send');
+
+            client.sendLeaveAndClose();
+
+            expect(sendSpy).not.toHaveBeenCalled();
+            expect((client as any).closed).toBe(true);
+        });
+    });
+
     describe('getOriginalConnID', () => {
         it('should return the original connection ID', () => {
             // Set up connection
