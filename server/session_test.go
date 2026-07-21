@@ -106,13 +106,20 @@ func TestAddUserSession(t *testing.T) {
 		require.Equal(t, retState, retState2)
 	})
 
-	t.Run("allow calls in DMs only when unlicensed", func(t *testing.T) {
+	t.Run("allow calls in DMs only on unlicensed cloud", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)
 		defer ResetTestStore(t, p.store)
 
+		cloudLicense := &model.License{
+			SkuShortName: "starter",
+			Features: &model.Features{
+				Cloud: model.NewBool(true),
+			},
+		}
+
 		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(6)
-		mockAPI.On("GetLicense").Return(&model.License{}, nil).Times(3)
+		mockAPI.On("GetLicense").Return(cloudLicense, nil).Times(3)
 
 		t.Run("public channel", func(t *testing.T) {
 			mockAPI.On("SendEphemeralPost", "userA", &model.Post{
@@ -159,5 +166,21 @@ func TestAddUserSession(t *testing.T) {
 			require.Len(t, retState.sessions, 1)
 			require.NotNil(t, retState.sessions["connA"])
 		})
+	})
+
+	t.Run("allow calls in all channels on self-hosted", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Times(2)
+		mockAPI.On("GetLicense").Return(&model.License{}, nil).Once()
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallHostChanged).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
+			&model.WebsocketBroadcast{UserId: "userA", ChannelId: "channelID", ReliableClusterSend: true}).Once()
+
+		retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", model.ChannelTypeOpen)
+		require.NoError(t, err)
+		require.NotNil(t, retState)
 	})
 }
