@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -99,15 +100,15 @@ func (p *Plugin) hostMuteParticipant(requesterID, channelID, sessionID string) e
 	// vestigial (never updated post-migration, see MM-69116) and would always
 	// read false here. livekitMuteParticipant is idempotent — it no-ops if the
 	// participant has no unmuted mic track.
+	//
+	// No plugin WebSocket event is needed: MutePublishedTrack causes LiveKit to
+	// send a RemoteMute signal over the participant's own signaling connection,
+	// which the livekit-client SDK handles by calling pub.mute() locally — the
+	// same effect as the WS-driven path, without the extra round-trip.
 	if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(ust.UserID, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
 		p.LogError("hostMuteParticipant: failed to mute participant via LiveKit",
 			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 	}
-
-	p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
-		"channel_id": channelID,
-		"session_id": sessionID,
-	}, &WebSocketBroadcast{UserID: ust.UserID, ReliableClusterSend: true})
 
 	return nil
 }
@@ -134,21 +135,28 @@ func (p *Plugin) hostMuteAllParticipants(requesterID, channelID string) error {
 	// post-migration, see MM-69116) — it would read false for everyone and skip
 	// the whole loop. livekitMuteParticipant is idempotent, so muting an
 	// already-muted participant is a harmless no-op.
+	//
+	// Calls are issued concurrently: each livekitMuteParticipant makes two
+	// blocking RPCs (GetParticipant + MutePublishedTrack), so sequential
+	// execution scales linearly with participant count (~400ms/participant).
+	// No plugin WebSocket event is needed: MutePublishedTrack causes LiveKit to
+	// deliver a RemoteMute signal to each participant's own signaling connection,
+	// which the livekit-client SDK handles by muting the local track directly.
+	var wg sync.WaitGroup
 	for id, s := range state.sessions {
 		if s.UserID == requesterID {
 			continue
 		}
-
-		if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(s.UserID, id)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-			p.LogError("hostMuteAllParticipants: failed to mute participant via LiveKit",
-				"channelID", channelID, "sessionID", id, "err", err.Error())
-		}
-
-		p.publishWebSocketEvent(wsEventHostMute, map[string]interface{}{
-			"channel_id": channelID,
-			"session_id": id,
-		}, &WebSocketBroadcast{UserID: s.UserID, ReliableClusterSend: true})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(s.UserID, id)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+				p.LogError("hostMuteAllParticipants: failed to mute participant via LiveKit",
+					"channelID", channelID, "sessionID", id, "err", err.Error())
+			}
+		}()
 	}
+	wg.Wait()
 
 	return nil
 }
