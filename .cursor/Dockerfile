@@ -94,7 +94,7 @@ RUN set -eux; \
     curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${aws_arch}-${AWS_CLI_VERSION}.zip" -o /tmp/awscliv2.zip; \
     unzip -q /tmp/awscliv2.zip -d /tmp; \
     /tmp/aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli; \
-    curl -fsSL "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" | sh -s -- -b /usr/local/bin "${GOLANGCI_LINT_VERSION}"; \
+    curl -fsSL "https://raw.githubusercontent.com/golangci/golangci-lint/${GOLANGCI_LINT_VERSION}/install.sh" | sh -s -- -b /usr/local/bin "${GOLANGCI_LINT_VERSION}"; \
     ln -sf /usr/local/node/bin/node /usr/local/bin/node; \
     ln -sf /usr/local/node/bin/npm /usr/local/bin/npm; \
     ln -sf /usr/local/node/bin/npx /usr/local/bin/npx; \

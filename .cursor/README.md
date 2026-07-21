@@ -2,7 +2,7 @@
 
 This directory defines the checked-in environment for Cursor Cloud Agents working on **mattermost-plugin-calls**.
 
-- `environment.json` — Dockerfile build, sibling repos (`mattermost`, `rtcd`), Mattermost port `8065`
+- `environment.json` — Dockerfile build, sibling repos (`mattermost`, `rtcd`), ports `8065` (Mattermost) and `8443` (Calls RTC)
 - `Dockerfile` — Ubuntu 24.04 + DinD + Go 1.26.4 + Node 24.14.1 + AWS CLI + golangci-lint + Playwright Chromium libs + libopus + prepulled Mattermost EE / Postgres 14
 - `scripts/cloud-agent-install.sh` — hydrates Go modules (root, `build/`, `lt/`, `server/public/`), `make apply`, webapp + standalone npm deps, Playwright browsers
 - `scripts/cloud-agent-start.sh` — starts `dockerd`, Docker Hub login, loads cached images, materializes `.cursor/AGENTS.md`

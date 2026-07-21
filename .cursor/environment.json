@@ -15,6 +15,10 @@
     {
       "name": "Mattermost",
       "port": 8065
+    },
+    {
+      "name": "Calls RTC",
+      "port": 8443
     }
   ]
 }
