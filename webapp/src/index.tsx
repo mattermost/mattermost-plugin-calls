@@ -1219,6 +1219,7 @@ declare global {
         registerPlugin(id: string, plugin: Plugin): void,
 
         callsClient?: CallsClient,
+
         webkitAudioContext: AudioContext,
         basename: string,
 
