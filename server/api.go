@@ -257,28 +257,6 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 	userID := r.Header.Get("Mattermost-User-Id")
 	channelID := mux.Vars(r)["channel_id"]
 
-	channel, appErr := p.API.GetChannel(channelID)
-	if appErr != nil {
-		res.Err = fmt.Errorf("failed to get channel: %w", appErr).Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
-	// For DM calls, dismiss acts as decline: end the call immediately so the
-	// caller is not left hanging. Legacy mobile clients that lack the /decline
-	// endpoint will use this path. See MM-69803.
-	if channel.Type == model.ChannelTypeDirect {
-		code, err := p.declineCall(channelID, userID)
-		if err != nil {
-			res.Err = err.Error()
-			res.Code = code
-			return
-		}
-		res.Code = http.StatusOK
-		res.Msg = "success"
-		return
-	}
-
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		res.Err = fmt.Errorf("failed to lock call: %w", err).Error()
