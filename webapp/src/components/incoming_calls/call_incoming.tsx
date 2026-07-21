@@ -57,6 +57,16 @@ export const CallIncoming = ({call}: Props) => {
                 }}
             />
         );
+    } else if (call.type === ChannelType.CM) {
+        message = (
+            <FormattedMessage
+                defaultMessage={'<b>{callerName}</b> is inviting you to a call'}
+                values={{
+                    b: (text: React.ReactNode) => <b>{text}</b>,
+                    callerName,
+                }}
+            />
+        );
     }
 
     return (
