@@ -24,6 +24,10 @@
     "translation": "Call cancelled"
   },
   {
+    "id": "app.call.declined_message",
+    "translation": "Call declined"
+  },
+  {
     "id": "app.call.ended_message",
     "translation": "Call ended"
   },
