@@ -23,23 +23,21 @@ const config = {
         '^.+\\.(css|less|scss)$': 'identity-obj-proxy',
         '^.*i18n.*\\.(json)$': '<rootDir>/tests/i18n_mock.json',
         '^bundle-loader\\?lazy\\!(.*)$': '$1',
-        '^@mattermost/types/(.*)$': '<rootDir>/mattermost-webapp/webapp/platform/types/src/$1',
-        '^@mattermost/client$': '<rootDir>/mattermost-webapp/webapp/platform/client/src/index',
-        '^@mattermost/client/(.*)$': '<rootDir>/mattermost-webapp/webapp/platform/client/src/$1',
-        '^mattermost-redux(.*)$': '<rootDir>/mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src$1',
         '^src/segmenter$': '<rootDir>/src/segmenter/__mocks__/index.ts',
     },
     moduleDirectories: [
-        '',
         'node_modules',
-        'non_npm_dependencies',
+    ],
+    modulePaths: [
+        '<rootDir>',
+        '<rootDir>/non_npm_dependencies',
     ],
     reporters: [
         'default',
         'jest-junit',
     ],
     transformIgnorePatterns: [
-        'node_modules/(?!react-native|react-router|mattermost-webapp|semver-parser|@mattermost/calls-common)',
+        'node_modules/(?!react-native|react-router|mattermost-webapp|mattermost-redux|semver-parser|serialize-error|@mattermost/calls-common)',
     ],
     setupFiles: [
         'jest-canvas-mock',

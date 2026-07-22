@@ -27,18 +27,6 @@
         "src/*",
         "../webapp/src/*"
       ],
-      "@mattermost/types/*": [
-        "../webapp/mattermost-webapp/webapp/platform/types/src/*"
-      ],
-      "@mattermost/client": [
-        "../webapp/mattermost-webapp/webapp/platform/client/src"
-      ],
-      "@mattermost/client/*": [
-        "../webapp/mattermost-webapp/webapp/platform/client/src/*"
-      ],
-      "mattermost-redux/*": [
-        "../webapp/mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/*"
-      ],
       "plugin/*": [
         "../webapp/src/*"
       ]

@@ -3,7 +3,7 @@
 
 /* eslint-disable max-lines */
 import {CallChannelState, EmojiData} from '@mattermost/calls-common/lib/types';
-import WebSocketClient from '@mattermost/client/websocket';
+import {WebSocketClient} from '@mattermost/client';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
