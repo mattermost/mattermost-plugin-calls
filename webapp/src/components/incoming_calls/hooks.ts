@@ -354,6 +354,9 @@ export const useRingback = () => {
 
             const timeout = window.e2eRingLength ? window.e2eRingLength : RINGBACK_TIMEOUT;
             timerRef.current = setTimeout(() => {
+                if (!ringbackActiveRef.current) {
+                    return;
+                }
                 handledCallRef.current = callID;
                 dispatch(stopRingingForCall(callID));
                 ringbackActiveRef.current = false;
