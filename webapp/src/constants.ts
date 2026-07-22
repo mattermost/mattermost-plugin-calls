@@ -9,7 +9,16 @@ export const REACTION_TIMEOUT_IN_REACTION_STREAM = 10000;
 export const JOINED_USER_NOTIFICATION_TIMEOUT = 5000;
 export const MAX_CHANNEL_LINK_TOOLTIP_NAMES = 8;
 export const RING_LENGTH = 30000;
+
+// RINGBACK_TIMEOUT is how long the ringback tone plays before the call is
+// automatically cancelled if no other participant has joined.
+export const RINGBACK_TIMEOUT = 30000;
 export const DEFAULT_RING_SOUND = 'Calm';
+
+// DEFAULT_RINGBACK_SOUND is the tone the caller hears while waiting for the
+// other party to answer. Decoupled from the caller's incoming ringtone
+// preference — a ringback tone is a fixed, standardized signal.
+export const DEFAULT_RINGBACK_SOUND = 'Calm';
 export const CALL_START_POST_TYPE = 'custom_calls';
 export const CALL_RECORDING_POST_TYPE = 'custom_calls_recording';
 export const CALL_TRANSCRIPTION_POST_TYPE = 'custom_calls_transcription';
