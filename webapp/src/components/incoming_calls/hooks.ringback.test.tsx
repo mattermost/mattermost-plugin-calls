@@ -256,6 +256,30 @@ describe('useRingback', () => {
         jest.useRealTimers();
     });
 
+    it('applies setSinkId when callsClient has a current audio output device', () => {
+        const mockSetSinkId = jest.fn().mockResolvedValue(undefined);
+        const mockAudioInstance = {play: mockPlay, pause: mockPause, loop: false, src: '', setSinkId: mockSetSinkId};
+        (global.Audio as jest.Mock).mockImplementationOnce(() => mockAudioInstance);
+        window.callsClient = {currentAudioOutputDevice: {deviceId: 'device-123'}} as never;
+
+        renderHarness();
+
+        expect(mockSetSinkId).toHaveBeenCalledWith('device-123');
+        delete (window as Window & {callsClient?: unknown}).callsClient;
+    });
+
+    it('skips setSinkId when callsClient has no output device', () => {
+        const mockSetSinkId = jest.fn().mockResolvedValue(undefined);
+        const mockAudioInstance = {play: mockPlay, pause: mockPause, loop: false, src: '', setSinkId: mockSetSinkId};
+        (global.Audio as jest.Mock).mockImplementationOnce(() => mockAudioInstance);
+        window.callsClient = {currentAudioOutputDevice: null} as never;
+
+        renderHarness();
+
+        expect(mockSetSinkId).not.toHaveBeenCalled();
+        delete (window as Window & {callsClient?: unknown}).callsClient;
+    });
+
     it('does not ring again after another user answers and then leaves', () => {
         const result = renderHarness();
         expect(mockPlay).toHaveBeenCalledTimes(1);

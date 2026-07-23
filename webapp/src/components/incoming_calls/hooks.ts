@@ -353,6 +353,11 @@ export const useRingback = () => {
         } else if (handledCallRef.current !== callID && !audioRef.current) {
             const audio = new Audio(RingbackSound);
             audio.loop = true;
+            const outputDeviceID = window.callsClient?.currentAudioOutputDevice?.deviceId;
+            if (outputDeviceID && typeof (audio as HTMLAudioElement & {setSinkId?: (id: string) => Promise<void>}).setSinkId === 'function') {
+                // @ts-ignore - setSinkId is an experimental feature
+                audio.setSinkId(outputDeviceID).catch(() => { /* best-effort */ });
+            }
             audioRef.current = audio;
             audio.play().catch(() => {
                 // Autoplay blocked — ringback is best-effort.
