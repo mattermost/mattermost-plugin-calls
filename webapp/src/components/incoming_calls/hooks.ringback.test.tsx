@@ -3,24 +3,33 @@
 
 import {act, render} from '@testing-library/react';
 import React from 'react';
+
 import {useRingback} from './hooks';
 
 // ── Action mocks ──────────────────────────────────────────────────────────────
-const mockRingForCall = jest.fn(() => () => ({}));
-const mockStopRingingForCall = jest.fn(() => () => ({}));
-
 jest.mock('src/actions', () => ({
-    ringForCall: (...args: unknown[]) => mockRingForCall(...args),
-    stopRingingForCall: (...args: unknown[]) => mockStopRingingForCall(...args),
+    ringForCall: jest.fn(() => () => ({})),
+    stopRingingForCall: jest.fn(() => () => ({})),
     dismissIncomingCallNotification: jest.fn(() => () => ({})),
     showSwitchCallModal: jest.fn(() => () => ({})),
 }));
 
-// ── Util mocks ────────────────────────────────────────────────────────────────
-const mockDisconnect = jest.fn();
+// ── Audio mock ────────────────────────────────────────────────────────────────
+const mockPlay = jest.fn().mockResolvedValue(undefined);
+const mockPause = jest.fn();
 
+global.Audio = jest.fn().mockImplementation(() => ({
+    play: mockPlay,
+    pause: mockPause,
+    loop: false,
+    src: '',
+})) as unknown as typeof Audio;
+
+jest.mock('src/sounds/ringback.mp3', () => 'ringback.mp3');
+
+// ── Util mocks ────────────────────────────────────────────────────────────────
 jest.mock('src/utils', () => ({
-    getCallsClient: jest.fn(() => ({disconnect: mockDisconnect})),
+    getCallsClient: jest.fn(() => ({})),
     isDmGmChannel: jest.fn(),
     notificationsStopRinging: jest.fn(),
     getChannelURL: jest.fn(),
@@ -113,20 +122,11 @@ jest.mock('src/log', () => ({
     logErr: jest.fn(),
 }));
 
-// Mock useSelector to directly call the selector with a dummy state, and
-// useDispatch to return a real thunk-aware dispatch. This lets tests control
-// selector return values without depending on Redux store subscription timing.
-const mockDispatch = jest.fn((action: unknown) => {
-    if (typeof action === 'function') {
-        return action(mockDispatch, () => ({}));
-    }
-    return action;
-});
-
+// Mock useSelector to directly call the selector with a dummy state.
+// useRingback no longer dispatches, so useDispatch is not overridden.
 jest.mock('react-redux', () => ({
     ...jest.requireActual('react-redux'),
     useSelector: (selector: (state: unknown) => unknown) => selector({}),
-    useDispatch: () => mockDispatch,
 }));
 
 // ── Test harness ──────────────────────────────────────────────────────────────
@@ -174,22 +174,22 @@ describe('useRingback', () => {
     it('starts ringback when caller is alone in a DM call', () => {
         renderHarness();
 
-        expect(mockRingForCall).toHaveBeenCalledTimes(1);
-        expect(mockRingForCall).toHaveBeenCalledWith('call-1', expect.any(String));
+        expect(global.Audio).toHaveBeenCalledTimes(1);
+        expect(mockPlay).toHaveBeenCalledTimes(1);
     });
 
     it('does not start ringback when ringing is disabled', () => {
         mockRingingEnabled.mockReturnValue(false);
         renderHarness();
 
-        expect(mockRingForCall).not.toHaveBeenCalled();
+        expect(mockPlay).not.toHaveBeenCalled();
     });
 
     it('does not start ringback when user is not the call owner', () => {
         mockCallOwnerIDForCallInChannel.mockReturnValue('other-user');
         renderHarness();
 
-        expect(mockRingForCall).not.toHaveBeenCalled();
+        expect(mockPlay).not.toHaveBeenCalled();
     });
 
     it('does not start ringback in a non-DM/GM channel', () => {
@@ -197,77 +197,78 @@ describe('useRingback', () => {
         isDmGmChannel.mockReturnValue(false);
         renderHarness();
 
-        expect(mockRingForCall).not.toHaveBeenCalled();
+        expect(mockPlay).not.toHaveBeenCalled();
     });
 
     it('does not start ringback when own session is not yet present', () => {
         mockSessionsInCurrentCall.mockReturnValue([]);
         renderHarness();
 
-        expect(mockRingForCall).not.toHaveBeenCalled();
+        expect(mockPlay).not.toHaveBeenCalled();
     });
 
     it('stops ringback when another user joins', () => {
         const result = renderHarness();
-        expect(mockRingForCall).toHaveBeenCalledTimes(1);
+        expect(mockPlay).toHaveBeenCalledTimes(1);
 
         mockSessionsForOtherUsersInCall.mockReturnValue([{user_id: 'user-2', session_id: 'sess-2'}]);
         rerender(result);
 
-        expect(mockStopRingingForCall).toHaveBeenCalledWith('call-1');
+        expect(mockPause).toHaveBeenCalledTimes(1);
     });
 
     it('stops ringback on unmount', () => {
         const {unmount} = renderHarness();
-        expect(mockRingForCall).toHaveBeenCalledTimes(1);
+        expect(mockPlay).toHaveBeenCalledTimes(1);
 
         unmount();
 
-        expect(mockStopRingingForCall).toHaveBeenCalledWith('call-1');
+        expect(mockPause).toHaveBeenCalledTimes(1);
     });
 
-    it('stops ringback and disconnects after timeout', () => {
+    it('stops ringback after timeout', () => {
         jest.useFakeTimers();
         renderHarness();
-        expect(mockRingForCall).toHaveBeenCalledTimes(1);
+        expect(mockPlay).toHaveBeenCalledTimes(1);
 
         act(() => {
             jest.runAllTimers();
         });
 
-        expect(mockStopRingingForCall).toHaveBeenCalledWith('call-1');
-        expect(mockDisconnect).toHaveBeenCalledTimes(1);
+        expect(mockPause).toHaveBeenCalledTimes(1);
         jest.useRealTimers();
     });
 
-    it('does not disconnect if ringback was already stopped before timeout fires', () => {
+    it('does not pause again if audio already stopped before timeout fires', () => {
         jest.useFakeTimers();
         const {unmount} = renderHarness();
 
         // Unmount stops the ringback before the timer fires.
         unmount();
+        expect(mockPause).toHaveBeenCalledTimes(1);
+        jest.clearAllMocks();
 
         act(() => {
             jest.runAllTimers();
         });
 
-        expect(mockDisconnect).not.toHaveBeenCalled();
+        expect(mockPause).not.toHaveBeenCalled();
         jest.useRealTimers();
     });
 
     it('does not ring again after another user answers and then leaves', () => {
         const result = renderHarness();
-        expect(mockRingForCall).toHaveBeenCalledTimes(1);
+        expect(mockPlay).toHaveBeenCalledTimes(1);
 
         // Another user joins — ringback stops, call marked as handled.
         mockSessionsForOtherUsersInCall.mockReturnValue([{user_id: 'user-2', session_id: 'sess-2'}]);
         rerender(result);
-        expect(mockStopRingingForCall).toHaveBeenCalledWith('call-1');
+        expect(mockPause).toHaveBeenCalledTimes(1);
 
         // Other user leaves — we are alone again, but ringback must NOT restart.
         mockSessionsForOtherUsersInCall.mockReturnValue([]);
         rerender(result);
 
-        expect(mockRingForCall).toHaveBeenCalledTimes(1);
+        expect(mockPlay).toHaveBeenCalledTimes(1);
     });
 });

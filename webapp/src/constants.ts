@@ -15,10 +15,6 @@ export const RING_LENGTH = 30000;
 export const RINGBACK_TIMEOUT = 30000;
 export const DEFAULT_RING_SOUND = 'Calm';
 
-// DEFAULT_RINGBACK_SOUND is the tone the caller hears while waiting for the
-// other party to answer. Decoupled from the caller's incoming ringtone
-// preference — a ringback tone is a fixed, standardized signal.
-export const DEFAULT_RINGBACK_SOUND = 'Calm';
 export const CALL_START_POST_TYPE = 'custom_calls';
 export const CALL_RECORDING_POST_TYPE = 'custom_calls_recording';
 export const CALL_TRANSCRIPTION_POST_TYPE = 'custom_calls_transcription';

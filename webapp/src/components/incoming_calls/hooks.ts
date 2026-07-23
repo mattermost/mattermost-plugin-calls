@@ -17,9 +17,9 @@ import {useEffect, useRef} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 import {DID_NOTIFY_FOR_CALL, DID_RING_FOR_CALL} from 'src/action_types';
-import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal, stopRingingForCall} from 'src/actions';
+import {dismissIncomingCallNotification, ringForCall, showSwitchCallModal} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import {DEFAULT_RING_SOUND, DEFAULT_RINGBACK_SOUND, RINGBACK_TIMEOUT} from 'src/constants';
+import {DEFAULT_RING_SOUND, RINGBACK_TIMEOUT} from 'src/constants';
 import {logDebug, logWarn} from 'src/log';
 import {
     callOwnerIDForCallInChannel,
@@ -35,6 +35,7 @@ import {
     sessionsInCurrentCall,
     teamForCurrentCall,
 } from 'src/selectors';
+import RingbackSound from 'src/sounds/ringback.mp3';
 import {ChannelType, IncomingCallNotification, UserStatuses} from 'src/types/types';
 import {
     desktopGTE,
@@ -300,14 +301,14 @@ export const useOnChannelLinkClick = (call: IncomingCallNotification) => {
 };
 
 // useRingback plays an outbound ringback tone to the caller of a DM/GM call
-// while they are waiting for the first other participant to answer. It reuses
-// the ring mechanism already used for incoming calls (gated by EnableRinging).
+// while they are waiting for the first other participant to answer. The tone
+// is bundled directly in the plugin and played via a plain Audio element —
+// independent of the incoming-ring infrastructure.
 //
-// The ringback stops as soon as another user joins, the call ends, the
-// component unmounts, or RINGBACK_TIMEOUT elapses. On timeout the caller is
-// disconnected, cancelling the unanswered call.
+// The ringback stops as soon as another user joins, the call ends, or the
+// component unmounts. After RINGBACK_TIMEOUT the audio is stopped and the
+// server-side timer handles the actual call cancellation.
 export const useRingback = () => {
-    const dispatch = useDispatch();
     const enabled = useSelector(ringingEnabled);
     const currentUser = useSelector(getCurrentUser);
     const connectedChannelID = useSelector(channelIDForCurrentCall);
@@ -324,8 +325,8 @@ export const useRingback = () => {
     const amOwner = Boolean(callID) && ownerID === currentUser.id;
     const active = enabled && Boolean(callID) && amOwner && isDmGmChannel(channel) && selfSessionPresent;
 
-    // Track per-call state without triggering re-renders.
-    const ringbackActiveRef = useRef(false);
+    // Track per-call audio state without triggering re-renders.
+    const audioRef = useRef<HTMLAudioElement | null>(null);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const handledCallRef = useRef<string | null>(null);
 
@@ -335,10 +336,11 @@ export const useRingback = () => {
                 clearTimeout(timerRef.current);
                 timerRef.current = null;
             }
-            if (ringbackActiveRef.current && callID) {
-                dispatch(stopRingingForCall(callID));
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.src = '';
+                audioRef.current = null;
             }
-            ringbackActiveRef.current = false;
         };
 
         if (!active || !callID) {
@@ -348,23 +350,29 @@ export const useRingback = () => {
             // don't re-ring if participants subsequently drop out.
             stopRingback();
             handledCallRef.current = callID;
-        } else if (handledCallRef.current !== callID && !ringbackActiveRef.current) {
-            ringbackActiveRef.current = true;
-            dispatch(ringForCall(callID, DEFAULT_RINGBACK_SOUND));
+        } else if (handledCallRef.current !== callID && !audioRef.current) {
+            const audio = new Audio(RingbackSound);
+            audio.loop = true;
+            audioRef.current = audio;
+            audio.play().catch(() => {
+                // Autoplay blocked — ringback is best-effort.
+                if (audioRef.current === audio) {
+                    audioRef.current = null;
+                }
+            });
 
             const timeout = window.e2eRingLength ? window.e2eRingLength : RINGBACK_TIMEOUT;
             timerRef.current = setTimeout(() => {
-                if (!ringbackActiveRef.current) {
+                if (!audioRef.current) {
                     return;
                 }
                 handledCallRef.current = callID;
-                dispatch(stopRingingForCall(callID));
-                ringbackActiveRef.current = false;
-                timerRef.current = null;
-                getCallsClient()?.disconnect();
+                stopRingback();
+
+                // Server-side timer handles the actual call cancellation.
             }, timeout);
         }
 
         return () => stopRingback();
-    }, [active, callID, otherSessionsCount, dispatch]);
+    }, [active, callID, otherSessionsCount]);
 };

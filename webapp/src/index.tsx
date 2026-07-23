@@ -95,7 +95,6 @@ import {
     StopRecordingConfirmation,
 } from 'src/components/expanded_view/stop_recording_confirmation';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
-import {RingbackContainer} from 'src/components/incoming_calls/ringback_container';
 import JoinCallWatcher from 'src/components/join_call_watcher';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import {makeSameChannelLinkClickHandler} from 'src/components/same_channel_link_click_handler';
@@ -398,7 +397,6 @@ export default class Plugin {
         registry.registerGlobalComponent(injectIntl(SwitchCallModal));
         registry.registerGlobalComponent(injectIntl(ScreenSourceModal));
         registry.registerGlobalComponent(injectIntl(IncomingCallContainer));
-        registry.registerGlobalComponent(RingbackContainer);
 
         registry.registerUserSettings({
             id: pluginId,
