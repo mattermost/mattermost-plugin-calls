@@ -293,7 +293,11 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 	go func() {
 		// We wait a few seconds for the call to end cleanly. If this doesn't
 		// happen we force end it.
-		time.Sleep(5 * time.Second)
+		select {
+		case <-time.After(5 * time.Second):
+		case <-p.stopCh:
+			return
+		}
 
 		call, err := p.store.GetCall(callID, db.GetCallOpts{})
 		if err != nil {

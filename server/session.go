@@ -498,7 +498,11 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			nodeID := state.Call.Props.NodeID
 
 			go func() {
-				time.Sleep(5 * time.Second)
+				select {
+				case <-time.After(5 * time.Second):
+				case <-p.stopCh:
+					return
+				}
 
 				call, err := p.store.GetCall(callID, db.GetCallOpts{})
 				if err != nil {
