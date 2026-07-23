@@ -21,6 +21,171 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRemoveUserSessionDMAutoEnd(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	mockMetrics := &serverMocks.MockMetrics{}
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		callsClusterLocks: map[string]*cluster.Mutex{},
+		metrics:           mockMetrics,
+		sessions:          map[string]*session{},
+	}
+
+	store, tearDown := NewTestStore(t)
+	t.Cleanup(tearDown)
+	p.store = store
+
+	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
+	mockAPI.On("LogDebug", mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+	mockAPI.On("LogError", mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+
+	buildDMCallState := func(t *testing.T, channelID string) *callState {
+		t.Helper()
+		call := &public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			ChannelID: channelID,
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  model.NewId(),
+			OwnerID:   "userA",
+			Props: public.CallProps{
+				Participants: map[string]struct{}{
+					"userA": {},
+					"userB": {},
+				},
+			},
+		}
+		err := p.store.CreateCall(call)
+		require.NoError(t, err)
+
+		err = p.store.CreateCallSession(&public.CallSession{
+			ID:     "connA",
+			CallID: call.ID,
+			UserID: "userA",
+			JoinAt: time.Now().UnixMilli(),
+		})
+		require.NoError(t, err)
+
+		err = p.store.CreateCallSession(&public.CallSession{
+			ID:     "connB",
+			CallID: call.ID,
+			UserID: "userB",
+			JoinAt: time.Now().UnixMilli(),
+		})
+		require.NoError(t, err)
+
+		state, err := p.getCallState(channelID, true)
+		require.NoError(t, err)
+		require.NotNil(t, state)
+		require.Len(t, state.sessions, 2)
+
+		return state
+	}
+
+	t.Run("DM: publishes call_end when a real user leaves with another user still connected", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		state := buildDMCallState(t, channelID)
+
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeDirect,
+		}, nil).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{
+			"session_id": "connA",
+			"user_id":    "userA",
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		err := p.removeUserSession(state, "userA", "connA", "connA", channelID)
+		require.NoError(t, err)
+
+		// Call should NOT be marked as ended in state (userB is still connected).
+		require.Zero(t, state.Call.EndAt)
+
+		// One session (userB) should remain.
+		require.Len(t, state.sessions, 1)
+	})
+
+	t.Run("DM: does not publish call_end when the bot leaves with a real user still connected", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		botID := model.NewId()
+		p.botSession = &model.Session{UserId: botID}
+		defer func() { p.botSession = nil }()
+
+		channelID := model.NewId()
+		state := buildDMCallState(t, channelID)
+
+		// Add a bot session alongside the two real users.
+		botConnID := model.NewId()
+		err := p.store.CreateCallSession(&public.CallSession{
+			ID:     botConnID,
+			CallID: state.Call.ID,
+			UserID: botID,
+			JoinAt: time.Now().UnixMilli(),
+		})
+		require.NoError(t, err)
+		state.sessions[botConnID] = &public.CallSession{
+			ID:     botConnID,
+			CallID: state.Call.ID,
+			UserID: botID,
+		}
+
+		err = p.removeUserSession(state, botID, botConnID, botConnID, channelID)
+		require.NoError(t, err)
+
+		// wsEventUserLeft and wsEventCallEnd must NOT be published: publishWebSocketEvent
+		// suppresses wsEventUserLeft for the bot, and the DM auto-end block skips bot departures.
+		require.Zero(t, state.Call.EndAt)
+		require.Len(t, state.sessions, 2)
+	})
+
+	t.Run("non-DM: does not publish call_end when a user leaves with another user still connected", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		state := buildDMCallState(t, channelID)
+
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
+		}, nil).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{
+			"session_id": "connA",
+			"user_id":    "userA",
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		err := p.removeUserSession(state, "userA", "connA", "connA", channelID)
+		require.NoError(t, err)
+
+		require.Zero(t, state.Call.EndAt)
+		require.Len(t, state.sessions, 1)
+	})
+}
+
 func TestAddUserSession(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 	mockMetrics := &serverMocks.MockMetrics{}
