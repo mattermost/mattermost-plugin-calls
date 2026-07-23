@@ -475,8 +475,17 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 		setCallEnded(&state.Call)
 
+		p.cancelDMNoAnswerTimer(channelID)
+
+		reason := callEndReasonNormal
+		if len(state.Call.Props.Participants) == 1 {
+			if channel, appErr := p.API.GetChannel(channelID); appErr == nil && channel.Type == model.ChannelTypeDirect {
+				reason = callEndReasonCanceledByCaller
+			}
+		}
+
 		defer func() {
-			_, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))
+			_, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants), reason)
 			if err != nil {
 				p.LogError("failed to update call post ended", "err", err.Error(), "channelID", channelID)
 			}
