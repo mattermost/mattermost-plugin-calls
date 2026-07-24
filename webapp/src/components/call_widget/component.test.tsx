@@ -192,6 +192,7 @@ describe('leave button behavior', () => {
     });
 
     const dmChannel = {...stubChannel, type: 'D'} as Channel;
+    const currentUserSession = stubSession('session-1', 'user-id');
     const otherSession = stubSession('session-2', 'other-user');
 
     beforeEach(() => {
@@ -219,7 +220,7 @@ describe('leave button behavior', () => {
                     <CallWidget
                         {...props}
                         channel={dmChannel}
-                        sessions={[otherSession]}
+                        sessions={[currentUserSession, otherSession]}
                         callHostID='user-id'
                     />
                 </RawIntlProvider>
@@ -238,7 +239,7 @@ describe('leave button behavior', () => {
                 <RawIntlProvider value={intl}>
                     <CallWidget
                         {...props}
-                        sessions={[otherSession]}
+                        sessions={[currentUserSession, otherSession]}
                         callHostID='other-user'
                         isAdmin={false}
                     />
@@ -258,7 +259,7 @@ describe('leave button behavior', () => {
                 <RawIntlProvider value={intl}>
                     <CallWidget
                         {...props}
-                        sessions={[]}
+                        sessions={[currentUserSession]}
                         callHostID='user-id'
                         isAdmin={false}
                     />
@@ -278,7 +279,7 @@ describe('leave button behavior', () => {
                 <RawIntlProvider value={intl}>
                     <CallWidget
                         {...props}
-                        sessions={[otherSession]}
+                        sessions={[currentUserSession, otherSession]}
                         callHostID='user-id'
                         isAdmin={false}
                     />
@@ -300,7 +301,7 @@ describe('leave button behavior', () => {
                 <RawIntlProvider value={intl}>
                     <CallWidget
                         {...props}
-                        sessions={[otherSession]}
+                        sessions={[currentUserSession, otherSession]}
                         callHostID='other-user'
                         isAdmin={true}
                     />
