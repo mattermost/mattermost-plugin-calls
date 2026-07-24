@@ -50,6 +50,7 @@ import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import VideoOffIcon from 'src/components/icons/video_off';
 import VideoOnIcon from 'src/components/icons/video_on';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
+import {RingbackContainer} from 'src/components/incoming_calls/ringback_container';
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {JoinLoadingOverlay, VideoLoadingOverlay} from 'src/components/loading_overlays';
 import {
@@ -2506,6 +2507,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 style={mainStyle}
                 ref={this.node}
             >
+                <RingbackContainer/>
                 <JoinLoadingOverlay
                     visible={this.props.clientConnecting}
                     joining={this.props.global ? !this.props.startingCall : this.props.sessions.length > 0}
