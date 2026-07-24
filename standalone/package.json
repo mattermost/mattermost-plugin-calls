@@ -89,6 +89,7 @@
     },
     "react": "$react",
     "react-dom": "$react-dom",
-    "react-redux": "$react-redux"
+    "react-redux": "$react-redux",
+    "immutable": "4.3.9"
   }
 }
