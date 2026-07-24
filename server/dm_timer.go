@@ -13,6 +13,7 @@ const (
 	callEndReasonNormal           callEndReason = iota
 	callEndReasonCanceledByCaller callEndReason = iota
 	callEndReasonNoAnswer         callEndReason = iota
+	callEndReasonDeclined         callEndReason = iota
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 	callStatusEnded            = "ended"
 	callStatusNoAnswer         = "no_answer"
 	callStatusCanceledByCaller = "canceled_by_caller"
+	callStatusDeclined         = "declined"
 )
 
 const dmNoAnswerTimeout = 30 * time.Second
