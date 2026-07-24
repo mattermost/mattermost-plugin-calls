@@ -139,6 +139,7 @@ import {
     callStartAtForCallInChannel,
     channelHasCall,
     channelIDForCurrentCall,
+    clientConnecting,
     defaultEnabled,
     hasPermissionsToEnableCalls,
     hostIDForCallInChannel,
@@ -172,7 +173,6 @@ import {
     handleCallState,
     handleCaption,
     handleHostLowerHand,
-    handleHostMute,
     handleHostRemoved,
     handleHostScreenOff,
     handleUserDismissedNotification,
@@ -278,10 +278,6 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_caption`, (ev) => {
             handleCaption(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_host_mute`, (ev) => {
-            handleHostMute(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_host_screen_off`, (ev) => {
@@ -411,7 +407,11 @@ export default class Plugin {
         });
 
         const connectToCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
+            if (clientConnecting(store.getState())) {
+                return;
+            }
             if (!channelIDForCurrentCall(store.getState())) {
+                store.dispatch(setClientConnecting(true));
                 connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
@@ -693,7 +693,7 @@ export default class Plugin {
                 window.callsClient = new CallClient({
                     websocketURL: getWSConnectionURL(websocketURLInConfig),
                 });
-                window.currentCallData = CurrentCallDataDefault;
+                window.currentCallData = {...CurrentCallDataDefault};
 
                 const locale = getCurrentUserLocale(state) || 'en';
 
@@ -1066,7 +1066,11 @@ export default class Plugin {
                 // eslint-disable-next-line max-nested-callbacks
                 this.registerReconnectHandler(registry, store, () => {
                     logDebug('websocket reconnect handler');
-                    if (!getCallsClient()) {
+
+                    // On Desktop, callsClient lives in the widget renderer so getCallsClient()
+                    // is always falsy in the main-window renderer. Guard on channelIDForCurrentCall
+                    // too so we don't wipe clientStateReducer while a call is active.
+                    if (!getCallsClient() && !channelIDForCurrentCall(store.getState())) {
                         logDebug('resetting state');
                         store.dispatch(unInitialized());
                     }

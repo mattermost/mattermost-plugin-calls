@@ -58,7 +58,6 @@ import {
     handleCallStart,
     handleCallState,
     handleHostLowerHand,
-    handleHostMute,
     handleHostRemoved,
     handleHostScreenOff,
     handleUserDismissedNotification,
@@ -325,9 +324,6 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
             break;
         case `custom_${pluginId}_call_state`:
             handleCallState(store, ev as WebSocketMessage<CallStateData>);
-            break;
-        case `custom_${pluginId}_host_mute`:
-            handleHostMute(store, ev as WebSocketMessage<HostControlMsg>);
             break;
         case `custom_${pluginId}_host_screen_off`:
             handleHostScreenOff(store, ev as WebSocketMessage<HostControlMsg>);

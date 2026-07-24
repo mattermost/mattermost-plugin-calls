@@ -402,21 +402,6 @@ export function handleCaption(store: Store, ev: WebSocketMessage<LiveCaptionData
     }, LIVE_CAPTION_TIMEOUT);
 }
 
-export function handleHostMute(store: Store, ev: WebSocketMessage<HostControlMsg>) {
-    const channelID = ev.data.channel_id;
-    const client = getCallsClient();
-    if (!client || client?.channelID !== channelID) {
-        return;
-    }
-
-    const sessionID = client.getSessionID();
-    if (ev.data.session_id !== sessionID) {
-        return;
-    }
-
-    client.mute();
-}
-
 export function handleHostScreenOff(store: Store, ev: WebSocketMessage<HostControlMsg>) {
     const channelID = ev.data.channel_id;
     const client = getCallsClient();

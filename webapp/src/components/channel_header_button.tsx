@@ -71,7 +71,7 @@ const ChannelHeaderButton = () => {
         <CallButton
             id='calls-join-button'
             className={'style--none call-button ' + (inCall || restricted ? 'disabled' : '')}
-            disabled={isChannelArchived || isDeactivatedDM}
+            disabled={isChannelArchived || isDeactivatedDM || isClientConnecting}
             $restricted={restricted}
             $isCloudPaid={isCloudPaid}
             $isClientConnecting={isClientConnecting}

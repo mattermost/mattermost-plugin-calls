@@ -19,5 +19,16 @@ keys:
   # Used by the SIP bridge (the shared ../../sip.yaml). A second pair on the same
   # server lets the bridge config stay byte-identical to the dev compose's.
   devkey: this-is-a-32-plus-character-dev-secret
+# LiveKit POSTs participant lifecycle events to the plugin's webhook receiver,
+# signed with the secret for `api_key` below. This must be the key the plugin
+# verifies with — devkey_for_livekit_e2e_ci_tests (MM_CALLS_LIVE_KIT_API_KEY in
+# .github/workflows/e2e.yml) — NOT the bridge's `devkey`. `mm-server` is the
+# haproxy alias for the Mattermost nodes in the compose network (nginx.conf);
+# the webhook carries no auth cookie, but the handler is DB/cluster-lock backed
+# so consistent-hash routing to either node handles it correctly.
+webhook:
+  api_key: devkey_for_livekit_e2e_ci_tests
+  urls:
+    - http://mm-server:8065/plugins/com.mattermost.calls/livekit-webhook
 logging:
   level: info
