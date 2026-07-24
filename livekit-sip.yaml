@@ -16,5 +16,12 @@ redis:
   address: redis:6379
 keys:
   devkey: this-is-a-32-plus-character-dev-secret
+# See livekit.yaml for how this drives the plugin's webhook receiver and why the
+# URL uses host.docker.internal. participant_left is what ends an outbound-SIP
+# call on phone-hangup / last-human-leave, so the SIP dev path needs it.
+webhook:
+  api_key: devkey
+  urls:
+    - http://host.docker.internal:8065/plugins/com.mattermost.calls/livekit-webhook
 logging:
   level: info

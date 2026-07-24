@@ -173,7 +173,6 @@ import {
     handleCallState,
     handleCaption,
     handleHostLowerHand,
-    handleHostMute,
     handleHostRemoved,
     handleHostScreenOff,
     handleUserDismissedNotification,
@@ -279,10 +278,6 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_caption`, (ev) => {
             handleCaption(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_host_mute`, (ev) => {
-            handleHostMute(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_host_screen_off`, (ev) => {
@@ -416,6 +411,7 @@ export default class Plugin {
                 return;
             }
             if (!channelIDForCurrentCall(store.getState())) {
+                store.dispatch(setClientConnecting(true));
                 connectCall(channelId, title, rootId);
 
                 // following the thread only on join. On call start
@@ -697,7 +693,7 @@ export default class Plugin {
                 window.callsClient = new CallClient({
                     websocketURL: getWSConnectionURL(websocketURLInConfig),
                 });
-                window.currentCallData = CurrentCallDataDefault;
+                window.currentCallData = {...CurrentCallDataDefault};
 
                 const locale = getCurrentUserLocale(state) || 'en';
 
