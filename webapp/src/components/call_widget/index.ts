@@ -4,7 +4,7 @@
 import {GlobalState} from '@mattermost/types/store';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId, getMyTeams, getTeam} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
@@ -100,6 +100,7 @@ const mapStateToProps = (state: GlobalState) => {
         enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
         connectedDMUser,
         otherSessions: sessionsForOtherUsersInCall(state),
+        isAdmin: isCurrentUserSystemAdmin(state),
     };
 };
 

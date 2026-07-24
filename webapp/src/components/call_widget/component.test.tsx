@@ -85,6 +85,7 @@ const props: Props = {
     openCallsUserSettings: jest.fn(),
     enableVideo: false,
     connectedDMUser: undefined,
+    isAdmin: false,
 };
 
 describe('CallWidget', () => {
