@@ -509,4 +509,66 @@ describe('WebSocketClient', () => {
             expect(client.getOriginalConnID()).toBe('test-conn-id');
         });
     });
+
+    describe('sendLeaveAndClose', () => {
+        it('sends leave immediately and closes when WS is OPEN', () => {
+            mockWebSocket.readyState = WebSocket.OPEN;
+            const sendSpy = jest.spyOn(mockWebSocket, 'send');
+            const closeSpy = jest.spyOn(mockWebSocket, 'close');
+
+            client.sendLeaveAndClose();
+
+            expect(sendSpy).toHaveBeenCalledWith(
+                expect.stringContaining('"action":"custom_com.mattermost.calls_leave"'),
+            );
+            expect(closeSpy).toHaveBeenCalled();
+            expect((client as any).closed).toBe(true);
+        });
+
+        it('defers leave until the pending reconnect opens when WS is CONNECTING', () => {
+            // Establish initial connection so originalConnID is set (needed for reconnect path).
+            mockWebSocket.readyState = WebSocket.OPEN;
+            mockWebSocket.onmessage!(new MessageEvent('message', {
+                data: JSON.stringify({event: 'hello', data: {connection_id: 'conn-1'}, seq: 1}),
+            }));
+
+            // Simulate WS drop → reconnect in progress: close WS1, which triggers
+            // closeHandler → reconnect(). A new WS (WS2) is now CONNECTING.
+            (client as any).ws.onclose = null; // prevent default close handler
+            mockWebSocket.readyState = WebSocket.CLOSED;
+            (client as any).lastDisconnect = 0;
+            (client as any).connect(true); // starts WS2 in CONNECTING state
+            const ws2 = (client as any).ws as typeof mockWebSocket;
+            expect(ws2.readyState).toBe(WebSocket.CONNECTING);
+
+            const sendSpy = jest.spyOn(ws2, 'send');
+            const closeSpy = jest.spyOn(ws2, 'close');
+
+            client.sendLeaveAndClose();
+
+            // Nothing sent yet — WS2 hasn't opened.
+            expect(sendSpy).not.toHaveBeenCalled();
+            expect(closeSpy).not.toHaveBeenCalled();
+
+            // `closed` is set immediately to stop further reconnect attempts.
+            expect((client as any).closed).toBe(true);
+
+            // Simulate WS2 opening (reconnect succeeds). The isReconnect path emits
+            // 'open' directly from ws.onopen, which fires our once('open') listener.
+            ws2.readyState = WebSocket.OPEN;
+            ws2.onopen!(new Event('open'));
+
+            // Leave sent and WS closed synchronously within the open handler.
+            expect(sendSpy).toHaveBeenCalledWith(
+                expect.stringContaining('"action":"custom_com.mattermost.calls_leave"'),
+            );
+            expect(closeSpy).toHaveBeenCalled();
+        });
+
+        it('calls close for cleanup without throwing when already closed', () => {
+            client.close();
+
+            expect(() => client.sendLeaveAndClose()).not.toThrow();
+        });
+    });
 });

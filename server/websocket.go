@@ -42,7 +42,6 @@ const (
 	wsEventUserDismissedNotification = "user_dismissed_notification"
 	wsEventJobStop                   = "job_stop"
 	wsEventCaption                   = "caption"
-	wsEventHostMute                  = "host_mute"
 	wsEventHostScreenOff             = "host_screen_off"
 	wsEventHostLowerHand             = "host_lower_hand"
 	wsEventHostRemoved               = "host_removed"

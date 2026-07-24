@@ -413,6 +413,7 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 		botID := model.NewId()
 		p.botID = botID
 		p.botSession = &model.Session{UserId: botID}
+		p.botID = botID // getBotID reads p.botID, not botSession
 
 		channelID := model.NewId()
 		postID := model.NewId()
@@ -465,6 +466,7 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 		botID := model.NewId()
 		p.botID = botID
 		p.botSession = &model.Session{UserId: botID}
+		p.botID = botID // getBotID reads p.botID, not botSession
 
 		channelID := model.NewId()
 		postID := model.NewId()

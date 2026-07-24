@@ -68,6 +68,18 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
         tooltipSubtext: defineMessage({defaultMessage: 'Allow screen recording access to Mattermost.'}),
         dismissable: true,
     },
+    screenShareBlockedByRemote: {
+        type: CallAlertType.Info,
+        icon: 'monitor-off',
+        bannerText: defineMessage({defaultMessage: 'Someone else is already sharing their screen.'}),
+        dismissable: true,
+    },
+    screenShareCaptureError: {
+        type: CallAlertType.Error,
+        icon: 'monitor-off',
+        bannerText: defineMessage({defaultMessage: 'Unable to start screen sharing.'}),
+        dismissable: true,
+    },
     degradedCallQuality: {
         type: CallAlertType.Warning,
         icon: 'alert-outline',

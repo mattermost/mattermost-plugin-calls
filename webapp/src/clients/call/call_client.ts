@@ -37,7 +37,7 @@ import {
 } from 'src/constants';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from 'src/log';
 import {parseRTCStats} from 'src/rtc_stats';
-import {CallsClientStats, MediaDevices, TrackMetadata} from 'src/types/types';
+import {CallsClientStats, MediaDevices, ShareScreenError, ShareScreenResult, TrackMetadata} from 'src/types/types';
 import {getPersistentStorage, getPluginPath, getScreenStream} from 'src/utils';
 
 import {
@@ -110,6 +110,10 @@ export default class CallClient extends EventEmitter {
     // best stats we can log for forensics. See startStatsPolling().
     private lastStats: CallsClientStats | null = null;
     private statsPollTimer: ReturnType<typeof setInterval> | null = null;
+
+    // Mutex for ensureMicrophoneTrack — set synchronously before the first await so
+    // concurrent callers are blocked immediately.
+    private micTrackEnsureInProgress = false;
 
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
@@ -302,8 +306,7 @@ export default class CallClient extends EventEmitter {
 
             // The plugin WS is already open and the join was sent, so tell the server we're
             // leaving before closing — otherwise it keeps the session until its own timeout.
-            this.websocketClient?.sendLeave();
-            this.websocketClient?.close();
+            this.websocketClient?.sendLeaveAndClose();
             this.websocketClient = null;
 
             this.emit(CALL_EVENT.ERROR, err);
@@ -341,8 +344,7 @@ export default class CallClient extends EventEmitter {
 
             // The plugin WS is already open and the join was sent, so tell the server we're
             // leaving before closing — otherwise it keeps the session until its own timeout.
-            this.websocketClient?.sendLeave();
-            this.websocketClient?.close();
+            this.websocketClient?.sendLeaveAndClose();
             this.websocketClient = null;
 
             this.emit(CALL_EVENT.ERROR, err);
@@ -410,33 +412,33 @@ export default class CallClient extends EventEmitter {
         }
     };
 
+    public isMicTrackPublished(): boolean {
+        return Boolean(this.room?.localParticipant.getTrackPublication(Track.Source.Microphone));
+    }
+
     public async mute(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        const pub = this.room?.localParticipant.getTrackPublication(Track.Source.Microphone);
+        if (!pub) {
+            logWarn('CallClient: mute called with no mic track published');
             return;
         }
-
         try {
-            await this.room.localParticipant.setMicrophoneEnabled(false);
+            await pub.mute();
         } catch (err) {
             logErr('CallClient: muting microphone failed', err);
         }
     }
 
     public async unmute(): Promise<void> {
-        if (!this.room || !this.roomConnected) {
+        const pub = this.room?.localParticipant.getTrackPublication(Track.Source.Microphone);
+        if (!pub) {
+            logWarn('CallClient: unmute called with no mic track published');
             return;
         }
-
         try {
-            await this.room.localParticipant.setMicrophoneEnabled(true);
+            await pub.unmute();
         } catch (err) {
-            if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
-                logDebug('CallClient: unmuting microphone denied, missing audio input permission');
-                this.emit(CALL_EVENT.ERROR, AudioInputPermissionsErr);
-            } else {
-                logErr('CallClient: unmuting microphone failed', err);
-                this.emit(CALL_EVENT.ERROR, err);
-            }
+            logErr('CallClient: unmuting microphone failed', err);
         }
     }
 
@@ -464,22 +466,29 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    public async shareScreen(sourceID?: string, withAudio?: boolean): Promise<MediaStream | null> {
+    public async shareScreen(sourceID?: string, withAudio?: boolean): Promise<ShareScreenResult> {
+        const fail = (reason: ShareScreenError): ShareScreenResult => [null, reason];
+
         if (!this.room || !this.roomConnected) {
-            return null;
+            return fail('not-connected');
         }
 
         // If we're already sharing, return the existing stream.
         if (this.room.localParticipant.getTrackPublication(Track.Source.ScreenShare)) {
             logDebug('CallClient: you are already sharing screen');
-            return this.getLocalScreenStream();
+            const stream = this.getLocalScreenStream();
+            if (stream) {
+                return [stream, null];
+            }
+            return fail('capture-error');
         }
 
-        // If another participant is already sharing, we skip.
+        // If another participant is already sharing, report it distinctly so callers can show a
+        // targeted notice rather than the generic permission-denied error.
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
                 logDebug('CallClient: another participant is already sharing screen');
-                return null;
+                return fail('already-sharing');
             }
         }
 
@@ -498,15 +507,73 @@ export default class CallClient extends EventEmitter {
 
             const stream = this.getLocalScreenStream();
             logDebug('CallClient: screen share stream started', {sourceID, withAudio, streamID: stream?.id});
-            return stream;
+            if (stream) {
+                return [stream, null];
+            }
+            return fail('capture-error');
         } catch (err) {
             if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
                 logDebug('CallClient: screen share was either cancelled or permissions were denied');
-            } else {
-                logErr('CallClient: sharing screen failed', err);
-                this.emit(CALL_EVENT.ERROR, err);
+                return fail('permission-denied');
             }
-            return null;
+            logErr('CallClient: sharing screen failed', err);
+            this.emit(CALL_EVENT.ERROR, err);
+            return fail('capture-error');
+        }
+    }
+
+    // shareScreenWithStream publishes an already-captured screen stream. Use this when
+    // getDisplayMedia was called in the focused window (e.g. the popout) and the stream
+    // needs to be published to the room that lives in the opener.
+    // Firefox blocks getDisplayMedia in an unfocused window; the caller captures in the
+    // focused popout and delegates the publish step here.
+    public async shareScreenWithStream(stream: MediaStream): Promise<boolean> {
+        if (!this.room || !this.roomConnected) {
+            stream.getTracks().forEach((t) => t.stop());
+            return false;
+        }
+
+        // Bail if we're already sharing to avoid publishing a duplicate ScreenShare track.
+        if (this.room.localParticipant.getTrackPublication(Track.Source.ScreenShare)) {
+            stream.getTracks().forEach((t) => t.stop());
+            return false;
+        }
+
+        // Bail if another participant is already sharing screen.
+        for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
+                logDebug('CallClient: another participant is already sharing screen');
+                stream.getTracks().forEach((t) => t.stop());
+                return false;
+            }
+        }
+
+        const publishedTracks: LocalTrack[] = [];
+        try {
+            const [videoTrack] = stream.getVideoTracks();
+            if (videoTrack) {
+                const screenVideo = new LocalVideoTrack(videoTrack, undefined, false);
+                screenVideo.source = Track.Source.ScreenShare;
+                await this.room.localParticipant.publishTrack(screenVideo);
+                publishedTracks.push(screenVideo);
+            }
+
+            const [audioTrack] = stream.getAudioTracks();
+            if (audioTrack) {
+                const screenAudio = new LocalAudioTrack(audioTrack, undefined, false);
+                screenAudio.source = Track.Source.ScreenShareAudio;
+                await this.room.localParticipant.publishTrack(screenAudio);
+                publishedTracks.push(screenAudio);
+            }
+
+            logDebug('CallClient: shareScreenWithStream published', {streamID: stream.id});
+            return true;
+        } catch (err) {
+            await Promise.allSettled(publishedTracks.map((track) => this.room!.localParticipant.unpublishTrack(track, true)));
+            stream.getTracks().forEach((t) => t.stop());
+            logErr('CallClient: shareScreenWithStream failed', err);
+            this.emit(CALL_EVENT.ERROR, err);
+            return false;
         }
     }
 
@@ -798,7 +865,6 @@ export default class CallClient extends EventEmitter {
         }
         case WebSocketErrorType.ReconnectTimeout: {
             logErr('CallClient: pluginWS reconnect timed out, disconnecting', err);
-            this.websocketClient = null;
             this.emit(CALL_EVENT.ERROR, err);
             this.disconnect();
             break;
@@ -830,9 +896,9 @@ export default class CallClient extends EventEmitter {
         // the call is torn down remotely (see lastStats / startStatsPolling).
         this.startStatsPolling();
 
-        // Request microphone permission in the background so connection
+        // Capture and publish the mic track in the background so connection
         // handling is not blocked by the user's interaction.
-        void this.requestMicrophonePermission();
+        void this.ensureMicrophoneTrack();
 
         // Seed the initial state for everyone already in the room (local + remote):
         // USER_JOINED creates the session, then the LiveKit-owned fields (mic mute +
@@ -892,15 +958,42 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    private async requestMicrophonePermission() {
+    // Requests microphone permission via getUserMedia, then pre-publishes the captured
+    // track to LiveKit in a muted state. Pre-publishing means subsequent mute/unmute
+    // operations only require a LiveKit signal — no new getUserMedia call — which is
+    // critical for Firefox, where getUserMedia is blocked in unfocused windows such as
+    // the popout. The main window is always focused at join time, so capture is safe here.
+    // Idempotent: skips publication if a mic track is already published (e.g. on hot-plug).
+    private async ensureMicrophoneTrack() {
+        if (this.micTrackEnsureInProgress) {
+            logDebug('CallClient: ensureMicrophoneTrack already in progress, skipping');
+            return;
+        }
+        this.micTrackEnsureInProgress = true;
+        let notFound = false;
         try {
-            // Just request permission to the microphone and
-            // stop the track immediately to avoid any audio being published
-            logDebug('CallClient: requesting microphone permission');
+            logDebug('CallClient: ensuring microphone track');
             const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true});
-            mediaStream.getTracks().forEach((mediaStreamTrack) => {
-                mediaStreamTrack.stop();
-            });
+
+            const audioTrack = mediaStream.getTracks()[0];
+            if (audioTrack && this.room &&
+                !this.room.localParticipant.getTrackPublication(Track.Source.Microphone)) {
+                const localAudioTrack = new LocalAudioTrack(audioTrack, undefined, false);
+                localAudioTrack.source = Track.Source.Microphone;
+                try {
+                    await this.room.localParticipant.publishTrack(localAudioTrack);
+
+                    // publishTrack always publishes as unmuted; call pub.mute() to set
+                    // LiveKit's signaling state so the UI and remote participants see muted.
+                    await this.mute();
+                    logDebug('CallClient: pre-published muted mic track');
+                } catch (publishErr) {
+                    audioTrack.stop();
+                    logErr('CallClient: failed to pre-publish muted mic track', publishErr);
+                }
+            } else if (audioTrack) {
+                audioTrack.stop();
+            }
 
             logDebug('CallClient: microphone permission granted');
 
@@ -911,7 +1004,7 @@ export default class CallClient extends EventEmitter {
             // Restore the user's last-selected device now that the inventory
             // has real labels and deviceIds. Matching against the pre-grant
             // stub list would either miss the entry or pin a phantom
-            // "default" deviceId that no longer maps to anything. (Gap #5.)
+            // "default" deviceId that no longer maps to anything.
             logDebug('CallClient: restoring stored audio devices from localStorage (post-permission)');
             const storedInput = this.getStoredAudioDevice('input');
             logDebug('CallClient: storedInput resolved to', storedInput ? {deviceId: storedInput.deviceId, label: storedInput.label} : null);
@@ -931,10 +1024,23 @@ export default class CallClient extends EventEmitter {
             if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
                 logDebug('CallClient: requesting microphone permission denied by user');
                 this.emit(CALL_EVENT.ERROR, AudioInputPermissionsErr);
+            } else if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.NotFound) {
+                logDebug('CallClient: no audio input device found');
+                notFound = true;
             } else {
                 logErr('CallClient: failed to request microphone permission', err);
                 this.emit(CALL_EVENT.ERROR, err);
             }
+        } finally {
+            this.micTrackEnsureInProgress = false;
+        }
+
+        if (notFound) {
+            // Enumerate and emit outside the micTrackEnsureInProgress mutex so a concurrent
+            // MediaDevicesChanged (e.g. user plugs in a mic immediately after joining) is not blocked.
+            // DEVICE_CHANGE triggers the missing-audio-input alert in the UI.
+            await this.enumerateDevices();
+            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
         }
     }
 
@@ -965,15 +1071,24 @@ export default class CallClient extends EventEmitter {
         this.disconnected = true;
         this.roomConnected = false;
         this.connectPayload = null;
+
+        // Sever our EventEmitter listeners from the room before releasing the reference.
+        // LiveKit's internal devicechange listener uses a WeakRef/AbortController pattern
+        // that defeats its own removeEventListener, so the native OS event keeps reaching
+        // the Room and re-emitting MediaDevicesChanged long after the call ends. Calling
+        // removeAllListeners() here ensures our handleMediaDevicesChanged (→ enumerateDevices
+        // → log) stops firing even while the Room object awaits GC.
+        const room = this.room;
         this.room = null;
+        room?.removeAllListeners();
+
         this.stopStatsPolling();
 
         this.emit(CALL_EVENT.DISCONNECTED, reason);
 
         if (this.websocketClient) {
             try {
-                this.websocketClient.sendLeave();
-                this.websocketClient.close();
+                this.websocketClient.sendLeaveAndClose();
             } catch (error) {
                 logErr('CallClient: pluginWS teardown error', error);
             } finally {
@@ -1006,6 +1121,14 @@ export default class CallClient extends EventEmitter {
         if (localTrackPublication.source === Track.Source.Microphone) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
             this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
+
+            const micPubs = Array.from(localParticipant.audioTrackPublications.values()).filter(
+                (p) => p.source === Track.Source.Microphone,
+            );
+            if (micPubs.length > 1) {
+                logWarn('CallClient: multiple mic tracks published — mute control may be unreliable',
+                    micPubs.map((p) => this.trackPubSummary(p)));
+            }
 
             logDebug(`CallClient: local voice stream published for user ${userID}`, this.trackPubSummary(localTrackPublication));
 
@@ -1302,7 +1425,15 @@ export default class CallClient extends EventEmitter {
      * and broadcasts the new inventory so picker UIs refresh.
      */
     private async handleMediaDevicesChanged() {
+        const prevInputCount = this.audioDevices.inputs.length;
         await this.enumerateDevices();
+
+        // If the first mic appeared and no track is published yet, capture and publish
+        // from the main window so Firefox popout unmute has no getUserMedia race.
+        if (prevInputCount === 0 && this.audioDevices.inputs.length > 0 &&
+            !this.room?.localParticipant.getTrackPublication(Track.Source.Microphone)) {
+            void this.ensureMicrophoneTrack();
+        }
 
         if (this.currentAudioInputDevice) {
             const stillPresent = this.audioDevices.inputs.some((dev) => dev.deviceId === this.currentAudioInputDevice?.deviceId);

@@ -8,3 +8,4 @@ export const HostRemovedYouFromCallErr = new Error(HostRemovedYouFromCallMsg);
 
 const AudioInputPermissionsMsg = 'missing audio input permissions';
 export const AudioInputPermissionsErr = new Error(AudioInputPermissionsMsg);
+
