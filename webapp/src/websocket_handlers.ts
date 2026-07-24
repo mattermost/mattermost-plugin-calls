@@ -80,7 +80,7 @@ import {
     hasLiveCallClient,
 } from './utils';
 
-type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
+export type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
