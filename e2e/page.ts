@@ -126,6 +126,9 @@ export default class PlaywrightDevPage {
     }
 
     async disableCalls() {
+        const startCallButton = this.page.locator('#calls-join-button');
+        await expect(startCallButton).toBeVisible();
+
         const channelHeaderButton = this.page.locator('#channelHeaderDropdownButton');
         await expect(channelHeaderButton).toBeVisible();
         await channelHeaderButton.click();
@@ -133,7 +136,6 @@ export default class PlaywrightDevPage {
         const disableCallsButton = this.page.getByText('Disable calls');
         await expect(disableCallsButton).toBeVisible();
         await disableCallsButton.click();
-        const startCallButton = this.page.locator('#calls-join-button');
         await expect(startCallButton).toBeHidden();
     }
 
