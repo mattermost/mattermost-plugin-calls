@@ -136,7 +136,16 @@ export default class PlaywrightDevPage {
         const disableCallsButton = this.page.getByText('Disable calls');
         await expect(disableCallsButton).toBeVisible();
         await disableCallsButton.click();
-        await expect(startCallButton).toBeHidden();
+
+        // Re-open the dropdown and confirm "Enable calls" is shown. This text only appears
+        // when the channel state has callsExplicitlyDisabled=true in Redux — a stronger
+        // signal than waiting for the button to hide, which can happen prematurely if
+        // getCurrentChannel briefly returns undefined due to unrelated WS state updates.
+        await expect(channelHeaderButton).toBeVisible();
+        await channelHeaderButton.click();
+        await this.page.getByText('More actions').hover();
+        await expect(this.page.getByText('Enable calls')).toBeVisible();
+        await this.page.keyboard.press('Escape');
     }
 
     wait(ms: number) {
