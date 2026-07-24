@@ -149,7 +149,14 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             return {};
         }
 
-        await endCall(args.channel_id);
+        try {
+            await endCall(args.channel_id);
+        } catch (_err) {
+            store.dispatch(displayGenericErrorModal(
+                defineMessage({defaultMessage: 'Unable to end the call'}),
+                defineMessage({defaultMessage: 'Something went wrong while trying to end the call. Please try again.'}),
+            ));
+        }
 
         return {};
     case 'link':
