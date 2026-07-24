@@ -15,10 +15,6 @@ import CallWidget from './component';
 
 type Props = React.ComponentProps<typeof CallWidget>;
 
-jest.mock('src/components/incoming_calls/ringback_container', () => ({
-    RingbackContainer: () => null,
-}));
-
 jest.mock('src/components/leave_call_menu', () => ({
     LeaveCallMenu: ({leaveCall}: {leaveCall: () => void}) => (
         // eslint-disable-next-line formatjs/no-literal-string-in-jsx
