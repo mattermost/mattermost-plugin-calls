@@ -10,19 +10,15 @@ import {ActionResult} from 'mattermost-redux/types/actions';
 import {defineMessage} from 'react-intl';
 import {
     displayGenericErrorModal,
+    endCall,
     startCallRecording,
     stopCallRecording,
 } from 'src/actions';
-import {
-    EndCallConfirmation,
-    IDEndCallConfirmation,
-} from 'src/components/call_widget/end_call_confirmation';
 import {
     DisabledCallsErr,
     STORAGE_CALLS_CLIENT_STATS_KEY,
 } from 'src/constants';
 import RestClient from 'src/rest_client';
-import {modals} from 'src/webapp_globals';
 
 import {flushLogsToAccumulated, getClientLogs, logDebug} from './log';
 import {
@@ -153,13 +149,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             return {};
         }
 
-        store.dispatch(modals?.openModal({
-            modalId: IDEndCallConfirmation,
-            dialogType: EndCallConfirmation,
-            dialogProps: {
-                channelID: args.channel_id,
-            },
-        }));
+        await endCall(args.channel_id);
 
         return {};
     case 'link':
