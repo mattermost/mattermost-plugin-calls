@@ -19,8 +19,3 @@ git reset --hard FETCH_HEAD
 
 cd ..
 npm i --save-dev ./mattermost-webapp/webapp/channels
-npm i --save-dev ./mattermost-webapp/webapp/platform/types
-npm i --save-dev ./mattermost-webapp/webapp/platform/client
-cd ../standalone
-npm i --save-dev ../webapp/mattermost-webapp/webapp/platform/types
-npm i --save-dev ../webapp/mattermost-webapp/webapp/platform/client

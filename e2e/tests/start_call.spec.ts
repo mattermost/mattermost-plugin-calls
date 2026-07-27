@@ -6,7 +6,7 @@ import {expect, Response, test} from '@playwright/test';
 import {
     apiGetChannelByName,
 } from '../channels';
-import {adminState, baseURL} from '../constants';
+import {adminState, baseURL, pluginID} from '../constants';
 import PlaywrightDevPage from '../page';
 import {
     getChannelNamesForTest,
@@ -34,6 +34,25 @@ test.beforeEach(async ({page}, info) => {
 test.describe('start/join call in channel with calls disabled', {tag: '@livekit'}, () => {
     test.use({storageState: adminState.storageStatePath});
 
+    // These two tests toggle the calls-enabled state of the same shared channel.
+    // Run them serially so they don't interleave, and never leave the channel
+    // disabled for whatever runs next on this worker's channel.
+    test.describe.configure({mode: 'serial'});
+
+    test.afterEach(async ({request}) => {
+        // Force calls back on via the API regardless of how the test body exited.
+        // If we relied on the UI enableCalls() (only reached on success) a failed
+        // assertion would leave the channel disabled, cascading into the retry and
+        // into unrelated tests that share this channel (seen as flaky "join button
+        // not visible" failures elsewhere).
+        const channel = await apiGetChannelByName(request, getChannelNamesForTest()[0]);
+        const resp = await request.post(`${baseURL}/plugins/${pluginID}/${channel.id}`, {
+            headers: await getHTTPHeaders(request),
+            data: {enabled: true},
+        });
+        expect(resp.ok()).toBeTruthy();
+    });
+
     test('/call start', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.disableCalls();
@@ -44,8 +63,6 @@ test.describe('start/join call in channel with calls disabled', {tag: '@livekit'
 
         await expect(page.locator('#calls_generic_error').filter({has: page.getByText('Calls are disabled in this channel.')})).toBeVisible();
         await page.keyboard.press('Escape');
-
-        await devPage.enableCalls();
     });
 
     test('/call join', async ({page}) => {
@@ -58,8 +75,6 @@ test.describe('start/join call in channel with calls disabled', {tag: '@livekit'
 
         await expect(page.locator('#calls_generic_error').filter({has: page.getByText('Calls are disabled in this channel.')})).toBeVisible();
         await page.keyboard.press('Escape');
-
-        await devPage.enableCalls();
     });
 });
 

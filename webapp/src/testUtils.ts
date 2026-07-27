@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {applyMiddleware, combineReducers, createStore} from 'redux';
-import thunk from 'redux-thunk';
+import {thunk} from 'redux-thunk';
 
 export const mockStore = (initialState = {}) => {
     const reducer = combineReducers({

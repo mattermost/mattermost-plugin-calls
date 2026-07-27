@@ -53,9 +53,6 @@ module.exports = {
     resolve: {
         alias: {
             src: path.resolve(__dirname, './src/'),
-            '@mattermost/types': path.resolve(__dirname, './mattermost-webapp/webapp/platform/types/src/'),
-            '@mattermost/client': path.resolve(__dirname, './mattermost-webapp/webapp/platform/client/src/'),
-            'mattermost-redux': path.resolve(__dirname, './mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/'),
 
             // Force CommonJS build to avoid ES module minification issues
             '@mediapipe/tasks-vision': path.resolve(__dirname, './node_modules/@mediapipe/tasks-vision/vision_bundle.cjs'),
@@ -71,7 +68,7 @@ module.exports = {
         rules: [
             {
                 test: /\.(js|jsx|ts|tsx)$/,
-                exclude: /node_modules\/(?!(mattermost-webapp)\/).*/,
+                exclude: /node_modules/,
                 use: {
                     loader: 'babel-loader',
                     options: {

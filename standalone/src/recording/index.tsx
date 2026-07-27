@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {CallState, CallStateData, JobStopData, UserJoinedData, WebsocketEventData} from '@mattermost/calls-common/lib/types';
-import {WebSocketMessage} from '@mattermost/client/websocket';
+import {BaseWebSocketMessage} from '@mattermost/client';
 import {ChannelTypes} from 'mattermost-redux/action_types';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {logErr, logInfo} from 'plugin/log';
@@ -28,6 +28,8 @@ import {
     RECEIVED_CALL_PROFILE_IMAGES,
 } from './action_types';
 import RecordingView from './components/recording_view';
+
+type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 
 let recordingRoot: Root | null = null;
 

@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@livekit/protocol": "1.47.0",
-    "@mattermost/types": "11.4.0",
+    "@mattermost/types": "11.8.0",
     "@playwright/test": "1.59.1",
     "@types/node": "^24.12.0",
     "@typescript-eslint/eslint-plugin": "6.21.0",

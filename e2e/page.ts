@@ -133,8 +133,13 @@ export default class PlaywrightDevPage {
         const disableCallsButton = this.page.getByText('Disable calls');
         await expect(disableCallsButton).toBeVisible();
         await disableCallsButton.click();
-        const startCallButton = this.page.locator('#calls-join-button');
-        await expect(startCallButton).toBeHidden();
+
+        // Re-open the dropdown and confirm "Enable calls" is shown.
+        await expect(channelHeaderButton).toBeVisible();
+        await channelHeaderButton.click();
+        await this.page.getByText('More actions').hover();
+        await expect(this.page.getByText('Enable calls')).toBeVisible();
+        await this.page.keyboard.press('Escape');
     }
 
     wait(ms: number) {

@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type WebSocketClient from '@mattermost/client/websocket';
+import type {WebSocketClient} from '@mattermost/client';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import type {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import type CallClient from 'src/clients/call';

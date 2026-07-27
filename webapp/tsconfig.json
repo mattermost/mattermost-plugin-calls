@@ -31,18 +31,6 @@
     "paths": {
       "src": [
         "src"
-      ],
-      "@mattermost/types/*": [
-        "./mattermost-webapp/webapp/platform/types/src/*"
-      ],
-      "@mattermost/client": [
-        "./mattermost-webapp/webapp/platform/client/src"
-      ],
-      "@mattermost/client/*": [
-        "./mattermost-webapp/webapp/platform/client/src/*"
-      ],
-      "mattermost-redux/*": [
-        "./mattermost-webapp/webapp/channels/src/packages/mattermost-redux/src/*"
       ]
     }
   },
@@ -52,7 +40,6 @@
   "exclude": [
     "dist",
     "!node_modules/@types",
-    "mattermost-webapp",
-    "!mattermost-webapp/webapp/platform/types"
+    "mattermost-webapp"
   ]
 }

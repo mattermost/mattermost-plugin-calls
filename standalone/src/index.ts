@@ -28,7 +28,6 @@ import {
     UserVideoOnOffData,
     WebsocketEventData,
 } from '@mattermost/calls-common/lib/types';
-import {WebSocketMessage} from '@mattermost/client/websocket';
 import {setServerVersion} from 'mattermost-redux/actions/general';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
@@ -68,6 +67,7 @@ import {
     handleUserScreenOn,
     handleUserVideoOff,
     handleUserVideoOn,
+    WebSocketMessage,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
 import {CurrentCallDataDefault} from 'src/types/types';

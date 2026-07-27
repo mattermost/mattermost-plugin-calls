@@ -497,7 +497,7 @@ const screenSourceModal = (state = false, action: { type: string }) => {
     }
 };
 
-const callsConfig = (state = CallsConfigDefault, action: { type: string, data: CallsConfig }) => {
+const callsConfig = (state = CallsConfigDefault, action: { type: string, data: any }): CallsConfig => {
     switch (action.type) {
     case RECEIVED_CALLS_CONFIG:
         return action.data;
