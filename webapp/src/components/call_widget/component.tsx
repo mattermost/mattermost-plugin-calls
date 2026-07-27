@@ -143,6 +143,7 @@ interface Props {
     openCallsUserSettings: () => void;
     enableVideo: boolean,
     connectedDMUser: UserProfile | undefined,
+    isAdmin: boolean,
 }
 
 interface DraggingState {
@@ -2697,24 +2698,37 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             }
                             bgColor={this.state.showMenu ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
                         />
-                        <DotMenu
-                            id='calls-widget-leave-button'
-                            icon={<LeaveCallIcon style={{fill: 'white'}}/>}
-                            ariaLabel={leaveMenuLabel}
-                            dotMenuButton={LeaveCallButton}
-                            placement={'top-start'}
-                            strategy={'fixed'}
-                            onOpenChange={this.onLeaveMenuOpen}
-                            shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
-                            tooltipText={leaveMenuLabel}
-                        >
-                            <LeaveCallMenu
-                                channelID={this.props.channel.id}
-                                isHost={isHost}
-                                numParticipants={this.props.sessions.length}
-                                leaveCall={this.onDisconnectClick}
+                        {(isDMChannel(this.props.channel) || (!isHost && !this.props.isAdmin) || this.props.sessions.length <= 1) ? (
+                            <WidgetButton
+                                id='calls-widget-leave-button'
+                                icon={<LeaveCallIcon style={{fill: 'white'}}/>}
+                                bgColor='var(--dnd-indicator)'
+                                bgColorHover='linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08))'
+                                ariaLabel={leaveMenuLabel}
+                                tooltipText={leaveMenuLabel}
+                                shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
+                                onToggle={this.onDisconnectClick}
                             />
-                        </DotMenu>
+                        ) : (
+                            <DotMenu
+                                id='calls-widget-leave-button'
+                                icon={<LeaveCallIcon style={{fill: 'white'}}/>}
+                                ariaLabel={leaveMenuLabel}
+                                dotMenuButton={LeaveCallButton}
+                                placement={'top-start'}
+                                strategy={'fixed'}
+                                onOpenChange={this.onLeaveMenuOpen}
+                                shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
+                                tooltipText={leaveMenuLabel}
+                            >
+                                <LeaveCallMenu
+                                    channelID={this.props.channel.id}
+                                    isHost={isHost}
+                                    numParticipants={this.props.sessions.length}
+                                    leaveCall={this.onDisconnectClick}
+                                />
+                            </DotMenu>
+                        )}
                     </div>
                 </div>
             </div>

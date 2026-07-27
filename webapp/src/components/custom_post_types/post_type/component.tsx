@@ -5,7 +5,8 @@ import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {DateTime, Duration as LuxonDuration} from 'luxon';
-import {getUser} from 'mattermost-redux/selectors/entities/users';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import React, {useCallback} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
@@ -26,6 +27,7 @@ import {
     getCallPropsFromPost,
     getCallsClient,
     getUserDisplayName,
+    isDMChannel,
     toHuman,
     untranslatable,
 } from 'src/utils';
@@ -64,6 +66,8 @@ const PostType = ({
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
     const callID = useSelector((state: GlobalState) => idForCallInChannel(state, post.channel_id)) || '';
     const [, onJoin] = useDismissJoin(post.channel_id, callID);
+    const channel = useSelector((state: GlobalState) => getChannel(state, post.channel_id));
+    const isAdmin = useSelector(isCurrentUserSystemAdmin);
 
     const timestampFn = useCallback(() => {
         return callStartedTimestampFn(intl, callProps.start_at);
@@ -178,21 +182,37 @@ const PostType = ({
             <ButtonText>{formatMessage({defaultMessage: 'Leave'})}</ButtonText>
         </>
     );
-    const button = inCall ? (
-        <DotMenu
-            icon={iconAndText}
-            dotMenuButton={LeaveButton}
-            placement={'top'}
-            portal={true}
-        >
-            <LeaveCallMenu
-                channelID={post.channel_id}
-                isHost={isHost}
-                numParticipants={profiles.length}
-                leaveCall={onLeaveButtonClick}
-            />
-        </DotMenu>
-    ) : joinButton;
+    const showLeaveMenu = !isDMChannel(channel) && (isHost || isAdmin) && profiles.length > 1;
+    let leaveButton: JSX.Element;
+    if (showLeaveMenu) {
+        leaveButton = (
+            <DotMenu
+                icon={iconAndText}
+                dotMenuButton={LeaveButton}
+                placement={'top'}
+                portal={true}
+            >
+                <LeaveCallMenu
+                    channelID={post.channel_id}
+                    isHost={isHost}
+                    numParticipants={profiles.length}
+                    leaveCall={onLeaveButtonClick}
+                />
+            </DotMenu>
+        );
+    } else {
+        leaveButton = (
+            <LeaveButton
+                $isActive={false}
+                onClick={onLeaveButtonClick}
+                role='button'
+                aria-label={formatMessage({defaultMessage: 'Leave call'})}
+            >
+                {iconAndText}
+            </LeaveButton>
+        );
+    }
+    const button = inCall ? leaveButton : joinButton;
 
     return (
         <>
