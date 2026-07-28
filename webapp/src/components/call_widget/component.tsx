@@ -2555,32 +2555,34 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={this.style.bottomBar}
                     >
 
-                        <WidgetButton
-                            id='calls-widget-participants-button'
-                            ariaLabel={showParticipantsListLabel}
-                            ariaControls='calls-widget-participants-menu'
-                            ariaExpanded={this.state.showParticipantsList}
-                            onToggle={this.onParticipantsButtonClick}
-                            bgColor={this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
-                            tooltipText={showParticipantsListLabel}
-                            shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
-                            icon={
-                                <ParticipantsIcon
-                                    style={{fill: this.state.showParticipantsList ? 'var(--button-bg)' : ''}}
-                                />
-                            }
-                            style={{marginRight: 'auto'}}
-                        >
-                            <span
-                                style={{
-                                    fontWeight: 600,
-                                    fontSize: '14px',
-                                    color: this.state.showParticipantsList ? 'var(--button-bg)' : '',
-                                }}
+                        {!isDMChannel(this.props.channel) && (
+                            <WidgetButton
+                                id='calls-widget-participants-button'
+                                ariaLabel={showParticipantsListLabel}
+                                ariaControls='calls-widget-participants-menu'
+                                ariaExpanded={this.state.showParticipantsList}
+                                onToggle={this.onParticipantsButtonClick}
+                                bgColor={this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
+                                tooltipText={showParticipantsListLabel}
+                                shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
+                                icon={
+                                    <ParticipantsIcon
+                                        style={{fill: this.state.showParticipantsList ? 'var(--button-bg)' : ''}}
+                                    />
+                                }
+                                style={{marginRight: 'auto'}}
                             >
-                                {this.props.sessions.length}
-                            </span>
-                        </WidgetButton>
+                                <span
+                                    style={{
+                                        fontWeight: 600,
+                                        fontSize: '14px',
+                                        color: this.state.showParticipantsList ? 'var(--button-bg)' : '',
+                                    }}
+                                >
+                                    {this.props.sessions.length}
+                                </span>
+                            </WidgetButton>
+                        )}
 
                         <WidgetButton
                             id='voice-mute-unmute'
