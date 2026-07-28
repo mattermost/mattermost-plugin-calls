@@ -2,11 +2,10 @@
 // See LICENSE.txt for license information.
 
 import {Duration} from 'luxon';
-import React, {CSSProperties, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 
 type Props = {
     startAt: number,
-    style?: CSSProperties,
 }
 
 const oneHour = Duration.fromObject({hours: 1});
@@ -38,12 +37,7 @@ export default function CallDuration(props: Props) {
         return () => clearInterval(interval);
     });
 
-    const style = props.style || {};
-    if (!style.fontWeight) {
-        style.fontWeight = 600;
-    }
-
     return (
-        <div style={style}>{getCallDuration(adjustedStartAt)}</div>
+        <div className='callDurationContainer'>{getCallDuration(adjustedStartAt)}</div>
     );
 }

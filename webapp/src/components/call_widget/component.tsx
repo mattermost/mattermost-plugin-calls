@@ -2491,7 +2491,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 sessions={this.props.sessions}
                                 profiles={this.props.profiles}
                             />
-
                             <div style={{width: this.props.wider ? '210px' : '152px'}}>
                                 <SpeakingIndicator
                                     sessions={this.props.sessions}
@@ -2501,7 +2500,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                     {this.renderRecordingBadge()}
                                     <CallDuration
                                         startAt={this.props.callStartAt}
-                                        style={{letterSpacing: '0.02em'}}
                                     />
                                     {!isDMChannel(this.props.channel) && this.renderChannelName()}
                                 </div>

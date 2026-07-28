@@ -3,6 +3,8 @@
 
 /* eslint-disable max-lines */
 
+import './expanded_view.scss';
+
 import {mosThreshold} from '@mattermost/calls-common';
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
