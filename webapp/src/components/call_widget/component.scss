@@ -144,3 +144,18 @@ a.calls-channel-link {
         background-blend-mode: multiply;
     }
 }
+
+#calls-widget {
+  .speakerAvatarContainer {
+    position: relative;
+    display: flex;
+    height: auto;
+    align-items: center;
+
+    .genericAvatar {
+      background: rgba(var(--center-channel-color-rgb), 0.16);
+      color: rgba(var(--center-channel-color-rgb), 0.48);
+      font-size: 18px;
+    }
+  }
+}

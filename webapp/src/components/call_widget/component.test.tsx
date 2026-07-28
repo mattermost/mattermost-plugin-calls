@@ -52,6 +52,20 @@ const stubChannel = {
 
 const stubTeam = {id: 'team-id', name: 'team', display_name: 'Team'} as Team;
 
+// The widget renders store-connected children (e.g. SpeakerAvatar), so the store needs
+// the same shape the reducers produce rather than a bare {}. No call is in progress, so
+// the widget renders purely from the props passed in below.
+const stubState = (channel: Channel) => ({
+    'plugins-com.mattermost.calls': {
+        calls: {},
+        sessions: {},
+    },
+    entities: {
+        channels: {channels: {[channel.id]: channel}},
+        users: {currentUserId: 'user-id', profiles: {}},
+    },
+});
+
 const props: Props = {
     intl,
     currentUserID: 'user-id',
@@ -124,7 +138,7 @@ describe('CallWidget', () => {
         const user = userEvent.setup();
 
         render(
-            <Provider store={mockStore()}>
+            <Provider store={mockStore(stubState(stubChannel))}>
                 <RawIntlProvider value={intl}>
                     <CallWidget {...props}/>
                 </RawIntlProvider>
@@ -150,7 +164,7 @@ describe('CallWidget', () => {
         const user = userEvent.setup();
 
         render(
-            <Provider store={mockStore()}>
+            <Provider store={mockStore(stubState(stubChannel))}>
                 <RawIntlProvider value={intl}>
                     <CallWidget {...props}/>
                 </RawIntlProvider>
@@ -168,7 +182,7 @@ describe('CallWidget', () => {
         const user = userEvent.setup();
 
         render(
-            <Provider store={mockStore()}>
+            <Provider store={mockStore(stubState(stubChannel))}>
                 <RawIntlProvider value={intl}>
                     <CallWidget {...props}/>
                 </RawIntlProvider>
@@ -215,7 +229,7 @@ describe('leave button behavior', () => {
     test('DM channel: leaves directly without menu even when host with others', async () => {
         const user = userEvent.setup();
         render(
-            <Provider store={mockStore()}>
+            <Provider store={mockStore(stubState(dmChannel))}>
                 <RawIntlProvider value={intl}>
                     <CallWidget
                         {...props}
@@ -235,7 +249,7 @@ describe('leave button behavior', () => {
     test('non-host and non-admin with others: leaves directly without menu', async () => {
         const user = userEvent.setup();
         render(
-            <Provider store={mockStore()}>
+            <Provider store={mockStore(stubState(stubChannel))}>
                 <RawIntlProvider value={intl}>
                     <CallWidget
                         {...props}
@@ -255,7 +269,7 @@ describe('leave button behavior', () => {
     test('solo host: leaves directly without menu', async () => {
         const user = userEvent.setup();
         render(
-            <Provider store={mockStore()}>
+            <Provider store={mockStore(stubState(stubChannel))}>
                 <RawIntlProvider value={intl}>
                     <CallWidget
                         {...props}
@@ -275,7 +289,7 @@ describe('leave button behavior', () => {
     test('host with other participants: shows leave menu, leave call disconnects', async () => {
         const user = userEvent.setup();
         render(
-            <Provider store={mockStore()}>
+            <Provider store={mockStore(stubState(stubChannel))}>
                 <RawIntlProvider value={intl}>
                     <CallWidget
                         {...props}
@@ -297,7 +311,7 @@ describe('leave button behavior', () => {
     test('admin (non-host) with other participants: shows leave menu, leave call disconnects', async () => {
         const user = userEvent.setup();
         render(
-            <Provider store={mockStore()}>
+            <Provider store={mockStore(stubState(stubChannel))}>
                 <RawIntlProvider value={intl}>
                     <CallWidget
                         {...props}

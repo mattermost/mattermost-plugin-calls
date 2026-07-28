@@ -96,6 +96,7 @@ import styled, {css} from 'styled-components';
 
 import CallDuration from './call_duration';
 import JoinNotification from './join_notification';
+import {SpeakerAvatar} from './speaker_avatar';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
@@ -1762,50 +1763,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
-    renderSpeakingProfile = () => {
-        let speakingPictureURL;
-        for (let i = 0; i < this.props.sessions.length; i++) {
-            const session = this.props.sessions[i];
-            const profile = this.props.profiles[session.user_id];
-            if (session.voice && profile) {
-                speakingPictureURL = Client4.getProfilePictureUrl(profile.id, profile.last_picture_update);
-                break;
-            }
-        }
-
-        return (
-            <div
-                style={{position: 'relative', display: 'flex', height: 'auto', alignItems: 'center'}}
-            >
-
-                {
-
-                    speakingPictureURL &&
-                    <Avatar
-                        size={32}
-                        border={false}
-                        url={speakingPictureURL}
-                    />
-                }
-
-                {
-                    !speakingPictureURL &&
-                    <Avatar
-                        size={32}
-                        icon='account-outline'
-                        border={false}
-                        style={{
-                            background: 'rgba(var(--center-channel-color-rgb), 0.16)',
-                            color: 'rgba(var(--center-channel-color-rgb), 0.48)',
-                            fontSize: '18px',
-                        }}
-                    />
-                }
-
-            </div>
-        );
-    };
-
     renderRecordingDisclaimer = () => {
         const {formatMessage} = this.props.intl;
         const isHost = this.props.callHostID === this.props.currentUserID;
@@ -2554,7 +2511,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             // eslint-disable-next-line no-undefined
                             onMouseDown={this.props.global ? undefined : this.onMouseDown}
                         >
-                            {this.renderSpeakingProfile()}
+                            <SpeakerAvatar
+                                sessions={this.props.sessions}
+                                profiles={this.props.profiles}
+                            />
 
                             <div style={{width: this.props.wider ? '210px' : '152px'}}>
                                 {this.renderSpeaking()}
