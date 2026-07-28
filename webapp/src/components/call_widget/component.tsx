@@ -2524,7 +2524,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                         startAt={this.props.callStartAt}
                                         style={{letterSpacing: '0.02em'}}
                                     />
-                                    {this.renderChannelName()}
+                                    {!isDMChannel(this.props.channel) && this.renderChannelName()}
                                 </div>
                             </div>
 
