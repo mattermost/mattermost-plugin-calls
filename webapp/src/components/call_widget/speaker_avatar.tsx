@@ -2,15 +2,13 @@
 // See LICENSE.txt for license information.
 
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
-import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import {Client4} from 'mattermost-redux/client';
-import {getUser} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
-import {useSelector} from 'react-redux';
 import Avatar from 'src/components/avatar/avatar';
-import {isCurrentDMCallInCallingState, otherUserIDForCurrentDMCall} from 'src/selectors';
+
+import {useCallingStateForDMCall} from './use_calling_state_for_dm_call';
 
 interface Props {
     sessions: UserSessionState[];
@@ -19,9 +17,7 @@ interface Props {
 
 export function SpeakerAvatar(props: Props) {
     // In a DM channel call, show the other user's avatar when in the calling state.
-    const isInCallingStateForDMChannelCall = useSelector(isCurrentDMCallInCallingState);
-    const otherDMUserID = useSelector(otherUserIDForCurrentDMCall);
-    const otherDMUser = useSelector((state: GlobalState) => getUser(state, otherDMUserID || ''));
+    const {isInCallingStateForDMChannelCall, otherDMUser} = useCallingStateForDMCall();
     if (isInCallingStateForDMChannelCall) {
         const profilePictureForOtherDMUser = otherDMUser && otherDMUser.id ? Client4.getProfilePictureUrl(otherDMUser.id, otherDMUser.last_picture_update || 0) : '';
         if (profilePictureForOtherDMUser) {

@@ -2,15 +2,13 @@
 // See LICENSE.txt for license information.
 
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
-import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {getUser} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
 import {useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
-import {isCurrentDMCallInCallingState, otherUserIDForCurrentDMCall} from 'src/selectors';
 import {getUserDisplayName, untranslatable} from 'src/utils';
+
+import {useCallingStateForDMCall} from './use_calling_state_for_dm_call';
 
 interface Props {
     sessions: UserSessionState[];
@@ -20,10 +18,7 @@ interface Props {
 export function SpeakingIndicator(props: Props) {
     const {formatMessage} = useIntl();
 
-    // In a DM channel call, show the other user's name instead of the current user's name while in the calling state.
-    const isInCallingStateForDMChannelCall = useSelector(isCurrentDMCallInCallingState);
-    const otherDMUserID = useSelector(otherUserIDForCurrentDMCall);
-    const otherDMUser = useSelector((state: GlobalState) => getUser(state, otherDMUserID || ''));
+    const {isInCallingStateForDMChannelCall, otherDMUser} = useCallingStateForDMCall();
     if (isInCallingStateForDMChannelCall) {
         return (
             <div className='speakingIndicatorContainer'>
