@@ -109,7 +109,6 @@ test.describe('popout window', () => {
         // Verify leave button can be clicked. Checking for visibility would work even
         // if there's an element showing on top
         await popOut.page.locator('#calls-popout-leave-button').click();
-        await popOut.page.getByText('Leave call').click();
 
         await expect(page.locator('#calls-widget')).toBeHidden();
     });

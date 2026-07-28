@@ -1,6 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {UserSessionState} from '@mattermost/calls-common/lib/types';
 import type {Channel} from '@mattermost/types/channels';
 import type {Team} from '@mattermost/types/teams';
 import {render, screen} from '@testing-library/react';
@@ -85,6 +86,7 @@ const props: Props = {
     openCallsUserSettings: jest.fn(),
     enableVideo: false,
     connectedDMUser: undefined,
+    isAdmin: false,
 };
 
 describe('CallWidget', () => {
@@ -175,6 +177,142 @@ describe('CallWidget', () => {
 
         await user.click(screen.getByRole('button', {name: /^leave call$/i}));
 
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('leave button behavior', () => {
+    let disconnect: jest.Mock;
+
+    const stubSession = (sessionId: string, userId: string): UserSessionState => ({
+        session_id: sessionId,
+        user_id: userId,
+        unmuted: false,
+        raised_hand: 0,
+    });
+
+    const dmChannel = {...stubChannel, type: 'D'} as Channel;
+    const currentUserSession = stubSession('session-1', 'user-id');
+    const otherSession = stubSession('session-2', 'other-user');
+
+    beforeEach(() => {
+        disconnect = jest.fn();
+        window.callsClient = {
+            disconnect,
+            channelID: 'channel-id',
+            getRemoteVoiceTracks: () => [],
+            getRemoteScreenStream: () => null,
+            getLocalScreenStream: () => null,
+            on: jest.fn(),
+            off: jest.fn(),
+        } as unknown as (typeof window)['callsClient'];
+    });
+
+    afterEach(() => {
+        window.callsClient = undefined;
+    });
+
+    test('DM channel: leaves directly without menu even when host with others', async () => {
+        const user = userEvent.setup();
+        render(
+            <Provider store={mockStore()}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        channel={dmChannel}
+                        sessions={[currentUserSession, otherSession]}
+                        callHostID='user-id'
+                    />
+                </RawIntlProvider>
+            </Provider>,
+        );
+
+        expect(screen.queryByText('Leave call')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', {name: /^leave call$/i}));
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    test('non-host and non-admin with others: leaves directly without menu', async () => {
+        const user = userEvent.setup();
+        render(
+            <Provider store={mockStore()}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        sessions={[currentUserSession, otherSession]}
+                        callHostID='other-user'
+                        isAdmin={false}
+                    />
+                </RawIntlProvider>
+            </Provider>,
+        );
+
+        expect(screen.queryByText('Leave call')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', {name: /^leave call$/i}));
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    test('solo host: leaves directly without menu', async () => {
+        const user = userEvent.setup();
+        render(
+            <Provider store={mockStore()}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        sessions={[currentUserSession]}
+                        callHostID='user-id'
+                        isAdmin={false}
+                    />
+                </RawIntlProvider>
+            </Provider>,
+        );
+
+        expect(screen.queryByText('Leave call')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', {name: /^leave call$/i}));
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    test('host with other participants: shows leave menu, leave call disconnects', async () => {
+        const user = userEvent.setup();
+        render(
+            <Provider store={mockStore()}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        sessions={[currentUserSession, otherSession]}
+                        callHostID='user-id'
+                        isAdmin={false}
+                    />
+                </RawIntlProvider>
+            </Provider>,
+        );
+
+        const leaveButton = screen.getByText('Leave call');
+        expect(leaveButton).toBeInTheDocument();
+
+        await user.click(leaveButton);
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    test('admin (non-host) with other participants: shows leave menu, leave call disconnects', async () => {
+        const user = userEvent.setup();
+        render(
+            <Provider store={mockStore()}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        sessions={[currentUserSession, otherSession]}
+                        callHostID='other-user'
+                        isAdmin={true}
+                    />
+                </RawIntlProvider>
+            </Provider>,
+        );
+
+        const leaveButton = screen.getByText('Leave call');
+        expect(leaveButton).toBeInTheDocument();
+
+        await user.click(leaveButton);
         expect(disconnect).toHaveBeenCalledTimes(1);
     });
 });

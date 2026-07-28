@@ -84,10 +84,6 @@ import TURNCredentialsExpirationMinutes from 'src/components/admin_console_setti
 import TURNStaticAuthSecret from 'src/components/admin_console_settings/turn_static_auth_secret';
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
-import {
-    EndCallConfirmation,
-    IDEndCallConfirmation,
-} from 'src/components/call_widget/end_call_confirmation';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import {
@@ -105,7 +101,7 @@ import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
-import {CallActions, CurrentCallData, CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
+import {CallActions, CurrentCallData, CurrentCallDataDefault} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
 
 import {
@@ -365,23 +361,7 @@ export default class Plugin {
             });
 
             widgetCh.onmessage = (ev) => {
-                switch (ev.data?.type) {
-                case DesktopMessageType.ShowEndCallModal: {
-                    const channelID = channelIDForCurrentCall(store.getState());
-                    if (channelID) {
-                        store.dispatch(modals.openModal({
-                            modalId: IDEndCallConfirmation,
-                            dialogType: EndCallConfirmation,
-                            dialogProps: {
-                                channelID,
-                            },
-                        }));
-                    }
-                    break;
-                }
-                default:
-                    logWarn('invalid message on widget channel', ev.data);
-                }
+                logWarn('unexpected message on widget channel', ev.data);
             };
         }
 

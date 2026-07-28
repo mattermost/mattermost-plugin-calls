@@ -1537,24 +1537,41 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         </div>
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
-                            <DotMenu
-                                id='calls-popout-leave-button'
-                                ariaLabel={leaveCallTooltipText}
-                                icon={<LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>}
-                                dotMenuButton={LeaveCallButton}
-                                dropdownMenu={StyledDropdownMenu}
-                                placement={'top-end'}
-                                strategy={'fixed'}
-                                shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
-                                tooltipText={leaveCallTooltipText}
-                            >
-                                <LeaveCallMenu
-                                    channelID={callsClient.channelID}
-                                    isHost={isHost}
-                                    numParticipants={this.props.sessions.length}
-                                    leaveCall={this.onDisconnectClick}
-                                />
-                            </DotMenu>
+                            {(isDMChannel(this.props.channel) || (!isHost && !this.props.isAdmin) || this.props.sessions.length <= 1) ? (
+                                <OverlayTrigger
+                                    placement='top'
+                                    overlay={<Tooltip id='calls-popout-leave-button-tooltip'>{leaveCallTooltipText}</Tooltip>}
+                                >
+                                    <LeaveCallButton
+                                        id='calls-popout-leave-button'
+                                        $isActive={false}
+                                        onClick={this.onDisconnectClick}
+                                        role='button'
+                                        aria-label={leaveCallTooltipText}
+                                    >
+                                        <LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>
+                                    </LeaveCallButton>
+                                </OverlayTrigger>
+                            ) : (
+                                <DotMenu
+                                    id='calls-popout-leave-button'
+                                    ariaLabel={leaveCallTooltipText}
+                                    icon={<LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>}
+                                    dotMenuButton={LeaveCallButton}
+                                    dropdownMenu={StyledDropdownMenu}
+                                    placement={'top-end'}
+                                    strategy={'fixed'}
+                                    shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
+                                    tooltipText={leaveCallTooltipText}
+                                >
+                                    <LeaveCallMenu
+                                        channelID={callsClient.channelID}
+                                        isHost={isHost}
+                                        numParticipants={this.props.sessions.length}
+                                        leaveCall={this.onDisconnectClick}
+                                    />
+                                </DotMenu>
+                            )}
                         </div>
                     </div>
                 </div>

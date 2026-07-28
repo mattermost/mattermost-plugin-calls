@@ -69,14 +69,9 @@ export default class PlaywrightDevPage {
 
     async slashCallEnd() {
         await this.sendSlashCommand('/call end');
-        let modal = this.page.locator('#end_call_confirmation');
+        const modal = this.page.locator('.modal-content');
         if (await modal.isVisible()) {
-            await this.page.getByTestId('modal-confirm-button').getByText('End call').click();
-        } else {
-            modal = this.page.locator('.modal-content');
-            if (await modal.isVisible()) {
-                await modal.getByRole('button', {name: 'Understood'}).click();
-            }
+            await modal.getByRole('button', {name: 'Understood'}).click();
         }
     }
 
@@ -385,12 +380,16 @@ export default class PlaywrightDevPage {
     async leaveFromPopout() {
         await this.page.locator('#calls-popout-leave-button').click();
         const menu = this.page.getByTestId('dropdownmenu');
-        await menu.getByText('Leave call').click();
+        if (await menu.isVisible()) {
+            await menu.getByText('Leave call').click();
+        }
     }
 
     async leaveFromWidget() {
         await this.page.locator('#calls-widget-leave-button').click();
         const menu = this.page.getByTestId('dropdownmenu');
-        await menu.getByText('Leave call').click();
+        if (await menu.isVisible()) {
+            await menu.getByText('Leave call').click();
+        }
     }
 }
