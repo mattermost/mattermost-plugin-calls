@@ -19,6 +19,7 @@ import {
 
 import {
     ADD_INCOMING_CALL,
+    CALL_ANSWERED,
     CALL_END,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
@@ -745,6 +746,50 @@ const hosts = (state: hostsState = {}, action: hostsStateAction) => {
     }
 };
 
+// answeredAt records, per channel, the local time at which a DM call was answered, i.e. when
+// the other party joined. It's the origin for the call duration timer, which shouldn't include
+// the time spent ringing.
+//
+// This lives outside of the calls slice above because that one is replaced wholesale by
+// CALL_STATE and is meant to hold only call-immutable data.
+export type answeredAtState = {
+    [channelID: string]: number;
+}
+
+type answeredAtStateAction = {
+    type: string;
+    data: {
+        channelID: string;
+        answeredAt: number;
+    };
+}
+
+const answeredAt = (state: answeredAtState = {}, action: answeredAtStateAction) => {
+    switch (action.type) {
+    case UNINIT:
+        return {};
+    case CALL_ANSWERED:
+        return {
+            ...state,
+            [action.data.channelID]: action.data.answeredAt,
+        };
+
+    // CALL_STATE is also handled here so that a new call in a channel can never inherit a
+    // stale timestamp from the previous one, without relying on CALL_END having arrived.
+    case CALL_STATE:
+    case CALL_END: {
+        if (!(action.data.channelID in state)) {
+            return state;
+        }
+        const nextState = {...state};
+        delete nextState[action.data.channelID];
+        return nextState;
+    }
+    default:
+        return state;
+    }
+};
+
 export type screenSharingIDsState = {
     [channelID: string]: string;
 }
@@ -1081,6 +1126,7 @@ export default combineReducers({
     sessions,
     calls,
     hosts,
+    answeredAt,
     screenSharingIDs,
     expandedView,
     switchCallModal,

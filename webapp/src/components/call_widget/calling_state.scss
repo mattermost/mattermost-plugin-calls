@@ -1,0 +1,28 @@
+// Styles for the DM "calling" state, shared by the callee's avatar and the "Calling…" label so
+// that the two fade together while waiting for the other party to answer.
+//
+// This lives in its own file rather than in component.scss because the expanded view can run in
+// a separate popout window, which never loads the widget's styles.
+
+@keyframes calls-calling-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.callsCallingPulse,
+.callsCallingText {
+  animation: calls-calling-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .callsCallingPulse,
+  .callsCallingText {
+    animation: none;
+  }
+}

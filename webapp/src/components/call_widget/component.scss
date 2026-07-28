@@ -184,4 +184,9 @@ a.calls-channel-link {
     font-weight: 600;
     letter-spacing: 0.02em;
   }
+
+  .callsWidgetTopBarCallInfo .callDurationContainer {
+    color: var(--center-channel-color-64, rgba(63, 67, 80, 0.64));
+    font-size: 11px;
+  }
 }

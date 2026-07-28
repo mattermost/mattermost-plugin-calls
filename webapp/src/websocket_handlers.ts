@@ -54,6 +54,7 @@ import {
 } from 'src/types/types';
 
 import {
+    CALL_ANSWERED,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_RECORDING_STATE,
@@ -80,8 +81,10 @@ import {
 } from './action_types';
 import {logErr, logInfo} from './log';
 import {
+    callAnsweredAtForCurrentCall,
     calls,
     channelIDForCurrentCall,
+    isCurrentUserOwnerOfCurrentCall,
     profilesInCurrentCallMap,
     ringingEnabled,
     shouldPlayJoinUserSound,
@@ -90,8 +93,11 @@ import {Store} from './types/mattermost-webapp';
 import {
     followThread,
     getCallsClient,
+    getCallsClientChannelID,
     getCallsClientSessionID,
+    getCallsWindow,
     getUserDisplayName,
+    isDMChannel,
     notificationsStopRinging,
     playSound,
 } from './utils';
@@ -203,6 +209,32 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
             store.dispatch(removeIncomingCallNotification(callID));
             notificationsStopRinging(); // And stop ringing for _any_ incoming call.
         }
+    }
+
+    // A DM call is answered the moment the other party joins, which is where its duration
+    // should start counting from. Only the caller needs to observe this: the callee's own answer
+    // moment is their join, which we get from the calls client instead (see
+    // callTimerStartAtForCurrentCall).
+    if (getCallsClientChannelID() === channelID && userID !== currentUserID &&
+        isDMChannel(getChannel(store.getState(), channelID)) &&
+        isCurrentUserOwnerOfCurrentCall(store.getState()) &&
+        !callAnsweredAtForCurrentCall(store.getState())) {
+        const answeredAt = Date.now();
+
+        // Also kept on the calls window so that a popout opened later on can pick it up rather
+        // than restarting the timer from zero.
+        const callsWindow = getCallsWindow();
+        if (callsWindow.currentCallData) {
+            callsWindow.currentCallData.answeredAt = answeredAt;
+        }
+
+        store.dispatch({
+            type: CALL_ANSWERED,
+            data: {
+                channelID,
+                answeredAt,
+            },
+        });
     }
 
     // This is async, which is expected as we are okay with setting the state while we wait

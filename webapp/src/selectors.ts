@@ -28,6 +28,7 @@ import {
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
 import {
+    answeredAtState,
     callsJobState,
     callState,
     hostControlNoticeState,
@@ -246,6 +247,18 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
         (callsStates, channelID, initTime) => callsStates[channelID]?.startAt || initTime || 0,
     );
 
+const answeredAtInCalls = (state: GlobalState): answeredAtState => {
+    return pluginState(state).answeredAt || {};
+};
+
+export const callAnsweredAtForCurrentCall: (state: GlobalState) => number =
+    createSelector(
+        'callAnsweredAtForCurrentCall',
+        answeredAtInCalls,
+        channelIDForCurrentCall,
+        (answeredAt, channelID) => answeredAt[channelID] || 0,
+    );
+
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
     createSelector(
         'callInCurrentChannel',
@@ -310,6 +323,34 @@ export const otherUserIDForCurrentDMCall: (state: GlobalState) => UserProfile['i
         channelForCurrentCall,
         getCurrentUserId,
         (currentCallChannel, currentUserID) => getUserIdFromDM(currentCallChannel?.name || '', currentUserID),
+    );
+
+// This returns the timestamp the call duration timer should count from.
+//
+// A DM call is meant to behave like a phone call, so its duration starts when the call was
+// answered rather than when the caller dialled. For the caller that's when the other party's
+// session showed up (recorded in handleUserJoined); for the callee it's their own join, which is
+// when their calls client was initialized.
+//
+// Everything else counts from the start of the call as it always has: GM and channel calls, and
+// any window that arrived after the call was answered without a recorded timestamp.
+export const callTimerStartAtForCurrentCall: (state: GlobalState) => number =
+    createSelector(
+        'callTimerStartAtForCurrentCall',
+        channelForCurrentCall,
+        isCurrentUserOwnerOfCurrentCall,
+        callAnsweredAtForCurrentCall,
+        getCallsClientInitTime,
+        callStartAtForCurrentCall,
+        (channel, isOwner, answeredAt, initTime, startAt) => {
+            if (!channel || !isDirectChannel(channel)) {
+                return startAt;
+            }
+            if (!isOwner) {
+                return initTime || startAt;
+            }
+            return answeredAt || startAt;
+        },
     );
 
 const hostsInCalls = (state: GlobalState): hostsState => {
@@ -545,10 +586,6 @@ export const callsEnabledInCurrentChannel = (state: GlobalState): boolean => {
         return false;
     }
     return callsExplicitlyEnabled(state, channelId) || defaultEnabled(state) || isCurrentUserSystemAdmin(state);
-};
-
-export const endCallModal = (state: GlobalState) => {
-    return pluginState(state).endCallModal;
 };
 
 export const callsShowButton = (state: GlobalState, channelId?: string): boolean =>

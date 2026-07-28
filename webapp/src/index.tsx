@@ -724,7 +724,7 @@ export default class Plugin {
                     dcLocking: hasDCSignalingLockSupport(callsVersionInfo(state)),
                     enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
                 });
-                window.currentCallData = CurrentCallDataDefault;
+                window.currentCallData = {...CurrentCallDataDefault};
 
                 const locale = getCurrentUserLocale(state) || 'en';
 

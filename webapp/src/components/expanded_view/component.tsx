@@ -22,7 +22,7 @@ import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
-import CallDuration from 'src/components/call_widget/call_duration';
+import CallTimer from 'src/components/call_widget/call_timer';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
 import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
@@ -1300,9 +1300,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         style={this.style.topContainer}
                     >
                         {this.renderRecordingBadge()}
-                        <CallDuration
-                            startAt={this.props.callStartAt}
-                        />
+                        <CallTimer/>
 
                         <div style={this.style.headerSpreader}/>
                         <ExpandedIncomingCallContainer/>
@@ -1384,28 +1382,30 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         style={this.style.controls}
                     >
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start'}}>
-                            <ControlsButton
-                                id='calls-popout-participants-button'
-                                ariaLabel={participantsText}
-                                ariaControls='rhs-participant-list'
-                                ariaExpanded={this.state.showParticipantsList}
-                                onToggle={() => this.onParticipantsListToggle()}
-                                tooltipText={participantsText}
-                                shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
-                                bgColor={this.state.showParticipantsList ? 'white' : ''}
-                                bgColorHover={this.state.showParticipantsList ? 'rgba(255, 255, 255, 0.92)' : ''}
-                                iconFill={this.state.showParticipantsList ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
-                                iconFillHover={this.state.showParticipantsList ? 'var(--calls-bg)' : ''}
-                                icon={
-                                    <ParticipantsIcon
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                        }}
-                                    />
-                                }
-                                text={`${this.props.sessions.length}`}
-                            />
+                            {!isDMChannel(this.props.channel) && (
+                                <ControlsButton
+                                    id='calls-popout-participants-button'
+                                    ariaLabel={participantsText}
+                                    ariaControls='rhs-participant-list'
+                                    ariaExpanded={this.state.showParticipantsList}
+                                    onToggle={() => this.onParticipantsListToggle()}
+                                    tooltipText={participantsText}
+                                    shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
+                                    bgColor={this.state.showParticipantsList ? 'white' : ''}
+                                    bgColorHover={this.state.showParticipantsList ? 'rgba(255, 255, 255, 0.92)' : ''}
+                                    iconFill={this.state.showParticipantsList ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
+                                    iconFillHover={this.state.showParticipantsList ? 'var(--calls-bg)' : ''}
+                                    icon={
+                                        <ParticipantsIcon
+                                            style={{
+                                                width: '20px',
+                                                height: '20px',
+                                            }}
+                                        />
+                                    }
+                                    text={`${this.props.sessions.length}`}
+                                />
+                            )}
                         </div>
 
                         <div style={this.style.centerControls}>

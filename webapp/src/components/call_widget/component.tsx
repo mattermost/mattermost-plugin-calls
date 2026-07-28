@@ -94,7 +94,7 @@ import {
 import {serverDismissedAt} from 'src/utils/clock_skew';
 import styled, {css} from 'styled-components';
 
-import CallDuration from './call_duration';
+import CallTimer from './call_timer';
 import JoinNotification from './join_notification';
 import {SpeakerAvatar} from './speaker_avatar';
 import {SpeakingIndicator} from './speaking_indicator';
@@ -2234,6 +2234,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                 {/* TODO: add recording badge */}
                 <div
+                    className='callsWidgetTopBarCallInfo'
                     style={{
                         marginRight: 'auto',
                         display: 'flex',
@@ -2246,14 +2247,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                     <div style={{fontSize: '10px', color: 'var(--center-channel-color-64, rgba(63, 67, 80, 0.64))'}}>{untranslatable('•')}</div>
 
-                    <CallDuration
-                        startAt={this.props.callStartAt}
-                        style={{
-                            letterSpacing: '0.02em',
-                            color: 'var(--center-channel-color-64, rgba(63, 67, 80, 0.64))',
-                            fontSize: '11px',
-                        }}
-                    />
+                    <CallTimer/>
                 </div>
 
                 <WidgetButton
@@ -2498,9 +2492,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 />
                                 <div style={this.style.callInfo}>
                                     {this.renderRecordingBadge()}
-                                    <CallDuration
-                                        startAt={this.props.callStartAt}
-                                    />
+                                    <CallTimer/>
                                     {!isDMChannel(this.props.channel) && this.renderChannelName()}
                                 </div>
                             </div>
