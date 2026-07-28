@@ -158,4 +158,25 @@ a.calls-channel-link {
       font-size: 18px;
     }
   }
+
+  .speakingIndicatorContainer {
+    font-size: 14px;
+    line-height: 20px;
+    display: flex;
+    white-space: pre;
+    
+    &>span {
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      &>span.isTalkingText {
+        font-weight: 400;
+      }
+    }
+
+    &>span.noOneSpeakingText {
+      font-weight: 400;
+    }
+  }
 }

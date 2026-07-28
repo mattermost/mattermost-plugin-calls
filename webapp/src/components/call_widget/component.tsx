@@ -97,6 +97,7 @@ import styled, {css} from 'styled-components';
 import CallDuration from './call_duration';
 import JoinNotification from './join_notification';
 import {SpeakerAvatar} from './speaker_avatar';
+import {SpeakingIndicator} from './speaking_indicator';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
@@ -1210,31 +1211,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 unavailable={noScreenPermissions}
                 disabled={Boolean(sharingID) && !isSharing}
             />
-        );
-    };
-
-    renderSpeaking = () => {
-        const {formatMessage} = this.props.intl;
-        let speakingProfile;
-
-        for (let i = 0; i < this.props.sessions.length; i++) {
-            const session = this.props.sessions[i];
-            const profile = this.props.profiles[session.user_id];
-            if (session.voice && profile) {
-                speakingProfile = profile;
-                break;
-            }
-        }
-
-        return (
-            <div style={{fontSize: '14px', lineHeight: '20px', display: 'flex', whiteSpace: 'pre'}}>
-                <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                    {speakingProfile ? getUserDisplayName(speakingProfile) : formatMessage({defaultMessage: 'No one'})}
-                    <span
-                        style={{fontWeight: 400}}
-                    >{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
-                </span>
-            </div>
         );
     };
 
@@ -2517,7 +2493,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             />
 
                             <div style={{width: this.props.wider ? '210px' : '152px'}}>
-                                {this.renderSpeaking()}
+                                <SpeakingIndicator
+                                    sessions={this.props.sessions}
+                                    profiles={this.props.profiles}
+                                />
                                 <div style={this.style.callInfo}>
                                     {this.renderRecordingBadge()}
                                     <CallDuration

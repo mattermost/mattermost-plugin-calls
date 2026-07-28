@@ -20,11 +20,11 @@ interface Props {
 export function SpeakerAvatar(props: Props) {
     // In a DM channel call, show the other user's avatar when in the calling state.
     const isInCallingStateForDMChannelCall = useSelector(isCurrentDMCallInCallingState);
-    const otherUserID = useSelector(otherUserIDForCurrentDMCall);
-    const otherUser = useSelector((state: GlobalState) => getUser(state, otherUserID || ''));
+    const otherDMUserID = useSelector(otherUserIDForCurrentDMCall);
+    const otherDMUser = useSelector((state: GlobalState) => getUser(state, otherDMUserID || ''));
     if (isInCallingStateForDMChannelCall) {
-        const profilePictureForOtherUser = otherUser && otherUser.id ? Client4.getProfilePictureUrl(otherUser.id, otherUser.last_picture_update || 0) : '';
-        if (profilePictureForOtherUser) {
+        const profilePictureForOtherDMUser = otherDMUser && otherDMUser.id ? Client4.getProfilePictureUrl(otherDMUser.id, otherDMUser.last_picture_update || 0) : '';
+        if (profilePictureForOtherDMUser) {
             return (
                 <div
                     className='speakerAvatarContainer'
@@ -32,7 +32,7 @@ export function SpeakerAvatar(props: Props) {
                     <Avatar
                         size={32}
                         border={false}
-                        url={profilePictureForOtherUser}
+                        url={profilePictureForOtherDMUser}
                     />
                 </div>
             );
