@@ -255,8 +255,8 @@ export const callAnsweredAtForCurrentCall: (state: GlobalState) => number =
     createSelector(
         'callAnsweredAtForCurrentCall',
         answeredAtInCalls,
-        channelIDForCurrentCall,
-        (answeredAt, channelID) => answeredAt[channelID] || 0,
+        idForCurrentCall,
+        (answeredAt, callID) => (callID && answeredAt[callID]) || 0,
     );
 
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =

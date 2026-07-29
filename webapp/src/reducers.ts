@@ -746,20 +746,23 @@ const hosts = (state: hostsState = {}, action: hostsStateAction) => {
     }
 };
 
-// answeredAt records, per channel, the local time at which a DM call was answered, i.e. when
-// the other party joined. It's the origin for the call duration timer, which shouldn't include
-// the time spent ringing.
+// answeredAt records, per call, the local time at which a DM call was answered, i.e. when the
+// other party joined. It's the origin for the call duration timer, which shouldn't include the
+// time spent ringing.
 //
 // This lives outside of the calls slice above because that one is replaced wholesale by
-// CALL_STATE and is meant to hold only call-immutable data.
+// CALL_STATE and is meant to hold only call-immutable data. Keying by call ID rather than by
+// channel is what lets a CALL_STATE resync (which the client requests on every ws reconnect)
+// leave a live timestamp alone, while still making it impossible for a new call in a channel to
+// inherit the previous call's origin.
 export type answeredAtState = {
-    [channelID: string]: number;
+    [callID: string]: number;
 }
 
 type answeredAtStateAction = {
     type: string;
     data: {
-        channelID: string;
+        callID: string;
         answeredAt: number;
     };
 }
@@ -771,18 +774,14 @@ const answeredAt = (state: answeredAtState = {}, action: answeredAtStateAction) 
     case CALL_ANSWERED:
         return {
             ...state,
-            [action.data.channelID]: action.data.answeredAt,
+            [action.data.callID]: action.data.answeredAt,
         };
-
-    // CALL_STATE is also handled here so that a new call in a channel can never inherit a
-    // stale timestamp from the previous one, without relying on CALL_END having arrived.
-    case CALL_STATE:
     case CALL_END: {
-        if (!(action.data.channelID in state)) {
+        if (!(action.data.callID in state)) {
             return state;
         }
         const nextState = {...state};
-        delete nextState[action.data.channelID];
+        delete nextState[action.data.callID];
         return nextState;
     }
     default:

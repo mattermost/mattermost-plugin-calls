@@ -11,7 +11,7 @@ import {useCallingStateForDMCall} from 'src/components/call_widget/use_calling_s
 import {
     callAnsweredAtForCurrentCall,
     callTimerStartAtForCurrentCall,
-    channelIDForCurrentCall,
+    idForCurrentCall,
 } from 'src/selectors';
 import {getCallsWindow} from 'src/utils';
 
@@ -25,7 +25,7 @@ export default function CallTimer() {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const {isInCallingStateForDMChannelCall} = useCallingStateForDMCall();
-    const channelID = useSelector(channelIDForCurrentCall);
+    const callID = useSelector(idForCurrentCall);
     const answeredAt = useSelector(callAnsweredAtForCurrentCall);
     const startAt = useSelector(callTimerStartAtForCurrentCall);
 
@@ -33,7 +33,7 @@ export default function CallTimer() {
     // witnessed the other party joining. Seed it from the calls window so that it agrees with the
     // widget instead of counting from scratch.
     useEffect(() => {
-        if (answeredAt || !channelID) {
+        if (answeredAt || !callID) {
             return;
         }
 
@@ -42,12 +42,12 @@ export default function CallTimer() {
             dispatch({
                 type: CALL_ANSWERED,
                 data: {
-                    channelID,
+                    callID,
                     answeredAt: sharedAnsweredAt,
                 },
             });
         }
-    }, [answeredAt, channelID, dispatch]);
+    }, [answeredAt, callID, dispatch]);
 
     if (isInCallingStateForDMChannelCall) {
         return (

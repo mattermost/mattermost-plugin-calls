@@ -17,6 +17,7 @@ import CallTimer from './call_timer';
 const intl = createIntl({locale: 'en', messages: {}});
 
 const channelID = 'dm-channel-id';
+const callID = 'call-id';
 const currentUserID = 'user-id';
 const otherUserID = 'other-user-id';
 
@@ -55,12 +56,12 @@ type StateOpts = {
 const stubState = ({startAt, answeredAt, ownerID = currentUserID, sessions = [ownSession], channel = dmChannel}: StateOpts) => ({
     'plugins-com.mattermost.calls': {
         calls: {
-            [channelID]: {ID: 'call-id', channelID, startAt, ownerID, threadID: ''},
+            [channelID]: {ID: callID, channelID, startAt, ownerID, threadID: ''},
         },
         sessions: {
             [channelID]: Object.fromEntries(sessions.map((s) => [s.session_id, s])),
         },
-        answeredAt: answeredAt ? {[channelID]: answeredAt} : {},
+        answeredAt: answeredAt ? {[callID]: answeredAt} : {},
     },
     entities: {
         channels: {channels: {[channel.id]: channel}},
@@ -166,7 +167,7 @@ describe('CallTimer', () => {
 
             expect(dispatch).toHaveBeenCalledWith({
                 type: CALL_ANSWERED,
-                data: {channelID, answeredAt: sharedAnsweredAt},
+                data: {callID, answeredAt: sharedAnsweredAt},
             });
         });
 

@@ -84,6 +84,7 @@ import {
     callAnsweredAtForCurrentCall,
     calls,
     channelIDForCurrentCall,
+    idForCurrentCall,
     isCurrentUserOwnerOfCurrentCall,
     profilesInCurrentCallMap,
     ringingEnabled,
@@ -215,7 +216,8 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
     // should start counting from. Only the caller needs to observe this: the callee's own answer
     // moment is their join, which we get from the calls client instead (see
     // callTimerStartAtForCurrentCall).
-    if (getCallsClientChannelID() === channelID && userID !== currentUserID &&
+    const currentCallID = idForCurrentCall(store.getState());
+    if (currentCallID && getCallsClientChannelID() === channelID && userID !== currentUserID &&
         isDMChannel(getChannel(store.getState(), channelID)) &&
         isCurrentUserOwnerOfCurrentCall(store.getState()) &&
         !callAnsweredAtForCurrentCall(store.getState())) {
@@ -231,7 +233,7 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
         store.dispatch({
             type: CALL_ANSWERED,
             data: {
-                channelID,
+                callID: currentCallID,
                 answeredAt,
             },
         });
