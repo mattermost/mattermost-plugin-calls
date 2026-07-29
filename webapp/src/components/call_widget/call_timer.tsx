@@ -7,7 +7,7 @@ import React, {useEffect} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {CALL_ANSWERED} from 'src/action_types';
-import {useCallingStateForDMCall} from 'src/components/call_widget/use_calling_state_for_dm_call';
+import {useDMCallingState} from 'src/components/call_widget/use_calling_state_for_dm_call';
 import {
     callAnsweredAtForCurrentCall,
     callTimerStartAtForCurrentCall,
@@ -24,7 +24,7 @@ import CallDuration from './call_duration';
 export default function CallTimer() {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
-    const {isInCallingStateForDMChannelCall} = useCallingStateForDMCall();
+    const {isDMCalling} = useDMCallingState();
     const callID = useSelector(idForCurrentCall);
     const answeredAt = useSelector(callAnsweredAtForCurrentCall);
     const startAt = useSelector(callTimerStartAtForCurrentCall);
@@ -49,7 +49,7 @@ export default function CallTimer() {
         }
     }, [answeredAt, callID, dispatch]);
 
-    if (isInCallingStateForDMChannelCall) {
+    if (isDMCalling) {
         return (
             <div className='callDurationContainer callsCallingText'>
                 {formatMessage({defaultMessage: 'Calling…'})}

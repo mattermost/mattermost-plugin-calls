@@ -94,10 +94,10 @@ import {
 import {serverDismissedAt} from 'src/utils/clock_skew';
 import styled, {css} from 'styled-components';
 
+import {CallParticipantAvatar} from './call_participant_avatar';
+import {CallStatusText} from './call_status_text';
 import CallTimer from './call_timer';
 import JoinNotification from './join_notification';
-import {SpeakerAvatar} from './speaker_avatar';
-import {SpeakingIndicator} from './speaking_indicator';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
@@ -2481,12 +2481,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             // eslint-disable-next-line no-undefined
                             onMouseDown={this.props.global ? undefined : this.onMouseDown}
                         >
-                            <SpeakerAvatar
+                            <CallParticipantAvatar
                                 sessions={this.props.sessions}
                                 profiles={this.props.profiles}
                             />
                             <div style={{width: this.props.wider ? '210px' : '152px'}}>
-                                <SpeakingIndicator
+                                <CallStatusText
                                     sessions={this.props.sessions}
                                     profiles={this.props.profiles}
                                 />

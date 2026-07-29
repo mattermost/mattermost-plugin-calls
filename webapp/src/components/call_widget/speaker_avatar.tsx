@@ -8,70 +8,29 @@ import {Client4} from 'mattermost-redux/client';
 import React from 'react';
 import Avatar from 'src/components/avatar/avatar';
 
-import {useCallingStateForDMCall} from './use_calling_state_for_dm_call';
-
-interface Props {
-    sessions: UserSessionState[];
-    profiles: IDMappedObjects<UserProfile>;
+interface ParticipantAvatar {
+    profile?: UserProfile | null;
 }
 
-export function SpeakerAvatar(props: Props) {
-    // In a DM channel call, show the other user's avatar when in the calling state.
-    const {isInCallingStateForDMChannelCall, otherDMUser} = useCallingStateForDMCall();
-    if (isInCallingStateForDMChannelCall) {
-        const profilePictureForOtherDMUser = otherDMUser && otherDMUser.id ? Client4.getProfilePictureUrl(otherDMUser.id, otherDMUser.last_picture_update || 0) : '';
-        if (profilePictureForOtherDMUser) {
-            return (
-                <div
-                    className='speakerAvatarContainer'
-                >
-                    <Avatar
-                        size={32}
-                        border={false}
-                        url={profilePictureForOtherDMUser}
-                    />
-                </div>
-            );
-        }
-
-        return (
-            <GenericSpeakerAvatar/>
-        );
-    }
-
-    let speakingPictureURL;
-    for (let i = 0; i < props.sessions.length; i++) {
-        const session = props.sessions[i];
-        const profile = props.profiles[session.user_id];
-        if (session.voice && profile) {
-            speakingPictureURL = Client4.getProfilePictureUrl(profile.id, profile.last_picture_update);
-            break;
-        }
-    }
-
-    if (speakingPictureURL) {
+export function ParticipantAvatar(props: ParticipantAvatar) {
+    if (props.profile) {
+        const pictureURL = Client4.getProfilePictureUrl(props.profile.id, props.profile.last_picture_update ?? 0);
         return (
             <div
-                className='speakerAvatarContainer'
+                className='participantAvatarContainer'
             >
                 <Avatar
                     size={32}
                     border={false}
-                    url={speakingPictureURL}
+                    url={pictureURL}
                 />
             </div>
         );
     }
 
     return (
-        <GenericSpeakerAvatar/>
-    );
-}
-
-function GenericSpeakerAvatar() {
-    return (
         <div
-            className='speakerAvatarContainer'
+            className='participantAvatarContainer'
         >
             <Avatar
                 size={32}
@@ -81,4 +40,25 @@ function GenericSpeakerAvatar() {
             />
         </div>
     );
+}
+
+function findActiveSpeakerFromSessions(sessions: UserSessionState[], profiles: IDMappedObjects<UserProfile>): UserProfile | null {
+    for (const session of sessions) {
+        const profile = profiles[session.user_id];
+        if (session.voice && profile) {
+            return profile;
+        }
+    }
+
+    return null;
+}
+
+interface SpeakerAvatar {
+    sessions: UserSessionState[];
+    profiles: IDMappedObjects<UserProfile>;
+}
+
+export function SpeakerAvatar(props: SpeakerAvatar) {
+    const activeSpeakerProfile = findActiveSpeakerFromSessions(props.sessions, props.profiles);
+    return <ParticipantAvatar profile={activeSpeakerProfile}/>;
 }
