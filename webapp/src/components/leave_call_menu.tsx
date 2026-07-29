@@ -5,7 +5,7 @@ import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/user
 import React from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-import {endCall} from 'src/actions';
+import {hostEndCallForEveryone} from 'src/actions';
 import {DropdownMenuItem} from 'src/components/dot_menu/dot_menu';
 import styled from 'styled-components';
 
@@ -18,13 +18,18 @@ type Props = {
 
 export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: Props) => {
     const {formatMessage} = useIntl();
+
     const isAdmin = useSelector(isCurrentUserSystemAdmin);
-    const showEndCall = (isHost || isAdmin) && numParticipants > 1;
+    const shouldShowWarningMenuItemForEndingCall = (isHost || isAdmin) && numParticipants > 1;
+
+    function handleHostEndCallForEveryone() {
+        hostEndCallForEveryone(channelID);
+    }
 
     return (
         <>
-            {showEndCall &&
-                <DropdownMenuItem onClick={() => endCall(channelID)}>
+            {shouldShowWarningMenuItemForEndingCall &&
+                <DropdownMenuItem onClick={handleHostEndCallForEveryone}>
                     <EndCallOption>
                         <RedText>{formatMessage({defaultMessage: 'End call for everyone'})}</RedText>
                         <SubtitleText>{formatMessage({defaultMessage: 'All participants will be disconnected'})}</SubtitleText>
