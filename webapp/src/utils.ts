@@ -21,7 +21,6 @@ import {parseSemVer} from 'semver-parser';
 import CallsClient from 'src/client';
 import {STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
 import RestClient from 'src/rest_client';
-import {DesktopMessage} from 'src/types/types';
 import {notificationSounds} from 'src/webapp_globals';
 
 import {logDebug, logErr, logWarn} from './log';
@@ -629,13 +628,6 @@ export function getWebappUtils() {
 
 export function getPersistentStorage() {
     return window.desktop ? localStorage : sessionStorage;
-}
-
-export function sendDesktopMessage(msg: DesktopMessage) {
-    // simple, fire and forget for now.
-    const ch = new BroadcastChannel('calls_widget');
-    ch.postMessage(msg);
-    ch.close();
 }
 
 export function shareAudioWithScreen() {

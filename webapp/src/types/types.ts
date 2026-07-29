@@ -261,17 +261,3 @@ export type CallsDesktopJoinResponse = {
     // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
     type?: string;
 }
-
-// Internal Desktop communication
-
-export enum DesktopMessageType {
-    ShowEndCallModal = 'show_end_call_modal',
-}
-
-export const DesktopMessageShowEndCallModal = {
-    type: DesktopMessageType.ShowEndCallModal,
-};
-
-export type DesktopMessage = {
-    type: DesktopMessageType;
-};
