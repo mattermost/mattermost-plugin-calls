@@ -19,10 +19,3 @@
 .callsCallingText {
   animation: calls-calling-pulse 1.6s ease-in-out infinite;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .callsCallingPulse,
-  .callsCallingText {
-    animation: none;
-  }
-}

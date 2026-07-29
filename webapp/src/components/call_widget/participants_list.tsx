@@ -10,7 +10,7 @@ import React from 'react';
 import {useIntl} from 'react-intl';
 import {hostMuteOthers} from 'src/actions';
 import {Participant} from 'src/components/call_widget/participant';
-import {useHostControls} from 'src/components/expanded_view/hooks';
+import {useHostControls} from 'src/components/expanded_view/use_host_controls';
 import MutedIcon from 'src/components/icons/muted_icon';
 import styled from 'styled-components';
 

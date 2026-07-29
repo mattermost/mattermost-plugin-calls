@@ -7,7 +7,7 @@ import {IDMappedObjects} from '@mattermost/types/utilities';
 import React from 'react';
 
 import {ParticipantName, SpeakerName} from './speaker_name';
-import {useDMCallingState} from './use_calling_state_for_dm_call';
+import {useDMCallingState} from './use_dm_calling_state';
 
 interface Props {
     sessions: UserSessionState[];
