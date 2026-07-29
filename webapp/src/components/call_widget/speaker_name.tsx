@@ -8,6 +8,8 @@ import React from 'react';
 import {useIntl} from 'react-intl';
 import {getUserDisplayName, untranslatable} from 'src/utils';
 
+import {getActiveSpeakerProfile} from './active_speaker';
+
 interface ParticipantNameProps {
     profile?: UserProfile | null;
     shouldShowIsTalkingText?: boolean;
@@ -42,24 +44,13 @@ export function ParticipantName(props: ParticipantNameProps) {
     );
 }
 
-function findActiveSpeakerFromSessions(sessions: UserSessionState[], profiles: IDMappedObjects<UserProfile>): UserProfile | null {
-    for (const session of sessions) {
-        const profile = profiles[session.user_id];
-        if (session.voice && profile) {
-            return profile;
-        }
-    }
-
-    return null;
-}
-
 interface SpeakerNameProps {
     sessions: UserSessionState[];
     profiles: IDMappedObjects<UserProfile>;
 }
 
 export function SpeakerName(props: SpeakerNameProps) {
-    const activeSpeakerProfile = findActiveSpeakerFromSessions(props.sessions, props.profiles);
+    const activeSpeakerProfile = getActiveSpeakerProfile(props.sessions, props.profiles);
     return (
         <ParticipantName
             profile={activeSpeakerProfile}

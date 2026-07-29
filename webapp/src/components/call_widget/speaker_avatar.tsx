@@ -8,6 +8,8 @@ import {Client4} from 'mattermost-redux/client';
 import React from 'react';
 import Avatar from 'src/components/avatar/avatar';
 
+import {getActiveSpeakerProfile} from './active_speaker';
+
 interface ParticipantAvatar {
     profile?: UserProfile | null;
 }
@@ -16,9 +18,7 @@ export function ParticipantAvatar(props: ParticipantAvatar) {
     if (props.profile) {
         const pictureURL = Client4.getProfilePictureUrl(props.profile.id, props.profile.last_picture_update ?? 0);
         return (
-            <div
-                className='participantAvatarContainer'
-            >
+            <div className='participantAvatarContainer'>
                 <Avatar
                     size={32}
                     border={false}
@@ -29,9 +29,7 @@ export function ParticipantAvatar(props: ParticipantAvatar) {
     }
 
     return (
-        <div
-            className='participantAvatarContainer'
-        >
+        <div className='participantAvatarContainer'>
             <Avatar
                 size={32}
                 icon='account-outline'
@@ -42,23 +40,12 @@ export function ParticipantAvatar(props: ParticipantAvatar) {
     );
 }
 
-function findActiveSpeakerFromSessions(sessions: UserSessionState[], profiles: IDMappedObjects<UserProfile>): UserProfile | null {
-    for (const session of sessions) {
-        const profile = profiles[session.user_id];
-        if (session.voice && profile) {
-            return profile;
-        }
-    }
-
-    return null;
-}
-
 interface SpeakerAvatar {
     sessions: UserSessionState[];
     profiles: IDMappedObjects<UserProfile>;
 }
 
 export function SpeakerAvatar(props: SpeakerAvatar) {
-    const activeSpeakerProfile = findActiveSpeakerFromSessions(props.sessions, props.profiles);
+    const activeSpeakerProfile = getActiveSpeakerProfile(props.sessions, props.profiles);
     return <ParticipantAvatar profile={activeSpeakerProfile}/>;
 }
