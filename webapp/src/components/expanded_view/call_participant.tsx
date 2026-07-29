@@ -8,13 +8,13 @@ import Avatar from 'src/components/avatar/avatar';
 import {HostBadge} from 'src/components/badge';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
 import {Emoji} from 'src/components/emoji/emoji';
-import {useHostControls} from 'src/components/expanded_view/hooks';
 import {StyledDropdownMenu} from 'src/components/expanded_view/styled_components';
 import {HostControlsMenu} from 'src/components/host_controls_menu';
 import HandEmoji from 'src/components/icons/hand';
 import MutedIcon from 'src/components/icons/muted_icon';
 import {ThreeDotsButton} from 'src/components/icons/three_dots';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import {useHostControls} from 'src/components/use_host_controls';
 import styled, {css} from 'styled-components';
 
 export enum TileSize {
@@ -231,7 +231,7 @@ const MuteIconWrapper = styled.div<{$isMuted: boolean, $padding: number, $size: 
   right: 0;
   border-radius: 20px;
   padding: ${({$padding}) => $padding}px;
-  background: ${({$isMuted}) => $isMuted ? 'color-mix(in srgb, var(--calls-bg), var(--button-color) 12%)' : '#3DB887'};
+  background: ${({$isMuted}) => ($isMuted ? 'color-mix(in srgb, var(--calls-bg), var(--button-color) 12%)' : '#3DB887')};
 
   svg {
     width: ${({$size}) => $size}px;
@@ -263,13 +263,13 @@ const ReactionWrapper = styled.div<{$isHandRaised: boolean, $padding: number, $s
   left: 0;
   border-radius: 20px;
   padding: ${({$padding}) => $padding}px;
-  background: ${({$isHandRaised}) => $isHandRaised ? 'white' : 'color-mix(in srgb, var(--calls-bg), var(--button-color) 12%)'};
+  background: ${({$isHandRaised}) => ($isHandRaised ? 'white' : 'color-mix(in srgb, var(--calls-bg), var(--button-color) 12%)')};
   font-size: ${({$size}) => $size}px;
 
   svg {
     width: ${({$size}) => $size}px;
     height: ${({$size}) => $size}px;
-    fill: ${({$isHandRaised}) => $isHandRaised ? 'var(--away-indicator)' : 'white'};
+    fill: ${({$isHandRaised}) => ($isHandRaised ? 'var(--away-indicator)' : 'white')};
   }
 `;
 

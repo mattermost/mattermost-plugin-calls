@@ -11,7 +11,6 @@ import {HostBadge} from 'src/components/badge';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
 import {Emoji} from 'src/components/emoji/emoji';
 import {StyledDropdownMenu} from 'src/components/expanded_view/styled_components';
-import {useHostControls} from 'src/components/expanded_view/use_host_controls';
 import {HostControlsMenu} from 'src/components/host_controls_menu';
 import HandEmoji from 'src/components/icons/hand';
 import MutedIcon from 'src/components/icons/muted_icon';
@@ -19,6 +18,7 @@ import ScreenIcon from 'src/components/icons/screen_icon';
 import {ThreeDotsButton} from 'src/components/icons/three_dots';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import VideoOnIcon from 'src/components/icons/video_on';
+import {useHostControls} from 'src/components/use_host_controls';
 import {getUserDisplayName} from 'src/utils';
 import styled, {css} from 'styled-components';
 

@@ -7,7 +7,7 @@ import React, {useEffect} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {CALL_ANSWERED} from 'src/action_types';
-import {useDMCallingState} from 'src/components/call_widget/use_dm_calling_state';
+import {useDMCallingState} from 'src/components/use_dm_calling_state';
 import {
     callAnsweredAtForCurrentCall,
     callTimerStartAtForCurrentCall,
