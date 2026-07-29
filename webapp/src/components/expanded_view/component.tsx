@@ -133,6 +133,8 @@ interface Props extends RouteComponentProps {
     openModal: <P>(modalData: ModalData<P>) => void;
     enableVideo: boolean;
     otherSessions: UserSessionState[];
+    isInCallingStateForDMChannelCall: boolean;
+    otherDMUserID?: string;
 }
 
 interface State {
@@ -1278,7 +1280,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const switchViewLabel = this.state.viewState === 'speaker' ? formatMessage({defaultMessage: 'Switch to grid view'}) : formatMessage({defaultMessage: 'Switch to speaker view'});
         const SwitchViewIcon = this.state.viewState === 'speaker' ? SpeakerViewIcon : GridViewIcon;
 
-        const shouldRenderVideoContainer = this.props.currentSession?.video || this.props.otherSessions.some((s) => s.video);
+        // While a DM call is still ringing the grid gains a placeholder tile for the callee, next to
+        // the caller's own. The self-video preview gives way to it so that both show as avatars.
+        const isCallingStateForDMChannelCall = this.props.isInCallingStateForDMChannelCall && !this.props.screenSharingSession;
+
+        const shouldRenderVideoContainer = !isCallingStateForDMChannelCall && (this.props.currentSession?.video || this.props.otherSessions.some((s) => s.video));
         const shouldRenderTopVideoContainer = (this.state.viewState === 'speaker' || this.props.screenSharingSession) && ((this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video));
 
         return (
@@ -1365,6 +1371,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         profiles={this.props.profiles}
                         sessions={this.props.sessions}
                         onParticipantRemove={this.onRemove}
+                        callingUserID={isCallingStateForDMChannelCall ? this.props.otherDMUserID : undefined}
                     />
                     }
 

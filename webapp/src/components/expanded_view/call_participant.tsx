@@ -42,7 +42,7 @@ export type Props = {
     isSharingScreen?: boolean,
 }
 
-const tileSizePropsMap = {
+export const tileSizePropsMap = {
     [TileSize.Small]: {
         avatarSize: 72,
         fontSize: 12,
@@ -240,7 +240,7 @@ const MuteIconWrapper = styled.div<{$isMuted: boolean, $padding: number, $size: 
   }
 `;
 
-const StyledName = styled.span<{$fontSize: number, $lineHeight: number}>`
+export const StyledName = styled.span<{$fontSize: number, $lineHeight: number}>`
   font-weight: 600;
   text-align: center;
   font-size: ${({$fontSize}) => $fontSize}px;
@@ -273,7 +273,7 @@ const ReactionWrapper = styled.div<{$isHandRaised: boolean, $padding: number, $s
   }
 `;
 
-const Participant = styled.li<{ $width: number, $gap: number, $padding: number, $hover?: boolean }>`
+export const Participant = styled.li<{ $width: number, $gap: number, $padding: number, $hover?: boolean }>`
     position: relative;
     display: flex;
     flex-direction: column;

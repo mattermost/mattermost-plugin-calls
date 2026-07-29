@@ -11,6 +11,7 @@ import {getUserDisplayName} from 'src/utils';
 import styled from 'styled-components';
 
 import CallParticipant, {TileSize} from './call_participant';
+import {CallingParticipant} from './calling_participant';
 
 type Props = {
     callID: string,
@@ -20,6 +21,10 @@ type Props = {
     profiles: IDMappedObjects<UserProfile>,
     sessions: UserSessionState[],
     onParticipantRemove?: (sessionID: string, userID: string) => void,
+
+    // Set while a DM call is still ringing, to the user being called. They have no session in the
+    // call yet, so they get a placeholder tile alongside the caller's own.
+    callingUserID?: string,
 
     // Used by the recorder client.
     profileImages?: Record<string, string>,
@@ -52,9 +57,13 @@ export default function ParticipantsGrid({
     profiles,
     sessions,
     onParticipantRemove,
+    callingUserID,
     profileImages,
 }: Props) {
     const {formatMessage} = useIntl();
+
+    // The callee's placeholder tile takes up a slot of its own while the call is ringing.
+    const tileCount = sessions.length + (callingUserID ? 1 : 0);
 
     const ref = useRef<HTMLDivElement>(null);
 
@@ -98,7 +107,7 @@ export default function ParticipantsGrid({
             const tilesPerRow = Math.floor((availableWidth + tileSpacing) / tileWidthWithSpacing); // Adjust for effective width with spacing
 
             // Calculate rows needed based on tiles per row
-            const requiredRows = Math.ceil(sessions.length / tilesPerRow);
+            const requiredRows = Math.ceil(tileCount / tilesPerRow);
 
             // Calculate the total height required including the spacing between rows
             const totalHeightNeeded = (requiredRows * tileHeightWithSpacing) - tileSpacing; // Adjust for last row not needing spacing
@@ -135,7 +144,7 @@ export default function ParticipantsGrid({
         setTileSize(res.tileSize);
         setPaddingH(res.paddingH);
         setPaddingV(res.paddingV);
-    }, [sessions.length, resize]);
+    }, [tileCount, resize]);
 
     const renderParticipants = () => {
         return sessions.map((session) => {
@@ -186,6 +195,12 @@ export default function ParticipantsGrid({
                 id='calls-expanded-view-participants-grid'
             >
                 {renderParticipants()}
+                {callingUserID &&
+                    <CallingParticipant
+                        userID={callingUserID}
+                        size={tileSize}
+                    />
+                }
             </ParticipantsList>
         </ParticipantsGridContainer>
     );
