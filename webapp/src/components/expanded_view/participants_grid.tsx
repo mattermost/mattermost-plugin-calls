@@ -160,14 +160,16 @@ export function ParticipantsGrid({
                         onParticipantRemove={onParticipantRemove}
                     />
                 ))}
+
+                {/* While a DM call is still ringing the grid shows a placeholder
+                tile for the callee, next tothe caller's own. */}
                 {isDMCalling && (
                     <ParticipantTileLoading
                         userID={dmCalleeID}
                         profile={dmCallee}
                         tileSize={tileSize}
                     />
-                )
-                }
+                )}
             </ParticipantsList>
         </ParticipantsGridContainer>
     );

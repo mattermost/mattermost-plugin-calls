@@ -15,11 +15,6 @@ type Props = {
     tileSize: TileSize;
 }
 
-// ParticipantDMCalleeTile is the placeholder tile the participants grid shows for the person being
-// called while a DM call is still ringing. It sits alongside the caller's own tile and is replaced by
-// the callee's real tile once they answer, so it borrows the grid's geometry but composes the tile
-// primitives directly rather than going through ParticipantCell: mute state, the speaking glow,
-// reactions, the host badge and host controls all mean nothing before the call connects.
 export function ParticipantTileLoading({userID, profile, tileSize}: Props) {
     const tile = tileSizePropsMap[tileSize];
 
