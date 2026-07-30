@@ -5,7 +5,7 @@ import {expect, Page} from '@playwright/test';
 
 import {apiGetGroupChannel} from './channels';
 import {baseURL, defaultTeam, pluginID} from './constants';
-import {getChannelNamesForTest} from './utils';
+import {getChannelNamesForTest, getHTTPHeaders} from './utils';
 
 // eslint-disable-next-line no-shadow
 export enum HostControlAction {
@@ -126,16 +126,27 @@ export default class PlaywrightDevPage {
     }
 
     async disableCalls() {
-        const channelHeaderButton = this.page.locator('#channelHeaderDropdownButton');
-        await expect(channelHeaderButton).toBeVisible();
-        await channelHeaderButton.click();
-        await this.page.getByText('More actions').hover();
-        const disableCallsButton = this.page.getByText('Disable calls');
-        await expect(disableCallsButton).toBeVisible();
-        await disableCallsButton.click();
+        // Use the REST API directly (same pattern as afterEach cleanup) so the POST
+        // is guaranteed to complete with proper CSRF auth before we verify Redux state.
+        const chanResp = await this.page.request.get(
+            `${baseURL}/api/v4/teams/name/${defaultTeam}/channels/name/${getChannelNamesForTest()[0]}`,
+        );
+        const channel = await chanResp.json();
 
-        // Re-open the dropdown and confirm "Enable calls" is shown.
-        await expect(channelHeaderButton).toBeVisible();
+        const postResp = await this.page.request.post(
+            `${baseURL}/plugins/${pluginID}/${channel.id}`,
+            {
+                headers: await getHTTPHeaders(this.page.request),
+                data: {enabled: false},
+            },
+        );
+        if (!postResp.ok()) {
+            throw new Error(`disableCalls: POST failed with status ${postResp.status()}`);
+        }
+
+        // Open dropdown and wait for "Enable calls" — confirms the WS event
+        // propagated and callsExplicitlyDisabled is now true in Redux.
+        const channelHeaderButton = this.page.locator('#channelHeaderDropdownButton');
         await channelHeaderButton.click();
         await this.page.getByText('More actions').hover();
         await expect(this.page.getByText('Enable calls')).toBeVisible();
