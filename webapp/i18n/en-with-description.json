@@ -1,0 +1,1398 @@
+{
+  "+8GJY8": {
+    "defaultMessage": "The API key for Azure Speech Services",
+    "description": "Admin console help text under the 'Azure API Key' setting; 'Azure Speech Services' is a Microsoft product name."
+  },
+  "+DMPFa": {
+    "defaultMessage": "TURN Static Auth Secret",
+    "description": "Setting name in the admin console Calls plugin settings; TURN is a WebRTC relay protocol."
+  },
+  "+Y8Kh/": {
+    "defaultMessage": "Call transcriptions",
+    "description": "Section title in the admin console Calls plugin settings for the call transcriptions feature."
+  },
+  "+hqq/q": {
+    "defaultMessage": "(Optional) When set to true, live captions are enabled.",
+    "description": "Admin console help text under the 'Enable live captions' setting."
+  },
+  "+y3UCQ": {
+    "defaultMessage": "Job service URL",
+    "description": "Setting name in the admin console Calls plugin settings; URL of the recording/transcription job service."
+  },
+  "/BxyxW": {
+    "defaultMessage": "The UDP port the RTC server will listen on.",
+    "description": "Admin console help text under the 'RTC Server Port (UDP)' setting."
+  },
+  "/ROIGq": {
+    "defaultMessage": "(Optional) The URL to a running RTCD service instance that should host the calls. When set (non empty) all calls will be handled by the external service.",
+    "description": "Admin console help text under the 'RTCD service URL' setting; RTCD is a product name."
+  },
+  "/Voey4": {
+    "defaultMessage": "Set up video devices to be used for Mattermost calls",
+    "description": "Description under the 'Video devices' section title in the calls user settings."
+  },
+  "/WMCDd": {
+    "defaultMessage": "Something went wrong!",
+    "description": "Title of the error modal shown in the admin console when an Enterprise trial request fails."
+  },
+  "/c+F8S": {
+    "defaultMessage": "Call from <b>{callerName}</b> with <b>{others}</b>",
+    "description": "Text of the condensed incoming call banner for group calls; {callerName} is the caller and {others} lists the other participants."
+  },
+  "/n/Skb": {
+    "defaultMessage": "Joining call…",
+    "description": "Channel header button label and loading overlay text while joining an existing call; ends with an ellipsis."
+  },
+  "0Ihpmc": {
+    "defaultMessage": "Record call",
+    "description": "Menu item and tooltip in the call widget and call screen toolbar; starts recording the call (verb)."
+  },
+  "0LuKMT": {
+    "defaultMessage": "You're already in a call",
+    "description": "Title of the switch-call confirmation modal shown when the user is already connected to another call."
+  },
+  "0cE6s2": {
+    "defaultMessage": "Calls can't be initiated in an insecure context",
+    "description": "Title of the error modal shown when calls cannot start because the page is not served over HTTPS."
+  },
+  "0fFRUQ": {
+    "defaultMessage": "Start presenting",
+    "description": "Tooltip/menu item for the screen share button in the call widget and call screen; starts sharing your screen."
+  },
+  "0fj4bj": {
+    "defaultMessage": "Allow screen sharing",
+    "description": "Setting name in the admin console Calls plugin settings; controls whether participants may share their screen."
+  },
+  "10k1Mv": {
+    "defaultMessage": "The URL pointing to a running calls-offloader job service instance.",
+    "description": "Admin console help text under the 'Job service URL' setting; 'calls-offloader' is the service's product name, do not translate."
+  },
+  "1QvHUW": {
+    "defaultMessage": "Your recording will end in {count, plural, =1 {# minute} other {# minutes}}.",
+    "description": "Prompt shown to the host when the recording approaches its maximum duration; {count} is the minutes remaining."
+  },
+  "1s4g9H": {
+    "defaultMessage": "When set to true, clients will use WebRTC data channels for signaling of new media tracks. This can result in a more efficient and less race-prone process, especially in case of frequent WebSocket disconnections.",
+    "description": "Admin console help text under the 'Use data channels for signaling' setting; WebRTC and WebSocket are technical terms."
+  },
+  "1vzfaf": {
+    "defaultMessage": "End call for everyone",
+    "description": "Option in the leave-call menu and title of the confirmation dialog; ends the call for all participants (host only)."
+  },
+  "22Lra1": {
+    "defaultMessage": "Here's the call recording",
+    "description": "Bot message posted in the call thread alongside the recording file."
+  },
+  "23eRB2": {
+    "defaultMessage": "Call connection failed",
+    "description": "Title of the error modal shown when the connection to a call fails or times out."
+  },
+  "2NqRta": {
+    "defaultMessage": "You left the channel",
+    "description": "Title of the modal shown when the user is disconnected from a call because they left the channel."
+  },
+  "2T4EGD": {
+    "defaultMessage": "You're already in a call with {participant}.",
+    "description": "Body of the switch-call modal; {participant} is the display name of the person in the user's current call."
+  },
+  "2n0xcg": {
+    "defaultMessage": "Enable calls",
+    "description": "Channel menu item for admins; enables the calls feature in the current channel."
+  },
+  "2r+cpd": {
+    "defaultMessage": "Camera input",
+    "description": "Label of the camera device selector in the calls user settings."
+  },
+  "3WdZyZ": {
+    "defaultMessage": "You have been removed from the channel, and have been disconnected from the call.",
+    "description": "Body of the modal shown when the user is disconnected from a call after being removed from the channel."
+  },
+  "3p0fzx": {
+    "defaultMessage": "Daily Call Recordings",
+    "description": "Chart title on the Calls plugin statistics page in the system console; number of call recordings per day."
+  },
+  "3wS4fn": {
+    "defaultMessage": "Upgrade to use calls in Channels",
+    "description": "Header of the cloud upgrade modal shown to system admins on the free plan when trying to start a channel call; 'Channels' refers to Mattermost channels."
+  },
+  "477I0g": {
+    "defaultMessage": "Low",
+    "description": "Option label for the 'Call recording quality' dropdown in the admin console plugin settings; the lowest quality level."
+  },
+  "47FYwb": {
+    "defaultMessage": "Cancel",
+    "description": "Generic cancel button in call dialogs, confirmations, and settings forms."
+  },
+  "4Jcytp": {
+    "defaultMessage": "Notify admin",
+    "description": "Confirm button in the cloud trial modal shown to end users; sends an automatic trial request to the system admins."
+  },
+  "4WZGCB": {
+    "defaultMessage": "When set to true, call participants can share their screen.",
+    "description": "Admin console help text under the 'Allow screen sharing' setting."
+  },
+  "4lj46b": {
+    "defaultMessage": "You can find the recording and transcription in this call's chat thread once it has finished processing.",
+    "description": "Body of the prompt shown after recording and transcription stop, telling users where the files will be posted."
+  },
+  "4nSrEc": {
+    "defaultMessage": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart.",
+    "description": "Admin console help text under the 'Enable call ringing' setting."
+  },
+  "5+bTjM": {
+    "defaultMessage": "Mattermost Cloud Professional feature",
+    "description": "Tooltip title on the disabled call button for free Mattermost Cloud workspaces; 'Cloud Professional' is a plan name."
+  },
+  "5ClUrE": {
+    "defaultMessage": "Something went wrong with the recording",
+    "description": "Header of the in-call banner shown when a call recording job fails."
+  },
+  "5oE+Ts": {
+    "defaultMessage": "When set to true, the RTC service will work in dual-stack mode, listening for IPv6 connections and generating candidates in addition to IPv4 ones.",
+    "description": "Admin console help text under the 'Enable IPv6 support' setting; RTC means real-time communication."
+  },
+  "5yUTF3": {
+    "defaultMessage": "The call recording and transcription files will be processed and posted in the call thread. Are you sure you want to stop the recording and transcription?",
+    "description": "Body of the stop-recording confirmation dialog when transcription is also running."
+  },
+  "6AKf56": {
+    "defaultMessage": "Join call",
+    "description": "Button that joins the ongoing call; used in the channel header, the ongoing-call toast, and the call post."
+  },
+  "6HPRG7": {
+    "defaultMessage": "ICE Host Port Override",
+    "description": "Setting name in the admin console Calls plugin settings; ICE is a WebRTC term."
+  },
+  "6KYlYh": {
+    "defaultMessage": "No video input devices",
+    "description": "Tooltip title on the disabled camera button during a call when no camera device is detected."
+  },
+  "6R+29J": {
+    "defaultMessage": "The language passed to the live captions transcriber. Should be a 2-letter ISO 639 Set 1 language code, e.g. 'en'. If blank, will be set to English 'en' as default.",
+    "description": "Admin console help text under the 'Live captions language' setting; 'en' is an example language code."
+  },
+  "6XllQM": {
+    "defaultMessage": "Allow microphone access to Mattermost.",
+    "description": "In-call error banner and tooltip subtext when microphone permission is denied; 'Mattermost' is the product name."
+  },
+  "6aGJYU": {
+    "defaultMessage": "There's no ongoing call in the channel.",
+    "description": "Error modal body for the /call end slash command when there is no active call."
+  },
+  "6cjovA": {
+    "defaultMessage": "You can find the recording in this call's chat thread once it has finished processing.",
+    "description": "Body of the prompt shown after recording stops, telling users where the file will be posted."
+  },
+  "6y1672": {
+    "defaultMessage": "Monthly Calls",
+    "description": "Chart title on the Calls plugin statistics page in the system console; number of calls per month."
+  },
+  "6ytNw2": {
+    "defaultMessage": "Not applicable when the <link>RTCD service URL</link> field is in use.",
+    "description": "Sentence appended to admin console help texts for settings that are ignored when an external RTCD service is configured; the tag wraps a link to the 'RTCD service URL' setting."
+  },
+  "7C5R1Z": {
+    "defaultMessage": "Real-time communication daemon is a service built to offload calls onto your own WebRTC services and efficiently support scalable and secure deployments. <featureLink>Learn more about this feature</featureLink>.",
+    "description": "Body of the Enterprise upsell banner in the admin console RTCD section; the tag wraps a 'Learn more about this feature' documentation link."
+  },
+  "7YIAur": {
+    "defaultMessage": "Calls can be recorded for up to {count, plural, =1 {# minute} other {# minutes}}.",
+    "description": "Body of the prompt shown to the host when a recording starts; {count} is the maximum recording duration in minutes."
+  },
+  "7YLq3n": {
+    "defaultMessage": "a few seconds",
+    "description": "Human-readable duration used for spans under ~44 seconds, e.g. as a call duration ('Lasted a few seconds'); lowercase, mid-sentence style."
+  },
+  "7cVXct": {
+    "defaultMessage": "Show participants",
+    "description": "Button/menu item in the call widget; opens the participants list."
+  },
+  "7gVR9m": {
+    "defaultMessage": "An internal error occurred and prevented you from joining the call. Please try again.",
+    "description": "Body of the error modal when joining a call via the /call slash command fails unexpectedly."
+  },
+  "83mzYJ": {
+    "defaultMessage": "Call quality may be degraded due to unstable network conditions.",
+    "description": "Warning banner shown during a call when network conditions are unstable."
+  },
+  "85btzx": {
+    "defaultMessage": "(Optional) The IP address to be used as the host ICE candidate. If empty, it defaults to resolving via STUN.",
+    "description": "Admin console help text under the 'ICE Host Override' setting; ICE and STUN are WebRTC terms."
+  },
+  "8JGf6X": {
+    "defaultMessage": "Show chat thread",
+    "description": "Menu item in the call widget; opens the chat thread attached to the call."
+  },
+  "8isok9": {
+    "defaultMessage": "Mute participant",
+    "description": "Item in the host controls menu; mutes the selected participant."
+  },
+  "94UiTg": {
+    "defaultMessage": "Recording is in progress",
+    "description": "Header of the in-call consent prompt shown to participants while the host is recording the meeting."
+  },
+  "96AR1R": {
+    "defaultMessage": "Set up audio devices to be used for Mattermost calls",
+    "description": "Description under the 'Audio devices' section title in the calls user settings."
+  },
+  "99M2n9": {
+    "defaultMessage": "(Optional) When set to true, post-call transcriptions are enabled.",
+    "description": "Admin console help text under the 'Enable call transcriptions' setting."
+  },
+  "9I3kDh": {
+    "defaultMessage": "Recording and transcription has stopped. Processing…",
+    "description": "Header of the in-call prompt after the host stops recording and transcription; the files are being processed."
+  },
+  "9MRLau": {
+    "defaultMessage": "by {user}",
+    "description": "Attribution fragment on the call post, shown after 'Call started'/'Call ended'; {user} is the display name of who started the call."
+  },
+  "9ewpwJ": {
+    "defaultMessage": "Contact your system admin for more information about call capacity.",
+    "description": "Tooltip subtext under the participant-limit message on the disabled call/join button."
+  },
+  "9tBhzB": {
+    "defaultMessage": "Upgrade now",
+    "description": "Button on the trial-request post shown to cloud admins; opens the upgrade/purchase flow."
+  },
+  "AD/PkD": {
+    "defaultMessage": "No recording is in progress.",
+    "description": "Error modal body for the /call recording stop slash command when no recording is running."
+  },
+  "APILK5": {
+    "defaultMessage": "Live captions: Number of threads per transcriber",
+    "description": "Setting name in the admin console Calls plugin settings; the 'Live captions:' prefix groups related settings."
+  },
+  "APWZiG": {
+    "defaultMessage": "Consider letting everyone know that this meeting is being recorded.",
+    "description": "Body of the in-call prompt shown to the host right after they start recording."
+  },
+  "AYHboe": {
+    "defaultMessage": "This is a paid feature, available with a free 30-day trial",
+    "description": "Tooltip subtext on the disabled call button for free cloud workspaces, promoting the trial."
+  },
+  "Ap6DG5": {
+    "defaultMessage": "{count, plural, =1 {# recording} other {# recordings}}",
+    "description": "Label on the ended-call post showing how many recording files are attached; {count} is the number of recordings."
+  },
+  "AxMhQr": {
+    "defaultMessage": "High",
+    "description": "Option label for the 'Call recording quality' dropdown in the admin console plugin settings; the highest quality level."
+  },
+  "Az0GQD": {
+    "defaultMessage": "<b>{participant}</b> has joined the call.",
+    "description": "Transient notification in the call widget; {participant} is the display name of the user who just joined."
+  },
+  "BI2zH5": {
+    "defaultMessage": "Remove from call",
+    "description": "Destructive item in the host controls menu; removes the selected participant from the call."
+  },
+  "BzWJNo": {
+    "defaultMessage": "You don't have permission to stop the recording. Please ask the call host to stop the recording.",
+    "description": "Error modal body for the /call recording stop slash command when the user is not the call host."
+  },
+  "C76B7B": {
+    "defaultMessage": "Unable to find a valid video input device. Try plugging in a video input device.",
+    "description": "In-call error banner when no working camera device is found."
+  },
+  "Cbb/An": {
+    "defaultMessage": "Lower hand",
+    "description": "Tooltip/menu item that lowers a raised hand; used for your own hand and in the host controls menu for a participant's hand."
+  },
+  "DKskNw": {
+    "defaultMessage": "You don't have permission to end the call. Please ask the call owner to end call.",
+    "description": "Error modal body for the /call end slash command when the user lacks permission."
+  },
+  "DLokwF": {
+    "defaultMessage": "You need to be using an HTTPS connection to make calls. Visit the documentation for more information.",
+    "description": "Body of the error modal shown when calls require an HTTPS connection."
+  },
+  "Dnf29C": {
+    "defaultMessage": "Monthly Call Recordings",
+    "description": "Chart title on the Calls plugin statistics page in the system console; number of call recordings per month."
+  },
+  "DswqlB": {
+    "defaultMessage": "Show live captions",
+    "description": "Item in the in-call settings menu; turns on the live captions overlay."
+  },
+  "DuV+hE": {
+    "defaultMessage": "No screen sharing permissions",
+    "description": "Tooltip title on the disabled screen share button when screen capture permission is missing."
+  },
+  "EDhVeS": {
+    "defaultMessage": "Audio output",
+    "description": "Section label for the speaker/output device selector in the in-call settings menu."
+  },
+  "EaucLA": {
+    "defaultMessage": "View plans",
+    "description": "Confirm button in the cloud upgrade modal shown to admins; opens the pricing plans page."
+  },
+  "EiKwlo": {
+    "defaultMessage": "RTC Server Port (TCP)",
+    "description": "Setting name in the admin console Calls plugin settings; TCP listening port of the built-in RTC server."
+  },
+  "F3JxN5": {
+    "defaultMessage": "Enable call ringing",
+    "description": "Setting name in the admin console Calls plugin settings; controls ringing notifications for direct/group message calls."
+  },
+  "FVHddU": {
+    "defaultMessage": "We couldn't join the call because the connection timed out. Please check your network connection and try again.",
+    "description": "Body of the error modal shown when joining a call times out."
+  },
+  "FVtE+o": {
+    "defaultMessage": "Enable live captions (Beta)",
+    "description": "Setting name in the admin console Calls plugin settings; keep the '(Beta)' marker."
+  },
+  "FZ+LUh": {
+    "defaultMessage": "Open emoji picker",
+    "description": "Accessibility label/tooltip for the emoji picker toggle in the call screen's reaction bar."
+  },
+  "FgnabO": {
+    "defaultMessage": "This is because calls is in the beta phase. We’re working to remove this limit soon.",
+    "description": "Tooltip subtext under the participant-limit message on the call post's disabled join button (cloud beta limitation)."
+  },
+  "FoNl1e": {
+    "defaultMessage": "Check the <troubleShootingLink>troubleshooting section</troubleShootingLink> if the problem persists.",
+    "description": "Help sentence appended to call connection error modals; the tag wraps a link to the troubleshooting documentation."
+  },
+  "FpgQ3M": {
+    "defaultMessage": "Avg Call Duration (minutes)",
+    "description": "Stat tile title on the Calls plugin statistics page in the system console; average call duration in minutes."
+  },
+  "FuLQQr": {
+    "defaultMessage": "Also share system audio",
+    "description": "Checkbox label in the screen-share source picker modal; includes system audio with the shared screen."
+  },
+  "G6YZ1a": {
+    "defaultMessage": "Screen sharing access is not currently allowed or was canceled.",
+    "description": "In-call error banner when screen sharing permission is denied or the OS share picker was canceled."
+  },
+  "G9EwJD": {
+    "defaultMessage": "Call recording quality",
+    "description": "Setting name in the admin console Calls plugin settings; a dropdown choosing recording quality (Low/Medium/High)."
+  },
+  "GJP27v": {
+    "defaultMessage": "Call from <b>{callerName}</b>",
+    "description": "Text of the condensed incoming call banner; {callerName} is the caller's display name."
+  },
+  "GNkXiL": {
+    "defaultMessage": "Switch to speaker view",
+    "description": "Tooltip/button in the call screen top bar; switches the participant layout to speaker view."
+  },
+  "GSZYxc": {
+    "defaultMessage": "Call recordings",
+    "description": "Section title in the admin console Calls plugin settings for the call recordings feature."
+  },
+  "Ga0yXg": {
+    "defaultMessage": "Call started",
+    "description": "Title of the channel post representing an ongoing call."
+  },
+  "GcvLBC": {
+    "defaultMessage": "Understood",
+    "description": "Confirm/acknowledge button in call prompts and modals (e.g. recording consent, test mode notice)."
+  },
+  "GeElPx": {
+    "defaultMessage": "Started {callStartedAt}",
+    "description": "Shown in the ongoing-call toast at the top of the channel; {callStartedAt} is a relative time such as 'a few seconds ago'."
+  },
+  "GjrlL9": {
+    "defaultMessage": "General settings",
+    "description": "Section title in the admin console Calls plugin settings."
+  },
+  "GoLgxG": {
+    "defaultMessage": "Add reaction",
+    "description": "Tooltip on the reaction button in the call screen toolbar; opens the quick-reaction bar."
+  },
+  "H6F81N": {
+    "defaultMessage": "The audio output device has changed to <i>{deviceLabel}</i>.",
+    "description": "Informational in-call banner after audio output falls back to another device; {deviceLabel} is the device name, rendered in italics."
+  },
+  "HB6L88": {
+    "defaultMessage": "Configure your screen sharing settings.",
+    "description": "Description under the 'Screen sharing settings' section title in the calls user settings."
+  },
+  "HBa/E5": {
+    "defaultMessage": "Make host",
+    "description": "Item in the host controls menu; transfers the host role to the selected participant."
+  },
+  "HLozpU": {
+    "defaultMessage": "Blur intensity",
+    "description": "Slider label in the calls video settings; strength of the background blur effect."
+  },
+  "HUMEKL": {
+    "defaultMessage": "When set to true it enables using the AV1 codec to encode screen sharing tracks. This can result in improved screen sharing quality for clients that support it. Note: this setting won't apply when EnableSimulcast is true.",
+    "description": "Admin console help text under the 'Enable AV1 codec for screen sharing' setting; AV1 is a video codec name."
+  },
+  "HV60d3": {
+    "defaultMessage": "Daily Calls",
+    "description": "Chart title on the Calls plugin statistics page in the system console; number of calls per day."
+  },
+  "He5vFp": {
+    "defaultMessage": "Close icon",
+    "description": "Accessibility label for the X button that dismisses the ongoing-call toast."
+  },
+  "Hl1L9U": {
+    "defaultMessage": "A call is already ongoing in the channel.",
+    "description": "Error modal body for the /call start slash command when a call already exists in the channel."
+  },
+  "HmqEaS": {
+    "defaultMessage": "{list} {count, plural, =1 {is} other {are}} on the call",
+    "description": "Tooltip on the active-call icon next to a channel link; {list} is a formatted list of participant names and {count} is how many there are (drives is/are agreement)."
+  },
+  "HpoDwk": {
+    "defaultMessage": "Group",
+    "description": "Channel type label in the 'Calls by Channel Type' chart on the admin statistics page; means group message channels."
+  },
+  "Hr+LCl": {
+    "defaultMessage": "Server Side TURN",
+    "description": "Setting name in the admin console Calls plugin settings; TURN is a WebRTC relay protocol."
+  },
+  "Hzws31": {
+    "defaultMessage": "End call",
+    "description": "Confirm button of the end-call confirmation dialog; ends the call for everyone."
+  },
+  "I8Phi9": {
+    "defaultMessage": "Recording and transcription is in progress",
+    "description": "Header of the in-call consent prompt shown to participants while the host is recording and transcribing."
+  },
+  "IGE94D": {
+    "defaultMessage": "RTC Server Address (UDP)",
+    "description": "Setting name in the admin console Calls plugin settings; UDP listening address of the built-in RTC server."
+  },
+  "Igo1xs": {
+    "defaultMessage": "It looks like something went wrong with your Enterprise trial request. You can try again later or <supportLink>contact Support</supportLink> if the error persists.",
+    "description": "Body of the error modal shown in the admin console when an Enterprise trial request fails; the tag wraps a link to Mattermost support."
+  },
+  "ImGHky": {
+    "defaultMessage": "Calls are not available in archived channels.",
+    "description": "Tooltip on the disabled call button in the header of an archived channel."
+  },
+  "IzCVhG": {
+    "defaultMessage": "More options",
+    "description": "Tooltip on the '...' settings button in the call toolbar."
+  },
+  "J6ywQ3": {
+    "defaultMessage": "Camera",
+    "description": "Section label for the camera device selector in the in-call settings menu."
+  },
+  "JN0IJ4": {
+    "defaultMessage": "When test mode is enabled, only system admins are able to start calls in channels. This allows testing to confirm calls are working as expected.",
+    "description": "Admin console help text under the 'Test mode' setting."
+  },
+  "JPAXWx": {
+    "defaultMessage": "{users} raised a hand",
+    "description": "Transient in-call notice in the reactions stream; {users} is a formatted list of names (may include 'You' or '# others')."
+  },
+  "JVbliD": {
+    "defaultMessage": "Screen sharing settings",
+    "description": "Section title in the calls user settings for screen sharing options."
+  },
+  "Ja3J5X": {
+    "defaultMessage": "Click to stop recording",
+    "description": "Accessibility label for the recording indicator badge in the call screen; activating it stops the recording."
+  },
+  "Jji6GY": {
+    "defaultMessage": "Displays spoken words as text captions during a call. To enable live captions, recordings and transcriptions must be enabled first",
+    "description": "Subtitle under the 'Live captions' section header in the admin console, shown while recordings/transcriptions are still disabled."
+  },
+  "JkRNKw": {
+    "defaultMessage": "<b>{name}</b> is now the host",
+    "description": "Transient in-call notice when the host role changes; {name} is the new host's display name."
+  },
+  "K35XPQ": {
+    "defaultMessage": "Call transcriber API",
+    "description": "Setting name in the admin console Calls plugin settings; a dropdown choosing the speech-to-text API for transcriptions."
+  },
+  "KDjh1K": {
+    "defaultMessage": "RTC Server",
+    "description": "Section title in the admin console Calls plugin settings; RTC means real-time communication."
+  },
+  "KEzTF7": {
+    "defaultMessage": "<b>You're muted.</b> Select {muteIcon} to unmute.",
+    "description": "Transient notification shown after joining a call muted; {muteIcon} is the microphone icon shown inline."
+  },
+  "KKkUks": {
+    "defaultMessage": "True",
+    "description": "Radio option label for boolean settings in the admin console Calls plugin settings."
+  },
+  "KZiF9C": {
+    "defaultMessage": "Try plugging in an audio input device.",
+    "description": "Tooltip subtext under 'No audio input devices' on the disabled microphone button."
+  },
+  "KaiRbV": {
+    "defaultMessage": "Calls are a quick, audio-first, way to interact with your team. Get the full calls experience when you start a free, 30-day trial.",
+    "description": "Body text of the cloud trial modal promoting calls in channels."
+  },
+  "KnW3l8": {
+    "defaultMessage": "Hide live captions",
+    "description": "Item in the in-call settings menu; turns off the live captions overlay."
+  },
+  "KpV+N+": {
+    "defaultMessage": "Yes, remove",
+    "description": "Confirm button of the remove-participant confirmation dialog."
+  },
+  "M53rWX": {
+    "defaultMessage": "RTC Server Port (UDP)",
+    "description": "Setting name in the admin console Calls plugin settings; UDP listening port of the built-in RTC server."
+  },
+  "M6lXfS": {
+    "defaultMessage": "Set up RTCD services",
+    "description": "Confirm button of the trial-started modal in the admin console; navigates to the RTCD settings; RTCD is a product name."
+  },
+  "M6nX1N": {
+    "defaultMessage": "Show chat",
+    "description": "Tooltip on the chat button in the popped-out call window; opens the call's chat thread."
+  },
+  "MQr9sh": {
+    "defaultMessage": "Unable to end the call",
+    "description": "Title of the error modal shown when the /call end slash command fails."
+  },
+  "MspN+p": {
+    "defaultMessage": "Unable to start recording",
+    "description": "Title of the error modal shown when the /call recording start slash command fails."
+  },
+  "MtkpLO": {
+    "defaultMessage": "You are now the host",
+    "description": "Transient in-call notice shown to the user when they become the call host."
+  },
+  "MvoyUx": {
+    "defaultMessage": "Calls are only available in DM channels.",
+    "description": "Error modal body when starting/joining a call outside a direct message channel while group calls are not allowed; 'DM' means direct message."
+  },
+  "N+xxAg": {
+    "defaultMessage": "Microphone input",
+    "description": "Label of the microphone device selector in the calls user settings."
+  },
+  "N2IrpM": {
+    "defaultMessage": "Confirm",
+    "description": "Default confirm button label for generic modal dialogs in the Calls plugin."
+  },
+  "NIGw0f": {
+    "defaultMessage": "The audio and video quality of call recordings. Note: this setting can affect the overall performance of the job service and the number of concurrent recording jobs that can be run.",
+    "description": "Admin console help text under the 'Call recording quality' setting."
+  },
+  "O6EeNO": {
+    "defaultMessage": "Allow call hosts to record meeting video and audio in the cloud. Recording include the entire call window view along with participants' audio track and any shared screen video. <featureLink>Learn more about this feature</featureLink>.",
+    "description": "Body of the Enterprise upsell banner in the admin console recordings section; the tag wraps a 'Learn more about this feature' documentation link."
+  },
+  "O9VT3o": {
+    "defaultMessage": "(Optional) The secret key used to generate TURN short-lived authentication credentials.",
+    "description": "Admin console help text under the 'TURN Static Auth Secret' setting."
+  },
+  "OKhRC6": {
+    "defaultMessage": "Share",
+    "description": "Confirm button of the screen-share source picker modal; verb, starts sharing the selected screen/window."
+  },
+  "Ogjhjk": {
+    "defaultMessage": "The speech-to-text API to use for post-call transcriptions.",
+    "description": "Admin console help text under the 'Call transcriber API' setting."
+  },
+  "Op9vS3": {
+    "defaultMessage": "The maximum duration (in minutes) for call recordings. Value must be in the range [15, 180].",
+    "description": "Admin console help text under the 'Maximum call recording duration' setting."
+  },
+  "OvzONl": {
+    "defaultMessage": "Off",
+    "description": "Label for the disabled state of a toggle/radio option, used in admin console settings (e.g. Server Side TURN, Test mode) and in the user's screen sharing settings summary."
+  },
+  "Oy7urn": {
+    "defaultMessage": "Host controls",
+    "description": "Title/tooltip of the host controls menu button on a participant row in the participants list."
+  },
+  "Ozk1me": {
+    "defaultMessage": "Get access to call recordings, transcriptions, and live captions",
+    "description": "Title of the Enterprise upsell banner in the admin console call recordings section."
+  },
+  "P6PLpi": {
+    "defaultMessage": "Join",
+    "description": "Button on the incoming call notification card; joins the incoming call. Compact space."
+  },
+  "PX0KzA": {
+    "defaultMessage": "The call will end and all its participants will be disconnected. Are you sure you want to end the call?",
+    "description": "Body of the confirmation dialog shown to the host before ending the call for all participants."
+  },
+  "Pdrvrt": {
+    "defaultMessage": "No video input permissions",
+    "description": "Tooltip title on the disabled camera button when camera permission is denied."
+  },
+  "PfcsWl": {
+    "defaultMessage": "Enable AV1 codec for screen sharing (Experimental)",
+    "description": "Setting name in the admin console Calls plugin settings; AV1 is a video codec name, keep the '(Experimental)' marker."
+  },
+  "PjoOvw": {
+    "defaultMessage": "You're sharing your screen",
+    "description": "Label shown over the screen share preview while the user is presenting their own screen."
+  },
+  "PzV1UF": {
+    "defaultMessage": "(Optional) A port number to be used as an override for host candidates in place of the one used to listen on. Note: this port will apply to both UDP and TCP host candidates.",
+    "description": "Admin console help text under the 'ICE Host Port Override' setting."
+  },
+  "Q0W0k5": {
+    "defaultMessage": "Consider letting everyone know that this meeting is being recorded and transcribed.",
+    "description": "Body of the in-call prompt shown to the host right after starting recording and transcription."
+  },
+  "QJwBtw": {
+    "defaultMessage": "The API region for Azure Speech Services",
+    "description": "Admin console help text under the 'Azure API Region' setting; 'Azure Speech Services' is a Microsoft product name."
+  },
+  "QStrKh": {
+    "defaultMessage": "Allows calls to be transcribed to text files. To enable call transcriptions, recordings must be enabled first",
+    "description": "Subtitle under the 'Call transcriptions' section header in the admin console, shown while recordings are still disabled."
+  },
+  "QtFGiO": {
+    "defaultMessage": "Host",
+    "description": "Compact badge shown next to the call host's name in participant lists."
+  },
+  "RBzfy/": {
+    "defaultMessage": "Max call participants",
+    "description": "Setting name in the admin console Calls plugin settings; the maximum number of participants allowed per call."
+  },
+  "RTgSVH": {
+    "defaultMessage": "Audio devices",
+    "description": "Section title in the calls user settings for choosing microphone and speaker devices."
+  },
+  "Refhfu": {
+    "defaultMessage": "Create meeting summary",
+    "description": "Button on the call transcription post; asks the AI plugin to generate a meeting summary from the transcript."
+  },
+  "Ru6jT+": {
+    "defaultMessage": "Please try to record again. You can also contact your system admin for troubleshooting help.",
+    "description": "Body of the in-call banner shown when a recording fails."
+  },
+  "S2W9y3": {
+    "defaultMessage": "You're recording",
+    "description": "Header of the in-call prompt shown to the host while they are recording the meeting."
+  },
+  "Sh/5aI": {
+    "defaultMessage": "Settings menu",
+    "description": "Accessibility label for the settings menu in the call widget."
+  },
+  "SmSeXX": {
+    "defaultMessage": "Do you want to leave and join a call with {users}?",
+    "description": "Body of the switch-call confirmation modal; {users} is a list of participants in the call being joined."
+  },
+  "SrNCsC": {
+    "defaultMessage": "The audio input device has changed to <i>{deviceLabel}</i>.",
+    "description": "Informational in-call banner after audio input falls back to another microphone; {deviceLabel} is the device name, rendered in italics."
+  },
+  "Ssxh83": {
+    "defaultMessage": "Unable to find a valid audio input device. Try plugging in an audio input device.",
+    "description": "In-call error banner when no working microphone device is found."
+  },
+  "TAIiAz": {
+    "defaultMessage": "Click to stop",
+    "description": "Hover text on the recording indicator badge in the call screen; clicking it stops the recording. Very compact space."
+  },
+  "TDaF6J": {
+    "defaultMessage": "Dismiss",
+    "description": "Button label used to dismiss in-call banners and recording prompts."
+  },
+  "TdTXXf": {
+    "defaultMessage": "Learn more",
+    "description": "Button/link label that opens documentation for more information; used on the trial-request post and as the confirm button of the insecure-context error modal."
+  },
+  "Tg9Lia": {
+    "defaultMessage": "Calls is not currently enabled",
+    "description": "Header of the modal shown when a user tries to start a call while calls are running in test mode."
+  },
+  "Thxdph": {
+    "defaultMessage": "This call is at its maximum capacity of {count, plural, =1 {# participant} other {# participants}}.",
+    "description": "Tooltip on the disabled join button when the call is full; {count} is the maximum number of participants."
+  },
+  "TyskrG": {
+    "defaultMessage": "Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. You now have access to <recordingsDocsLink>Call recordings</recordingsDocsLink>,<rtcdDocsLink>RTCD services</rtcdDocsLink>, <guestAccountsLink>guest accounts</guestAccountsLink>, <autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and <mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, among many other features. View all features in our <documentationLink>documentation</documentationLink>.",
+    "description": "Body of the trial-started modal in the admin console recordings section; {trialExpirationDate} is a date and each tag wraps a link to documentation or an admin console page."
+  },
+  "UF6kPm": {
+    "defaultMessage": "Direct",
+    "description": "Channel type label in the 'Calls by Channel Type' chart on the admin statistics page; means direct message channels."
+  },
+  "UcFeI7": {
+    "defaultMessage": "Show participants list",
+    "description": "Tooltip on the participants button in the call screen; opens the participants sidebar."
+  },
+  "Ug/N7H": {
+    "defaultMessage": "Calls are not available in a DM with a deactivated user.",
+    "description": "Tooltip on the disabled call button in a direct message with a deactivated user account."
+  },
+  "Uv823M": {
+    "defaultMessage": "Call transcriber threads",
+    "description": "Setting name in the admin console Calls plugin settings; number of threads for the post-call transcriber."
+  },
+  "Uys4Mj": {
+    "defaultMessage": "Close reactions",
+    "description": "Tooltip on the reaction button while the quick-reaction bar is open."
+  },
+  "VMXPVw": {
+    "defaultMessage": "The local IP address used by the RTC server to listen on for UDP connections.",
+    "description": "Admin console help text under the 'RTC Server Address (UDP)' setting."
+  },
+  "VXdfVy": {
+    "defaultMessage": "The local IP address used by the RTC server to listen on for TCP connections.",
+    "description": "Admin console help text under the 'RTC Server Address (TCP)' setting."
+  },
+  "VXuUsJ": {
+    "defaultMessage": "Share sound with screen",
+    "description": "Toggle title in the calls user settings; includes audio when sharing the screen."
+  },
+  "W9355R": {
+    "defaultMessage": "Unmute",
+    "description": "Tooltip on the microphone button while muted; verb, unmutes yourself."
+  },
+  "WUeQHK": {
+    "defaultMessage": "The maximum number of participants that can join a call. If left empty, or set to 0, an unlimited number of participants can join.",
+    "description": "Admin console help text under the 'Max call participants' setting."
+  },
+  "WWqBr0": {
+    "defaultMessage": "Ended at {endTime}",
+    "description": "Subtitle of the ended-call post; {endTime} is a formatted clock time."
+  },
+  "WhiGBX": {
+    "defaultMessage": "Stop sharing",
+    "description": "Button under the screen share preview in the call widget; stops sharing your screen."
+  },
+  "X2AtRx": {
+    "defaultMessage": "Speaker output",
+    "description": "Label of the speaker device selector in the calls user settings."
+  },
+  "X9g3QZ": {
+    "defaultMessage": "There's a limit of {count, plural, =1 {# participant} other {# participants}} per call.",
+    "description": "Tooltip on the disabled call button when the call would exceed the participant limit; {count} is that limit."
+  },
+  "XDWEZM": {
+    "defaultMessage": "Someone",
+    "description": "Fallback used in place of a participant's name in the in-call reactions stream when their profile is unknown."
+  },
+  "XPQ/IN": {
+    "defaultMessage": "The speech-to-text model size to use for post-call transcriptions. Heavier models will produce more accurate results at the expense of processing time and resources usage.",
+    "description": "Admin console help text under the 'Call transcriber model size' setting; refers to speech-to-text model sizes."
+  },
+  "Xq3WJ4": {
+    "defaultMessage": "No audio input permissions",
+    "description": "Tooltip title on the disabled microphone button when microphone permission is denied."
+  },
+  "Z/nRgQ": {
+    "defaultMessage": "Default - {deviceLabel}",
+    "description": "Option in the audio/video device selectors marking the system default device; {deviceLabel} is the device's name."
+  },
+  "Z6eZ+Z": {
+    "defaultMessage": "When set to true, video calls are enabled in direct message channels.",
+    "description": "Admin console help text under the 'Enable video calls in DMs' setting."
+  },
+  "ZTqTKs": {
+    "defaultMessage": "Total Calls",
+    "description": "Stat tile title on the Calls plugin statistics page in the system console."
+  },
+  "Zh+5A6": {
+    "defaultMessage": "On",
+    "description": "Label for the enabled state of a toggle/radio option, used in admin console settings and in the user's screen sharing settings summary."
+  },
+  "ZhtEeD": {
+    "defaultMessage": "Unable to start call",
+    "description": "Title of the error modal shown when the /call start slash command fails."
+  },
+  "ZqqZFV": {
+    "defaultMessage": "Settings for participants, screen sharing, ringing, and more",
+    "description": "Subtitle under the 'General settings' section header in the admin console plugin settings."
+  },
+  "ZvZBwP": {
+    "defaultMessage": "Leave and join new call",
+    "description": "Confirm button of the switch-call modal; leaves the current call and joins the new one."
+  },
+  "Zx9T5i": {
+    "defaultMessage": "Your trial has started!{br}Explore the benefits of Enterprise",
+    "description": "Title of the trial-started modal in the admin console; {br} is a line break between the two lines."
+  },
+  "a+2U7T": {
+    "defaultMessage": "This setting has been set through an environment variable. It cannot be changed through the System Console.",
+    "description": "Note shown under an admin console setting whose value is locked by an environment variable."
+  },
+  "aC/wxa": {
+    "defaultMessage": "a few seconds ago",
+    "description": "Relative timestamp for a call that started less than a minute ago, e.g. 'Started a few seconds ago'; lowercase, mid-sentence style."
+  },
+  "aVENjO": {
+    "defaultMessage": "By selecting <b>Try free for 30 days</b>, I agree to the <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>Privacy Policy</linkPrivacy>, and receiving product emails.",
+    "description": "Legal disclaimer under the 'Try free for 30 days' trial button in the admin console; the bold text must match that button label and the tags wrap links to legal documents."
+  },
+  "aaYQI7": {
+    "defaultMessage": "Enable IPv6 support (Experimental)",
+    "description": "Setting name in the admin console Calls plugin settings; keep the '(Experimental)' marker."
+  },
+  "aeJJMp": {
+    "defaultMessage": "Calls by Channel Type",
+    "description": "Chart title on the Calls plugin statistics page in the system console; breaks calls down by channel type (public, private, direct, group)."
+  },
+  "aft1aI": {
+    "defaultMessage": "Switch to grid view",
+    "description": "Tooltip/button in the call screen top bar; switches the participant layout to grid view."
+  },
+  "axn5zT": {
+    "defaultMessage": "Here's the call recording. Transcription is processing and will be posted when ready.",
+    "description": "Bot message posted in the call thread with the recording file while the transcription is still processing."
+  },
+  "b2Wfwm": {
+    "defaultMessage": "Open in new window",
+    "description": "Accessibility label for the pop-out button in the call widget; opens the call in a separate window."
+  },
+  "bBIj2W": {
+    "defaultMessage": "Recording has stopped. Processing…",
+    "description": "Header of the in-call prompt after the host stops recording; the recording file is being processed."
+  },
+  "bRM2eb": {
+    "defaultMessage": "Something went wrong with calls",
+    "description": "Title of the error modal shown in the desktop app when the calls client crashes."
+  },
+  "bgfiP8": {
+    "defaultMessage": "Allow screen sharing access to Mattermost.",
+    "description": "Tooltip subtext under 'No screen sharing permissions' on the disabled screen share button; 'Mattermost' is the product name."
+  },
+  "blRrrj": {
+    "defaultMessage": "Mirror video",
+    "description": "Checkbox label in the calls video settings; horizontally flips your own camera preview."
+  },
+  "bvd1gK": {
+    "defaultMessage": "Try channel calls with a free trial",
+    "description": "Header of the cloud trial modal shown when calls in channels require a paid plan."
+  },
+  "byETlq": {
+    "defaultMessage": "Recording and transcription has started",
+    "description": "Header of the in-call prompt shown to the host after starting recording and transcription."
+  },
+  "cF+8Cn": {
+    "defaultMessage": "Do you want to leave and join a call in {channel}?",
+    "description": "Body of the switch-call confirmation modal; {channel} is the name of the channel with the call being joined."
+  },
+  "cIAiR2": {
+    "defaultMessage": "Hide participants",
+    "description": "Button/menu item in the call widget; collapses the participants list."
+  },
+  "cLA9Ho": {
+    "defaultMessage": "Try free for 30 days",
+    "description": "Button that starts a free 30-day Enterprise/Professional trial; used in the cloud trial modal and admin console upsell banners."
+  },
+  "cT92bQ": {
+    "defaultMessage": "Live captions language",
+    "description": "Setting name in the admin console Calls plugin settings; language used by the live captions transcriber."
+  },
+  "cW6887": {
+    "defaultMessage": "Microphone",
+    "description": "Section label for the microphone device selector in the in-call settings menu."
+  },
+  "ccAjUZ": {
+    "defaultMessage": "Call from {callerName}",
+    "description": "Plain-text tooltip for the condensed incoming call banner; {callerName} is the caller's display name."
+  },
+  "cn4U3Z": {
+    "defaultMessage": "No audio input devices",
+    "description": "Tooltip title on the disabled microphone button when no microphone device is detected."
+  },
+  "cyR7Kh": {
+    "defaultMessage": "Back",
+    "description": "Cancel button in the cloud trial/upgrade modal; returns to the previous view."
+  },
+  "cyRErF": {
+    "defaultMessage": "The number of separate live-captions transcribers for each call. Each transcribes one audio stream at a time. The product of LiveCaptionsNumTranscribers * LiveCaptionsNumThreadsPerTranscriber must be in the range [1, numCPUs].",
+    "description": "Admin console help text under the 'Live captions: Number of transcribers used per call' setting; the CamelCase names are config keys, do not translate them."
+  },
+  "dCb7CD": {
+    "defaultMessage": "Start call",
+    "description": "Channel header button and dropdown item that starts a new call in the current channel."
+  },
+  "dYWbfI": {
+    "defaultMessage": "RTC Server Address (TCP)",
+    "description": "Setting name in the admin console Calls plugin settings; TCP listening address of the built-in RTC server."
+  },
+  "duV28m": {
+    "defaultMessage": "Live captions: Number of transcribers used per call",
+    "description": "Setting name in the admin console Calls plugin settings; the 'Live captions:' prefix groups related settings."
+  },
+  "e0O55n": {
+    "defaultMessage": "Live captions: Model size",
+    "description": "Setting name in the admin console Calls plugin settings; speech-to-text model size for live captions."
+  },
+  "eB0u7Z": {
+    "defaultMessage": "Calls are a quick, audio-first, way to interact with your team. Upgrade to Mattermost Professional to use calls in channels and group messages.",
+    "description": "Body of the cloud upgrade modal shown to end users on the free plan; 'Mattermost Professional' is a plan name."
+  },
+  "eC6XJY": {
+    "defaultMessage": "Stop screen share",
+    "description": "Item in the host controls menu; stops the selected participant's screen share."
+  },
+  "eGdbaZ": {
+    "defaultMessage": "The host has started recording and transcription for this meeting. By staying in the meeting, you give consent to being recorded and transcribed.",
+    "description": "Body of the consent prompt shown to call participants when the host starts recording and transcription."
+  },
+  "ePQ5jF": {
+    "defaultMessage": "When enabled, audio from your browser tab or system (depending on what's shared) will be included with the screen content.",
+    "description": "Help text under the 'Share sound with screen' toggle in the calls user settings."
+  },
+  "ePVyxv": {
+    "defaultMessage": "Test mode",
+    "description": "Setting name in the admin console Calls plugin settings; restricts starting calls to system admins for testing."
+  },
+  "eisS9Z": {
+    "defaultMessage": "Call ended",
+    "description": "Title of the channel post after a call has ended."
+  },
+  "elmIJt": {
+    "defaultMessage": "Avg Call Participants",
+    "description": "Stat tile title on the Calls plugin statistics page in the system console; average number of participants per call."
+  },
+  "esxtQH": {
+    "defaultMessage": "Call from {callerName} with {others}",
+    "description": "Plain-text tooltip for the condensed incoming call banner; {callerName} is the caller and {others} lists the other participants."
+  },
+  "euPd26": {
+    "defaultMessage": "Do you want to leave and join a call with {user}?",
+    "description": "Body of the switch-call confirmation modal; {user} is the display name of the person in the call being joined."
+  },
+  "evecl7": {
+    "defaultMessage": "Azure API Key",
+    "description": "Setting name in the admin console Calls plugin settings; API key for Azure Speech Services transcriptions."
+  },
+  "fBafHF": {
+    "defaultMessage": "ICE and TURN",
+    "description": "Section title in the admin console Calls plugin settings; ICE and TURN are WebRTC protocols."
+  },
+  "fLgmQZ": {
+    "defaultMessage": "Unable to stop recording",
+    "description": "Title of the error modal shown when the /call recording stop slash command fails."
+  },
+  "fnihsY": {
+    "defaultMessage": "Leave",
+    "description": "Button on the ongoing-call post in the channel; leaves the call the user is currently connected to."
+  },
+  "fuOxwe": {
+    "defaultMessage": "Maximum call recording duration",
+    "description": "Setting name in the admin console Calls plugin settings; maximum length of a call recording."
+  },
+  "gRWCuk": {
+    "defaultMessage": "The host has started recording this meeting. By staying in the meeting, you give consent to being recorded.",
+    "description": "Body of the consent prompt shown to call participants when the host starts recording."
+  },
+  "gZlFBP": {
+    "defaultMessage": "Okay",
+    "description": "Confirm/acknowledge button in the trial error modal in the admin console."
+  },
+  "h/atWw": {
+    "defaultMessage": "The number of threads used by the post-call transcriber. This must be in the range [1, numCPUs].",
+    "description": "Admin console help text under the 'Call transcriber threads' setting; numCPUs means the number of CPU cores."
+  },
+  "hMhzKQ": {
+    "defaultMessage": "Set up call recordings",
+    "description": "Confirm button of the trial-started modal in the admin console; navigates to the call recordings settings."
+  },
+  "hNzZpk": {
+    "defaultMessage": "Sorry, participants per call are currently limited to {count}.",
+    "description": "Tooltip on the disabled join button of the call post when the call is full; {count} is the participant limit."
+  },
+  "hgr938": {
+    "defaultMessage": "{callerName} is inviting you to a call",
+    "description": "Desktop notification body for an incoming call ring; {callerName} is the caller's display name."
+  },
+  "i9WVfc": {
+    "defaultMessage": "Call transcriber model size",
+    "description": "Setting name in the admin console Calls plugin settings; speech-to-text model size for post-call transcriptions."
+  },
+  "iPB+yD": {
+    "defaultMessage": "Pop out",
+    "description": "Tooltip on the button that opens the call in a separate window; compact space."
+  },
+  "iWGktR": {
+    "defaultMessage": "Disable calls",
+    "description": "Channel menu item for admins; disables the calls feature in the current channel."
+  },
+  "iaLwNK": {
+    "defaultMessage": "The TCP port the RTC server will listen on.",
+    "description": "Admin console help text under the 'RTC Server Port (TCP)' setting."
+  },
+  "iwiMzv": {
+    "defaultMessage": "Select Notify admin to send an automatic request to your system admins to start the trial.",
+    "description": "Body text of the cloud trial modal shown to end users; 'Notify admin' matches the confirm button label."
+  },
+  "j14FPi": {
+    "defaultMessage": "Total Active Call Sessions",
+    "description": "Stat tile title on the Calls plugin statistics page in the system console; a session is one connected client."
+  },
+  "jJx0DN": {
+    "defaultMessage": "<b>{callerName}</b> is inviting you to a call",
+    "description": "Text on the incoming call (ringing) notification card; {callerName} is the caller's display name."
+  },
+  "jhSOa2": {
+    "defaultMessage": "Unable to start or join call",
+    "description": "Title of the error modal shown when the /call start or join slash command fails."
+  },
+  "jlh3Mq": {
+    "defaultMessage": "Azure API Region",
+    "description": "Setting name in the admin console Calls plugin settings; region for the Azure Speech Services API."
+  },
+  "jvo0vs": {
+    "defaultMessage": "Save",
+    "description": "Save button in the calls sections of the user settings dialog (audio/video devices, screen sharing)."
+  },
+  "jxJ92u": {
+    "defaultMessage": "(Optional) A list of ICE servers (STUN/TURN) configurations to use. This field should contain a valid JSON array.",
+    "description": "Admin console help text under the 'ICE Servers Configurations' setting; STUN/TURN are WebRTC terms."
+  },
+  "k+s53l": {
+    "defaultMessage": "Hide chat",
+    "description": "Tooltip on the chat button in the popped-out call window while the chat panel is open."
+  },
+  "k2FwJB": {
+    "defaultMessage": "Displays spoken words as text captions during a call. Recordings and transcriptions must be enabled",
+    "description": "Subtitle under the 'Live captions' section header in the admin console, shown when recordings and transcriptions are already enabled."
+  },
+  "kJ5W29": {
+    "defaultMessage": "You",
+    "description": "Substitutes the current user's own name in the in-call reactions and raised-hand stream, e.g. 'You raised a hand'."
+  },
+  "khySO0": {
+    "defaultMessage": "TURN Credentials Expiration (minutes)",
+    "description": "Setting name in the admin console Calls plugin settings; TURN is a WebRTC relay protocol."
+  },
+  "kj3s4R": {
+    "defaultMessage": "The host removed you from the call.",
+    "description": "Body of the modal shown to a user after the call host removed them from the call."
+  },
+  "kr3shS": {
+    "defaultMessage": "Unable to join call",
+    "description": "Title of the error modal shown when the /call join slash command fails."
+  },
+  "ks1Gvx": {
+    "defaultMessage": "Or hold space bar",
+    "description": "Tooltip subtext under 'Unmute' in the call screen; explains push-to-talk by holding the space bar."
+  },
+  "l/BSzX": {
+    "defaultMessage": "When set to true, simulcast for screen sharing is enabled. This can help to improve screen sharing quality.",
+    "description": "Admin console help text under the 'Enable simulcast for screen sharing' setting; simulcast is a WebRTC technique."
+  },
+  "lE59Z5": {
+    "defaultMessage": "Use data channels for signaling (Experimental)",
+    "description": "Setting name in the admin console Calls plugin settings; refers to WebRTC data channels, keep the '(Experimental)' marker."
+  },
+  "lKv8ex": {
+    "defaultMessage": "Default",
+    "description": "Fallback option label in the audio/video device selectors when the system default device has no name; refers to the default device."
+  },
+  "lRSSL4": {
+    "defaultMessage": "You're already in a call in {channel}.",
+    "description": "Body of the switch-call modal; {channel} is the name of the channel with the user's current call."
+  },
+  "lWsBmL": {
+    "defaultMessage": "Chat unavailable: different team selected. Click here to switch back to {channelName} in {teamName}.",
+    "description": "Tooltip on the disabled chat button in the call screen when the main app is showing a different team; {channelName} and {teamName} identify where the call's channel lives."
+  },
+  "lhEBhE": {
+    "defaultMessage": "Looks like something went wrong with calls. You can restart the app and try again.",
+    "description": "Body of the error modal shown in the desktop app when calls crash, suggesting an app restart."
+  },
+  "lmIKQg": {
+    "defaultMessage": "(you)",
+    "description": "Suffix appended after the current user's own name in participant lists; keep the parentheses, compact space."
+  },
+  "lr1SOF": {
+    "defaultMessage": "<b>{callerName}</b> is inviting you to a call with <b>{others}</b>",
+    "description": "Text on the incoming call notification card for group calls; {callerName} is the caller and {others} lists the other participants."
+  },
+  "mMHaeQ": {
+    "defaultMessage": "Mute others",
+    "description": "Button in the participants list header, available to the host; mutes all other participants at once."
+  },
+  "mRqfP4": {
+    "defaultMessage": "Choose what to share",
+    "description": "Title of the screen-share source picker modal (choosing which screen or window to share)."
+  },
+  "mqXYm4": {
+    "defaultMessage": "At the moment, {count} is the participant limit for cloud calls.",
+    "description": "Tooltip subtext on the disabled call button on Mattermost Cloud; {count} is the participant limit."
+  },
+  "mr/F9t": {
+    "defaultMessage": "Enable video calls in DMs (Experimental)",
+    "description": "Setting name in the admin console Calls plugin settings; 'DMs' means direct message channels, keep the '(Experimental)' marker."
+  },
+  "mzT8sG": {
+    "defaultMessage": "Enable simulcast for screen sharing (Experimental)",
+    "description": "Setting name in the admin console Calls plugin settings; simulcast is a WebRTC term, keep the '(Experimental)' marker."
+  },
+  "n1Ubod": {
+    "defaultMessage": "Enable call recordings",
+    "description": "Setting name in the admin console Calls plugin settings; enables recording of calls."
+  },
+  "nOZzE1": {
+    "defaultMessage": "You're viewing {presenter}'s screen",
+    "description": "Label shown over the shared screen in the call widget; {presenter} is the presenter's display name."
+  },
+  "neS8Zu": {
+    "defaultMessage": "You're viewing {presenterName}'s screen",
+    "description": "Label shown over the shared screen in the call screen; {presenterName} is the presenter's display name."
+  },
+  "o1mCbV": {
+    "defaultMessage": "Stop presenting",
+    "description": "Tooltip/menu item for the screen share button while sharing; stops sharing your screen."
+  },
+  "oCnRcJ": {
+    "defaultMessage": "Raise hand",
+    "description": "Tooltip/button in the call toolbar; raises your hand to ask for attention."
+  },
+  "oHaYeq": {
+    "defaultMessage": "Starting call…",
+    "description": "Channel header button label and loading overlay text while a new call is starting; ends with an ellipsis."
+  },
+  "oHffQz": {
+    "defaultMessage": "There was an error with the connection to the call. Try to <joinLink>re-join</joinLink> the call.",
+    "description": "Body of the call connection error modal; the tag wraps a link that re-joins the call."
+  },
+  "oIy77K": {
+    "defaultMessage": "Recordings include the entire call window view along with participants’ audio track and any shared screen video. Recordings are stored in Mattermost",
+    "description": "Subtitle under the 'Call recordings' section header in the admin console plugin settings."
+  },
+  "oNH4AW": {
+    "defaultMessage": "Close window",
+    "description": "Accessibility label for the button that closes the popped-out call window."
+  },
+  "ogJ7x+": {
+    "defaultMessage": "Upgrade to Cloud Professional or Cloud Enterprise to enable group calls with more than {count, plural, =1 {# participant} other {# participants}}.",
+    "description": "Tooltip subtext on the disabled call button; {count} is the participant limit on the free cloud plan; 'Cloud Professional/Enterprise' are plan names."
+  },
+  "omP/e4": {
+    "defaultMessage": "Use your own WebRTC service",
+    "description": "Title of the Enterprise upsell banner in the admin console RTCD section; WebRTC is a technical term."
+  },
+  "ovJ26C": {
+    "defaultMessage": "Medium",
+    "description": "Option label for the 'Call recording quality' dropdown in the admin console plugin settings; the middle quality level."
+  },
+  "p/C72L": {
+    "defaultMessage": "Total Active Calls",
+    "description": "Stat tile title on the Calls plugin statistics page in the system console."
+  },
+  "p0+4B8": {
+    "defaultMessage": "<b>You're unmuted.</b> Select {muteIcon} to mute.",
+    "description": "Transient notification shown after joining a call unmuted; {muteIcon} is the microphone icon shown inline."
+  },
+  "p7D2e3": {
+    "defaultMessage": "In this channel",
+    "description": "Subtext under 'Start call'/'Join call' in the channel header dropdown, clarifying the call happens in the current channel."
+  },
+  "paBpxN": {
+    "defaultMessage": "Ignore",
+    "description": "Button on the incoming call notification card; dismisses the ringing notification without joining."
+  },
+  "pkW7OA": {
+    "defaultMessage": "The number of threads per live-captions transcriber. The product of LiveCaptionsNumTranscribers * LiveCaptionsNumThreadsPerTranscriber must be in the range [1, numCPUs].",
+    "description": "Admin console help text under the 'Live captions: Number of threads per transcriber' setting; the CamelCase names are config keys, do not translate them."
+  },
+  "pz19dc": {
+    "defaultMessage": "Turn camera on",
+    "description": "Tooltip on the camera button while the camera is off."
+  },
+  "q/D7UA": {
+    "defaultMessage": "Configure a dedicated service used to offload calls and efficiently support scalable and secure deployments",
+    "description": "Subtitle under the 'RTCD Service' section header in the admin console plugin settings."
+  },
+  "qR+5t1": {
+    "defaultMessage": "is talking…",
+    "description": "Fragment appended after a participant's name in the call widget, e.g. 'Alice is talking…'; concatenated with the name shown before it."
+  },
+  "r/Y8Q3": {
+    "defaultMessage": "Try plugging in a video input device.",
+    "description": "Tooltip subtext under 'No video input devices' on the disabled camera button."
+  },
+  "rDKqMG": {
+    "defaultMessage": "You were removed from the call",
+    "description": "Title of the modal shown after the host removed the user from the call."
+  },
+  "rZ+XbM": {
+    "defaultMessage": "Blur background",
+    "description": "Checkbox label in the calls video settings; blurs the camera background."
+  },
+  "rjM2Q9": {
+    "defaultMessage": "Unable to leave the call",
+    "description": "Title of the error modal shown when the /call leave slash command fails."
+  },
+  "rxqs5U": {
+    "defaultMessage": "False",
+    "description": "Radio option label for boolean settings in the admin console Calls plugin settings."
+  },
+  "s/N5tn": {
+    "defaultMessage": "You're not connected to a call in the current channel.",
+    "description": "Error modal body for /call slash commands that require being connected to a call in the current channel."
+  },
+  "s822C5": {
+    "defaultMessage": "The speech-to-text model size to use for live captions. Heavier models will produce more accurate results at the expense of processing time and resources usage.",
+    "description": "Admin console help text under the 'Live captions: Model size' setting; refers to speech-to-text model sizes."
+  },
+  "sCBCDq": {
+    "defaultMessage": "Stop recording",
+    "description": "Tooltip/menu item to stop the ongoing recording; also the confirm button and title of the stop-recording confirmation dialog."
+  },
+  "sCoM27": {
+    "defaultMessage": "Stop recording and transcription",
+    "description": "Title and confirm action of the stop-recording confirmation dialog when transcription is also running."
+  },
+  "sb3k8n": {
+    "defaultMessage": "Lasted {callDuration}",
+    "description": "Subtitle of the ended-call post; {callDuration} is a human-readable duration such as '5 minutes'."
+  },
+  "siSK92": {
+    "defaultMessage": "(Optional) The number of minutes that the generated TURN credentials will be valid for.",
+    "description": "Admin console help text under the 'TURN Credentials Expiration' setting."
+  },
+  "stldp3": {
+    "defaultMessage": "Video devices",
+    "description": "Section title in the calls user settings for camera options."
+  },
+  "swGCLs": {
+    "defaultMessage": "RTCD service URL",
+    "description": "Setting name in the admin console Calls plugin settings; RTCD is the name of Mattermost's dedicated calls service."
+  },
+  "sxRGRa": {
+    "defaultMessage": "Allow camera access to Mattermost.",
+    "description": "In-call error banner and tooltip subtext when camera permission is denied; 'Mattermost' is the product name."
+  },
+  "syezrN": {
+    "defaultMessage": "Enable call transcriptions (Beta)",
+    "description": "Setting name in the admin console Calls plugin settings; keep the '(Beta)' marker."
+  },
+  "tBbQCQ": {
+    "defaultMessage": "<b>{name}</b> was removed from the call",
+    "description": "Transient in-call notice; {name} is the display name of the participant the host removed."
+  },
+  "tFFfej": {
+    "defaultMessage": "Network configuration for the integrated RTC server",
+    "description": "Subtitle under the 'RTC Server' section header in the admin console plugin settings."
+  },
+  "tWDocx": {
+    "defaultMessage": "Remove participant",
+    "description": "Header of the confirmation dialog shown to the host before removing someone from the call."
+  },
+  "tcxpLX": {
+    "defaultMessage": "No one",
+    "description": "Shown in the call widget in place of a speaker's name when nobody is speaking; followed by the 'is talking…' fragment."
+  },
+  "tjqBPU": {
+    "defaultMessage": "You were removed from the channel",
+    "description": "Title of the modal shown when the user is disconnected from a call after being removed from the channel."
+  },
+  "tkrJyM": {
+    "defaultMessage": "A recording is already in progress.",
+    "description": "Error modal body for the /call recording start slash command when a recording is already running."
+  },
+  "uDqZfV": {
+    "defaultMessage": "(Optional) When set to true, call recordings are enabled.",
+    "description": "Admin console help text under the 'Enable call recordings' setting."
+  },
+  "uP11RR": {
+    "defaultMessage": "Live captions",
+    "description": "Section title in the admin console Calls plugin settings for the live captions feature."
+  },
+  "uhu5aG": {
+    "defaultMessage": "Public",
+    "description": "Channel type label in the 'Calls by Channel Type' chart on the admin statistics page; means public channels."
+  },
+  "ul0LrL": {
+    "defaultMessage": "{num, plural, one {# other} other {# others}}",
+    "description": "Overflow item appended to a list of participant names when it is truncated, e.g. 'Alice, Bob and 3 others'."
+  },
+  "v+ptbV": {
+    "defaultMessage": "ICE Servers Configurations",
+    "description": "Setting name in the admin console Calls plugin settings; ICE is a WebRTC term."
+  },
+  "v5GPHS": {
+    "defaultMessage": "Hide participants list",
+    "description": "Tooltip on the participants button in the call screen while the participants sidebar is open."
+  },
+  "v5VizZ": {
+    "defaultMessage": "RTCD Service",
+    "description": "Section title in the admin console Calls plugin settings; RTCD is the name of Mattermost's dedicated calls service."
+  },
+  "vQOne2": {
+    "defaultMessage": "Allows calls to be transcribed to text files. Recordings must be enabled",
+    "description": "Subtitle under the 'Call transcriptions' section header in the admin console, shown when recordings are already enabled."
+  },
+  "veptjG": {
+    "defaultMessage": "You're already connected to a call in the current channel.",
+    "description": "Error modal body for the /call join slash command when the user is already in the channel's call."
+  },
+  "vev9kZ": {
+    "defaultMessage": "You're already in a call with {participants}.",
+    "description": "Body of the switch-call modal; {participants} is a list of people in the user's current call."
+  },
+  "viXE32": {
+    "defaultMessage": "Private",
+    "description": "Channel type label in the 'Calls by Channel Type' chart on the admin statistics page; means private channels."
+  },
+  "vp+5Dc": {
+    "defaultMessage": "<b>{host}</b> lowered your hand",
+    "description": "Transient in-call notice shown when the host lowers the user's raised hand; {host} is the host's display name."
+  },
+  "vxEY29": {
+    "defaultMessage": "Leave call",
+    "description": "Button/tooltip in the call toolbar; disconnects you from the current call."
+  },
+  "wEGS+o": {
+    "defaultMessage": "You have left the channel, and have been disconnected from the call.",
+    "description": "Body of the modal shown when the user is disconnected from a call because they left the channel."
+  },
+  "wEQDC6": {
+    "defaultMessage": "Edit",
+    "description": "Button that expands a section of the calls user settings for editing."
+  },
+  "wL1sJv": {
+    "defaultMessage": "Close emoji picker",
+    "description": "Accessibility label/tooltip for the emoji picker toggle while the picker is open."
+  },
+  "x6EHjL": {
+    "defaultMessage": "You don't have permission to start a recording. Please ask the call host to start a recording.",
+    "description": "Error modal body for the /call recording start slash command when the user is not the call host."
+  },
+  "x82IOl": {
+    "defaultMessage": "Mute",
+    "description": "Tooltip on the microphone button in the call widget and call screen; verb, mutes yourself."
+  },
+  "xXjqzO": {
+    "defaultMessage": "Additional settings",
+    "description": "Item in the in-call settings menu that opens the full calls user settings dialog."
+  },
+  "xYhChH": {
+    "defaultMessage": "Are you sure you want to remove <b>{userName}</b> from the call?",
+    "description": "Body of the remove-participant confirmation dialog; {userName} is the participant's display name."
+  },
+  "xhPELz": {
+    "defaultMessage": "(Optional) When enabled, it will pass and use the configured TURN candidates to server initiated connections.",
+    "description": "Admin console help text under the 'Server Side TURN' setting."
+  },
+  "y9QV2M": {
+    "defaultMessage": "Turn camera off",
+    "description": "Tooltip on the camera button while the camera is on."
+  },
+  "yL9vD/": {
+    "defaultMessage": "Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. You now have access to <rtcdDocsLink>RTCD services</rtcdDocsLink>, <recordingsDocsLink>call recordings</recordingsDocsLink>, <guestAccountsLink>guest accounts</guestAccountsLink>, <autoComplianceReportsLink>automated compliance reports</autoComplianceReportsLink>, and <mobileSecureNotificationsLink>mobile secure-ID push notifications</mobileSecureNotificationsLink>, among many other features. View all features in our <documentationLink>documentation</documentationLink>.",
+    "description": "Body of the trial-started modal in the admin console RTCD section; {trialExpirationDate} is a date and each tag wraps a link to documentation or an admin console page."
+  },
+  "yO68rk": {
+    "defaultMessage": "Calls are currently running in test mode and only system admins can start them. Reach out directly to your system admin for assistance",
+    "description": "Body of the modal shown when a non-admin tries to start a call while calls are running in test mode."
+  },
+  "yfYHc5": {
+    "defaultMessage": "ICE Host Override",
+    "description": "Setting name in the admin console Calls plugin settings; ICE is a WebRTC term."
+  },
+  "yjQNKt": {
+    "defaultMessage": "Calls are disabled in this channel.",
+    "description": "Error modal body when trying to start or join a call in a channel where calls are disabled."
+  },
+  "yx0b7N": {
+    "defaultMessage": "{count, plural, =1 {# transcription} other {# transcriptions}}",
+    "description": "Label on the ended-call post showing how many transcription files are attached; {count} is the number of transcriptions."
+  },
+  "zUH89x": {
+    "defaultMessage": "The call recording will be processed and posted in the call thread. Are you sure you want to stop the recording?",
+    "description": "Body of the stop-recording confirmation dialog."
+  },
+  "zx0myy": {
+    "defaultMessage": "Participants",
+    "description": "Header of the participants list panel in the call widget and the call screen sidebar."
+  }
+}

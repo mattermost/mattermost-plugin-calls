@@ -1,0 +1,10 @@
+{
+  "UxatAw": {
+    "defaultMessage": "{count, plural, =1 {# participant} other {# participants}}",
+    "description": "Participant counter shown in the footer bar of the call recording view (the standalone view captured when a call is recorded); {count} is the number of people currently in the call and # renders that number; compact space."
+  },
+  "qR+5t1": {
+    "defaultMessage": "is talking…",
+    "description": "Fragment appended directly after a speaker's display name in the call widget and recording-view footer (e.g. 'Alice is talking…'); concatenated with the name, so it must work as a sentence continuation; keep the trailing ellipsis."
+  }
+}

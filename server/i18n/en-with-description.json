@@ -1,0 +1,72 @@
+[
+  {
+    "id": "app.add_user_session.group_calls_not_allowed_error",
+    "translation": "Calls on unlicensed servers are only available in DMs.",
+    "description": "Ephemeral bot message shown to an end user who tries to start a call in a group or channel on an unlicensed server (fallback for older clients that can't show the error natively)."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.enterprise",
+    "translation": "We highly recommend [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server.",
+    "description": "Recommendation paragraph appended after the intro in a warning DM the Calls bot sends to system admins on Enterprise-licensed servers when concurrent call sessions are high; contains a markdown link that must be preserved."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.intro",
+    "translation": "Your installation is experiencing heavy usage from Mattermost Calls that can negatively impact system performance and responsiveness.",
+    "description": "Opening paragraph of a warning DM the Calls bot sends to system admins when the number of concurrent call sessions is high; an edition-specific recommendation paragraph is appended after it, and the whole message is prefixed with a warning emoji."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+    "translation": "We highly recommend upgrading to [Enterprise](https://mattermost.com/pricing/) and [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server.",
+    "description": "Recommendation paragraph appended after the intro in the admin warning DM about high concurrent call sessions, shown on Professional-licensed or unlicensed Enterprise-ready servers; contains two markdown links that must be preserved."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.team",
+    "translation": "We highly recommend switching to [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) and [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server.",
+    "description": "Recommendation paragraph appended after the intro in the admin warning DM about high concurrent call sessions, shown on Team Edition servers; contains two markdown links that must be preserved."
+  },
+  {
+    "id": "app.call.ended_message",
+    "translation": "Call ended",
+    "description": "Text the call post in the channel is updated to when the call finishes; also used as the title of the post's message attachment."
+  },
+  {
+    "id": "app.call.new_recording_and_transcription_message",
+    "translation": "Here's the call recording. Transcription is processing and will be posted when ready.",
+    "description": "Message of a bot post in the call thread that attaches the finished call recording, used when transcriptions are enabled; the phrase 'of <call title> at <time> UTC' may be appended to it when the call has a title."
+  },
+  {
+    "id": "app.call.new_recording_message",
+    "translation": "Here's the call recording",
+    "description": "Message of a bot post in the call thread that attaches the finished call recording file; the phrase 'of <call title> at <time> UTC' may be appended to it when the call has a title."
+  },
+  {
+    "id": "app.call.new_transcription_message",
+    "translation": "Here's the call transcription",
+    "description": "Message of a bot post in the call thread that attaches the call transcription file; the phrase 'of <call title> at <time> UTC' may be appended to it when the call has a title."
+  },
+  {
+    "id": "app.call.started_message",
+    "translation": "{{.Username}} started a call",
+    "description": "Text of the post created in the channel when someone starts a call; {{.Username}} is the Mattermost username of the person who started it; also used as the post's attachment title."
+  },
+  {
+    "id": "app.call.started_message_fullname",
+    "translation": "{{.FirstName}} {{.LastName}} started a call",
+    "description": "Text of the post created in the channel when someone starts a call, used instead of the username variant when the server is configured to show full names; {{.FirstName}} and {{.LastName}} are the starter's first and last name; also used as the post's attachment title."
+  },
+  {
+    "id": "app.push_notification.generic_message",
+    "translation": "You've been invited to a call",
+    "description": "Body of the mobile push notification sent to DM/group members when a call starts and notification contents are restricted, so no sender name is included."
+  },
+  {
+    "id": "app.push_notification.inviting_message",
+    "translation": "{{.SenderName}} is inviting you to a call",
+    "description": "Body of the mobile push notification sent to DM/group members when a call starts and full notification contents are allowed; {{.SenderName}} is the display name of the person who started the call."
+  },
+  {
+    "id": "app.save_config.error",
+    "translation": "Failed to save config.",
+    "description": "Error message returned to system admins when saving the Calls plugin configuration in the System Console fails validation."
+  }
+]
