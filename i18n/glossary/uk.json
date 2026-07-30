@@ -1,0 +1,112 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "дзвінок",
+    "note": "Masculine. Genitive 'дзвінка', plural 'дзвінки'."
+  },
+  "start a call": {
+    "target": "розпочати дзвінок"
+  },
+  "join a call": {
+    "target": "приєднатися до дзвінка",
+    "note": "Grounded: 'Приєднатись до дзвінка'."
+  },
+  "leave a call": {
+    "target": "покинути дзвінок",
+    "note": "Existing mobile strings use 'Відключитись' for the Leave call button; prefer 'покинути дзвінок' to keep leave (self) distinct from end (everyone)."
+  },
+  "end a call": {
+    "target": "завершити дзвінок",
+    "note": "Grounded: 'Завершити дзвінок для всіх' = 'End call for everyone'."
+  },
+  "host": {
+    "target": "організатор",
+    "note": "Majority rendering for the call-host role ('Тепер ви - організатор'); 'хост' is used only for technical ICE host settings. Existing translations are inconsistent ('Host' -> 'Хост' in one string)."
+  },
+  "make host": {
+    "target": "зробити організатором",
+    "note": "Grounded; instrumental case after 'зробити'."
+  },
+  "host controls": {
+    "target": "керування організатора",
+    "note": "Existing string renders it 'Керування хостом', which conflicts with 'host' = 'організатор'; prefer 'керування організатора'."
+  },
+  "participant": {
+    "target": "учасник",
+    "note": "Genitive plural 'учасників' after numerals 5+."
+  },
+  "recording": {
+    "target": "запис",
+    "note": "Masculine. 'Record call' = 'Записати дзвінок'."
+  },
+  "transcription": {
+    "target": "транскрипція",
+    "note": "Majority rendering; 'розшифрування' also appears ('Розшифрування дзвінків') — standardize on 'транскрипція'."
+  },
+  "live captions": {
+    "target": "субтитри в реальному часі",
+    "note": "Grounded in mobile: 'Показувати субтитри в реальному часі'."
+  },
+  "raise hand": {
+    "target": "підняти руку",
+    "note": "Grounded."
+  },
+  "lower hand": {
+    "target": "опустити руку",
+    "note": "Grounded."
+  },
+  "screen share": {
+    "target": "спільний доступ до екрана",
+    "note": "Majority rendering; 'демонстрація екрана' also appears — prefer 'спільний доступ до екрана' for the feature, 'демонструвати екран' acceptable as verb."
+  },
+  "mute": {
+    "target": "вимкнути звук",
+    "note": "Microphone muting; grounded and consistent. Distinct from channel mute = 'заглушити'."
+  },
+  "unmute": {
+    "target": "увімкнути звук",
+    "note": "Grounded."
+  },
+  "mute others": {
+    "target": "вимкнути звук у інших",
+    "note": "Grounded; 'Mute participant' = 'Вимкнути звук в учасника'."
+  },
+  "call ringing": {
+    "target": "сигнал вхідного дзвінка",
+    "note": "No direct existing rendering; 'Enable call ringing' = 'Увімкнути сигнал вхідного дзвінка'. Related grounded string: 'Звук сповіщення про вхідні дзвінки'."
+  },
+  "pop out": {
+    "target": "відкрити в окремому вікні",
+    "note": "Existing string renders the 'Pop out' button as 'Спливаюче вікно' (noun); as a verb prefer 'відкрити в окремому вікні'."
+  },
+  "speaker view": {
+    "target": "режим доповідача",
+    "note": "Grounded: 'Перейти до режиму перегляду доповідача'; shorten to 'режим доповідача' where space is tight."
+  },
+  "grid view": {
+    "target": "режим сітки",
+    "note": "Grounded: 'Перейти до режиму перегляду сітки'."
+  },
+  "blur background": {
+    "target": "розмити фон",
+    "note": "Grounded; 'Blur intensity' = 'Інтенсивність розмиття'."
+  },
+  "meeting summary": {
+    "target": "підсумок зустрічі",
+    "note": "Grounded: 'Створіть підсумок зустрічі'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "połączenie",
+    "note": "Majority rendering (neuter; plural 'połączenia'). Existing strings also use 'rozmowa' interchangeably ('wątek rozmowy', 'Nagraj rozmowę') — prefer 'połączenie' for consistency; 'rozmowa' acceptable in natural-sounding sentences."
+  },
+  "start a call": {
+    "target": "rozpocząć połączenie",
+    "note": "Button 'Rozpocznij połączenie' (established)."
+  },
+  "join a call": {
+    "target": "dołączyć do połączenia",
+    "note": "Existing button is 'Dołącz do rozmowy' in calls/mobile, while error strings use 'dołączyć do połączenia'. Prefer 'Dołącz do połączenia' to align with the 'połączenie' terminology."
+  },
+  "leave a call": {
+    "target": "opuścić połączenie",
+    "note": "Button 'Opuść połączenie' (established)."
+  },
+  "end a call": {
+    "target": "zakończyć połączenie",
+    "note": "Button 'Zakończ połączenie'; 'End call for everyone' → 'Zakończ połączenie dla wszystkich' (established). Distinct from leaving ('opuścić')."
+  },
+  "host": {
+    "target": "gospodarz",
+    "note": "Existing renderings are inconsistent ('gospodarz', 'prowadzący', 'właściciel', untranslated 'host'). Prefer 'gospodarz' (most frequent): 'gospodarz połączenia'."
+  },
+  "make host": {
+    "target": "uczyń gospodarzem",
+    "note": "Existing mobile string 'Stwórz hosta' is incorrect — use 'Uczyń gospodarzem'."
+  },
+  "host controls": {
+    "target": "elementy sterujące gospodarza",
+    "note": "Existing single rendering is 'Elementy sterujące hosta'; adjust 'hosta' → 'gospodarza' to match the host term."
+  },
+  "participant": {
+    "target": "uczestnik",
+    "note": "Plural 'uczestnicy' (nominative), 'uczestników' (genitive)."
+  },
+  "recording": {
+    "target": "nagranie",
+    "note": "The artifact is 'nagranie'; the activity is 'nagrywanie' ('Stop recording' → 'Zatrzymaj nagrywanie'); 'Record call' → 'Nagraj połączenie'."
+  },
+  "transcription": {
+    "target": "transkrypcja",
+    "note": "Plural 'transkrypcje'; 'Call transcriptions' → 'Transkrypcje połączeń' (established)."
+  },
+  "live captions": {
+    "target": "napisy na żywo",
+    "note": "Established: 'Pokaż napisy na żywo'."
+  },
+  "raise hand": {
+    "target": "zgłoś się",
+    "note": "Established idiomatic rendering in both calls and mobile ('Zgłoś się', lit. 'volunteer/raise your hand in class'). Keep it; the literal 'podnieś rękę' is not used."
+  },
+  "lower hand": {
+    "target": "opuść rękę",
+    "note": "Established in calls plugin. One mobile string mistranslates it as 'Dolna ręka' — avoid."
+  },
+  "screen share": {
+    "target": "udostępnianie ekranu",
+    "note": "Verb: 'udostępnij ekran'; 'Stop screen share' → 'Zatrzymaj udostępnianie ekranu' (established)."
+  },
+  "mute": {
+    "target": "wyciszyć",
+    "note": "Button 'Wycisz'; 'muted' → 'wyciszony'. In Calls this is microphone muting — same Polish verb as channel muting, context disambiguates."
+  },
+  "unmute": {
+    "target": "wyłączyć wyciszenie",
+    "note": "Button 'Wyłącz wyciszenie' (established)."
+  },
+  "mute others": {
+    "target": "wycisz innych",
+    "note": "'Mute participant' → 'Wycisz uczestnika' (established)."
+  },
+  "call ringing": {
+    "target": "dzwonienie",
+    "note": "'Enable call ringing' → 'Włącz dzwonienie połączeń' (existing uses 'Włącz dzwonek połączenia'; both occur — 'dzwonienie' matches the feature description strings)."
+  },
+  "pop out": {
+    "target": "otwórz w osobnym oknie",
+    "note": "Existing rendering 'Wyskakuj' is incorrect. Use 'Otwórz w osobnym oknie' for the widget pop-out action."
+  },
+  "speaker view": {
+    "target": "widok mówcy",
+    "note": "Established: 'Przełącz na widok mówcy'."
+  },
+  "grid view": {
+    "target": "widok siatki",
+    "note": "Established: 'Przełącz na widok siatki'."
+  },
+  "blur background": {
+    "target": "rozmyj tło",
+    "note": "Noun form 'rozmycie tła' (established); 'Blur intensity' → 'Intensywność rozmycia'."
+  },
+  "meeting summary": {
+    "target": "podsumowanie spotkania",
+    "note": "Established: 'Utwórz podsumowanie spotkania'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

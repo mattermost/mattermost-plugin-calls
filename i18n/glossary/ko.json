@@ -1,0 +1,107 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "통화"
+  },
+  "start a call": {
+    "target": "통화 시작",
+    "note": "Verb: 통화를 시작하다."
+  },
+  "join a call": {
+    "target": "통화 참가",
+    "note": "Verb: 통화에 참가하다. Existing mixes 참가/참여; prefer 참가 (matches participant = 참가자)."
+  },
+  "leave a call": {
+    "target": "통화 나가기",
+    "note": "Existing renders 'Leave call' as 통화 종료, which collides with 'End call' = 통화 종료. Use 통화 나가기 to keep the host-only end action distinct."
+  },
+  "end a call": {
+    "target": "통화 종료",
+    "note": "End call for everyone = 모두를 위한 통화 종료 / 모든 참가자의 통화 종료."
+  },
+  "host": {
+    "target": "호스트"
+  },
+  "make host": {
+    "target": "호스트로 지정",
+    "note": "Existing single string uses 호스트로 하기; 호스트로 지정 is the natural UI form."
+  },
+  "host controls": {
+    "target": "호스트 제어"
+  },
+  "participant": {
+    "target": "참가자"
+  },
+  "recording": {
+    "target": "녹음",
+    "note": "Call recording = 통화 녹음 (majority). Existing also uses 녹화 in in-progress banners; keep 녹음 unless the string specifically covers video/screen capture."
+  },
+  "transcription": {
+    "target": "녹취록",
+    "note": "The activity is 녹취 (녹음 및 녹취); the resulting document is 녹취록."
+  },
+  "live captions": {
+    "target": "라이브 자막",
+    "note": "Existing mixes 라이브 자막/라이브 캡션/실시간 자막; standardize on 라이브 자막."
+  },
+  "raise hand": {
+    "target": "손 들기",
+    "note": "Verb: 손을 들다."
+  },
+  "lower hand": {
+    "target": "손 내리기",
+    "note": "Verb: 손을 내리다."
+  },
+  "screen share": {
+    "target": "화면 공유",
+    "note": "Verb: 화면을 공유하다; Stop screen share = 화면 공유 중지."
+  },
+  "mute": {
+    "target": "음소거",
+    "note": "Microphone mute; verb 음소거하다."
+  },
+  "unmute": {
+    "target": "음소거 해제"
+  },
+  "mute others": {
+    "target": "다른 사람 음소거"
+  },
+  "call ringing": {
+    "target": "통화 벨소리",
+    "note": "Existing mixes 벨소리 and 연결음; prefer 벨소리 for the incoming-call ring."
+  },
+  "pop out": {
+    "target": "팝아웃",
+    "note": "Verb: 팝아웃하다. One existing Calls string uses 팝업 — prefer 팝아웃 to match the desktop app."
+  },
+  "speaker view": {
+    "target": "발표자 보기",
+    "note": "No existing translation; matches the Zoom/Teams Korean convention."
+  },
+  "grid view": {
+    "target": "그리드 보기",
+    "note": "No existing translation."
+  },
+  "blur background": {
+    "target": "배경 흐리게",
+    "note": "Matches the Zoom/Teams Korean convention."
+  },
+  "meeting summary": {
+    "target": "미팅 요약",
+    "note": "Grounded in the existing string 미팅 요약 만들기; 회의 요약 is a natural alternative but keep 미팅 요약."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

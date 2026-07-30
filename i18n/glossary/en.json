@@ -1,0 +1,231 @@
+{
+  "Calls": {
+    "definition": "Product name of the Mattermost voice/video calling feature; stays in English as a product name.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": true
+  },
+  "call": {
+    "definition": "A real-time voice (and screen sharing) session held inside a channel or direct message.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": false,
+    "aliases": [
+      "Call",
+      "calls"
+    ]
+  },
+  "start a call": {
+    "definition": "To begin a new call in a channel, making it joinable by channel members.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "Start call"
+    ]
+  },
+  "join a call": {
+    "definition": "To enter an ongoing call in a channel.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "Join call"
+    ]
+  },
+  "leave a call": {
+    "definition": "To exit a call oneself while it continues for other participants.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "Leave call"
+    ]
+  },
+  "end a call": {
+    "definition": "To terminate the call for everyone; a host action, distinct from leaving.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "End call",
+      "End call for everyone"
+    ]
+  },
+  "host": {
+    "definition": "The participant with control over the call, who can mute others, stop recordings, and end the call.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": false,
+    "aliases": [
+      "Host"
+    ]
+  },
+  "make host": {
+    "definition": "To transfer the host role to another call participant.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "Make host"
+    ]
+  },
+  "host controls": {
+    "definition": "The set of moderation actions available to the call host, such as muting or removing participants.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": false,
+    "aliases": [
+      "Host controls"
+    ]
+  },
+  "participant": {
+    "definition": "A person currently connected to a call.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": false,
+    "aliases": [
+      "Participants",
+      "participants"
+    ]
+  },
+  "recording": {
+    "definition": "A saved audio/video capture of a call, posted to the channel when it finishes.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": false,
+    "aliases": [
+      "Recording",
+      "Recordings",
+      "Record call"
+    ]
+  },
+  "transcription": {
+    "definition": "The automatic text transcript generated from a call recording.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": false,
+    "aliases": [
+      "transcriptions",
+      "Call transcriptions"
+    ]
+  },
+  "live captions": {
+    "definition": "Real-time subtitles of what participants say, displayed during the call.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": false,
+    "aliases": [
+      "Live captions",
+      "live caption"
+    ]
+  },
+  "raise hand": {
+    "definition": "To signal that you want to speak by showing a hand indicator to other participants.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "Raise hand",
+      "raised a hand"
+    ]
+  },
+  "lower hand": {
+    "definition": "To remove your raised-hand indicator; the host can also lower a participant's hand.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "Lower hand"
+    ]
+  },
+  "screen share": {
+    "definition": "Showing your screen to other call participants; also called presenting.",
+    "partOfSpeech": "noun/verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "screen sharing",
+      "Stop screen share",
+      "Start presenting"
+    ]
+  },
+  "mute": {
+    "definition": "To turn off a microphone during a call; in Calls this refers to audio, not channel notifications.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "Mute",
+      "muted"
+    ]
+  },
+  "unmute": {
+    "definition": "To turn a call participant's microphone back on.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "Unmute"
+    ]
+  },
+  "mute others": {
+    "definition": "A host action that mutes all other participants' microphones at once.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "Mute others",
+      "Mute participant"
+    ]
+  },
+  "call ringing": {
+    "definition": "The incoming-call ring notification played when someone starts a call in a direct or group message.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": false,
+    "aliases": [
+      "Enable call ringing"
+    ]
+  },
+  "pop out": {
+    "definition": "To open the call controls in a separate window instead of the in-channel widget.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "Pop out"
+    ]
+  },
+  "speaker view": {
+    "definition": "Call layout that enlarges the active speaker or shared screen.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": false,
+    "aliases": [
+      "Switch to speaker view"
+    ]
+  },
+  "grid view": {
+    "definition": "Call layout showing all participants in equal-sized tiles.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": false,
+    "aliases": [
+      "Switch to grid view"
+    ]
+  },
+  "blur background": {
+    "definition": "A video option that blurs the participant's camera background.",
+    "partOfSpeech": "verb",
+    "doNotTranslate": false,
+    "aliases": [
+      "Blur background"
+    ]
+  },
+  "meeting summary": {
+    "definition": "An AI-generated summary created from a call's transcription.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": false,
+    "aliases": [
+      "Create meeting summary"
+    ]
+  },
+  "RTCD": {
+    "definition": "Mattermost's standalone real-time communication daemon that offloads call traffic; service name.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": true
+  },
+  "TURN": {
+    "definition": "Relay protocol used to route call media through restrictive networks; technical identity.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": true
+  },
+  "ICE": {
+    "definition": "Connectivity-establishment protocol used by WebRTC calls; technical identity.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": true
+  },
+  "WebRTC": {
+    "definition": "The browser real-time communication technology that Calls is built on; technical identity.",
+    "partOfSpeech": "noun",
+    "doNotTranslate": true
+  }
+}

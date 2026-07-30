@@ -1,0 +1,108 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "cuộc gọi",
+    "note": "Established in Calls vi.json."
+  },
+  "start a call": {
+    "target": "bắt đầu cuộc gọi"
+  },
+  "join a call": {
+    "target": "tham gia cuộc gọi",
+    "note": "Established in Calls vi.json."
+  },
+  "leave a call": {
+    "target": "rời khỏi cuộc gọi",
+    "note": "Established; short button 'Leave' = 'Rời'."
+  },
+  "end a call": {
+    "target": "kết thúc cuộc gọi",
+    "note": "Established; 'End call for everyone' = 'Kết thúc cuộc gọi cho tất cả mọi người'. Distinct from leave = 'rời khỏi'."
+  },
+  "host": {
+    "target": "chủ toạ",
+    "note": "Established in Calls vi.json ('Chủ toạ'). Alternative 'người chủ trì' (Zoom-style) exists but keep repo term; spelling 'chủ tọa' is equivalent — follow the repo's 'chủ toạ'."
+  },
+  "make host": {
+    "target": "chỉ định làm chủ toạ"
+  },
+  "host controls": {
+    "target": "quyền điều khiển của chủ toạ"
+  },
+  "participant": {
+    "target": "người tham gia",
+    "note": "Established in Calls vi.json."
+  },
+  "recording": {
+    "target": "bản ghi",
+    "note": "Calls vi.json mixes 'bản ghi' (noun) and 'ghi âm' (verb, e.g. 'Ghi âm cuộc gọi'); use 'bản ghi' for the artifact, 'ghi âm' for the action."
+  },
+  "transcription": {
+    "target": "bản chép lời",
+    "note": "No existing vi rendering; follows YouTube/Meet Vietnamese convention for transcripts."
+  },
+  "live captions": {
+    "target": "phụ đề trực tiếp",
+    "note": "No existing vi rendering; standard term for real-time captions."
+  },
+  "raise hand": {
+    "target": "giơ tay",
+    "note": "Established in Calls vi.json ('Giơ tay', 'đã giơ tay')."
+  },
+  "lower hand": {
+    "target": "hạ tay",
+    "note": "Calls vi.json has 'Đặt tay xuống'; 'hạ tay' is the established Zoom/Meet Vietnamese term and pairs with 'giơ tay'."
+  },
+  "screen share": {
+    "target": "chia sẻ màn hình",
+    "note": "Established in Calls vi.json."
+  },
+  "mute": {
+    "target": "tắt tiếng",
+    "note": "Microphone sense (established in Calls vi.json); distinct from channel mute = 'tắt thông báo' in core."
+  },
+  "unmute": {
+    "target": "bỏ tắt tiếng",
+    "note": "Established in Calls vi.json; 'bật tiếng' is an alternative but keep repo term."
+  },
+  "mute others": {
+    "target": "tắt tiếng người khác",
+    "note": "Mute participant = 'tắt tiếng người tham gia'."
+  },
+  "call ringing": {
+    "target": "chuông báo cuộc gọi",
+    "note": "Enable call ringing = 'Bật chuông báo cuộc gọi'."
+  },
+  "pop out": {
+    "target": "bật ra",
+    "note": "Established in Calls vi.json ('Pop out' -> 'Bật ra')."
+  },
+  "speaker view": {
+    "target": "chế độ xem người nói",
+    "note": "No existing vi rendering; follows Zoom Vietnamese convention."
+  },
+  "grid view": {
+    "target": "chế độ xem lưới"
+  },
+  "blur background": {
+    "target": "làm mờ nền"
+  },
+  "meeting summary": {
+    "target": "bản tóm tắt cuộc họp",
+    "note": "Aligns with core 'recap' = 'bản tóm tắt'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

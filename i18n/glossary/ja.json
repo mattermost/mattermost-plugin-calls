@@ -1,0 +1,103 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "通話"
+  },
+  "start a call": {
+    "target": "通話を開始する",
+    "note": "Button label: 通話の開始."
+  },
+  "join a call": {
+    "target": "通話に参加する"
+  },
+  "leave a call": {
+    "target": "通話を脱退する",
+    "note": "Existing rendering (通話を脱退する) is unusual — 退出する would be more natural — but keep 脱退する for consistency with the current UI."
+  },
+  "end a call": {
+    "target": "通話を終了する",
+    "note": "End call for everyone: 全員に対し通話を終了する."
+  },
+  "host": {
+    "target": "ホスト"
+  },
+  "make host": {
+    "target": "ホストにする"
+  },
+  "host controls": {
+    "target": "ホスト操作"
+  },
+  "participant": {
+    "target": "参加者"
+  },
+  "recording": {
+    "target": "レコーディング",
+    "note": "Majority rendering (通話レコーディング, レコーディングを停止する). One string uses 通話を記録する for 'Record call' — prefer レコーディング. Do not use 録画/録音."
+  },
+  "transcription": {
+    "target": "文字起こし",
+    "note": "Call transcriptions: 通話の文字起こし."
+  },
+  "live captions": {
+    "target": "ライブキャプション"
+  },
+  "raise hand": {
+    "target": "手を挙げる",
+    "note": "'{users} raised a hand': 挙手しています is also used for the state."
+  },
+  "lower hand": {
+    "target": "手を下げる"
+  },
+  "screen share": {
+    "target": "画面共有",
+    "note": "Verb: 画面を共有する; stop: 画面共有を停止."
+  },
+  "mute": {
+    "target": "ミュートする",
+    "note": "Microphone muting in calls; same katakana term as channel muting."
+  },
+  "unmute": {
+    "target": "ミュートを解除する",
+    "note": "Label: ミュート解除."
+  },
+  "mute others": {
+    "target": "他の人をミュートする",
+    "note": "Mute participant: 参加者をミュートする."
+  },
+  "call ringing": {
+    "target": "呼び出し音",
+    "note": "Enable call ringing: 呼び出し音を有効にする."
+  },
+  "pop out": {
+    "target": "ポップアウト"
+  },
+  "speaker view": {
+    "target": "話者ビュー",
+    "note": "Switch to speaker view: 話者ビューに切り替え."
+  },
+  "grid view": {
+    "target": "グリッドビュー"
+  },
+  "blur background": {
+    "target": "背景をぼかす",
+    "note": "Blur intensity: ぼかしの強さ."
+  },
+  "meeting summary": {
+    "target": "会議の要約",
+    "note": "Create meeting summary: 会議の要約を作成する."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

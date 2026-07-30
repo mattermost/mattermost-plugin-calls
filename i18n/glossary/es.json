@@ -1,0 +1,106 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "llamada"
+  },
+  "start a call": {
+    "target": "iniciar una llamada",
+    "note": "Button form: 'Iniciar llamada'."
+  },
+  "join a call": {
+    "target": "unirse a la llamada",
+    "note": "Existing button renders 'Join call' as just 'Unirse'."
+  },
+  "leave a call": {
+    "target": "abandonar la llamada",
+    "note": "Consistent with channel convention 'abandonar'; only the user leaves, the call continues."
+  },
+  "end a call": {
+    "target": "finalizar la llamada",
+    "note": "Existing 'End call for everyone' → 'Llamada final para todos' is a mistranslation; should be 'Finalizar la llamada para todos'."
+  },
+  "host": {
+    "target": "anfitrión",
+    "note": "Consistent repo rendering."
+  },
+  "make host": {
+    "target": "hacer anfitrión",
+    "note": "Existing menu item: 'Haz de anfitrión'; 'Convertir en anfitrión' is a clearer alternative."
+  },
+  "host controls": {
+    "target": "controles del anfitrión"
+  },
+  "participant": {
+    "target": "participante"
+  },
+  "recording": {
+    "target": "grabación",
+    "note": "Record call: 'Grabar llamada'."
+  },
+  "transcription": {
+    "target": "transcripción"
+  },
+  "live captions": {
+    "target": "subtítulos en directo",
+    "note": "Consistent repo rendering; es-419 would prefer 'subtítulos en vivo'."
+  },
+  "raise hand": {
+    "target": "levantar la mano",
+    "note": "Existing button uses imperative 'Levanta la mano'."
+  },
+  "lower hand": {
+    "target": "bajar la mano"
+  },
+  "screen share": {
+    "target": "compartir pantalla",
+    "note": "Noun: 'pantalla compartida' ('Detener la pantalla compartida' per existing)."
+  },
+  "mute": {
+    "target": "silenciar",
+    "note": "Microphone sense; same verb as channel muting."
+  },
+  "unmute": {
+    "target": "dejar de silenciar",
+    "note": "Webapp convention for unmute; existing Calls strings paraphrase ('Estás sin silenciar')."
+  },
+  "mute others": {
+    "target": "silenciar a otros",
+    "note": "Existing rendering; Mute participant: 'Silenciar participante'."
+  },
+  "call ringing": {
+    "target": "timbre de llamada",
+    "note": "Existing settings string uses 'timbre'. Enable call ringing: 'Activar el timbre de llamada'."
+  },
+  "pop out": {
+    "target": "abrir en ventana separada",
+    "note": "Existing 'Pop out' → 'Salir' is a mistranslation (reads as 'exit'); use 'Abrir en ventana separada' or 'Ventana independiente'."
+  },
+  "speaker view": {
+    "target": "vista de orador",
+    "note": "No repo signal; matches Teams/Zoom es convention."
+  },
+  "grid view": {
+    "target": "vista de cuadrícula"
+  },
+  "blur background": {
+    "target": "difuminar el fondo"
+  },
+  "meeting summary": {
+    "target": "resumen de la reunión",
+    "note": "Existing: 'Crear un resumen de la reunión'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "samtal",
+    "note": "ett samtal, samtalet, samtal (pl.). Established throughout existing translations."
+  },
+  "start a call": {
+    "target": "starta ett samtal",
+    "note": "Button: 'Starta samtal'."
+  },
+  "join a call": {
+    "target": "ansluta till ett samtal",
+    "note": "Existing majority uses 'anslut' for joining calls (button 'Anslut'); reserve 'gå med' for channels/teams."
+  },
+  "leave a call": {
+    "target": "lämna ett samtal",
+    "note": "Button: 'Lämna samtalet'."
+  },
+  "end a call": {
+    "target": "avsluta ett samtal",
+    "note": "Host action: 'Avsluta samtalet för alla'. Distinct from 'lämna' (leave)."
+  },
+  "host": {
+    "target": "värd",
+    "note": "en värd, värden."
+  },
+  "make host": {
+    "target": "gör till värd",
+    "note": "Existing rendering in both webapp and mobile."
+  },
+  "host controls": {
+    "target": "kontroller för värden",
+    "note": "Existing rendering; the compact 'värdkontroller' is an alternative if space is tight."
+  },
+  "participant": {
+    "target": "deltagare",
+    "note": "en deltagare, deltagarna."
+  },
+  "recording": {
+    "target": "inspelning",
+    "note": "en inspelning, inspelningar. Record call = 'spela in samtal'."
+  },
+  "transcription": {
+    "target": "transkribering",
+    "note": "Majority rendering (13 vs 1 for 'transkription'). Call transcriptions = 'samtalstranskriberingar'."
+  },
+  "live captions": {
+    "target": "direkttextning",
+    "note": "Established in existing Calls admin strings."
+  },
+  "raise hand": {
+    "target": "räcka upp handen",
+    "note": "Button: 'Räck upp handen'; '{name} räckte upp handen'."
+  },
+  "lower hand": {
+    "target": "ta ner handen",
+    "note": "Existing rendering: 'Ta ner handen'."
+  },
+  "screen share": {
+    "target": "skärmdelning",
+    "note": "Noun: 'skärmdelning'. Verb: 'dela skärmen' (Stop screen share = 'Sluta dela skärmen'; Start presenting = 'Börja presentera')."
+  },
+  "mute": {
+    "target": "mjuta",
+    "note": "Existing Calls strings consistently use the anglicism 'mjuta' ('Mjuta', 'mjutad'). Keep for consistency; 'stäng av mikrofonen' is the more standard Swedish phrasing if a cleanup is ever coordinated."
+  },
+  "unmute": {
+    "target": "avmjuta",
+    "note": "Existing variants: 'Avmjuta' (mobile), 'Ljud på', 'Avtysta'. Use 'avmjuta' to pair with 'mjuta'."
+  },
+  "mute others": {
+    "target": "mjuta andra",
+    "note": "Existing rendering; Mute participant = 'Mjuta deltagare'."
+  },
+  "call ringing": {
+    "target": "samtalssignal",
+    "note": "Existing writes 'samtals-signal'/'ringsignaler'; prefer the solid compound 'samtalssignal'. Enable call ringing = 'Aktivera samtalssignal'."
+  },
+  "pop out": {
+    "target": "öppna i eget fönster",
+    "note": "No existing sv translation for the widget action; use this descriptive phrase."
+  },
+  "speaker view": {
+    "target": "talarvy",
+    "note": "No existing sv translation; matches Teams/Zoom Swedish conventions. Switch to speaker view = 'Byt till talarvy'."
+  },
+  "grid view": {
+    "target": "rutnätsvy",
+    "note": "No existing sv translation. Switch to grid view = 'Byt till rutnätsvy'."
+  },
+  "blur background": {
+    "target": "gör bakgrunden suddig",
+    "note": "No existing sv translation; matches Teams Swedish convention."
+  },
+  "meeting summary": {
+    "target": "mötessammanfattning",
+    "note": "Existing: 'Skapa sammanfattning av mötet' — either the compound or that phrasing is fine; keep one per surface."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

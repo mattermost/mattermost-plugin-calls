@@ -1,0 +1,107 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "تماس"
+  },
+  "start a call": {
+    "target": "شروع تماس",
+    "note": "Existing rendering for the Start call button."
+  },
+  "join a call": {
+    "target": "پیوستن به تماس",
+    "note": "Existing rendering."
+  },
+  "leave a call": {
+    "target": "ترک تماس",
+    "note": "Existing rendering."
+  },
+  "end a call": {
+    "target": "پایان تماس",
+    "note": "Existing button rendering; full verb: پایان دادن به تماس. End call for everyone: پایان تماس برای همه."
+  },
+  "host": {
+    "target": "میزبان",
+    "note": "Existing mobile rendering."
+  },
+  "make host": {
+    "target": "میزبان کردن",
+    "note": "No existing fa; transferring the host role."
+  },
+  "host controls": {
+    "target": "کنترل‌های میزبان"
+  },
+  "participant": {
+    "target": "شرکت‌کننده",
+    "note": "Plural: شرکت‌کنندگان (existing mobile rendering)."
+  },
+  "recording": {
+    "target": "ضبط",
+    "note": "Existing rendering; Record call: ضبط تماس، Stop recording: توقف ضبط."
+  },
+  "transcription": {
+    "target": "رونویسی",
+    "note": "No existing fa; the transcript text itself can be متن رونویسی‌شده."
+  },
+  "live captions": {
+    "target": "زیرنویس زنده"
+  },
+  "raise hand": {
+    "target": "بالابردن دست",
+    "note": "Existing rendering."
+  },
+  "lower hand": {
+    "target": "پایین‌آوردن دست",
+    "note": "Existing rendering."
+  },
+  "screen share": {
+    "target": "اشتراک‌گذاری صفحه",
+    "note": "Verb: اشتراک‌گذاری صفحه / به اشتراک گذاشتن صفحه; Stop screen share: توقف اشتراک‌گذاری صفحه."
+  },
+  "mute": {
+    "target": "بی‌صدا کردن",
+    "note": "Existing button label: بی‌صدا. Microphone sense, distinct from channel mute."
+  },
+  "unmute": {
+    "target": "باصدا کردن",
+    "note": "Existing button label is the adjective صدادار; as a verb use باصدا کردن."
+  },
+  "mute others": {
+    "target": "بی‌صدا کردن دیگران",
+    "note": "Mute participant: بی‌صدا کردن شرکت‌کننده."
+  },
+  "call ringing": {
+    "target": "زنگ تماس",
+    "note": "Enable call ringing: فعال کردن زنگ تماس."
+  },
+  "pop out": {
+    "target": "بازکردن در پنجره جدا",
+    "note": "Aligns with desktop popout window = پنجره جدا."
+  },
+  "speaker view": {
+    "target": "نمای سخنران"
+  },
+  "grid view": {
+    "target": "نمای شبکه‌ای"
+  },
+  "blur background": {
+    "target": "محو کردن پس‌زمینه"
+  },
+  "meeting summary": {
+    "target": "خلاصه جلسه",
+    "note": "Create meeting summary: ایجاد خلاصه جلسه."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

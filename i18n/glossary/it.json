@@ -1,0 +1,114 @@
+{
+  "Calls": {
+    "target": "Calls",
+    "note": "Product name; the common noun is 'chiamata' ('le chiamate' in existing settings strings)."
+  },
+  "call": {
+    "target": "chiamata",
+    "note": "Feminine; plural 'chiamate'. Existing consistent."
+  },
+  "start a call": {
+    "target": "avviare una chiamata",
+    "note": "Button: 'Avvia chiamata' (existing)."
+  },
+  "join a call": {
+    "target": "partecipare a una chiamata",
+    "note": "Existing consistent: 'Partecipa alla chiamata'; a few strings use 'unirsi' — prefer 'partecipare'."
+  },
+  "leave a call": {
+    "target": "lasciare la chiamata",
+    "note": "Existing: 'Lascia la chiamata'. Avoid colloquial variants like 'andartene' seen in some strings."
+  },
+  "end a call": {
+    "target": "terminare la chiamata",
+    "note": "Existing: 'Termina chiamata', 'Termina la chiamata per tutti' (End call for everyone). Distinct from leave = 'lasciare'."
+  },
+  "host": {
+    "target": "host",
+    "note": "Kept in English, masculine ('l'host'), per 'Controlli dell'host'. Existing strings are badly inconsistent: several render Host as 'Ospite' (which means 'guest' — a mistranslation) or 'conduttore'; unify on 'host'."
+  },
+  "make host": {
+    "target": "rendi host",
+    "note": "Existing 'Crea l'host' is incorrect ('create the host'); use 'Rendi host' for transferring the role."
+  },
+  "host controls": {
+    "target": "controlli dell'host",
+    "note": "Existing rendering."
+  },
+  "participant": {
+    "target": "partecipante",
+    "note": "Existing consistent: 'Partecipanti', 'Rimuovi il partecipante'."
+  },
+  "recording": {
+    "target": "registrazione",
+    "note": "Existing consistent; Record call = 'Registra la chiamata'."
+  },
+  "transcription": {
+    "target": "trascrizione",
+    "note": "Existing consistent: 'Trascrizioni delle chiamate'."
+  },
+  "live captions": {
+    "target": "didascalie in diretta",
+    "note": "Majority existing rendering; variants 'didascalie live' and 'didascalie dal vivo' also appear — unify on 'didascalie in diretta'. 'Sottotitoli in tempo reale' is the more common industry term but not used here."
+  },
+  "raise hand": {
+    "target": "alzare la mano",
+    "note": "Existing: 'Alza la mano', '{users} ha alzato la mano'."
+  },
+  "lower hand": {
+    "target": "abbassare la mano",
+    "note": "Existing: 'Abbassa la mano'."
+  },
+  "screen share": {
+    "target": "condivisione dello schermo",
+    "note": "Existing consistent; verb: 'condividere lo schermo'; Stop screen share = 'Ferma la condivisione dello schermo'."
+  },
+  "mute": {
+    "target": "silenziare",
+    "note": "Existing: 'Silenzia il partecipante', 'Sei silenziato'. Avoid variants 'Muto' and 'disattivare l'audio' used inconsistently in some strings."
+  },
+  "unmute": {
+    "target": "riattivare il microfono",
+    "note": "Existing correct instance: 'Seleziona {muteIcon} per riattivare il microfono'. One string wrongly renders Unmute as 'Disattivare l'audio' — avoid."
+  },
+  "mute others": {
+    "target": "silenzia gli altri",
+    "note": "Existing 'Disattivare gli altri' is ambiguous; use 'Silenzia gli altri', consistent with mute = 'silenziare'."
+  },
+  "call ringing": {
+    "target": "squillo delle chiamate",
+    "note": "Existing: 'Abilita lo squillo delle chiamate' (Enable call ringing); 'suoneria' appears once for the ringtone itself."
+  },
+  "pop out": {
+    "target": "aprire in una finestra separata",
+    "note": "Existing 'Esci fuori' is a mistranslation; use 'Apri in una finestra separata' for the popout action."
+  },
+  "speaker view": {
+    "target": "visualizzazione relatore",
+    "note": "Untranslated in it.json; matches Zoom/Teams Italian convention. 'Passa alla visualizzazione relatore' = Switch to speaker view."
+  },
+  "grid view": {
+    "target": "visualizzazione a griglia",
+    "note": "Untranslated in it.json; standard Italian UI term. 'Passa alla visualizzazione a griglia' = Switch to grid view."
+  },
+  "blur background": {
+    "target": "sfocare lo sfondo",
+    "note": "Untranslated in it.json; Teams Italian uses 'Sfoca sfondo'. Button: 'Sfoca lo sfondo'."
+  },
+  "meeting summary": {
+    "target": "riepilogo della riunione",
+    "note": "Existing: 'Crea il riepilogo della riunione'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

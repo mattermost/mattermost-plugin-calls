@@ -1,0 +1,108 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "chamada",
+    "note": "Clear majority; a few strings use 'ligação' ('Iniciar ligação', 'Ligação terminada') — standardize on 'chamada'."
+  },
+  "start a call": {
+    "target": "iniciar chamada",
+    "note": "Existing 'Iniciar ligação' should follow the 'chamada' standard."
+  },
+  "join a call": {
+    "target": "participar da chamada",
+    "note": "Established majority ('Participar da chamada', 'Não foi possível participar da chamada')."
+  },
+  "leave a call": {
+    "target": "sair da chamada",
+    "note": "Existing strings mix 'Deixar chamada' and 'sair da chamada'; prefer 'sair da chamada'."
+  },
+  "end a call": {
+    "target": "encerrar a chamada",
+    "note": "'Encerrar chamada' as a button; 'encerrar a chamada para todos' for 'end call for everyone'. Distinct from 'sair da chamada' (leave)."
+  },
+  "host": {
+    "target": "anfitrião",
+    "note": "Majority rendering; some strings keep 'host' ('Controles do host', 'Criar host') — standardize on 'anfitrião'."
+  },
+  "make host": {
+    "target": "tornar anfitrião",
+    "note": "The existing 'Criar host' is a mistranslation; use 'tornar anfitrião'."
+  },
+  "host controls": {
+    "target": "controles do anfitrião",
+    "note": "Existing 'Controles do host' should follow the 'anfitrião' standard."
+  },
+  "participant": {
+    "target": "participante"
+  },
+  "recording": {
+    "target": "gravação",
+    "note": "'Gravar chamada' (Record call), 'Gravações de chamadas' (Call recordings)."
+  },
+  "transcription": {
+    "target": "transcrição"
+  },
+  "live captions": {
+    "target": "legendas ao vivo"
+  },
+  "raise hand": {
+    "target": "levantar a mão"
+  },
+  "lower hand": {
+    "target": "abaixar a mão",
+    "note": "Webapp shortcuts use 'abaixar a mão'; the Calls string 'Baixar a mão' should follow suit."
+  },
+  "screen share": {
+    "target": "compartilhamento de tela",
+    "note": "Noun 'compartilhamento de tela'; verb 'compartilhar a tela'. 'Parar o compartilhamento de tela' for stop screen share."
+  },
+  "mute": {
+    "target": "silenciar",
+    "note": "'Silenciar participante', 'Silenciar outros'. The bare toggle label appears as 'Mudo' in one string; prefer the verb 'Silenciar'."
+  },
+  "unmute": {
+    "target": "ativar som",
+    "note": "Established in Calls ('Ativar som', 'Segure para ativar o som'). Avoid 'Desmutar' (appears in webapp shortcuts)."
+  },
+  "mute others": {
+    "target": "silenciar outros"
+  },
+  "call ringing": {
+    "target": "toque de chamada",
+    "note": "'Ativar o toque de chamada' for Enable call ringing."
+  },
+  "pop out": {
+    "target": "abrir em janela separada",
+    "note": "The existing rendering 'Sair' (leave) is a mistranslation of 'Pop out' — do not reuse it."
+  },
+  "speaker view": {
+    "target": "visualização do palestrante",
+    "note": "No existing translation; follows Zoom pt-BR convention. 'Mudar para a visualização do palestrante' for the switch action."
+  },
+  "grid view": {
+    "target": "visualização em grade",
+    "note": "No existing translation; 'grade' matches Google Meet pt-BR."
+  },
+  "blur background": {
+    "target": "desfocar o plano de fundo",
+    "note": "No existing translation; matches Meet/Teams pt-BR convention."
+  },
+  "meeting summary": {
+    "target": "resumo da reunião",
+    "note": "Established: 'Criar resumo da reunião'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

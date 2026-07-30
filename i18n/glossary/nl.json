@@ -1,0 +1,113 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "gesprek",
+    "note": "Majority rendering for an ongoing call (gesprek verlaten/beëindigen, gespreksopname); 'oproep' is used for starting/incoming calls ('Oproep starten', 'inkomende oproep'). Keep that split."
+  },
+  "start a call": {
+    "target": "een oproep starten",
+    "note": "Existing button 'Start call' = 'Oproep starten'."
+  },
+  "join a call": {
+    "target": "deelnemen aan een oproep",
+    "note": "Existing 'Join call' = 'Deelnemen aan oproep'; use 'deelnemen', not 'lid worden' (which is for channels)."
+  },
+  "leave a call": {
+    "target": "het gesprek verlaten",
+    "note": "Existing 'Leave call' = 'Gesprek verlaten'."
+  },
+  "end a call": {
+    "target": "het gesprek beëindigen",
+    "note": "'End call for everyone' = 'Gesprek beëindigen voor iedereen'; note existing typo 'beïndigen' in some strings — correct spelling is 'beëindigen'."
+  },
+  "host": {
+    "target": "gastheer",
+    "note": "Existing rendering throughout Calls ('Jij bent nu de gastheer'). Gender-neutral 'host' (kept English) would be an alternative, but consistency wins."
+  },
+  "make host": {
+    "target": "gastheer maken",
+    "note": "Existing rendering."
+  },
+  "host controls": {
+    "target": "bedieningselementen gastheer",
+    "note": "Existing rendering ('Bedieningselementen gastheer')."
+  },
+  "participant": {
+    "target": "deelnemer",
+    "note": "Plural 'deelnemers'."
+  },
+  "recording": {
+    "target": "opname",
+    "note": "'Call recording' = 'gespreksopname'; 'Record call' = 'Gesprek opnemen'; plural 'opnames' in existing strings."
+  },
+  "transcription": {
+    "target": "transcriptie",
+    "note": "'Call transcriptions' = 'gesprekstranscripties' (existing also has 'oproeptranscripties'); plural 'transcripties'."
+  },
+  "live captions": {
+    "target": "live ondertiteling",
+    "note": "Majority rendering; 'live ondertitels' and 'live bijschriften' occur sporadically — standardize on 'live ondertiteling'."
+  },
+  "raise hand": {
+    "target": "handje opsteken",
+    "note": "Existing rendering; past tense 'stak een handje op'."
+  },
+  "lower hand": {
+    "target": "handje laten zakken",
+    "note": "Existing button reads 'Handje zakken'; full verb phrase is 'handje laten zakken' ('<host> liet je handje zakken')."
+  },
+  "screen share": {
+    "target": "scherm delen",
+    "note": "Verb phrase 'scherm delen' / 'hun scherm delen'; noun 'schermdeling'. 'Stop screen share' = 'Scherm delen stoppen'; 'Start presenting' = 'Presenteren starten'."
+  },
+  "mute": {
+    "target": "dempen",
+    "note": "Microphone context; 'Deelnemer dempen' = 'Mute participant'."
+  },
+  "unmute": {
+    "target": "dempen uitschakelen",
+    "note": "Existing Calls rendering (webapp channel-mute uses 'niet langer dempen'; keep 'dempen uitschakelen' within Calls)."
+  },
+  "mute others": {
+    "target": "anderen dempen",
+    "note": "Follows existing pattern 'Deelnemer dempen'."
+  },
+  "call ringing": {
+    "target": "rinkelen bij oproep",
+    "note": "'Enable call ringing' = 'Rinkelen bij oproep inschakelen' (existing)."
+  },
+  "pop out": {
+    "target": "pop out",
+    "note": "Existing Calls widget button keeps English 'Pop out'; a translated alternative is 'in apart venster openen'."
+  },
+  "speaker view": {
+    "target": "sprekerweergave",
+    "note": "'Switch to speaker view' = 'Overschakelen naar sprekerweergave' (existing)."
+  },
+  "grid view": {
+    "target": "rasterweergave",
+    "note": "'Switch to grid view' = 'Overschakelen naar rasterweergave' (existing)."
+  },
+  "blur background": {
+    "target": "achtergrond vervagen",
+    "note": "Existing rendering; 'Blur intensity' = 'Intensiteit vervagen'."
+  },
+  "meeting summary": {
+    "target": "samenvatting van de vergadering",
+    "note": "'Create meeting summary' = 'Een samenvatting van de vergadering maken' (existing); compact form 'vergadersamenvatting' is acceptable where space is tight."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

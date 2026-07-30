@@ -1,0 +1,112 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "apel",
+    "note": "Plural: 'apeluri'. No Romanian file exists for the Calls plugin — follow webapp register (formal)."
+  },
+  "start a call": {
+    "target": "a începe un apel",
+    "note": "Button: 'Începeți apelul' / 'Începeți un apel'."
+  },
+  "join a call": {
+    "target": "a se alătura apelului",
+    "note": "Button: 'Alăturați-vă apelului'; consistent with 'join channel' = 'a se alătura'."
+  },
+  "leave a call": {
+    "target": "a părăsi apelul",
+    "note": "Button: 'Părăsiți apelul'; consistent with 'leave channel'."
+  },
+  "end a call": {
+    "target": "a încheia apelul",
+    "note": "'End call for everyone' = 'Încheiați apelul pentru toți'. Distinct from 'a părăsi' (leave)."
+  },
+  "host": {
+    "target": "gazdă",
+    "note": "Feminine noun: 'gazda apelului'."
+  },
+  "make host": {
+    "target": "a desemna ca gazdă",
+    "note": "Menu item: 'Desemnați ca gazdă'."
+  },
+  "host controls": {
+    "target": "comenzi pentru gazdă"
+  },
+  "participant": {
+    "target": "participant",
+    "note": "Plural: 'participanți'."
+  },
+  "recording": {
+    "target": "înregistrare",
+    "note": "Plural: 'înregistrări'. 'Record call' = 'Înregistrați apelul'."
+  },
+  "transcription": {
+    "target": "transcriere",
+    "note": "Plural: 'transcrieri'. 'Call transcriptions' = 'transcrierile apelurilor'."
+  },
+  "live captions": {
+    "target": "subtitrări live",
+    "note": "Google Meet/Teams Romanian convention; singular 'subtitrare live'."
+  },
+  "raise hand": {
+    "target": "a ridica mâna",
+    "note": "Button: 'Ridicați mâna'; '{user} raised a hand' = '{user} a ridicat mâna'."
+  },
+  "lower hand": {
+    "target": "a coborî mâna",
+    "note": "Button: 'Coborâți mâna'."
+  },
+  "screen share": {
+    "target": "partajare ecran",
+    "note": "Verb: 'a partaja ecranul'. 'Stop screen share' = 'Opriți partajarea ecranului'. Consistent with webapp 'partajat' for shared."
+  },
+  "mute": {
+    "target": "a dezactiva microfonul",
+    "note": "Microphone mute — distinct from channel mute ('a pune pe silențios'). State: 'microfon dezactivat'."
+  },
+  "unmute": {
+    "target": "a activa microfonul",
+    "note": "Button: 'Activați microfonul'."
+  },
+  "mute others": {
+    "target": "a dezactiva microfonul celorlalți",
+    "note": "'Mute participant' = 'Dezactivați microfonul participantului'."
+  },
+  "call ringing": {
+    "target": "sonerie de apel",
+    "note": "'Enable call ringing' = 'Activați soneria de apel'."
+  },
+  "pop out": {
+    "target": "a deschide într-o fereastră separată",
+    "note": "Matches desktop 'popout window' = 'fereastră separată'."
+  },
+  "speaker view": {
+    "target": "vizualizare vorbitor",
+    "note": "'Switch to speaker view' = 'Comutați la vizualizarea vorbitorului'."
+  },
+  "grid view": {
+    "target": "vizualizare grilă",
+    "note": "'Switch to grid view' = 'Comutați la vizualizarea grilă'."
+  },
+  "blur background": {
+    "target": "a estompa fundalul",
+    "note": "Button: 'Estompați fundalul' (Teams Romanian convention)."
+  },
+  "meeting summary": {
+    "target": "rezumatul întâlnirii",
+    "note": "'Create meeting summary' = 'Creați rezumatul întâlnirii'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

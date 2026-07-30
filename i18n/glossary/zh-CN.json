@@ -1,0 +1,101 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "通话"
+  },
+  "start a call": {
+    "target": "开始通话",
+    "note": "Button Start call = 开始通话; descriptions also use 发起通话 for starting a call in a channel."
+  },
+  "join a call": {
+    "target": "加入通话"
+  },
+  "leave a call": {
+    "target": "离开通话"
+  },
+  "end a call": {
+    "target": "结束通话",
+    "note": "End call for everyone = 为所有人结束通话."
+  },
+  "host": {
+    "target": "主持人"
+  },
+  "make host": {
+    "target": "成为主持人",
+    "note": "Existing menu item; 设为主持人 would be more accurate for assigning another participant as host — consider if retranslating."
+  },
+  "host controls": {
+    "target": "主持人控制"
+  },
+  "participant": {
+    "target": "参与者"
+  },
+  "recording": {
+    "target": "录制",
+    "note": "Existing usage is split: 录制 (26) for the feature/action, 录音 (19) for the saved audio. Record call = 录制通话. Prefer 录制 for the feature; 通话录音 is acceptable for the artifact."
+  },
+  "transcription": {
+    "target": "转录",
+    "note": "Call transcriptions = 通话转录; the text file is 转录文本."
+  },
+  "live captions": {
+    "target": "实时字幕"
+  },
+  "raise hand": {
+    "target": "举手"
+  },
+  "lower hand": {
+    "target": "放下",
+    "note": "Existing button label is just 放下; use 放下手 in prose if standalone 放下 is ambiguous."
+  },
+  "screen share": {
+    "target": "屏幕分享",
+    "note": "Majority (8 vs 2 屏幕共享); share their screen = 分享他们的屏幕."
+  },
+  "mute": {
+    "target": "静音",
+    "note": "Microphone mute; same word as channel mute in the core product."
+  },
+  "unmute": {
+    "target": "取消静音",
+    "note": "Majority; 解除静音 appears once."
+  },
+  "mute others": {
+    "target": "静音其他人",
+    "note": "Mute participant = 静音参与者."
+  },
+  "call ringing": {
+    "target": "通话响铃",
+    "note": "Enable call ringing = 启用通话响铃; ringtone in mobile is 来电铃声."
+  },
+  "pop out": {
+    "target": "弹出"
+  },
+  "speaker view": {
+    "target": "讲话人视图"
+  },
+  "grid view": {
+    "target": "网格视图"
+  },
+  "blur background": {
+    "target": "虚化背景",
+    "note": "Blur intensity = 虚化强度; use 虚化, not 模糊."
+  },
+  "meeting summary": {
+    "target": "会议总结"
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

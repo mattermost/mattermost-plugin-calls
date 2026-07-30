@@ -1,0 +1,109 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "обаждане",
+    "note": "No Bulgarian file exists for the Calls plugin; webapp bg.json has 'Избор на тип обаждане' for the call button. Avoid 'разговор', which is the established rendering for thread."
+  },
+  "start a call": {
+    "target": "започване на обаждане",
+    "note": "Button: 'Започни обаждане'."
+  },
+  "join a call": {
+    "target": "присъединяване към обаждане",
+    "note": "Button: 'Присъедини се към обаждането'."
+  },
+  "leave a call": {
+    "target": "напускане на обаждането",
+    "note": "Button: 'Напусни обаждането'. Distinct from ending the call for everyone."
+  },
+  "end a call": {
+    "target": "прекратяване на обаждането",
+    "note": "Host action; 'Прекрати обаждането за всички' for End call for everyone."
+  },
+  "host": {
+    "target": "домакин",
+    "note": "Common Bulgarian videoconferencing term (Zoom uses 'домакин')."
+  },
+  "make host": {
+    "target": "направи домакин",
+    "note": "Imperative menu-item form, matching repo button register ('Архивирай', 'Излез')."
+  },
+  "host controls": {
+    "target": "контроли на домакина"
+  },
+  "participant": {
+    "target": "участник",
+    "note": "Plural: участници."
+  },
+  "recording": {
+    "target": "запис",
+    "note": "Record call = 'Записване на обаждането'. Plural: записи."
+  },
+  "transcription": {
+    "target": "транскрипция",
+    "note": "Plural: транскрипции."
+  },
+  "live captions": {
+    "target": "субтитри на живо",
+    "note": "Microsoft Bulgarian uses 'надписи на живо'; 'субтитри на живо' is more widely understood."
+  },
+  "raise hand": {
+    "target": "вдигане на ръка",
+    "note": "Button: 'Вдигни ръка'; '{user} вдигна ръка'."
+  },
+  "lower hand": {
+    "target": "сваляне на ръка",
+    "note": "Button: 'Свали ръка'."
+  },
+  "screen share": {
+    "target": "споделяне на екран",
+    "note": "Stop screen share = 'Спри споделянето на екрана'; presenting = 'представяне'."
+  },
+  "mute": {
+    "target": "заглушаване",
+    "note": "Microphone context. Button: 'Заглуши'. Same word as channel mute in webapp — context disambiguates."
+  },
+  "unmute": {
+    "target": "включване на звука",
+    "note": "Button: 'Включи звука' (matches established webapp unmute)."
+  },
+  "mute others": {
+    "target": "заглушаване на останалите",
+    "note": "Mute participant = 'Заглуши участника'."
+  },
+  "call ringing": {
+    "target": "звънене при обаждане",
+    "note": "Enable call ringing = 'Включване на звънене при обаждане'."
+  },
+  "pop out": {
+    "target": "отваряне в отделен прозорец"
+  },
+  "speaker view": {
+    "target": "изглед на говорещия"
+  },
+  "grid view": {
+    "target": "мрежов изглед"
+  },
+  "blur background": {
+    "target": "замъгляване на фона",
+    "note": "Matches Microsoft Bulgarian terminology for background blur."
+  },
+  "meeting summary": {
+    "target": "обобщение на срещата",
+    "note": "Create meeting summary = 'Създай обобщение на срещата'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "Anruf",
+    "note": "Masculine: der Anruf. Majority rendering; some strings use 'Gespräch' (inconsistent) — prefer Anruf."
+  },
+  "start a call": {
+    "target": "Anruf starten",
+    "note": "Existing button 'Starte Anruf' uses informal imperative; noun-style 'Anruf starten' fits the formal register."
+  },
+  "join a call": {
+    "target": "am Anruf teilnehmen",
+    "note": "Existing: 'Am Anruf teilnehmen'. Error strings also use 'Anruf … verbunden werden'."
+  },
+  "leave a call": {
+    "target": "Anruf verlassen",
+    "note": "Distinct from ending the call for everyone."
+  },
+  "end a call": {
+    "target": "Anruf beenden",
+    "note": "'End call for everyone' = 'Anruf für alle beenden' (existing rendering)."
+  },
+  "host": {
+    "target": "Gastgeber",
+    "note": "Consistent existing rendering in Calls and mobile; not 'Host' (which is reserved for technical ICE host strings)."
+  },
+  "make host": {
+    "target": "Zum Gastgeber machen",
+    "note": "Consistent existing rendering."
+  },
+  "host controls": {
+    "target": "Gastgeber-Kontrollen",
+    "note": "Existing rendering; 'Gastgeber-Steuerung' would be more idiomatic but keep the established term."
+  },
+  "participant": {
+    "target": "Teilnehmer",
+    "note": "Masculine: der Teilnehmer; plural identical."
+  },
+  "recording": {
+    "target": "Aufzeichnung",
+    "note": "Majority rendering; 'Aufnahme' also occurs (inconsistent). 'Record call' = 'Anruf aufzeichnen'."
+  },
+  "transcription": {
+    "target": "Transkription",
+    "note": "Existing strings mix 'Transkription' and 'Mitschrift'; prefer Transkription for consistency with technical settings."
+  },
+  "live captions": {
+    "target": "Live-Untertitel",
+    "note": "Consistent existing rendering; Weblate glossary: captions = Untertitel."
+  },
+  "raise hand": {
+    "target": "Hand heben",
+    "note": "'raised a hand' = 'hat die Hand gehoben'."
+  },
+  "lower hand": {
+    "target": "Hand senken",
+    "note": "Consistent existing rendering."
+  },
+  "screen share": {
+    "target": "Bildschirmfreigabe",
+    "note": "Noun; verb = 'Bildschirm teilen' (existing renderings use both: 'Bildschirmfreigabe zulassen', 'ihren Bildschirm teilen'). 'Stop screen share' = 'Bildschirmfreigabe beenden'."
+  },
+  "mute": {
+    "target": "stummschalten",
+    "note": "Microphone context: 'Du bist stummgeschaltet' → formal 'Sie sind stummgeschaltet'."
+  },
+  "unmute": {
+    "target": "Stummschaltung aufheben",
+    "note": "Consistent existing rendering."
+  },
+  "mute others": {
+    "target": "Andere stummschalten",
+    "note": "'Mute participant' = 'Teilnehmer stummschalten' (existing renderings)."
+  },
+  "call ringing": {
+    "target": "Anrufklingeln",
+    "note": "'Enable call ringing' = 'Anrufklingeln einschalten' (existing rendering); bare ringing = Klingeln."
+  },
+  "pop out": {
+    "target": "Ausklappen",
+    "note": "Existing widget label; describes opening the call in its own window. 'In eigenem Fenster öffnen' is clearer but keep the established label."
+  },
+  "speaker view": {
+    "target": "Sprecheransicht",
+    "note": "No existing rendering (string untranslated); standard German video-conferencing term (Zoom/Teams convention)."
+  },
+  "grid view": {
+    "target": "Rasteransicht",
+    "note": "No existing rendering; standard German video-conferencing term."
+  },
+  "blur background": {
+    "target": "Hintergrund weichzeichnen",
+    "note": "No existing rendering; matches Teams/Zoom German convention."
+  },
+  "meeting summary": {
+    "target": "Meeting-Zusammenfassung",
+    "note": "Existing rendering: 'Meeting-Zusammenfassung erstellen'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

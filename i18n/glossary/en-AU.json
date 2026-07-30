@@ -1,0 +1,89 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "call"
+  },
+  "start a call": {
+    "target": "start a call"
+  },
+  "join a call": {
+    "target": "join a call"
+  },
+  "leave a call": {
+    "target": "leave a call"
+  },
+  "end a call": {
+    "target": "end a call"
+  },
+  "host": {
+    "target": "host"
+  },
+  "make host": {
+    "target": "make host"
+  },
+  "host controls": {
+    "target": "host controls"
+  },
+  "participant": {
+    "target": "participant"
+  },
+  "recording": {
+    "target": "recording"
+  },
+  "transcription": {
+    "target": "transcription"
+  },
+  "live captions": {
+    "target": "live captions"
+  },
+  "raise hand": {
+    "target": "raise hand"
+  },
+  "lower hand": {
+    "target": "lower hand"
+  },
+  "screen share": {
+    "target": "screen share"
+  },
+  "mute": {
+    "target": "mute"
+  },
+  "unmute": {
+    "target": "unmute"
+  },
+  "mute others": {
+    "target": "mute others"
+  },
+  "call ringing": {
+    "target": "call ringing"
+  },
+  "pop out": {
+    "target": "pop out"
+  },
+  "speaker view": {
+    "target": "speaker view"
+  },
+  "grid view": {
+    "target": "grid view"
+  },
+  "blur background": {
+    "target": "blur background"
+  },
+  "meeting summary": {
+    "target": "meeting summary"
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

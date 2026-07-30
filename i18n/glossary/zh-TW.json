@@ -1,0 +1,100 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "通話"
+  },
+  "start a call": {
+    "target": "開始通話"
+  },
+  "join a call": {
+    "target": "加入通話"
+  },
+  "leave a call": {
+    "target": "離開通話"
+  },
+  "end a call": {
+    "target": "結束通話",
+    "note": "End call for everyone → 為所有人結束通話 (existing)."
+  },
+  "host": {
+    "target": "主辦人"
+  },
+  "make host": {
+    "target": "提升為主辦人",
+    "note": "Existing string renders it 提升為會議主辦人; 會議 is redundant in call context — keep 提升為主辦人."
+  },
+  "host controls": {
+    "target": "主辦人控制項"
+  },
+  "participant": {
+    "target": "參與者"
+  },
+  "recording": {
+    "target": "錄音",
+    "note": "Existing: 通話錄音. Verb (Record call) → 錄製通話; if screen/video capture is emphasized, 錄影 may fit but keep 錄音 for consistency."
+  },
+  "transcription": {
+    "target": "逐字稿",
+    "note": "Call transcriptions → 通話逐字稿 (existing)."
+  },
+  "live captions": {
+    "target": "即時字幕"
+  },
+  "raise hand": {
+    "target": "舉手"
+  },
+  "lower hand": {
+    "target": "放下舉手",
+    "note": "Per existing zh_Hant string."
+  },
+  "screen share": {
+    "target": "螢幕分享",
+    "note": "Existing strings mix 螢幕分享 and 螢幕共享; converge on 螢幕分享 (Taiwan convention, e.g. Google Meet 分享螢幕)."
+  },
+  "mute": {
+    "target": "靜音"
+  },
+  "unmute": {
+    "target": "解除靜音"
+  },
+  "mute others": {
+    "target": "靜音其他人",
+    "note": "Mute participant → 靜音參與者 (existing)."
+  },
+  "call ringing": {
+    "target": "來電鈴聲",
+    "note": "Enable call ringing → 啟用來電鈴聲; mobile uses 來電通知鈴聲 for the setting label."
+  },
+  "pop out": {
+    "target": "彈出"
+  },
+  "speaker view": {
+    "target": "演講者檢視",
+    "note": "Not yet translated; follows Zoom/Teams zh-TW convention."
+  },
+  "grid view": {
+    "target": "格狀檢視",
+    "note": "Not yet translated; 格狀 is the common Taiwan rendering for grid layouts."
+  },
+  "blur background": {
+    "target": "模糊背景",
+    "note": "Matches Teams/Meet zh-TW."
+  },
+  "meeting summary": {
+    "target": "會議摘要"
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

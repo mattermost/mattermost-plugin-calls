@@ -1,0 +1,109 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "hívás",
+    "note": "No Hungarian Calls locale exists; grounded in webapp/desktop crumbs ('Hívás indítása', 'Nem indítható hívás')."
+  },
+  "start a call": {
+    "target": "hívás indítása",
+    "note": "Established in webapp ('Start Call' = 'Hívás indítása')."
+  },
+  "join a call": {
+    "target": "csatlakozás a híváshoz",
+    "note": "Follows the established 'csatlakozás a csatornához' pattern."
+  },
+  "leave a call": {
+    "target": "kilépés a hívásból",
+    "note": "Mirrors channel 'leave' = 'kilépés'; distinct from ending the call."
+  },
+  "end a call": {
+    "target": "hívás befejezése",
+    "note": "Host action; 'End call for everyone' = 'Hívás befejezése mindenki számára'."
+  },
+  "host": {
+    "target": "házigazda",
+    "note": "Standard Hungarian videoconferencing term (Zoom/Teams convention)."
+  },
+  "make host": {
+    "target": "házigazdává tétel",
+    "note": "Verb phrase: 'házigazdává tesz'."
+  },
+  "host controls": {
+    "target": "házigazdai vezérlők"
+  },
+  "participant": {
+    "target": "résztvevő",
+    "note": "Established across repos (Playbooks uses the same word)."
+  },
+  "recording": {
+    "target": "felvétel",
+    "note": "Record call = 'hívás rögzítése'; verb 'rögzít'."
+  },
+  "transcription": {
+    "target": "átirat",
+    "note": "Call transcriptions = 'hívásátiratok'."
+  },
+  "live captions": {
+    "target": "élő feliratok",
+    "note": "Singular: 'élő felirat'."
+  },
+  "raise hand": {
+    "target": "kéz felemelése",
+    "note": "Paired with lower hand = 'kéz leengedése'; '{name} raised a hand' = '{name} felemelte a kezét'."
+  },
+  "lower hand": {
+    "target": "kéz leengedése"
+  },
+  "screen share": {
+    "target": "képernyőmegosztás",
+    "note": "Desktop already uses 'Képernyő megosztása' for the action; noun compound 'képernyőmegosztás', verb 'képernyőt megoszt'."
+  },
+  "mute": {
+    "target": "némítás",
+    "note": "Same word family as channel mute; here it refers to the microphone. Verb 'némít', adjective 'némított'."
+  },
+  "unmute": {
+    "target": "némítás feloldása"
+  },
+  "mute others": {
+    "target": "többiek némítása",
+    "note": "Mute participant = 'résztvevő némítása'."
+  },
+  "call ringing": {
+    "target": "hívás csengetése",
+    "note": "Enable call ringing = 'Hívás csengetésének engedélyezése'."
+  },
+  "pop out": {
+    "target": "megnyitás külön ablakban",
+    "note": "Consistent with the desktop popout window = 'különálló ablak'."
+  },
+  "speaker view": {
+    "target": "beszélő nézet",
+    "note": "Zoom Hungarian uses 'aktív beszélő' for the enlarged speaker; 'beszélő nézet' keeps the label short."
+  },
+  "grid view": {
+    "target": "rácsnézet",
+    "note": "Switch to grid view = 'váltás rácsnézetre'."
+  },
+  "blur background": {
+    "target": "háttér elmosása"
+  },
+  "meeting summary": {
+    "target": "megbeszélés összefoglalója",
+    "note": "Create meeting summary = 'Megbeszélés-összefoglaló létrehozása'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

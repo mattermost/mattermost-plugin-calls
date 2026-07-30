@@ -1,0 +1,112 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "appel",
+    "note": "Masculine."
+  },
+  "start a call": {
+    "target": "lancer un appel",
+    "note": "Existing majority ('Lancer un appel'); 'démarrer' also appears — prefer 'lancer'."
+  },
+  "join a call": {
+    "target": "rejoindre l'appel",
+    "note": "Majority rendering; one existing string uses 'Joindre l'appel', but 'joindre' is reserved for attachments per community rules."
+  },
+  "leave a call": {
+    "target": "quitter l'appel"
+  },
+  "end a call": {
+    "target": "terminer l'appel",
+    "note": "Existing: 'Terminer l'appel pour tout le monde'. Distinct from 'quitter' (leave)."
+  },
+  "host": {
+    "target": "hôte",
+    "note": "Masculine ('l'hôte'). Existing: '<b>{name}</b> est maintenant l'hôte'."
+  },
+  "make host": {
+    "target": "promouvoir en tant qu'hôte",
+    "note": "Existing rendering."
+  },
+  "host controls": {
+    "target": "contrôles de l'hôte",
+    "note": "Existing rendering."
+  },
+  "participant": {
+    "target": "participant",
+    "note": "Masculine."
+  },
+  "recording": {
+    "target": "enregistrement",
+    "note": "Masculine. Record call: 'enregistrer l'appel'. Same word as 'save' contexts — disambiguate from 'Enregistrer' buttons when space allows."
+  },
+  "transcription": {
+    "target": "transcription",
+    "note": "Feminine. Call transcriptions: 'transcriptions des appels' (existing)."
+  },
+  "live captions": {
+    "target": "sous-titres en direct",
+    "note": "Existing rendering."
+  },
+  "raise hand": {
+    "target": "lever la main",
+    "note": "Existing rendering; 'a levé la main' for the past event."
+  },
+  "lower hand": {
+    "target": "baisser la main",
+    "note": "Existing rendering."
+  },
+  "screen share": {
+    "target": "partage d'écran",
+    "note": "Verb: 'partager son écran'. Presenting maps to the same vocabulary ('présenter' is not used in existing strings)."
+  },
+  "mute": {
+    "target": "mettre en sourdine",
+    "note": "Microphone context; same wording as channel mute. Muted: 'en sourdine'."
+  },
+  "unmute": {
+    "target": "réactiver le son",
+    "note": "Existing button wording; 'enlever la sourdine' also appears in prose — either is acceptable, be consistent per surface."
+  },
+  "mute others": {
+    "target": "mettre en sourdine les autres",
+    "note": "Existing; Mute participant: 'Mettre en sourdine le participant'."
+  },
+  "call ringing": {
+    "target": "sonnerie d'appel",
+    "note": "Existing: 'Activer la sonnerie d'appel'."
+  },
+  "pop out": {
+    "target": "détacher",
+    "note": "Existing fr.json uses 'Sortir', which reads as 'exit' and is misleading; 'détacher (la fenêtre)' is recommended and matches the desktop glossary."
+  },
+  "speaker view": {
+    "target": "vue de l'intervenant",
+    "note": "Not yet translated; aligns with Zoom/Teams French ('Intervenant'). Switch to speaker view: 'Passer à la vue de l'intervenant'."
+  },
+  "grid view": {
+    "target": "vue en grille",
+    "note": "Not yet translated; 'Passer à la vue en grille'."
+  },
+  "blur background": {
+    "target": "flouter l'arrière-plan",
+    "note": "Not yet translated. 'arrière-plan' (not 'fond') per community rules; blur intensity: 'intensité du flou'."
+  },
+  "meeting summary": {
+    "target": "résumé de la réunion",
+    "note": "Existing: 'Créer un résumé de la réunion'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

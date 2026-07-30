@@ -1,0 +1,106 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "çağrı",
+    "note": "Repo uses 'çağrı' (not 'arama' or 'görüşme') for calls; 'arama' is reserved for search."
+  },
+  "start a call": {
+    "target": "çağrı başlat"
+  },
+  "join a call": {
+    "target": "çağrıya katıl"
+  },
+  "leave a call": {
+    "target": "çağrıdan ayrıl"
+  },
+  "end a call": {
+    "target": "çağrıyı sonlandır",
+    "note": "'End call for everyone' = 'Çağrıyı herkes için sonlandır'. Distinct from leaving ('ayrıl')."
+  },
+  "host": {
+    "target": "sunucu",
+    "note": "Repo consistently uses 'sunucu' (the person hosting), e.g. 'Sunucu siz oldunuz'. Caution: identical to 'sunucu' = server; rely on context and avoid mixing both meanings in one sentence. 'Toplantı sahibi' would be unambiguous but is not the established term."
+  },
+  "make host": {
+    "target": "sunucu yap"
+  },
+  "host controls": {
+    "target": "sunucu denetimleri"
+  },
+  "participant": {
+    "target": "katılımcı"
+  },
+  "recording": {
+    "target": "kayıt",
+    "note": "'Record call' = 'çağrıyı kaydet'; 'Stop recording' = 'Kaydı durdur'."
+  },
+  "transcription": {
+    "target": "yazıya dökme",
+    "note": "Calls plugin majority is 'yazıya dökme'; mobile uses 'yazıya dönüştürme' and one calls string uses 'sohbet metni' for the transcript artifact — prefer 'yazıya dökme' for the process, 'metin dökümü' works for the resulting transcript."
+  },
+  "live captions": {
+    "target": "canlı alt yazılar",
+    "note": "'alt yazı' written as two words per repo convention."
+  },
+  "raise hand": {
+    "target": "el kaldır",
+    "note": "'{name} raised a hand' = 'elini kaldırdı'."
+  },
+  "lower hand": {
+    "target": "eli indir",
+    "note": "Host lowering someone's hand: 'elini indirdi'."
+  },
+  "screen share": {
+    "target": "ekran paylaşımı",
+    "note": "Noun: 'ekran paylaşımı'; verb: 'ekranı paylaş' / 'ekran paylaş'. 'Stop screen share' = 'Ekran paylaşımını durdur'."
+  },
+  "mute": {
+    "target": "sesi kapat",
+    "note": "Microphone mute in calls: 'sesi kapat' ('Katılımcının sesini kapat'). Distinct from channel mute = 'bildirimleri kapat'."
+  },
+  "unmute": {
+    "target": "sesi aç"
+  },
+  "mute others": {
+    "target": "diğerlerinin sesini kapat",
+    "note": "'Mute participant' = 'Katılımcının sesini kapat'; extend the same pattern for 'mute others'."
+  },
+  "call ringing": {
+    "target": "çağrılarda zil çalması",
+    "note": "'Enable call ringing' = 'Çağrılarda zil çalsın'; incoming ring sound = 'zil sesi'."
+  },
+  "pop out": {
+    "target": "ayrı pencerede aç",
+    "note": "The existing widget string translates 'Pop out' as just 'Aç', which loses the meaning; 'ayrı pencerede aç' is recommended. Desktop uses 'açılan pencere' for the popout window."
+  },
+  "speaker view": {
+    "target": "konuşmacı görünümü",
+    "note": "No existing tr string; follows Zoom/Teams Turkish convention. 'Switch to speaker view' = 'Konuşmacı görünümüne geç'."
+  },
+  "grid view": {
+    "target": "ızgara görünümü",
+    "note": "No existing tr string; standard Turkish UI term for grid layout."
+  },
+  "blur background": {
+    "target": "arka planı bulanıklaştır",
+    "note": "No existing tr string; standard video-call Turkish term."
+  },
+  "meeting summary": {
+    "target": "toplantı özeti",
+    "note": "'Create meeting summary' = 'Toplantı özeti oluştur'."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}

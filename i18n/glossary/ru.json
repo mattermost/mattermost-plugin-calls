@@ -1,0 +1,113 @@
+{
+  "Calls": {
+    "target": "Calls"
+  },
+  "call": {
+    "target": "звонок",
+    "note": "Consistent in existing translations; occasionally 'вызов' appears — prefer 'звонок'."
+  },
+  "start a call": {
+    "target": "начать звонок",
+    "note": "The button 'Start call' is 'Позвонить' in existing translations; both are acceptable, keep buttons short."
+  },
+  "join a call": {
+    "target": "присоединиться к звонку",
+    "note": "Existing rendering."
+  },
+  "leave a call": {
+    "target": "покинуть звонок",
+    "note": "Existing button is 'Отключиться'; 'покинуть звонок' is clearer and contrasts with 'завершить звонок' (end)."
+  },
+  "end a call": {
+    "target": "завершить звонок",
+    "note": "Existing: 'Завершить звонок для всех' (End call for everyone)."
+  },
+  "host": {
+    "target": "хост",
+    "note": "Majority rendering in existing translations (8 vs 3 'организатор'). 'Организатор' (Zoom/Teams convention) appears in a few strings; stay with 'хост' for consistency."
+  },
+  "make host": {
+    "target": "сделать хостом",
+    "note": "Existing rendering."
+  },
+  "host controls": {
+    "target": "управление хостом",
+    "note": "Existing rendering; reads slightly ambiguously but is established."
+  },
+  "participant": {
+    "target": "участник",
+    "note": "Plural 'участники'."
+  },
+  "recording": {
+    "target": "запись",
+    "note": "'Record call' = 'записать звонок'. Existing occasionally says 'запись разговора'; prefer 'запись звонка'."
+  },
+  "transcription": {
+    "target": "расшифровка",
+    "note": "Consistent in existing translations ('запись и расшифровка')."
+  },
+  "live captions": {
+    "target": "субтитры в реальном времени",
+    "note": "Existing usage is inconsistent ('живые титры', 'живые субтитры', 'субтитры в реальном времени'); prefer 'субтитры в реальном времени'."
+  },
+  "raise hand": {
+    "target": "поднять руку",
+    "note": "Existing rendering. 'Raised a hand' = 'поднял(а) руку'."
+  },
+  "lower hand": {
+    "target": "опустить руку",
+    "note": "Existing rendering."
+  },
+  "screen share": {
+    "target": "демонстрация экрана",
+    "note": "Existing usage is inconsistent ('совместное использование экрана', 'демонстрация экрана', 'делиться экраном'); prefer 'демонстрация экрана' (Zoom/Teams convention). Verb: 'демонстрировать экран' / 'поделиться экраном'."
+  },
+  "mute": {
+    "target": "отключить звук",
+    "note": "Existing rendering; refers to the microphone, unlike channel mute ('отключить уведомления'). 'Muted' = 'звук отключён'."
+  },
+  "unmute": {
+    "target": "включить звук",
+    "note": "Existing rendering."
+  },
+  "mute others": {
+    "target": "отключить звук у других",
+    "note": "Existing rendering; 'Mute participant' = 'Отключить звук у участника'."
+  },
+  "call ringing": {
+    "target": "сигнал вызова",
+    "note": "Existing 'Включите звонок вызова' is awkward; prefer 'Включить сигнал вызова' for 'Enable call ringing'."
+  },
+  "pop out": {
+    "target": "открыть в отдельном окне",
+    "note": "Existing 'Выскочить' is a mistranslation — do not reuse it."
+  },
+  "speaker view": {
+    "target": "вид докладчика",
+    "note": "No existing translation; Zoom Russian convention. 'Switch to speaker view' = 'Переключиться на вид докладчика'."
+  },
+  "grid view": {
+    "target": "вид сеткой",
+    "note": "No existing translation; 'Switch to grid view' = 'Переключиться на вид сеткой'. Alternative 'галерея' (Zoom) if a noun is needed."
+  },
+  "blur background": {
+    "target": "размыть фон",
+    "note": "No existing translation; standard videoconferencing term ('размытие фона' as a noun)."
+  },
+  "meeting summary": {
+    "target": "резюме встречи",
+    "note": "Existing rendering ('Создайте резюме встречи'). Alternative 'сводка встречи' would align with 'recap' = 'сводка', but keep the existing term."
+  },
+  "RTCD": {
+    "target": "RTCD"
+  },
+  "TURN": {
+    "target": "TURN"
+  },
+  "ICE": {
+    "target": "ICE"
+  },
+  "WebRTC": {
+    "target": "WebRTC"
+  }
+}
