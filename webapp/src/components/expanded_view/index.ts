@@ -26,7 +26,6 @@ import {
     hostIDForCurrentCall,
     isCurrentDMCallInCallingState,
     isRecordingInCurrentCall,
-    otherUserIDForCurrentDMCall,
     profilesInCurrentCallMap,
     recordingForCurrentCall,
     recordingMaxDuration,
@@ -99,7 +98,6 @@ const mapStateToProps = (state: GlobalState) => {
         enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
         otherSessions: sessionsForOtherUsersInCall(state),
         isInCallingStateForDMChannelCall: isCurrentDMCallInCallingState(state),
-        otherDMUserID: otherUserIDForCurrentDMCall(state),
     };
 };
 

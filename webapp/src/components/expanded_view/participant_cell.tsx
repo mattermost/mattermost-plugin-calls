@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {Reaction} from '@mattermost/calls-common/lib/types';
+import classNames from 'classnames';
 import React from 'react';
 import {useIntl} from 'react-intl';
 import Avatar from 'src/components/avatar/avatar';
@@ -15,7 +16,7 @@ import MutedIcon from 'src/components/icons/muted_icon';
 import {ThreeDotsButton} from 'src/components/icons/three_dots';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import {useHostControls} from 'src/components/use_host_controls';
-import styled, {css} from 'styled-components';
+import styled from 'styled-components';
 
 export enum TileSize {
     Small,
@@ -85,7 +86,7 @@ export const tileSizePropsMap = {
     },
 };
 
-export default function CallParticipant({
+export default function ParticipantCell({
     name,
     size,
     pictureURL,
@@ -157,12 +158,15 @@ export default function CallParticipant({
                 }
             </div>
 
-            <StyledName
-                $fontSize={tileSizePropsMap[size].fontSize}
-                $lineHeight={tileSizePropsMap[size].lineHeight}
+            <span
+                className='participantName'
+                style={{
+                    fontSize: `${tileSizePropsMap[size].fontSize}px`,
+                    lineHeight: `${tileSizePropsMap[size].lineHeight}px`,
+                }}
             >
                 {name}
-            </StyledName>
+            </span>
 
             {isHost && <HostBadge data-testid={'host-badge'}/>}
         </>
@@ -170,13 +174,15 @@ export default function CallParticipant({
 
     if (hostControlsAvailable) {
         return (
-            <Participant
+            <li
+                className={classNames('participantCell', {showHostControls})}
+                style={{
+                    width: tileSizePropsMap[size].avatarSize + (tileSizePropsMap[size].padding * 2),
+                    padding: tileSizePropsMap[size].padding,
+                    gap: tileSizePropsMap[size].gap,
+                }}
                 onMouseEnter={hoverOn}
                 onMouseLeave={hoverOff}
-                $width={tileSizePropsMap[size].avatarSize + (tileSizePropsMap[size].padding * 2)}
-                $padding={tileSizePropsMap[size].padding}
-                $gap={tileSizePropsMap[size].gap}
-                $hover={showHostControls}
             >
                 {showHostControls &&
                     <StyledDotMenu
@@ -207,18 +213,21 @@ export default function CallParticipant({
                     </StyledDotMenu>
                 }
                 {innerParticipant}
-            </Participant>
+            </li>
         );
     }
 
     return (
-        <Participant
-            $width={tileSizePropsMap[size].avatarSize + (tileSizePropsMap[size].padding * 2)}
-            $padding={tileSizePropsMap[size].padding}
-            $gap={tileSizePropsMap[size].gap}
+        <li
+            className='participantCell'
+            style={{
+                width: `${tileSizePropsMap[size].avatarSize + (tileSizePropsMap[size].padding * 2)}px`,
+                padding: `${tileSizePropsMap[size].padding}px`,
+                gap: `${tileSizePropsMap[size].gap}px`,
+            }}
         >
             {innerParticipant}
-        </Participant>
+        </li>
     );
 }
 
@@ -240,20 +249,6 @@ const MuteIconWrapper = styled.div<{$isMuted: boolean, $padding: number, $size: 
   }
 `;
 
-export const StyledName = styled.span<{$fontSize: number, $lineHeight: number}>`
-  font-weight: 600;
-  text-align: center;
-  font-size: ${({$fontSize}) => $fontSize}px;
-  line-height: ${({$lineHeight}) => $lineHeight}px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow-wrap: break-word;
-  width: 100%;
-`;
-
 const ReactionWrapper = styled.div<{$isHandRaised: boolean, $padding: number, $size: number}>`
   position: absolute;
   display: flex;
@@ -271,22 +266,6 @@ const ReactionWrapper = styled.div<{$isHandRaised: boolean, $padding: number, $s
     height: ${({$size}) => $size}px;
     fill: ${({$isHandRaised}) => ($isHandRaised ? 'var(--away-indicator)' : 'white')};
   }
-`;
-
-export const Participant = styled.li<{ $width: number, $gap: number, $padding: number, $hover?: boolean }>`
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    width: ${({$width}) => $width}px;
-    gap: ${({$gap}) => $gap}px;
-    padding: ${({$padding}) => $padding}px;
-
-    ${({$hover}) => $hover && css`
-        border-radius: 8px;
-        background: rgba(var(--sidebar-text-rgb), 0.08);
-    `}
 `;
 
 const StyledThreeDotsButton = styled(ThreeDotsButton)<{ $size: number }>`

@@ -87,7 +87,7 @@ import styled, {createGlobalStyle, css} from 'styled-components';
 import {CallSettingsButton} from './call_settings';
 import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './controls_button';
 import GlobalBanner from './global_banner';
-import ParticipantsGrid from './participants_grid';
+import {ParticipantsGrid} from './participants_grid';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 import RecordingInfoPrompt from './recording_info_prompt';
 import {RemoveConfirmation} from './remove_confirmation';
@@ -134,7 +134,6 @@ interface Props extends RouteComponentProps {
     enableVideo: boolean;
     otherSessions: UserSessionState[];
     isInCallingStateForDMChannelCall: boolean;
-    otherDMUserID?: string;
 }
 
 interface State {
@@ -1280,7 +1279,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const switchViewLabel = this.state.viewState === 'speaker' ? formatMessage({defaultMessage: 'Switch to grid view'}) : formatMessage({defaultMessage: 'Switch to speaker view'});
         const SwitchViewIcon = this.state.viewState === 'speaker' ? SpeakerViewIcon : GridViewIcon;
 
-        // While a DM call is still ringing the grid gains a placeholder tile for the callee, next to
+        // While a DM call is still ringing the grid shows a placeholder tile for the callee, next to
         // the caller's own. The self-video preview gives way to it so that both show as avatars.
         const isCallingStateForDMChannelCall = this.props.isInCallingStateForDMChannelCall && !this.props.screenSharingSession;
 
@@ -1363,16 +1362,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     {shouldRenderTopVideoContainer && this.renderTopVideoContainer()}
 
                     {!this.props.screenSharingSession && !shouldRenderVideoContainer && this.props.currentSession && this.props.channel &&
-                    <ParticipantsGrid
-                        callID={this.props.channel.id}
-                        callHostID={this.props.callHostID}
-                        currentSessionID={this.props.currentSession.session_id}
-                        currentUserID={this.props.currentUserID}
-                        profiles={this.props.profiles}
-                        sessions={this.props.sessions}
-                        onParticipantRemove={this.onRemove}
-                        callingUserID={isCallingStateForDMChannelCall ? this.props.otherDMUserID : undefined}
-                    />
+                        <ParticipantsGrid
+                            callID={this.props.channel.id}
+                            callHostID={this.props.callHostID}
+                            currentSessionID={this.props.currentSession.session_id}
+                            currentUserID={this.props.currentUserID}
+                            profiles={this.props.profiles}
+                            sessions={this.props.sessions}
+                            onParticipantRemove={this.onRemove}
+                        />
                     }
 
                     {!this.props.screenSharingSession && shouldRenderVideoContainer && this.renderVideoContainer()}
