@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallsConfig, LiveCaption, RTCStats, TranscribeAPI} from '@mattermost/calls-common/lib/types';
+import {CallPostProps, CallsConfig, LiveCaption, RTCStats, TranscribeAPI} from '@mattermost/calls-common/lib/types';
 import {MessageDescriptor} from 'react-intl';
 
 export const CallsConfigDefault: CallsConfig = {
@@ -236,6 +236,22 @@ export type RealNewPostMessageProps = {
 
 export type LiveCaptions = {
     [sessionID: string]: LiveCaption;
+}
+
+// The call_status post prop values from server/dm_timer.go
+export enum CallPostStatus {
+    Calling = 'calling',
+    Ended = 'ended',
+    NoAnswer = 'no_answer',
+    CanceledByCaller = 'canceled_by_caller',
+    Declined = 'declined',
+}
+
+// CallPostProps comes from calls-common, which doesn't know about call_status yet. The server
+// only stamps it for DM calls, so it's empty for GM and channel calls that are still ongoing,
+// and for any call post that predates the lifecycle states.
+export type CallsPostProps = CallPostProps & {
+    call_status: CallPostStatus | '';
 }
 
 // Matching the type in server/public/stats.go

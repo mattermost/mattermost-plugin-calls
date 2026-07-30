@@ -473,19 +473,24 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			// Clear the map since call is ending
 			state.Call.Props.VideoStartAt = nil
 		}
+		// setCallEnded clears Props.Participants, so read it while it's still there.
+		participants := mapKeys(state.Call.Props.Participants)
+
 		setCallEnded(&state.Call)
 
 		p.cancelDMNoAnswerTimer(channelID)
 
+		// A DM call that only ever had the caller in it was never answered, so hanging up
+		// cancelled it rather than ended it.
 		reason := callEndReasonNormal
-		if len(state.Call.Props.Participants) == 1 {
+		if len(participants) == 1 {
 			if channel, appErr := p.API.GetChannel(channelID); appErr == nil && channel.Type == model.ChannelTypeDirect {
 				reason = callEndReasonCanceledByCaller
 			}
 		}
 
 		defer func() {
-			_, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants), reason)
+			_, err := p.updateCallPostEnded(state.Call.PostID, participants, reason)
 			if err != nil {
 				p.LogError("failed to update call post ended", "err", err.Error(), "channelID", channelID)
 			}

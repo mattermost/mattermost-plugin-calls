@@ -33,6 +33,8 @@ import {
 } from 'src/utils';
 import styled from 'styled-components';
 
+import {CallCardState, getCallCardState} from './call_card_state';
+
 interface Props {
     post: Post,
     connectedID: string,
@@ -62,6 +64,7 @@ const PostType = ({
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
     const callProps = getCallPropsFromPost(post);
+    const cardState = getCallCardState(callProps, profiles.length);
 
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
     const callID = useSelector((state: GlobalState) => idForCallInChannel(state, post.channel_id)) || '';
@@ -107,7 +110,7 @@ const PostType = ({
         </ArtifactsContainer>
     ) : null;
 
-    const subMessage = callProps.start_at > 0 && callProps.end_at > 0 ? (
+    const durationSubMessage = (
         <>
             <span>
                 {formatMessage(
@@ -123,7 +126,9 @@ const PostType = ({
                 )}
             </span>
         </>
-    ) : (
+    );
+
+    const startedSubMessage = (
         <>
             <Timestamp
                 timestampFn={timestampFn}
@@ -135,6 +140,30 @@ const PostType = ({
             }
         </>
     );
+
+    let subMessage: JSX.Element | null = null;
+    switch (cardState) {
+    case CallCardState.Calling:
+        // A ringing call has nothing to say beyond "Calling…" itself.
+        break;
+    case CallCardState.Active:
+        subMessage = startedSubMessage;
+        break;
+    case CallCardState.NoAnswer:
+        subMessage = <span>{formatMessage({defaultMessage: 'No answer'})}</span>;
+        break;
+    case CallCardState.Canceled:
+        subMessage = (
+            <span>
+                {user ? formatMessage({defaultMessage: 'Canceled by {user}'}, {user: getUserDisplayName(user)}) : formatMessage({defaultMessage: 'Canceled'})}
+            </span>
+        );
+        break;
+    default:
+        // An ended call with no start_at can't have a duration to report, so fall back to
+        // saying nothing rather than showing a bogus one.
+        subMessage = callProps.start_at > 0 ? durationSubMessage : null;
+    }
 
     let joinButton = (
         <JoinButton onClick={onJoin}>
@@ -176,13 +205,19 @@ const PostType = ({
     const title = callProps.title ? <h3 className='markdown__heading'>{callProps.title}</h3> : compactTitle;
     const callActive = callProps.end_at === 0;
     const inCall = connectedID === post.channel_id;
+    const isCalling = cardState === CallCardState.Calling;
+
+    // Hanging up on a call nobody answered yet cancels it rather than leaving it, which is also
+    // how the server records it (callEndReasonCanceledByCaller).
     const iconAndText = (
         <>
             <LeaveCallIcon style={{fill: 'var(--button-color)', width: '18px', height: '16px'}}/>
-            <ButtonText>{formatMessage({defaultMessage: 'Leave'})}</ButtonText>
+            <ButtonText>
+                {isCalling ? formatMessage({defaultMessage: 'Cancel'}) : formatMessage({defaultMessage: 'Leave'})}
+            </ButtonText>
         </>
     );
-    const showLeaveMenu = !isDMChannel(channel) && (isHost || isAdmin) && profiles.length > 1;
+    const showLeaveMenu = !isCalling && !isDMChannel(channel) && (isHost || isAdmin) && profiles.length > 1;
     let leaveButton: JSX.Element;
     if (showLeaveMenu) {
         leaveButton = (
@@ -206,7 +241,7 @@ const PostType = ({
                 $isActive={false}
                 onClick={onLeaveButtonClick}
                 role='button'
-                aria-label={formatMessage({defaultMessage: 'Leave call'})}
+                aria-label={isCalling ? formatMessage({defaultMessage: 'Cancel call'}) : formatMessage({defaultMessage: 'Leave call'})}
             >
                 {iconAndText}
             </LeaveButton>
@@ -236,14 +271,17 @@ const PostType = ({
                         </CallIndicator>
                         <MessageWrapper>
                             <Message>
-                                {callActive &&
+                                {isCalling &&
+                                    formatMessage({defaultMessage: 'Calling…'})
+                                }
+                                {callActive && !isCalling &&
                                     formatMessage({defaultMessage: 'Call started'})
                                 }
                                 {!callActive &&
                                     formatMessage({defaultMessage: 'Call ended'})
                                 }
                             </Message>
-                            <SubMessage>{subMessage}</SubMessage>
+                            {subMessage && <SubMessage>{subMessage}</SubMessage>}
                         </MessageWrapper>
                     </Left>
                     { (recordings.length > 0 || callActive) && <RowDivider/> }
