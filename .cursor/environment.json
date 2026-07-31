@@ -1,0 +1,24 @@
+{
+  "name": "Calls Plugin Cloud Agent",
+  "user": "ubuntu",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "repositoryDependencies": [
+    "github.com/mattermost/mattermost",
+    "github.com/mattermost/rtcd"
+  ],
+  "install": "bash .cursor/scripts/cloud-agent-install.sh",
+  "start": "bash .cursor/scripts/cloud-agent-start.sh",
+  "ports": [
+    {
+      "name": "Mattermost",
+      "port": 8065
+    },
+    {
+      "name": "Calls RTC",
+      "port": 8443
+    }
+  ]
+}
