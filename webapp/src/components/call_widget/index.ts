@@ -20,7 +20,6 @@ import {
 import {
     allowScreenSharing,
     callsConfig,
-    callStartAtForCurrentCall,
     clientConnecting,
     expandedView,
     getChannelUrlAndDisplayName,
@@ -81,7 +80,6 @@ const mapStateToProps = (state: GlobalState) => {
         sessionsMap: sessionsInCurrentCallMap(state),
         currentSession: sessionForCurrentCall(state),
         profiles,
-        callStartAt: callStartAtForCurrentCall(state),
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),
         callRecording: recordingForCurrentCall(state),

@@ -3,9 +3,9 @@
 
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
-import {useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
-import {hostEndCallForEveryone} from 'src/actions';
+import {defineMessage, useIntl} from 'react-intl';
+import {useDispatch, useSelector} from 'react-redux';
+import {displayGenericErrorModal, hostEndCallForEveryone} from 'src/actions';
 import {DropdownMenuItem} from 'src/components/dot_menu/dot_menu';
 import styled from 'styled-components';
 
@@ -19,11 +19,20 @@ type Props = {
 export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: Props) => {
     const {formatMessage} = useIntl();
 
+    const dispatch = useDispatch();
+
     const isAdmin = useSelector(isCurrentUserSystemAdmin);
     const shouldShowWarningMenuItemForEndingCall = (isHost || isAdmin) && numParticipants > 1;
 
-    function handleHostEndCallForEveryone() {
-        hostEndCallForEveryone(channelID);
+    async function handleHostEndCallForEveryone() {
+        try {
+            await hostEndCallForEveryone(channelID);
+        } catch (_err) {
+            dispatch(displayGenericErrorModal(
+                defineMessage({defaultMessage: 'Unable to end the call'}),
+                defineMessage({defaultMessage: 'Something went wrong while trying to end the call. Please try again.'}),
+            ));
+        }
     }
 
     return (

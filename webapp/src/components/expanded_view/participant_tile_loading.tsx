@@ -10,7 +10,7 @@ import {getUserDisplayName} from 'src/utils';
 import {TileSize, tileSizePropsMap} from './participant_cell';
 
 type Props = {
-    userID: string;
+    userID?: string;
     profile?: UserProfile;
     tileSize: TileSize;
 }
@@ -18,7 +18,7 @@ type Props = {
 export function ParticipantTileLoading({userID, profile, tileSize}: Props) {
     const tile = tileSizePropsMap[tileSize];
 
-    const pictureURL = Client4.getProfilePictureUrl(userID, profile?.last_picture_update || 0);
+    const pictureURL = userID ? Client4.getProfilePictureUrl(userID, profile?.last_picture_update || 0) : '';
 
     return (
         <li

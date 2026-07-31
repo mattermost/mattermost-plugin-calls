@@ -114,7 +114,6 @@ interface Props {
     sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
     profiles: IDMappedObjects<UserProfile>,
-    callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
     callRecording?: CallJobReduxState,

@@ -102,7 +102,6 @@ interface Props extends RouteComponentProps {
     sessions: UserSessionState[],
     sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
-    callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
     callRecording?: CallJobReduxState,

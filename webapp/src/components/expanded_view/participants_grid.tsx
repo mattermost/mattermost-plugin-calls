@@ -162,7 +162,7 @@ export function ParticipantsGrid({
                 ))}
 
                 {/* While a DM call is still ringing the grid shows a placeholder
-                tile for the callee, next tothe caller's own. */}
+                tile for the callee, next to the caller's own. */}
                 {isDMCalling && (
                     <ParticipantTileLoading
                         userID={dmCalleeID}

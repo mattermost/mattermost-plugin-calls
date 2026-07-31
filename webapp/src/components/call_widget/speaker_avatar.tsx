@@ -10,11 +10,11 @@ import Avatar from 'src/components/avatar/avatar';
 
 import {getActiveSpeakerProfile} from './active_speaker';
 
-interface ParticipantAvatar {
+interface ParticipantAvatarProps {
     profile?: UserProfile | null;
 }
 
-export function ParticipantAvatar(props: ParticipantAvatar) {
+export function ParticipantAvatar(props: ParticipantAvatarProps) {
     if (props.profile) {
         const pictureURL = Client4.getProfilePictureUrl(props.profile.id, props.profile.last_picture_update ?? 0);
         return (
@@ -40,12 +40,12 @@ export function ParticipantAvatar(props: ParticipantAvatar) {
     );
 }
 
-interface SpeakerAvatar {
+interface SpeakerAvatarProps {
     sessions: UserSessionState[];
     profiles: IDMappedObjects<UserProfile>;
 }
 
-export function SpeakerAvatar(props: SpeakerAvatar) {
+export function SpeakerAvatar(props: SpeakerAvatarProps) {
     const activeSpeakerProfile = getActiveSpeakerProfile(props.sessions, props.profiles);
     return <ParticipantAvatar profile={activeSpeakerProfile}/>;
 }
