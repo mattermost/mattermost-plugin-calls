@@ -194,8 +194,6 @@ test.describe('end call', () => {
         await page.locator('#calls-widget-leave-button').click();
         const menu = page.getByTestId('dropdownmenu');
         await menu.getByText('End call for everyone').click();
-        await expect(page.locator('#end_call_confirmation')).toBeVisible();
-        await page.getByTestId('modal-confirm-button').getByText('End call').click();
 
         // verify call has ended
         await expect(page.locator('#calls-widget')).toBeHidden();
@@ -218,8 +216,6 @@ test.describe('end call', () => {
         await leaveCallButton.click();
         const menu = page.getByTestId('dropdownmenu');
         await menu.getByText('End call for everyone').click();
-        await expect(page.locator('#end_call_confirmation')).toBeVisible();
-        await page.getByTestId('modal-confirm-button').getByText('End call').click();
 
         // verify call has ended
         await expect(page.locator('#calls-widget')).toBeHidden();
@@ -239,8 +235,6 @@ test.describe('end call', () => {
         await popOut.page.locator('#calls-popout-leave-button').click();
         const menu = popOut.page.getByTestId('dropdownmenu');
         await menu.getByText('End call for everyone').click();
-        await expect(popOut.page.locator('#end_call_confirmation')).toBeVisible();
-        await popOut.page.getByTestId('modal-confirm-button').getByText('End call').click();
 
         // verify call has ended
         await expect(page.locator('#calls-widget')).toBeHidden();

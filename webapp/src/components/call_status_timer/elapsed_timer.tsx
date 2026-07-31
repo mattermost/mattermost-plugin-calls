@@ -2,11 +2,10 @@
 // See LICENSE.txt for license information.
 
 import {Duration} from 'luxon';
-import React, {CSSProperties, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 
 type Props = {
     startAt: number,
-    style?: CSSProperties,
 }
 
 const oneHour = Duration.fromObject({hours: 1});
@@ -19,7 +18,7 @@ function getCallDuration(startAt: number) {
     return dur.toFormat('hh:mm:ss');
 }
 
-export default function CallDuration(props: Props) {
+export function ElapsedTimer(props: Props) {
     // If the server clock is ahead of the client, startAt will be in the
     // future and the raw duration would be negative. Capture an adjusted
     // start time on mount so the timer counts up from 0:00 immediately
@@ -38,12 +37,7 @@ export default function CallDuration(props: Props) {
         return () => clearInterval(interval);
     });
 
-    const style = props.style || {};
-    if (!style.fontWeight) {
-        style.fontWeight = 600;
-    }
-
     return (
-        <div style={style}>{getCallDuration(adjustedStartAt)}</div>
+        <div className='callDurationContainer'>{getCallDuration(adjustedStartAt)}</div>
     );
 }

@@ -133,7 +133,7 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
-import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from './log';
+import {flushLogsToAccumulated, logDebug, logErr, logInfo} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
@@ -353,17 +353,6 @@ export default class Plugin {
         this.unsubscribers.push(() => {
             document.getElementById('calls')?.remove();
         });
-
-        if (window.desktop) {
-            const widgetCh = new BroadcastChannel('calls_widget');
-            this.unsubscribers.push(() => {
-                widgetCh.close();
-            });
-
-            widgetCh.onmessage = (ev) => {
-                logWarn('unexpected message on widget channel', ev.data);
-            };
-        }
 
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
@@ -724,7 +713,7 @@ export default class Plugin {
                     dcLocking: hasDCSignalingLockSupport(callsVersionInfo(state)),
                     enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
                 });
-                window.currentCallData = CurrentCallDataDefault;
+                window.currentCallData = {...CurrentCallDataDefault};
 
                 const locale = getCurrentUserLocale(state) || 'en';
 

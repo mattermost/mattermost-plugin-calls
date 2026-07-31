@@ -3,7 +3,7 @@
 
 /* eslint-disable max-lines */
 
-import './component.scss';
+import './call_widget.scss';
 
 import {mosThreshold} from '@mattermost/calls-common';
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
@@ -20,6 +20,7 @@ import {navigateToURL} from 'src/browser_routing';
 import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
+import {CallStatusTimer} from 'src/components/call_status_timer';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
@@ -94,7 +95,8 @@ import {
 import {serverDismissedAt} from 'src/utils/clock_skew';
 import styled, {css} from 'styled-components';
 
-import CallDuration from './call_duration';
+import {CallParticipantAvatar} from './call_participant_avatar';
+import {CallStatusText} from './call_status_text';
 import JoinNotification from './join_notification';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import WidgetBanner from './widget_banner';
@@ -112,7 +114,6 @@ interface Props {
     sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
     profiles: IDMappedObjects<UserProfile>,
-    callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
     callRecording?: CallJobReduxState,
@@ -1212,31 +1213,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
-    renderSpeaking = () => {
-        const {formatMessage} = this.props.intl;
-        let speakingProfile;
-
-        for (let i = 0; i < this.props.sessions.length; i++) {
-            const session = this.props.sessions[i];
-            const profile = this.props.profiles[session.user_id];
-            if (session.voice && profile) {
-                speakingProfile = profile;
-                break;
-            }
-        }
-
-        return (
-            <div style={{fontSize: '14px', lineHeight: '20px', display: 'flex', whiteSpace: 'pre'}}>
-                <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                    {speakingProfile ? getUserDisplayName(speakingProfile) : formatMessage({defaultMessage: 'No one'})}
-                    <span
-                        style={{fontWeight: 400}}
-                    >{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
-                </span>
-            </div>
-        );
-    };
-
     devicesMenuRefCb = (el: HTMLUListElement) => {
         if (this.audioMenuResizeObserver) {
             this.audioMenuResizeObserver.disconnect();
@@ -1762,50 +1738,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
-    renderSpeakingProfile = () => {
-        let speakingPictureURL;
-        for (let i = 0; i < this.props.sessions.length; i++) {
-            const session = this.props.sessions[i];
-            const profile = this.props.profiles[session.user_id];
-            if (session.voice && profile) {
-                speakingPictureURL = Client4.getProfilePictureUrl(profile.id, profile.last_picture_update);
-                break;
-            }
-        }
-
-        return (
-            <div
-                style={{position: 'relative', display: 'flex', height: 'auto', alignItems: 'center'}}
-            >
-
-                {
-
-                    speakingPictureURL &&
-                    <Avatar
-                        size={32}
-                        border={false}
-                        url={speakingPictureURL}
-                    />
-                }
-
-                {
-                    !speakingPictureURL &&
-                    <Avatar
-                        size={32}
-                        icon='account-outline'
-                        border={false}
-                        style={{
-                            background: 'rgba(var(--center-channel-color-rgb), 0.16)',
-                            color: 'rgba(var(--center-channel-color-rgb), 0.48)',
-                            fontSize: '18px',
-                        }}
-                    />
-                }
-
-            </div>
-        );
-    };
-
     renderRecordingDisclaimer = () => {
         const {formatMessage} = this.props.intl;
         const isHost = this.props.callHostID === this.props.currentUserID;
@@ -2018,7 +1950,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             return (
                 <div
-                    className='calls-notification-bar calls-slide-top'
+                    className='calls-notification-bar slideFadeInOutAnimation'
                     key={profile.id}
                     data-testid={'call-joined-participant-notification'}
                 >
@@ -2310,17 +2242,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     }}
                 >
                     {channelLink}
-
                     <div style={{fontSize: '10px', color: 'var(--center-channel-color-64, rgba(63, 67, 80, 0.64))'}}>{untranslatable('•')}</div>
-
-                    <CallDuration
-                        startAt={this.props.callStartAt}
-                        style={{
-                            letterSpacing: '0.02em',
-                            color: 'var(--center-channel-color-64, rgba(63, 67, 80, 0.64))',
-                            fontSize: '11px',
-                        }}
-                    />
+                    <CallStatusTimer/>
                 </div>
 
                 <WidgetButton
@@ -2554,17 +2477,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             // eslint-disable-next-line no-undefined
                             onMouseDown={this.props.global ? undefined : this.onMouseDown}
                         >
-                            {this.renderSpeakingProfile()}
-
+                            <CallParticipantAvatar
+                                sessions={this.props.sessions}
+                                profiles={this.props.profiles}
+                            />
                             <div style={{width: this.props.wider ? '210px' : '152px'}}>
-                                {this.renderSpeaking()}
+                                <CallStatusText
+                                    sessions={this.props.sessions}
+                                    profiles={this.props.profiles}
+                                />
                                 <div style={this.style.callInfo}>
                                     {this.renderRecordingBadge()}
-                                    <CallDuration
-                                        startAt={this.props.callStartAt}
-                                        style={{letterSpacing: '0.02em'}}
-                                    />
-                                    {this.renderChannelName()}
+                                    <CallStatusTimer/>
+                                    {!isDMChannel(this.props.channel) && this.renderChannelName()}
                                 </div>
                             </div>
 
@@ -2595,32 +2520,34 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={this.style.bottomBar}
                     >
 
-                        <WidgetButton
-                            id='calls-widget-participants-button'
-                            ariaLabel={showParticipantsListLabel}
-                            ariaControls='calls-widget-participants-menu'
-                            ariaExpanded={this.state.showParticipantsList}
-                            onToggle={this.onParticipantsButtonClick}
-                            bgColor={this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
-                            tooltipText={showParticipantsListLabel}
-                            shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
-                            icon={
-                                <ParticipantsIcon
-                                    style={{fill: this.state.showParticipantsList ? 'var(--button-bg)' : ''}}
-                                />
-                            }
-                            style={{marginRight: 'auto'}}
-                        >
-                            <span
-                                style={{
-                                    fontWeight: 600,
-                                    fontSize: '14px',
-                                    color: this.state.showParticipantsList ? 'var(--button-bg)' : '',
-                                }}
+                        {!isDMChannel(this.props.channel) && (
+                            <WidgetButton
+                                id='calls-widget-participants-button'
+                                ariaLabel={showParticipantsListLabel}
+                                ariaControls='calls-widget-participants-menu'
+                                ariaExpanded={this.state.showParticipantsList}
+                                onToggle={this.onParticipantsButtonClick}
+                                bgColor={this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
+                                tooltipText={showParticipantsListLabel}
+                                shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
+                                icon={
+                                    <ParticipantsIcon
+                                        style={{fill: this.state.showParticipantsList ? 'var(--button-bg)' : ''}}
+                                    />
+                                }
+                                style={{marginRight: 'auto'}}
                             >
-                                {this.props.sessions.length}
-                            </span>
-                        </WidgetButton>
+                                <span
+                                    style={{
+                                        fontWeight: 600,
+                                        fontSize: '14px',
+                                        color: this.state.showParticipantsList ? 'var(--button-bg)' : '',
+                                    }}
+                                >
+                                    {this.props.sessions.length}
+                                </span>
+                            </WidgetButton>
+                        )}
 
                         <WidgetButton
                             id='voice-mute-unmute'

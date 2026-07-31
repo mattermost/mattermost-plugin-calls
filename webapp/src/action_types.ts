@@ -11,6 +11,7 @@ export const USER_VOICE_ON = pluginId + '_user_voice_on';
 export const USER_VOICE_OFF = pluginId + '_user_voice_off';
 export const USERS_STATES = pluginId + '_users_states';
 export const CALL_STATE = pluginId + '_call_state';
+export const DM_CALLEE_ANSWERED_AT = pluginId + '_dm_callee_answered_at';
 export const USER_SCREEN_ON = pluginId + '_screen_on';
 export const USER_SCREEN_OFF = pluginId + '_screen_off';
 export const UNINIT = pluginId + '_uninit';

@@ -56,6 +56,7 @@ import {
     CLIENT_CONNECTING,
     DID_RING_FOR_CALL,
     DISMISS_CALL,
+    DM_CALLEE_ANSWERED_AT,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
@@ -254,7 +255,7 @@ export const requestOnPremTrialLicense = async (users: number, termsAccepted: bo
     }
 };
 
-export const endCall = (channelID: string) => {
+export const hostEndCallForEveryone = (channelID: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${channelID}/host/end`,
         {method: 'post'},
@@ -695,3 +696,11 @@ export const localSessionClose = (channelID: string) => (dispatch: Dispatch) => 
         },
     });
 };
+
+export const setDMCalleeAnsweredAt = (callID: string, answeredAt: number) => ({
+    type: DM_CALLEE_ANSWERED_AT,
+    data: {
+        callID,
+        answeredAt,
+    },
+});

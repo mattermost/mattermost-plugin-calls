@@ -36,6 +36,7 @@ import {
     loadCallState,
     loadProfilesByIdsIfMissing,
     removeIncomingCallNotification,
+    setDMCalleeAnsweredAt,
     userLeft,
 } from 'src/actions';
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/client';
@@ -82,6 +83,9 @@ import {logErr, logInfo} from './log';
 import {
     calls,
     channelIDForCurrentCall,
+    dmCalleeAnsweredAtForCurrentCall,
+    idForCurrentCall,
+    isCurrentUserOwnerOfCurrentCall,
     profilesInCurrentCallMap,
     ringingEnabled,
     shouldPlayJoinUserSound,
@@ -90,8 +94,11 @@ import {Store} from './types/mattermost-webapp';
 import {
     followThread,
     getCallsClient,
+    getCallsClientChannelID,
     getCallsClientSessionID,
+    getCallsWindow,
     getUserDisplayName,
+    isDMChannel,
     notificationsStopRinging,
     playSound,
 } from './utils';
@@ -202,6 +209,26 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
         if (ringingEnabled(store.getState())) {
             store.dispatch(removeIncomingCallNotification(callID));
             notificationsStopRinging(); // And stop ringing for _any_ incoming call.
+        }
+    }
+
+    // A DM call is answered the moment the other party joins, which is where its duration
+    // should start counting from. Only the caller needs to observe this: the callee's own answer
+    // moment is their join, which we get from the calls client instead (see
+    // callTimerStartAtForCurrentCall).
+    const currentCallID = idForCurrentCall(store.getState());
+    if (currentCallID && getCallsClientChannelID() === channelID && userID !== currentUserID &&
+        isDMChannel(getChannel(store.getState(), channelID)) &&
+        isCurrentUserOwnerOfCurrentCall(store.getState()) &&
+        !dmCalleeAnsweredAtForCurrentCall(store.getState())) {
+        const answeredAt = Date.now();
+        store.dispatch(setDMCalleeAnsweredAt(currentCallID, answeredAt));
+
+        // Keep a copy in the window so expanded view can pick it up
+        // as soon as its opened. We later sync it to its store in CallStatusTimer.
+        const callsWindow = getCallsWindow();
+        if (callsWindow.currentCallData) {
+            callsWindow.currentCallData.answeredAt = answeredAt;
         }
     }
 

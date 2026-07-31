@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@mattermost/calls-common';
-import {CallJobMetadata, CallPostProps, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallJobMetadata, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {ClientConfig} from '@mattermost/types/config';
 import {Post} from '@mattermost/types/posts';
@@ -21,7 +21,7 @@ import {parseSemVer} from 'semver-parser';
 import CallsClient from 'src/client';
 import {STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
 import RestClient from 'src/rest_client';
-import {DesktopMessage} from 'src/types/types';
+import {CallPostStatus, CallsPostProps} from 'src/types/types';
 import {notificationSounds} from 'src/webapp_globals';
 
 import {logDebug, logErr, logWarn} from './log';
@@ -598,7 +598,11 @@ function getJobMetadataMap(obj: {[key: string]: CallJobMetadata}) {
     return out;
 }
 
-export function getCallPropsFromPost(post: Post): CallPostProps {
+function isCallPostStatus(status: unknown): status is CallPostStatus {
+    return Object.values<unknown>(CallPostStatus).includes(status);
+}
+
+export function getCallPropsFromPost(post: Post): CallsPostProps {
     return {
         title: typeof post.props?.title === 'string' ? post.props.title : '',
         start_at: typeof post.props?.start_at === 'number' ? post.props.start_at : 0,
@@ -606,6 +610,7 @@ export function getCallPropsFromPost(post: Post): CallPostProps {
         recordings: isValidObject(post.props?.recordings) ? getJobMetadataMap(post.props.recordings) : {},
         transcriptions: isValidObject(post.props?.transcriptions) ? getJobMetadataMap(post.props.transcriptions) : {},
         participants: Array.isArray(post.props?.participants) ? post.props.participants : [],
+        call_status: isCallPostStatus(post.props?.call_status) ? post.props.call_status : '',
     };
 }
 
@@ -629,13 +634,6 @@ export function getWebappUtils() {
 
 export function getPersistentStorage() {
     return window.desktop ? localStorage : sessionStorage;
-}
-
-export function sendDesktopMessage(msg: DesktopMessage) {
-    // simple, fire and forget for now.
-    const ch = new BroadcastChannel('calls_widget');
-    ch.postMessage(msg);
-    ch.close();
 }
 
 export function shareAudioWithScreen() {

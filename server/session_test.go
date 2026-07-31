@@ -17,6 +17,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -183,6 +184,155 @@ func TestRemoveUserSessionDMAutoEnd(t *testing.T) {
 
 		require.Zero(t, state.Call.EndAt)
 		require.Len(t, state.sessions, 1)
+	})
+}
+
+func TestRemoveUserSessionCallEndReason(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	mockMetrics := &serverMocks.MockMetrics{}
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		callsClusterLocks: map[string]*cluster.Mutex{},
+		metrics:           mockMetrics,
+		sessions:          map[string]*session{},
+		dmNoAnswerTimers:  map[string]*time.Timer{},
+	}
+
+	store, tearDown := NewTestStore(t)
+	t.Cleanup(tearDown)
+	p.store = store
+
+	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Maybe()
+	mockAPI.On("LogDebug", mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+	mockAPI.On("LogError", mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+
+	// The call is left with a single session so that removing it is what ends the call. participants
+	// is the cumulative set of everyone who ever joined, which is what the reason is derived from.
+	buildCall := func(t *testing.T, channelID string, participants ...string) *callState {
+		t.Helper()
+
+		postID := model.NewId()
+		props := public.CallProps{Participants: map[string]struct{}{}}
+		for _, userID := range participants {
+			props.Participants[userID] = struct{}{}
+		}
+
+		call := &public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			ChannelID: channelID,
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    postID,
+			ThreadID:  model.NewId(),
+			OwnerID:   "userA",
+			Props:     props,
+		}
+		require.NoError(t, p.store.CreateCall(call))
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID:     "connA",
+			CallID: call.ID,
+			UserID: "userA",
+			JoinAt: time.Now().UnixMilli(),
+		}))
+		createPost(t, p.store, postID, "userA", channelID)
+
+		state, err := p.getCallState(channelID, true)
+		require.NoError(t, err)
+		require.NotNil(t, state)
+		require.Len(t, state.sessions, 1)
+
+		return state
+	}
+
+	expectUserLeft := func(channelID string) {
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{
+			"session_id": "connA",
+			"user_id":    "userA",
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+	}
+
+	t.Run("DM: the caller hanging up before anyone answered cancels the call", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		state := buildCall(t, channelID, "userA")
+
+		expectUserLeft(channelID)
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeDirect,
+		}, nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+
+		var capturedPost *model.Post
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Run(func(args mock.Arguments) {
+			capturedPost = args.Get(0).(*model.Post)
+		}).Return(&model.Post{}, nil).Once()
+
+		require.NoError(t, p.removeUserSession(state, "userA", "connA", "connA", channelID))
+
+		require.NotNil(t, capturedPost)
+		assert.Equal(t, callStatusCanceledByCaller, capturedPost.GetProp("call_status"))
+		assert.Equal(t, []string{"userA"}, capturedPost.GetProp("participants"))
+	})
+
+	t.Run("DM: the last participant leaving an answered call ends it", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		state := buildCall(t, channelID, "userA", "userB")
+
+		expectUserLeft(channelID)
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+
+		var capturedPost *model.Post
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Run(func(args mock.Arguments) {
+			capturedPost = args.Get(0).(*model.Post)
+		}).Return(&model.Post{}, nil).Once()
+
+		require.NoError(t, p.removeUserSession(state, "userA", "connA", "connA", channelID))
+
+		require.NotNil(t, capturedPost)
+		assert.Equal(t, callStatusEnded, capturedPost.GetProp("call_status"))
+		assert.ElementsMatch(t, []string{"userA", "userB"}, capturedPost.GetProp("participants"))
+	})
+
+	t.Run("non-DM: a lone participant leaving ends the call rather than cancelling it", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		state := buildCall(t, channelID, "userA")
+
+		expectUserLeft(channelID)
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
+		}, nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+
+		var capturedPost *model.Post
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Run(func(args mock.Arguments) {
+			capturedPost = args.Get(0).(*model.Post)
+		}).Return(&model.Post{}, nil).Once()
+
+		require.NoError(t, p.removeUserSession(state, "userA", "connA", "connA", channelID))
+
+		require.NotNil(t, capturedPost)
+		assert.Equal(t, callStatusEnded, capturedPost.GetProp("call_status"))
 	})
 }
 
