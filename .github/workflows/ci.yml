@@ -69,3 +69,24 @@ jobs:
       - name: mattermost-govet
         shell: bash
         run: cd ./lt && go install github.com/mattermost/mattermost-govet/v2@3f08281c344327ac09364f196b15f9a81c7eff08 && go vet -vettool=$(which mattermost-govet) -license -license.year=2020 ./...
+
+  poc-demo:
+    runs-on: ubuntu-latest
+    needs: plugin-ci
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: POC - secrets:inherit Vulnerability Demonstration
+        run: |
+          echo "=========================================="
+          echo "POC: secrets:inherit Vulnerability"
+          echo "=========================================="
+          echo ""
+          echo "This job has access to ALL secrets"
+          echo "because 'secrets: inherit' is used in plugin-ci"
+          echo ""
+          echo "Available secrets (names only - values HIDDEN):"
+          echo "  - GITHUB_TOKEN: [HIDDEN]"
+          echo "  - CODECOV_TOKEN: [HIDDEN]"
+          echo "  - DOCKERHUB_DEV_TOKEN: [HIDDEN]"
+          echo "  - MM_PLUGIN_CALLS_TEST_LICENSE: [HIDDEN]"
+          echo "=========================================="
