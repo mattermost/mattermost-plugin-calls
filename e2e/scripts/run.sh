@@ -101,7 +101,7 @@ docker run -d --name playwright-e2e \
 docker logs -f playwright-e2e
 
 docker cp playwright-e2e:/usr/src/calls-e2e/test-results results/test-results-${CI_NODE_INDEX}
-docker cp playwright-e2e:/usr/src/calls-e2e/playwright-report results/playwright-report-${CI_NODE_INDEX}
+docker cp playwright-e2e:/usr/src/calls-e2e/blob-report results/blob-report-${CI_NODE_INDEX}
 docker cp playwright-e2e:/usr/src/calls-e2e/pw-results.json results/pw-results-${CI_NODE_INDEX}.json
 
 ## Dumping services logs to be uploaded as artifacts in case of failures.
