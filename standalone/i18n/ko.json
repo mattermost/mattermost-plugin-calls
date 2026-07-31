@@ -1,4 +1,4 @@
 {
-  "UxatAw": "{count,plural, =1{# participant} other {# participants}}",
+  "UxatAw": "{count, plural, =1 {참가자 #명} other {참가자 #명}}",
   "qR+5t1": "말하고 있습니다…"
 }

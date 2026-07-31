@@ -1,0 +1,58 @@
+[
+  {
+    "id": "app.add_user_session.group_calls_not_allowed_error",
+    "translation": "Calls on unlicensed servers are only available in DMs."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.enterprise",
+    "translation": "We highly recommend [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.intro",
+    "translation": "Your installation is experiencing heavy usage from Mattermost Calls that can negatively impact system performance and responsiveness."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+    "translation": "We highly recommend upgrading to [Enterprise](https://mattermost.com/pricing/) and [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.team",
+    "translation": "We highly recommend switching to [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) and [deploying the RTCD service](https://mattermost.com/pl/calls-deployment-the-rtcd-service) to offload calls processing to a separate instance in order to maintain the performance, scalability, and reliability of your main Mattermost server."
+  },
+  {
+    "id": "app.call.ended_message",
+    "translation": "Call ended"
+  },
+  {
+    "id": "app.call.new_recording_and_transcription_message",
+    "translation": "Here's the call recording. Transcription is processing and will be posted when ready."
+  },
+  {
+    "id": "app.call.new_recording_message",
+    "translation": "Here's the call recording"
+  },
+  {
+    "id": "app.call.new_transcription_message",
+    "translation": "Here's the call transcription"
+  },
+  {
+    "id": "app.call.started_message",
+    "translation": "{{.Username}} started a call"
+  },
+  {
+    "id": "app.call.started_message_fullname",
+    "translation": "{{.FirstName}} {{.LastName}} started a call"
+  },
+  {
+    "id": "app.push_notification.generic_message",
+    "translation": "You've been invited to a call"
+  },
+  {
+    "id": "app.push_notification.inviting_message",
+    "translation": "{{.SenderName}} is inviting you to a call"
+  },
+  {
+    "id": "app.save_config.error",
+    "translation": "Failed to save config."
+  }
+]

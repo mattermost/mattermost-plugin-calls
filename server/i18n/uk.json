@@ -1,58 +1,58 @@
 [
-    {
-        "id": "app.add_user_session.group_calls_not_allowed_error",
-        "translation": "Дзвінки на неліцензійні сервери доступні лише через приватні повідомлення."
-    },
-    {
-        "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
-        "translation": "Ми наполегливо рекомендуємо перейти на [Enterprise](https://mattermost.com/pricing/) і [розгорнути службу RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), щоб перенести обробку дзвінків на окремий сервер. Це допоможе зберегти продуктивність, масштабованість і надійність вашого основного сервера Mattermost."
-    },
-    {
-        "id": "app.admin.concurrent_sessions_warning.team",
-        "translation": "Ми наполегливо рекомендуємо перейти на [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) і [розгорнути службу RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), щоб перенести обробку дзвінків на окремий сервер. Це допоможе зберегти продуктивність, масштабованість і надійність вашого основного сервера Mattermost."
-    },
-    {
-        "id": "app.call.ended_message",
-        "translation": "Дзвінок завершено"
-    },
-    {
-        "id": "app.call.new_recording_message",
-        "translation": "Ось запис розмови"
-    },
-    {
-        "id": "app.call.new_transcription_message",
-        "translation": "Ось текстова версія дзвінка"
-    },
-    {
-        "id": "app.admin.concurrent_sessions_warning.enterprise",
-        "translation": "Ми наполегливо рекомендуємо [розгорнути службу RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), щоб перенести обробку дзвінків на окремий сервер. Це дозволить зберегти продуктивність, масштабованість і надійність основного сервера Mattermost."
-    },
-    {
-        "id": "app.call.new_recording_and_transcription_message",
-        "translation": "Ось запис розмови. Текстова версія запису обробляється і по готовності буде опублікована."
-    },
-    {
-        "id": "app.admin.concurrent_sessions_warning.intro",
-        "translation": "Ваша інсталяція зазнає інтенсивного використання Mattermost Calls, що може негативно вплинути на продуктивність системи та швидкість відгуку."
-    },
-    {
-        "id": "app.call.started_message",
-        "translation": "{{.Username}} розпочав дзвінок"
-    },
-    {
-        "id": "app.call.started_message_fullname",
-        "translation": "{{.FirstName}} {{.LastName}} розпочав дзвінок"
-    },
-    {
-        "id": "app.push_notification.inviting_message",
-        "translation": "{{.SenderName}} запрошує вас на дзвінок"
-    },
-    {
-        "id": "app.push_notification.generic_message",
-        "translation": "Вас запросили на дзвінок"
-    },
-    {
-        "id": "app.save_config.error",
-        "translation": "Не вдалося зберегти конфігурацію."
-    }
+  {
+    "id": "app.add_user_session.group_calls_not_allowed_error",
+    "translation": "Дзвінки на неліцензованих серверах доступні лише в приватних повідомленнях."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+    "translation": "Ми наполегливо рекомендуємо перейти на [Enterprise](https://mattermost.com/pricing/) і [розгорнути службу RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), щоб перенести обробку дзвінків на окремий сервер. Це допоможе зберегти продуктивність, масштабованість і надійність вашого основного сервера Mattermost."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.team",
+    "translation": "Ми наполегливо рекомендуємо перейти на [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) і [розгорнути службу RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), щоб перенести обробку дзвінків на окремий сервер. Це допоможе зберегти продуктивність, масштабованість і надійність вашого основного сервера Mattermost."
+  },
+  {
+    "id": "app.call.ended_message",
+    "translation": "Дзвінок завершено"
+  },
+  {
+    "id": "app.call.new_recording_message",
+    "translation": "Ось запис дзвінка"
+  },
+  {
+    "id": "app.call.new_transcription_message",
+    "translation": "Ось транскрипція дзвінка"
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.enterprise",
+    "translation": "Ми наполегливо рекомендуємо [розгорнути службу RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), щоб перенести обробку дзвінків на окремий сервер. Це дозволить зберегти продуктивність, масштабованість і надійність основного сервера Mattermost."
+  },
+  {
+    "id": "app.call.new_recording_and_transcription_message",
+    "translation": "Ось запис дзвінка. Транскрипція обробляється і буде опублікована, коли буде готова."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.intro",
+    "translation": "Ваша інсталяція зазнає інтенсивного використання Mattermost Calls, що може негативно вплинути на продуктивність системи та швидкість відгуку."
+  },
+  {
+    "id": "app.call.started_message",
+    "translation": "{{.Username}} розпочав дзвінок"
+  },
+  {
+    "id": "app.call.started_message_fullname",
+    "translation": "{{.FirstName}} {{.LastName}} розпочав дзвінок"
+  },
+  {
+    "id": "app.push_notification.inviting_message",
+    "translation": "{{.SenderName}} запрошує вас на дзвінок"
+  },
+  {
+    "id": "app.push_notification.generic_message",
+    "translation": "Вас запросили на дзвінок"
+  },
+  {
+    "id": "app.save_config.error",
+    "translation": "Не вдалося зберегти конфігурацію."
+  }
 ]

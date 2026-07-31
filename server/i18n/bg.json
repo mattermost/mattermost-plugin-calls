@@ -1,0 +1,58 @@
+[
+  {
+    "id": "app.add_user_session.group_calls_not_allowed_error",
+    "translation": "Обажданията на нелицензирани сървъри са налични само в директни съобщения."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.enterprise",
+    "translation": "Силно препоръчваме да [внедрите услугата RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), за да прехвърлите обработката на обажданията към отделен екземпляр с цел запазване на производителността, мащабируемостта и надеждността на основния ви Mattermost сървър."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.intro",
+    "translation": "Вашата инсталация изпитва интензивно натоварване от Mattermost Calls, което може да повлияе отрицателно на производителността и отзивчивостта на системата."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+    "translation": "Силно препоръчваме да надстроите до [Enterprise](https://mattermost.com/pricing/) и да [внедрите услугата RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), за да прехвърлите обработката на обажданията към отделен екземпляр с цел запазване на производителността, мащабируемостта и надеждността на основния ви Mattermost сървър."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.team",
+    "translation": "Силно препоръчваме да преминете към [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) и да [внедрите услугата RTCD](https://mattermost.com/pl/calls-deployment-the-rtcd-service), за да прехвърлите обработката на обажданията към отделен екземпляр с цел запазване на производителността, мащабируемостта и надеждността на основния ви Mattermost сървър."
+  },
+  {
+    "id": "app.call.ended_message",
+    "translation": "Обаждането приключи"
+  },
+  {
+    "id": "app.call.new_recording_and_transcription_message",
+    "translation": "Ето записа на обаждането. Транскрипцията се обработва и ще бъде публикувана, когато е готова."
+  },
+  {
+    "id": "app.call.new_recording_message",
+    "translation": "Ето записа на обаждането"
+  },
+  {
+    "id": "app.call.new_transcription_message",
+    "translation": "Ето транскрипцията на обаждането"
+  },
+  {
+    "id": "app.call.started_message",
+    "translation": "{{.Username}} започна обаждане"
+  },
+  {
+    "id": "app.call.started_message_fullname",
+    "translation": "{{.FirstName}} {{.LastName}} започна обаждане"
+  },
+  {
+    "id": "app.push_notification.generic_message",
+    "translation": "Поканени сте на обаждане"
+  },
+  {
+    "id": "app.push_notification.inviting_message",
+    "translation": "{{.SenderName}} ви кани на обаждане"
+  },
+  {
+    "id": "app.save_config.error",
+    "translation": "Неуспешно запазване на конфигурацията."
+  }
+]

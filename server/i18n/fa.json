@@ -1,6 +1,58 @@
 [
-    {
-        "id": "app.call.ended_message",
-        "translation": "تماس پایان یافت"
-    }
+  {
+    "id": "app.call.ended_message",
+    "translation": "تماس پایان یافت"
+  },
+  {
+    "id": "app.add_user_session.group_calls_not_allowed_error",
+    "translation": "تماس‌ها در سرورهای فاقد لایسنس فقط در پیام‌های مستقیم در دسترس هستند."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.enterprise",
+    "translation": "قویاً توصیه می‌کنیم برای انتقال پردازش تماس‌ها به یک نمونهٔ جداگانه، [سرویس RTCD را مستقر کنید](https://mattermost.com/pl/calls-deployment-the-rtcd-service) تا عملکرد، مقیاس‌پذیری و قابلیت اطمینان سرور اصلی Mattermost شما حفظ شود."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.intro",
+    "translation": "نصب شما در حال تجربهٔ استفادهٔ سنگین از Mattermost Calls است که می‌تواند بر عملکرد و پاسخگویی سیستم تأثیر منفی بگذارد."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.pro_or_e0",
+    "translation": "قویاً توصیه می‌کنیم برای انتقال پردازش تماس‌ها به یک نمونهٔ جداگانه، به [Enterprise](https://mattermost.com/pricing/) ارتقا دهید و [سرویس RTCD را مستقر کنید](https://mattermost.com/pl/calls-deployment-the-rtcd-service) تا عملکرد، مقیاس‌پذیری و قابلیت اطمینان سرور اصلی Mattermost شما حفظ شود."
+  },
+  {
+    "id": "app.admin.concurrent_sessions_warning.team",
+    "translation": "قویاً توصیه می‌کنیم برای انتقال پردازش تماس‌ها به یک نمونهٔ جداگانه، به [Mattermost Enterprise Edition](https://mattermost.com/pl/install-enterprise-install-upgrade) مهاجرت کنید و [سرویس RTCD را مستقر کنید](https://mattermost.com/pl/calls-deployment-the-rtcd-service) تا عملکرد، مقیاس‌پذیری و قابلیت اطمینان سرور اصلی Mattermost شما حفظ شود."
+  },
+  {
+    "id": "app.call.new_recording_and_transcription_message",
+    "translation": "ضبط تماس اینجاست. رونویسی در حال پردازش است و پس از آماده شدن ارسال می‌شود."
+  },
+  {
+    "id": "app.call.new_recording_message",
+    "translation": "ضبط تماس اینجاست"
+  },
+  {
+    "id": "app.call.new_transcription_message",
+    "translation": "رونویسی تماس اینجاست"
+  },
+  {
+    "id": "app.call.started_message",
+    "translation": "{{.Username}} تماسی را شروع کرد"
+  },
+  {
+    "id": "app.call.started_message_fullname",
+    "translation": "{{.FirstName}} {{.LastName}} تماسی را شروع کرد"
+  },
+  {
+    "id": "app.push_notification.generic_message",
+    "translation": "شما به تماسی دعوت شده‌اید"
+  },
+  {
+    "id": "app.push_notification.inviting_message",
+    "translation": "{{.SenderName}} شما را به تماسی دعوت می‌کند"
+  },
+  {
+    "id": "app.save_config.error",
+    "translation": "ذخیرهٔ پیکربندی ناموفق بود."
+  }
 ]

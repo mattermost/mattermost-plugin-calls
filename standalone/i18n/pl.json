@@ -1,4 +1,4 @@
 {
-  "UxatAw": "{count, plural, =1 {# uczestnik} other {# uczestników}}",
-  "qR+5t1": "rozmawia…"
+  "UxatAw": "{count, plural, =1 {# uczestnik} one {# uczestnik} few {# uczestnicy} many {# uczestników} other {# uczestnika}}",
+  "qR+5t1": "mówi…"
 }
