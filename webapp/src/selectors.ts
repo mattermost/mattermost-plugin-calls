@@ -30,7 +30,6 @@ import {createSelector} from 'reselect';
 import {
     callsJobState,
     callState,
-    DmCalleeAnsweredAt,
     hostControlNoticeState,
     hostsState,
     liveCaptionState,
@@ -247,16 +246,12 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
         (callsStates, channelID, initTime) => callsStates[channelID]?.startAt || initTime || 0,
     );
 
-const dmCalleeAnsweredAtInCalls = (state: GlobalState): DmCalleeAnsweredAt => {
-    return pluginState(state).dmCalleeAnsweredAt || {};
-};
-
-export const callAnsweredAtForCurrentCall: (state: GlobalState) => number =
+export const dmCalleeAnsweredAtForCurrentCall: (state: GlobalState) => number =
     createSelector(
-        'callAnsweredAtForCurrentCall',
-        dmCalleeAnsweredAtInCalls,
+        'dmCalleeAnsweredAtForCurrentCall',
         idForCurrentCall,
-        (answeredAt, callID) => (callID && answeredAt[callID]) || 0,
+        (state: GlobalState) => pluginState(state).dmCalleeAnsweredAt,
+        (callID, answeredAt) => (callID && answeredAt[callID]) || 0,
     );
 
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
@@ -323,34 +318,6 @@ export const otherUserIDForCurrentDMCall: (state: GlobalState) => UserProfile['i
         channelForCurrentCall,
         getCurrentUserId,
         (currentCallChannel, currentUserID) => getUserIdFromDM(currentCallChannel?.name || '', currentUserID),
-    );
-
-// This returns the timestamp the call duration timer should count from.
-//
-// A DM call is meant to behave like a phone call, so its duration starts when the call was
-// answered rather than when the caller dialled. For the caller that's when the other party's
-// session showed up (recorded in handleUserJoined); for the callee it's their own join, which is
-// when their calls client was initialized.
-//
-// Everything else counts from the start of the call as it always has: GM and channel calls, and
-// any window that arrived after the call was answered without a recorded timestamp.
-export const callTimerStartAtForCurrentCall: (state: GlobalState) => number =
-    createSelector(
-        'callTimerStartAtForCurrentCall',
-        channelForCurrentCall,
-        isCurrentUserOwnerOfCurrentCall,
-        callAnsweredAtForCurrentCall,
-        getCallsClientInitTime,
-        callStartAtForCurrentCall,
-        (channel, isOwner, answeredAt, initTime, startAt) => {
-            if (!channel || !isDirectChannel(channel)) {
-                return startAt;
-            }
-            if (!isOwner) {
-                return initTime || startAt;
-            }
-            return answeredAt || startAt;
-        },
     );
 
 const hostsInCalls = (state: GlobalState): hostsState => {

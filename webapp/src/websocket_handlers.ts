@@ -81,9 +81,9 @@ import {
 } from './action_types';
 import {logErr, logInfo} from './log';
 import {
-    callAnsweredAtForCurrentCall,
     calls,
     channelIDForCurrentCall,
+    dmCalleeAnsweredAtForCurrentCall,
     idForCurrentCall,
     isCurrentUserOwnerOfCurrentCall,
     profilesInCurrentCallMap,
@@ -220,7 +220,7 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
     if (currentCallID && getCallsClientChannelID() === channelID && userID !== currentUserID &&
         isDMChannel(getChannel(store.getState(), channelID)) &&
         isCurrentUserOwnerOfCurrentCall(store.getState()) &&
-        !callAnsweredAtForCurrentCall(store.getState())) {
+        !dmCalleeAnsweredAtForCurrentCall(store.getState())) {
         const answeredAt = Date.now();
         store.dispatch(setDMCalleeAnsweredAt(currentCallID, answeredAt));
 

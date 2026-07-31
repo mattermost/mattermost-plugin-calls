@@ -1,14 +1,15 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {isDirectChannel} from 'mattermost-redux/utils/channel_utils';
 import React, {useEffect} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {setDMCalleeAnsweredAt} from 'src/actions';
 import {useDMCallingState} from 'src/components/use_dm_calling_state';
 import {
-    callAnsweredAtForCurrentCall,
-    callTimerStartAtForCurrentCall,
+    callStartAtForCurrentCall,
+    channelForCurrentCall,
     idForCurrentCall,
 } from 'src/selectors';
 import {getCallsWindow} from 'src/utils';
@@ -16,23 +17,23 @@ import {getCallsWindow} from 'src/utils';
 import {ElapsedTimer} from './elapsed_timer';
 
 /**
-// Displays the duration of the current call, starting from when the call is answered;
-// shows "Calling…" for unanswered DM calls. The timer excludes time spent ringing
-// so it starts from zero once answered.
+ * Displays the duration of the current call, starting from when the call is answered;
+ * shows "Calling…" for unanswered DM calls. The timer excludes time spent ringing
+ * so it starts from zero once answered.
  */
 export function CallStatusTimer() {
     const {formatMessage} = useIntl();
 
     const dispatch = useDispatch();
 
-    const {isDMCalling} = useDMCallingState();
+    const {isDMCalling, dmCalleeAnsweredAt} = useDMCallingState();
 
     const callID = useSelector(idForCurrentCall);
-    const answeredAt = useSelector(callAnsweredAtForCurrentCall);
-    const startAt = useSelector(callTimerStartAtForCurrentCall);
+    const channel = useSelector(channelForCurrentCall);
+    const startAt = useSelector(callStartAtForCurrentCall);
 
     useEffect(() => {
-        if (answeredAt || !callID) {
+        if (dmCalleeAnsweredAt || !callID) {
             return;
         }
 
@@ -44,7 +45,7 @@ export function CallStatusTimer() {
         if (sharedDMAnsweredAt) {
             dispatch(setDMCalleeAnsweredAt(callID, sharedDMAnsweredAt));
         }
-    }, [dispatch, callID, answeredAt]);
+    }, [dispatch, callID, dmCalleeAnsweredAt]);
 
     // If DM call is in calling state, display "Calling…"
     // don't show the elapsed timer yet.
@@ -53,6 +54,12 @@ export function CallStatusTimer() {
             <div className='callStatusTimerCallingText pulsingAnimation'>
                 {formatMessage({defaultMessage: 'Calling…'})}
             </div>
+        );
+    }
+
+    if (channel && isDirectChannel(channel)) {
+        return (
+            <ElapsedTimer startAt={dmCalleeAnsweredAt || 0}/>
         );
     }
 
