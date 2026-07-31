@@ -71,9 +71,12 @@ type RenderOpts = {
     // Defaults to one session per loaded profile, which is the usual case. Pass it explicitly to
     // model a call whose sessions are known but whose profiles haven't been fetched yet.
     numSessions?: number;
+
+    // Which side of the call is looking at the card. Defaults to the caller's.
+    isCaller?: boolean;
 }
 
-const renderCard = (post: Post, {connected = false, profiles = [caller], numSessions}: RenderOpts = {}) => render(
+const renderCard = (post: Post, {connected = false, profiles = [caller], numSessions, isCaller = true}: RenderOpts = {}) => render(
     <Provider store={mockStore(state)}>
         <RawIntlProvider value={intl}>
             <PostType
@@ -87,6 +90,7 @@ const renderCard = (post: Post, {connected = false, profiles = [caller], numSess
                 compactDisplay={false}
                 isRHS={false}
                 isHost={false}
+                isCaller={isCaller}
             />
         </RawIntlProvider>
     </Provider>,
@@ -102,11 +106,32 @@ describe('PostType', () => {
     });
 
     test('a ringing call, seen by the callee who has not joined', () => {
-        renderCard(stubPost({start_at: Date.now(), call_status: CallPostStatus.Calling}));
+        renderCard(stubPost({start_at: Date.now(), call_status: CallPostStatus.Calling}), {isCaller: false});
 
-        expect(screen.getByText('Calling…')).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: 'Join call'})).toBeInTheDocument();
+        expect(screen.getByText('Incoming call…')).toBeInTheDocument();
+        expect(screen.queryByText('Calling…')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Join'})).toHaveTextContent('Join');
         expect(screen.queryByRole('button', {name: 'Cancel call'})).not.toBeInTheDocument();
+    });
+
+    // The card's icons are svgs with a role of img too, so avatars have to be matched on the alt
+    // text Avatar gives them. Whether the row actually stays inline is a container query, which
+    // jsdom won't evaluate — the divider standing in for it is as close as this can get.
+    test('a ringing call renders as one row, with no avatars and no row divider', () => {
+        renderCard(stubPost({start_at: Date.now(), call_status: CallPostStatus.Calling}), {connected: true});
+
+        expect(screen.queryAllByAltText('user profile image')).toHaveLength(0);
+        expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    });
+
+    test('an answered call shows the participants and can stack onto two rows', () => {
+        renderCard(
+            stubPost({start_at: Date.now(), call_status: CallPostStatus.Calling}),
+            {connected: true, profiles: [caller, callee]},
+        );
+
+        expect(screen.getAllByAltText('user profile image')).toHaveLength(2);
+        expect(screen.getByRole('separator')).toBeInTheDocument();
     });
 
     test('a ringing call goes active once the callee joins, even though call_status still says calling', () => {
@@ -137,7 +162,7 @@ describe('PostType', () => {
         expect(screen.getByText(/by First1 Last1/)).toBeInTheDocument();
     });
 
-    test('a call nobody answered', () => {
+    test('a call nobody answered, seen by the caller', () => {
         renderCard(stubPost({start_at: 1000, end_at: 31000, call_status: CallPostStatus.NoAnswer}));
 
         expect(screen.getByText('Call ended')).toBeInTheDocument();
@@ -145,8 +170,23 @@ describe('PostType', () => {
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 
-    test('a call the caller canceled', () => {
+    test('a call nobody answered, seen by the callee who missed it', () => {
+        renderCard(stubPost({start_at: 1000, end_at: 31000, call_status: CallPostStatus.NoAnswer}), {isCaller: false});
+
+        expect(screen.getByText('Call ended')).toBeInTheDocument();
+        expect(screen.getByText('Missed call')).toBeInTheDocument();
+        expect(screen.queryByText('No answer')).not.toBeInTheDocument();
+    });
+
+    test('a canceled call, seen by the caller who canceled it', () => {
         renderCard(stubPost({start_at: 1000, end_at: 5000, call_status: CallPostStatus.CanceledByCaller}));
+
+        expect(screen.getByText('Call ended')).toBeInTheDocument();
+        expect(screen.getByText('You canceled the call')).toBeInTheDocument();
+    });
+
+    test('a canceled call, seen by the callee who is told who canceled it', () => {
+        renderCard(stubPost({start_at: 1000, end_at: 5000, call_status: CallPostStatus.CanceledByCaller}), {isCaller: false});
 
         expect(screen.getByText('Call ended')).toBeInTheDocument();
         expect(screen.getByText('Canceled by First1 Last1')).toBeInTheDocument();

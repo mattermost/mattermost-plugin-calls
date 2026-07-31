@@ -31,7 +31,7 @@ import {
     toHuman,
     untranslatable,
 } from 'src/utils';
-import styled from 'styled-components';
+import styled, {css} from 'styled-components';
 
 import {CallCardState, getCallCardState} from './call_card_state';
 
@@ -46,6 +46,7 @@ interface Props {
     compactDisplay: boolean,
     isRHS: boolean,
     isHost: boolean,
+    isCaller: boolean,
 }
 
 const PostType = ({
@@ -59,6 +60,7 @@ const PostType = ({
     compactDisplay,
     isRHS,
     isHost,
+    isCaller,
 }: Props) => {
     const intl = useIntl();
     const {formatMessage} = intl;
@@ -67,6 +69,10 @@ const PostType = ({
 
     const callProps = getCallPropsFromPost(post);
     const cardState = getCallCardState(callProps, numSessions);
+    const isCalling = cardState === CallCardState.Calling;
+
+    // The callee's side of a ringing call: they're being invited, not placing the call.
+    const isIncomingCall = isCalling && !isCaller;
 
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
     const callID = useSelector((state: GlobalState) => idForCallInChannel(state, post.channel_id)) || '';
@@ -152,12 +158,16 @@ const PostType = ({
         subMessage = startedSubMessage;
         break;
     case CallCardState.NoAnswer:
-        subMessage = <span>{formatMessage({defaultMessage: 'No answer'})}</span>;
+        // The caller was left waiting on an answer; for the callee it's a call they didn't take.
+        subMessage = <span>{isCaller ? formatMessage({defaultMessage: 'No answer'}) : formatMessage({defaultMessage: 'Missed call'})}</span>;
         break;
     case CallCardState.Canceled:
+        // Only the callee needs to be told who hung up, so they're also the only one who needs a
+        // fallback for a caller whose profile hasn't been fetched.
         subMessage = (
             <span>
-                {user ? formatMessage({defaultMessage: 'Canceled by {user}'}, {user: getUserDisplayName(user)}) : formatMessage({defaultMessage: 'Canceled'})}
+                {isCaller && formatMessage({defaultMessage: 'You canceled the call'})}
+                {!isCaller && (user ? formatMessage({defaultMessage: 'Canceled by {user}'}, {user: getUserDisplayName(user)}) : formatMessage({defaultMessage: 'Canceled'}))}
             </span>
         );
         break;
@@ -167,13 +177,17 @@ const PostType = ({
         subMessage = callProps.start_at > 0 ? durationSubMessage : null;
     }
 
+    // A call that's ringing you is an invitation to pick up rather than a call in progress to
+    // join, which is short enough to say in one word.
+    const joinLabel = isIncomingCall ? formatMessage({defaultMessage: 'Join'}) : formatMessage({defaultMessage: 'Join call'});
+
     let joinButton = (
         <JoinButton onClick={onJoin}>
             <ActiveCallIcon
                 fill='var(--center-channel-bg)'
                 style={{width: '16px', height: '16px'}}
             />
-            <ButtonText>{formatMessage({defaultMessage: 'Join call'})}</ButtonText>
+            <ButtonText>{joinLabel}</ButtonText>
         </JoinButton>
     );
 
@@ -197,7 +211,7 @@ const PostType = ({
             >
                 <DisabledButton>
                     <CallIcon fill='rgba(var(--center-channel-color-rgb), 0.32)'/>
-                    <ButtonText>{formatMessage({defaultMessage: 'Join call'})}</ButtonText>
+                    <ButtonText>{joinLabel}</ButtonText>
                 </DisabledButton>
             </OverlayTrigger>
         );
@@ -207,7 +221,6 @@ const PostType = ({
     const title = callProps.title ? <h3 className='markdown__heading'>{callProps.title}</h3> : compactTitle;
     const callActive = callProps.end_at === 0;
     const inCall = connectedID === post.channel_id;
-    const isCalling = cardState === CallCardState.Calling;
 
     // Hanging up on a call nobody answered yet cancels it rather than leaving it, which is also
     // how the server records it (callEndReasonCanceledByCaller).
@@ -255,7 +268,7 @@ const PostType = ({
         <>
             {title}
             <Main data-testid={'call-thread'}>
-                <SubMain>
+                <SubMain $stayInline={isCalling}>
                     <Left>
                         <CallIndicator $ended={!callActive}>
                             {callActive &&
@@ -274,7 +287,7 @@ const PostType = ({
                         <MessageWrapper>
                             <Message>
                                 {isCalling &&
-                                    formatMessage({defaultMessage: 'Calling…'})
+                                    (isIncomingCall ? formatMessage({defaultMessage: 'Incoming call…'}) : formatMessage({defaultMessage: 'Calling…'}))
                                 }
                                 {callActive && !isCalling &&
                                     formatMessage({defaultMessage: 'Call started'})
@@ -286,19 +299,23 @@ const PostType = ({
                             {subMessage && <SubMessage>{subMessage}</SubMessage>}
                         </MessageWrapper>
                     </Left>
-                    { (recordings.length > 0 || callActive) && <RowDivider/> }
-                    <Right>
+                    { !isCalling && (recordings.length > 0 || callActive) && <RowDivider/> }
+                    <Right $stayInline={isCalling}>
                         {callActive &&
                             <>
-                                <Profiles>
-                                    <ConnectedProfiles
-                                        profiles={profiles}
-                                        size={28}
-                                        fontSize={14}
-                                        border={true}
-                                        maxShowedProfiles={3}
-                                    />
-                                </Profiles>
+                                {/* A ringing call has nobody in it but the caller, whose lone
+                                    avatar says nothing worth the space. */}
+                                {!isCalling &&
+                                    <Profiles>
+                                        <ConnectedProfiles
+                                            profiles={profiles}
+                                            size={28}
+                                            fontSize={14}
+                                            border={true}
+                                            maxShowedProfiles={3}
+                                        />
+                                    </Profiles>
+                                }
                                 {button}
                             </>
                         }
@@ -330,7 +347,10 @@ const Main = styled.div`
     }
 `;
 
-const SubMain = styled.div`
+// $stayInline keeps the card on a single row however narrow it gets. The stacked layout below
+// exists to give a participant list and a "Call started … by Someone" message room to breathe; a
+// ringing call has neither, so stacking it just pushes its one button onto a row of its own.
+const SubMain = styled.div<{ $stayInline: boolean }>`
     display: flex;
     align-items: center;
     width: 100%;
@@ -339,10 +359,12 @@ const SubMain = styled.div`
 
     container-type: inline-size;
 
-    @container main (inline-size < 566px) {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+    ${({$stayInline}) => !$stayInline && css`
+        @container main (inline-size < 566px) {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    `}
 
     &:empty {
       display: none;
@@ -357,17 +379,22 @@ const Left = styled.div`
     align-items: center;
 `;
 
-const Right = styled.div`
+const Right = styled.div<{ $stayInline: boolean }>`
     display: flex;
     flex-grow: 1;
     justify-content: flex-end;
     gap: 12px;
 
-    @container main (inline-size < 566px) {
-      width: 100%;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
+    ${({$stayInline}) => ($stayInline ? css`
+        /* Left is the one that gives, ellipsing its message, so the button keeps its size. */
+        flex-shrink: 0;
+    ` : css`
+        @container main (inline-size < 566px) {
+          width: 100%;
+          justify-content: space-between;
+          flex-wrap: wrap;
+        }
+    `)}
 
     &:empty {
       display: none;

@@ -17,6 +17,11 @@ export enum CallCardState {
 
 // getCallCardState works out which of the call card's states to render for a call post.
 //
+// The states describe what happened to the call, not what the card says about it: several of them
+// are worded differently for the caller and the callee, which the component works out from the
+// post's author. A NoAnswer card, for instance, reads "No answer" to the caller who was left
+// waiting and "Missed call" to the callee who didn't pick up.
+//
 // The server stamps call_status as "calling" when a DM call is created and only rewrites it
 // once the call ends, so the post prop alone can't tell a ringing call apart from one that was
 // answered. numSessions closes that gap: a ringing call has only the caller in it, and the

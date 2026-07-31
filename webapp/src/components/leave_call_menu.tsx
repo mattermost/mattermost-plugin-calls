@@ -31,9 +31,6 @@ export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: P
             await hostEndCallForEveryone(channelID);
         } catch (err) {
             logErr('failed to end call for everyone', err);
-
-            // This menu also renders in the global widget and the popout, which run without the
-            // webapp's modal machinery, so there the log above is the only place this surfaces.
             if (modals) {
                 dispatch(displayGenericErrorModal(
                     defineMessage({defaultMessage: 'Unable to end the call'}),
