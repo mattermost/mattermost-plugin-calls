@@ -39,6 +39,7 @@ interface Props {
     post: Post,
     connectedID: string,
     profiles: UserProfile[],
+    numSessions: number,
     isCloudPaid: boolean,
     maxParticipants: number,
     militaryTime: boolean,
@@ -51,6 +52,7 @@ const PostType = ({
     post,
     connectedID,
     profiles,
+    numSessions,
     isCloudPaid,
     maxParticipants,
     militaryTime,
@@ -64,7 +66,7 @@ const PostType = ({
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
     const callProps = getCallPropsFromPost(post);
-    const cardState = getCallCardState(callProps, profiles.length);
+    const cardState = getCallCardState(callProps, numSessions);
 
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
     const callID = useSelector((state: GlobalState) => idForCallInChannel(state, post.channel_id)) || '';

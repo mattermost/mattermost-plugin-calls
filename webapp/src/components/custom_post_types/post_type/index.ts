@@ -14,6 +14,7 @@ import {
     hostIDForCallInChannel,
     isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial,
     maxParticipants,
+    numSessionsInCallInChannel,
     profilesInCallInChannel,
 } from 'src/selectors';
 
@@ -27,6 +28,11 @@ const mapStateToProps = (state: GlobalState, ownProps: OwnProps) => {
         ...ownProps,
         connectedID: channelIDForCurrentCall(state) || '',
         profiles: profilesInCallInChannel(state, ownProps.post.channel_id),
+
+        // The card's ringing state is derived from how many people are in the call, which has to
+        // come from the sessions rather than from profiles: profilesInCallInChannel drops anyone
+        // whose profile hasn't been fetched yet, which would read as a call nobody has answered.
+        numSessions: numSessionsInCallInChannel(state, ownProps.post.channel_id),
         isCloudPaid: isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial(state),
         maxParticipants: maxParticipants(state),
         militaryTime: getBool(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.USE_MILITARY_TIME, false),

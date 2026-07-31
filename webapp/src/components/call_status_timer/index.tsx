@@ -11,8 +11,9 @@ import {
     callStartAtForCurrentCall,
     channelForCurrentCall,
     idForCurrentCall,
+    isCurrentUserOwnerOfCurrentCall,
 } from 'src/selectors';
-import {getCallsWindow} from 'src/utils';
+import {getCallsClientInitTime, getCallsWindow} from 'src/utils';
 
 import {ElapsedTimer} from './elapsed_timer';
 
@@ -31,6 +32,7 @@ export function CallStatusTimer() {
     const callID = useSelector(idForCurrentCall);
     const channel = useSelector(channelForCurrentCall);
     const startAt = useSelector(callStartAtForCurrentCall);
+    const isOwner = useSelector(isCurrentUserOwnerOfCurrentCall);
 
     useEffect(() => {
         if (dmCalleeAnsweredAt || !callID) {
@@ -57,9 +59,13 @@ export function CallStatusTimer() {
         );
     }
 
+    // For the caller that's when the other party's session showed up (recorded in handleUserJoined);
+    // for the callee it's their own join, which is when their calls client was initialized.
     if (channel && isDirectChannel(channel)) {
+        const answeredAt = isOwner ? dmCalleeAnsweredAt : getCallsClientInitTime();
+
         return (
-            <ElapsedTimer startAt={dmCalleeAnsweredAt || 0}/>
+            <ElapsedTimer startAt={answeredAt || startAt}/>
         );
     }
 

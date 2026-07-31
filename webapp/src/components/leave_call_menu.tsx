@@ -7,6 +7,8 @@ import {defineMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {displayGenericErrorModal, hostEndCallForEveryone} from 'src/actions';
 import {DropdownMenuItem} from 'src/components/dot_menu/dot_menu';
+import {logErr} from 'src/log';
+import {modals} from 'src/webapp_globals';
 import styled from 'styled-components';
 
 type Props = {
@@ -27,11 +29,17 @@ export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: P
     async function handleHostEndCallForEveryone() {
         try {
             await hostEndCallForEveryone(channelID);
-        } catch (_err) {
-            dispatch(displayGenericErrorModal(
-                defineMessage({defaultMessage: 'Unable to end the call'}),
-                defineMessage({defaultMessage: 'Something went wrong while trying to end the call. Please try again.'}),
-            ));
+        } catch (err) {
+            logErr('failed to end call for everyone', err);
+
+            // This menu also renders in the global widget and the popout, which run without the
+            // webapp's modal machinery, so there the log above is the only place this surfaces.
+            if (modals) {
+                dispatch(displayGenericErrorModal(
+                    defineMessage({defaultMessage: 'Unable to end the call'}),
+                    defineMessage({defaultMessage: 'Something went wrong while trying to end the call. Please try again.'}),
+                ));
+            }
         }
     }
 

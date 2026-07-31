@@ -23,7 +23,7 @@ export function useDMCallingState(): DMCallingState {
     const dispatch = useDispatch();
     const isInCallingStateForDMChannelCall = useSelector(isCurrentDMCallInCallingState);
     const otherDMUserID = useSelector(otherUserIDForCurrentDMCall);
-    const otherDMUser = useSelector((state: GlobalState) => getUser(state, otherDMUserID || ''));
+    const otherDMUser = useSelector((state: GlobalState) => getUser(state, otherDMUserID));
     const dmCalleeAnsweredAt = useSelector(dmCalleeAnsweredAtForCurrentCall);
 
     useEffect(() => {

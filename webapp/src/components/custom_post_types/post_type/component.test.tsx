@@ -67,15 +67,20 @@ const stubPost = (props: Record<string, unknown>) => ({
 type RenderOpts = {
     connected?: boolean;
     profiles?: UserProfile[];
+
+    // Defaults to one session per loaded profile, which is the usual case. Pass it explicitly to
+    // model a call whose sessions are known but whose profiles haven't been fetched yet.
+    numSessions?: number;
 }
 
-const renderCard = (post: Post, {connected = false, profiles = [caller]}: RenderOpts = {}) => render(
+const renderCard = (post: Post, {connected = false, profiles = [caller], numSessions}: RenderOpts = {}) => render(
     <Provider store={mockStore(state)}>
         <RawIntlProvider value={intl}>
             <PostType
                 post={post}
                 connectedID={connected ? channelID : ''}
                 profiles={profiles}
+                numSessions={numSessions ?? profiles.length}
                 isCloudPaid={false}
                 maxParticipants={0}
                 militaryTime={false}
@@ -113,6 +118,16 @@ describe('PostType', () => {
         expect(screen.getByText('Call started')).toBeInTheDocument();
         expect(screen.queryByText('Calling…')).not.toBeInTheDocument();
         expect(screen.getByRole('button', {name: 'Leave call'})).toHaveTextContent('Leave');
+    });
+
+    test('an answered call stays active when the other participant\'s profile has not loaded', () => {
+        renderCard(
+            stubPost({start_at: Date.now(), call_status: CallPostStatus.Calling}),
+            {connected: true, profiles: [caller], numSessions: 2},
+        );
+
+        expect(screen.getByText('Call started')).toBeInTheDocument();
+        expect(screen.queryByText('Calling…')).not.toBeInTheDocument();
     });
 
     test('an ongoing call with no status, as GM and channel calls always have', () => {

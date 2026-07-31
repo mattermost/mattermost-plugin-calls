@@ -1,6 +1,8 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import './participant_cell.scss';
+
 import {Reaction} from '@mattermost/calls-common/lib/types';
 import classNames from 'classnames';
 import React from 'react';

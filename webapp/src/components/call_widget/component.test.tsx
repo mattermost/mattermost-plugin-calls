@@ -4,6 +4,7 @@
 import type {UserSessionState} from '@mattermost/calls-common/lib/types';
 import type {Channel} from '@mattermost/types/channels';
 import type {Team} from '@mattermost/types/teams';
+import type {UserProfile} from '@mattermost/types/users';
 import {render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -78,7 +79,6 @@ const props: Props = {
     otherSessions: [],
     sessionsMap: {},
     profiles: {},
-    callStartAt: Date.now() - 30_000,
     callHostID: 'user-id',
     callHostChangeAt: 0,
     isRecording: false,
@@ -329,5 +329,114 @@ describe('leave button behavior', () => {
 
         await user.click(leaveButton);
         expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('DM call presentation', () => {
+    const dmChannelID = 'dm-channel-id';
+    const callID = 'call-id';
+    const calleeID = 'other-user-id';
+
+    const callee = {
+        id: calleeID,
+        username: 'callee',
+        first_name: 'Other',
+        last_name: 'User',
+        roles: '',
+    } as UserProfile;
+
+    const dmChannel = {
+        id: dmChannelID,
+        team_id: 'team-id',
+        name: `user-id__${calleeID}`,
+        display_name: 'Other User',
+        type: 'D',
+    } as Channel;
+
+    const stubSession = (sessionID: string, userID: string): UserSessionState => ({
+        session_id: sessionID,
+        user_id: userID,
+        unmuted: false,
+        raised_hand: 0,
+    });
+
+    const ownSession = stubSession('session-1', 'user-id');
+    const calleeSession = stubSession('session-2', calleeID);
+
+    // The calling state is derived entirely from the store, so it needs a real call owned by the
+    // current user plus whichever sessions have joined so far.
+    const dmState = (sessions: UserSessionState[]) => ({
+        'plugins-com.mattermost.calls': {
+            calls: {[dmChannelID]: {ID: callID, channelID: dmChannelID, ownerID: 'user-id', startAt: Date.now(), threadID: ''}},
+            sessions: {[dmChannelID]: Object.fromEntries(sessions.map((s) => [s.session_id, s]))},
+            dmCalleeAnsweredAt: {},
+        },
+        entities: {
+            channels: {channels: {[dmChannelID]: dmChannel}},
+            users: {currentUserId: 'user-id', profiles: {[calleeID]: callee}},
+        },
+    });
+
+    const renderWidget = (channel: Channel, sessions: UserSessionState[]) => render(
+        <Provider store={mockStore(dmState(sessions))}>
+            <RawIntlProvider value={intl}>
+                <CallWidget
+                    {...props}
+                    channel={channel}
+                    channelDisplayName={channel.display_name}
+                    sessions={sessions}
+                    otherSessions={sessions.filter((s) => s.user_id !== 'user-id')}
+                    profiles={{[calleeID]: callee}}
+                />
+            </RawIntlProvider>
+        </Provider>,
+    );
+
+    beforeEach(() => {
+        window.callsClient = {
+            disconnect: jest.fn(),
+            channelID: dmChannelID,
+            getSessionID: () => ownSession.session_id,
+            getRemoteVoiceTracks: () => [],
+            getRemoteScreenStream: () => null,
+            getLocalScreenStream: () => null,
+            on: jest.fn(),
+            off: jest.fn(),
+        } as unknown as (typeof window)['callsClient'];
+    });
+
+    afterEach(() => {
+        window.callsClient = undefined;
+    });
+
+    test('a ringing DM call shows the callee and Calling… in place of the timer', () => {
+        renderWidget(dmChannel, [ownSession]);
+
+        expect(screen.getByText('Calling…')).toBeInTheDocument();
+        expect(screen.getByText('Other User')).toBeInTheDocument();
+        expect(screen.queryByText(/is talking…$/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/^\d{2}:\d{2}$/)).not.toBeInTheDocument();
+    });
+
+    test('a DM call that has been answered swaps Calling… for the elapsed timer', () => {
+        renderWidget(dmChannel, [ownSession, calleeSession]);
+
+        expect(screen.queryByText('Calling…')).not.toBeInTheDocument();
+        expect(screen.getByText(/^\d{2}:\d{2}$/)).toBeInTheDocument();
+    });
+
+    test('a DM call hides the participants button and the channel name', () => {
+        renderWidget(dmChannel, [ownSession, calleeSession]);
+
+        expect(screen.queryByRole('button', {name: /participants/i})).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', {name: /Other User/})).not.toBeInTheDocument();
+    });
+
+    test('a channel call keeps the participants button and the channel name', () => {
+        renderWidget(stubChannel, [ownSession, calleeSession]);
+
+        expect(screen.getByRole('button', {name: /participants/i})).toBeInTheDocument();
+        expect(screen.getByRole('link', {name: /Town Square/})).toBeInTheDocument();
+        expect(screen.queryByText('Calling…')).not.toBeInTheDocument();
     });
 });

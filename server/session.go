@@ -484,7 +484,10 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		// cancelled it rather than ended it.
 		reason := callEndReasonNormal
 		if len(participants) == 1 {
-			if channel, appErr := p.API.GetChannel(channelID); appErr == nil && channel.Type == model.ChannelTypeDirect {
+			channel, appErr := p.API.GetChannel(channelID)
+			if appErr != nil {
+				p.LogError("failed to get channel for call end reason", "err", appErr.Error(), "channelID", channelID)
+			} else if channel.Type == model.ChannelTypeDirect {
 				reason = callEndReasonCanceledByCaller
 			}
 		}

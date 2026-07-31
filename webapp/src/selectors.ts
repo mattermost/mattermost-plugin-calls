@@ -312,7 +312,8 @@ export const isCurrentDMCallInCallingState: (state: GlobalState) => boolean =
         (isOwner, inSession, channel, otherSessions) => isOwner && inSession && Boolean(channel && isDirectChannel(channel)) && (otherSessions.length === 0),
     );
 
-export const otherUserIDForCurrentDMCall: (state: GlobalState) => UserProfile['id'] | undefined =
+// Returns an empty string when there's no current call, or when its channel isn't in the store yet.
+export const otherUserIDForCurrentDMCall: (state: GlobalState) => UserProfile['id'] =
     createSelector(
         'otherUserIDForCurrentDMCall',
         channelForCurrentCall,
