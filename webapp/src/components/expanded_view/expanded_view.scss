@@ -1,26 +1,22 @@
-@keyframes pulsingAnimation {
+@keyframes callsKeyframesPulsing {
     0%,
     100% {
-      opacity: 1;
-    }
-  
-    50% {
-      opacity: 0.4;
-    }
-  }
-  
-#calls-expanded-view {
-    .callDurationContainer {
-        font-weight: 600;
+        opacity: 1;
     }
 
+    50% {
+        opacity: 0.4;
+    }
+}
+
+#calls-expanded-view {
     li.participantCell {
         position: relative;
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
         align-items: center;
-    
+
         &:hover.showHostControls {
             border-radius: 8px;
             background: rgba(var(--sidebar-text-rgb), 0.08);
@@ -39,7 +35,11 @@
         }
     }
 
-    li.participantCell.pulsingAnimation {
-        animation: pulsingAnimation 1.6s ease-in-out infinite;
+    .callStatusTimerCallingText {
+        font-weight: 600;
+    }
+
+    .pulsingAnimation {
+        animation: callsKeyframesPulsing 1.6s ease-in-out infinite;
     }
 }

@@ -18,7 +18,7 @@ function getCallDuration(startAt: number) {
     return dur.toFormat('hh:mm:ss');
 }
 
-export default function CallDuration(props: Props) {
+export function ElapsedTimer(props: Props) {
     // If the server clock is ahead of the client, startAt will be in the
     // future and the raw duration would be negative. Capture an adjusted
     // start time on mount so the timer counts up from 0:00 immediately

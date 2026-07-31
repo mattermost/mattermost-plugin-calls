@@ -59,7 +59,7 @@ const stubState = (channel: Channel) => ({
     'plugins-com.mattermost.calls': {
         calls: {},
         sessions: {},
-        answeredAt: {},
+        dmCalleeAnsweredAt: {},
     },
     entities: {
         channels: {channels: {[channel.id]: channel}},

@@ -36,6 +36,7 @@ import {
     loadCallState,
     loadProfilesByIdsIfMissing,
     removeIncomingCallNotification,
+    setDMCalleeAnsweredAt,
     userLeft,
 } from 'src/actions';
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/client';
@@ -54,7 +55,6 @@ import {
 } from 'src/types/types';
 
 import {
-    CALL_ANSWERED,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
     CALL_RECORDING_STATE,
@@ -222,21 +222,14 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
         isCurrentUserOwnerOfCurrentCall(store.getState()) &&
         !callAnsweredAtForCurrentCall(store.getState())) {
         const answeredAt = Date.now();
+        store.dispatch(setDMCalleeAnsweredAt(currentCallID, answeredAt));
 
-        // Also kept on the calls window so that a popout opened later on can pick it up rather
-        // than restarting the timer from zero.
+        // Keep a copy in the window so expanded view can pick it up
+        // as soon as its opened. We later sync it to its store in CallStatusTimer.
         const callsWindow = getCallsWindow();
         if (callsWindow.currentCallData) {
             callsWindow.currentCallData.answeredAt = answeredAt;
         }
-
-        store.dispatch({
-            type: CALL_ANSWERED,
-            data: {
-                callID: currentCallID,
-                answeredAt,
-            },
-        });
     }
 
     // This is async, which is expected as we are okay with setting the state while we wait

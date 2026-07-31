@@ -1,40 +1,29 @@
-.calls-slide-top {
-	-webkit-animation: slide-top 4s ease-in-out 0.2s both;
-	        animation: slide-top 4s ease-in-out 0.2s both;
+@keyframes callSKeyframesSlideFadeInOut {
+  0%,
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  10% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  90% {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
-@-webkit-keyframes slide-top {
-  0%,100% {
-    -webkit-transform: translateY(100%);
-            transform: translateY(100%);
-            opacity: 0;
+@keyframes callsKeyframesPulsing {
+  0%,
+  100% {
+    opacity: 1;
   }
-  2% {
-    -webkit-transform: translateY(0);
-            transform: translateY(0);
-            opacity: 1;
-  }
-  98% {
-    -webkit-transform: translateY(0);
-            transform: translateY(0);
-            opacity: 1;
-  }
-}
-@keyframes slide-top {
-  0%,100% {
-    -webkit-transform: translateY(100%);
-            transform: translateY(100%);
-            opacity: 0;
-  }
-  10% {
-    -webkit-transform: translateY(0);
-            transform: translateY(0);
-            opacity: 1;
-  }
-  90% {
-    -webkit-transform: translateY(0);
-            transform: translateY(0);
-            opacity: 1;
+
+  50% {
+    opacity: 0.4;
   }
 }
 
@@ -69,7 +58,9 @@ a.calls-channel-link {
     }
   }
 
-  &:link, &:focus, &:visited {
+  &:link,
+  &:focus,
+  &:visited {
     color: rgba(var(--center-channel-color-rgb), 0.64);
     text-decoration: none;
   }
@@ -113,7 +104,8 @@ a.calls-channel-link {
   app-region: no-drag;
 }
 
-#calls-widget-audio-input-button:hover:disabled, #calls-widget-audio-output-button:hover:disabled {
+#calls-widget-audio-input-button:hover:disabled,
+#calls-widget-audio-output-button:hover:disabled {
   background: none;
   cursor: auto;
 }
@@ -123,26 +115,26 @@ a.calls-channel-link {
 }
 
 #calls-widget #calls-widget-stop-screenshare {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 8px 16px;
-    background: var(--error-text);
-    color: white;
-    border-radius: 4px;
-    font-weight: 600;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--error-text);
+  color: white;
+  border-radius: 4px;
+  font-weight: 600;
 
-    &:hover {
-        background: linear-gradient(0deg, var(--error-text), var(--error-text)),
-            linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
-        background-blend-mode: multiply;
-    }
+  &:hover {
+    background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+      linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
+    background-blend-mode: multiply;
+  }
 
-    &:active {
-        background: linear-gradient(0deg, var(--error-text), var(--error-text)),
-            linear-gradient(0deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16));
-        background-blend-mode: multiply;
-    }
+  &:active {
+    background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+      linear-gradient(0deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16));
+    background-blend-mode: multiply;
+  }
 }
 
 #calls-widget {
@@ -164,7 +156,7 @@ a.calls-channel-link {
     line-height: 20px;
     display: flex;
     white-space: pre;
-    
+
     &>span {
       font-weight: 600;
       overflow: hidden;
@@ -180,13 +172,18 @@ a.calls-channel-link {
     }
   }
 
-  .callDurationContainer {
+  .callStatusTimerCallingText {
     font-weight: 600;
     letter-spacing: 0.02em;
-  }
-
-  .callsWidgetTopBarCallInfo .callDurationContainer {
     color: var(--center-channel-color-64, rgba(63, 67, 80, 0.64));
     font-size: 11px;
+  }
+
+  .slideFadeInOutAnimation {
+    animation: callSlideFadeInOut 4s ease-in-out 0.2s both;
+  }
+
+  .pulsingAnimation {
+    animation: callsKeyframesPulsing 1.6s ease-in-out infinite;
   }
 }

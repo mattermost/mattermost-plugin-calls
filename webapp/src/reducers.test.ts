@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {AnyAction} from 'redux';
-import {CALL_ANSWERED, CALL_END, CALL_STATE, UNINIT} from 'src/action_types';
+import {CALL_END, CALL_STATE, DM_CALLEE_ANSWERED_AT, UNINIT} from 'src/action_types';
 
 import reducer from './reducers';
 
@@ -25,7 +25,7 @@ const callState = (ID: string) => ({
 });
 
 const callAnswered = (ID: string, at: number) => ({
-    type: CALL_ANSWERED,
+    type: DM_CALLEE_ANSWERED_AT,
     data: {callID: ID, answeredAt: at},
 });
 
@@ -35,11 +35,11 @@ const callEnd = (ID: string) => ({
     data: {channelID, callID: ID},
 });
 
-describe('answeredAt', () => {
+describe('dmCalleeAnsweredAt', () => {
     it('should record when the call was answered', () => {
         const state = apply(callState(callID), callAnswered(callID, answeredAt));
 
-        expect(state.answeredAt).toEqual({[callID]: answeredAt});
+        expect(state.dmCalleeAnsweredAt).toEqual({[callID]: answeredAt});
     });
 
     // The regression this keying protects against: a websocket reconnect re-requests the call
@@ -47,7 +47,7 @@ describe('answeredAt', () => {
     it('should survive a CALL_STATE resync of an already answered call', () => {
         const state = apply(callState(callID), callAnswered(callID, answeredAt), callState(callID));
 
-        expect(state.answeredAt).toEqual({[callID]: answeredAt});
+        expect(state.dmCalleeAnsweredAt).toEqual({[callID]: answeredAt});
     });
 
     it('should not let a new call in the same channel inherit the previous answer time', () => {
@@ -59,19 +59,19 @@ describe('answeredAt', () => {
             callState(nextCallID),
         );
 
-        expect(state.answeredAt[nextCallID]).toBeUndefined();
-        expect(state.answeredAt).toEqual({});
+        expect(state.dmCalleeAnsweredAt[nextCallID]).toBeUndefined();
+        expect(state.dmCalleeAnsweredAt).toEqual({});
     });
 
     it('should keep the answer time of an ongoing call when another call ends', () => {
         const state = apply(callState(callID), callAnswered(callID, answeredAt), callEnd('other-call-id'));
 
-        expect(state.answeredAt).toEqual({[callID]: answeredAt});
+        expect(state.dmCalleeAnsweredAt).toEqual({[callID]: answeredAt});
     });
 
     it('should drop everything on UNINIT', () => {
         const state = apply(callState(callID), callAnswered(callID, answeredAt), {type: UNINIT});
 
-        expect(state.answeredAt).toEqual({});
+        expect(state.dmCalleeAnsweredAt).toEqual({});
     });
 });

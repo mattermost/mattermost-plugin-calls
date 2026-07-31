@@ -28,9 +28,9 @@ import {
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import {createSelector} from 'reselect';
 import {
-    answeredAtState,
     callsJobState,
     callState,
+    DmCalleeAnsweredAt,
     hostControlNoticeState,
     hostsState,
     liveCaptionState,
@@ -247,14 +247,14 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
         (callsStates, channelID, initTime) => callsStates[channelID]?.startAt || initTime || 0,
     );
 
-const answeredAtInCalls = (state: GlobalState): answeredAtState => {
-    return pluginState(state).answeredAt || {};
+const dmCalleeAnsweredAtInCalls = (state: GlobalState): DmCalleeAnsweredAt => {
+    return pluginState(state).dmCalleeAnsweredAt || {};
 };
 
 export const callAnsweredAtForCurrentCall: (state: GlobalState) => number =
     createSelector(
         'callAnsweredAtForCurrentCall',
-        answeredAtInCalls,
+        dmCalleeAnsweredAtInCalls,
         idForCurrentCall,
         (answeredAt, callID) => (callID && answeredAt[callID]) || 0,
     );

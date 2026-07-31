@@ -7,12 +7,12 @@ import {render} from '@testing-library/react';
 import React from 'react';
 import {createIntl, RawIntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
-import {CALL_ANSWERED} from 'src/action_types';
+import {DM_CALLEE_ANSWERED_AT} from 'src/action_types';
 import type CallsClient from 'src/client';
 import {mockStore} from 'src/testUtils';
 import type {CurrentCallData} from 'src/types/types';
 
-import CallTimer from './call_timer';
+import {CallStatusTimer} from '.';
 
 const intl = createIntl({locale: 'en', messages: {}});
 
@@ -61,7 +61,7 @@ const stubState = ({startAt, answeredAt, ownerID = currentUserID, sessions = [ow
         sessions: {
             [channelID]: Object.fromEntries(sessions.map((s) => [s.session_id, s])),
         },
-        answeredAt: answeredAt ? {[callID]: answeredAt} : {},
+        dmCalleeAnsweredAt: answeredAt ? {[callID]: answeredAt} : {},
     },
     entities: {
         channels: {channels: {[channel.id]: channel}},
@@ -78,14 +78,14 @@ const renderTimer = (state: ReturnType<typeof stubState>) => {
     const {container} = render(
         <Provider store={store}>
             <RawIntlProvider value={intl}>
-                <CallTimer/>
+                <CallStatusTimer/>
             </RawIntlProvider>
         </Provider>,
     );
     return {container, dispatch};
 };
 
-describe('CallTimer', () => {
+describe('CallStatusTimer', () => {
     let initTime = 0;
 
     beforeEach(() => {
@@ -166,7 +166,7 @@ describe('CallTimer', () => {
             }));
 
             expect(dispatch).toHaveBeenCalledWith({
-                type: CALL_ANSWERED,
+                type: DM_CALLEE_ANSWERED_AT,
                 data: {callID, answeredAt: sharedAnsweredAt},
             });
         });
@@ -180,7 +180,7 @@ describe('CallTimer', () => {
                 sessions: [ownSession, otherSession],
             }));
 
-            expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({type: CALL_ANSWERED}));
+            expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({type: DM_CALLEE_ANSWERED_AT}));
         });
     });
 

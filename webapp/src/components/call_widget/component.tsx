@@ -3,7 +3,7 @@
 
 /* eslint-disable max-lines */
 
-import './component.scss';
+import './call_widget.scss';
 
 import {mosThreshold} from '@mattermost/calls-common';
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
@@ -20,6 +20,7 @@ import {navigateToURL} from 'src/browser_routing';
 import {AudioInputPermissionsError, VideoInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
+import {CallStatusTimer} from 'src/components/call_status_timer';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
@@ -96,7 +97,6 @@ import styled, {css} from 'styled-components';
 
 import {CallParticipantAvatar} from './call_participant_avatar';
 import {CallStatusText} from './call_status_text';
-import CallTimer from './call_timer';
 import JoinNotification from './join_notification';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import WidgetBanner from './widget_banner';
@@ -1951,7 +1951,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             return (
                 <div
-                    className='calls-notification-bar calls-slide-top'
+                    className='calls-notification-bar slideFadeInOutAnimation'
                     key={profile.id}
                     data-testid={'call-joined-participant-notification'}
                 >
@@ -2234,7 +2234,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                 {/* TODO: add recording badge */}
                 <div
-                    className='callsWidgetTopBarCallInfo'
                     style={{
                         marginRight: 'auto',
                         display: 'flex',
@@ -2244,10 +2243,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     }}
                 >
                     {channelLink}
-
                     <div style={{fontSize: '10px', color: 'var(--center-channel-color-64, rgba(63, 67, 80, 0.64))'}}>{untranslatable('•')}</div>
-
-                    <CallTimer/>
+                    <CallStatusTimer/>
                 </div>
 
                 <WidgetButton
@@ -2492,7 +2489,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 />
                                 <div style={this.style.callInfo}>
                                     {this.renderRecordingBadge()}
-                                    <CallTimer/>
+                                    <CallStatusTimer/>
                                     {!isDMChannel(this.props.channel) && this.renderChannelName()}
                                 </div>
                             </div>

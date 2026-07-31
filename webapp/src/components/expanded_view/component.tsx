@@ -22,7 +22,7 @@ import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
-import CallTimer from 'src/components/call_widget/call_timer';
+import {CallStatusTimer} from 'src/components/call_status_timer';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
 import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
@@ -1300,7 +1300,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         style={this.style.topContainer}
                     >
                         {this.renderRecordingBadge()}
-                        <CallTimer/>
+                        <CallStatusTimer/>
 
                         <div style={this.style.headerSpreader}/>
                         <ExpandedIncomingCallContainer/>

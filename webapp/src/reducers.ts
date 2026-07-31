@@ -19,7 +19,6 @@ import {
 
 import {
     ADD_INCOMING_CALL,
-    CALL_ANSWERED,
     CALL_END,
     CALL_HOST,
     CALL_LIVE_CAPTIONS_STATE,
@@ -31,6 +30,7 @@ import {
     DID_NOTIFY_FOR_CALL,
     DID_RING_FOR_CALL,
     DISMISS_CALL,
+    DM_CALLEE_ANSWERED_AT,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
@@ -746,20 +746,11 @@ const hosts = (state: hostsState = {}, action: hostsStateAction) => {
     }
 };
 
-// answeredAt records, per call, the local time at which a DM call was answered, i.e. when the
-// other party joined. It's the origin for the call duration timer, which shouldn't include the
-// time spent ringing.
-//
-// This lives outside of the calls slice above because that one is replaced wholesale by
-// CALL_STATE and is meant to hold only call-immutable data. Keying by call ID rather than by
-// channel is what lets a CALL_STATE resync (which the client requests on every ws reconnect)
-// leave a live timestamp alone, while still making it impossible for a new call in a channel to
-// inherit the previous call's origin.
-export type answeredAtState = {
+export type DmCalleeAnsweredAt = {
     [callID: string]: number;
 }
 
-type answeredAtStateAction = {
+type DmCalleeAnsweredAtAction = {
     type: string;
     data: {
         callID: string;
@@ -767,19 +758,16 @@ type answeredAtStateAction = {
     };
 }
 
-const answeredAt = (state: answeredAtState = {}, action: answeredAtStateAction) => {
+const dmCalleeAnsweredAt = (state: DmCalleeAnsweredAt = {}, action: DmCalleeAnsweredAtAction) => {
     switch (action.type) {
     case UNINIT:
         return {};
-    case CALL_ANSWERED:
+    case DM_CALLEE_ANSWERED_AT:
         return {
             ...state,
             [action.data.callID]: action.data.answeredAt,
         };
     case CALL_END: {
-        if (!(action.data.callID in state)) {
-            return state;
-        }
         const nextState = {...state};
         delete nextState[action.data.callID];
         return nextState;
@@ -1125,7 +1113,7 @@ export default combineReducers({
     sessions,
     calls,
     hosts,
-    answeredAt,
+    dmCalleeAnsweredAt,
     screenSharingIDs,
     expandedView,
     switchCallModal,
