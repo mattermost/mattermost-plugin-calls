@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	callStartPostType     = "custom_calls"
+	callEventPostType          = "custom_calls"
 	callRecordingPostType = "custom_calls_recording"
 	callTranscriptionType = "custom_calls_transcription"
 )
@@ -346,7 +346,7 @@ func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, titl
 		ChannelId: channelID,
 		RootId:    threadID,
 		Message:   postMsg,
-		Type:      callStartPostType,
+		Type:      callEventPostType,
 		Props:     props,
 	}
 
@@ -426,7 +426,7 @@ func (p *Plugin) ServeMetrics(_ *plugin.Context, w http.ResponseWriter, r *http.
 // call to avoid potentially messing with metadata (e.g. job ids).
 // Both Plugin and Calls bot should still be able to do it though.
 func (p *Plugin) MessageWillBeUpdated(c *plugin.Context, newPost, oldPost *model.Post) (*model.Post, string) {
-	if oldPost != nil && oldPost.Type == callStartPostType && c != nil && c.SessionId != "" {
+	if oldPost != nil && oldPost.Type == callEventPostType && c != nil && c.SessionId != "" {
 		if p.botSession == nil || c.SessionId != p.botSession.Id {
 			return nil, "you are not allowed to edit a call post"
 		}

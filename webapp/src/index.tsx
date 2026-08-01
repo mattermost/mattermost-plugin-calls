@@ -97,7 +97,7 @@ import {makeSameChannelLinkClickHandler} from 'src/components/same_channel_link_
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
-import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
+import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
@@ -358,7 +358,7 @@ export default class Plugin {
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
         registry.registerChannelToastComponent(injectIntl(ChannelCallToast));
-        registry.registerPostTypeComponent(CALL_START_POST_TYPE, PostType);
+        registry.registerPostTypeComponent(CALL_EVENT_POST_TYPE, PostType);
         registry.registerPostTypeComponent(CALL_RECORDING_POST_TYPE, PostTypeRecording);
         registry.registerPostTypeComponent(CALL_TRANSCRIPTION_POST_TYPE, PostTypeTranscription);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
