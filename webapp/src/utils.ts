@@ -1,6 +1,8 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+/* eslint-disable max-lines */
+
 import {makeCallsBaseAndBadgeRGB, rgbToCSS} from '@mattermost/calls-common';
 import {CallJobMetadata, CallRecordingPostProps, SessionState, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
@@ -598,8 +600,19 @@ function getJobMetadataMap(obj: {[key: string]: CallJobMetadata}) {
     return out;
 }
 
-function isCallPostStatus(status: unknown): status is CallPostStatus {
-    return Object.values<unknown>(CallPostStatus).includes(status);
+function getCallStatusFromPostProps(props: Post['props']) {
+    if (!props || !('call_status' in props)) {
+        return '';
+    }
+
+    if (typeof props.call_status !== 'string') {
+        return '';
+    }
+
+    if (Object.values<unknown>(CallPostStatus).includes(props.call_status)) {
+        return props.call_status as CallPostStatus;
+    }
+    return '';
 }
 
 export function getCallPropsFromPost(post: Post): CallsPostProps {
@@ -610,7 +623,7 @@ export function getCallPropsFromPost(post: Post): CallsPostProps {
         recordings: isValidObject(post.props?.recordings) ? getJobMetadataMap(post.props.recordings) : {},
         transcriptions: isValidObject(post.props?.transcriptions) ? getJobMetadataMap(post.props.transcriptions) : {},
         participants: Array.isArray(post.props?.participants) ? post.props.participants : [],
-        call_status: isCallPostStatus(post.props?.call_status) ? post.props.call_status : '',
+        call_status: getCallStatusFromPostProps(post.props),
     };
 }
 

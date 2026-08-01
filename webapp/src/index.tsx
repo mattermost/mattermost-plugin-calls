@@ -124,7 +124,7 @@ import ChannelHeaderButton from './components/channel_header_button';
 import ChannelHeaderDropdownButton from './components/channel_header_dropdown_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import ChannelLinkLabel from './components/channel_link_label';
-import PostType from './components/custom_post_types/post_type';
+import {PostTypeEvent} from './components/custom_post_types/post_type_event';
 import {PostTypeTranscription} from './components/custom_post_types/post_type_transcription';
 import ExpandedView from './components/expanded_view';
 import CompassIcon from './components/icons/compassIcon';
@@ -358,7 +358,7 @@ export default class Plugin {
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
         registry.registerChannelToastComponent(injectIntl(ChannelCallToast));
-        registry.registerPostTypeComponent(CALL_EVENT_POST_TYPE, PostType);
+        registry.registerPostTypeComponent(CALL_EVENT_POST_TYPE, PostTypeEvent);
         registry.registerPostTypeComponent(CALL_RECORDING_POST_TYPE, PostTypeRecording);
         registry.registerPostTypeComponent(CALL_TRANSCRIPTION_POST_TYPE, PostTypeTranscription);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);

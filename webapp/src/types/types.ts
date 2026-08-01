@@ -247,9 +247,7 @@ export enum CallPostStatus {
     Declined = 'declined',
 }
 
-// CallPostProps comes from calls-common, which doesn't know about call_status yet. The server
-// only stamps it for DM calls, so it's empty for GM and channel calls that are still ongoing,
-// and for any call post that predates the lifecycle states.
+// The server only stamps call_status for DM calls, so it's empty for GM and channel calls
 export type CallsPostProps = CallPostProps & {
     call_status: CallPostStatus | '';
 }

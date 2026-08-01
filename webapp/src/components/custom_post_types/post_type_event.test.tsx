@@ -11,7 +11,7 @@ import {Provider} from 'react-redux';
 import {mockStore} from 'src/testUtils';
 import {CallPostStatus} from 'src/types/types';
 
-import PostType from './component';
+import {PostTypeEvent} from './post_type_event';
 
 // The dot menu pulls in @floating-ui, whose UMD build doesn't load under jest. None of these cases
 // open the host's leave menu, so the card only needs the styled-component base back.
@@ -41,22 +41,6 @@ const dmChannel = {
     type: 'D',
 } as Channel;
 
-const state = {
-    'plugins-com.mattermost.calls': {
-        calls: {
-            [channelID]: {ID: callID, channelID, startAt: 1000, ownerID: callerID, threadID: ''},
-        },
-        clientStateReducer: {channelID: ''},
-    },
-    entities: {
-        channels: {channels: {[channelID]: dmChannel}},
-        users: {
-            currentUserId: callerID,
-            profiles: {[callerID]: caller, [calleeID]: callee},
-        },
-    },
-};
-
 const stubPost = (props: Record<string, unknown>) => ({
     id: 'post-id',
     user_id: callerID,
@@ -65,32 +49,55 @@ const stubPost = (props: Record<string, unknown>) => ({
 } as Post);
 
 type RenderOpts = {
-    connected?: boolean;
-    profiles?: UserProfile[];
 
-    // Defaults to one session per loaded profile, which is the usual case. Pass it explicitly to
-    // model a call whose sessions are known but whose profiles haven't been fetched yet.
-    numSessions?: number;
+    // Whether the viewer is connected to the call, which is what turns the card's join button into
+    // a leave (or cancel) one.
+    connected?: boolean;
+
+    // Who holds a session in the call. Defaults to just the caller. A user with no profile in the
+    // store models a session whose profile hasn't been fetched yet.
+    sessionUserIDs?: string[];
 
     // Which side of the call is looking at the card. Defaults to the caller's.
     isCaller?: boolean;
 }
 
-const renderCard = (post: Post, {connected = false, profiles = [caller], numSessions, isCaller = true}: RenderOpts = {}) => render(
-    <Provider store={mockStore(state)}>
+const stubState = ({connected = false, sessionUserIDs = [callerID], isCaller = true}: RenderOpts) => ({
+    'plugins-com.mattermost.calls': {
+        calls: {
+            [channelID]: {ID: callID, channelID, startAt: 1000, ownerID: callerID, threadID: ''},
+        },
+        sessions: {
+            [channelID]: Object.fromEntries(sessionUserIDs.map((userID, i) => {
+                const sessionID = `session-${i}`;
+                return [sessionID, {session_id: sessionID, user_id: userID}];
+            })),
+        },
+        hosts: {[channelID]: {hostID: callerID, hostChangeAt: 0}},
+        callsConfig: {MaxCallParticipants: 0, sku_short_name: ''},
+        clientStateReducer: {channelID: connected ? channelID : ''},
+    },
+    entities: {
+        channels: {channels: {[channelID]: dmChannel}},
+        users: {
+            currentUserId: isCaller ? callerID : calleeID,
+            profiles: {[callerID]: caller, [calleeID]: callee},
+        },
+
+        // Read for the participant limit's upsell copy and for 12h/24h timestamps, both of which
+        // these cases leave at their defaults.
+        general: {license: {}},
+        cloud: {subscription: {}},
+        preferences: {myPreferences: {}},
+    },
+});
+
+const renderCard = (post: Post, opts: RenderOpts = {}) => render(
+    <Provider store={mockStore(stubState(opts))}>
         <RawIntlProvider value={intl}>
-            <PostType
+            <PostTypeEvent
                 post={post}
-                connectedID={connected ? channelID : ''}
-                profiles={profiles}
-                numSessions={numSessions ?? profiles.length}
-                isCloudPaid={false}
-                maxParticipants={0}
-                militaryTime={false}
-                compactDisplay={false}
                 isRHS={false}
-                isHost={false}
-                isCaller={isCaller}
             />
         </RawIntlProvider>
     </Provider>,
@@ -127,7 +134,7 @@ describe('PostType', () => {
     test('an answered call shows the participants and can stack onto two rows', () => {
         renderCard(
             stubPost({start_at: Date.now(), call_status: CallPostStatus.Calling}),
-            {connected: true, profiles: [caller, callee]},
+            {connected: true, sessionUserIDs: [callerID, calleeID]},
         );
 
         expect(screen.getAllByAltText('user profile image')).toHaveLength(2);
@@ -137,7 +144,7 @@ describe('PostType', () => {
     test('a ringing call goes active once the callee joins, even though call_status still says calling', () => {
         renderCard(
             stubPost({start_at: Date.now(), call_status: CallPostStatus.Calling}),
-            {connected: true, profiles: [caller, callee]},
+            {connected: true, sessionUserIDs: [callerID, calleeID]},
         );
 
         expect(screen.getByText('Call started')).toBeInTheDocument();
@@ -148,7 +155,7 @@ describe('PostType', () => {
     test('an answered call stays active when the other participant\'s profile has not loaded', () => {
         renderCard(
             stubPost({start_at: Date.now(), call_status: CallPostStatus.Calling}),
-            {connected: true, profiles: [caller], numSessions: 2},
+            {connected: true, sessionUserIDs: [callerID, 'unfetched-user-id']},
         );
 
         expect(screen.getByText('Call started')).toBeInTheDocument();

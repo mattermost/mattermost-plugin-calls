@@ -1,16 +1,19 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+/* eslint-disable max-lines */
+
 import {Post} from '@mattermost/types/posts';
 import {GlobalState} from '@mattermost/types/store';
-import {UserProfile} from '@mattermost/types/users';
 import {DateTime, Duration as LuxonDuration} from 'luxon';
+import Preferences from 'mattermost-redux/constants/preferences';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {get, getBool} from 'mattermost-redux/selectors/entities/preferences';
+import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import React, {useCallback} from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
+import {shallowEqual, useSelector} from 'react-redux';
 import ConnectedProfiles from 'src/components/connected_profiles';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
@@ -21,7 +24,17 @@ import {useDismissJoin} from 'src/components/incoming_calls/hooks';
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {Header, SubHeader} from 'src/components/shared';
 import Timestamp from 'src/components/timestamp';
-import {idForCallInChannel} from 'src/selectors';
+import {MESSAGE_DISPLAY, MESSAGE_DISPLAY_COMPACT, MESSAGE_DISPLAY_DEFAULT} from 'src/constants';
+import {
+    channelIDForCurrentCall,
+    hostIDForCallInChannel,
+    idForCallInChannel,
+    isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial,
+    maxParticipants,
+    numSessionsInCallInChannel,
+    profilesInCallInChannel,
+} from 'src/selectors';
+import {CallPostStatus, CallsPostProps} from 'src/types/types';
 import {
     callStartedTimestampFn,
     getCallPropsFromPost,
@@ -33,37 +46,65 @@ import {
 } from 'src/utils';
 import styled, {css} from 'styled-components';
 
-import {CallCardState, getCallCardState} from './call_card_state';
+enum CallCardState {
+    Calling = 'calling',
+    Active = 'active',
+    NoAnswer = 'no_answer',
+    Canceled = 'canceled',
+    Declined = 'declined',
+    Ended = 'ended',
+}
+
+export function getCallCardState(callProps: CallsPostProps, numSessions: number): CallCardState {
+    if (callProps.end_at > 0) {
+        switch (callProps.call_status) {
+        case CallPostStatus.NoAnswer:
+            return CallCardState.NoAnswer;
+        case CallPostStatus.CanceledByCaller:
+            return CallCardState.Canceled;
+        case CallPostStatus.Declined:
+            return CallCardState.Declined;
+        default:
+            return CallCardState.Ended;
+        }
+    }
+
+    if (callProps.call_status === CallPostStatus.Calling && numSessions <= 1) {
+        return CallCardState.Calling;
+    }
+
+    return CallCardState.Active;
+}
 
 interface Props {
     post: Post,
-    connectedID: string,
-    profiles: UserProfile[],
-    numSessions: number,
-    isCloudPaid: boolean,
-    maxParticipants: number,
-    militaryTime: boolean,
-    compactDisplay: boolean,
     isRHS: boolean,
-    isHost: boolean,
-    isCaller: boolean,
 }
 
-const PostType = ({
-    post,
-    connectedID,
-    profiles,
-    numSessions,
-    isCloudPaid,
-    maxParticipants,
-    militaryTime,
-    compactDisplay,
-    isRHS,
-    isHost,
-    isCaller,
-}: Props) => {
+export const PostTypeEvent = ({post, isRHS}: Props) => {
     const intl = useIntl();
     const {formatMessage} = intl;
+
+    const currentUserID = useSelector(getCurrentUserId);
+    const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
+    const channel = useSelector((state: GlobalState) => getChannel(state, post.channel_id));
+    const isAdmin = useSelector(isCurrentUserSystemAdmin);
+    const connectedID = useSelector(channelIDForCurrentCall);
+    const callID = useSelector((state: GlobalState) => idForCallInChannel(state, post.channel_id)) || '';
+    const profiles = useSelector((state: GlobalState) => profilesInCallInChannel(state, post.channel_id), shallowEqual);
+
+    // The card's ringing state is derived from how many people are in the call, which has to come
+    // from the sessions rather than from profiles: profilesInCallInChannel drops anyone whose
+    // profile hasn't been fetched yet, which would read as a call nobody has answered.
+    const numSessions = useSelector((state: GlobalState) => numSessionsInCallInChannel(state, post.channel_id));
+    const isHost = useSelector((state: GlobalState) => hostIDForCallInChannel(state, post.channel_id)) === currentUserID;
+    const isCloudPaid = useSelector(isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial);
+    const maxCallParticipants = useSelector(maxParticipants);
+    const militaryTime = useSelector((state: GlobalState) => getBool(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.USE_MILITARY_TIME, false));
+    const compactDisplay = useSelector((state: GlobalState) => get(state, Preferences.CATEGORY_DISPLAY_SETTINGS, MESSAGE_DISPLAY, MESSAGE_DISPLAY_DEFAULT)) === MESSAGE_DISPLAY_COMPACT;
+
+    const [, onJoin] = useDismissJoin(post.channel_id, callID);
+
     const hourCycle: 'h23' | 'h12' = militaryTime ? 'h23' : 'h12';
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
@@ -71,14 +112,12 @@ const PostType = ({
     const cardState = getCallCardState(callProps, numSessions);
     const isCalling = cardState === CallCardState.Calling;
 
+    // The call-start post is authored by whoever placed the call, which is what tells the caller's
+    // card apart from the callee's. A DM only ever has those two viewers.
+    const isCaller = post.user_id === currentUserID;
+
     // The callee's side of a ringing call: they're being invited, not placing the call.
     const isIncomingCall = isCalling && !isCaller;
-
-    const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
-    const callID = useSelector((state: GlobalState) => idForCallInChannel(state, post.channel_id)) || '';
-    const [, onJoin] = useDismissJoin(post.channel_id, callID);
-    const channel = useSelector((state: GlobalState) => getChannel(state, post.channel_id));
-    const isAdmin = useSelector(isCurrentUserSystemAdmin);
 
     const timestampFn = useCallback(() => {
         return callStartedTimestampFn(intl, callProps.start_at);
@@ -95,8 +134,8 @@ const PostType = ({
         }
     };
 
-    const recordings = Object.values(callProps.recordings).filter(job => Boolean(job.file_id)).map(job => job.file_id);
-    const transcriptions = Object.values(callProps.transcriptions).filter(job => Boolean(job.file_id)).map(job => job.file_id);
+    const recordings = Object.values(callProps.recordings).filter((job) => Boolean(job.file_id)).map((job) => job.file_id);
+    const transcriptions = Object.values(callProps.transcriptions).filter((job) => Boolean(job.file_id)).map((job) => job.file_id);
 
     const recordingsSubMessage = recordings.length > 0 ? (
         <ArtifactsContainer>
@@ -152,18 +191,14 @@ const PostType = ({
     let subMessage: JSX.Element | null = null;
     switch (cardState) {
     case CallCardState.Calling:
-        // A ringing call has nothing to say beyond "Calling…" itself.
         break;
     case CallCardState.Active:
         subMessage = startedSubMessage;
         break;
     case CallCardState.NoAnswer:
-        // The caller was left waiting on an answer; for the callee it's a call they didn't take.
         subMessage = <span>{isCaller ? formatMessage({defaultMessage: 'No answer'}) : formatMessage({defaultMessage: 'Missed call'})}</span>;
         break;
     case CallCardState.Canceled:
-        // Only the callee needs to be told who hung up, so they're also the only one who needs a
-        // fallback for a caller whose profile hasn't been fetched.
         subMessage = (
             <span>
                 {isCaller && formatMessage({defaultMessage: 'You canceled the call'})}
@@ -192,14 +227,14 @@ const PostType = ({
     );
 
     // Note: don't use isLimitRestricted because that uses current channel, and this post could be in RHS
-    if (maxParticipants > 0 && profiles.length >= maxParticipants) {
+    if (maxCallParticipants > 0 && profiles.length >= maxCallParticipants) {
         joinButton = (
             <OverlayTrigger
                 placement='top'
                 overlay={
                     <Tooltip id='tooltip-limit'>
                         <Header>
-                            {formatMessage({defaultMessage: 'Sorry, participants per call are currently limited to {count}.'}, {count: maxParticipants})}
+                            {formatMessage({defaultMessage: 'Sorry, participants per call are currently limited to {count}.'}, {count: maxCallParticipants})}
                         </Header>
                         {isCloudPaid &&
                             <SubHeader>
@@ -303,8 +338,6 @@ const PostType = ({
                     <Right $stayInline={isCalling}>
                         {callActive &&
                             <>
-                                {/* A ringing call has nobody in it but the caller, whose lone
-                                    avatar says nothing worth the space. */}
                                 {!isCalling &&
                                     <Profiles>
                                         <ConnectedProfiles
@@ -537,4 +570,3 @@ const ArtifactsContainer = styled.div`
     color: rgba(var(--center-channel-color-rgb), 0.72);
 `;
 
-export default PostType;
