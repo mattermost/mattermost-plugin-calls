@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	callEventPostType          = "custom_calls"
+	callEventPostType     = "custom_calls"
 	callRecordingPostType = "custom_calls_recording"
 	callTranscriptionType = "custom_calls_transcription"
 )

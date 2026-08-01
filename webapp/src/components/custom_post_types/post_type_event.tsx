@@ -40,6 +40,7 @@ import {
     getCallPropsFromPost,
     getCallsClient,
     getUserDisplayName,
+    getUserIdFromDM,
     isDMChannel,
     toHuman,
     untranslatable,
@@ -88,6 +89,12 @@ export const PostTypeEvent = ({post, isRHS}: Props) => {
     const currentUserID = useSelector(getCurrentUserId);
     const user = useSelector((state: GlobalState) => getUser(state, post.user_id));
     const channel = useSelector((state: GlobalState) => getChannel(state, post.channel_id));
+
+    // Nothing on the post records who declined, but it can only have been the other side of the DM:
+    // the post's author is the caller, and a DM has exactly two people in it.
+    const calleeID = getUserIdFromDM(channel?.name || '', post.user_id);
+    const callee = useSelector((state: GlobalState) => getUser(state, calleeID));
+
     const isAdmin = useSelector(isCurrentUserSystemAdmin);
     const connectedID = useSelector(channelIDForCurrentCall);
     const callID = useSelector((state: GlobalState) => idForCallInChannel(state, post.channel_id)) || '';
@@ -203,6 +210,14 @@ export const PostTypeEvent = ({post, isRHS}: Props) => {
             <span>
                 {isCaller && formatMessage({defaultMessage: 'You canceled the call'})}
                 {!isCaller && (user ? formatMessage({defaultMessage: 'Canceled by {user}'}, {user: getUserDisplayName(user)}) : formatMessage({defaultMessage: 'Canceled'}))}
+            </span>
+        );
+        break;
+    case CallCardState.Declined:
+        subMessage = (
+            <span>
+                {!isCaller && formatMessage({defaultMessage: 'You declined the call'})}
+                {isCaller && (callee ? formatMessage({defaultMessage: 'Declined by {user}'}, {user: getUserDisplayName(callee)}) : formatMessage({defaultMessage: 'Declined'}))}
             </span>
         );
         break;

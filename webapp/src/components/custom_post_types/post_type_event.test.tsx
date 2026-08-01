@@ -199,11 +199,22 @@ describe('PostType', () => {
         expect(screen.getByText('Canceled by First1 Last1')).toBeInTheDocument();
     });
 
-    test('a call the callee declined falls back to the plain ended card, pending the decline UI', () => {
+    test('a declined call, seen by the caller who is told who declined it', () => {
         renderCard(stubPost({start_at: 1000, end_at: 1000 + (5 * 60 * 1000), call_status: CallPostStatus.Declined}));
 
         expect(screen.getByText('Call ended')).toBeInTheDocument();
-        expect(screen.getByText('Lasted 5 minutes')).toBeInTheDocument();
+        expect(screen.getByText('Declined by First2 Last2')).toBeInTheDocument();
+        expect(screen.queryByText(/Lasted/)).not.toBeInTheDocument();
+    });
+
+    test('a declined call, seen by the callee who declined it', () => {
+        renderCard(
+            stubPost({start_at: 1000, end_at: 1000 + (5 * 60 * 1000), call_status: CallPostStatus.Declined}),
+            {isCaller: false},
+        );
+
+        expect(screen.getByText('Call ended')).toBeInTheDocument();
+        expect(screen.getByText('You declined the call')).toBeInTheDocument();
     });
 
     test('a call that ended normally reports its duration', () => {
