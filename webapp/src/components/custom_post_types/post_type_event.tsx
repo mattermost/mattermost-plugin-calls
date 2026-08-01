@@ -126,6 +126,11 @@ export const PostTypeEvent = ({post, isRHS}: Props) => {
     // The callee's side of a ringing call: they're being invited, not placing the call.
     const isIncomingCall = isCalling && !isCaller;
 
+    // A DM call is between the two people already named by the post itself, so the card doesn't
+    // repeat them: no participant avatars and no "by {user}". That leaves little enough to show
+    // that the card stays on one row at any width, as the design has it.
+    const isDM = isDMChannel(channel);
+
     const timestampFn = useCallback(() => {
         return callStartedTimestampFn(intl, callProps.start_at);
     }, [intl, callProps.start_at]);
@@ -188,8 +193,8 @@ export const PostTypeEvent = ({post, isRHS}: Props) => {
                 timestampFn={timestampFn}
                 interval={5000}
             />
-            { untranslatable(' ')}
-            {
+            {!isDM && untranslatable(' ')}
+            {!isDM &&
                 formatMessage({defaultMessage: 'by {user}'}, {user: getUserDisplayName(user)})
             }
         </>
@@ -318,7 +323,7 @@ export const PostTypeEvent = ({post, isRHS}: Props) => {
         <>
             {title}
             <Main data-testid={'call-thread'}>
-                <SubMain $stayInline={isCalling}>
+                <SubMain $stayInline={isCalling || isDM}>
                     <Left>
                         <CallIndicator $ended={!callActive}>
                             {callActive &&
@@ -349,11 +354,11 @@ export const PostTypeEvent = ({post, isRHS}: Props) => {
                             {subMessage && <SubMessage>{subMessage}</SubMessage>}
                         </MessageWrapper>
                     </Left>
-                    { !isCalling && (recordings.length > 0 || callActive) && <RowDivider/> }
-                    <Right $stayInline={isCalling}>
+                    { !isCalling && !isDM && (recordings.length > 0 || callActive) && <RowDivider/> }
+                    <Right $stayInline={isCalling || isDM}>
                         {callActive &&
                             <>
-                                {!isCalling &&
+                                {!isCalling && !isDM &&
                                     <Profiles>
                                         <ConnectedProfiles
                                             profiles={profiles}
