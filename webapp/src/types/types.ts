@@ -155,19 +155,13 @@ export type CapturerSource = {
 export type CurrentCallData = {
     recordingPromptDismissedAt: number;
     missingScreenPermissions: boolean;
-
-    // answeredAt is when a DM call was answered, i.e. when the other party joined. It's kept
-    // here so that a popout opened after the call was answered shows the same duration as the
-    // widget instead of restarting from zero.
-    answeredAt: number;
+    dmCalleeAnsweredAt: number;
 }
 
-// NOTE: this is a template, not shared state. Always assign a copy
-// (e.g. {...CurrentCallDataDefault}), otherwise mutations leak into the next call.
 export const CurrentCallDataDefault: CurrentCallData = {
     recordingPromptDismissedAt: 0,
     missingScreenPermissions: false,
-    answeredAt: 0,
+    dmCalleeAnsweredAt: 0,
 };
 
 // Similar to currentCallData, callActions is a cross-window function to trigger a change in that

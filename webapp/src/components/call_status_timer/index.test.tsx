@@ -97,7 +97,7 @@ describe('CallStatusTimer', () => {
             },
             getSessionID: () => ownSession.session_id,
         } as unknown as CallsClient;
-        window.currentCallData = {answeredAt: 0} as CurrentCallData;
+        window.currentCallData = {dmCalleeAnsweredAt: 0} as CurrentCallData;
     });
 
     afterEach(() => {
@@ -158,7 +158,7 @@ describe('CallStatusTimer', () => {
         // saw the other party join. It should adopt the shared timestamp rather than restart.
         it('should seed the answered time from the calls window when the store has none', () => {
             const sharedAnsweredAt = Date.now() - 65_000;
-            window.currentCallData = {answeredAt: sharedAnsweredAt} as CurrentCallData;
+            window.currentCallData = {dmCalleeAnsweredAt: sharedAnsweredAt} as CurrentCallData;
 
             const {dispatch} = renderTimer(stubState({
                 startAt: Date.now() - 300_000,
@@ -172,7 +172,7 @@ describe('CallStatusTimer', () => {
         });
 
         it('should not seed when the store already knows when the call was answered', () => {
-            window.currentCallData = {answeredAt: Date.now() - 300_000} as CurrentCallData;
+            window.currentCallData = {dmCalleeAnsweredAt: Date.now() - 300_000} as CurrentCallData;
 
             const {dispatch} = renderTimer(stubState({
                 startAt: Date.now() - 300_000,

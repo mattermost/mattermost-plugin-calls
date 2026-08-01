@@ -43,7 +43,7 @@ export function CallStatusTimer() {
         // Since each call window has its own store, one opened after the other party joins misses
         // DM_CALLEE_ANSWERED_AT. Seed its store from the shared timestamp so the expanded view and widget
         // stay in sync instead of restarting the timer from zero.
-        const sharedDMAnsweredAt = getCallsWindow().currentCallData?.answeredAt;
+        const sharedDMAnsweredAt = getCallsWindow().currentCallData?.dmCalleeAnsweredAt;
         if (sharedDMAnsweredAt) {
             dispatch(setDMCalleeAnsweredAt(callID, sharedDMAnsweredAt));
         }

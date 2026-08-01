@@ -228,7 +228,7 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
         // as soon as its opened. We later sync it to its store in CallStatusTimer.
         const callsWindow = getCallsWindow();
         if (callsWindow.currentCallData) {
-            callsWindow.currentCallData.answeredAt = answeredAt;
+            callsWindow.currentCallData.dmCalleeAnsweredAt = answeredAt;
         }
     }
 
