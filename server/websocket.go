@@ -840,7 +840,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 					humanUsers[s.UserID] = struct{}{}
 				}
 			}
-			if len(humanUsers) == 2 {
+			if len(humanUsers) >= 2 {
 				p.cancelDMNoAnswerTimer(channelID)
 			}
 		}

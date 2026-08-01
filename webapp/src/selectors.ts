@@ -164,6 +164,14 @@ export const numSessionsInCallInChannel = (state: GlobalState, channelID: string
     return Object.keys(sessionsInCalls(state)[channelID] || {}).length;
 };
 
+// numUsersInCallInChannel counts the distinct users in the call rather than their sessions,
+// since a single user can be connected from multiple clients. Unlike numProfilesInCallInChannel
+// it doesn't need the profiles to have been fetched, so it never undercounts.
+export const numUsersInCallInChannel = (state: GlobalState, channelID: string): number => {
+    const sessions = sessionsInCalls(state)[channelID] || {};
+    return new Set(Object.values(sessions).map((session) => session.user_id)).size;
+};
+
 export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
     return Boolean(calls(state)[channelId]);
 };

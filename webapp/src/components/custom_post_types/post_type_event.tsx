@@ -31,7 +31,7 @@ import {
     idForCallInChannel,
     isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial,
     maxParticipants,
-    numSessionsInCallInChannel,
+    numUsersInCallInChannel,
     profilesInCallInChannel,
 } from 'src/selectors';
 import {CallPostStatus, CallsPostProps} from 'src/types/types';
@@ -55,7 +55,7 @@ enum CallCardState {
     Ended = 'ended',
 }
 
-export function getCallCardState(callProps: CallsPostProps, numSessions: number): CallCardState {
+export function getCallCardState(callProps: CallsPostProps, numUsers: number): CallCardState {
     if (callProps.end_at > 0) {
         switch (callProps.call_status) {
         case CallPostStatus.NoAnswer:
@@ -69,7 +69,7 @@ export function getCallCardState(callProps: CallsPostProps, numSessions: number)
         }
     }
 
-    if (callProps.call_status === CallPostStatus.Calling && numSessions <= 1) {
+    if (callProps.call_status === CallPostStatus.Calling && numUsers <= 1) {
         return CallCardState.Calling;
     }
 
@@ -96,7 +96,7 @@ export const PostTypeEvent = ({post, isRHS}: Props) => {
     // The card's ringing state is derived from how many people are in the call, which has to come
     // from the sessions rather than from profiles: profilesInCallInChannel drops anyone whose
     // profile hasn't been fetched yet, which would read as a call nobody has answered.
-    const numSessions = useSelector((state: GlobalState) => numSessionsInCallInChannel(state, post.channel_id));
+    const numUsers = useSelector((state: GlobalState) => numUsersInCallInChannel(state, post.channel_id));
     const isHost = useSelector((state: GlobalState) => hostIDForCallInChannel(state, post.channel_id)) === currentUserID;
     const isCloudPaid = useSelector(isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial);
     const maxCallParticipants = useSelector(maxParticipants);
@@ -109,7 +109,7 @@ export const PostTypeEvent = ({post, isRHS}: Props) => {
     const timeFormat = {...DateTime.TIME_24_SIMPLE, hourCycle};
 
     const callProps = getCallPropsFromPost(post);
-    const cardState = getCallCardState(callProps, numSessions);
+    const cardState = getCallCardState(callProps, numUsers);
     const isCalling = cardState === CallCardState.Calling;
 
     // The call-start post is authored by whoever placed the call, which is what tells the caller's

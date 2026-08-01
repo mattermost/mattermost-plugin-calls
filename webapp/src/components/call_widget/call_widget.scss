@@ -1,4 +1,4 @@
-@keyframes callsKeyframesSlideFadeInOut {
+@keyframes calls-slide-fade-in-out {
   0%,
   100% {
     transform: translateY(100%);
@@ -16,7 +16,7 @@
   }
 }
 
-@keyframes callsKeyframesPulsing {
+@keyframes calls-pulsing {
   0%,
   100% {
     opacity: 1;
@@ -180,10 +180,10 @@ a.calls-channel-link {
   }
 
   .slideFadeInOutAnimation {
-    animation: callsKeyframesSlideFadeInOut 4s ease-in-out 0.2s both;
+    animation: calls-slide-fade-in-out 4s ease-in-out 0.2s both;
   }
 
   .pulsingAnimation {
-    animation: callsKeyframesPulsing 1.6s ease-in-out infinite;
+    animation: calls-pulsing 1.6s ease-in-out infinite;
   }
 }

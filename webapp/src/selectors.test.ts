@@ -11,6 +11,7 @@ import {
     isCurrentDMCallInCallingState,
     isCurrentUserInSessionForCurrentCall,
     isCurrentUserOwnerOfCurrentCall,
+    numUsersInCallInChannel,
     otherUserIDForCurrentDMCall,
 } from './selectors';
 
@@ -221,5 +222,30 @@ describe('otherUserIDForCurrentDMCall', () => {
         // It only parses the channel name, so callers have to gate on
         // isCurrentDMCallInCallingState rather than trust this on its own.
         expect(otherUserIDForCurrentDMCall(stubState({channel: gmChannel}))).toBe(gmChannel.name);
+    });
+});
+
+describe('numUsersInCallInChannel', () => {
+    test('should count a user connected from several clients once', () => {
+        const state = stubState({sessions: [ownSession, ownSecondSession]});
+
+        expect(numUsersInCallInChannel(state, channelID)).toBe(1);
+    });
+
+    test('should count each user in the call', () => {
+        const state = stubState({sessions: [ownSession, otherSession]});
+
+        expect(numUsersInCallInChannel(state, channelID)).toBe(2);
+    });
+
+    test('should not need the user profiles to have been fetched', () => {
+        const state = stubState({sessions: [otherSession]});
+
+        expect(state.entities.users.profiles).toEqual({});
+        expect(numUsersInCallInChannel(state, channelID)).toBe(1);
+    });
+
+    test('should return zero when there is no call in the channel', () => {
+        expect(numUsersInCallInChannel(stubState({sessions: null}), channelID)).toBe(0);
     });
 });

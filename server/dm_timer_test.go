@@ -253,6 +253,11 @@ func TestUpdateCallPostEnded(t *testing.T) {
 			reason:     callEndReasonCanceledByCaller,
 			wantStatus: callStatusCanceledByCaller,
 		},
+		{
+			name:       "declined",
+			reason:     callEndReasonDeclined,
+			wantStatus: callStatusDeclined,
+		},
 	}
 
 	for _, tc := range tests {

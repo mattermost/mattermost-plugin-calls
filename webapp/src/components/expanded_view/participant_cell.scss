@@ -8,7 +8,7 @@ li.participantCell {
     justify-content: flex-start;
     align-items: center;
 
-    &:hover.showHostControls {
+    &.showHostControls {
         border-radius: 8px;
         background: rgba(var(--sidebar-text-rgb), 0.08);
     }
