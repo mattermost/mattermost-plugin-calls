@@ -160,6 +160,29 @@ func TestRemoveUserSessionDMAutoEnd(t *testing.T) {
 		require.Len(t, state.sessions, 2)
 	})
 
+	t.Run("does not publish call_end when the channel can't be read", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		state := buildDMCallState(t, channelID)
+
+		mockAPI.On("GetChannel", channelID).Return(nil, &model.AppError{Message: "failed to get channel"}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{
+			"session_id": "connA",
+			"user_id":    "userA",
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		err := p.removeUserSession(state, "userA", "connA", "connA", channelID)
+		require.NoError(t, err)
+
+		require.Zero(t, state.Call.EndAt)
+		require.Len(t, state.sessions, 1)
+	})
+
 	t.Run("non-DM: does not publish call_end when a user leaves with another user still connected", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)
@@ -307,6 +330,30 @@ func TestRemoveUserSessionCallEndReason(t *testing.T) {
 		require.NotNil(t, capturedPost)
 		assert.Equal(t, callStatusEnded, capturedPost.GetProp("call_status"))
 		assert.ElementsMatch(t, []string{"userA", "userB"}, capturedPost.GetProp("participants"))
+	})
+
+	t.Run("a lone participant leaving ends the call when the channel can't be read", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		state := buildCall(t, channelID, "userA")
+
+		expectUserLeft(channelID)
+		mockAPI.On("GetChannel", channelID).Return(nil, &model.AppError{Message: "failed to get channel"}).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+
+		var capturedPost *model.Post
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Run(func(args mock.Arguments) {
+			capturedPost = args.Get(0).(*model.Post)
+		}).Return(&model.Post{}, nil).Once()
+
+		require.NoError(t, p.removeUserSession(state, "userA", "connA", "connA", channelID))
+
+		// Without knowing it was a DM there's nothing to say it was cancelled rather than ended.
+		require.NotNil(t, capturedPost)
+		assert.Equal(t, callStatusEnded, capturedPost.GetProp("call_status"))
 	})
 
 	t.Run("non-DM: a lone participant leaving ends the call rather than cancelling it", func(t *testing.T) {

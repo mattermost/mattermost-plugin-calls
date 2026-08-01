@@ -95,6 +95,62 @@ func TestStartCancelDMNoAnswerTimer(t *testing.T) {
 	})
 }
 
+func TestDMNoAnswerTimerFires(t *testing.T) {
+	p, mockAPI, mockMetrics := newDMTimerTestPlugin(t)
+	defer mockAPI.AssertExpectations(t)
+	defer mockMetrics.AssertExpectations(t)
+	defer ResetTestStore(t, p.store)
+
+	defaultTimeout := dmNoAnswerTimeout
+	dmNoAnswerTimeout = 10 * time.Millisecond
+	defer func() { dmNoAnswerTimeout = defaultTimeout }()
+
+	channelID := model.NewId()
+	userID := model.NewId()
+	postID := model.NewId()
+
+	call := &public.Call{
+		ID:        model.NewId(),
+		CreateAt:  time.Now().UnixMilli(),
+		ChannelID: channelID,
+		StartAt:   time.Now().UnixMilli(),
+		PostID:    postID,
+		ThreadID:  model.NewId(),
+		OwnerID:   userID,
+	}
+	require.NoError(t, p.store.CreateCall(call))
+	require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+		ID:     model.NewId(),
+		CallID: call.ID,
+		UserID: userID,
+		JoinAt: time.Now().UnixMilli(),
+	}))
+	createPost(t, p.store, postID, userID, channelID)
+
+	mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+	mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+	mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Once()
+
+	ended := make(chan struct{})
+	mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
+	mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]interface{}{},
+		&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Run(func(_ mock.Arguments) {
+		close(ended)
+	}).Once()
+
+	p.startDMNoAnswerTimer(channelID, call.ID)
+
+	select {
+	case <-ended:
+	case <-time.After(5 * time.Second):
+		require.Fail(t, "timed out waiting for the no-answer timer to end the call")
+	}
+
+	updatedCall, err := p.store.GetCall(call.ID, db.GetCallOpts{FromWriter: true})
+	require.NoError(t, err)
+	assert.Greater(t, updatedCall.EndAt, int64(0))
+}
+
 func TestHandleDMNoAnswer(t *testing.T) {
 	t.Run("no call ongoing", func(t *testing.T) {
 		p, mockAPI, _ := newDMTimerTestPlugin(t)

@@ -8,7 +8,6 @@ import {loadProfilesByIdsIfMissing, removeIncomingCallNotification, setDMCalleeA
 import {Store} from 'src/types/mattermost-webapp';
 
 import {USER_JOINED} from './action_types';
-
 import {
     calls,
     dmCalleeAnsweredAtForCurrentCall,
@@ -87,6 +86,7 @@ const userJoinedEvent = (userID: string, sessionID = 'session-id') => ({
 } as unknown as WebSocketMessage<UserJoinedData>);
 
 type Opts = {
+
     // Whether we are in the call the event is about.
     joined?: boolean;
     isDM?: boolean;

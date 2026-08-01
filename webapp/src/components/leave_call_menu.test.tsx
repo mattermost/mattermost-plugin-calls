@@ -12,9 +12,7 @@ import {LeaveCallMenu} from './leave_call_menu';
 // The dot menu pulls in @floating-ui, whose UMD build doesn't load under jest.
 jest.mock('src/components/dot_menu/dot_menu', () => ({
     DropdownMenuItem: ({children, onClick}: { children: React.ReactNode; onClick?: () => void }) => (
-
-        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-        <div onClick={onClick}>{children}</div>
+        <button onClick={onClick}>{children}</button>
     ),
 }));
 

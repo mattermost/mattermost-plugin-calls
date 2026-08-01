@@ -24,7 +24,8 @@ const (
 	callStatusDeclined         = "declined"
 )
 
-const dmNoAnswerTimeout = 30 * time.Second
+// A var rather than a const so tests can shorten it.
+var dmNoAnswerTimeout = 30 * time.Second
 
 func (p *Plugin) startDMNoAnswerTimer(channelID, callID string) {
 	p.dmNoAnswerTimersMut.Lock()

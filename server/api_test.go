@@ -333,6 +333,53 @@ func TestHandleDeclineCall(t *testing.T) {
 		// No call ongoing, which is declineCall's own error path surfacing through the handler.
 		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
 	})
+
+	t.Run("DM channel — the callee declines a ringing call", func(t *testing.T) {
+		p, mockAPI, mockMetrics := newAPITestPlugin(t)
+		defer mockAPI.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		mockMetricsForRouter(t, p)
+		apiRouter := p.newAPIRouter()
+
+		channelID := model.NewId()
+		callerID := model.NewId()
+		calleeID := model.NewId()
+		postID := model.NewId()
+
+		call := createDMCall(t, p, channelID, callerID, model.NewId(), postID)
+		createPost(t, p.store, postID, callerID, channelID)
+
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeDirect,
+		}, nil).Once()
+		mockAPI.On("HasPermissionToChannel", calleeID, channelID, model.PermissionCreatePost).Return(true).Once()
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]interface{}{},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDismissedNotification).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserDismissedNotification, map[string]interface{}{
+			"userID": calleeID,
+			"callID": call.ID,
+		}, &model.WebsocketBroadcast{UserId: calleeID, ReliableClusterSend: true}).Once()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", fmt.Sprintf("/calls/%s/decline", channelID), nil)
+		r.Header.Set("Mattermost-User-Id", calleeID)
+		apiRouter.ServeHTTP(w, r)
+
+		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+		storedCall, err := p.store.GetCall(call.ID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		assert.Greater(t, storedCall.EndAt, int64(0))
+	})
 }
 
 // mockMetricsForRouter satisfies the metrics handler lookup newAPIRouter performs.
