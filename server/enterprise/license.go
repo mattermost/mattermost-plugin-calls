@@ -58,5 +58,15 @@ func (e *LicenseChecker) HostControlsAllowed() bool {
 }
 
 func (e *LicenseChecker) GroupCallsAllowed() bool {
-	return e.isAtLeastProfessionalLicensed() || os.Getenv("MM_CALLS_GROUP_CALLS_ALLOWED") == "true"
+	if os.Getenv("MM_CALLS_GROUP_CALLS_ALLOWED") == "true" {
+		return true
+	}
+	if os.Getenv("MM_CALLS_GROUP_CALLS_ALLOWED") == "false" {
+		return false
+	}
+	// Self-hosted deployments support calls in public/private channels without Professional.
+	if !license.IsCloud(e.api.GetLicense()) {
+		return true
+	}
+	return e.isAtLeastProfessionalLicensed()
 }
