@@ -88,6 +88,7 @@ import {
     isCurrentUserOwnerOfCurrentCall,
     profilesInCurrentCallMap,
     ringingEnabled,
+    sessionsForOtherUsersInCall,
     shouldPlayJoinUserSound,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
@@ -425,6 +426,16 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
             hostChangeAt: Date.now(),
         },
     });
+
+    // The DM caller becomes host merely by placing the call, so announcing it is noise on top
+    // of the ringing state.
+    const currentUserID = getCurrentUserId(store.getState());
+    if (isDMChannel(getChannel(store.getState(), channelID)) &&
+        ev.data.hostID === currentUserID &&
+        isCurrentUserOwnerOfCurrentCall(store.getState()) &&
+        sessionsForOtherUsersInCall(store.getState()).length === 0) {
+        return;
+    }
 
     const hostProfile = profilesInCurrentCallMap(store.getState())[ev.data.hostID] ||
         getUser(store.getState(), ev.data.hostID);
