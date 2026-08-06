@@ -357,7 +357,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.onShareScreenToggle();
             break;
         case PARTICIPANTS_LIST_TOGGLE:
-            this.onParticipantsButtonClick();
+            if (!isDMChannel(this.props.channel)) {
+                this.onParticipantsButtonClick();
+            }
             break;
         case LEAVE_CALL:
             this.onDisconnectClick();
