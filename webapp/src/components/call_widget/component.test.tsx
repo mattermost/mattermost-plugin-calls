@@ -102,6 +102,7 @@ const props: Props = {
     enableVideo: false,
     connectedDMUser: undefined,
     isAdmin: false,
+    isDMCalling: false,
 };
 
 describe('CallWidget', () => {

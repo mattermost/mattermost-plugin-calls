@@ -146,6 +146,7 @@ interface Props {
     enableVideo: boolean,
     connectedDMUser: UserProfile | undefined,
     isAdmin: boolean,
+    isDMCalling: boolean,
 }
 
 interface DraggingState {
@@ -1587,12 +1588,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const recordingActionLabel = this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
 
+        // There's nothing to record until the callee picks up, so the action stays
+        // disabled while a DM call is still ringing.
+        const disabled = this.props.isDMCalling;
+
         return (
             <React.Fragment>
                 <li
                     className='MenuItem'
                     role='menuitem'
                     aria-label={recordingActionLabel}
+                    aria-disabled={disabled}
                 >
                     <button
                         id='calls-widget-menu-record-button'
@@ -1600,7 +1606,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={{
                             display: 'flex',
                             flexDirection: 'column',
+                            opacity: disabled ? 0.4 : 1,
+                            cursor: disabled ? 'not-allowed' : 'pointer',
                         }}
+                        disabled={disabled}
                         onClick={() => this.onRecordToggle()}
                     >
                         <div

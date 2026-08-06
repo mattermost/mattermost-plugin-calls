@@ -132,6 +132,7 @@ interface Props extends RouteComponentProps {
     openModal: <P>(modalData: ModalData<P>) => void;
     enableVideo: boolean;
     otherSessions: UserSessionState[];
+    isDMCalling: boolean;
 }
 
 interface State {
@@ -1496,6 +1497,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     id='calls-popout-record-button'
                                     ariaLabel={recordTooltipText}
                                     onToggle={() => this.onRecordToggle()}
+
+                                    // There's nothing to record until the callee picks up.
+                                    disabled={this.props.isDMCalling}
                                     tooltipText={recordTooltipText}
                                     // eslint-disable-next-line no-undefined
                                     shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}
