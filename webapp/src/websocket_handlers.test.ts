@@ -1,13 +1,13 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {UserJoinedData} from '@mattermost/calls-common/lib/types';
+import {CallHostChangedData, UserJoinedData} from '@mattermost/calls-common/lib/types';
 import {WebSocketMessage} from '@mattermost/client/websocket';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {loadProfilesByIdsIfMissing, removeIncomingCallNotification, setDMCalleeAnsweredAt} from 'src/actions';
 import {Store} from 'src/types/mattermost-webapp';
 
-import {USER_JOINED} from './action_types';
+import {CALL_HOST, HOST_CONTROL_NOTICE, USER_JOINED} from './action_types';
 import {
     calls,
     dmCalleeAnsweredAtForCurrentCall,
@@ -24,7 +24,7 @@ import {
     notificationsStopRinging,
     playSound,
 } from './utils';
-import {handleUserJoined} from './websocket_handlers';
+import {handleCallHostChanged, handleUserJoined} from './websocket_handlers';
 
 jest.mock('mattermost-redux/selectors/entities/channels', () => ({
     getChannel: jest.fn(() => ({id: 'channel-id', type: 'D'})),
@@ -249,5 +249,57 @@ describe('handleUserJoined', () => {
 
         expect(loadProfilesByIdsIfMissing).toHaveBeenCalledWith([otherUserID]);
         expect(dispatched(store, USER_JOINED)).toHaveLength(1);
+    });
+});
+
+describe('handleCallHostChanged', () => {
+    const hostChangedEvent = (hostID: string) => ({
+        data: {hostID, channelID, call_id: callID},
+        broadcast: {channel_id: channelID},
+    } as unknown as WebSocketMessage<CallHostChangedData>);
+
+    beforeEach(() => {
+        mock(getUser).mockReturnValue({id: 'host-id'});
+    });
+
+    test('should not announce that we are the host when placing a DM call', () => {
+        const {store} = setup();
+
+        handleCallHostChanged(store, hostChangedEvent(currentUserID));
+
+        expect(dispatched(store, HOST_CONTROL_NOTICE)).toHaveLength(0);
+    });
+
+    test('should announce that we are the host of a DM call we already know about', () => {
+        const {store} = setup();
+        mock(calls).mockReturnValue({[channelID]: {ID: callID}});
+
+        handleCallHostChanged(store, hostChangedEvent(currentUserID));
+
+        expect(dispatched(store, HOST_CONTROL_NOTICE)).toHaveLength(1);
+    });
+
+    test('should announce that we are the host outside a DM channel', () => {
+        const {store} = setup({isDM: false});
+
+        handleCallHostChanged(store, hostChangedEvent(currentUserID));
+
+        expect(dispatched(store, HOST_CONTROL_NOTICE)).toHaveLength(1);
+    });
+
+    test('should announce when someone else becomes the host', () => {
+        const {store} = setup();
+
+        handleCallHostChanged(store, hostChangedEvent(otherUserID));
+
+        expect(dispatched(store, HOST_CONTROL_NOTICE)).toHaveLength(1);
+    });
+
+    test('should record the new host regardless of whether it is announced', () => {
+        const {store} = setup();
+
+        handleCallHostChanged(store, hostChangedEvent(currentUserID));
+
+        expect(dispatched(store, CALL_HOST)).toHaveLength(1);
     });
 });

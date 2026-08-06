@@ -88,7 +88,6 @@ import {
     isCurrentUserOwnerOfCurrentCall,
     profilesInCurrentCallMap,
     ringingEnabled,
-    sessionsForOtherUsersInCall,
     shouldPlayJoinUserSound,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
@@ -196,10 +195,7 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
 
     if (window.callsClient?.channelID === channelID) {
         if (sessionID === getCallsClientSessionID()) {
-            // The DM caller hears the outbound ringback instead: playing the join sound on
-            // top of it is just noise. Only suppress it when the ringback will actually
-            // play, so a DM call placed with ringing turned off still gets a sound. The
-            // callee keeps their join sound, which confirms they connected.
+            // The DM caller hears the outbound ringback instead of the join self sound
             const dmCallerWillHearRingback = ringingEnabled(store.getState()) &&
                 isDMChannel(getChannel(store.getState(), channelID)) &&
                 isCurrentUserOwnerOfCurrentCall(store.getState());
@@ -427,13 +423,13 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
         },
     });
 
-    // The DM caller becomes host merely by placing the call, so announcing it is noise on top
-    // of the ringing state.
-    const currentUserID = getCurrentUserId(store.getState());
-    if (isDMChannel(getChannel(store.getState(), channelID)) &&
-        ev.data.hostID === currentUserID &&
-        isCurrentUserOwnerOfCurrentCall(store.getState()) &&
-        sessionsForOtherUsersInCall(store.getState()).length === 0) {
+    // When a DM caller initiates a call, they are set as host immediately,
+    // which is redundant with the calling state.The server sends this event
+    // before call_start; at this stage, we don't have call info yet, indicating that we are the initiator.
+    if (
+        ev.data.hostID === getCurrentUserId(store.getState()) &&
+        isDMChannel(getChannel(store.getState(), channelID)) &&
+        !calls(store.getState())[channelID]) {
         return;
     }
 
@@ -442,8 +438,8 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
     if (!hostProfile) {
         return;
     }
-    const displayName = getUserDisplayName(hostProfile);
 
+    const displayName = getUserDisplayName(hostProfile);
     const hostNotice: HostControlNotice = {
         type: HostControlNoticeType.HostChanged,
         callID: ev.data.call_id,
