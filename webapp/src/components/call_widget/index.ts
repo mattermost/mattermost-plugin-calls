@@ -20,13 +20,13 @@ import {
 import {
     allowScreenSharing,
     callsConfig,
-    callStartAtForCurrentCall,
     clientConnecting,
     expandedView,
     getChannelUrlAndDisplayName,
     hostChangeAtForCurrentCall,
     hostControlNoticesForCurrentCall,
     hostIDForCurrentCall,
+    isCurrentDMCallInCallingState,
     isRecordingInCurrentCall,
     profilesInCurrentCallMap,
     recentlyJoinedUsersInCurrentCall,
@@ -81,7 +81,6 @@ const mapStateToProps = (state: GlobalState) => {
         sessionsMap: sessionsInCurrentCallMap(state),
         currentSession: sessionForCurrentCall(state),
         profiles,
-        callStartAt: callStartAtForCurrentCall(state),
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),
         callRecording: recordingForCurrentCall(state),
@@ -101,6 +100,7 @@ const mapStateToProps = (state: GlobalState) => {
         connectedDMUser,
         otherSessions: sessionsForOtherUsersInCall(state),
         isAdmin: isCurrentUserSystemAdmin(state),
+        isDMCalling: isCurrentDMCallInCallingState(state),
     };
 };
 

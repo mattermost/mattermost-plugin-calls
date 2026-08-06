@@ -46,7 +46,7 @@ import {
     IncomingCallNotification,
     LiveCaptions,
 } from 'src/types/types';
-import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL} from 'src/utils';
+import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL, getUserIdFromDM} from 'src/utils';
 
 import {pluginId} from './manifest';
 
@@ -164,6 +164,14 @@ export const numSessionsInCallInChannel = (state: GlobalState, channelID: string
     return Object.keys(sessionsInCalls(state)[channelID] || {}).length;
 };
 
+// numUsersInCallInChannel counts the distinct users in the call rather than their sessions,
+// since a single user can be connected from multiple clients. Unlike numProfilesInCallInChannel
+// it doesn't need the profiles to have been fetched, so it never undercounts.
+export const numUsersInCallInChannel = (state: GlobalState, channelID: string): number => {
+    const sessions = sessionsInCalls(state)[channelID] || {};
+    return new Set(Object.values(sessions).map((session) => session.user_id)).size;
+};
+
 export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
     return Boolean(calls(state)[channelId]);
 };
@@ -246,6 +254,14 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
         (callsStates, channelID, initTime) => callsStates[channelID]?.startAt || initTime || 0,
     );
 
+export const dmCalleeAnsweredAtForCurrentCall: (state: GlobalState) => number =
+    createSelector(
+        'dmCalleeAnsweredAtForCurrentCall',
+        idForCurrentCall,
+        (state: GlobalState) => pluginState(state).dmCalleeAnsweredAt,
+        (callID, answeredAt) => (callID && answeredAt[callID]) || 0,
+    );
+
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
     createSelector(
         'callInCurrentChannel',
@@ -261,6 +277,57 @@ export const idForCallInChannel = (state: GlobalState, channelID: string): strin
 export const callOwnerIDForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
     return pluginState(state).calls[channelID]?.ownerID;
 };
+
+export const callOwnerIDForCurrentCall: (state: GlobalState) => string | undefined =
+    createSelector(
+        'callOwnerIDForCurrentCall',
+        calls,
+        channelIDForCurrentCall,
+        (callsStates, channelID) => callsStates[channelID]?.ownerID,
+    );
+
+// This returns true if the current user is the owner of the current call
+// or is started by the current user.
+export const isCurrentUserOwnerOfCurrentCall: (state: GlobalState) => boolean =
+    createSelector(
+        'isCurrentUserOwnerOfCurrentCall',
+        idForCurrentCall,
+        callOwnerIDForCurrentCall,
+        getCurrentUserId,
+        (callID, ownerID, currentUserID) =>
+            Boolean(callID) && ownerID === currentUserID,
+    );
+
+// This checks if the current user's session is in the current call
+// which indicates that the current user has joined the call.
+export const isCurrentUserInSessionForCurrentCall: (state: GlobalState) => boolean =
+    createSelector(
+        'isCurrentUserInSessionForCurrentCall',
+        sessionsInCurrentCall,
+        getCurrentUserId,
+        (sessions, currentUserID) => sessions.some((session) => session.user_id === currentUserID),
+    );
+
+// Checks if the current user owns the DM call, has joined, and no one else has joined yet
+// i.e. the caller is waiting for the other party to answer.
+export const isCurrentDMCallInCallingState: (state: GlobalState) => boolean =
+    createSelector(
+        'isCurrentDMCallInCallingState',
+        isCurrentUserOwnerOfCurrentCall,
+        isCurrentUserInSessionForCurrentCall,
+        channelForCurrentCall,
+        sessionsForOtherUsersInCall,
+        (isOwner, inSession, channel, otherSessions) => isOwner && inSession && Boolean(channel && isDirectChannel(channel)) && (otherSessions.length === 0),
+    );
+
+// Returns an empty string when there's no current call, or when its channel isn't in the store yet.
+export const otherUserIDForCurrentDMCall: (state: GlobalState) => UserProfile['id'] =
+    createSelector(
+        'otherUserIDForCurrentDMCall',
+        channelForCurrentCall,
+        getCurrentUserId,
+        (currentCallChannel, currentUserID) => getUserIdFromDM(currentCallChannel?.name || '', currentUserID),
+    );
 
 const hostsInCalls = (state: GlobalState): hostsState => {
     return pluginState(state).hosts;
@@ -495,10 +562,6 @@ export const callsEnabledInCurrentChannel = (state: GlobalState): boolean => {
         return false;
     }
     return callsExplicitlyEnabled(state, channelId) || defaultEnabled(state) || isCurrentUserSystemAdmin(state);
-};
-
-export const endCallModal = (state: GlobalState) => {
-    return pluginState(state).endCallModal;
 };
 
 export const callsShowButton = (state: GlobalState, channelId?: string): boolean =>

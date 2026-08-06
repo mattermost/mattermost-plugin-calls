@@ -30,6 +30,7 @@ import {
     DID_NOTIFY_FOR_CALL,
     DID_RING_FOR_CALL,
     DISMISS_CALL,
+    DM_CALLEE_ANSWERED_AT,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
@@ -745,6 +746,37 @@ const hosts = (state: hostsState = {}, action: hostsStateAction) => {
     }
 };
 
+export type DmCalleeAnsweredAt = {
+    [callID: string]: number;
+}
+
+type DmCalleeAnsweredAtAction = {
+    type: string;
+    data: {
+        callID: string;
+        answeredAt: number;
+    };
+}
+
+const dmCalleeAnsweredAt = (state: DmCalleeAnsweredAt = {}, action: DmCalleeAnsweredAtAction) => {
+    switch (action.type) {
+    case UNINIT:
+        return {};
+    case DM_CALLEE_ANSWERED_AT:
+        return {
+            ...state,
+            [action.data.callID]: action.data.answeredAt,
+        };
+    case CALL_END: {
+        const nextState = {...state};
+        delete nextState[action.data.callID];
+        return nextState;
+    }
+    default:
+        return state;
+    }
+};
+
 export type screenSharingIDsState = {
     [channelID: string]: string;
 }
@@ -1081,6 +1113,7 @@ export default combineReducers({
     sessions,
     calls,
     hosts,
+    dmCalleeAnsweredAt,
     screenSharingIDs,
     expandedView,
     switchCallModal,

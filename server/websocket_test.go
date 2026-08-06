@@ -786,6 +786,7 @@ func TestHandleJoin(t *testing.T) {
 		sessions:               map[string]*session{},
 		addSessionsBatchers:    map[string]*batching.Batcher{},
 		removeSessionsBatchers: map[string]*batching.Batcher{},
+		dmNoAnswerTimers:       map[string]*time.Timer{},
 	}
 
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
@@ -938,6 +939,13 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
+		// Only this one user ever joined, so removeUserSession checks the channel type to tell a
+		// cancelled DM call apart from one that ended normally.
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
+		}, nil).Once()
+
 		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
 
 		// Call unlock
@@ -1068,6 +1076,13 @@ func TestHandleJoin(t *testing.T) {
 		require.Len(t, state.sessions, 10)
 
 		// Session leaving call path
+
+		// removeUserSession calls GetChannel for DM auto-end check when sessions remain.
+		// Channel is open (not DM), so auto-end won't fire, but the call must be handled.
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
+		}, nil)
 
 		mockMetrics.On("DecWebSocketConn").Times(10)
 		mockRTCMetrics.On("DecRTCSessions", "default").Times(10)
@@ -1423,6 +1438,13 @@ func TestHandleJoin(t *testing.T) {
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		// This is a DM where only the caller ever joined, so removeUserSession looks the channel up
+		// to decide the call was cancelled rather than ended.
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeDirect,
+		}, nil).Once()
 
 		// Call unlock
 		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()

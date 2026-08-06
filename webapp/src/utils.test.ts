@@ -255,6 +255,7 @@ describe('utils', () => {
             expect(props.recordings).toStrictEqual({});
             expect(props.transcriptions).toStrictEqual({});
             expect(props.participants.length).toBe(0);
+            expect(props.call_status).toBe('');
         });
 
         test('missing props', () => {
@@ -270,6 +271,7 @@ describe('utils', () => {
             expect(props.recordings).toStrictEqual({});
             expect(props.transcriptions).toStrictEqual({});
             expect(props.participants.length).toBe(0);
+            expect(props.call_status).toBe('');
         });
 
         test('invalid props', () => {
@@ -294,6 +296,7 @@ describe('utils', () => {
             expect(props.recordings).toStrictEqual({});
             expect(props.transcriptions).toStrictEqual({});
             expect(props.participants.length).toBe(0);
+            expect(props.call_status).toBe('');
         });
 
         test('invalid job data', () => {
@@ -392,6 +395,7 @@ describe('utils', () => {
                     },
                 },
                 participants: ['userA', 'userB'],
+                call_status: 'no_answer',
             };
 
             const post = {
@@ -406,6 +410,36 @@ describe('utils', () => {
             expect(props.recordings).toStrictEqual(post.props.recordings);
             expect(props.transcriptions).toStrictEqual(post.props.transcriptions);
             expect(props.participants).toBe(post.props.participants);
+            expect(props.call_status).toBe(post.props.call_status);
+        });
+
+        test.each([
+            'calling',
+            'ended',
+            'no_answer',
+            'canceled_by_caller',
+            'declined',
+        ])('call_status %s', (callStatus) => {
+            const post = {
+                props: {call_status: callStatus} as unknown,
+            } as Post;
+
+            expect(getCallPropsFromPost(post).call_status).toBe(callStatus);
+        });
+
+        test.each([
+            ['unknown value', 'answered'],
+            ['empty string', ''],
+            ['number', 45],
+            ['boolean', true],
+            ['object', {}],
+            ['null', null],
+        ])('invalid call_status, %s', (_, callStatus) => {
+            const post = {
+                props: {call_status: callStatus} as unknown,
+            } as Post;
+
+            expect(getCallPropsFromPost(post).call_status).toBe('');
         });
     });
 

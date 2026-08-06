@@ -3,10 +3,12 @@
 
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
-import {useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
-import {endCall} from 'src/actions';
+import {defineMessage, useIntl} from 'react-intl';
+import {useDispatch, useSelector} from 'react-redux';
+import {displayGenericErrorModal, hostEndCallForEveryone} from 'src/actions';
 import {DropdownMenuItem} from 'src/components/dot_menu/dot_menu';
+import {logErr} from 'src/log';
+import {modals} from 'src/webapp_globals';
 import styled from 'styled-components';
 
 type Props = {
@@ -18,13 +20,30 @@ type Props = {
 
 export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: Props) => {
     const {formatMessage} = useIntl();
+
+    const dispatch = useDispatch();
+
     const isAdmin = useSelector(isCurrentUserSystemAdmin);
-    const showEndCall = (isHost || isAdmin) && numParticipants > 1;
+    const shouldShowWarningMenuItemForEndingCall = (isHost || isAdmin) && numParticipants > 1;
+
+    async function handleHostEndCallForEveryone() {
+        try {
+            await hostEndCallForEveryone(channelID);
+        } catch (err) {
+            logErr('failed to end call for everyone', err);
+            if (modals) {
+                dispatch(displayGenericErrorModal(
+                    defineMessage({defaultMessage: 'Unable to end the call'}),
+                    defineMessage({defaultMessage: 'Something went wrong while trying to end the call. Please try again.'}),
+                ));
+            }
+        }
+    }
 
     return (
         <>
-            {showEndCall &&
-                <DropdownMenuItem onClick={() => endCall(channelID)}>
+            {shouldShowWarningMenuItemForEndingCall &&
+                <DropdownMenuItem onClick={handleHostEndCallForEveryone}>
                     <EndCallOption>
                         <RedText>{formatMessage({defaultMessage: 'End call for everyone'})}</RedText>
                         <SubtitleText>{formatMessage({defaultMessage: 'All participants will be disconnected'})}</SubtitleText>

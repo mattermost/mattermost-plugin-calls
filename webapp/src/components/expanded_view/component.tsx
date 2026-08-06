@@ -3,6 +3,8 @@
 
 /* eslint-disable max-lines */
 
+import './expanded_view.scss';
+
 import {mosThreshold} from '@mattermost/calls-common';
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
@@ -20,7 +22,7 @@ import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
-import CallDuration from 'src/components/call_widget/call_duration';
+import {CallStatusTimer} from 'src/components/call_status_timer';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
 import {LiveCaptionsStream} from 'src/components/expanded_view/live_captions_stream';
@@ -85,7 +87,7 @@ import styled, {createGlobalStyle, css} from 'styled-components';
 import {CallSettingsButton} from './call_settings';
 import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './controls_button';
 import GlobalBanner from './global_banner';
-import ParticipantsGrid from './participants_grid';
+import {ParticipantsGrid} from './participants_grid';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 import RecordingInfoPrompt from './recording_info_prompt';
 import {RemoveConfirmation} from './remove_confirmation';
@@ -100,7 +102,6 @@ interface Props extends RouteComponentProps {
     sessions: UserSessionState[],
     sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
-    callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
     callRecording?: CallJobReduxState,
@@ -131,6 +132,7 @@ interface Props extends RouteComponentProps {
     openModal: <P>(modalData: ModalData<P>) => void;
     enableVideo: boolean;
     otherSessions: UserSessionState[];
+    isDMCalling: boolean;
 }
 
 interface State {
@@ -1270,7 +1272,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
 
-        const leaveCallTooltipText = formatMessage({defaultMessage: 'Leave call'});
+        // A ringing DM call hasn't been answered yet, so hanging up cancels it rather than leaving it.
+        const leaveCallTooltipText = this.props.isDMCalling ? formatMessage({defaultMessage: 'Cancel call'}) : formatMessage({defaultMessage: 'Leave call'});
         const closeViewLabel = formatMessage({defaultMessage: 'Close window'});
 
         const switchViewLabel = this.state.viewState === 'speaker' ? formatMessage({defaultMessage: 'Switch to grid view'}) : formatMessage({defaultMessage: 'Switch to speaker view'});
@@ -1298,9 +1301,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         style={this.style.topContainer}
                     >
                         {this.renderRecordingBadge()}
-                        <CallDuration
-                            startAt={this.props.callStartAt}
-                        />
+                        <CallStatusTimer/>
 
                         <div style={this.style.headerSpreader}/>
                         <ExpandedIncomingCallContainer/>
@@ -1357,15 +1358,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     {shouldRenderTopVideoContainer && this.renderTopVideoContainer()}
 
                     {!this.props.screenSharingSession && !shouldRenderVideoContainer && this.props.currentSession && this.props.channel &&
-                    <ParticipantsGrid
-                        callID={this.props.channel.id}
-                        callHostID={this.props.callHostID}
-                        currentSessionID={this.props.currentSession.session_id}
-                        currentUserID={this.props.currentUserID}
-                        profiles={this.props.profiles}
-                        sessions={this.props.sessions}
-                        onParticipantRemove={this.onRemove}
-                    />
+                        <ParticipantsGrid
+                            callID={this.props.channel.id}
+                            callHostID={this.props.callHostID}
+                            currentSessionID={this.props.currentSession.session_id}
+                            currentUserID={this.props.currentUserID}
+                            profiles={this.props.profiles}
+                            sessions={this.props.sessions}
+                            onParticipantRemove={this.onRemove}
+                        />
                     }
 
                     {!this.props.screenSharingSession && shouldRenderVideoContainer && this.renderVideoContainer()}
@@ -1382,28 +1383,30 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         style={this.style.controls}
                     >
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start'}}>
-                            <ControlsButton
-                                id='calls-popout-participants-button'
-                                ariaLabel={participantsText}
-                                ariaControls='rhs-participant-list'
-                                ariaExpanded={this.state.showParticipantsList}
-                                onToggle={() => this.onParticipantsListToggle()}
-                                tooltipText={participantsText}
-                                shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
-                                bgColor={this.state.showParticipantsList ? 'white' : ''}
-                                bgColorHover={this.state.showParticipantsList ? 'rgba(255, 255, 255, 0.92)' : ''}
-                                iconFill={this.state.showParticipantsList ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
-                                iconFillHover={this.state.showParticipantsList ? 'var(--calls-bg)' : ''}
-                                icon={
-                                    <ParticipantsIcon
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                        }}
-                                    />
-                                }
-                                text={`${this.props.sessions.length}`}
-                            />
+                            {!isDMChannel(this.props.channel) && (
+                                <ControlsButton
+                                    id='calls-popout-participants-button'
+                                    ariaLabel={participantsText}
+                                    ariaControls='rhs-participant-list'
+                                    ariaExpanded={this.state.showParticipantsList}
+                                    onToggle={() => this.onParticipantsListToggle()}
+                                    tooltipText={participantsText}
+                                    shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
+                                    bgColor={this.state.showParticipantsList ? 'white' : ''}
+                                    bgColorHover={this.state.showParticipantsList ? 'rgba(255, 255, 255, 0.92)' : ''}
+                                    iconFill={this.state.showParticipantsList ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
+                                    iconFillHover={this.state.showParticipantsList ? 'var(--calls-bg)' : ''}
+                                    icon={
+                                        <ParticipantsIcon
+                                            style={{
+                                                width: '20px',
+                                                height: '20px',
+                                            }}
+                                        />
+                                    }
+                                    text={`${this.props.sessions.length}`}
+                                />
+                            )}
                         </div>
 
                         <div style={this.style.centerControls}>
@@ -1495,6 +1498,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     id='calls-popout-record-button'
                                     ariaLabel={recordTooltipText}
                                     onToggle={() => this.onRecordToggle()}
+
+                                    // There's nothing to record until the callee picks up.
+                                    disabled={this.props.isDMCalling}
                                     tooltipText={recordTooltipText}
                                     // eslint-disable-next-line no-undefined
                                     shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}

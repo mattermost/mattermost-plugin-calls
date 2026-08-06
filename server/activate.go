@@ -238,6 +238,12 @@ func (p *Plugin) OnDeactivate() error {
 		p.LogDebug("stopped historical metrics update job")
 	}
 
+	p.dmNoAnswerTimersMut.Lock()
+	for _, t := range p.dmNoAnswerTimers {
+		t.Stop()
+	}
+	p.dmNoAnswerTimersMut.Unlock()
+
 	if err := p.store.Close(); err != nil {
 		p.LogError(err.Error())
 	}
