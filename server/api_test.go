@@ -153,7 +153,7 @@ func TestDeclineCall(t *testing.T) {
 		assert.Zero(t, storedCall.EndAt)
 	})
 
-	t.Run("callee already joined — no side effects", func(t *testing.T) {
+	t.Run("another session exists — no side effects", func(t *testing.T) {
 		p, mockAPI, _ := newAPITestPlugin(t)
 		defer mockAPI.AssertExpectations(t)
 		defer ResetTestStore(t, p.store)
@@ -161,14 +161,18 @@ func TestDeclineCall(t *testing.T) {
 		channelID := model.NewId()
 		callerID := model.NewId()
 		calleeID := model.NewId()
+		otherUserID := model.NewId()
 
 		call := createDMCall(t, p, channelID, callerID, model.NewId(), model.NewId())
 
-		// The callee raced us and joined: a second session exists.
+		// A second session exists that isn't the requester's, so this is no longer a
+		// single-session ringing call and the decline bails out without side effects.
+		// It has to belong to someone other than the requester: a requester who owns a
+		// session is rejected earlier as the caller, never reaching this branch.
 		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
 			ID:     model.NewId(),
 			CallID: call.ID,
-			UserID: model.NewId(),
+			UserID: otherUserID,
 			JoinAt: time.Now().UnixMilli(),
 		}))
 
