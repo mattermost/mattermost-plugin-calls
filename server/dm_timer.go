@@ -27,6 +27,10 @@ const (
 // A var rather than a const so tests can shorten it.
 var dmNoAnswerTimeout = 30 * time.Second
 
+// How long we wait after telling clients a DM call ended before force-closing any RTC
+// sessions still connected, giving them the chance to disconnect on their own first.
+var dmAutoEndGracePeriod = 5 * time.Second
+
 func (p *Plugin) startDMNoAnswerTimer(channelID, callID string) {
 	p.dmNoAnswerTimersMut.Lock()
 	defer p.dmNoAnswerTimersMut.Unlock()
