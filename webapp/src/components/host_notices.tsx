@@ -8,8 +8,9 @@ import {useSelector} from 'react-redux';
 import CompassIcon from 'src/components/icons/compassIcon';
 import MonitorAccount from 'src/components/icons/monitor_account';
 import {HOST_CONTROL_NOTICE_TIMEOUT} from 'src/constants';
-import {hostControlNoticesForCurrentCall} from 'src/selectors';
+import {channelForCurrentCall, hostControlNoticesForCurrentCall} from 'src/selectors';
 import {HostControlNoticeType} from 'src/types/types';
+import {isDMChannel} from 'src/utils';
 import styled, {css, keyframes} from 'styled-components';
 
 type Props = {
@@ -19,6 +20,7 @@ type Props = {
 export const HostNotices = ({onWidget = false}: Props) => {
     const currentUserId = useSelector(getCurrentUserId);
     const notices = useSelector(hostControlNoticesForCurrentCall);
+    const isDM = isDMChannel(useSelector(channelForCurrentCall));
 
     const youAreHostMsg = <FormattedMessage defaultMessage={'You are now the host'}/>;
 
@@ -48,7 +50,15 @@ export const HostNotices = ({onWidget = false}: Props) => {
                             </Text>
                         </Notice>
                     );
-                case HostControlNoticeType.HostChanged:
+                case HostControlNoticeType.HostChanged: {
+                    const youAreHost = n.userID === currentUserId;
+
+                    // The DM caller becomes host just by placing the call, so telling them
+                    // about it is noise on top of the ringing state.
+                    if (isDM && youAreHost) {
+                        return null;
+                    }
+
                     return (
                         <Notice
                             key={n.noticeID}
@@ -57,7 +67,7 @@ export const HostNotices = ({onWidget = false}: Props) => {
                         >
                             <StyledMonitorAccount $onWidget={onWidget}/>
                             <Text $onWidget={onWidget}>
-                                {n.userID === currentUserId ? youAreHostMsg : (
+                                {youAreHost ? youAreHostMsg : (
                                     <FormattedMessage
                                         defaultMessage={'<b>{name}</b> is now the host'}
                                         values={{
@@ -69,6 +79,7 @@ export const HostNotices = ({onWidget = false}: Props) => {
                             </Text>
                         </Notice>
                     );
+                }
                 case HostControlNoticeType.HostRemoved:
                     return (
                         <Notice
