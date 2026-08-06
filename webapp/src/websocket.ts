@@ -185,6 +185,32 @@ export class WebSocketClient extends EventEmitter {
         }
     }
 
+    // sendLeaveAndClose sends a 'leave' message and closes the connection.
+    // If the WS is mid-reconnect (CONNECTING), it marks the client as closed
+    // (preventing further reconnects) and queues the leave for when the
+    // connection opens, so the server receives it instead of waiting for the
+    // pong timeout (~87s) to reap the session.
+    sendLeaveAndClose() {
+        if (!this.ws || this.ws.readyState === WebSocket.CLOSING || this.ws.readyState === WebSocket.CLOSED) {
+            this.close();
+            return;
+        }
+
+        if (this.ws.readyState === WebSocket.OPEN) {
+            this.send('leave');
+            this.close();
+            return;
+        }
+
+        // WS is CONNECTING (mid-reconnect): mark closed to stop further
+        // reconnects, then send leave as soon as the connection opens.
+        this.closed = true;
+        this.once('open', () => {
+            this.send('leave');
+            this.close();
+        });
+    }
+
     close() {
         this.closed = true;
         this.stopPingInterval();
@@ -231,6 +257,10 @@ export class WebSocketClient extends EventEmitter {
     }
 
     private startPingInterval() {
+        if (this.closed) {
+            return;
+        }
+
         if (this.pingInterval) {
             this.stopPingInterval();
         }
