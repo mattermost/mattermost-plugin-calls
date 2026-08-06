@@ -386,17 +386,29 @@ export default class PlaywrightDevPage {
 
     async leaveFromPopout() {
         await this.page.locator('#calls-popout-leave-button').click();
-        const menu = this.page.getByTestId('dropdownmenu');
-        if (await menu.isVisible()) {
-            await menu.getByText('Leave call').click();
+
+        // The leave control is either a plain button that disconnects on click, or a
+        // dot menu that needs a second click on 'Leave call'. We can't tell which one
+        // we got from here, so give the menu a short window to render.
+        try {
+            await this.page.getByTestId('dropdownmenu').getByText('Leave call').click({timeout: 2000});
+        } catch (err) {
+            if (!(err instanceof errors.TimeoutError)) {
+                throw err;
+            }
         }
     }
 
     async leaveFromWidget() {
         await this.page.locator('#calls-widget-leave-button').click();
-        const menu = this.page.getByTestId('dropdownmenu');
-        if (await menu.isVisible()) {
-            await menu.getByText('Leave call').click();
+
+        // See leaveFromPopout: the menu is only there on the dot menu variant.
+        try {
+            await this.page.getByTestId('dropdownmenu').getByText('Leave call').click({timeout: 2000});
+        } catch (err) {
+            if (!(err instanceof errors.TimeoutError)) {
+                throw err;
+            }
         }
     }
 }
