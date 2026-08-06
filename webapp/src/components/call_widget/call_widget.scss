@@ -48,7 +48,7 @@ a.calls-channel-link {
   justify-content: center;
   align-items: center;
   border-radius: 4px;
-  color: rgba(var(--center-channel-color-rgb), 0.64);
+  color: rgba(var(--center-channel-color-rgb), 0.75);
   padding: 0px 4px;
   text-decoration: none;
 
@@ -61,18 +61,18 @@ a.calls-channel-link {
   &:link,
   &:focus,
   &:visited {
-    color: rgba(var(--center-channel-color-rgb), 0.64);
+    color: rgba(var(--center-channel-color-rgb), 0.75);
     text-decoration: none;
   }
 
   &:hover {
-    color: rgba(var(--center-channel-color-rgb), 0.72);
+    color: rgba(var(--center-channel-color-rgb), 0.88);
     background: rgba(var(--center-channel-color-rgb), 0.08);
     text-decoration: none;
 
     i {
       &::before {
-        color: rgba(var(--center-channel-color-rgb), 0.72);
+        color: rgba(var(--center-channel-color-rgb), 0.88);
       }
     }
   }
@@ -175,7 +175,7 @@ a.calls-channel-link {
   .callStatusTimerCallingText {
     font-weight: 600;
     letter-spacing: 0.02em;
-    color: var(--center-channel-color-64, rgba(63, 67, 80, 0.64));
+    color: rgba(var(--center-channel-color-rgb), 0.75);
     font-size: 11px;
   }
 
