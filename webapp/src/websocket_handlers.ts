@@ -195,7 +195,17 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
 
     if (window.callsClient?.channelID === channelID) {
         if (sessionID === getCallsClientSessionID()) {
-            playSound('join_self');
+            // The DM caller hears the outbound ringback instead: playing the join sound on
+            // top of it is just noise. Only suppress it when the ringback will actually
+            // play, so a DM call placed with ringing turned off still gets a sound. The
+            // callee keeps their join sound, which confirms they connected.
+            const dmCallerWillHearRingback = ringingEnabled(store.getState()) &&
+                isDMChannel(getChannel(store.getState(), channelID)) &&
+                isCurrentUserOwnerOfCurrentCall(store.getState());
+
+            if (!dmCallerWillHearRingback) {
+                playSound('join_self');
+            }
         } else if (userID !== currentUserID && shouldPlayJoinUserSound(store.getState())) {
             playSound('join_user');
         }

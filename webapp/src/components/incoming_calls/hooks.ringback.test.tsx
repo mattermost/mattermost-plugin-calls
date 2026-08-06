@@ -30,7 +30,7 @@ jest.mock('src/sounds/ringback.mp3', () => 'ringback.mp3');
 // ── Util mocks ────────────────────────────────────────────────────────────────
 jest.mock('src/utils', () => ({
     getCallsClient: jest.fn(() => ({})),
-    isDmGmChannel: jest.fn(),
+    isDMChannel: jest.fn(),
     notificationsStopRinging: jest.fn(),
     getChannelURL: jest.fn(),
     isDesktopApp: jest.fn(),
@@ -149,8 +149,8 @@ function setupDefaults() {
     mockGetChannel.mockReturnValue(dmChannel);
     mockSessionsInCurrentCall.mockReturnValue([{user_id: 'user-1', session_id: 'sess-1'}]);
     mockSessionsForOtherUsersInCall.mockReturnValue([]);
-    const {isDmGmChannel} = jest.requireMock('src/utils');
-    isDmGmChannel.mockReturnValue(true);
+    const {isDMChannel} = jest.requireMock('src/utils');
+    isDMChannel.mockReturnValue(true);
 }
 
 function renderHarness() {
@@ -192,9 +192,9 @@ describe('useRingback', () => {
         expect(mockPlay).not.toHaveBeenCalled();
     });
 
-    it('does not start ringback in a non-DM/GM channel', () => {
-        const {isDmGmChannel} = jest.requireMock('src/utils');
-        isDmGmChannel.mockReturnValue(false);
+    it('does not start ringback outside a DM channel', () => {
+        const {isDMChannel} = jest.requireMock('src/utils');
+        isDMChannel.mockReturnValue(false);
         renderHarness();
 
         expect(mockPlay).not.toHaveBeenCalled();

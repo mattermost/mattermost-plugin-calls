@@ -42,7 +42,7 @@ import {
     getCallsClient,
     getChannelURL,
     isDesktopApp,
-    isDmGmChannel,
+    isDMChannel,
     notificationsStopRinging,
     sendDesktopEvent,
     shouldRenderDesktopWidget,
@@ -300,11 +300,10 @@ export const useOnChannelLinkClick = (call: IncomingCallNotification) => {
     };
 };
 
-// useRingback plays an outbound ringback tone to the caller of a DM/GM call
-// while they are waiting for the first other participant to answer. The tone
-// is bundled directly in the plugin and played via a plain Audio element —
-// independent of the incoming-ring infrastructure.
-//
+// useRingback plays an outbound ringback tone to the caller of a DM call
+// while they are waiting for the other party to answer. The tone is bundled
+// directly in the plugin and played via a plain Audio element — independent of
+// the incoming-ring infrastructure.
 // The ringback stops as soon as another user joins, the call ends, or the
 // component unmounts. After RINGBACK_TIMEOUT the audio is stopped and the
 // server-side timer handles the actual call cancellation.
@@ -323,7 +322,7 @@ export const useRingback = () => {
         sessionsInCurrentCall(state).some((session) => session.user_id === currentUser.id));
 
     const amOwner = Boolean(callID) && ownerID === currentUser.id;
-    const active = enabled && Boolean(callID) && amOwner && isDmGmChannel(channel) && selfSessionPresent;
+    const active = enabled && Boolean(callID) && amOwner && isDMChannel(channel) && selfSessionPresent;
 
     // Track per-call audio state without triggering re-renders.
     const audioRef = useRef<HTMLAudioElement | null>(null);
