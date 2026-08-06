@@ -1272,7 +1272,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
 
-        const leaveCallTooltipText = formatMessage({defaultMessage: 'Leave call'});
+        // A ringing DM call hasn't been answered yet, so hanging up cancels it rather than leaving it.
+        const leaveCallTooltipText = this.props.isDMCalling ? formatMessage({defaultMessage: 'Cancel call'}) : formatMessage({defaultMessage: 'Leave call'});
         const closeViewLabel = formatMessage({defaultMessage: 'Close window'});
 
         const switchViewLabel = this.state.viewState === 'speaker' ? formatMessage({defaultMessage: 'Switch to grid view'}) : formatMessage({defaultMessage: 'Switch to speaker view'});

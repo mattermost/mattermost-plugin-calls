@@ -2430,7 +2430,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const openPopOutLabel = formatMessage({defaultMessage: 'Open in new window'});
         const showParticipantsListLabel = this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'});
         const settingsButtonLabel = formatMessage({defaultMessage: 'More options'});
-        const leaveMenuLabel = formatMessage({defaultMessage: 'Leave call'});
+
+        // A ringing DM call hasn't been answered yet, so hanging up cancels it rather than leaving it.
+        const leaveMenuLabel = this.props.isDMCalling ? formatMessage({defaultMessage: 'Cancel call'}) : formatMessage({defaultMessage: 'Leave call'});
 
         // const shouldRenderVideoContainer = this.props.currentSession?.video || this.state.initializingSelfVideo || this.props.otherSessions.some((s) => s.video);
 
