@@ -6,6 +6,7 @@ import React, {useEffect, useState} from 'react';
 
 type Props = {
     startAt: number,
+    classname?:string;
 }
 
 const oneHour = Duration.fromObject({hours: 1});
@@ -38,6 +39,6 @@ export function ElapsedTimer(props: Props) {
     });
 
     return (
-        <div className='callDurationContainer'>{getCallDuration(adjustedStartAt)}</div>
+        <div className={props.classname}>{getCallDuration(adjustedStartAt)}</div>
     );
 }

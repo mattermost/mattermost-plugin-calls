@@ -53,7 +53,7 @@ export function CallStatusTimer() {
     // don't show the elapsed timer yet.
     if (isDMCalling) {
         return (
-            <div className='callStatusTimerCallingText pulsingAnimation'>
+            <div className='callStatusTimer pulsingAnimation'>
                 {formatMessage({defaultMessage: 'Calling…'})}
             </div>
         );
@@ -65,11 +65,17 @@ export function CallStatusTimer() {
         const answeredAt = isOwner ? dmCalleeAnsweredAt : getCallsClientInitTime();
 
         return (
-            <ElapsedTimer startAt={answeredAt || startAt}/>
+            <ElapsedTimer
+                classname='callStatusTimer'
+                startAt={answeredAt || startAt}
+            />
         );
     }
 
     return (
-        <ElapsedTimer startAt={startAt}/>
+        <ElapsedTimer
+            classname='callStatusTimer'
+            startAt={startAt}
+        />
     );
 }
