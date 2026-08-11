@@ -317,7 +317,9 @@ export const isCurrentDMCallInCallingState: (state: GlobalState) => boolean =
         isCurrentUserInSessionForCurrentCall,
         channelForCurrentCall,
         sessionsForOtherUsersInCall,
-        (isOwner, inSession, channel, otherSessions) => isOwner && inSession && Boolean(channel && isDirectChannel(channel)) && (otherSessions.length === 0),
+        dmCalleeAnsweredAtForCurrentCall,
+        (isOwner, inSession, channel, otherSessions, answeredAt) =>
+            isOwner && inSession && !answeredAt && Boolean(channel && isDirectChannel(channel)) && (otherSessions.length === 0),
     );
 
 // Returns an empty string when there's no current call, or when its channel isn't in the store yet.

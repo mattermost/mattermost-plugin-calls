@@ -57,6 +57,7 @@ type StateOpts = {
     call?: {ID?: string; ownerID?: string} | null;
     sessions?: UserSessionState[] | null;
     clientStateChannelID?: string;
+    dmCalleeAnsweredAt?: number;
 };
 
 const stubState = ({
@@ -64,11 +65,13 @@ const stubState = ({
     call = {ID: callID, ownerID: currentUserID},
     sessions = [ownSession],
     clientStateChannelID,
+    dmCalleeAnsweredAt = 0,
 }: StateOpts = {}) => ({
     'plugins-com.mattermost.calls': {
         calls: call ? {[channelID]: {channelID, startAt: 0, threadID: '', ...call}} : {},
         sessions: sessions ? {[channelID]: Object.fromEntries(sessions.map((s) => [s.session_id, s]))} : {},
         clientStateReducer: clientStateChannelID ? {channelID: clientStateChannelID, sessionID: 'widget-session'} : null,
+        dmCalleeAnsweredAt: dmCalleeAnsweredAt ? {[callID]: dmCalleeAnsweredAt} : {},
     },
     entities: {
         channels: {channels: channel ? {[channel.id]: channel} : {}},
@@ -195,6 +198,15 @@ describe('isCurrentDMCallInCallingState', () => {
     test('should be false when the call channel is not in the store', () => {
         // A popout starts with an empty store, so the channel may not have loaded yet.
         expect(isCurrentDMCallInCallingState(stubState({channel: null}))).toBe(false);
+    });
+
+    test('should stay false after an answered call loses the other party session', () => {
+        // The callee leaving, or a websocket reconnect briefly emptying the session list,
+        // must not send the UI back to "Calling…" on a call that was already answered.
+        expect(isCurrentDMCallInCallingState(stubState({
+            sessions: [ownSession],
+            dmCalleeAnsweredAt: 1700000000000,
+        }))).toBe(false);
     });
 });
 
