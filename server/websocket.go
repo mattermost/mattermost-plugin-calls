@@ -834,13 +834,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		}
 
 		if !p.isBot(userID) && channel.Type == model.ChannelTypeDirect {
-			humanUsers := make(map[string]struct{})
-			for _, s := range state.sessions {
-				if !p.isBot(s.UserID) {
-					humanUsers[s.UserID] = struct{}{}
-				}
-			}
-			if len(humanUsers) >= 2 {
+			if len(state.distinctNonBotUserIDs(p.getBotID())) >= 2 {
 				p.cancelDMNoAnswerTimer(channelID)
 			}
 		}
@@ -1416,6 +1410,22 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		p.LogError("chan is full, dropping ws msg", "type", msg.Type)
 		return
 	}
+}
+
+// This must run before persisting the ended state: setCallEnded clears Props.RTCDHost,
+// and closeRTCSession retrieves that host from the store to contact the correct RTCD instance.
+func (p *Plugin) closeRTCSessions(state *callState, channelID string) error {
+	nodeID := state.Call.Props.NodeID
+	callID := state.Call.ID
+
+	var errs []error
+	for connID, session := range state.sessions {
+		if err := p.closeRTCSession(session.UserID, connID, channelID, nodeID, callID); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close RTC session (userID=%s, connID=%s): %w", session.UserID, connID, err))
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID, callID string) error {

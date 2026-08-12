@@ -25,6 +25,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
+	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/stretchr/testify/mock"
@@ -475,6 +476,151 @@ func TestHandleCallStateRequest(t *testing.T) {
 
 		err = p.handleCallStateRequest(channelID, userID, connID)
 		require.NoError(t, err)
+	})
+}
+
+func TestCloseRTCSessions(t *testing.T) {
+	const rtcdHostIP = "127.0.0.1"
+
+	// Route through rtcd so the disconnects are observable, and so closeRTCSession has to
+	// resolve the host from the store to reach the client.
+	newPlugin := func(t *testing.T) (*Plugin, *serverMocks.MockRTCDClient) {
+		t.Helper()
+
+		mockAPI := &pluginMocks.MockAPI{}
+		mockRTCDClient := &serverMocks.MockRTCDClient{}
+		t.Cleanup(func() { mockRTCDClient.AssertExpectations(t) })
+
+		p := &Plugin{
+			MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
+		}
+
+		store, tearDown := NewTestStore(t)
+		t.Cleanup(tearDown)
+		p.store = store
+
+		p.rtcdManager = &rtcdClientManager{
+			ctx:   p,
+			hosts: map[string]*rtcdHost{rtcdHostIP: {ip: rtcdHostIP, client: mockRTCDClient}},
+		}
+
+		mockLogs(mockAPI)
+
+		return p, mockRTCDClient
+	}
+
+	newCallState := func(t *testing.T, p *Plugin, connIDs ...string) *callState {
+		t.Helper()
+
+		call := &public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			ChannelID: model.NewId(),
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  model.NewId(),
+			OwnerID:   model.NewId(),
+			Props:     public.CallProps{RTCDHost: rtcdHostIP},
+		}
+		require.NoError(t, p.store.CreateCall(call))
+
+		state := &callState{Call: *call, sessions: map[string]*public.CallSession{}}
+		for _, connID := range connIDs {
+			state.sessions[connID] = &public.CallSession{
+				ID:     connID,
+				CallID: call.ID,
+				UserID: model.NewId(),
+			}
+		}
+
+		return state
+	}
+
+	// Matches the Leave message closeRTCSession sends for a specific session.
+	leaveFor := func(connID string) interface{} {
+		return mock.MatchedBy(func(msg rtcd.ClientMessage) bool {
+			data, ok := msg.Data.(map[string]string)
+			return ok && msg.Type == rtcd.ClientMessageLeave && data["sessionID"] == connID
+		})
+	}
+
+	t.Run("no sessions to close", func(t *testing.T) {
+		p, _ := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		state := newCallState(t, p)
+
+		// No Send expectations, so the strict mock catches a stray disconnect.
+		require.NoError(t, p.closeRTCSessions(state, state.Call.ChannelID))
+	})
+
+	t.Run("closes every session in the call", func(t *testing.T) {
+		p, mockRTCDClient := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		firstConnID, secondConnID := model.NewId(), model.NewId()
+		state := newCallState(t, p, firstConnID, secondConnID)
+
+		mockRTCDClient.On("Send", leaveFor(firstConnID)).Return(nil).Once()
+		mockRTCDClient.On("Send", leaveFor(secondConnID)).Return(nil).Once()
+
+		require.NoError(t, p.closeRTCSessions(state, state.Call.ChannelID))
+	})
+
+	t.Run("joins the failures and keeps closing the remaining sessions", func(t *testing.T) {
+		p, mockRTCDClient := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		failingConnID, healthyConnID := model.NewId(), model.NewId()
+		state := newCallState(t, p, failingConnID, healthyConnID)
+
+		mockRTCDClient.On("Send", leaveFor(failingConnID)).Return(fmt.Errorf("rtcd unreachable")).Once()
+		mockRTCDClient.On("Send", leaveFor(healthyConnID)).Return(nil).Once()
+
+		err := p.closeRTCSessions(state, state.Call.ChannelID)
+
+		// One failure must not stop the other session from being disconnected, and the error
+		// has to name the session that failed so a partial failure stays diagnosable.
+		require.Error(t, err)
+		require.ErrorContains(t, err, failingConnID)
+		require.ErrorContains(t, err, state.sessions[failingConnID].UserID)
+		require.ErrorContains(t, err, "rtcd unreachable")
+		require.NotContains(t, err.Error(), healthyConnID)
+	})
+
+	t.Run("names every session when they all fail", func(t *testing.T) {
+		p, mockRTCDClient := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		firstConnID, secondConnID := model.NewId(), model.NewId()
+		state := newCallState(t, p, firstConnID, secondConnID)
+
+		mockRTCDClient.On("Send", leaveFor(firstConnID)).Return(fmt.Errorf("rtcd unreachable")).Once()
+		mockRTCDClient.On("Send", leaveFor(secondConnID)).Return(fmt.Errorf("rtcd unreachable")).Once()
+
+		err := p.closeRTCSessions(state, state.Call.ChannelID)
+
+		require.Error(t, err)
+		require.ErrorContains(t, err, firstConnID)
+		require.ErrorContains(t, err, secondConnID)
+	})
+
+	t.Run("fails when the call has no rtcd host recorded", func(t *testing.T) {
+		p, _ := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		connID := model.NewId()
+		state := newCallState(t, p, connID)
+
+		// This is the regression the ordering fix guards: setCallEnded blanks Props.RTCDHost,
+		// so persisting the ended call before disconnecting leaves no host to route through.
+		state.Call.Props.RTCDHost = ""
+		require.NoError(t, p.store.UpdateCall(&state.Call))
+
+		err := p.closeRTCSessions(state, state.Call.ChannelID)
+
+		require.Error(t, err)
+		require.ErrorContains(t, err, "host should not be empty")
 	})
 }
 

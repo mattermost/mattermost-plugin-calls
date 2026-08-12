@@ -19,6 +19,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
+	rtcd "github.com/mattermost/rtcd/service"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -165,10 +166,10 @@ func TestDeclineCall(t *testing.T) {
 
 		call := createDMCall(t, p, channelID, callerID, model.NewId(), model.NewId())
 
-		// A second session exists that isn't the requester's, so this is no longer a
-		// single-session ringing call and the decline bails out without side effects.
-		// It has to belong to someone other than the requester: a requester who owns a
-		// session is rejected earlier as the caller, never reaching this branch.
+		// A second user has a session, so the callee answered elsewhere first and the
+		// decline bails out without side effects. It has to belong to someone other than
+		// the requester: a requester who owns a session is rejected earlier as already
+		// being in the call, never reaching this branch.
 		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
 			ID:     model.NewId(),
 			CallID: call.ID,
@@ -251,6 +252,142 @@ func TestDeclineCall(t *testing.T) {
 		_, timerStillRunning := p.dmNoAnswerTimers[channelID]
 		p.dmNoAnswerTimersMut.Unlock()
 		assert.False(t, timerStillRunning)
+	})
+
+	t.Run("caller ringing from two devices — every caller session is disconnected", func(t *testing.T) {
+		p, mockAPI, mockMetrics := newAPITestPlugin(t)
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		callerID := model.NewId()
+		calleeID := model.NewId()
+		postID := model.NewId()
+		callerConnID := model.NewId()
+		callerSecondConnID := model.NewId()
+
+		call := createDMCall(t, p, channelID, callerID, callerConnID, postID)
+		createPost(t, p.store, postID, callerID, channelID)
+
+		// The caller is ringing from a second device. That's still an unanswered call.
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID:     callerSecondConnID,
+			CallID: call.ID,
+			UserID: callerID,
+			JoinAt: time.Now().UnixMilli(),
+		}))
+
+		// Run through rtcd so the disconnects are observable. closeRTCSession resolves the
+		// host from the store, which is only still populated if it runs before the ended
+		// state is persisted.
+		const hostIP = "127.0.0.1"
+		mockRTCDClient := &serverMocks.MockRTCDClient{}
+		defer mockRTCDClient.AssertExpectations(t)
+
+		p.rtcdManager = &rtcdClientManager{
+			ctx:   p,
+			hosts: map[string]*rtcdHost{hostIP: {ip: hostIP, client: mockRTCDClient}},
+		}
+		call.Props.RTCDHost = hostIP
+		require.NoError(t, p.store.UpdateCall(call))
+
+		var closedSessionIDs []string
+		mockRTCDClient.On("Send", mock.AnythingOfType("service.ClientMessage")).Run(func(args mock.Arguments) {
+			msg := args.Get(0).(rtcd.ClientMessage)
+			require.Equal(t, rtcd.ClientMessageLeave, msg.Type)
+			closedSessionIDs = append(closedSessionIDs, msg.Data.(map[string]string)["sessionID"])
+		}).Return(nil).Twice()
+
+		mockAPI.On("HasPermissionToChannel", calleeID, channelID, model.PermissionCreatePost).Return(true).Once()
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]interface{}{},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDismissedNotification).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserDismissedNotification, map[string]interface{}{
+			"userID": calleeID,
+			"callID": call.ID,
+		}, &model.WebsocketBroadcast{UserId: calleeID, ReliableClusterSend: true}).Once()
+
+		code, err := p.declineCall(channelID, calleeID)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, code)
+
+		assert.ElementsMatch(t, []string{callerConnID, callerSecondConnID}, closedSessionIDs)
+
+		storedCall, err := p.store.GetCall(call.ID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		assert.Greater(t, storedCall.EndAt, int64(0))
+
+		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		assert.Empty(t, sessions)
+	})
+
+	t.Run("still ends the call when the caller cannot be disconnected", func(t *testing.T) {
+		p, mockAPI, mockMetrics := newAPITestPlugin(t)
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		callerID := model.NewId()
+		calleeID := model.NewId()
+		postID := model.NewId()
+
+		call := createDMCall(t, p, channelID, callerID, model.NewId(), postID)
+		createPost(t, p.store, postID, callerID, channelID)
+
+		const hostIP = "127.0.0.1"
+		mockRTCDClient := &serverMocks.MockRTCDClient{}
+		defer mockRTCDClient.AssertExpectations(t)
+
+		p.rtcdManager = &rtcdClientManager{
+			ctx:   p,
+			hosts: map[string]*rtcdHost{hostIP: {ip: hostIP, client: mockRTCDClient}},
+		}
+		call.Props.RTCDHost = hostIP
+		require.NoError(t, p.store.UpdateCall(call))
+
+		// Force-closing is only a fallback for clients that don't act on call_end, so its
+		// failure must not stop the decline from going through.
+		mockRTCDClient.On("Send", mock.AnythingOfType("service.ClientMessage")).
+			Return(fmt.Errorf("rtcd unreachable")).Once()
+
+		mockAPI.On("HasPermissionToChannel", calleeID, channelID, model.PermissionCreatePost).Return(true).Once()
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+
+		var capturedPost *model.Post
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Run(func(args mock.Arguments) {
+			capturedPost = args.Get(0).(*model.Post)
+		}).Return(&model.Post{}, nil).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]interface{}{},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDismissedNotification).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserDismissedNotification, map[string]interface{}{
+			"userID": calleeID,
+			"callID": call.ID,
+		}, &model.WebsocketBroadcast{UserId: calleeID, ReliableClusterSend: true}).Once()
+
+		code, err := p.declineCall(channelID, calleeID)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, code)
+
+		require.NotNil(t, capturedPost)
+		assert.Equal(t, callStatusDeclined, capturedPost.GetProp("call_status"))
+
+		storedCall, err := p.store.GetCall(call.ID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		assert.Greater(t, storedCall.EndAt, int64(0))
 	})
 }
 

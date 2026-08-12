@@ -266,6 +266,17 @@ func (cs *callState) onlyUserLeft(userID string) bool {
 	return found
 }
 
+func (cs *callState) distinctNonBotUserIDs(botID string) map[string]struct{} {
+	users := make(map[string]struct{}, len(cs.sessions))
+	for _, session := range cs.sessions {
+		if session.UserID == botID {
+			continue
+		}
+		users[session.UserID] = struct{}{}
+	}
+	return users
+}
+
 func (p *Plugin) getCallStateFromCall(call *public.Call, fromWriter bool) (*callState, error) {
 	if call == nil {
 		return nil, fmt.Errorf("call should not be nil")

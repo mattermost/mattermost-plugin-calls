@@ -70,26 +70,23 @@ func (p *Plugin) handleDMNoAnswer(channelID, callID string) {
 		return
 	}
 
-	if state == nil || state.Call.ID != callID || len(state.sessions) != 1 {
+	if state == nil || state.Call.ID != callID || len(state.distinctNonBotUserIDs(p.getBotID())) != 1 {
 		p.unlockCall(channelID)
 		return
 	}
 
 	postID := state.Call.PostID
 	participants := mapKeys(state.Call.Props.Participants)
-	nodeID := state.Call.Props.NodeID
 
-	type sessionInfo struct {
-		userID, connID string
-	}
-	sessionInfos := make([]sessionInfo, 0, len(state.sessions))
-	for connID, sess := range state.sessions {
-		sessionInfos = append(sessionInfos, sessionInfo{sess.UserID, connID})
+	if err := p.closeRTCSessions(state, channelID); err != nil {
+		p.LogError("handleDMNoAnswer: failed to close RTC sessions", "channelID", channelID, "err", err.Error())
 	}
 
 	setCallEnded(&state.Call)
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("handleDMNoAnswer: failed to update call", "channelID", channelID, "err", err.Error())
+		p.unlockCall(channelID)
+		return
 	}
 	if err := p.store.DeleteCallsSessions(state.Call.ID); err != nil {
 		p.LogError("handleDMNoAnswer: failed to delete call sessions", "channelID", channelID, "err", err.Error())
@@ -102,10 +99,4 @@ func (p *Plugin) handleDMNoAnswer(channelID, callID string) {
 	}
 
 	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
-
-	for _, si := range sessionInfos {
-		if err := p.closeRTCSession(si.userID, si.connID, channelID, nodeID, callID); err != nil {
-			p.LogError("handleDMNoAnswer: failed to close RTC session", "err", err.Error())
-		}
-	}
 }

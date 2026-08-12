@@ -310,41 +310,33 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 		return http.StatusBadRequest, fmt.Errorf("no call ongoing")
 	}
 
-	// The callee has no active session; the caller does. Reject if the requester
-	// owns a session (they would be the caller, not the callee).
+	// Only allow declining if the user is not already in the call.
+	// If they have a session, they're already in or have joined elsewhere.
 	for _, sess := range state.sessions {
 		if sess.UserID == userID {
 			p.unlockCall(channelID)
-			return http.StatusForbidden, fmt.Errorf("caller cannot decline their own call")
+			return http.StatusForbidden, fmt.Errorf("cannot decline a call the caller is already in")
 		}
 	}
 
-	// If not exactly one session, the callee may have already joined (race). Bail silently.
-	if len(state.sessions) != 1 {
+	if len(state.distinctNonBotUserIDs(p.getBotID())) != 1 {
 		p.unlockCall(channelID)
 		return http.StatusOK, nil
 	}
 
-	// Capture caller session data before we destroy the state.
-	var callerUserID, callerConnID string
-	for connID, sess := range state.sessions {
-		callerConnID = connID
-		callerUserID = sess.UserID
-	}
-	nodeID := state.Call.Props.NodeID
 	callID := state.Call.ID
 	postID := state.Call.PostID
 	participants := mapKeys(state.Call.Props.Participants)
 
-	if state.Call.Props.DismissedNotification == nil {
-		state.Call.Props.DismissedNotification = make(map[string]bool)
+	if err := p.closeRTCSessions(state, channelID); err != nil {
+		p.LogError("declineCall: failed to close RTC sessions", "channelID", channelID, "err", err.Error())
 	}
-	state.Call.Props.DismissedNotification[userID] = true
 
 	setCallEnded(&state.Call)
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
-		p.LogError("declineCall: failed to update call", "channelID", channelID, "err", err.Error())
+		p.unlockCall(channelID)
+		return http.StatusInternalServerError, fmt.Errorf("failed to update call: %w", err)
 	}
 	if err := p.store.DeleteCallsSessions(callID); err != nil {
 		p.LogError("declineCall: failed to delete call sessions", "channelID", channelID, "err", err.Error())
@@ -361,10 +353,6 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 		ChannelID:           channelID,
 		ReliableClusterSend: true,
 	})
-
-	if err := p.closeRTCSession(callerUserID, callerConnID, channelID, nodeID, callID); err != nil {
-		p.LogError("declineCall: failed to close RTC session", "channelID", channelID, "err", err.Error())
-	}
 
 	p.publishWebSocketEvent(wsEventUserDismissedNotification, map[string]interface{}{
 		"userID": userID,

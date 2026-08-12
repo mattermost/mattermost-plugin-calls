@@ -160,6 +160,44 @@ func TestRemoveUserSessionDMAutoEnd(t *testing.T) {
 		require.Len(t, state.sessions, 2)
 	})
 
+	t.Run("DM: does not publish call_end when a user closes one of their two devices", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		state := buildDMCallState(t, channelID)
+
+		// userA is connected from a second device.
+		err := p.store.CreateCallSession(&public.CallSession{
+			ID:     "connA2",
+			CallID: state.Call.ID,
+			UserID: "userA",
+			JoinAt: time.Now().UnixMilli(),
+		})
+		require.NoError(t, err)
+		state.sessions["connA2"] = &public.CallSession{
+			ID:     "connA2",
+			CallID: state.Call.ID,
+			UserID: "userA",
+		}
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{
+			"session_id": "connA",
+			"user_id":    "userA",
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		err = p.removeUserSession(state, "userA", "connA", "connA", channelID)
+		require.NoError(t, err)
+
+		// userA is still in the call on their other device, so both parties remain and the
+		// call must survive. No GetChannel or call_end expectations are set, so the strict
+		// mock catches an auto-end here.
+		require.Zero(t, state.Call.EndAt)
+		require.Len(t, state.sessions, 2)
+	})
+
 	t.Run("does not publish call_end when the channel can't be read", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)

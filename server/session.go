@@ -500,8 +500,10 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}()
 	}
 
-	// DM auto-end: end the call when a real user leaves and another real user is still connected.
-	if userID != p.getBotID() && len(state.sessions) > 0 && !state.onlyUserLeft(p.getBotID()) {
+	remainingUsers := state.distinctNonBotUserIDs(p.getBotID())
+	_, leaverStillConnected := remainingUsers[userID]
+
+	if userID != p.getBotID() && len(remainingUsers) == 1 && !leaverStillConnected {
 		ch, appErr := p.API.GetChannel(channelID)
 		if appErr != nil {
 			p.LogError("failed to get channel for DM auto-end check", "err", appErr.Error(), "channelID", channelID)

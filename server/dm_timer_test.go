@@ -228,8 +228,66 @@ func TestHandleDMNoAnswer(t *testing.T) {
 
 		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
 
-		// 2 active sessions → len(state.sessions) != 1 → bail
+		// 2 distinct users connected → the callee answered → bail
 		p.handleDMNoAnswer(channelID, call.ID)
+	})
+
+	t.Run("caller ringing from two devices — call still times out", func(t *testing.T) {
+		p, mockAPI, mockMetrics := newDMTimerTestPlugin(t)
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		userID := model.NewId()
+		postID := model.NewId()
+
+		call := &public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			ChannelID: channelID,
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    postID,
+			ThreadID:  model.NewId(),
+			OwnerID:   userID,
+		}
+		require.NoError(t, p.store.CreateCall(call))
+
+		// Two sessions, but both belong to the caller, so nobody has answered.
+		for i := 0; i < 2; i++ {
+			require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+				ID:     model.NewId(),
+				CallID: call.ID,
+				UserID: userID,
+				JoinAt: time.Now().UnixMilli(),
+			}))
+		}
+		createPost(t, p.store, postID, userID, channelID)
+
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+
+		var capturedPost *model.Post
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Run(func(args mock.Arguments) {
+			capturedPost = args.Get(0).(*model.Post)
+		}).Return(&model.Post{}, nil).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]interface{}{},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		p.handleDMNoAnswer(channelID, call.ID)
+
+		require.NotNil(t, capturedPost)
+		assert.Equal(t, callStatusNoAnswer, capturedPost.GetProp("call_status"))
+
+		updatedCall, err := p.store.GetCall(call.ID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		assert.Greater(t, updatedCall.EndAt, int64(0))
+
+		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		assert.Empty(t, sessions)
 	})
 
 	t.Run("no answer — call ended, post updated, WS event published", func(t *testing.T) {
