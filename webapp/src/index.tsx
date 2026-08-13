@@ -715,6 +715,10 @@ export default class Plugin {
                 });
                 window.currentCallData = {...CurrentCallDataDefault};
 
+                // Set before mounting the widget: the widget stays hidden while this is
+                // true, so it must be set by the time React runs the first render.
+                store.dispatch(setClientConnecting(true));
+
                 const locale = getCurrentUserLocale(state) || 'en';
 
                 let callWidgetRoot: Root | null = null;
@@ -851,9 +855,10 @@ export default class Plugin {
                     store.dispatch(displayCallErrorModal(err, channelID));
                     delete window.callsClient;
                 });
-
-                store.dispatch(setClientConnecting(true));
             } catch (err) {
+                // Without this the flag stays true, which now leaves the widget hidden
+                // as well as the call button disabled.
+                store.dispatch(setClientConnecting(false));
                 delete window.callsClient;
                 logErr(err);
             }
