@@ -479,11 +479,11 @@ func TestHandleCallStateRequest(t *testing.T) {
 	})
 }
 
-func TestCloseRTCSessions(t *testing.T) {
+func TestDeferredRTCSessionsCloser(t *testing.T) {
 	const rtcdHostIP = "127.0.0.1"
 
-	// Route through rtcd so the disconnects are observable, and so closeRTCSession has to
-	// resolve the host from the store to reach the client.
+	// Route through rtcd so the disconnects are observable, and so the closer has to carry the
+	// host it captured in order to reach the client.
 	newPlugin := func(t *testing.T) (*Plugin, *serverMocks.MockRTCDClient) {
 		t.Helper()
 
@@ -551,7 +551,7 @@ func TestCloseRTCSessions(t *testing.T) {
 		state := newCallState(t, p)
 
 		// No Send expectations, so the strict mock catches a stray disconnect.
-		require.NoError(t, p.closeRTCSessions(state, state.Call.ChannelID))
+		require.NoError(t, p.deferredRTCSessionsCloser(state, state.Call.ChannelID)())
 	})
 
 	t.Run("closes every session in the call", func(t *testing.T) {
@@ -564,7 +564,44 @@ func TestCloseRTCSessions(t *testing.T) {
 		mockRTCDClient.On("Send", leaveFor(firstConnID)).Return(nil).Once()
 		mockRTCDClient.On("Send", leaveFor(secondConnID)).Return(nil).Once()
 
-		require.NoError(t, p.closeRTCSessions(state, state.Call.ChannelID))
+		require.NoError(t, p.deferredRTCSessionsCloser(state, state.Call.ChannelID)())
+	})
+
+	t.Run("still routes to the right host once the ended call has been persisted", func(t *testing.T) {
+		p, mockRTCDClient := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		connID := model.NewId()
+		state := newCallState(t, p, connID)
+
+		// This is the regression the capture-then-close split guards: setCallEnded blanks
+		// Props.RTCDHost, so a closer that resolved the host at call time would have nothing left
+		// to route through by the time it runs.
+		closeSessions := p.deferredRTCSessionsCloser(state, state.Call.ChannelID)
+
+		setCallEnded(&state.Call)
+		require.NoError(t, p.store.UpdateCall(&state.Call))
+
+		mockRTCDClient.On("Send", leaveFor(connID)).Return(nil).Once()
+
+		require.NoError(t, closeSessions())
+	})
+
+	t.Run("closes the sessions captured, not the ones left in the state", func(t *testing.T) {
+		p, mockRTCDClient := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		connID := model.NewId()
+		state := newCallState(t, p, connID)
+
+		closeSessions := p.deferredRTCSessionsCloser(state, state.Call.ChannelID)
+
+		// Sessions are deleted before the closer runs, so it has to work off its own snapshot.
+		state.sessions = map[string]*public.CallSession{}
+
+		mockRTCDClient.On("Send", leaveFor(connID)).Return(nil).Once()
+
+		require.NoError(t, closeSessions())
 	})
 
 	t.Run("joins the failures and keeps closing the remaining sessions", func(t *testing.T) {
@@ -577,7 +614,7 @@ func TestCloseRTCSessions(t *testing.T) {
 		mockRTCDClient.On("Send", leaveFor(failingConnID)).Return(fmt.Errorf("rtcd unreachable")).Once()
 		mockRTCDClient.On("Send", leaveFor(healthyConnID)).Return(nil).Once()
 
-		err := p.closeRTCSessions(state, state.Call.ChannelID)
+		err := p.deferredRTCSessionsCloser(state, state.Call.ChannelID)()
 
 		// One failure must not stop the other session from being disconnected, and the error
 		// has to name the session that failed so a partial failure stays diagnosable.
@@ -598,29 +635,11 @@ func TestCloseRTCSessions(t *testing.T) {
 		mockRTCDClient.On("Send", leaveFor(firstConnID)).Return(fmt.Errorf("rtcd unreachable")).Once()
 		mockRTCDClient.On("Send", leaveFor(secondConnID)).Return(fmt.Errorf("rtcd unreachable")).Once()
 
-		err := p.closeRTCSessions(state, state.Call.ChannelID)
+		err := p.deferredRTCSessionsCloser(state, state.Call.ChannelID)()
 
 		require.Error(t, err)
 		require.ErrorContains(t, err, firstConnID)
 		require.ErrorContains(t, err, secondConnID)
-	})
-
-	t.Run("fails when the call has no rtcd host recorded", func(t *testing.T) {
-		p, _ := newPlugin(t)
-		defer ResetTestStore(t, p.store)
-
-		connID := model.NewId()
-		state := newCallState(t, p, connID)
-
-		// This is the regression the ordering fix guards: setCallEnded blanks Props.RTCDHost,
-		// so persisting the ended call before disconnecting leaves no host to route through.
-		state.Call.Props.RTCDHost = ""
-		require.NoError(t, p.store.UpdateCall(&state.Call))
-
-		err := p.closeRTCSessions(state, state.Call.ChannelID)
-
-		require.Error(t, err)
-		require.ErrorContains(t, err, "host should not be empty")
 	})
 }
 

@@ -515,10 +515,11 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 
 			callID := state.Call.ID
 			nodeID := state.Call.Props.NodeID
+			gracePeriod := dmCallEndGracePeriod
 
 			go func() {
 				select {
-				case <-time.After(dmAutoEndGracePeriod):
+				case <-time.After(gracePeriod):
 				case <-p.stopCh:
 					return
 				}

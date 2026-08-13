@@ -29,7 +29,27 @@ var dmNoAnswerTimeout = 30 * time.Second
 
 // How long we wait after telling clients a DM call ended before force-closing any RTC
 // sessions still connected, giving them the chance to disconnect on their own first.
-var dmAutoEndGracePeriod = 5 * time.Second
+var dmCallEndGracePeriod = 5 * time.Second
+
+// forceCloseRTCSessionsAfterGrace runs closeSessions once clients have had the chance to disconnect
+// themselves in response to call_end. Tearing the RTC connection down before that makes clients
+// report the call as failed rather than ended, and doing it synchronously would run it under the
+// call lock, which closeRTCSession can re-enter. Mirrors hostEnd and the DM auto-end path.
+func (p *Plugin) forceCloseRTCSessionsAfterGrace(caller string, closeSessions func() error) {
+	grace := dmCallEndGracePeriod
+
+	go func() {
+		select {
+		case <-time.After(grace):
+		case <-p.stopCh:
+			return
+		}
+
+		if err := closeSessions(); err != nil {
+			p.LogError(caller+": failed to close RTC sessions", "err", err.Error())
+		}
+	}()
+}
 
 func (p *Plugin) startDMNoAnswerTimer(channelID, callID string) {
 	p.dmNoAnswerTimersMut.Lock()
@@ -78,9 +98,9 @@ func (p *Plugin) handleDMNoAnswer(channelID, callID string) {
 	postID := state.Call.PostID
 	participants := mapKeys(state.Call.Props.Participants)
 
-	if err := p.closeRTCSessions(state, channelID); err != nil {
-		p.LogError("handleDMNoAnswer: failed to close RTC sessions", "channelID", channelID, "err", err.Error())
-	}
+	// Captured before setCallEnded clears the routing info the disconnects need. The actual
+	// close runs once clients have been told the call ended, see below.
+	closeSessions := p.deferredRTCSessionsCloser(state, channelID)
 
 	setCallEnded(&state.Call)
 	if err := p.store.UpdateCall(&state.Call); err != nil {
@@ -99,4 +119,6 @@ func (p *Plugin) handleDMNoAnswer(channelID, callID string) {
 	}
 
 	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+
+	p.forceCloseRTCSessionsAfterGrace("handleDMNoAnswer", closeSessions)
 }

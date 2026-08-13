@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -72,6 +73,62 @@ func mockLogs(mockAPI *pluginMocks.MockAPI) {
 
 // createDMCall stores a call with a single session belonging to callerID, i.e.
 // the state of a DM call that's ringing but not yet answered.
+// shortenCallEndGracePeriod makes the out-of-band force-close of leftover RTC sessions run
+// promptly, so tests don't have to wait out the production grace period.
+func shortenCallEndGracePeriod(t *testing.T) {
+	t.Helper()
+
+	previous := dmCallEndGracePeriod
+	dmCallEndGracePeriod = 10 * time.Millisecond
+	t.Cleanup(func() { dmCallEndGracePeriod = previous })
+}
+
+// callEventRecorder records call_end publishes and RTC disconnects in the order they happen, so
+// tests can assert clients are told the call ended before their sessions are torn down.
+type callEventRecorder struct {
+	mut    sync.Mutex
+	events []string
+}
+
+func (r *callEventRecorder) record(event string) {
+	r.mut.Lock()
+	defer r.mut.Unlock()
+	r.events = append(r.events, event)
+}
+
+// recordRTCDLeave records the disconnect rtcd was asked to perform for a session.
+func (r *callEventRecorder) recordRTCDLeave(args mock.Arguments) {
+	msg, ok := args.Get(0).(rtcd.ClientMessage)
+	if !ok {
+		r.record("unexpected rtcd message")
+		return
+	}
+
+	data, ok := msg.Data.(map[string]string)
+	if !ok {
+		r.record("unexpected rtcd message data")
+		return
+	}
+
+	r.record(fmt.Sprintf("%s:%s", msg.Type, data["sessionID"]))
+}
+
+// waitFor blocks until count events have been recorded and returns them.
+func (r *callEventRecorder) waitFor(t *testing.T, count int) []string {
+	t.Helper()
+
+	require.Eventually(t, func() bool {
+		r.mut.Lock()
+		defer r.mut.Unlock()
+		return len(r.events) >= count
+	}, 5*time.Second, 5*time.Millisecond, "timed out waiting for %d call events", count)
+
+	r.mut.Lock()
+	defer r.mut.Unlock()
+
+	return append([]string(nil), r.events...)
+}
+
 func createDMCall(t *testing.T, p *Plugin, channelID, callerID, callerConnID, postID string) *public.Call {
 	t.Helper()
 
@@ -260,6 +317,8 @@ func TestDeclineCall(t *testing.T) {
 		defer mockMetrics.AssertExpectations(t)
 		defer ResetTestStore(t, p.store)
 
+		shortenCallEndGracePeriod(t)
+
 		channelID := model.NewId()
 		callerID := model.NewId()
 		calleeID := model.NewId()
@@ -278,9 +337,8 @@ func TestDeclineCall(t *testing.T) {
 			JoinAt: time.Now().UnixMilli(),
 		}))
 
-		// Run through rtcd so the disconnects are observable. closeRTCSession resolves the
-		// host from the store, which is only still populated if it runs before the ended
-		// state is persisted.
+		// Run through rtcd so the disconnects are observable, and so they have to be routed with
+		// the host captured before setCallEnded blanked it.
 		const hostIP = "127.0.0.1"
 		mockRTCDClient := &serverMocks.MockRTCDClient{}
 		defer mockRTCDClient.AssertExpectations(t)
@@ -292,12 +350,9 @@ func TestDeclineCall(t *testing.T) {
 		call.Props.RTCDHost = hostIP
 		require.NoError(t, p.store.UpdateCall(call))
 
-		var closedSessionIDs []string
-		mockRTCDClient.On("Send", mock.AnythingOfType("service.ClientMessage")).Run(func(args mock.Arguments) {
-			msg := args.Get(0).(rtcd.ClientMessage)
-			require.Equal(t, rtcd.ClientMessageLeave, msg.Type)
-			closedSessionIDs = append(closedSessionIDs, msg.Data.(map[string]string)["sessionID"])
-		}).Return(nil).Twice()
+		var recorder callEventRecorder
+		mockRTCDClient.On("Send", mock.AnythingOfType("service.ClientMessage")).
+			Run(recorder.recordRTCDLeave).Return(nil).Twice()
 
 		mockAPI.On("HasPermissionToChannel", calleeID, channelID, model.PermissionCreatePost).Return(true).Once()
 		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
@@ -306,7 +361,8 @@ func TestDeclineCall(t *testing.T) {
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]interface{}{},
-			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).
+			Run(func(_ mock.Arguments) { recorder.record(wsEventCallEnd) }).Once()
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserDismissedNotification).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserDismissedNotification, map[string]interface{}{
@@ -318,7 +374,16 @@ func TestDeclineCall(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, code)
 
-		assert.ElementsMatch(t, []string{callerConnID, callerSecondConnID}, closedSessionIDs)
+		// Clients are told the call ended first and only then are any sessions still connected
+		// force-closed, out of band. Tearing the peer down first makes clients report a failed
+		// connection rather than an ended call, and doing it inline would run the close under the
+		// call lock, which closeRTCSession can re-enter.
+		events := recorder.waitFor(t, 3)
+		require.Equal(t, wsEventCallEnd, events[0])
+		assert.ElementsMatch(t, []string{
+			fmt.Sprintf("%s:%s", rtcd.ClientMessageLeave, callerConnID),
+			fmt.Sprintf("%s:%s", rtcd.ClientMessageLeave, callerSecondConnID),
+		}, events[1:])
 
 		storedCall, err := p.store.GetCall(call.ID, db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
@@ -334,6 +399,8 @@ func TestDeclineCall(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)
 		defer ResetTestStore(t, p.store)
+
+		shortenCallEndGracePeriod(t)
 
 		channelID := model.NewId()
 		callerID := model.NewId()
@@ -356,8 +423,9 @@ func TestDeclineCall(t *testing.T) {
 
 		// Force-closing is only a fallback for clients that don't act on call_end, so its
 		// failure must not stop the decline from going through.
+		var recorder callEventRecorder
 		mockRTCDClient.On("Send", mock.AnythingOfType("service.ClientMessage")).
-			Return(fmt.Errorf("rtcd unreachable")).Once()
+			Run(recorder.recordRTCDLeave).Return(fmt.Errorf("rtcd unreachable")).Once()
 
 		mockAPI.On("HasPermissionToChannel", calleeID, channelID, model.PermissionCreatePost).Return(true).Once()
 		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
@@ -388,6 +456,10 @@ func TestDeclineCall(t *testing.T) {
 		storedCall, err := p.store.GetCall(call.ID, db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
 		assert.Greater(t, storedCall.EndAt, int64(0))
+
+		// The failing disconnect is attempted out of band; wait for it so it doesn't outlive
+		// the test.
+		recorder.waitFor(t, 1)
 	})
 }
 

@@ -1412,23 +1412,47 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	}
 }
 
-// This must run before persisting the ended state: setCallEnded clears Props.RTCDHost,
-// and closeRTCSession retrieves that host from the store to contact the correct RTCD instance.
-func (p *Plugin) closeRTCSessions(state *callState, channelID string) error {
+// deferredRTCSessionsCloser captures everything needed to force-close every session in the call
+// before setCallEnded wipes Props.NodeID and Props.RTCDHost, and returns the disconnect work to be
+// run later.
+// Force-closing is only a fallback for clients that don't act on call_end, so the returned function
+// must not run until the call lock has been released — on the embedded RTC server path
+// closeRTCSession synchronously invokes the session close callback, which re-enters removeSession
+// and takes the same non-reentrant mutex — and until clients have had a chance to leave on their
+// own. See forceCloseRTCSessionsAfterGrace.
+func (p *Plugin) deferredRTCSessionsCloser(state *callState, channelID string) func() error {
 	nodeID := state.Call.Props.NodeID
 	callID := state.Call.ID
+	rtcdHost := state.Call.Props.RTCDHost
 
-	var errs []error
+	type sessionInfo struct {
+		userID, connID string
+	}
+	sessionInfos := make([]sessionInfo, 0, len(state.sessions))
 	for connID, session := range state.sessions {
-		if err := p.closeRTCSession(session.UserID, connID, channelID, nodeID, callID); err != nil {
-			errs = append(errs, fmt.Errorf("failed to close RTC session (userID=%s, connID=%s): %w", session.UserID, connID, err))
-		}
+		sessionInfos = append(sessionInfos, sessionInfo{userID: session.UserID, connID: connID})
 	}
 
-	return errors.Join(errs...)
+	return func() error {
+		var errs []error
+		for _, si := range sessionInfos {
+			if err := p.closeRTCSessionWithHost(si.userID, si.connID, channelID, nodeID, callID, rtcdHost); err != nil {
+				errs = append(errs, fmt.Errorf("failed to close RTC session (userID=%s, connID=%s): %w", si.userID, si.connID, err))
+			}
+		}
+
+		return errors.Join(errs...)
+	}
 }
 
 func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID, callID string) error {
+	return p.closeRTCSessionWithHost(userID, connID, channelID, handlerID, callID, "")
+}
+
+// closeRTCSessionWithHost is closeRTCSession with an explicitly provided RTCD host. Callers that
+// disconnect sessions after the call has been marked as ended must pass one, since setCallEnded
+// clears Props.RTCDHost and there would be nothing left to look up in the store.
+func (p *Plugin) closeRTCSessionWithHost(userID, connID, channelID, handlerID, callID, rtcdHost string) error {
 	p.LogDebug("closeRTCSession", "userID", userID, "connID", connID, "channelID", channelID)
 	if p.rtcServer != nil {
 		if handlerID == p.nodeID {
@@ -1454,9 +1478,13 @@ func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID, callID st
 			},
 		}
 
-		host, err := p.store.GetRTCDHostForCall(callID, db.GetCallOpts{})
-		if err != nil {
-			return fmt.Errorf("failed to get RTCD host for call: %w", err)
+		host := rtcdHost
+		if host == "" {
+			var err error
+			host, err = p.store.GetRTCDHostForCall(callID, db.GetCallOpts{})
+			if err != nil {
+				return fmt.Errorf("failed to get RTCD host for call: %w", err)
+			}
 		}
 
 		if err := p.rtcdManager.Send(msg, host); err != nil {

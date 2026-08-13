@@ -328,9 +328,9 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 	postID := state.Call.PostID
 	participants := mapKeys(state.Call.Props.Participants)
 
-	if err := p.closeRTCSessions(state, channelID); err != nil {
-		p.LogError("declineCall: failed to close RTC sessions", "channelID", channelID, "err", err.Error())
-	}
+	// Captured before setCallEnded clears the routing info the disconnects need. The actual
+	// close runs once clients have been told the call ended, see below.
+	closeSessions := p.deferredRTCSessionsCloser(state, channelID)
 
 	setCallEnded(&state.Call)
 
@@ -358,6 +358,8 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 		"userID": userID,
 		"callID": callID,
 	}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
+
+	p.forceCloseRTCSessionsAfterGrace("declineCall", closeSessions)
 
 	return http.StatusOK, nil
 }

@@ -4,6 +4,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
+	rtcd "github.com/mattermost/rtcd/service"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -43,9 +45,7 @@ func newDMTimerTestPlugin(t *testing.T) (*Plugin, *pluginMocks.MockAPI, *serverM
 	mockMetrics.On("ObserveClusterMutexGrabTime", "mutex_call", mock.AnythingOfType("float64")).Maybe()
 	mockMetrics.On("ObserveClusterMutexLockedTime", "mutex_call", mock.AnythingOfType("float64")).Maybe()
 	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Maybe()
-	mockAPI.On("LogDebug", mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+	mockLogs(mockAPI)
 
 	return p, mockAPI, mockMetrics
 }
@@ -232,16 +232,19 @@ func TestHandleDMNoAnswer(t *testing.T) {
 		p.handleDMNoAnswer(channelID, call.ID)
 	})
 
-	t.Run("caller ringing from two devices — call still times out", func(t *testing.T) {
+	t.Run("caller ringing from two devices — call still times out and every session is disconnected", func(t *testing.T) {
 		p, mockAPI, mockMetrics := newDMTimerTestPlugin(t)
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)
 		defer ResetTestStore(t, p.store)
 
+		shortenCallEndGracePeriod(t)
+
 		channelID := model.NewId()
 		userID := model.NewId()
 		postID := model.NewId()
 
+		const hostIP = "127.0.0.1"
 		call := &public.Call{
 			ID:        model.NewId(),
 			CreateAt:  time.Now().UnixMilli(),
@@ -250,19 +253,35 @@ func TestHandleDMNoAnswer(t *testing.T) {
 			PostID:    postID,
 			ThreadID:  model.NewId(),
 			OwnerID:   userID,
+			Props:     public.CallProps{RTCDHost: hostIP},
 		}
 		require.NoError(t, p.store.CreateCall(call))
 
 		// Two sessions, but both belong to the caller, so nobody has answered.
-		for i := 0; i < 2; i++ {
+		connIDs := []string{model.NewId(), model.NewId()}
+		for _, connID := range connIDs {
 			require.NoError(t, p.store.CreateCallSession(&public.CallSession{
-				ID:     model.NewId(),
+				ID:     connID,
 				CallID: call.ID,
 				UserID: userID,
 				JoinAt: time.Now().UnixMilli(),
 			}))
 		}
 		createPost(t, p.store, postID, userID, channelID)
+
+		// Run through rtcd so the disconnects are observable, and so they have to be routed with
+		// the host captured before setCallEnded blanked it.
+		mockRTCDClient := &serverMocks.MockRTCDClient{}
+		defer mockRTCDClient.AssertExpectations(t)
+
+		p.rtcdManager = &rtcdClientManager{
+			ctx:   p,
+			hosts: map[string]*rtcdHost{hostIP: {ip: hostIP, client: mockRTCDClient}},
+		}
+
+		var recorder callEventRecorder
+		mockRTCDClient.On("Send", mock.AnythingOfType("service.ClientMessage")).
+			Run(recorder.recordRTCDLeave).Return(nil).Twice()
 
 		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
 		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
@@ -274,7 +293,8 @@ func TestHandleDMNoAnswer(t *testing.T) {
 
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]interface{}{},
-			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).
+			Run(func(_ mock.Arguments) { recorder.record(wsEventCallEnd) }).Once()
 
 		p.handleDMNoAnswer(channelID, call.ID)
 
@@ -288,6 +308,16 @@ func TestHandleDMNoAnswer(t *testing.T) {
 		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
 		require.NoError(t, err)
 		assert.Empty(t, sessions)
+
+		// The caller is told the call ended before their RTC sessions are torn down, otherwise
+		// their client reports a failed connection instead of an ended call. The disconnects
+		// themselves happen out of band, since closeRTCSession can re-enter the call lock.
+		events := recorder.waitFor(t, 3)
+		require.Equal(t, wsEventCallEnd, events[0])
+		assert.ElementsMatch(t, []string{
+			fmt.Sprintf("%s:%s", rtcd.ClientMessageLeave, connIDs[0]),
+			fmt.Sprintf("%s:%s", rtcd.ClientMessageLeave, connIDs[1]),
+		}, events[1:])
 	})
 
 	t.Run("no answer — call ended, post updated, WS event published", func(t *testing.T) {
