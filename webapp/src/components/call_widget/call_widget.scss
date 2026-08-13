@@ -161,13 +161,9 @@ a.calls-channel-link {
       font-weight: 600;
       overflow: hidden;
       text-overflow: ellipsis;
-
-      &>span.isTalkingText {
-        font-weight: 400;
-      }
     }
-
-    &>span.noOneSpeakingText {
+  
+    span.nonNameText {
       font-weight: 400;
     }
   }

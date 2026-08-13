@@ -24,9 +24,7 @@ export function ParticipantName(props: ParticipantNameProps) {
                 <span>
                     {getUserDisplayName(props.profile)}
                     {props.shouldShowIsTalkingText && (
-                        <span
-                            className='isTalkingText'
-                        >
+                        <span className='nonNameText'>
                             {untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}
                         </span>
                     )}
@@ -37,7 +35,7 @@ export function ParticipantName(props: ParticipantNameProps) {
 
     return (
         <div className='participantNameContainer'>
-            <span className='noOneSpeakingText'>
+            <span className='nonNameText'>
                 {formatMessage({defaultMessage: 'No one is talking…'})}
             </span>
         </div>
