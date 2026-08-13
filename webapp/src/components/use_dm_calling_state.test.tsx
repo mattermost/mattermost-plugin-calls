@@ -1,12 +1,14 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
 import {render} from '@testing-library/react';
 import React from 'react';
 import {Provider} from 'react-redux';
 import {loadProfilesByIdsIfMissing} from 'src/actions';
 import {
+    channelForCurrentCall,
     dmCalleeAnsweredAtForCurrentCall,
     isCurrentDMCallInCallingState,
     otherUserIDForCurrentDMCall,
@@ -16,6 +18,7 @@ import {mockStore} from 'src/testUtils';
 import {useDMCallingState} from './use_dm_calling_state';
 
 jest.mock('src/selectors', () => ({
+    channelForCurrentCall: jest.fn(),
     dmCalleeAnsweredAtForCurrentCall: jest.fn(),
     isCurrentDMCallInCallingState: jest.fn(),
     otherUserIDForCurrentDMCall: jest.fn(),
@@ -31,6 +34,7 @@ const callee = {id: calleeID, username: 'callee'} as UserProfile;
 const mock = (fn: unknown) => fn as jest.Mock;
 
 type Opts = {
+    isDM?: boolean;
     isCalling?: boolean;
     otherUserID?: string;
     answeredAt?: number;
@@ -39,7 +43,8 @@ type Opts = {
 
 // renderHook doesn't work under this jest setup, so a probe component reports what the hook
 // returned instead.
-const renderHookState = ({isCalling = false, otherUserID = calleeID, answeredAt = 0, profileLoaded = true}: Opts = {}) => {
+const renderHookState = ({isDM = true, isCalling = false, otherUserID = calleeID, answeredAt = 0, profileLoaded = true}: Opts = {}) => {
+    mock(channelForCurrentCall).mockReturnValue(isDM ? ({type: 'D'} as Channel) : undefined);
     mock(isCurrentDMCallInCallingState).mockReturnValue(isCalling);
     mock(otherUserIDForCurrentDMCall).mockReturnValue(otherUserID);
     mock(dmCalleeAnsweredAtForCurrentCall).mockReturnValue(answeredAt);
@@ -75,6 +80,7 @@ describe('useDMCallingState', () => {
         const {state} = renderHookState({isCalling: true});
 
         expect(state).toEqual({
+            isDM: true,
             isDMCalling: true,
             dmCalleeID: calleeID,
             dmCallee: callee,
@@ -103,6 +109,7 @@ describe('useDMCallingState', () => {
         const {state} = renderHookState({isCalling: false, answeredAt: 1234});
 
         expect(state).toEqual({
+            isDM: true,
             isDMCalling: false,
             dmCalleeID: calleeID,
             dmCallee: callee,
@@ -111,9 +118,10 @@ describe('useDMCallingState', () => {
     });
 
     test('should report nothing outside a DM call', () => {
-        const {state} = renderHookState();
+        const {state} = renderHookState({isDM: false});
 
         expect(state).toEqual({
+            isDM: false,
             isDMCalling: false,
 
             /* eslint-disable no-undefined */

@@ -7,9 +7,11 @@ import {getUser} from 'mattermost-redux/selectors/entities/users';
 import {useEffect} from 'react';
 import {useDispatch, useSelector} from 'react-redux';
 import {loadProfilesByIdsIfMissing} from 'src/actions';
-import {dmCalleeAnsweredAtForCurrentCall, isCurrentDMCallInCallingState, otherUserIDForCurrentDMCall} from 'src/selectors';
+import {channelForCurrentCall, dmCalleeAnsweredAtForCurrentCall, isCurrentDMCallInCallingState, otherUserIDForCurrentDMCall} from 'src/selectors';
+import {isDMChannel} from 'src/utils';
 
 interface DMCallingState {
+    isDM: boolean;
     isDMCalling: boolean;
     dmCalleeID?: string;
     dmCallee?: UserProfile;
@@ -21,25 +23,23 @@ interface DMCallingState {
  */
 export function useDMCallingState(): DMCallingState {
     const dispatch = useDispatch();
-    const isInCallingStateForDMChannelCall = useSelector(isCurrentDMCallInCallingState);
-    const otherDMUserID = useSelector(otherUserIDForCurrentDMCall);
-    const otherDMUser = useSelector((state: GlobalState) => getUser(state, otherDMUserID));
-    const dmCalleeAnsweredAt = useSelector(dmCalleeAnsweredAtForCurrentCall);
+    const isDM = useSelector((state: GlobalState) => isDMChannel(channelForCurrentCall(state)));
+    const isDMCalling = useSelector(isCurrentDMCallInCallingState);
+    const otherUserID = useSelector(otherUserIDForCurrentDMCall);
+    const otherUser = useSelector((state: GlobalState) => getUser(state, otherUserID));
+    const answeredAt = useSelector(dmCalleeAnsweredAtForCurrentCall);
 
     useEffect(() => {
-        if (isInCallingStateForDMChannelCall && otherDMUserID) {
-            dispatch(loadProfilesByIdsIfMissing([otherDMUserID]));
+        if (isDM && otherUserID) {
+            dispatch(loadProfilesByIdsIfMissing([otherUserID]));
         }
-    }, [dispatch, isInCallingStateForDMChannelCall, otherDMUserID]);
+    }, [dispatch, isDM, otherUserID]);
 
-    if (isInCallingStateForDMChannelCall) {
-        if (otherDMUserID) {
-            return {isDMCalling: true, dmCalleeID: otherDMUserID, dmCallee: otherDMUser, dmCalleeAnsweredAt: undefined};
-        }
-        return {isDMCalling: false, dmCalleeID: undefined, dmCallee: undefined, dmCalleeAnsweredAt: undefined};
-    } else if (dmCalleeAnsweredAt && dmCalleeAnsweredAt > 0) {
-        return {isDMCalling: false, dmCalleeID: otherDMUserID, dmCallee: otherDMUser, dmCalleeAnsweredAt};
-    }
-
-    return {isDMCalling: false, dmCalleeID: undefined, dmCallee: undefined, dmCalleeAnsweredAt: undefined};
+    return {
+        isDM,
+        isDMCalling: isDMCalling && Boolean(otherUserID),
+        dmCalleeID: isDM && otherUserID ? otherUserID : undefined,
+        dmCallee: isDM && otherUserID ? otherUser : undefined,
+        dmCalleeAnsweredAt: isDM && answeredAt > 0 ? answeredAt : undefined,
+    };
 }
