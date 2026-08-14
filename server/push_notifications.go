@@ -67,6 +67,10 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 }
 
 func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string, sender *model.User, config *model.Config) {
+	if !*p.getConfiguration().EnableRinging {
+		return
+	}
+
 	if err := p.canSendPushNotifications(config, p.API.GetLicense()); err != nil {
 		return
 	}
