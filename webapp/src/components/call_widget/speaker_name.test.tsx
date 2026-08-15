@@ -42,7 +42,7 @@ describe('ParticipantName', () => {
         const container = renderName({profile: stubProfile()});
 
         expect(container.textContent).not.toContain('is talking');
-        expect(container.querySelector('.isTalkingText')).toBeNull();
+        expect(container.querySelector('.nonNameText')).toBeNull();
     });
 
     test('should say the user is talking when asked to', () => {
@@ -57,7 +57,7 @@ describe('ParticipantName', () => {
             shouldShowIsTalkingText: true,
         });
 
-        expect(container.querySelector('.isTalkingText')).toHaveTextContent('is talking…');
+        expect(container.querySelector('.nonNameText')).toHaveTextContent('is talking…');
     });
 
     test.each([
@@ -67,7 +67,7 @@ describe('ParticipantName', () => {
         const container = renderName({profile});
 
         expect(container.textContent).toBe('No one is talking…');
-        expect(container.querySelector('.noOneSpeakingText')).not.toBeNull();
+        expect(container.querySelector('.nonNameText')).not.toBeNull();
     });
 
     test('should say no one is talking even when asked to show the talking label', () => {

@@ -50,7 +50,7 @@ type StateOpts = {
     answeredAt?: number;
     ownerID?: string;
     sessions?: UserSessionState[];
-    channel?: Channel;
+    channel?: Channel | null;
 }
 
 const stubState = ({startAt, answeredAt, ownerID = currentUserID, sessions = [ownSession], channel = dmChannel}: StateOpts) => ({
@@ -64,7 +64,7 @@ const stubState = ({startAt, answeredAt, ownerID = currentUserID, sessions = [ow
         dmCalleeAnsweredAt: answeredAt ? {[callID]: answeredAt} : {},
     },
     entities: {
-        channels: {channels: {[channel.id]: channel}},
+        channels: {channels: channel ? {[channel.id]: channel} : {}},
         users: {
             currentUserId: currentUserID,
             profiles: {[otherUserID]: {id: otherUserID, username: 'other'}},
@@ -72,18 +72,21 @@ const stubState = ({startAt, answeredAt, ownerID = currentUserID, sessions = [ow
     },
 });
 
-const renderTimer = (state: ReturnType<typeof stubState>) => {
+const renderTimer = (state: ReturnType<typeof stubState>, clientConnecting = false) => {
     const store = mockStore(state);
     const dispatch = jest.spyOn(store, 'dispatch');
     const {container} = render(
         <Provider store={store}>
             <RawIntlProvider value={intl}>
-                <CallStatusTimer/>
+                <CallStatusTimer clientConnecting={clientConnecting}/>
             </RawIntlProvider>
         </Provider>,
     );
     return {container, dispatch};
 };
+
+// Only the caller is ever in the ringing state: the callee joining is what answers the call.
+const ringingState = () => stubState({startAt: Date.now() - 65_000, sessions: [ownSession]});
 
 describe('CallStatusTimer', () => {
     let initTime = 0;
@@ -105,86 +108,119 @@ describe('CallStatusTimer', () => {
         delete window.currentCallData;
     });
 
-    describe('DM call that has not been answered yet', () => {
-        // Only the caller is ever in this state: the callee joining is what answers the call.
-        const callingState = () => stubState({startAt: Date.now() - 65_000, sessions: [ownSession]});
+    test('should show the calling label instead of a duration while a DM call rings', () => {
+        const {container} = renderTimer(ringingState());
 
-        it('should show the calling label instead of a duration', () => {
-            const {container} = renderTimer(callingState());
-            expect(container.textContent).toBe('Calling…');
-        });
+        expect(container.textContent).toBe('Calling…');
+    });
 
-        it('should not show any digits while ringing', () => {
-            const {container} = renderTimer(callingState());
-            expect(container.textContent).not.toMatch(/\d/);
+    test('should not show any digits while a DM call rings', () => {
+        const {container} = renderTimer(ringingState());
+
+        expect(container.textContent).not.toMatch(/\d/);
+    });
+
+    test('should show the starting label while the DM call client is still connecting', () => {
+        const {container} = renderTimer(stubState({
+            startAt: Date.now() - 65_000,
+            sessions: [ownSession, otherSession],
+        }), true);
+
+        expect(container.textContent).toBe('Starting call…');
+    });
+
+    test('should prefer the starting label over the calling label while connecting', () => {
+        const {container} = renderTimer(ringingState(), true);
+
+        expect(container.textContent).toBe('Starting call…');
+    });
+
+    test('should pulse the label while connecting so it reads as in-progress', () => {
+        const {container} = renderTimer(ringingState(), true);
+
+        expect(container.querySelector('.callStatusTimer')).toHaveClass('pulsingAnimation');
+    });
+
+    test('should show the duration rather than the starting label for a channel call that is connecting', () => {
+        const {container} = renderTimer(stubState({
+            startAt: Date.now() - 65_000,
+            channel: channelCallChannel,
+            sessions: [ownSession, otherSession],
+        }), true);
+
+        expect(container.textContent).toMatch(/^01:0[45]$/);
+    });
+
+    test('should render nothing when the call channel is not in the store yet', () => {
+        const {container} = renderTimer(stubState({
+            startAt: Date.now() - 65_000,
+            channel: null,
+        }), true);
+
+        expect(container).toBeEmptyDOMElement();
+    });
+
+    test('should count from when the call was answered, not from when it started', () => {
+        const {container} = renderTimer(stubState({
+            startAt: Date.now() - 300_000,
+            answeredAt: Date.now() - 65_000,
+            sessions: [ownSession, otherSession],
+        }));
+
+        expect(container.textContent).toMatch(/^01:0[45]$/);
+    });
+
+    test('should count from the client init time for the callee, who answered by joining', () => {
+        initTime = Date.now() - 65_000;
+
+        const {container} = renderTimer(stubState({
+            startAt: Date.now() - 300_000,
+            ownerID: otherUserID,
+            sessions: [ownSession, otherSession],
+        }));
+
+        expect(container.textContent).toMatch(/^01:0[45]$/);
+    });
+
+    test('should fall back to the call start time when nothing recorded the answer', () => {
+        const {container} = renderTimer(stubState({
+            startAt: Date.now() - 65_000,
+            sessions: [ownSession, otherSession],
+        }));
+
+        expect(container.textContent).toMatch(/^01:0[45]$/);
+    });
+
+    // A popout has its own store and may be opened after the call was answered, so it never
+    // saw the other party join. It should adopt the shared timestamp rather than restart.
+    test('should seed the answered time from the calls window when the store has none', () => {
+        const sharedAnsweredAt = Date.now() - 65_000;
+        window.currentCallData = {dmCalleeAnsweredAt: sharedAnsweredAt} as CurrentCallData;
+
+        const {dispatch} = renderTimer(stubState({
+            startAt: Date.now() - 300_000,
+            sessions: [ownSession, otherSession],
+        }));
+
+        expect(dispatch).toHaveBeenCalledWith({
+            type: DM_CALLEE_ANSWERED_AT,
+            data: {callID, answeredAt: sharedAnsweredAt},
         });
     });
 
-    describe('answered DM call', () => {
-        it('should count from when the call was answered, not from when it started', () => {
-            const {container} = renderTimer(stubState({
-                startAt: Date.now() - 300_000,
-                answeredAt: Date.now() - 65_000,
-                sessions: [ownSession, otherSession],
-            }));
+    test('should not seed when the store already knows when the call was answered', () => {
+        window.currentCallData = {dmCalleeAnsweredAt: Date.now() - 300_000} as CurrentCallData;
 
-            expect(container.textContent).toMatch(/^01:0[45]$/);
-        });
+        const {dispatch} = renderTimer(stubState({
+            startAt: Date.now() - 300_000,
+            answeredAt: Date.now() - 65_000,
+            sessions: [ownSession, otherSession],
+        }));
 
-        it('should count from the client init time for the callee, who answered by joining', () => {
-            initTime = Date.now() - 65_000;
-
-            const {container} = renderTimer(stubState({
-                startAt: Date.now() - 300_000,
-                ownerID: otherUserID,
-                sessions: [ownSession, otherSession],
-            }));
-
-            expect(container.textContent).toMatch(/^01:0[45]$/);
-        });
-
-        it('should fall back to the call start time when nothing recorded the answer', () => {
-            const {container} = renderTimer(stubState({
-                startAt: Date.now() - 65_000,
-                sessions: [ownSession, otherSession],
-            }));
-
-            expect(container.textContent).toMatch(/^01:0[45]$/);
-        });
+        expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({type: DM_CALLEE_ANSWERED_AT}));
     });
 
-    describe('cross-window handoff', () => {
-        // A popout has its own store and may be opened after the call was answered, so it never
-        // saw the other party join. It should adopt the shared timestamp rather than restart.
-        it('should seed the answered time from the calls window when the store has none', () => {
-            const sharedAnsweredAt = Date.now() - 65_000;
-            window.currentCallData = {dmCalleeAnsweredAt: sharedAnsweredAt} as CurrentCallData;
-
-            const {dispatch} = renderTimer(stubState({
-                startAt: Date.now() - 300_000,
-                sessions: [ownSession, otherSession],
-            }));
-
-            expect(dispatch).toHaveBeenCalledWith({
-                type: DM_CALLEE_ANSWERED_AT,
-                data: {callID, answeredAt: sharedAnsweredAt},
-            });
-        });
-
-        it('should not seed when the store already knows when the call was answered', () => {
-            window.currentCallData = {dmCalleeAnsweredAt: Date.now() - 300_000} as CurrentCallData;
-
-            const {dispatch} = renderTimer(stubState({
-                startAt: Date.now() - 300_000,
-                answeredAt: Date.now() - 65_000,
-                sessions: [ownSession, otherSession],
-            }));
-
-            expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({type: DM_CALLEE_ANSWERED_AT}));
-        });
-    });
-
-    it('should count from the call start time for a channel call', () => {
+    test('should count from the call start time for a channel call', () => {
         const {container} = renderTimer(stubState({
             startAt: Date.now() - 65_000,
             channel: channelCallChannel,

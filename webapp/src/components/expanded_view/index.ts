@@ -19,6 +19,7 @@ import {
     areHostControlsAllowed,
     callsConfig,
     channelForCurrentCall,
+    clientConnecting,
     expandedView,
     getChannelUrlAndDisplayName,
     hostChangeAtForCurrentCall,
@@ -96,6 +97,7 @@ const mapStateToProps = (state: GlobalState) => {
         enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
         otherSessions: sessionsForOtherUsersInCall(state),
         isDMCalling: isCurrentDMCallInCallingState(state),
+        clientConnecting: clientConnecting(state),
     };
 };
 

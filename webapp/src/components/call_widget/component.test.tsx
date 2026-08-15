@@ -56,6 +56,8 @@ const stubTeam = {id: 'team-id', name: 'team', display_name: 'Team'} as Team;
 // The widget renders store-connected children (e.g. SpeakerAvatar), so the store needs
 // the same shape the reducers produce rather than a bare {}. No call is in progress, so
 // the widget renders purely from the props passed in below.
+// The other user's profile is seeded because useDMCallingState fetches it over the network
+// when a DM call's callee is missing from the store, which jsdom has no fetch for.
 const stubState = (channel: Channel) => ({
     'plugins-com.mattermost.calls': {
         calls: {},
@@ -64,7 +66,10 @@ const stubState = (channel: Channel) => ({
     },
     entities: {
         channels: {channels: {[channel.id]: channel}},
-        users: {currentUserId: 'user-id', profiles: {}},
+        users: {
+            currentUserId: 'user-id',
+            profiles: {'other-user': {id: 'other-user', username: 'callee'} as UserProfile},
+        },
     },
 });
 
@@ -207,7 +212,7 @@ describe('leave button behavior', () => {
         raised_hand: 0,
     });
 
-    const dmChannel = {...stubChannel, type: 'D'} as Channel;
+    const dmChannel = {...stubChannel, type: 'D', name: 'user-id__other-user'} as Channel;
     const currentUserSession = stubSession('session-1', 'user-id');
     const otherSession = stubSession('session-2', 'other-user');
 
@@ -378,7 +383,7 @@ describe('DM call presentation', () => {
         },
     });
 
-    const renderWidget = (channel: Channel, sessions: UserSessionState[]) => render(
+    const renderWidget = (channel: Channel, sessions: UserSessionState[], clientConnecting = false) => render(
         <Provider store={mockStore(dmState(sessions))}>
             <RawIntlProvider value={intl}>
                 <CallWidget
@@ -388,14 +393,18 @@ describe('DM call presentation', () => {
                     sessions={sessions}
                     otherSessions={sessions.filter((s) => s.user_id !== 'user-id')}
                     profiles={{[calleeID]: callee}}
+                    clientConnecting={clientConnecting}
                 />
             </RawIntlProvider>
         </Provider>,
     );
 
+    let disconnect: jest.Mock;
+
     beforeEach(() => {
+        disconnect = jest.fn();
         window.callsClient = {
-            disconnect: jest.fn(),
+            disconnect,
             channelID: dmChannelID,
             getSessionID: () => ownSession.session_id,
             getRemoteVoiceTracks: () => [],
@@ -439,5 +448,50 @@ describe('DM call presentation', () => {
         expect(screen.getByRole('button', {name: /participants/i})).toBeInTheDocument();
         expect(screen.getByRole('link', {name: /Town Square/})).toBeInTheDocument();
         expect(screen.queryByText('Calling…')).not.toBeInTheDocument();
+    });
+
+    test('a DM call still connecting shows the callee and Starting call… in place of the timer', () => {
+        renderWidget(dmChannel, [ownSession], true);
+
+        expect(screen.getByText('Starting call…')).toBeInTheDocument();
+        expect(screen.getByText('Other User')).toBeInTheDocument();
+        expect(screen.queryByText('Calling…')).not.toBeInTheDocument();
+        expect(screen.queryByText(/^\d{2}:\d{2}$/)).not.toBeInTheDocument();
+    });
+
+    test('a DM call still connecting is not also covered by the loading overlay', () => {
+        renderWidget(dmChannel, [ownSession], true);
+
+        expect(screen.queryByTestId('calls-widget-loading-overlay')).not.toBeInTheDocument();
+    });
+
+    // There is no call to act on until the client finishes connecting, so the controls stay inert.
+    test.each([
+        ['expand', /open in new window/i],
+        ['settings', /more options/i],
+        ['leave', /^leave call$/i],
+    ])('a DM call still connecting disables the %s button', (_, name) => {
+        renderWidget(dmChannel, [ownSession], true);
+
+        expect(screen.getByRole('button', {name})).toBeDisabled();
+    });
+
+    test.each([
+        ['expand', /open in new window/i],
+        ['settings', /more options/i],
+        ['leave', /^leave call$/i],
+    ])('a connected DM call leaves the %s button usable', (_, name) => {
+        renderWidget(dmChannel, [ownSession, calleeSession]);
+
+        expect(screen.getByRole('button', {name})).toBeEnabled();
+    });
+
+    test('a DM call still connecting does not disconnect when leave is clicked', async () => {
+        const user = userEvent.setup();
+        renderWidget(dmChannel, [ownSession], true);
+
+        await user.click(screen.getByRole('button', {name: /^leave call$/i}));
+
+        expect(disconnect).not.toHaveBeenCalled();
     });
 });

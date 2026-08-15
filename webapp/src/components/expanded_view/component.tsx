@@ -133,6 +133,7 @@ interface Props extends RouteComponentProps {
     enableVideo: boolean;
     otherSessions: UserSessionState[];
     isDMCalling: boolean;
+    clientConnecting: boolean;
 }
 
 interface State {
@@ -1301,7 +1302,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         style={this.style.topContainer}
                     >
                         {this.renderRecordingBadge()}
-                        <CallStatusTimer/>
+                        <CallStatusTimer clientConnecting={this.props.clientConnecting}/>
 
                         <div style={this.style.headerSpreader}/>
                         <ExpandedIncomingCallContainer/>
