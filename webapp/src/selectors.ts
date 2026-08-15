@@ -55,21 +55,11 @@ const pluginState = (state: GlobalState) => state['plugins-' + pluginId] || {};
 
 const clientState = (state: GlobalState) => pluginState(state).clientStateReducer;
 
-export const channelIDForCurrentCall: (state: GlobalState) => string =
-    createSelector(
-        'channelIDForCurrentCall',
-        getCallsClientChannelID,
-        clientState,
-        (channelID, cState) => channelID || cState?.channelID || '',
-    );
+export const channelIDForCurrentCall = (state: GlobalState): string =>
+    getCallsClientChannelID() || clientState(state)?.channelID || '';
 
-export const channelForCurrentCall: (state: GlobalState) => Channel | undefined =
-    createSelector(
-        'channelForCurrentCall',
-        getAllChannels,
-        channelIDForCurrentCall,
-        (channels, id) => channels[id],
-    );
+export const channelForCurrentCall = (state: GlobalState): Channel | undefined =>
+    getAllChannels(state)[channelIDForCurrentCall(state)];
 
 export const calls = (state: GlobalState): { [channelID: string]: callState } =>
     pluginState(state).calls;

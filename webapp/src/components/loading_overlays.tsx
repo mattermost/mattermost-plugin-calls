@@ -1,9 +1,12 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {isDirectChannel} from 'mattermost-redux/utils/channel_utils';
 import React, {useMemo, useState} from 'react';
 import {useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
 import {Spinner} from 'src/components/shared';
+import {channelForCurrentCall} from 'src/selectors';
 import styled, {css} from 'styled-components';
 
 export type JoinLoadingOverlayProps = {
@@ -18,7 +21,13 @@ export function JoinLoadingOverlay({visible, joining}: JoinLoadingOverlayProps) 
         return joining;
     }, [/* intentionally empty */]);
 
+    const channel = useSelector(channelForCurrentCall);
+
     if (!visible && transitionEnded) {
+        return null;
+    }
+
+    if (channel && isDirectChannel(channel)) {
         return null;
     }
 

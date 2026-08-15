@@ -17,12 +17,16 @@ import {getCallsClientInitTime, getCallsWindow} from 'src/utils';
 
 import {ElapsedTimer} from './elapsed_timer';
 
+interface Props {
+    clientConnecting: boolean;
+}
+
 /**
  * Displays the duration of the current call, starting from when the call is answered;
  * shows "Calling…" for unanswered DM calls. The timer excludes time spent ringing
  * so it starts from zero once answered.
  */
-export function CallStatusTimer() {
+export function CallStatusTimer(props: Props) {
     const {formatMessage} = useIntl();
 
     const dispatch = useDispatch();
@@ -49,21 +53,32 @@ export function CallStatusTimer() {
         }
     }, [dispatch, callID, dmCalleeAnsweredAt]);
 
-    // If DM call is in calling state, display "Calling…"
-    // don't show the elapsed timer yet.
-    if (isDMCalling) {
-        return (
-            <div className='callStatusTimer pulsingAnimation'>
-                {formatMessage({defaultMessage: 'Calling…'})}
-            </div>
-        );
+    if (!channel) {
+        return null;
     }
 
-    // For the caller that's when the other party's session showed up (recorded in handleUserJoined);
-    // for the callee it's their own join, which is when their calls client was initialized.
-    if (channel && isDirectChannel(channel)) {
-        const answeredAt = isOwner ? dmCalleeAnsweredAt : getCallsClientInitTime();
+    if (isDirectChannel(channel)) {
+        if (props.clientConnecting) {
+            return (
+                <div className='callStatusTimer pulsingAnimation'>
+                    {formatMessage({defaultMessage: 'Starting call…'})}
+                </div>
+            );
+        }
 
+        if (isDMCalling) {
+            // If DM call is in calling state, display "Calling…"
+            // don't show the elapsed timer yet.
+            return (
+                <div className='callStatusTimer pulsingAnimation'>
+                    {formatMessage({defaultMessage: 'Calling…'})}
+                </div>
+            );
+        }
+
+        // For the caller that's when the other party's session showed up (recorded in handleUserJoined);
+        // for the callee it's their own join, which is when their calls client was initialized.
+        const answeredAt = isOwner ? dmCalleeAnsweredAt : getCallsClientInitTime();
         return (
             <ElapsedTimer
                 classname='callStatusTimer'

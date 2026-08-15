@@ -1211,7 +1211,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.16)' : ''}
                 icon={<ShareIcon style={{fill}}/>}
                 unavailable={noScreenPermissions}
-                disabled={Boolean(sharingID) && !isSharing}
+                disabled={(Boolean(sharingID) && !isSharing) || this.props.clientConnecting}
             />
         );
     };
@@ -2254,7 +2254,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 >
                     {channelLink}
                     <div style={{fontSize: '10px', color: 'var(--center-channel-color-64, rgba(63, 67, 80, 0.64))'}}>{untranslatable('•')}</div>
-                    <CallStatusTimer/>
+                    <CallStatusTimer
+                        clientConnecting={this.props.clientConnecting}
+                    />
                 </div>
 
                 <WidgetButton
@@ -2264,6 +2266,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     tooltipText={openPopOutLabel}
                     tooltipPosition='left'
                     bgColor=''
+                    disabled={this.props.clientConnecting}
                     icon={
                         <ShowIcon
                             fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
@@ -2493,15 +2496,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             <CallParticipantAvatar
                                 sessions={this.props.sessions}
                                 profiles={this.props.profiles}
+                                clientConnecting={this.props.clientConnecting}
                             />
                             <div style={{width: this.props.wider ? '210px' : '152px'}}>
                                 <CallStatusText
                                     sessions={this.props.sessions}
                                     profiles={this.props.profiles}
+                                    clientConnecting={this.props.clientConnecting}
                                 />
                                 <div style={this.style.callInfo}>
                                     {this.renderRecordingBadge()}
-                                    <CallStatusTimer/>
+                                    <CallStatusTimer
+                                        clientConnecting={this.props.clientConnecting}
+                                    />
                                     {!isDMChannel(this.props.channel) && this.renderChannelName()}
                                 </div>
                             </div>
@@ -2513,6 +2520,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 tooltipText={openPopOutLabel}
                                 tooltipPosition='left'
                                 bgColor=''
+                                disabled={this.props.clientConnecting}
                                 icon={
                                     <ShowIcon
                                         fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
@@ -2543,6 +2551,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 bgColor={this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
                                 tooltipText={showParticipantsListLabel}
                                 shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
+                                disabled={this.props.clientConnecting}
                                 icon={
                                     <ParticipantsIcon
                                         style={{fill: this.state.showParticipantsList ? 'var(--button-bg)' : ''}}
@@ -2572,6 +2581,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             tooltipText={muteTooltipText}
                             tooltipSubtext={muteTooltipSubtext}
                             bgColor={this.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
+                            disabled={this.props.clientConnecting}
                             icon={
                                 <MuteIcon
                                     style={{
@@ -2593,6 +2603,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 tooltipText={videoTooltipText}
                                 tooltipSubtext={videoTooltipSubtext}
                                 bgColor={this.isVideoOn() ? 'rgba(61, 184, 135, 0.16)' : ''}
+                                disabled={this.props.clientConnecting}
                                 icon={
                                     <VideoIcon
                                         style={{
@@ -2612,6 +2623,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
                                 tooltipText={handTooltipText}
                                 bgColor={this.isHandRaised() ? 'rgba(var(--away-indicator-rgb), 0.16)' : ''}
+                                disabled={this.props.clientConnecting}
                                 icon={
                                     <HandIcon
                                         style={{
@@ -2631,6 +2643,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             ariaExpanded={this.state.showMenu}
                             onToggle={this.onMenuClick}
                             tooltipText={settingsButtonLabel}
+                            disabled={this.props.clientConnecting}
                             icon={
                                 <MenuIcon
                                     style={{
@@ -2643,11 +2656,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         {(isDMChannel(this.props.channel) || (!isHost && !this.props.isAdmin) || this.props.sessions.length <= 1) ? (
                             <WidgetButton
                                 id='calls-widget-leave-button'
-                                icon={<LeaveCallIcon style={{fill: 'white'}}/>}
-                                bgColor='var(--dnd-indicator)'
+                                icon={<LeaveCallIcon style={this.props.clientConnecting ? {} : {fill: 'white'}}/>}
+                                bgColor={this.props.clientConnecting ? 'rgba(var(--center-channel-color-rgb), 0.08)' : 'var(--dnd-indicator)'}
                                 bgColorHover='linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08))'
                                 ariaLabel={leaveMenuLabel}
                                 tooltipText={leaveMenuLabel}
+                                disabled={this.props.clientConnecting}
                                 shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
                                 onToggle={this.onDisconnectClick}
                             />
