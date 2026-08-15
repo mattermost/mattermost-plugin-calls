@@ -53,7 +53,7 @@ import VideoOnIcon from 'src/components/icons/video_on';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
 import {RingbackContainer} from 'src/components/incoming_calls/ringback_container';
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
-import {VideoLoadingOverlay} from 'src/components/loading_overlays';
+import {JoinLoadingOverlay, VideoLoadingOverlay} from 'src/components/loading_overlays';
 import {
     CallAlertConfigs,
     CallRecordingDisclaimerStrings,
@@ -97,7 +97,6 @@ import styled, {css} from 'styled-components';
 
 import {CallParticipantAvatar} from './call_participant_avatar';
 import {CallStatusText} from './call_status_text';
-import {ChannelNameLink} from './channel_name_link';
 import JoinNotification from './join_notification';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import WidgetBanner from './widget_banner';
@@ -2161,6 +2160,37 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
+    renderChannelName = () => {
+        return (
+            <React.Fragment>
+                <div style={{margin: '0 2px 0 4px'}}>{untranslatable('•')}</div>
+
+                <a
+                    href={this.props.channelURL}
+                    onClick={this.onChannelLinkClick}
+                    className='calls-channel-link'
+                    style={{appRegion: 'no-drag', padding: '0', minWidth: 0} as CSSProperties}
+                >
+                    {isPublicChannel(this.props.channel) && <CompassIcon icon='globe'/>}
+                    {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
+                    {isDMChannel(this.props.channel) && <CompassIcon icon='account-outline'/>}
+                    {isGMChannel(this.props.channel) && <CompassIcon icon='account-multiple-outline'/>}
+                    <span
+                        style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            fontWeight: 600,
+                            letterSpacing: '0.02em',
+                        }}
+                    >
+                        {this.props.channelDisplayName}
+                    </span>
+                </a>
+            </React.Fragment>
+        );
+    };
+
     renderTopBar = () => {
         const {formatMessage} = this.props.intl;
         const openPopOutLabel = formatMessage({defaultMessage: 'Open in new window'});
@@ -2344,7 +2374,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     render() {
-        if (!this.props.channel || !window.callsClient || !this.props.show || this.props.clientConnecting) {
+        if (!this.props.channel || !window.callsClient || !this.props.show) {
             return null;
         }
 
@@ -2415,6 +2445,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 ref={this.node}
             >
                 <RingbackContainer/>
+                <JoinLoadingOverlay
+                    visible={this.props.clientConnecting}
+                    joining={this.props.global ? !this.props.startingCall : this.props.sessions.length > 0}
+                />
+
                 <div
                     ref={this.menuNode}
                     style={this.style.menu}
@@ -2467,12 +2502,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 <div style={this.style.callInfo}>
                                     {this.renderRecordingBadge()}
                                     <CallStatusTimer/>
-                                    <ChannelNameLink
-                                        channel={this.props.channel}
-                                        channelURL={this.props.channelURL}
-                                        channelDisplayName={this.props.channelDisplayName}
-                                        global={this.props.global}
-                                    />
+                                    {!isDMChannel(this.props.channel) && this.renderChannelName()}
                                 </div>
                             </div>
 

@@ -1,9 +1,47 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useState} from 'react';
+import React, {useMemo, useState} from 'react';
+import {useIntl} from 'react-intl';
 import {Spinner} from 'src/components/shared';
 import styled, {css} from 'styled-components';
+
+export type JoinLoadingOverlayProps = {
+    visible: boolean,
+    joining: boolean,
+}
+
+export function JoinLoadingOverlay({visible, joining}: JoinLoadingOverlayProps) {
+    const {formatMessage} = useIntl();
+    const [transitionEnded, setTransitionEnded] = useState(false);
+    const wasJoining = useMemo(() => {
+        return joining;
+    }, [/* intentionally empty */]);
+
+    if (!visible && transitionEnded) {
+        return null;
+    }
+
+    const onTransitionEnd = () => {
+        setTransitionEnded(true);
+    };
+
+    const text = wasJoining ? formatMessage({defaultMessage: 'Joining call…'}) : formatMessage({defaultMessage: 'Starting call…'});
+
+    return (
+        <Container
+            data-testid={'calls-widget-loading-overlay'}
+            onTransitionEnd={onTransitionEnd}
+            $visible={visible}
+            $background='rgba(var(--center-channel-bg-rgb), 0.7)'
+        >
+            <Body>
+                <Spinner $size={16}/>
+                <Text $size={12}>{text}</Text>
+            </Body>
+        </Container>
+    );
+}
 
 const Container = styled.div<{$visible: boolean, $background?: string}>`
   position: absolute;
