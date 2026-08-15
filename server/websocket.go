@@ -806,7 +806,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 				)
 			}
 
-			postID, threadID, err := p.createCallStartedPost(state, userID, channelID, joinData.Title, joinData.ThreadID)
+			postID, threadID, err := p.createCallStartedPost(state, userID, channelID, joinData.Title, joinData.ThreadID, channel.Type)
 			if err != nil {
 				p.LogError(err.Error())
 			}
@@ -815,6 +815,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			state.Call.ThreadID = threadID
 			if err := p.store.UpdateCall(&state.Call); err != nil {
 				p.LogError(err.Error())
+			}
+
+			if channel.Type == model.ChannelTypeDirect {
+				p.startDMNoAnswerTimer(channelID, state.Call.ID)
 			}
 
 			// TODO: send all the info attached to a call.
@@ -827,6 +831,12 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 				"owner_id":  state.Call.OwnerID,
 				"host_id":   state.Call.GetHostID(),
 			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+		}
+
+		if !p.isBot(userID) && channel.Type == model.ChannelTypeDirect {
+			if len(state.distinctNonBotUserIDs(p.getBotID())) >= 2 {
+				p.cancelDMNoAnswerTimer(channelID)
+			}
 		}
 
 		p.LogDebug("session has joined call",
@@ -1402,7 +1412,47 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	}
 }
 
+// deferredRTCSessionsCloser captures everything needed to force-close every session in the call
+// before setCallEnded wipes Props.NodeID and Props.RTCDHost, and returns the disconnect work to be
+// run later.
+// Force-closing is only a fallback for clients that don't act on call_end, so the returned function
+// must not run until the call lock has been released — on the embedded RTC server path
+// closeRTCSession synchronously invokes the session close callback, which re-enters removeSession
+// and takes the same non-reentrant mutex — and until clients have had a chance to leave on their
+// own. See forceCloseRTCSessionsAfterGrace.
+func (p *Plugin) deferredRTCSessionsCloser(state *callState, channelID string) func() error {
+	nodeID := state.Call.Props.NodeID
+	callID := state.Call.ID
+	rtcdHost := state.Call.Props.RTCDHost
+
+	type sessionInfo struct {
+		userID, connID string
+	}
+	sessionInfos := make([]sessionInfo, 0, len(state.sessions))
+	for connID, session := range state.sessions {
+		sessionInfos = append(sessionInfos, sessionInfo{userID: session.UserID, connID: connID})
+	}
+
+	return func() error {
+		var errs []error
+		for _, si := range sessionInfos {
+			if err := p.closeRTCSessionWithHost(si.userID, si.connID, channelID, nodeID, callID, rtcdHost); err != nil {
+				errs = append(errs, fmt.Errorf("failed to close RTC session (userID=%s, connID=%s): %w", si.userID, si.connID, err))
+			}
+		}
+
+		return errors.Join(errs...)
+	}
+}
+
 func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID, callID string) error {
+	return p.closeRTCSessionWithHost(userID, connID, channelID, handlerID, callID, "")
+}
+
+// closeRTCSessionWithHost is closeRTCSession with an explicitly provided RTCD host. Callers that
+// disconnect sessions after the call has been marked as ended must pass one, since setCallEnded
+// clears Props.RTCDHost and there would be nothing left to look up in the store.
+func (p *Plugin) closeRTCSessionWithHost(userID, connID, channelID, handlerID, callID, rtcdHost string) error {
 	p.LogDebug("closeRTCSession", "userID", userID, "connID", connID, "channelID", channelID)
 	if p.rtcServer != nil {
 		if handlerID == p.nodeID {
@@ -1428,9 +1478,13 @@ func (p *Plugin) closeRTCSession(userID, connID, channelID, handlerID, callID st
 			},
 		}
 
-		host, err := p.store.GetRTCDHostForCall(callID, db.GetCallOpts{})
-		if err != nil {
-			return fmt.Errorf("failed to get RTCD host for call: %w", err)
+		host := rtcdHost
+		if host == "" {
+			var err error
+			host, err = p.store.GetRTCDHostForCall(callID, db.GetCallOpts{})
+			if err != nil {
+				return fmt.Errorf("failed to get RTCD host for call: %w", err)
+			}
 		}
 
 		if err := p.rtcdManager.Send(msg, host); err != nil {

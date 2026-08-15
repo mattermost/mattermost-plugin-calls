@@ -118,7 +118,7 @@ function connectCall(
         }
 
         window.callsClient = new CallsClient(clientConfig);
-        window.currentCallData = CurrentCallDataDefault;
+        window.currentCallData = {...CurrentCallDataDefault};
 
         window.callsClient.on('connect', () => store.dispatch(setClientConnecting(false)));
 

@@ -292,6 +292,108 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 	res.Msg = "success"
 }
 
+// declineCall ends a DM call on behalf of the callee, disconnecting the caller
+// and updating the call post to reflect the declined state.
+// Callers must ensure channelID belongs to a DM channel before calling.
+func (p *Plugin) declineCall(channelID, userID string) (int, error) {
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+		return http.StatusForbidden, fmt.Errorf("forbidden")
+	}
+
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		return http.StatusInternalServerError, fmt.Errorf("failed to lock call: %w", err)
+	}
+
+	if state == nil {
+		p.unlockCall(channelID)
+		return http.StatusBadRequest, fmt.Errorf("no call ongoing")
+	}
+
+	// Only allow declining if the user is not already in the call.
+	// If they have a session, they're already in or have joined elsewhere.
+	for _, sess := range state.sessions {
+		if sess.UserID == userID {
+			p.unlockCall(channelID)
+			return http.StatusForbidden, fmt.Errorf("cannot decline a call the caller is already in")
+		}
+	}
+
+	if len(state.distinctNonBotUserIDs(p.getBotID())) != 1 {
+		p.unlockCall(channelID)
+		return http.StatusOK, nil
+	}
+
+	callID := state.Call.ID
+	postID := state.Call.PostID
+	participants := mapKeys(state.Call.Props.Participants)
+
+	// Captured before setCallEnded clears the routing info the disconnects need. The actual
+	// close runs once clients have been told the call ended, see below.
+	closeSessions := p.deferredRTCSessionsCloser(state, channelID)
+
+	setCallEnded(&state.Call)
+
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		p.unlockCall(channelID)
+		return http.StatusInternalServerError, fmt.Errorf("failed to update call: %w", err)
+	}
+	if err := p.store.DeleteCallsSessions(callID); err != nil {
+		p.LogError("declineCall: failed to delete call sessions", "channelID", channelID, "err", err.Error())
+	}
+
+	p.cancelDMNoAnswerTimer(channelID)
+	p.unlockCall(channelID)
+
+	if _, err := p.updateCallPostEnded(postID, participants, callEndReasonDeclined); err != nil {
+		p.LogError("declineCall: failed to update call post", "channelID", channelID, "err", err.Error())
+	}
+
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
+		ChannelID:           channelID,
+		ReliableClusterSend: true,
+	})
+
+	p.publishWebSocketEvent(wsEventUserDismissedNotification, map[string]interface{}{
+		"userID": userID,
+		"callID": callID,
+	}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
+
+	p.forceCloseRTCSessionsAfterGrace("declineCall", closeSessions)
+
+	return http.StatusOK, nil
+}
+
+func (p *Plugin) handleDeclineCall(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleDeclineCall", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		res.Err = fmt.Errorf("failed to get channel: %w", appErr).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	if channel.Type != model.ChannelTypeDirect {
+		res.Err = "decline is only supported for DM calls"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	code, err := p.declineCall(channelID, userID)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = code
+		return
+	}
+
+	res.Code = http.StatusOK
+	res.Msg = "success"
+}
+
 func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
 	// Referrer-based CSRF protection
 	referrer := r.Header.Get("Referer")

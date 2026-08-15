@@ -4,6 +4,8 @@
 package main
 
 import (
+	"time"
+
 	"golang.org/x/time/rate"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/batching"
@@ -34,6 +36,7 @@ func main() {
 		callsClusterLocks:      map[string]*cluster.Mutex{},
 		addSessionsBatchers:    map[string]*batching.Batcher{},
 		removeSessionsBatchers: map[string]*batching.Batcher{},
+		dmNoAnswerTimers:       map[string]*time.Timer{},
 	}
 	p.apiRouter = p.newAPIRouter()
 	plugin.ClientMain(p)

@@ -18,12 +18,13 @@ import {
     allowScreenSharing,
     areHostControlsAllowed,
     callsConfig,
-    callStartAtForCurrentCall,
     channelForCurrentCall,
+    clientConnecting,
     expandedView,
     getChannelUrlAndDisplayName,
     hostChangeAtForCurrentCall,
     hostIDForCurrentCall,
+    isCurrentDMCallInCallingState,
     isRecordingInCurrentCall,
     profilesInCurrentCallMap,
     recordingForCurrentCall,
@@ -73,7 +74,6 @@ const mapStateToProps = (state: GlobalState) => {
         sessions,
         sessionsMap: sessionsInCurrentCallMap(state),
         currentSession: sessionForCurrentCall(state),
-        callStartAt: callStartAtForCurrentCall(state),
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),
         callRecording: recordingForCurrentCall(state),
@@ -96,6 +96,8 @@ const mapStateToProps = (state: GlobalState) => {
         hostControlsAllowed: areHostControlsAllowed(state),
         enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
         otherSessions: sessionsForOtherUsersInCall(state),
+        isDMCalling: isCurrentDMCallInCallingState(state),
+        clientConnecting: clientConnecting(state),
     };
 };
 

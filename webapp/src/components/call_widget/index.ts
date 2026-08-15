@@ -4,7 +4,7 @@
 import {GlobalState} from '@mattermost/types/store';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId, getMyTeams, getTeam} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUser, getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
@@ -20,13 +20,13 @@ import {
 import {
     allowScreenSharing,
     callsConfig,
-    callStartAtForCurrentCall,
     clientConnecting,
     expandedView,
     getChannelUrlAndDisplayName,
     hostChangeAtForCurrentCall,
     hostControlNoticesForCurrentCall,
     hostIDForCurrentCall,
+    isCurrentDMCallInCallingState,
     isRecordingInCurrentCall,
     profilesInCurrentCallMap,
     recentlyJoinedUsersInCurrentCall,
@@ -73,6 +73,7 @@ const mapStateToProps = (state: GlobalState) => {
 
     return {
         currentUserID,
+        currentUserProfile: getCurrentUser(state),
         channel,
         team: getTeam(state, channel?.team_id || getCurrentTeamId(state)),
         channelURL,
@@ -81,7 +82,6 @@ const mapStateToProps = (state: GlobalState) => {
         sessionsMap: sessionsInCurrentCallMap(state),
         currentSession: sessionForCurrentCall(state),
         profiles,
-        callStartAt: callStartAtForCurrentCall(state),
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),
         callRecording: recordingForCurrentCall(state),
@@ -101,6 +101,7 @@ const mapStateToProps = (state: GlobalState) => {
         connectedDMUser,
         otherSessions: sessionsForOtherUsersInCall(state),
         isAdmin: isCurrentUserSystemAdmin(state),
+        isDMCalling: isCurrentDMCallInCallingState(state),
     };
 };
 

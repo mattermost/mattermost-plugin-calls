@@ -25,6 +25,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
+	rtcd "github.com/mattermost/rtcd/service"
 	"github.com/mattermost/rtcd/service/rtc"
 
 	"github.com/stretchr/testify/mock"
@@ -478,6 +479,170 @@ func TestHandleCallStateRequest(t *testing.T) {
 	})
 }
 
+func TestDeferredRTCSessionsCloser(t *testing.T) {
+	const rtcdHostIP = "127.0.0.1"
+
+	// Route through rtcd so the disconnects are observable, and so the closer has to carry the
+	// host it captured in order to reach the client.
+	newPlugin := func(t *testing.T) (*Plugin, *serverMocks.MockRTCDClient) {
+		t.Helper()
+
+		mockAPI := &pluginMocks.MockAPI{}
+		mockRTCDClient := &serverMocks.MockRTCDClient{}
+		t.Cleanup(func() { mockRTCDClient.AssertExpectations(t) })
+
+		p := &Plugin{
+			MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
+		}
+
+		store, tearDown := NewTestStore(t)
+		t.Cleanup(tearDown)
+		p.store = store
+
+		p.rtcdManager = &rtcdClientManager{
+			ctx:   p,
+			hosts: map[string]*rtcdHost{rtcdHostIP: {ip: rtcdHostIP, client: mockRTCDClient}},
+		}
+
+		mockLogs(mockAPI)
+
+		return p, mockRTCDClient
+	}
+
+	newCallState := func(t *testing.T, p *Plugin, connIDs ...string) *callState {
+		t.Helper()
+
+		call := &public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			ChannelID: model.NewId(),
+			StartAt:   time.Now().UnixMilli(),
+			PostID:    model.NewId(),
+			ThreadID:  model.NewId(),
+			OwnerID:   model.NewId(),
+			Props:     public.CallProps{RTCDHost: rtcdHostIP},
+		}
+		require.NoError(t, p.store.CreateCall(call))
+
+		state := &callState{Call: *call, sessions: map[string]*public.CallSession{}}
+		for _, connID := range connIDs {
+			state.sessions[connID] = &public.CallSession{
+				ID:     connID,
+				CallID: call.ID,
+				UserID: model.NewId(),
+			}
+		}
+
+		return state
+	}
+
+	// Matches the Leave message closeRTCSession sends for a specific session.
+	leaveFor := func(connID string) interface{} {
+		return mock.MatchedBy(func(msg rtcd.ClientMessage) bool {
+			data, ok := msg.Data.(map[string]string)
+			return ok && msg.Type == rtcd.ClientMessageLeave && data["sessionID"] == connID
+		})
+	}
+
+	t.Run("no sessions to close", func(t *testing.T) {
+		p, _ := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		state := newCallState(t, p)
+
+		// No Send expectations, so the strict mock catches a stray disconnect.
+		require.NoError(t, p.deferredRTCSessionsCloser(state, state.Call.ChannelID)())
+	})
+
+	t.Run("closes every session in the call", func(t *testing.T) {
+		p, mockRTCDClient := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		firstConnID, secondConnID := model.NewId(), model.NewId()
+		state := newCallState(t, p, firstConnID, secondConnID)
+
+		mockRTCDClient.On("Send", leaveFor(firstConnID)).Return(nil).Once()
+		mockRTCDClient.On("Send", leaveFor(secondConnID)).Return(nil).Once()
+
+		require.NoError(t, p.deferredRTCSessionsCloser(state, state.Call.ChannelID)())
+	})
+
+	t.Run("still routes to the right host once the ended call has been persisted", func(t *testing.T) {
+		p, mockRTCDClient := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		connID := model.NewId()
+		state := newCallState(t, p, connID)
+
+		// This is the regression the capture-then-close split guards: setCallEnded blanks
+		// Props.RTCDHost, so a closer that resolved the host at call time would have nothing left
+		// to route through by the time it runs.
+		closeSessions := p.deferredRTCSessionsCloser(state, state.Call.ChannelID)
+
+		setCallEnded(&state.Call)
+		require.NoError(t, p.store.UpdateCall(&state.Call))
+
+		mockRTCDClient.On("Send", leaveFor(connID)).Return(nil).Once()
+
+		require.NoError(t, closeSessions())
+	})
+
+	t.Run("closes the sessions captured, not the ones left in the state", func(t *testing.T) {
+		p, mockRTCDClient := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		connID := model.NewId()
+		state := newCallState(t, p, connID)
+
+		closeSessions := p.deferredRTCSessionsCloser(state, state.Call.ChannelID)
+
+		// Sessions are deleted before the closer runs, so it has to work off its own snapshot.
+		state.sessions = map[string]*public.CallSession{}
+
+		mockRTCDClient.On("Send", leaveFor(connID)).Return(nil).Once()
+
+		require.NoError(t, closeSessions())
+	})
+
+	t.Run("joins the failures and keeps closing the remaining sessions", func(t *testing.T) {
+		p, mockRTCDClient := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		failingConnID, healthyConnID := model.NewId(), model.NewId()
+		state := newCallState(t, p, failingConnID, healthyConnID)
+
+		mockRTCDClient.On("Send", leaveFor(failingConnID)).Return(fmt.Errorf("rtcd unreachable")).Once()
+		mockRTCDClient.On("Send", leaveFor(healthyConnID)).Return(nil).Once()
+
+		err := p.deferredRTCSessionsCloser(state, state.Call.ChannelID)()
+
+		// One failure must not stop the other session from being disconnected, and the error
+		// has to name the session that failed so a partial failure stays diagnosable.
+		require.Error(t, err)
+		require.ErrorContains(t, err, failingConnID)
+		require.ErrorContains(t, err, state.sessions[failingConnID].UserID)
+		require.ErrorContains(t, err, "rtcd unreachable")
+		require.NotContains(t, err.Error(), healthyConnID)
+	})
+
+	t.Run("names every session when they all fail", func(t *testing.T) {
+		p, mockRTCDClient := newPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		firstConnID, secondConnID := model.NewId(), model.NewId()
+		state := newCallState(t, p, firstConnID, secondConnID)
+
+		mockRTCDClient.On("Send", leaveFor(firstConnID)).Return(fmt.Errorf("rtcd unreachable")).Once()
+		mockRTCDClient.On("Send", leaveFor(secondConnID)).Return(fmt.Errorf("rtcd unreachable")).Once()
+
+		err := p.deferredRTCSessionsCloser(state, state.Call.ChannelID)()
+
+		require.Error(t, err)
+		require.ErrorContains(t, err, firstConnID)
+		require.ErrorContains(t, err, secondConnID)
+	})
+}
+
 func TestWebSocketBroadcastToModel(t *testing.T) {
 	t.Run("nil/empty", func(t *testing.T) {
 		var wsb *WebSocketBroadcast
@@ -786,6 +951,7 @@ func TestHandleJoin(t *testing.T) {
 		sessions:               map[string]*session{},
 		addSessionsBatchers:    map[string]*batching.Batcher{},
 		removeSessionsBatchers: map[string]*batching.Batcher{},
+		dmNoAnswerTimers:       map[string]*time.Timer{},
 	}
 
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
@@ -938,6 +1104,13 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
+		// Only this one user ever joined, so removeUserSession checks the channel type to tell a
+		// cancelled DM call apart from one that ended normally.
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
+		}, nil).Once()
+
 		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
 
 		// Call unlock
@@ -1068,6 +1241,13 @@ func TestHandleJoin(t *testing.T) {
 		require.Len(t, state.sessions, 10)
 
 		// Session leaving call path
+
+		// removeUserSession calls GetChannel for DM auto-end check when sessions remain.
+		// Channel is open (not DM), so auto-end won't fire, but the call must be handled.
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
+		}, nil)
 
 		mockMetrics.On("DecWebSocketConn").Times(10)
 		mockRTCMetrics.On("DecRTCSessions", "default").Times(10)
@@ -1423,6 +1603,13 @@ func TestHandleJoin(t *testing.T) {
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		// This is a DM where only the caller ever joined, so removeUserSession looks the channel up
+		// to decide the call was cancelled rather than ended.
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeDirect,
+		}, nil).Once()
 
 		// Call unlock
 		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()

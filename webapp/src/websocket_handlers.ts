@@ -36,6 +36,7 @@ import {
     loadCallState,
     loadProfilesByIdsIfMissing,
     removeIncomingCallNotification,
+    setDMCalleeAnsweredAt,
     userLeft,
 } from 'src/actions';
 import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/client';
@@ -82,6 +83,9 @@ import {logErr, logInfo} from './log';
 import {
     calls,
     channelIDForCurrentCall,
+    dmCalleeAnsweredAtForCurrentCall,
+    idForCurrentCall,
+    isCurrentUserOwnerOfCurrentCall,
     profilesInCurrentCallMap,
     ringingEnabled,
     shouldPlayJoinUserSound,
@@ -90,8 +94,11 @@ import {Store} from './types/mattermost-webapp';
 import {
     followThread,
     getCallsClient,
+    getCallsClientChannelID,
     getCallsClientSessionID,
+    getCallsWindow,
     getUserDisplayName,
+    isDMChannel,
     notificationsStopRinging,
     playSound,
 } from './utils';
@@ -188,7 +195,14 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
 
     if (window.callsClient?.channelID === channelID) {
         if (sessionID === getCallsClientSessionID()) {
-            playSound('join_self');
+            // The DM caller hears the outbound ringback instead of the join self sound
+            const dmCallerWillHearRingback = ringingEnabled(store.getState()) &&
+                isDMChannel(getChannel(store.getState(), channelID)) &&
+                isCurrentUserOwnerOfCurrentCall(store.getState());
+
+            if (!dmCallerWillHearRingback) {
+                playSound('join_self');
+            }
         } else if (userID !== currentUserID && shouldPlayJoinUserSound(store.getState())) {
             playSound('join_user');
         }
@@ -202,6 +216,26 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
         if (ringingEnabled(store.getState())) {
             store.dispatch(removeIncomingCallNotification(callID));
             notificationsStopRinging(); // And stop ringing for _any_ incoming call.
+        }
+    }
+
+    // A DM call is answered the moment the other party joins, which is where its duration
+    // should start counting from. Only the caller needs to observe this: the callee's own answer
+    // moment is their join, which we get from the calls client instead (see
+    // callTimerStartAtForCurrentCall).
+    const currentCallID = idForCurrentCall(store.getState());
+    if (currentCallID && getCallsClientChannelID() === channelID && userID !== currentUserID &&
+        isDMChannel(getChannel(store.getState(), channelID)) &&
+        isCurrentUserOwnerOfCurrentCall(store.getState()) &&
+        !dmCalleeAnsweredAtForCurrentCall(store.getState())) {
+        const answeredAt = Date.now();
+        store.dispatch(setDMCalleeAnsweredAt(currentCallID, answeredAt));
+
+        // Keep a copy in the window so expanded view can pick it up
+        // as soon as its opened. We later sync it to its store in CallStatusTimer.
+        const callsWindow = getCallsWindow();
+        if (callsWindow.currentCallData) {
+            callsWindow.currentCallData.dmCalleeAnsweredAt = answeredAt;
         }
     }
 
@@ -389,13 +423,23 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
         },
     });
 
+    // When a DM caller initiates a call, they are set as host immediately,
+    // which is redundant with the calling state.The server sends this event
+    // before call_start; at this stage, we don't have call info yet, indicating that we are the initiator.
+    if (
+        ev.data.hostID === getCurrentUserId(store.getState()) &&
+        isDMChannel(getChannel(store.getState(), channelID)) &&
+        !calls(store.getState())[channelID]) {
+        return;
+    }
+
     const hostProfile = profilesInCurrentCallMap(store.getState())[ev.data.hostID] ||
         getUser(store.getState(), ev.data.hostID);
     if (!hostProfile) {
         return;
     }
-    const displayName = getUserDisplayName(hostProfile);
 
+    const displayName = getUserDisplayName(hostProfile);
     const hostNotice: HostControlNotice = {
         type: HostControlNoticeType.HostChanged,
         callID: ev.data.call_id,

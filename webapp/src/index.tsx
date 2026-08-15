@@ -97,7 +97,7 @@ import {makeSameChannelLinkClickHandler} from 'src/components/same_channel_link_
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
-import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
+import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import RestClient from 'src/rest_client';
 import slashCommandsHandler from 'src/slash_commands';
@@ -124,7 +124,7 @@ import ChannelHeaderButton from './components/channel_header_button';
 import ChannelHeaderDropdownButton from './components/channel_header_dropdown_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import ChannelLinkLabel from './components/channel_link_label';
-import PostType from './components/custom_post_types/post_type';
+import {PostTypeEvent} from './components/custom_post_types/post_type_event';
 import {PostTypeTranscription} from './components/custom_post_types/post_type_transcription';
 import ExpandedView from './components/expanded_view';
 import CompassIcon from './components/icons/compassIcon';
@@ -133,7 +133,7 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
-import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from './log';
+import {flushLogsToAccumulated, logDebug, logErr, logInfo} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
@@ -354,22 +354,11 @@ export default class Plugin {
             document.getElementById('calls')?.remove();
         });
 
-        if (window.desktop) {
-            const widgetCh = new BroadcastChannel('calls_widget');
-            this.unsubscribers.push(() => {
-                widgetCh.close();
-            });
-
-            widgetCh.onmessage = (ev) => {
-                logWarn('unexpected message on widget channel', ev.data);
-            };
-        }
-
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
         registry.registerChannelToastComponent(injectIntl(ChannelCallToast));
-        registry.registerPostTypeComponent(CALL_START_POST_TYPE, PostType);
+        registry.registerPostTypeComponent(CALL_EVENT_POST_TYPE, PostTypeEvent);
         registry.registerPostTypeComponent(CALL_RECORDING_POST_TYPE, PostTypeRecording);
         registry.registerPostTypeComponent(CALL_TRANSCRIPTION_POST_TYPE, PostTypeTranscription);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);
@@ -724,7 +713,7 @@ export default class Plugin {
                     dcLocking: hasDCSignalingLockSupport(callsVersionInfo(state)),
                     enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
                 });
-                window.currentCallData = CurrentCallDataDefault;
+                window.currentCallData = {...CurrentCallDataDefault};
 
                 const locale = getCurrentUserLocale(state) || 'en';
 

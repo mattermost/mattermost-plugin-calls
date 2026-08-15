@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {expect, Page} from '@playwright/test';
+import {errors, expect, Page} from '@playwright/test';
 
 import {apiGetGroupChannel} from './channels';
 import {baseURL, defaultTeam, pluginID} from './constants';
@@ -69,9 +69,16 @@ export default class PlaywrightDevPage {
 
     async slashCallEnd() {
         await this.sendSlashCommand('/call end');
-        const modal = this.page.locator('.modal-content');
-        if (await modal.isVisible()) {
-            await modal.getByRole('button', {name: 'Understood'}).click();
+
+        // The confirmation modal only shows up in some cases, so we give it a
+        // short window to render and treat its absence as fine. Anything other
+        // than a timeout is a real failure.
+        try {
+            await this.page.locator('.modal-content').getByRole('button', {name: 'Understood'}).click({timeout: 2000});
+        } catch (err) {
+            if (!(err instanceof errors.TimeoutError)) {
+                throw err;
+            }
         }
     }
 
@@ -379,17 +386,29 @@ export default class PlaywrightDevPage {
 
     async leaveFromPopout() {
         await this.page.locator('#calls-popout-leave-button').click();
-        const menu = this.page.getByTestId('dropdownmenu');
-        if (await menu.isVisible()) {
-            await menu.getByText('Leave call').click();
+
+        // The leave control is either a plain button that disconnects on click, or a
+        // dot menu that needs a second click on 'Leave call'. We can't tell which one
+        // we got from here, so give the menu a short window to render.
+        try {
+            await this.page.getByTestId('dropdownmenu').getByText('Leave call').click({timeout: 2000});
+        } catch (err) {
+            if (!(err instanceof errors.TimeoutError)) {
+                throw err;
+            }
         }
     }
 
     async leaveFromWidget() {
         await this.page.locator('#calls-widget-leave-button').click();
-        const menu = this.page.getByTestId('dropdownmenu');
-        if (await menu.isVisible()) {
-            await menu.getByText('Leave call').click();
+
+        // See leaveFromPopout: the menu is only there on the dot menu variant.
+        try {
+            await this.page.getByTestId('dropdownmenu').getByText('Leave call').click({timeout: 2000});
+        } catch (err) {
+            if (!(err instanceof errors.TimeoutError)) {
+                throw err;
+            }
         }
     }
 }

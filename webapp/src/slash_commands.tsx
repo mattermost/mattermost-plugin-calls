@@ -10,7 +10,7 @@ import {ActionResult} from 'mattermost-redux/types/actions';
 import {defineMessage} from 'react-intl';
 import {
     displayGenericErrorModal,
-    endCall,
+    hostEndCallForEveryone,
     startCallRecording,
     stopCallRecording,
 } from 'src/actions';
@@ -150,7 +150,7 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         try {
-            await endCall(args.channel_id);
+            await hostEndCallForEveryone(args.channel_id);
         } catch (_err) {
             store.dispatch(displayGenericErrorModal(
                 defineMessage({defaultMessage: 'Unable to end the call'}),
