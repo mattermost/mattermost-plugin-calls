@@ -29,6 +29,9 @@ export function CallStatusText(props: Props) {
     if (isDirectChannel(channel) && (isDMCalling || props.clientConnecting)) {
         // While a DM call is ringing (callee hasn't joined yet), show the callee's name.
         // Once answered, and for all other calls, use the active speaker.
+        if (!dmCallee) {
+            return null;
+        }
         return <ParticipantName profile={dmCallee}/>;
     }
 

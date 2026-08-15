@@ -44,14 +44,15 @@ type Opts = {
     channel?: Channel | null;
     isDMCalling?: boolean;
     clientConnecting?: boolean;
+    calleeLoaded?: boolean;
 }
 
-const renderText = ({channel = dmChannel, isDMCalling = false, clientConnecting = false}: Opts = {}) => {
+const renderText = ({channel = dmChannel, isDMCalling = false, clientConnecting = false, calleeLoaded = true}: Opts = {}) => {
     mock(channelForCurrentCall).mockReturnValue(channel ?? undefined);
     mock(useDMCallingState).mockReturnValue({
         isDM: channel?.type === 'D',
         isDMCalling,
-        dmCallee: callee,
+        dmCallee: calleeLoaded ? callee : undefined,
     });
 
     const {container} = render(
@@ -103,5 +104,17 @@ describe('CallStatusText', () => {
         const container = renderText({clientConnecting: true});
 
         expect(container.textContent).not.toContain('is talking');
+    });
+
+    test('should render nothing when connecting or ringing and the callee profile has not loaded yet', () => {
+        const connecting = renderText({clientConnecting: true, calleeLoaded: false});
+        const ringing = renderText({isDMCalling: true, calleeLoaded: false});
+
+        expect(connecting).toBeEmptyDOMElement();
+        expect(ringing).toBeEmptyDOMElement();
+        expect(connecting.textContent).not.toContain('No one is talking');
+        expect(ringing.textContent).not.toContain('No one is talking');
+        expect(connecting.textContent).not.toContain('speaker');
+        expect(ringing.textContent).not.toContain('speaker');
     });
 });
