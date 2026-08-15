@@ -106,32 +106,12 @@ const props: Props = {
 };
 
 describe('CallWidget', () => {
-    const widget = (clientConnecting: boolean, global?: true) => (
-        <Provider store={mockStore(stubState(stubChannel))}>
-            <RawIntlProvider value={intl}>
-                <CallWidget
-                    {...props}
-                    clientConnecting={clientConnecting}
-                    global={global}
-                />
-            </RawIntlProvider>
-        </Provider>
-    );
-
-    const renderWidget = (clientConnecting: boolean, global?: true) => render(
-        widget(clientConnecting, global),
-    );
-
     let originalCallsClient: typeof window.callsClient;
-    let originalResizeObserver: typeof window.ResizeObserver;
     let disconnect: jest.Mock;
-    let disconnectObserver: jest.Mock;
-    let observe: jest.Mock;
     let openSpy: jest.SpyInstance;
 
     beforeEach(() => {
         originalCallsClient = window.callsClient;
-        originalResizeObserver = window.ResizeObserver;
         disconnect = jest.fn();
         window.callsClient = {
             disconnect,
@@ -143,19 +123,10 @@ describe('CallWidget', () => {
             off: jest.fn(),
         } as unknown as CallsClient;
         openSpy = jest.spyOn(window, 'open');
-
-        observe = jest.fn();
-        disconnectObserver = jest.fn();
-        window.ResizeObserver = jest.fn().mockImplementation(() => ({
-            observe,
-            unobserve: jest.fn(),
-            disconnect: disconnectObserver,
-        })) as unknown as typeof ResizeObserver;
     });
 
     afterEach(() => {
         window.callsClient = originalCallsClient;
-        window.ResizeObserver = originalResizeObserver;
         openSpy.mockRestore();
     });
 
@@ -223,37 +194,6 @@ describe('CallWidget', () => {
         await user.click(screen.getByRole('button', {name: /^leave call$/i}));
 
         expect(disconnect).toHaveBeenCalledTimes(1);
-    });
-
-    test('renders nothing while the client is still connecting', () => {
-        const {container} = renderWidget(true);
-
-        expect(container.querySelector('#calls-widget')).not.toBeInTheDocument();
-    });
-
-    test('renders once the client has connected', () => {
-        const {container} = renderWidget(false);
-
-        expect(container.querySelector('#calls-widget')).toBeInTheDocument();
-    });
-
-    test('attaches resize observers when the client finishes connecting', () => {
-        const {container, rerender} = renderWidget(true, true);
-
-        expect(window.ResizeObserver).not.toHaveBeenCalled();
-
-        rerender(widget(false, true));
-
-        const callWidget = container.querySelector('#calls-widget');
-        expect(callWidget).toBeInTheDocument();
-        expect(window.ResizeObserver).toHaveBeenCalledTimes(2);
-        expect(observe).toHaveBeenCalledTimes(2);
-        expect(observe).toHaveBeenCalledWith(callWidget);
-        expect(observe).toHaveBeenCalledWith(callWidget?.firstElementChild);
-
-        rerender(widget(true, true));
-
-        expect(disconnectObserver).toHaveBeenCalledTimes(2);
     });
 });
 

@@ -183,8 +183,8 @@ interface State {
 }
 
 export default class CallWidget extends React.PureComponent<Props, State> {
-    private readonly node: React.MutableRefObject<HTMLDivElement | null>;
-    private readonly menuNode: React.MutableRefObject<HTMLDivElement | null>;
+    private readonly node: React.RefObject<HTMLDivElement>;
+    private readonly menuNode: React.RefObject<HTMLDivElement>;
     private audioMenu: HTMLUListElement | null = null;
     private widgetResizerObserver: ResizeObserver | null = null;
     private menuResizeObserver: ResizeObserver | null = null;
@@ -331,8 +331,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             otherVideoStream: null,
             initializingSelfVideo: false,
         };
-        this.node = React.createRef<HTMLDivElement>() as React.MutableRefObject<HTMLDivElement | null>;
-        this.menuNode = React.createRef<HTMLDivElement>() as React.MutableRefObject<HTMLDivElement | null>;
+        this.node = React.createRef();
+        this.menuNode = React.createRef();
         this.expandedViewWindowRef = React.createRef<Window>() as React.MutableRefObject<Window | null>;
     }
 
@@ -453,6 +453,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.unsubscribers.push(() => {
                 window.visualViewport?.removeEventListener('resize', this.onViewportResize);
             });
+
+            this.widgetResizerObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
+            this.widgetResizerObserver.observe(this.node.current!);
+
+            this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
+            this.menuResizeObserver.observe(this.menuNode.current!);
 
             if (window.desktopAPI?.onScreenShared && window.desktopAPI?.onCallsError) {
                 logDebug('registering desktopAPI.onScreenShared');
@@ -1209,33 +1215,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 disabled={Boolean(sharingID) && !isSharing}
             />
         );
-    };
-
-    // The widget renders nothing until the client is connected, so these nodes come and go.
-    // The resize observers are attached here rather than in componentDidMount so they follow
-    // the element instead of assuming it exists at mount time.
-    widgetRefCb = (el: HTMLDivElement | null) => {
-        this.node.current = el;
-
-        this.widgetResizerObserver?.disconnect();
-        this.widgetResizerObserver = null;
-
-        if (el && this.props.global) {
-            this.widgetResizerObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
-            this.widgetResizerObserver.observe(el);
-        }
-    };
-
-    menuRefCb = (el: HTMLDivElement | null) => {
-        this.menuNode.current = el;
-
-        this.menuResizeObserver?.disconnect();
-        this.menuResizeObserver = null;
-
-        if (el && this.props.global) {
-            this.menuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
-            this.menuResizeObserver.observe(el);
-        }
     };
 
     devicesMenuRefCb = (el: HTMLUListElement) => {
@@ -2433,11 +2412,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <div
                 id='calls-widget'
                 style={mainStyle}
-                ref={this.widgetRefCb}
+                ref={this.node}
             >
                 <RingbackContainer/>
                 <div
-                    ref={this.menuRefCb}
+                    ref={this.menuNode}
                     style={this.style.menu}
                 >
                     {showLeaveMenuShim && <div style={this.style.leaveMenuShim}/>}
