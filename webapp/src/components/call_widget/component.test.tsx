@@ -5,7 +5,7 @@ import type {UserSessionState} from '@mattermost/calls-common/lib/types';
 import type {Channel} from '@mattermost/types/channels';
 import type {Team} from '@mattermost/types/teams';
 import type {UserProfile} from '@mattermost/types/users';
-import {render, screen} from '@testing-library/react';
+import {render, screen, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import {createIntl, RawIntlProvider} from 'react-intl';
@@ -105,6 +105,7 @@ const props: Props = {
     openModal: jest.fn(),
     openCallsUserSettings: jest.fn(),
     enableVideo: false,
+    currentUserProfile: undefined,
     connectedDMUser: undefined,
     isAdmin: false,
     isDMCalling: false,
@@ -493,5 +494,192 @@ describe('DM call presentation', () => {
         await user.click(screen.getByRole('button', {name: /^leave call$/i}));
 
         expect(disconnect).not.toHaveBeenCalled();
+    });
+});
+
+describe('DM call presentation with video enabled', () => {
+    const dmChannelID = 'dm-channel-id';
+    const callID = 'call-id';
+    const calleeID = 'other-user-id';
+
+    const caller = {
+        id: 'user-id',
+        username: 'caller',
+        first_name: 'First1',
+        last_name: 'Last1',
+        roles: '',
+    } as UserProfile;
+
+    const callee = {
+        id: calleeID,
+        username: 'callee',
+        first_name: 'First2',
+        last_name: 'Last2',
+        roles: '',
+    } as UserProfile;
+
+    const dmChannel = {
+        id: dmChannelID,
+        team_id: 'team-id',
+        name: `user-id__${calleeID}`,
+        display_name: 'First2 Last2',
+        type: 'D',
+    } as Channel;
+
+    const stubSession = (sessionID: string, userID: string, video = false): UserSessionState => ({
+        session_id: sessionID,
+        user_id: userID,
+        unmuted: false,
+        raised_hand: 0,
+        video,
+    });
+
+    const ownSession = stubSession('session-1', 'user-id');
+    const calleeSession = stubSession('session-2', calleeID);
+
+    const dmState = (sessions: UserSessionState[]) => ({
+        'plugins-com.mattermost.calls': {
+            calls: {[dmChannelID]: {ID: callID, channelID: dmChannelID, ownerID: 'user-id', startAt: Date.now(), threadID: ''}},
+            sessions: {[dmChannelID]: Object.fromEntries(sessions.map((s) => [s.session_id, s]))},
+            dmCalleeAnsweredAt: {},
+        },
+        entities: {
+            channels: {channels: {[dmChannelID]: dmChannel}},
+            users: {currentUserId: 'user-id', profiles: {'user-id': caller, [calleeID]: callee}},
+        },
+    });
+
+    // enableVideo swaps the widget onto the video render path, where the body is a row of
+    // profile tiles rather than a single header avatar.
+    const renderWidget = (sessions: UserSessionState[], overrides: Partial<Props> = {}) => render(
+        <Provider store={mockStore(dmState(sessions))}>
+            <RawIntlProvider value={intl}>
+                <CallWidget
+                    {...props}
+                    channel={dmChannel}
+                    channelDisplayName={dmChannel.display_name}
+                    sessions={sessions}
+                    otherSessions={sessions.filter((s) => s.user_id !== 'user-id')}
+                    currentSession={sessions.find((s) => s.user_id === 'user-id')}
+                    profiles={{'user-id': caller, [calleeID]: callee}}
+                    currentUserProfile={caller}
+                    connectedDMUser={callee}
+                    enableVideo={true}
+                    isDMCalling={sessions.length > 0 && sessions.every((s) => s.user_id === 'user-id')}
+                    {...overrides}
+                />
+            </RawIntlProvider>
+        </Provider>,
+    );
+
+    beforeEach(() => {
+        window.callsClient = {
+            disconnect: jest.fn(),
+            channelID: dmChannelID,
+            getSessionID: () => ownSession.session_id,
+            getRemoteVoiceTracks: () => [],
+            getRemoteScreenStream: () => null,
+            getLocalScreenStream: () => null,
+            on: jest.fn(),
+            off: jest.fn(),
+        } as unknown as (typeof window)['callsClient'];
+    });
+
+    afterEach(() => {
+        window.callsClient = undefined;
+    });
+
+    // The body should not materialise partway through call setup, so the same two tiles are on
+    // screen from "Starting call…" all the way through to an answered call.
+    const stages: Array<[string, UserSessionState[], Partial<Props>]> = [
+        ['still connecting', [], {clientConnecting: true, profiles: {}}],
+        ['ringing', [ownSession], {}],
+        ['answered', [ownSession, calleeSession], {}],
+    ];
+
+    test.each(stages)('a DM call %s shows two tiles', (_, sessions, overrides) => {
+        renderWidget(sessions, overrides);
+
+        expect(screen.getAllByTestId(/^calls-widget-profile-(ringing|self|other)$/)).toHaveLength(2);
+    });
+
+    // Nothing has a session yet, and the call's profile map is built from sessions, so the
+    // caller's own tile has to fall back to their profile from the store.
+    test('a DM call still connecting shows the callee and the caller', () => {
+        renderWidget([], {clientConnecting: true, profiles: {}});
+
+        expect(screen.getByTestId('calls-widget-profile-ringing')).toBeInTheDocument();
+        expect(screen.getByTestId('calls-widget-profile-self')).toBeInTheDocument();
+    });
+
+    // A DM call auto-unmutes on connect, so the caller's session lands muted for a moment. A
+    // badge driven straight off the session would blink on and back off across this transition.
+    test.each(stages.filter(([stage]) => stage !== 'answered'))('a DM call %s shows no mute badge on either tile', (_, sessions, overrides) => {
+        renderWidget(sessions, overrides);
+
+        expect(screen.queryByTestId('calls-widget-profile-mute-state')).not.toBeInTheDocument();
+    });
+
+    test('a ringing DM call shows the callee alongside the caller instead of the caller alone', () => {
+        renderWidget([ownSession]);
+
+        expect(screen.getByTestId('calls-widget-profile-ringing')).toBeInTheDocument();
+        expect(screen.getByTestId('calls-widget-profile-self')).toBeInTheDocument();
+        expect(screen.queryByTestId('calls-widget-profile-other')).not.toBeInTheDocument();
+    });
+
+    test('a ringing DM call renders the callee tile before the caller tile', () => {
+        renderWidget([ownSession]);
+
+        const tiles = screen.getAllByTestId(/^calls-widget-profile-(ringing|self|other)$/);
+
+        expect(tiles.map((tile) => tile.dataset.testid)).toEqual([
+            'calls-widget-profile-ringing',
+            'calls-widget-profile-self',
+        ]);
+    });
+
+    test('the ringing callee avatar pulses while the caller avatar does not', () => {
+        renderWidget([ownSession]);
+
+        expect(within(screen.getByTestId('calls-widget-profile-ringing')).getByAltText(/profile image/)).toHaveClass('pulsingAnimation');
+        expect(within(screen.getByTestId('calls-widget-profile-self')).getByAltText(/profile image/)).not.toHaveClass('pulsingAnimation');
+    });
+
+    // By the time the callee is in the call the auto-unmute has long settled, so the badge can
+    // report the caller's real state without blinking.
+    test('an answered DM call shows the mute badge for a muted caller', () => {
+        renderWidget([ownSession, calleeSession]);
+
+        expect(within(screen.getByTestId('calls-widget-profile-self')).getByTestId('calls-widget-profile-mute-state')).toBeInTheDocument();
+    });
+
+    test('an answered DM call drops the mute badge once the caller unmutes', () => {
+        renderWidget([{...ownSession, unmuted: true}, calleeSession]);
+
+        expect(within(screen.getByTestId('calls-widget-profile-self')).queryByTestId('calls-widget-profile-mute-state')).not.toBeInTheDocument();
+    });
+
+    test('a ringing DM call keeps the callee tile when the caller turns their camera on', () => {
+        renderWidget([stubSession('session-1', 'user-id', true)]);
+
+        expect(screen.getByTestId('calls-widget-profile-ringing')).toBeInTheDocument();
+        expect(screen.getByTestId('calls-widget-profile-self')).toBeInTheDocument();
+    });
+
+    test('an answered DM call replaces the placeholder with the callee tile', () => {
+        renderWidget([ownSession, calleeSession]);
+
+        expect(screen.queryByTestId('calls-widget-profile-ringing')).not.toBeInTheDocument();
+        expect(screen.getByTestId('calls-widget-profile-other')).toBeInTheDocument();
+        expect(screen.getByTestId('calls-widget-profile-self')).toBeInTheDocument();
+    });
+
+    test('a ringing DM call with video disabled keeps the audio-only header and renders no tiles', () => {
+        renderWidget([ownSession], {enableVideo: false});
+
+        expect(screen.getByText('Calling…')).toBeInTheDocument();
+        expect(screen.getByText('First2 Last2')).toBeInTheDocument();
+        expect(screen.queryByTestId(/^calls-widget-profile-/)).not.toBeInTheDocument();
     });
 });

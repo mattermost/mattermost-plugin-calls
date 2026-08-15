@@ -4,7 +4,7 @@
 import {GlobalState} from '@mattermost/types/store';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId, getMyTeams, getTeam} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUser, getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
@@ -73,6 +73,7 @@ const mapStateToProps = (state: GlobalState) => {
 
     return {
         currentUserID,
+        currentUserProfile: getCurrentUser(state),
         channel,
         team: getTeam(state, channel?.team_id || getCurrentTeamId(state)),
         channelURL,

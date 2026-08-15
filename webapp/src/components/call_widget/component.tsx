@@ -144,6 +144,7 @@ interface Props {
     openModal: <P>(modalData: ModalData<P>) => void;
     openCallsUserSettings: () => void;
     enableVideo: boolean,
+    currentUserProfile: UserProfile | undefined,
     connectedDMUser: UserProfile | undefined,
     isAdmin: boolean,
     isDMCalling: boolean,
@@ -2313,12 +2314,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     renderProfiles = () => {
         // Here we are assuming this only renders in a DM which is the case
         // right now.
-        const selfProfile = this.props.profiles[this.props.currentUserID];
+        const selfProfile = this.props.profiles[this.props.currentUserID] || this.props.currentUserProfile;
         const otherProfile = this.props.connectedDMUser;
         const otherSession = this.props.otherSessions[0];
         const selfSession = this.props.currentSession;
         const videoView = (otherSession?.video || selfSession?.video) ?? false;
-        const selfOnly = this.props.otherSessions.length === 0;
+        const calleePending = (this.props.clientConnecting || this.props.isDMCalling) && Boolean(otherProfile);
+        const selfOnly = this.props.otherSessions.length === 0 && !calleePending;
 
         return (
             <div
@@ -2332,7 +2334,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }}
             >
 
-                { otherProfile && otherSession &&
+                { calleePending && otherProfile &&
+                <CallsWidgetProfile
+                    videoStream={null}
+                    profile={otherProfile}
+                    isSpeaking={false}
+                    isMuted={false}
+                    hasVideo={false}
+                    videoView={videoView}
+                    mirrorVideo={false}
+                    ringing={true}
+                    testID='calls-widget-profile-ringing'
+                />
+                }
+
+                { !calleePending && otherProfile && otherSession &&
                 <CallsWidgetProfile
                     videoStream={this.state.otherVideoStream}
                     profile={otherProfile}
@@ -2341,19 +2357,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     hasVideo={Boolean(otherSession.video)}
                     videoView={videoView}
                     mirrorVideo={false}
+                    testID='calls-widget-profile-other'
                 />
                 }
 
-                { selfProfile && selfSession &&
+                { selfProfile && (selfSession || this.props.clientConnecting) &&
                 <CallsWidgetProfile
                     videoStream={this.state.selfVideoStream}
                     profile={selfProfile}
-                    isSpeaking={Boolean(selfSession.voice)}
-                    isMuted={!selfSession.unmuted}
-                    hasVideo={Boolean(selfSession.video)}
+                    isSpeaking={Boolean(selfSession?.voice)}
+                    isMuted={!calleePending && Boolean(selfSession) && !selfSession?.unmuted}
+                    hasVideo={Boolean(selfSession?.video)}
                     videoView={videoView}
                     mirrorVideo={localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
                     singleSession={selfOnly}
+                    testID='calls-widget-profile-self'
                 />
                 }
             </div>
@@ -2880,6 +2898,8 @@ type CallsWidgetProfileProps = {
     videoView: boolean;
     mirrorVideo: boolean;
     singleSession?: boolean;
+    ringing?: boolean;
+    testID?: string;
 }
 
 const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
@@ -2902,6 +2922,7 @@ const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
         <WidgetProfileContainer
             $videoView={props.videoView}
             $singleSession={props.singleSession}
+            data-testid={props.testID}
         >
 
             {!props.hasVideo &&
@@ -2910,6 +2931,7 @@ const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
                 border={false}
                 url={Client4.getProfilePictureUrl(props.profile.id, props.profile.last_picture_update)}
                 borderGlowWidth={props.isSpeaking ? 3 : 0}
+                className={props.ringing ? 'pulsingAnimation' : ''}
                 borderGlowColor='white'
             />
             }
@@ -2924,7 +2946,10 @@ const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
             }
 
             {props.isMuted &&
-            <MuteState $isMuted={props.isMuted}>
+            <MuteState
+                $isMuted={props.isMuted}
+                data-testid='calls-widget-profile-mute-state'
+            >
                 <MuteIcon
                     style={{
                         fill: props.isMuted ? 'white' : 'rgba(61, 184, 135, 1)',

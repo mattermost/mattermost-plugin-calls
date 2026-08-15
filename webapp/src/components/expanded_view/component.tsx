@@ -916,6 +916,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return null;
     };
 
+    isRingingCallee = () => this.props.isDMCalling && Boolean(this.props.connectedDMUser);
+
     renderTopVideoContainer = () => {
         const {formatMessage} = this.props.intl;
 
@@ -940,6 +942,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             hasVideo={Boolean(selfSession.video)}
                             isSpeaking={Boolean(selfSession.voice)}
                             mirrorVideo={localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
+                            testID='calls-popout-video-profile-self'
                         />
                     </div>
                 }
@@ -977,9 +980,37 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const stream = this.props.otherSessions.length === 0 ? this.state.selfVideoStream : this.state.otherVideoStream;
         const mirrorSelfVideo = localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true';
 
-        const shouldRenderTopVideoContainer = this.state.viewState === 'speaker' && ((this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video));
+        const ringing = this.isRingingCallee();
+
+        const shouldRenderTopVideoContainer = this.state.viewState === 'speaker' && ((this.props.currentSession?.video && (this.props.otherSessions.length > 0 || ringing)) || this.props.otherSessions.some((s) => s.video));
+
+        const renderRingingProfile = (sizing: {width?: string, aspectRatio?: string}) => {
+            if (!otherProfile) {
+                return null;
+            }
+
+            return (
+                <VideoProfile
+                    stream={null}
+                    profile={otherProfile}
+                    profileName={getUserDisplayName(otherProfile)}
+                    isMuted={false}
+                    hasVideo={false}
+                    isSpeaking={false}
+                    mirrorVideo={false}
+                    width={sizing.width}
+                    aspectRatio={sizing.aspectRatio}
+                    ringing={true}
+                    testID='calls-popout-video-profile-ringing'
+                />
+            );
+        };
 
         const renderSpeakerView = () => {
+            if (ringing) {
+                return renderRingingProfile({aspectRatio: '16/9'});
+            }
+
             if (!profile || !session) {
                 return null;
             }
@@ -1000,7 +1031,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const renderGridView = () => {
             return (
                 <>
-                    { otherProfile && otherSession &&
+                    {ringing && renderRingingProfile({width: '100%'})}
+
+                    { !ringing && otherProfile && otherSession &&
                     <VideoProfile
                         stream={this.state.otherVideoStream}
                         profile={otherProfile}
@@ -1281,7 +1314,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const SwitchViewIcon = this.state.viewState === 'speaker' ? SpeakerViewIcon : GridViewIcon;
 
         const shouldRenderVideoContainer = this.props.currentSession?.video || this.props.otherSessions.some((s) => s.video);
-        const shouldRenderTopVideoContainer = (this.state.viewState === 'speaker' || this.props.screenSharingSession) && ((this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video));
+
+        const hasOtherParticipant = this.props.otherSessions.length > 0 || this.isRingingCallee();
+        const shouldRenderTopVideoContainer = (this.state.viewState === 'speaker' || this.props.screenSharingSession) && ((this.props.currentSession?.video && hasOtherParticipant) || this.props.otherSessions.some((s) => s.video));
 
         return (
             <div
@@ -1955,6 +1990,8 @@ type VideoProfileProps = {
     mirrorVideo: boolean;
     width?: string;
     aspectRatio?: string;
+    ringing?: boolean;
+    testID?: string;
 };
 
 const VideoProfile = (props: VideoProfileProps) => {
@@ -1972,6 +2009,7 @@ const VideoProfile = (props: VideoProfileProps) => {
         <VideoProfileContainer
             $width={props.width}
             $aspectRatio={props.aspectRatio}
+            data-testid={props.testID}
         >
             {!props.hasVideo &&
             <Avatar
@@ -1980,6 +2018,7 @@ const VideoProfile = (props: VideoProfileProps) => {
                 url={Client4.getProfilePictureUrl(props.profile.id, props.profile.last_picture_update)}
                 borderGlowWidth={props.isSpeaking ? 3 : 0}
                 borderGlowColor='white'
+                className={props.ringing ? 'pulsingAnimation' : ''}
             />
             }
 
