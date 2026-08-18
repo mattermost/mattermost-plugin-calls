@@ -903,7 +903,7 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
-		// Last participant leaving triggers the call_ended broadcast.
+		// Last participant leaving triggers the call_end broadcast.
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
@@ -1042,7 +1042,7 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Times(10)
 
-		// Last participant leaving triggers the call_ended broadcast.
+		// Last participant leaving triggers the call_end broadcast.
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
@@ -1388,7 +1388,7 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{"session_id": connID, "user_id": userID},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
-		// Last participant leaving triggers the call_ended broadcast.
+		// Last participant leaving triggers the call_end broadcast.
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()

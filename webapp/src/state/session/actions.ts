@@ -6,7 +6,7 @@ import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
 
 import {
-    CALL_ENDED,
+    CALL_END,
     SESSIONS_RECEIVED,
     UN_INITIALIZED,
     USER_HAND_LOWERED,
@@ -130,7 +130,7 @@ export const userLeft = (channelID: Channel['id'], sessionID: string, userID: Us
 export type ActionUserLeft = ReturnType<typeof userLeft>
 
 export const callEnded = (channelID: Channel['id'], callID: string) => ({
-    type: CALL_ENDED,
+    type: CALL_END,
     data: {
         channelID,
         callID,
