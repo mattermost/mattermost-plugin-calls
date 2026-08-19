@@ -34,8 +34,10 @@ func TestCreateJobSession(t *testing.T) {
 		}
 
 		mockAPI.On("CreateSession", mock.MatchedBy(func(s *model.Session) bool {
-			minExpiry := time.Now().Add(jobSessionTTL - time.Minute).UnixMilli()
-			return s.UserId == botUserID && s.ExpiresAt >= minExpiry
+			now := time.Now()
+			minExpiry := now.Add(jobSessionTTL - time.Minute).UnixMilli()
+			maxExpiry := now.Add(jobSessionTTL + time.Minute).UnixMilli()
+			return s.UserId == botUserID && s.ExpiresAt >= minExpiry && s.ExpiresAt <= maxExpiry
 		})).Return(returnedSession, nil).Once()
 
 		session, err := p.createJobSession()
