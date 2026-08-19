@@ -1052,7 +1052,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		return fmt.Errorf("forbidden")
 	}
 
-	state, err := p.getCallState(channelID, false)
+	state, err := p.getCallState(channelID, true)
 	if err != nil {
 		return err
 	} else if state == nil {
@@ -1293,6 +1293,10 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			if err := p.handleReconnect(userID, connID, channelID, originalConnID, prevConnID, req.Session.Id); err != nil {
 				p.LogWarn(err.Error(), "userID", userID, "connID", connID,
 					"originalConnID", originalConnID, "prevConnID", prevConnID, "channelID", channelID)
+				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
+					"data":   err.Error(),
+					"connID": connID,
+				}, &WebSocketBroadcast{ConnectionID: connID, ReliableClusterSend: true})
 			}
 		}()
 		return
