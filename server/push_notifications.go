@@ -33,7 +33,11 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 	// 1. This is a call start post
 	// 2. We have enabled ringing
 	// 3. The channel is a DM or GM
-	if notification.PostType != callEventPostType || !*p.getConfiguration().EnableRinging {
+	if notification.PostType != callEventPostType {
+		return nil, ""
+	}
+	cfg := p.getConfiguration()
+	if cfg.EnableRinging == nil || !*cfg.EnableRinging {
 		return nil, ""
 	}
 
