@@ -167,6 +167,9 @@ func (p *Plugin) OnActivate() (retErr error) {
 		if err := p.cleanUpState(); err != nil {
 			p.LogError("failed to cleanup state", "err", err.Error())
 		}
+
+		go p.runRTCDSessionReconciler()
+		p.LogDebug("started RTCD session reconciler")
 	} else {
 		rtcServerConfig := rtc.ServerConfig{
 			ICEAddressUDP:   rtc.ICEAddress(cfg.UDPServerAddress),
