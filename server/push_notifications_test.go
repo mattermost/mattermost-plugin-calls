@@ -49,6 +49,53 @@ func TestSendPushNotificationsRingingDisabled(t *testing.T) {
 	mockAPI.AssertNotCalled(t, "SendPushNotification")
 }
 
+func TestSendPushNotificationsRingingEnabled(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+
+	store, tearDown := NewTestStore(t)
+	t.Cleanup(tearDown)
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		store: store,
+	}
+
+	// 2 calls inside setOverrides + 1 eager arg to canSendPushNotifications
+	mockAPI.On("GetLicense").Return(&model.License{}, nil).Times(3)
+
+	var cfg configuration
+	cfg.SetDefaults()
+	*cfg.EnableRinging = true
+	err := p.setConfiguration(cfg.Clone())
+	require.NoError(t, err)
+
+	senderID := model.NewId()
+	receiverID := model.NewId()
+	channelID := model.NewId()
+	postID := model.NewId()
+	threadID := model.NewId()
+
+	sender := &model.User{Id: senderID, Username: "sender"}
+	receiver := &model.User{Id: receiverID, Username: "receiver"}
+	channel := &model.Channel{Id: channelID, Type: model.ChannelTypeDirect}
+
+	var serverConfig model.Config
+	serverConfig.SetDefaults()
+
+	mockAPI.On("GetChannel", channelID).Return(channel, nil).Once()
+	mockAPI.On("GetUsersInChannel", channelID, model.ChannelSortByUsername, 0, 8).Return([]*model.User{sender, receiver}, nil).Once()
+	mockAPI.On("GetUser", receiverID).Return(receiver, nil).Once()
+	mockAPI.On("GetConfig").Return(&serverConfig).Once()
+	mockAPI.On("GetPreferencesForUser", receiverID).Return([]model.Preference{}, nil).Once()
+	mockAPI.On("SendPushNotification", mock.Anything, receiverID).Return(nil).Once()
+
+	p.sendPushNotifications(channelID, postID, threadID, sender, &serverConfig)
+
+	mockAPI.AssertExpectations(t)
+}
+
 func TestNotificationWillBePushed(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 
