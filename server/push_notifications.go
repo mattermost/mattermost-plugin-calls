@@ -67,7 +67,8 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 }
 
 func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string, sender *model.User, config *model.Config) {
-	if !*p.getConfiguration().EnableRinging {
+	cfg := p.getConfiguration()
+	if cfg.EnableRinging == nil || !*cfg.EnableRinging {
 		return
 	}
 
