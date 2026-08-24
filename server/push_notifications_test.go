@@ -49,6 +49,36 @@ func TestSendPushNotificationsRingingDisabled(t *testing.T) {
 	mockAPI.AssertNotCalled(t, "SendPushNotification")
 }
 
+func TestSendPushNotificationsRingingNil(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+
+	store, tearDown := NewTestStore(t)
+	t.Cleanup(tearDown)
+
+	p := Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		store: store,
+	}
+
+	mockAPI.On("GetLicense").Return(&model.License{}, nil).Times(2)
+
+	var cfg configuration
+	cfg.SetDefaults()
+	cfg.EnableRinging = nil
+	err := p.setConfiguration(cfg.Clone())
+	require.NoError(t, err)
+
+	var serverConfig model.Config
+	serverConfig.SetDefaults()
+
+	// SendPushNotification must not be called when EnableRinging is unset (nil).
+	p.sendPushNotifications(model.NewId(), model.NewId(), model.NewId(), &model.User{Id: model.NewId()}, &serverConfig)
+
+	mockAPI.AssertNotCalled(t, "SendPushNotification")
+}
+
 func TestSendPushNotificationsRingingEnabled(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 
