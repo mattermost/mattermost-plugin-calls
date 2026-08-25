@@ -6,7 +6,7 @@ import {Channel} from '@mattermost/types/channels';
 import {Reducer} from 'redux';
 
 import {
-    CALL_ENDED,
+    CALL_END,
     SESSIONS_RECEIVED,
     UN_INITIALIZED,
     USER_HAND_LOWERED,
@@ -233,7 +233,7 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
         };
     }
 
-    case CALL_ENDED: {
+    case CALL_END: {
         const nextState = {...initialState};
         delete nextState[action.data.channelID];
 

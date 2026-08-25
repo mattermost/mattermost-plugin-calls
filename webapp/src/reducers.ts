@@ -8,7 +8,7 @@ import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
 import {
-    CALL_ENDED,
+    CALL_END,
     UN_INITIALIZED,
     USER_JOINED,
     USER_LEFT,
@@ -129,7 +129,7 @@ const clientStateReducer = (state: clientState = null, action: clientStateAction
         }
         return state;
     }
-    case CALL_ENDED: {
+    case CALL_END: {
         const data = action.data as callEndData;
         if (data.channelID === state?.channelID) {
             return null;
@@ -400,7 +400,7 @@ const calls = (state: callsState = {}, action: callStateAction) => {
                 ...action.data,
             },
         };
-    case CALL_ENDED: {
+    case CALL_END: {
         const nextState = {...state};
         delete nextState[action.data.channelID];
         return nextState;
@@ -440,7 +440,7 @@ const hosts = (state: hostsState = {}, action: hostsStateAction) => {
             },
         };
     }
-    case CALL_ENDED: {
+    case CALL_END: {
         const nextState = {...state};
         delete nextState[action.data.channelID];
         return nextState;
@@ -585,7 +585,7 @@ const recentlyJoinedUsers = (state: recentlyJoinedUsersState = {}, action: recen
             ...state,
             [action.data.channelID]: state[action.data.channelID]?.filter((val) => val !== action.data.userID),
         };
-    case CALL_ENDED:
+    case CALL_END:
         return {
             ...state,
             [action.data.channelID]: [],
@@ -663,7 +663,7 @@ const didRingForCalls = (state: { [callID: string]: boolean } = {}, action: Ring
             [action.data.callID]: true,
         };
     }
-    case CALL_ENDED: {
+    case CALL_END: {
         const nextState = {...state};
         delete nextState[action.data.callID];
         return nextState;

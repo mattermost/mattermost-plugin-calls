@@ -221,7 +221,7 @@ export default class Plugin {
             handleCallStart(store, ev);
         });
 
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_ended`, (ev) => {
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_end`, (ev) => {
             handleCallEnd(store, ev);
         });
 

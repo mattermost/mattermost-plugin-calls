@@ -14,5 +14,5 @@ export const USER_HAND_LOWERED = `${pluginId}_user_hand_lowered` as const;
 export const USER_REACTED = `${pluginId}_user_reacted` as const;
 export const USER_REACTED_TIMEOUT = `${pluginId}_user_reacted_timeout` as const;
 export const USER_LEFT = `${pluginId}_user_left` as const;
-export const CALL_ENDED = `${pluginId}_call_ended` as const;
+export const CALL_END = `${pluginId}_call_end` as const;
 
