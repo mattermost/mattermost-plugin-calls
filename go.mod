@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-calls
 
-go 1.26.3
+go 1.26.7
 
 require (
 	github.com/pion/rtcp v1.2.16 // indirect
