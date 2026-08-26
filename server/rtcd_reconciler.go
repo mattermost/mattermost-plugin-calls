@@ -83,14 +83,13 @@ func (p *Plugin) reconcileRTCDSessions() {
 			continue
 		}
 
-		var orphaned int
+		var deleteFailed int
 		for sessionID := range dbSessions {
 			if _, ok := rtcdSessionIDs[sessionID]; !ok {
 				p.LogInfo("rtcd reconciler: deleting orphaned session", "sessionID", sessionID, "callID", call.ID)
 				if err := p.store.DeleteCallSession(sessionID); err != nil {
 					p.LogError("rtcd reconciler: failed to delete orphaned session", "err", err.Error(), "sessionID", sessionID)
-				} else {
-					orphaned++
+					deleteFailed++
 				}
 			}
 		}
@@ -98,7 +97,12 @@ func (p *Plugin) reconcileRTCDSessions() {
 		// If RTCD has no sessions for this call, the call has ended but the
 		// plugin never received the close events. Clean up call state now so
 		// the channel doesn't remain blocked indefinitely.
-		if len(cfgs) == 0 && orphaned > 0 {
+		//
+		// We check deleteFailed == 0 rather than orphaned > 0 so that a
+		// cleanCallState failure on a prior pass (after the DB rows were
+		// already removed) is retried: the next pass sees an empty dbSessions
+		// and no delete failures, and tries again.
+		if len(cfgs) == 0 && deleteFailed == 0 {
 			p.LogInfo("rtcd reconciler: all sessions were orphaned, cleaning up call state", "callID", call.ID, "channelID", call.ChannelID)
 
 			state, err := p.lockCallReturnState(call.ChannelID)

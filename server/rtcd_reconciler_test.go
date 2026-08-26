@@ -261,4 +261,43 @@ func TestReconcileRTCDSessions(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, calls)
 	})
+
+	t.Run("retry: sessions already deleted, call state cleanup retried", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
+
+		// Simulate a prior pass that deleted all orphaned sessions but failed
+		// at cleanCallState — the call row is still active but has no sessions.
+		channelID := model.NewId()
+		postID := model.NewId()
+		userID := model.NewId()
+
+		call := newCall(t, channelID, postID, userID, "127.0.0.1")
+		createPost(t, store, postID, userID, channelID)
+		// No sessions created — previous pass already deleted them.
+
+		mockRTCDClient := &serverMocks.MockRTCDClient{}
+		defer mockRTCDClient.AssertExpectations(t)
+
+		p.rtcdManager = &rtcdClientManager{
+			ctx: p,
+			hosts: map[string]*rtcdHost{
+				"127.0.0.1": {client: mockRTCDClient},
+			},
+		}
+
+		mockRTCDClient.On("GetVersionInfo").Return(rtcd.VersionInfo{}, nil).Once()
+		mockRTCDClient.On("GetSessions", call.ID).Return(nil, 404, nil).Once()
+
+		mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once()
+		mockAPI.On("KVDelete", "mutex_call_"+channelID).Return(nil).Once()
+		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Once()
+
+		p.reconcileRTCDSessions()
+
+		// Call should be ended even though there were no sessions to delete this pass.
+		calls, err := p.store.GetAllActiveCalls(db.GetCallOpts{})
+		require.NoError(t, err)
+		require.Empty(t, calls)
+	})
 }
