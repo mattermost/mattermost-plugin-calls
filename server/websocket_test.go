@@ -355,6 +355,7 @@ func TestWSReader(t *testing.T) {
 
 			us := newUserSession("userID", "channelID", "connID", "callID", false)
 
+			// First tick: transient error — must not disconnect.
 			mockAPI.On("GetSession", "authSessionID").Return(nil,
 				model.NewAppError("GetSessionById", "We encountered an error finding the session.", nil, "", http.StatusUnauthorized)).Once()
 
@@ -363,6 +364,12 @@ func TestWSReader(t *testing.T) {
 				"channelID", us.channelID, "userID", us.userID, "connID", us.connID,
 				"err", "GetSessionById: We encountered an error finding the session.").Once()
 
+			// Second tick: succeeds — confirms wsReader retried rather than exiting.
+			secondCalled := make(chan struct{})
+			mockAPI.On("GetSession", "authSessionID").
+				Return(&model.Session{Id: "authSessionID"}, nil).
+				Run(func(_ mock.Arguments) { close(secondCalled) }).Once()
+
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
@@ -370,9 +377,8 @@ func TestWSReader(t *testing.T) {
 				p.wsReader(us, "authSessionID", "handlerID")
 			}()
 
-			// Sleep long enough for one tick to fire (1s interval), then close
-			// before the second tick so no second GetSession call is made.
-			time.Sleep(1200 * time.Millisecond)
+			// Wait until the second GetSession call fires, then tear down cleanly.
+			<-secondCalled
 			close(us.wsCloseCh)
 
 			wg.Wait()
