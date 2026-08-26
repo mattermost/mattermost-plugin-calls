@@ -262,6 +262,55 @@ func TestReconcileRTCDSessions(t *testing.T) {
 		require.Empty(t, calls)
 	})
 
+	t.Run("new session created after rtcd snapshot not deleted", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		postID := model.NewId()
+		userID := model.NewId()
+
+		call := newCall(t, channelID, postID, userID, "127.0.0.1")
+
+		// Session with a JoinAt in the future relative to any possible
+		// snapshotTime in this test, simulating a join that raced in between
+		// GetSessions and GetCallSessions.
+		futureSessionID := model.NewId()
+		err := p.store.CreateCallSession(&public.CallSession{
+			ID:     futureSessionID,
+			CallID: call.ID,
+			UserID: userID,
+			JoinAt: time.Now().UnixMilli() + 60_000,
+		})
+		require.NoError(t, err)
+
+		mockRTCDClient := &serverMocks.MockRTCDClient{}
+		defer mockRTCDClient.AssertExpectations(t)
+
+		p.rtcdManager = &rtcdClientManager{
+			ctx: p,
+			hosts: map[string]*rtcdHost{
+				"127.0.0.1": {client: mockRTCDClient},
+			},
+		}
+
+		// RTCD has no sessions — the join hasn't been processed there yet.
+		mockRTCDClient.On("GetVersionInfo").Return(rtcd.VersionInfo{}, nil).Once()
+		mockRTCDClient.On("GetSessions", call.ID).Return(nil, 404, nil).Once()
+
+		p.reconcileRTCDSessions()
+
+		// The new session must not have been deleted.
+		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{})
+		require.NoError(t, err)
+		require.Len(t, sessions, 1)
+		require.NotNil(t, sessions[futureSessionID])
+
+		// Call still active.
+		calls, err := p.store.GetAllActiveCalls(db.GetCallOpts{})
+		require.NoError(t, err)
+		require.Len(t, calls, 1)
+	})
+
 	t.Run("retry: sessions already deleted, call state cleanup retried", func(t *testing.T) {
 		defer ResetTestStore(t, p.store)
 

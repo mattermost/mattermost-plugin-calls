@@ -66,6 +66,11 @@ func (p *Plugin) reconcileRTCDSessions() {
 			}
 		}
 
+		// Record time before querying RTCD so we can exclude sessions created
+		// after the snapshot — they may not yet be visible in RTCD even though
+		// their DB row exists.
+		snapshotTime := time.Now()
+
 		cfgs, code, err := host.client.GetSessions(call.ID)
 		if err != nil || (code != http.StatusOK && code != http.StatusNotFound) {
 			p.LogDebug("rtcd reconciler: failed to get sessions from RTCD", "err", err, "code", code, "callID", call.ID)
@@ -83,14 +88,21 @@ func (p *Plugin) reconcileRTCDSessions() {
 			continue
 		}
 
-		var deleteFailed int
-		for sessionID := range dbSessions {
-			if _, ok := rtcdSessionIDs[sessionID]; !ok {
-				p.LogInfo("rtcd reconciler: deleting orphaned session", "sessionID", sessionID, "callID", call.ID)
-				if err := p.store.DeleteCallSession(sessionID); err != nil {
-					p.LogError("rtcd reconciler: failed to delete orphaned session", "err", err.Error(), "sessionID", sessionID)
-					deleteFailed++
-				}
+		var deleteFailed, skippedNew int
+		for sessionID, session := range dbSessions {
+			if _, ok := rtcdSessionIDs[sessionID]; ok {
+				continue
+			}
+			// Skip sessions created after the RTCD snapshot — a join in-flight
+			// may not yet appear in GetSessions even though the DB row exists.
+			if session.JoinAt > snapshotTime.UnixMilli() {
+				skippedNew++
+				continue
+			}
+			p.LogInfo("rtcd reconciler: deleting orphaned session", "sessionID", sessionID, "callID", call.ID)
+			if err := p.store.DeleteCallSession(sessionID); err != nil {
+				p.LogError("rtcd reconciler: failed to delete orphaned session", "err", err.Error(), "sessionID", sessionID)
+				deleteFailed++
 			}
 		}
 
@@ -102,7 +114,7 @@ func (p *Plugin) reconcileRTCDSessions() {
 		// cleanCallState failure on a prior pass (after the DB rows were
 		// already removed) is retried: the next pass sees an empty dbSessions
 		// and no delete failures, and tries again.
-		if len(cfgs) == 0 && deleteFailed == 0 {
+		if len(cfgs) == 0 && deleteFailed == 0 && skippedNew == 0 {
 			p.LogInfo("rtcd reconciler: all sessions were orphaned, cleaning up call state", "callID", call.ID, "channelID", call.ChannelID)
 
 			state, err := p.lockCallReturnState(call.ChannelID)
