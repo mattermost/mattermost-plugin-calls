@@ -66,11 +66,6 @@ func (p *Plugin) reconcileRTCDSessions() {
 			}
 		}
 
-		// Record time before querying RTCD so we can exclude sessions created
-		// after the snapshot — they may not yet be visible in RTCD even though
-		// their DB row exists.
-		snapshotTime := time.Now()
-
 		cfgs, code, err := host.client.GetSessions(call.ID)
 		if err != nil || (code != http.StatusOK && code != http.StatusNotFound) {
 			p.LogDebug("rtcd reconciler: failed to get sessions from RTCD", "err", err, "code", code, "callID", call.ID)
@@ -93,9 +88,12 @@ func (p *Plugin) reconcileRTCDSessions() {
 			if _, ok := rtcdSessionIDs[sessionID]; ok {
 				continue
 			}
-			// Skip sessions created after the RTCD snapshot — a join in-flight
-			// may not yet appear in GetSessions even though the DB row exists.
-			if session.JoinAt > snapshotTime.UnixMilli() {
+			// Skip sessions younger than one reconciler interval. The join
+			// flow writes to the DB before sending ClientMessageJoin to RTCD,
+			// so a newly-joined session may not appear in GetSessions yet.
+			// Waiting one full interval (30s) is far longer than any realistic
+			// handoff window, making the check robust against ms-boundary races.
+			if time.Since(time.UnixMilli(session.JoinAt)) < rtcdSessionReconcilerInterval {
 				skippedNew++
 				continue
 			}

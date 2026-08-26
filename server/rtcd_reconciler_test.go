@@ -83,6 +83,19 @@ func TestReconcileRTCDSessions(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	// newOldSession creates a session with a JoinAt old enough to be outside the
+	// reconciler's grace window, so it will be treated as a candidate for deletion.
+	newOldSession := func(t *testing.T, callID, sessionID, userID string) {
+		t.Helper()
+		err := p.store.CreateCallSession(&public.CallSession{
+			ID:     sessionID,
+			CallID: callID,
+			UserID: userID,
+			JoinAt: time.Now().Add(-2 * rtcdSessionReconcilerInterval).UnixMilli(),
+		})
+		require.NoError(t, err)
+	}
+
 	t.Run("no active calls", func(_ *testing.T) {
 		p.rtcdManager = &rtcdClientManager{
 			ctx:   p,
@@ -188,7 +201,7 @@ func TestReconcileRTCDSessions(t *testing.T) {
 
 		call := newCall(t, channelID, postID, userID, "127.0.0.1")
 		newSession(t, call.ID, liveSessionID, userID)
-		newSession(t, call.ID, orphanedSessionID, model.NewId())
+		newOldSession(t, call.ID, orphanedSessionID, model.NewId())
 
 		mockRTCDClient := &serverMocks.MockRTCDClient{}
 		defer mockRTCDClient.AssertExpectations(t)
@@ -229,7 +242,7 @@ func TestReconcileRTCDSessions(t *testing.T) {
 
 		call := newCall(t, channelID, postID, userID, "127.0.0.1")
 		createPost(t, store, postID, userID, channelID)
-		newSession(t, call.ID, sessionID, userID)
+		newOldSession(t, call.ID, sessionID, userID)
 
 		mockRTCDClient := &serverMocks.MockRTCDClient{}
 		defer mockRTCDClient.AssertExpectations(t)
@@ -262,7 +275,7 @@ func TestReconcileRTCDSessions(t *testing.T) {
 		require.Empty(t, calls)
 	})
 
-	t.Run("new session created after rtcd snapshot not deleted", func(t *testing.T) {
+	t.Run("new session within grace period not deleted", func(t *testing.T) {
 		defer ResetTestStore(t, p.store)
 
 		channelID := model.NewId()
@@ -271,15 +284,15 @@ func TestReconcileRTCDSessions(t *testing.T) {
 
 		call := newCall(t, channelID, postID, userID, "127.0.0.1")
 
-		// Session with a JoinAt in the future relative to any possible
-		// snapshotTime in this test, simulating a join that raced in between
-		// GetSessions and GetCallSessions.
-		futureSessionID := model.NewId()
+		// Session created just now: the plugin writes the DB row before sending
+		// ClientMessageJoin, so RTCD may not know about it yet. The reconciler
+		// must not delete it.
+		newSessionID := model.NewId()
 		err := p.store.CreateCallSession(&public.CallSession{
-			ID:     futureSessionID,
+			ID:     newSessionID,
 			CallID: call.ID,
 			UserID: userID,
-			JoinAt: time.Now().UnixMilli() + 60_000,
+			JoinAt: time.Now().UnixMilli(),
 		})
 		require.NoError(t, err)
 
@@ -303,7 +316,7 @@ func TestReconcileRTCDSessions(t *testing.T) {
 		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{})
 		require.NoError(t, err)
 		require.Len(t, sessions, 1)
-		require.NotNil(t, sessions[futureSessionID])
+		require.NotNil(t, sessions[newSessionID])
 
 		// Call still active.
 		calls, err := p.store.GetAllActiveCalls(db.GetCallOpts{})
