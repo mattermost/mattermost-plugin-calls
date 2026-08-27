@@ -164,11 +164,16 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	// Note: We don't need to send the live captions event until we get the StartAt in the
 	// bot_api handleBotPostJobsStatus
 
+	jobSession, err := p.createJobSession()
+	if err != nil {
+		return fmt.Errorf("failed to create job session: %w", err)
+	}
+
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return. We lock again as soon as this returns.
 	p.unlockCall(callID)
-	trJobID, jobErr := p.getJobService().RunJob(job.TypeTranscribing, callID, state.Call.PostID, trState.ID, p.botSession.Token)
-	state, err := p.lockCallReturnState(callID)
+	trJobID, jobErr := p.getJobService().RunJob(job.TypeTranscribing, callID, state.Call.PostID, trState.ID, jobSession.Token)
+	state, err = p.lockCallReturnState(callID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
