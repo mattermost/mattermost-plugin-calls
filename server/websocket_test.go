@@ -349,22 +349,27 @@ func TestWSReader(t *testing.T) {
 			wg.Wait()
 		})
 
-		t.Run("revoked session", func(_ *testing.T) {
+		// A transient GetSession error (e.g. DB blip during a pod roll) must not
+		// force-disconnect the session; the check is retried on the next tick.
+		t.Run("transient session lookup error", func(_ *testing.T) {
 			defer mockAPI.AssertExpectations(t)
 
 			us := newUserSession("userID", "channelID", "connID", "callID", false)
 
+			// First tick: transient error — must not disconnect.
 			mockAPI.On("GetSession", "authSessionID").Return(nil,
 				model.NewAppError("GetSessionById", "We encountered an error finding the session.", nil, "", http.StatusUnauthorized)).Once()
 
-			mockAPI.On("LogInfo", "invalid or expired session, closing RTC session",
+			mockAPI.On("LogWarn", "failed to get session, will retry",
 				"origin", mock.AnythingOfType("string"),
 				"channelID", us.channelID, "userID", us.userID, "connID", us.connID,
 				"err", "GetSessionById: We encountered an error finding the session.").Once()
 
-			mockAPI.On("LogDebug", "closeRTCSession",
-				"origin", mock.AnythingOfType("string"),
-				"userID", us.userID, "connID", us.connID, "channelID", us.channelID).Once()
+			// Second tick: succeeds — confirms wsReader retried rather than exiting.
+			secondCalled := make(chan struct{})
+			mockAPI.On("GetSession", "authSessionID").
+				Return(&model.Session{Id: "authSessionID"}, nil).
+				Run(func(_ mock.Arguments) { close(secondCalled) }).Once()
 
 			var wg sync.WaitGroup
 			wg.Add(1)
@@ -373,7 +378,8 @@ func TestWSReader(t *testing.T) {
 				p.wsReader(us, "authSessionID", "handlerID")
 			}()
 
-			time.Sleep(time.Second * 2)
+			// Wait until the second GetSession call fires, then tear down cleanly.
+			<-secondCalled
 			close(us.wsCloseCh)
 
 			wg.Wait()
@@ -387,7 +393,7 @@ func TestWSReader(t *testing.T) {
 
 			mockAPI.On("GetSession", "authSessionID").Return(nil, nil).Once()
 
-			mockAPI.On("LogWarn", "no appErr and no session found",
+			mockAPI.On("LogWarn", "no session found",
 				"origin", mock.AnythingOfType("string"),
 				"channelID", us.channelID, "userID", us.userID, "connID", us.connID)
 
