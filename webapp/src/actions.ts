@@ -27,10 +27,12 @@ import {JOINED_USER_NOTIFICATION_TIMEOUT, RING_LENGTH} from 'src/constants';
 import {logErr} from 'src/log';
 import {
     callDismissedNotification,
+    dmCalleeAnsweredAtForCurrentCall,
     getCallIDForChannel,
     getCallIDForCurrentCall,
     hostChangeAtForCurrentCall,
     incomingCalls,
+    isCurrentUserOwnerOfCurrentCall,
     numSessionsInCallInChannel,
     ringingEnabled,
     ringingForCall,
@@ -41,6 +43,7 @@ import {callEnded, getSessionsMapFromSessions, sessionsReceived, userJoined, use
 import {CallsStats, ChannelType} from 'src/types/types';
 import {
     getCallsClientSessionID,
+    getCallsWindow,
     getPluginPath,
     getUserIDsForSessions,
     isDMChannel,
@@ -60,6 +63,7 @@ import {
     CLIENT_CONNECTING,
     DID_RING_FOR_CALL,
     DISMISS_CALL,
+    DM_CALLEE_ANSWERED_AT,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
@@ -256,7 +260,7 @@ export const requestOnPremTrialLicense = async (users: number, termsAccepted: bo
     }
 };
 
-export const endCall = (channelID: string) => {
+export const hostEndCallForEveryone = (channelID: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${channelID}/host/end`,
         {method: 'post'},
@@ -410,13 +414,40 @@ export const joinUser = (channelID: string, userID: string, sessionID: string, i
         const currentUserID = getCurrentUserId(state);
         const isOurSession = sessionID === getCallsClientSessionID();
         const isSameUser = userID === currentUserID;
+        const isDM = isDMChannel(getChannel(state, channelID));
+        const amDMCaller = isDM && isCurrentUserOwnerOfCurrentCall(state);
 
         // Only play the join sound if we're in the call this event is about.
         if (window.callsClient?.channelID === channelID) {
             if (isOurSession) {
-                playSound('join_self');
+                // The DM caller hears the outbound ringback instead of the join-self sound.
+                if (!(ringingEnabled(state) && amDMCaller)) {
+                    playSound('join_self');
+                }
             } else if (!isFromInitialSync && !isSameUser && shouldPlayJoinUserSound(state)) {
                 playSound('join_user');
+            }
+        }
+
+        // A DM call is answered the moment the other party joins, which is where its duration
+        // should start counting from. Only the caller needs to observe this: the callee's own
+        // answer moment is their join, which CallStatusTimer reads off the calls client.
+        //
+        // This lives here rather than in handleUserJoined because the plugin-WebSocket handler
+        // deliberately skips renderers that own a live LiveKit client — which is exactly the
+        // caller. joinUser is the one place every join funnels through: LiveKit's USER_JOINED,
+        // the plugin WebSocket (observers), and the popout.
+        const currentCallID = getCallIDForCurrentCall(state);
+        if (currentCallID && window.callsClient?.channelID === channelID && !isSameUser &&
+            amDMCaller && !dmCalleeAnsweredAtForCurrentCall(state)) {
+            const answeredAt = Date.now();
+            dispatch(setDMCalleeAnsweredAt(currentCallID, answeredAt));
+
+            // Keep a copy on the window so an expanded view opened later picks up the same start
+            // time instead of restarting the timer. CallStatusTimer syncs it into that store.
+            const callsWindow = getCallsWindow();
+            if (callsWindow.currentCallData) {
+                callsWindow.currentCallData.dmCalleeAnsweredAt = answeredAt;
             }
         }
 
@@ -721,6 +752,14 @@ export const openCallsUserSettings = (): ActionFuncAsync => {
         return {};
     };
 };
+
+export const setDMCalleeAnsweredAt = (callID: string, answeredAt: number) => ({
+    type: DM_CALLEE_ANSWERED_AT,
+    data: {
+        callID,
+        answeredAt,
+    },
+});
 
 export const localSessionClose = (channelID: string) => (dispatch: Dispatch) => {
     dispatch({
