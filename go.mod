@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-calls
 
-go 1.26.3
+go 1.26.7
 
 require (
 	github.com/prometheus/client_golang v1.22.0
