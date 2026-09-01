@@ -291,6 +291,98 @@ func (p *Plugin) handleDismissNotification(w http.ResponseWriter, r *http.Reques
 	res.Msg = "success"
 }
 
+// declineCall ends a ringing DM call on behalf of the callee, disconnecting the caller and
+// recording the outcome on the call post. Callers must ensure channelID belongs to a DM channel.
+func (p *Plugin) declineCall(channelID, userID string) (int, error) {
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+		return http.StatusForbidden, fmt.Errorf("forbidden")
+	}
+
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		return http.StatusInternalServerError, fmt.Errorf("failed to lock call: %w", err)
+	}
+	defer p.unlockCall(channelID)
+
+	if state == nil {
+		return http.StatusBadRequest, fmt.Errorf("no call ongoing")
+	}
+
+	// Owning a session means the requester is in the call already, either as the caller or because
+	// they answered on another device. Neither is a decline.
+	for _, sess := range state.sessions {
+		if sess.UserID == userID {
+			return http.StatusForbidden, fmt.Errorf("cannot decline a call the user is already in")
+		}
+	}
+
+	// More than one distinct user connected means the call was answered elsewhere before this
+	// decline landed. Nothing to do, and nothing to report as an error either.
+	if len(state.distinctNonBotUserIDs(p.getBotID())) != 1 {
+		return http.StatusOK, nil
+	}
+
+	callID := state.Call.ID
+
+	p.endDMCallRoom("declineCall", channelID)
+
+	p.LogInfo("DM call was declined",
+		"callID", callID,
+		"channelID", channelID,
+		"userID", userID,
+		"nodeID", p.nodeID)
+
+	// Tell the channel the call ended so bystander UI clears; the caller's widget teardown is
+	// driven by LiveKit.
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
+		ChannelID:           channelID,
+		ReliableClusterSend: true,
+	})
+
+	// Declining is also a dismissal, so the callee's own incoming-call notification goes away
+	// without them having to dismiss it separately.
+	p.publishWebSocketEvent(wsEventUserDismissedNotification, map[string]interface{}{
+		"userID": userID,
+		"callID": callID,
+	}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
+
+	if err := p.cleanCallState(&state.Call, "dm_declined", callEndReasonDeclined); err != nil {
+		return http.StatusInternalServerError, fmt.Errorf("failed to clean call state: %w", err)
+	}
+
+	return http.StatusOK, nil
+}
+
+func (p *Plugin) handleDeclineCall(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleDeclineCall", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		res.Err = fmt.Errorf("failed to get channel: %w", appErr).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	if channel.Type != model.ChannelTypeDirect {
+		res.Err = "decline is only supported for DM calls"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	code, err := p.declineCall(channelID, userID)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = code
+		return
+	}
+
+	res.Code = http.StatusOK
+	res.Msg = "success"
+}
+
 func (p *Plugin) handleServeStandalone(w http.ResponseWriter, r *http.Request) {
 	// Referrer-based CSRF protection
 	referrer := r.Header.Get("Referer")
@@ -979,7 +1071,7 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 			ReliableClusterSend: true,
 		})
 
-		if err := p.cleanCallState(&state.Call, "sip_hangup"); err != nil {
+		if err := p.cleanCallState(&state.Call, "sip_hangup", callEndReasonNormal); err != nil {
 			p.LogError("handleLiveKitSIPParticipantLeft: failed to clean call state",
 				"channelID", channelID, "err", err.Error())
 		}
