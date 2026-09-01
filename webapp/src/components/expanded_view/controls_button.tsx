@@ -174,7 +174,16 @@ const ButtonContainer = styled.button<ButtonContainerProps>`
     ${({$isDisabled, $isUnavailable}) => ($isDisabled || $isUnavailable) && css`
       &:hover {
           background: rgba(var(--button-color-rgb), 0.08);
+          color: rgba(var(--button-color-rgb), 0.32);
+
+          svg {
+            fill: rgba(var(--button-color-rgb), 0.32);
+          }
       }
+    `}
+
+    ${({$isDisabled}) => $isDisabled && css`
+      cursor: not-allowed;
     `}
 `;
 
