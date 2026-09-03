@@ -598,7 +598,15 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 			}
 
 			s, appErr := p.API.GetSession(authSessionID)
-			if appErr != nil || s == nil || (s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt) {
+			if appErr != nil {
+				// A lookup error (e.g. transient DB failure during a pod roll) is not
+				// the same as a definitively revoked or expired session. Skip this tick
+				// and retry on the next interval rather than force-disconnecting.
+				p.LogWarn("failed to get session, will retry", "channelID", us.channelID, "userID", us.userID, "connID", us.connID, "err", appErr.Error())
+				continue
+			}
+
+			if s == nil || (s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt) {
 				fields := []any{
 					"channelID",
 					us.channelID,
@@ -608,10 +616,8 @@ func (p *Plugin) wsReader(us *session, authSessionID, handlerID string) {
 					us.connID,
 				}
 
-				if appErr == nil && s == nil {
-					p.LogWarn("no appErr and no session found", fields...)
-				} else if appErr != nil {
-					fields = append(fields, "err", appErr.Error())
+				if s == nil {
+					p.LogWarn("no session found", fields...)
 				} else {
 					fields = append(fields, "sessionID", s.Id, "expiresAt", fmt.Sprintf("%d", s.ExpiresAt))
 				}
@@ -1062,7 +1068,7 @@ func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prev
 		return fmt.Errorf("forbidden")
 	}
 
-	state, err := p.getCallState(channelID, false)
+	state, err := p.getCallState(channelID, true)
 	if err != nil {
 		return err
 	} else if state == nil {
@@ -1303,6 +1309,10 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			if err := p.handleReconnect(userID, connID, channelID, originalConnID, prevConnID, req.Session.Id); err != nil {
 				p.LogWarn(err.Error(), "userID", userID, "connID", connID,
 					"originalConnID", originalConnID, "prevConnID", prevConnID, "channelID", channelID)
+				p.publishWebSocketEvent(wsEventError, map[string]interface{}{
+					"data":   err.Error(),
+					"connID": connID,
+				}, &WebSocketBroadcast{ConnectionID: connID, ReliableClusterSend: true})
 			}
 		}()
 		return
