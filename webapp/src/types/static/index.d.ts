@@ -2,3 +2,4 @@
 // See LICENSE.txt for license information.
 
 declare module '*.mp3'
+declare module '*.scss'

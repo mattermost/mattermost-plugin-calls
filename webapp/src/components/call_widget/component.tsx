@@ -3,7 +3,7 @@
 
 /* eslint-disable max-lines */
 
-import './component.scss';
+import './call_widget.scss';
 
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
@@ -20,6 +20,7 @@ import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call';
 import {VideoInputPermissionsError} from 'src/clients/calls';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
+import {CallStatusTimer} from 'src/components/call_status_timer';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
@@ -49,6 +50,7 @@ import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming_condensed';
+import {RingbackContainer} from 'src/components/incoming_calls/ringback_container';
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {JoinLoadingOverlay, VideoLoadingOverlay} from 'src/components/loading_overlays';
 import {
@@ -91,7 +93,8 @@ import {
 } from 'src/utils';
 import styled, {css} from 'styled-components';
 
-import CallDuration from './call_duration';
+import {CallParticipantAvatar} from './call_participant_avatar';
+import {CallStatusText} from './call_status_text';
 import JoinNotification from './join_notification';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import WidgetBanner from './widget_banner';
@@ -109,7 +112,6 @@ interface Props {
     sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
     profiles: IDMappedObjects<UserProfile>,
-    callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
     callRecording?: CallJobReduxState,
@@ -139,7 +141,10 @@ interface Props {
     recordingsEnabled: boolean,
     openModal: <P>(modalData: ModalData<P>) => void;
     openCallsUserSettings: () => void;
+    currentUserProfile: UserProfile | undefined,
     connectedDMUser: UserProfile | undefined,
+    isAdmin: boolean,
+    isDMCalling: boolean,
 }
 
 interface DraggingState {
@@ -335,7 +340,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     };
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
-        if (!this.props.show) {
+        if (!this.props.show || this.props.clientConnecting) {
             return;
         }
         switch (keyToAction('widget', ev)) {
@@ -349,7 +354,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.onShareScreenToggle();
             break;
         case PARTICIPANTS_LIST_TOGGLE:
-            this.onParticipantsButtonClick();
+            if (!isDMChannel(this.props.channel)) {
+                this.onParticipantsButtonClick();
+            }
             break;
         case LEAVE_CALL:
             this.onDisconnectClick();
@@ -1203,33 +1210,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 bgColor={isSharing ? 'rgba(var(--dnd-indicator-rgb), 0.16)' : ''}
                 icon={<ShareIcon style={{fill}}/>}
                 unavailable={noScreenPermissions}
-                disabled={Boolean(sharingID) && !isSharing}
+                disabled={(Boolean(sharingID) && !isSharing) || this.props.clientConnecting}
             />
-        );
-    };
-
-    renderSpeaking = () => {
-        const {formatMessage} = this.props.intl;
-        let speakingProfile;
-
-        for (let i = 0; i < this.props.sessions.length; i++) {
-            const session = this.props.sessions[i];
-            const profile = this.props.profiles[session.user_id];
-            if (session.voice && profile) {
-                speakingProfile = profile;
-                break;
-            }
-        }
-
-        return (
-            <div style={{fontSize: '14px', lineHeight: '20px', display: 'flex', whiteSpace: 'pre'}}>
-                <span style={{fontWeight: speakingProfile ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                    {speakingProfile ? getUserDisplayName(speakingProfile) : formatMessage({defaultMessage: 'No one'})}
-                    <span
-                        style={{fontWeight: 400}}
-                    >{untranslatable(' ')}{formatMessage({defaultMessage: 'is talking…'})}</span>
-                </span>
-            </div>
         );
     };
 
@@ -1583,12 +1565,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const recordingActionLabel = this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
 
+        // There's nothing to record until the callee picks up, so the action stays
+        // disabled while a DM call is still ringing.
+        const disabled = this.props.isDMCalling;
+
         return (
             <React.Fragment>
                 <li
                     className='MenuItem'
                     role='menuitem'
                     aria-label={recordingActionLabel}
+                    aria-disabled={disabled}
                 >
                     <button
                         id='calls-widget-menu-record-button'
@@ -1596,7 +1583,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={{
                             display: 'flex',
                             flexDirection: 'column',
+                            opacity: disabled ? 0.4 : 1,
+                            cursor: disabled ? 'not-allowed' : 'pointer',
                         }}
+                        disabled={disabled}
                         onClick={() => this.onRecordToggle()}
                     >
                         <div
@@ -1729,50 +1719,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {this.renderChatThreadMenuItem()}
                     {this.renderAdditionalSettingsMenuItem()}
                 </ul>
-            </div>
-        );
-    };
-
-    renderSpeakingProfile = () => {
-        let speakingPictureURL;
-        for (let i = 0; i < this.props.sessions.length; i++) {
-            const session = this.props.sessions[i];
-            const profile = this.props.profiles[session.user_id];
-            if (session.voice && profile) {
-                speakingPictureURL = Client4.getProfilePictureUrl(profile.id, profile.last_picture_update);
-                break;
-            }
-        }
-
-        return (
-            <div
-                style={{position: 'relative', display: 'flex', height: 'auto', alignItems: 'center'}}
-            >
-
-                {
-
-                    speakingPictureURL &&
-                    <Avatar
-                        size={32}
-                        border={false}
-                        url={speakingPictureURL}
-                    />
-                }
-
-                {
-                    !speakingPictureURL &&
-                    <Avatar
-                        size={32}
-                        icon='account-outline'
-                        border={false}
-                        style={{
-                            background: 'rgba(var(--center-channel-color-rgb), 0.16)',
-                            color: 'rgba(var(--center-channel-color-rgb), 0.48)',
-                            fontSize: '18px',
-                        }}
-                    />
-                }
-
             </div>
         );
     };
@@ -1989,7 +1935,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             return (
                 <div
-                    className='calls-notification-bar calls-slide-top'
+                    className='calls-notification-bar slideFadeInOutAnimation'
                     key={profile.id}
                     data-testid={'call-joined-participant-notification'}
                 >
@@ -2260,18 +2206,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 // eslint-disable-next-line no-undefined
                 onMouseDown={this.props.global ? undefined : this.onMouseDown}
             >
-                {/* <div style={{width: this.props.wider ? '210px' : '152px'}}> */}
-                {/*     {this.renderSpeaking()} */}
-                {/*     <div style={this.style.callInfo}> */}
-                {/*         {this.renderRecordingBadge()} */}
-                {/*         <CallDuration */}
-                {/*             startAt={this.props.callStartAt} */}
-                {/*             style={{letterSpacing: '0.02em'}} */}
-                {/*         /> */}
-                {/*         {this.renderChannelName()} */}
-                {/*     </div> */}
-                {/* </div> */}
-
                 {/* TODO: add recording badge */}
                 <div
                     style={{
@@ -2283,16 +2217,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     }}
                 >
                     {channelLink}
-
                     <div style={{fontSize: '10px', color: 'var(--center-channel-color-64, rgba(63, 67, 80, 0.64))'}}>{untranslatable('•')}</div>
-
-                    <CallDuration
-                        startAt={this.props.callStartAt}
-                        style={{
-                            letterSpacing: '0.02em',
-                            color: 'var(--center-channel-color-64, rgba(63, 67, 80, 0.64))',
-                            fontSize: '11px',
-                        }}
+                    <CallStatusTimer
+                        clientConnecting={this.props.clientConnecting}
                     />
                 </div>
 
@@ -2303,6 +2230,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     tooltipText={openPopOutLabel}
                     tooltipPosition='left'
                     bgColor=''
+                    disabled={this.props.clientConnecting}
                     icon={
                         <ShowIcon
                             fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
@@ -2349,12 +2277,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     renderProfiles = () => {
         // Here we are assuming this only renders in a DM which is the case
         // right now.
-        const selfProfile = this.props.profiles[this.props.currentUserID];
+        // While connecting or ringing there's no session for us in the store yet, so fall back to
+        // the current user's profile rather than rendering nothing.
+        const selfProfile = this.props.profiles[this.props.currentUserID] || this.props.currentUserProfile;
         const otherProfile = this.props.connectedDMUser;
         const otherSession = this.props.otherSessions[0];
         const selfSession = this.props.currentSession;
         const videoView = (otherSession?.video || selfSession?.video) ?? false;
-        const selfOnly = this.props.otherSessions.length === 0;
+
+        // The callee is expected but not here yet, so their tile is shown pulsing.
+        const calleePending = (this.props.clientConnecting || this.props.isDMCalling) && Boolean(otherProfile);
+        const selfOnly = this.props.otherSessions.length === 0 && !calleePending;
 
         return (
             <div
@@ -2368,7 +2301,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }}
             >
 
-                { otherProfile && otherSession &&
+                { calleePending && otherProfile &&
+                <CallsWidgetProfile
+                    videoStream={null}
+                    profile={otherProfile}
+                    isSpeaking={false}
+                    isMuted={false}
+                    hasVideo={false}
+                    videoView={videoView}
+                    mirrorVideo={false}
+                    ringing={true}
+                    testID='calls-widget-profile-ringing'
+                />
+                }
+
+                { !calleePending && otherProfile && otherSession &&
                 <CallsWidgetProfile
                     videoStream={this.state.otherVideoStream}
                     profile={otherProfile}
@@ -2377,19 +2324,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     hasVideo={Boolean(otherSession.video)}
                     videoView={videoView}
                     mirrorVideo={false}
+                    testID='calls-widget-profile-other'
                 />
                 }
 
-                { selfProfile && selfSession &&
+                { selfProfile && (selfSession || this.props.clientConnecting) &&
                 <CallsWidgetProfile
                     videoStream={this.state.selfVideoStream}
                     profile={selfProfile}
-                    isSpeaking={Boolean(selfSession.voice)}
-                    isMuted={!selfSession.unmuted}
-                    hasVideo={Boolean(selfSession.video)}
+                    isSpeaking={Boolean(selfSession?.voice)}
+                    isMuted={!calleePending && Boolean(selfSession) && !selfSession?.unmuted}
+                    hasVideo={Boolean(selfSession?.video)}
                     videoView={videoView}
                     mirrorVideo={localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
                     singleSession={selfOnly}
+                    testID='calls-widget-profile-self'
                 />
                 }
             </div>
@@ -2457,7 +2406,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const openPopOutLabel = formatMessage({defaultMessage: 'Open in new window'});
         const showParticipantsListLabel = this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'});
         const settingsButtonLabel = formatMessage({defaultMessage: 'More options'});
-        const leaveMenuLabel = formatMessage({defaultMessage: 'Leave call'});
+
+        // A ringing DM call hasn't been answered yet, so hanging up cancels it rather than leaving it.
+        const leaveMenuLabel = this.props.isDMCalling ? formatMessage({defaultMessage: 'Cancel call'}) : formatMessage({defaultMessage: 'Leave call'});
 
         // const shouldRenderVideoContainer = this.props.currentSession?.video || this.state.initializingSelfVideo || this.props.otherSessions.some((s) => s.video);
 
@@ -2467,6 +2418,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 style={mainStyle}
                 ref={this.node}
             >
+                <RingbackContainer/>
                 <JoinLoadingOverlay
                     visible={this.props.clientConnecting}
                     joining={this.props.global ? !this.props.startingCall : this.props.sessions.length > 0}
@@ -2510,17 +2462,23 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         // eslint-disable-next-line no-undefined
                         onMouseDown={this.props.global ? undefined : this.onMouseDown}
                     >
-                        {this.renderSpeakingProfile()}
-
+                        <CallParticipantAvatar
+                            sessions={this.props.sessions}
+                            profiles={this.props.profiles}
+                            clientConnecting={this.props.clientConnecting}
+                        />
                         <div style={{width: this.props.wider ? '210px' : '152px'}}>
-                            {this.renderSpeaking()}
+                            <CallStatusText
+                                sessions={this.props.sessions}
+                                profiles={this.props.profiles}
+                                clientConnecting={this.props.clientConnecting}
+                            />
                             <div style={this.style.callInfo}>
                                 {this.renderRecordingBadge()}
-                                <CallDuration
-                                    startAt={this.props.callStartAt}
-                                    style={{letterSpacing: '0.02em'}}
+                                <CallStatusTimer
+                                    clientConnecting={this.props.clientConnecting}
                                 />
-                                {this.renderChannelName()}
+                                {!isDMChannel(this.props.channel) && this.renderChannelName()}
                             </div>
                         </div>
 
@@ -2531,6 +2489,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             tooltipText={openPopOutLabel}
                             tooltipPosition='left'
                             bgColor=''
+                            disabled={this.props.clientConnecting}
                             icon={
                                 <ShowIcon
                                     fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
@@ -2544,32 +2503,35 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         style={this.style.bottomBar}
                     >
 
-                        <WidgetButton
-                            id='calls-widget-participants-button'
-                            ariaLabel={showParticipantsListLabel}
-                            ariaControls='calls-widget-participants-menu'
-                            ariaExpanded={this.state.showParticipantsList}
-                            onToggle={this.onParticipantsButtonClick}
-                            bgColor={this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
-                            tooltipText={showParticipantsListLabel}
-                            shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
-                            icon={
-                                <ParticipantsIcon
-                                    style={{fill: this.state.showParticipantsList ? 'var(--button-bg)' : ''}}
-                                />
-                            }
-                            style={{marginRight: 'auto'}}
-                        >
-                            <span
-                                style={{
-                                    fontWeight: 600,
-                                    fontSize: '14px',
-                                    color: this.state.showParticipantsList ? 'var(--button-bg)' : '',
-                                }}
+                        {!isDMChannel(this.props.channel) && (
+                            <WidgetButton
+                                id='calls-widget-participants-button'
+                                ariaLabel={showParticipantsListLabel}
+                                ariaControls='calls-widget-participants-menu'
+                                ariaExpanded={this.state.showParticipantsList}
+                                onToggle={this.onParticipantsButtonClick}
+                                bgColor={this.state.showParticipantsList ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
+                                tooltipText={showParticipantsListLabel}
+                                shortcut={reverseKeyMappings.widget[PARTICIPANTS_LIST_TOGGLE][0]}
+                                disabled={this.props.clientConnecting}
+                                icon={
+                                    <ParticipantsIcon
+                                        style={{fill: this.state.showParticipantsList ? 'var(--button-bg)' : ''}}
+                                    />
+                                }
+                                style={{marginRight: 'auto'}}
                             >
-                                {this.props.sessions.length}
-                            </span>
-                        </WidgetButton>
+                                <span
+                                    style={{
+                                        fontWeight: 600,
+                                        fontSize: '14px',
+                                        color: this.state.showParticipantsList ? 'var(--button-bg)' : '',
+                                    }}
+                                >
+                                    {this.props.sessions.length}
+                                </span>
+                            </WidgetButton>
+                        )}
 
                         <WidgetButton
                             id='voice-mute-unmute'
@@ -2581,6 +2543,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             tooltipText={muteTooltipText}
                             tooltipSubtext={muteTooltipSubtext}
                             bgColor={this.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
+                            disabled={this.props.clientConnecting}
                             icon={
                                 <MuteIcon
                                     style={{
@@ -2599,6 +2562,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
                                 tooltipText={handTooltipText}
                                 bgColor={this.isHandRaised() ? 'rgba(var(--away-indicator-rgb), 0.16)' : ''}
+                                disabled={this.props.clientConnecting}
                                 icon={
                                     <HandIcon
                                         style={{
@@ -2618,6 +2582,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             ariaExpanded={this.state.showMenu}
                             onToggle={this.onMenuClick}
                             tooltipText={settingsButtonLabel}
+                            disabled={this.props.clientConnecting}
                             icon={
                                 <MenuIcon
                                     style={{
@@ -2627,24 +2592,38 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             }
                             bgColor={this.state.showMenu ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
                         />
-                        <DotMenu
-                            id='calls-widget-leave-button'
-                            icon={<LeaveCallIcon style={{fill: 'white'}}/>}
-                            ariaLabel={leaveMenuLabel}
-                            dotMenuButton={LeaveCallButton}
-                            placement={'top-start'}
-                            strategy={'fixed'}
-                            onOpenChange={this.onLeaveMenuOpen}
-                            shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
-                            tooltipText={leaveMenuLabel}
-                        >
-                            <LeaveCallMenu
-                                channelID={this.props.channel.id}
-                                isHost={isHost}
-                                numParticipants={this.props.sessions.length}
-                                leaveCall={this.onDisconnectClick}
+                        {(isDMChannel(this.props.channel) || (!isHost && !this.props.isAdmin) || this.props.sessions.length <= 1) ? (
+                            <WidgetButton
+                                id='calls-widget-leave-button'
+                                icon={<LeaveCallIcon style={this.props.clientConnecting ? {} : {fill: 'white'}}/>}
+                                bgColor={this.props.clientConnecting ? 'rgba(var(--center-channel-color-rgb), 0.08)' : 'var(--dnd-indicator)'}
+                                bgColorHover='linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08))'
+                                ariaLabel={leaveMenuLabel}
+                                tooltipText={leaveMenuLabel}
+                                disabled={this.props.clientConnecting}
+                                shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
+                                onToggle={this.onDisconnectClick}
                             />
-                        </DotMenu>
+                        ) : (
+                            <DotMenu
+                                id='calls-widget-leave-button'
+                                icon={<LeaveCallIcon style={{fill: 'white'}}/>}
+                                ariaLabel={leaveMenuLabel}
+                                dotMenuButton={LeaveCallButton}
+                                placement={'top-start'}
+                                strategy={'fixed'}
+                                onOpenChange={this.onLeaveMenuOpen}
+                                shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
+                                tooltipText={leaveMenuLabel}
+                            >
+                                <LeaveCallMenu
+                                    channelID={this.props.channel.id}
+                                    isHost={isHost}
+                                    numParticipants={this.props.sessions.length}
+                                    leaveCall={this.onDisconnectClick}
+                                />
+                            </DotMenu>
+                        )}
                     </div>
                 </div>
             </div>
@@ -2840,6 +2819,8 @@ type CallsWidgetProfileProps = {
     videoView: boolean;
     mirrorVideo: boolean;
     singleSession?: boolean;
+    ringing?: boolean;
+    testID?: string;
 }
 
 const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
@@ -2862,6 +2843,7 @@ const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
         <WidgetProfileContainer
             $videoView={props.videoView}
             $singleSession={props.singleSession}
+            data-testid={props.testID}
         >
 
             {!props.hasVideo &&
@@ -2870,6 +2852,7 @@ const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
                 border={false}
                 url={Client4.getProfilePictureUrl(props.profile.id, props.profile.last_picture_update)}
                 borderGlowWidth={props.isSpeaking ? 3 : 0}
+                className={props.ringing ? 'pulsingAnimation' : ''}
                 borderGlowColor='white'
             />
             }
@@ -2884,7 +2867,10 @@ const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
             }
 
             {props.isMuted &&
-            <MuteState $isMuted={props.isMuted}>
+            <MuteState
+                $isMuted={props.isMuted}
+                data-testid='calls-widget-profile-mute-state'
+            >
                 <MuteIcon
                     style={{
                         fill: props.isMuted ? 'white' : 'rgba(61, 184, 135, 1)',

@@ -275,6 +275,20 @@ func (cs *callState) onlyUserLeft(userID string) bool {
 	return found
 }
 
+// distinctNonBotUserIDs returns the set of users connected to the call, ignoring the Calls bot and
+// collapsing a user's multiple devices into one entry. A DM call with one entry here has not been
+// answered: only the caller is in it, however many clients they joined from.
+func (cs *callState) distinctNonBotUserIDs(botID string) map[string]struct{} {
+	users := make(map[string]struct{}, len(cs.sessions))
+	for _, session := range cs.sessions {
+		if session.UserID == botID {
+			continue
+		}
+		users[session.UserID] = struct{}{}
+	}
+	return users
+}
+
 func (p *Plugin) getCallStateFromCall(call *public.Call, fromWriter bool) (*callState, error) {
 	if call == nil {
 		return nil, fmt.Errorf("call should not be nil")
@@ -343,7 +357,7 @@ func (p *Plugin) cleanUpState() error {
 			continue
 		}
 
-		if err := p.cleanCallState(call, "cleanup_on_restart"); err != nil {
+		if err := p.cleanCallState(call, "cleanup_on_restart", callEndReasonNormal); err != nil {
 			p.unlockCall(call.ChannelID)
 			return fmt.Errorf("failed to clean up state: %w", err)
 		}
@@ -357,12 +371,14 @@ func (p *Plugin) cleanUpState() error {
 // NOTE: cleanCallState is meant to be called under lock (on channelID) so that
 // the operation can be performed atomically. reason identifies what triggered
 // the call to end (e.g. host_end, cleanup_on_restart) for forensic logging.
-func (p *Plugin) cleanCallState(call *public.Call, reason string) error {
+// endReason is what the call post should say happened; reason is the coarser label the call-ended
+// log line carries.
+func (p *Plugin) cleanCallState(call *public.Call, reason string, endReason callEndReason) error {
 	if call == nil {
 		return nil
 	}
 
-	if _, err := p.updateCallPostEnded(call.PostID, mapKeys(call.Props.Participants)); err != nil {
+	if _, err := p.updateCallPostEnded(call.PostID, mapKeys(call.Props.Participants), endReason); err != nil {
 		p.LogError("failed to update call post", "err", err.Error())
 	}
 

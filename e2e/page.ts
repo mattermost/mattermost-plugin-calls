@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {expect, Page} from '@playwright/test';
+import {errors, expect, Page} from '@playwright/test';
 
 import {apiGetGroupChannel} from './channels';
 import {baseURL, defaultTeam, pluginID} from './constants';
@@ -75,21 +75,14 @@ export default class PlaywrightDevPage {
     async slashCallEnd() {
         await this.sendSlashCommand('/call end');
 
-        // Wait for one of the two possible modals to surface. The previous
-        // implementation called isVisible() inline, which is a non-blocking
-        // point-in-time check — under LiveKit the host-confirmation modal
-        // renders a few hundred ms after /call end, so the inline check would
-        // race past it and the call would never actually end.
-        const confirmModal = this.page.locator('#end_call_confirmation');
+        // Only the error modal is left now that ending a call takes no confirmation, and it
+        // only shows up when the request fails. Checking isVisible() inline would be a
+        // non-blocking point-in-time check that races past a modal rendering a few hundred
+        // ms after /call end, so wait for it and treat its absence as success.
         const errorModal = this.page.locator('.modal-content');
-        await Promise.race([
-            confirmModal.waitFor({state: 'visible', timeout: 10000}),
-            errorModal.waitFor({state: 'visible', timeout: 10000}),
-        ]).catch(() => undefined);
+        await errorModal.waitFor({state: 'visible', timeout: 2000}).catch(() => undefined);
 
-        if (await confirmModal.isVisible()) {
-            await this.page.getByTestId('modal-confirm-button').getByText('End call').click();
-        } else if (await errorModal.isVisible()) {
+        if (await errorModal.isVisible()) {
             await errorModal.getByRole('button', {name: 'Understood'}).click();
         }
     }
@@ -466,13 +459,30 @@ export default class PlaywrightDevPage {
 
     async leaveFromPopout() {
         await this.page.locator('#calls-popout-leave-button').click();
-        const menu = this.page.getByTestId('dropdownmenu');
-        await menu.getByText('Leave call').click();
+
+        // The leave control is either a plain button that disconnects on click, or a dot menu
+        // that needs a second click on 'Leave call'. We can't tell which one we got from here,
+        // so give the menu a short window to render. isVisible() alone would be a non-blocking
+        // point-in-time check that races the menu.
+        try {
+            await this.page.getByTestId('dropdownmenu').getByText('Leave call').click({timeout: 2000});
+        } catch (err) {
+            if (!(err instanceof errors.TimeoutError)) {
+                throw err;
+            }
+        }
     }
 
     async leaveFromWidget() {
         await this.page.locator('#calls-widget-leave-button').click();
-        const menu = this.page.getByTestId('dropdownmenu');
-        await menu.getByText('Leave call').click();
+
+        // See leaveFromPopout: the menu is only there on the dot menu variant.
+        try {
+            await this.page.getByTestId('dropdownmenu').getByText('Leave call').click({timeout: 2000});
+        } catch (err) {
+            if (!(err instanceof errors.TimeoutError)) {
+                throw err;
+            }
+        }
     }
 }

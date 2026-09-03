@@ -9,19 +9,15 @@ import {ActionResult} from 'mattermost-redux/types/actions';
 import {defineMessage} from 'react-intl';
 import {
     displayGenericErrorModal,
+    hostEndCallForEveryone,
     startCallRecording,
     stopCallRecording,
 } from 'src/actions';
 import RestClient from 'src/clients/rest';
 import {
-    EndCallConfirmation,
-    IDEndCallConfirmation,
-} from 'src/components/call_widget/end_call_confirmation';
-import {
     DisabledCallsErr,
     STORAGE_CALLS_CLIENT_STATS_KEY,
 } from 'src/constants';
-import {modals} from 'src/webapp_globals';
 
 import {flushAndGetLogs, logDebug} from './log';
 import {
@@ -152,13 +148,14 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             return {};
         }
 
-        store.dispatch(modals?.openModal({
-            modalId: IDEndCallConfirmation,
-            dialogType: EndCallConfirmation,
-            dialogProps: {
-                channelID: args.channel_id,
-            },
-        }));
+        try {
+            await hostEndCallForEveryone(args.channel_id);
+        } catch (_err) {
+            store.dispatch(displayGenericErrorModal(
+                defineMessage({defaultMessage: 'Unable to end the call'}),
+                defineMessage({defaultMessage: 'Something went wrong while trying to end the call. Please try again.'}),
+            ));
+        }
 
         return {};
     case 'link':

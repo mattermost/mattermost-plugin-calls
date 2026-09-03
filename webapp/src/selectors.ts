@@ -46,7 +46,7 @@ import {
     IncomingCallNotification,
     LiveCaptions,
 } from 'src/types/types';
-import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL} from 'src/utils';
+import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL, getUserIdFromDM} from 'src/utils';
 
 import {pluginId} from './manifest';
 
@@ -58,19 +58,14 @@ const pluginReduxStore = (state: GlobalState): RootState =>
 const callsStateInPluginReduxStore = (state: GlobalState): { [channelID: string]: callState } =>
     pluginReduxStore(state).calls;
 
-export const channelIDForCurrentCall: (state: GlobalState) => string =
-    createSelector(
-        getCallsClientChannelID,
-        (state: GlobalState) => pluginReduxStore(state).clientStateReducer,
-        (channelID, cState) => channelID || cState?.channelID || '',
-    );
+// Not memoised: getCallsClientChannelID reads window.callsClient, which is outside the store and so
+// invisible to reselect's input comparison. A stale value here would propagate to every selector
+// keyed on the current call.
+export const channelIDForCurrentCall = (state: GlobalState): string =>
+    getCallsClientChannelID() || pluginReduxStore(state).clientStateReducer?.channelID || '';
 
-export const channelForCurrentCall: (state: GlobalState) => Channel | undefined =
-    createSelector(
-        getAllChannels,
-        channelIDForCurrentCall,
-        (channels, id) => channels[id],
-    );
+export const channelForCurrentCall = (state: GlobalState): Channel | undefined =>
+    getAllChannels(state)[channelIDForCurrentCall(state)];
 
 export const getCallIDForCurrentCall: (state: GlobalState) => string | undefined =
     createSelector(
@@ -160,6 +155,14 @@ export const numSessionsInCallInChannel = (state: GlobalState, channelID: string
     return Object.keys(sessionsInCalls(state)[channelID] || {}).length;
 };
 
+// numUsersInCallInChannel counts the distinct users in the call rather than their sessions,
+// since a single user can be connected from multiple clients. Unlike numProfilesInCallInChannel
+// it doesn't need the profiles to have been fetched, so it never undercounts.
+export const numUsersInCallInChannel = (state: GlobalState, channelID: string): number => {
+    const sessions = sessionsInCalls(state)[channelID] || {};
+    return new Set(Object.values(sessions).map((session) => session.user_id)).size;
+};
+
 export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
     return Boolean(callsStateInPluginReduxStore(state)[channelId]);
 };
@@ -234,6 +237,13 @@ export const callStartAtForCurrentCall: (state: GlobalState) => number =
         (callsStates, channelID, initTime) => callsStates[channelID]?.startAt || initTime || 0,
     );
 
+export const dmCalleeAnsweredAtForCurrentCall: (state: GlobalState) => number =
+    createSelector(
+        getCallIDForCurrentCall,
+        (state: GlobalState) => pluginReduxStore(state).dmCalleeAnsweredAt,
+        (callID, answeredAt) => (callID && answeredAt[callID]) || 0,
+    );
+
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
     createSelector(
         callsStateInPluginReduxStore,
@@ -248,6 +258,53 @@ export const idForCallInChannel = (state: GlobalState, channelID: string): strin
 export const callOwnerIDForCallInChannel = (state: GlobalState, channelID: string): string | undefined => {
     return pluginReduxStore(state).calls[channelID]?.ownerID;
 };
+
+export const callOwnerIDForCurrentCall: (state: GlobalState) => string | undefined =
+    createSelector(
+        callsStateInPluginReduxStore,
+        channelIDForCurrentCall,
+        (callsStates, channelID) => callsStates[channelID]?.ownerID,
+    );
+
+// True when the current user placed the current call.
+export const isCurrentUserOwnerOfCurrentCall: (state: GlobalState) => boolean =
+    createSelector(
+        getCallIDForCurrentCall,
+        callOwnerIDForCurrentCall,
+        getCurrentUserId,
+        (callID, ownerID, currentUserID) => Boolean(callID) && ownerID === currentUserID,
+    );
+
+// True once the current user's own session shows up in the call, i.e. they have finished joining.
+export const isCurrentUserInSessionForCurrentCall: (state: GlobalState) => boolean =
+    createSelector(
+        sessionsInCurrentCall,
+        getCurrentUserId,
+        (sessions, currentUserID) => sessions.some((session) => session.user_id === currentUserID),
+    );
+
+// True while the caller of a DM call is waiting for the other party to answer: they own the call,
+// they have joined it, nobody else has, and nothing has recorded an answer yet.
+export const isCurrentDMCallInCallingState: (state: GlobalState) => boolean =
+    createSelector(
+        isCurrentUserOwnerOfCurrentCall,
+        isCurrentUserInSessionForCurrentCall,
+        channelForCurrentCall,
+        sessionsForOtherUsersInCall,
+        dmCalleeAnsweredAtForCurrentCall,
+        (isOwner, inSession, channel, otherSessions, answeredAt) =>
+            isOwner && inSession && !answeredAt && Boolean(channel && isDirectChannel(channel)) && otherSessions.length === 0,
+    );
+
+// The other party in the current DM call. Comes from the channel rather than the call sessions,
+// because while the call is ringing the callee has not joined it yet. Empty string when there's no
+// current call, or when its channel isn't in the store yet.
+export const otherUserIDForCurrentDMCall: (state: GlobalState) => UserProfile['id'] =
+    createSelector(
+        channelForCurrentCall,
+        getCurrentUserId,
+        (currentCallChannel, currentUserID) => getUserIdFromDM(currentCallChannel?.name || '', currentUserID),
+    );
 
 const hostsInCalls = (state: GlobalState): hostsState => {
     return pluginReduxStore(state).hosts;

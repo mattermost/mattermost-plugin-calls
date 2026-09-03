@@ -349,7 +349,7 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 		ReliableClusterSend: true,
 	})
 
-	if err := p.cleanCallState(&state.Call, "host_end"); err != nil {
+	if err := p.cleanCallState(&state.Call, "host_end", callEndReasonNormal); err != nil {
 		return fmt.Errorf("failed to clean call state: %w", err)
 	}
 

@@ -1,8 +1,10 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {UserSessionState} from '@mattermost/calls-common/lib/types';
 import type {Channel} from '@mattermost/types/channels';
 import type {Team} from '@mattermost/types/teams';
+import type {UserProfile} from '@mattermost/types/users';
 import {render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -14,6 +16,10 @@ import {mockStore} from 'src/testUtils';
 import CallWidget from './component';
 
 type Props = React.ComponentProps<typeof CallWidget>;
+
+jest.mock('src/components/incoming_calls/ringback_container', () => ({
+    RingbackContainer: () => null,
+}));
 
 jest.mock('src/components/leave_call_menu', () => ({
     LeaveCallMenu: ({leaveCall}: {leaveCall: () => void}) => (
@@ -47,6 +53,26 @@ const stubChannel = {
 
 const stubTeam = {id: 'team-id', name: 'team', display_name: 'Team'} as Team;
 
+// The widget renders store-connected children (e.g. SpeakerAvatar), so the store needs
+// the same shape the reducers produce rather than a bare {}. No call is in progress, so
+// the widget renders purely from the props passed in below.
+// The other user's profile is seeded because useDMCallingState fetches it over the network
+// when a DM call's callee is missing from the store, which jsdom has no fetch for.
+const stubState = (channel: Channel) => ({
+    'plugins-com.mattermost.calls': {
+        calls: {},
+        sessions: {},
+        dmCalleeAnsweredAt: {},
+    },
+    entities: {
+        channels: {channels: {[channel.id]: channel}},
+        users: {
+            currentUserId: 'user-id',
+            profiles: {'other-user': {id: 'other-user', username: 'callee'} as UserProfile},
+        },
+    },
+});
+
 const props: Props = {
     intl,
     currentUserID: 'user-id',
@@ -58,7 +84,6 @@ const props: Props = {
     otherSessions: [],
     sessionsMap: {},
     profiles: {},
-    callStartAt: Date.now() - 30_000,
     callHostID: 'user-id',
     callHostChangeAt: 0,
     isRecording: false,
@@ -79,7 +104,10 @@ const props: Props = {
     recordingsEnabled: false,
     openModal: jest.fn(),
     openCallsUserSettings: jest.fn(),
+    currentUserProfile: undefined,
     connectedDMUser: undefined,
+    isAdmin: false,
+    isDMCalling: false,
 };
 
 describe('CallWidget', () => {
@@ -117,7 +145,7 @@ describe('CallWidget', () => {
         const user = userEvent.setup();
 
         render(
-            <Provider store={mockStore()}>
+            <Provider store={mockStore(stubState(stubChannel))}>
                 <RawIntlProvider value={intl}>
                     <CallWidget {...props}/>
                 </RawIntlProvider>
@@ -143,7 +171,7 @@ describe('CallWidget', () => {
         const user = userEvent.setup();
 
         render(
-            <Provider store={mockStore()}>
+            <Provider store={mockStore(stubState(stubChannel))}>
                 <RawIntlProvider value={intl}>
                     <CallWidget {...props}/>
                 </RawIntlProvider>
@@ -161,7 +189,7 @@ describe('CallWidget', () => {
         const user = userEvent.setup();
 
         render(
-            <Provider store={mockStore()}>
+            <Provider store={mockStore(stubState(stubChannel))}>
                 <RawIntlProvider value={intl}>
                     <CallWidget {...props}/>
                 </RawIntlProvider>
@@ -170,6 +198,144 @@ describe('CallWidget', () => {
 
         await user.click(screen.getByRole('button', {name: /^leave call$/i}));
 
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('leave button behavior', () => {
+    let disconnect: jest.Mock;
+
+    const stubSession = (sessionId: string, userId: string): UserSessionState => ({
+        session_id: sessionId,
+        user_id: userId,
+        unmuted: false,
+        raised_hand: 0,
+    });
+
+    // A real DM channel name, so getUserIdFromDM resolves the callee to the profile seeded in
+    // stubState instead of one useDMCallingState would try to fetch.
+    const dmChannel = {...stubChannel, type: 'D', name: 'user-id__other-user'} as Channel;
+    const currentUserSession = stubSession('session-1', 'user-id');
+    const otherSession = stubSession('session-2', 'other-user');
+
+    beforeEach(() => {
+        disconnect = jest.fn();
+        window.callsClient = {
+            disconnect,
+            channelID: 'channel-id',
+            getRemoteVoiceTracks: () => [],
+            getRemoteScreenStream: () => null,
+            getLocalScreenStream: () => null,
+            on: jest.fn(),
+            off: jest.fn(),
+        } as unknown as (typeof window)['callsClient'];
+    });
+
+    afterEach(() => {
+        window.callsClient = undefined;
+    });
+
+    test('DM channel: leaves directly without menu even when host with others', async () => {
+        const user = userEvent.setup();
+        render(
+            <Provider store={mockStore(stubState(dmChannel))}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        channel={dmChannel}
+                        sessions={[currentUserSession, otherSession]}
+                        callHostID='user-id'
+                    />
+                </RawIntlProvider>
+            </Provider>,
+        );
+
+        expect(screen.queryByText('Leave call')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', {name: /^leave call$/i}));
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    test('non-host and non-admin with others: leaves directly without menu', async () => {
+        const user = userEvent.setup();
+        render(
+            <Provider store={mockStore(stubState(stubChannel))}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        sessions={[currentUserSession, otherSession]}
+                        callHostID='other-user'
+                        isAdmin={false}
+                    />
+                </RawIntlProvider>
+            </Provider>,
+        );
+
+        expect(screen.queryByText('Leave call')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', {name: /^leave call$/i}));
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    test('solo host: leaves directly without menu', async () => {
+        const user = userEvent.setup();
+        render(
+            <Provider store={mockStore(stubState(stubChannel))}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        sessions={[currentUserSession]}
+                        callHostID='user-id'
+                        isAdmin={false}
+                    />
+                </RawIntlProvider>
+            </Provider>,
+        );
+
+        expect(screen.queryByText('Leave call')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', {name: /^leave call$/i}));
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    test('host with other participants: shows leave menu, leave call disconnects', async () => {
+        const user = userEvent.setup();
+        render(
+            <Provider store={mockStore(stubState(stubChannel))}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        sessions={[currentUserSession, otherSession]}
+                        callHostID='user-id'
+                        isAdmin={false}
+                    />
+                </RawIntlProvider>
+            </Provider>,
+        );
+
+        const leaveButton = screen.getByText('Leave call');
+        expect(leaveButton).toBeInTheDocument();
+
+        await user.click(leaveButton);
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    test('admin (non-host) with other participants: shows leave menu, leave call disconnects', async () => {
+        const user = userEvent.setup();
+        render(
+            <Provider store={mockStore(stubState(stubChannel))}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        sessions={[currentUserSession, otherSession]}
+                        callHostID='other-user'
+                        isAdmin={true}
+                    />
+                </RawIntlProvider>
+            </Provider>,
+        );
+
+        const leaveButton = screen.getByText('Leave call');
+        expect(leaveButton).toBeInTheDocument();
+
+        await user.click(leaveButton);
         expect(disconnect).toHaveBeenCalledTimes(1);
     });
 });

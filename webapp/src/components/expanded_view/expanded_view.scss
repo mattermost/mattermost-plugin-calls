@@ -1,0 +1,20 @@
+@keyframes calls-pulsing {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+#calls-expanded-view {
+    .callStatusTimer {
+        font-weight: 600;
+    }
+
+    .pulsingAnimation {
+        animation: calls-pulsing 1.6s ease-in-out infinite;
+    }
+}
