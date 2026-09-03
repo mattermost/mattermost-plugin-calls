@@ -386,7 +386,7 @@ func TestWSReader(t *testing.T) {
 		})
 
 		// MM-64737 bug, which shouldn't happen but somehow did.
-		t.Run("nil session but nil error, revoke session, don't crash", func(_ *testing.T) {
+		t.Run("nil session but nil error, revoke session, don't crash", func(t *testing.T) {
 			defer mockAPI.AssertExpectations(t)
 
 			us := newUserSession("userID", "channelID", "connID", "callID", false)
@@ -405,17 +405,19 @@ func TestWSReader(t *testing.T) {
 				"origin", mock.AnythingOfType("string"),
 				"userID", us.userID, "connID", us.connID, "channelID", us.channelID).Once()
 
-			var wg sync.WaitGroup
-			wg.Add(1)
+			doneCh := make(chan struct{})
 			go func() {
-				defer wg.Done()
+				defer close(doneCh)
 				p.wsReader(us, "authSessionID", "handlerID")
 			}()
 
-			time.Sleep(1500 * time.Millisecond)
-			close(us.wsCloseCh)
-
-			wg.Wait()
+			select {
+			case <-doneCh:
+			case <-time.After(5 * time.Second):
+				close(us.wsCloseCh)
+				<-doneCh
+				t.Fatal("wsReader did not return within timeout")
+			}
 		})
 	})
 }
