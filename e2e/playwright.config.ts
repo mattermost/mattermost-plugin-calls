@@ -71,7 +71,7 @@ const config: PlaywrightTestConfig = {
         },
     ],
     reporter: process.env.CI ? [
-        ['html', {open: 'never'}],
+        ['blob'],
         ['json', {outputFile: 'pw-results.json'}],
         ['list'],
     ] : 'list',
