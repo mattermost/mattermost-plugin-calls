@@ -624,6 +624,12 @@ func TestCreateCallStartedPost(t *testing.T) {
 			p, mockAPI, _ := newAPITestPlugin(t)
 			defer mockAPI.AssertExpectations(t)
 
+			// Enable ringing so sendPushNotifications proceeds past the EnableRinging guard.
+			ringCfg := &configuration{}
+			ringCfg.SetDefaults()
+			*ringCfg.EnableRinging = true
+			p.configuration = ringCfg
+
 			channelID := model.NewId()
 			userID := model.NewId()
 

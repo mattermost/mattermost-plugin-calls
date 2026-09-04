@@ -386,7 +386,7 @@ func TestWSReader(t *testing.T) {
 		})
 
 		// MM-64737 bug, which shouldn't happen but somehow did.
-		t.Run("nil session but nil error, revoke session, don't crash", func(_ *testing.T) {
+		t.Run("nil session but nil error, revoke session, don't crash", func(t *testing.T) {
 			defer mockAPI.AssertExpectations(t)
 
 			us := newUserSession("userID", "channelID", "connID", "callID", false)
@@ -405,17 +405,22 @@ func TestWSReader(t *testing.T) {
 				"origin", mock.AnythingOfType("string"),
 				"userID", us.userID, "connID", us.connID, "channelID", us.channelID).Once()
 
-			var wg sync.WaitGroup
-			wg.Add(1)
+			doneCh := make(chan struct{})
 			go func() {
-				defer wg.Done()
+				defer close(doneCh)
 				p.wsReader(us, "authSessionID", "handlerID")
 			}()
 
-			time.Sleep(1500 * time.Millisecond)
-			close(us.wsCloseCh)
-
-			wg.Wait()
+			select {
+			case <-doneCh:
+			case <-time.After(5 * time.Second):
+				close(us.wsCloseCh)
+				select {
+				case <-doneCh:
+				case <-time.After(time.Second):
+				}
+				t.Fatal("wsReader did not return within timeout")
+			}
 		})
 	})
 }
@@ -1047,10 +1052,6 @@ func TestHandleJoin(t *testing.T) {
 			SkuShortName: "enterprise",
 		}, nil).Unset()
 
-		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-			Id:   channelID,
-			Type: model.ChannelTypeOpen,
-		}, nil).Once()
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
@@ -1191,11 +1192,6 @@ func TestHandleJoin(t *testing.T) {
 				mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Once()
 				mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
 					&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
-
-				mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-					Id:   channelID,
-					Type: model.ChannelTypeOpen,
-				}, nil).Once()
 			}
 
 			mockAPI.On("GetLicense").Return(&model.License{
@@ -1346,10 +1342,6 @@ func TestHandleJoin(t *testing.T) {
 		defer mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Unset()
 		mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true})
-		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-			Id:   channelID,
-			Type: model.ChannelTypeOpen,
-		}, nil)
 		mockAPI.On("GetLicense").Return(&model.License{
 			SkuShortName: "enterprise",
 		}, nil)
@@ -1524,13 +1516,11 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
 			Id:   channelID,
 			Type: model.ChannelTypeDirect,
-		}, nil).Twice()
+		}, nil).Once()
 
 		mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
 			MemberCount: 1,
 		}, nil).Once()
-
-		mockAPI.On("GetUsersInChannel", channelID, "username", 0, 8).Return(nil, nil)
 
 		// Call lock
 		mockAPI.On("KVSetWithOptions", "mutex_call_"+channelID, []byte{0x1}, mock.Anything).Return(true, nil)
