@@ -415,7 +415,10 @@ func TestWSReader(t *testing.T) {
 			case <-doneCh:
 			case <-time.After(5 * time.Second):
 				close(us.wsCloseCh)
-				<-doneCh
+				select {
+				case <-doneCh:
+				case <-time.After(time.Second):
+				}
 				t.Fatal("wsReader did not return within timeout")
 			}
 		})
