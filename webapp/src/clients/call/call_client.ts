@@ -1072,6 +1072,13 @@ export default class CallClient extends EventEmitter {
         this.roomConnected = false;
         this.connectPayload = null;
 
+        this.stopStatsPolling();
+
+        // Emitted before the room reference is released below: listeners call getSessionID(),
+        // which reads this.room and returns null once it is nulled — dropping the local
+        // leaveUser dispatch and leaving it to the user_left websocket round-trip.
+        this.emit(CALL_EVENT.DISCONNECTED, reason);
+
         // Sever our EventEmitter listeners from the room before releasing the reference.
         // LiveKit's internal devicechange listener uses a WeakRef/AbortController pattern
         // that defeats its own removeEventListener, so the native OS event keeps reaching
@@ -1081,10 +1088,6 @@ export default class CallClient extends EventEmitter {
         const room = this.room;
         this.room = null;
         room?.removeAllListeners();
-
-        this.stopStatsPolling();
-
-        this.emit(CALL_EVENT.DISCONNECTED, reason);
 
         if (this.websocketClient) {
             try {

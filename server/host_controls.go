@@ -322,6 +322,8 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 
 	sessionCount := len(state.sessions)
 
+	p.cancelDMNoAnswerTimer(channelID)
+
 	// Destroy the LiveKit room. This forcibly disconnects every connected
 	// participant; each client's LiveKit SDK fires RoomEvent.Disconnected
 	// (reason=ROOM_DELETED), driving in-call UI teardown independently of

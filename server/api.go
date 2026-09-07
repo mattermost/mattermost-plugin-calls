@@ -324,6 +324,8 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 
 	callID := state.Call.ID
 
+	p.cancelDMNoAnswerTimer(channelID)
+
 	p.endDMCallRoom("declineCall", channelID)
 
 	p.LogInfo("DM call was declined",
