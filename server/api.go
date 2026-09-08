@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -612,33 +613,50 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, lkURL, err := p.mintLiveKitToken(requestingUserID, requestingChannelID, requestingSessionID)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"token": token,
+		"url":   lkURL,
+	}); err != nil {
+		p.LogError("failed to encode LiveKit token response", "err", err.Error())
+	}
+}
+
+// mintLiveKitToken generates a LiveKit access token for the given user and call
+// session, returning the token and the signaling URL the caller should use. The
+// room is the channel; the identity carries both user and session so multiple
+// sessions of the same user are distinct participants.
+func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, string, error) {
 	cfg := p.getConfiguration()
 	lkURL := cfg.getLiveKitURL()
 	if lkURL == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
-		res.Err = "LiveKit is not configured"
-		res.Code = http.StatusInternalServerError
-		return
+		return "", "", errLiveKitNotConfigured
 	}
 
 	// Bot (recorder/transcriber) jobs may reach LiveKit at a different address than
 	// browser clients do, so hand them the bot-specific signaling URL if configured.
-	if requestingUserID == p.getBotID() {
+	if userID == p.getBotID() {
 		lkURL = cfg.getLiveKitURLForBot()
 	}
 
-	user, appErr := p.API.GetUser(requestingUserID)
+	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
-		res.Err = appErr.Error()
-		res.Code = http.StatusInternalServerError
-		return
+		return "", "", appErr
 	}
 
 	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 	grant := &auth.VideoGrant{
 		RoomJoin: true,
-		Room:     requestingChannelID,
+		Room:     channelID,
 	}
-	if requestingUserID == p.getBotID() {
+	if userID == p.getBotID() {
 		// The recording/transcribing bot only consumes media — it never publishes
 		// tracks or data, and never updates its own metadata (no raised hand).
 		// Restrict its grant to subscribe-only so the bot token can't be used to
@@ -656,24 +674,16 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		grant.SetCanUpdateOwnMetadata(true)
 	}
 	at.SetVideoGrant(grant).
-		SetIdentity(composeLivekitIdentity(requestingUserID, requestingSessionID)).
+		SetIdentity(composeLivekitIdentity(userID, sessionID)).
 		SetName(user.Id).
 		SetValidFor(time.Hour)
 
 	token, err := at.ToJWT()
 	if err != nil {
-		res.Err = fmt.Errorf("failed to generate LiveKit token: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return
+		return "", "", fmt.Errorf("failed to generate LiveKit token: %w", err)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]string{
-		"token": token,
-		"url":   lkURL,
-	}); err != nil {
-		p.LogError("failed to encode LiveKit token response", "err", err.Error())
-	}
+	return token, lkURL, nil
 }
 
 // handlePhoneCall dials an external phone number via LiveKit SIP and joins the
@@ -807,12 +817,29 @@ func (p *Plugin) getAPILimiter(userID string) *rate.Limiter {
 	return limiter
 }
 
-func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
+type ctxKey int
+
+// ctxKeyAuthSessionID keys the Mattermost session id on the request context.
+const ctxKeyAuthSessionID ctxKey = iota
+
+// authSessionIDFromRequest returns the Mattermost session backing the request.
+// The server supplies it on plugin.Context rather than as a header, so ServeHTTP
+// stashes it on the request context for handlers to read.
+func authSessionIDFromRequest(r *http.Request) string {
+	id, _ := r.Context().Value(ctxKeyAuthSessionID).(string)
+	return id
+}
+
+func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
 			p.logPanic(r)
 		}
 	}()
+
+	if c != nil && c.SessionId != "" {
+		r = r.WithContext(context.WithValue(r.Context(), ctxKeyAuthSessionID, c.SessionId))
+	}
 
 	p.apiRouter.ServeHTTP(w, r)
 }
@@ -1212,4 +1239,158 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write([]byte("{}")); err != nil {
 		p.LogError("failed to write logs upload response", "error", err.Error())
 	}
+}
+
+// livekitSessionResponse is returned by handleCreateLiveKitSession. It carries
+// everything a client needs to join in a single round trip, so no follow-up
+// fetch is required (and no read-replica lag can hide the just-written session).
+type livekitSessionResponse struct {
+	SessionID string           `json:"session_id"`
+	Token     string           `json:"token"`
+	URL       string           `json:"url"`
+	CallState *CallStateClient `json:"call_state"`
+}
+
+// handleCreateLiveKitSession mints a call session and its LiveKit token in one
+// step: it creates the CallSession row — and the call itself, if this is the
+// first joiner — then returns the session id, token and call state.
+//
+// The session id is server-minted here rather than derived from a WebSocket
+// connection, which is what lets a client join with no Calls WebSocket at all.
+// The row starts unconfirmed (ConfirmedAt == 0): it becomes visible to the
+// channel only once LiveKit reports the participant connected, so a token that
+// is minted but never used leaves nothing in the participant list.
+//
+// Nothing calls this yet — the clients still join over the Calls WebSocket. See
+// MM-69502.
+func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleCreateLiveKitSession", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	var req struct {
+		ChannelID string `json:"channel_id"`
+		Title     string `json:"title"`
+		ThreadID  string `json:"thread_id"`
+		JobID     string `json:"job_id"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&req); err != nil {
+		res.Err = "invalid request body"
+		res.Code = http.StatusBadRequest
+		return
+	}
+	if req.ChannelID == "" {
+		res.Err = "channel_id is required"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	channel, code, err := p.validateCallJoin(userID, req.ChannelID, req.ThreadID, req.JobID)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = code
+		return
+	}
+
+	callsChannel, err := p.store.GetCallsChannel(req.ChannelID, db.GetCallsChannelOpts{})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		p.LogError("failed to get calls channel", "err", err.Error(), "channelID", req.ChannelID)
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	var callsEnabled *bool
+	if callsChannel != nil {
+		callsEnabled = model.NewPointer(callsChannel.Enabled)
+	}
+
+	sessionID := model.NewId()
+
+	state, err := p.lockCallReturnState(req.ChannelID)
+	if err != nil {
+		p.LogError("failed to lock call", "err", err.Error(), "channelID", req.ChannelID)
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer p.unlockCall(req.ChannelID)
+
+	state, err = p.addUserSession(state, callsEnabled, userID, sessionID, req.ChannelID, req.JobID, authSessionIDFromRequest(r), channel.Type)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	token, lkURL, err := p.mintLiveKitToken(userID, req.ChannelID, sessionID)
+	if err != nil {
+		// The session row is already written; leaving it unconfirmed is safe,
+		// since an unconfirmed row is never announced and gets reaped (MM-69510).
+		p.LogError("failed to mint LiveKit token", "err", err.Error(), "channelID", req.ChannelID)
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	p.LogInfo("livekit session created",
+		"callID", state.Call.ID,
+		"channelID", req.ChannelID,
+		"sessionID", sessionID,
+		"userID", userID,
+		"nodeID", p.nodeID)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(livekitSessionResponse{
+		SessionID: sessionID,
+		Token:     token,
+		URL:       lkURL,
+		CallState: state.getClientState(p.getBotID(), userID),
+	}); err != nil {
+		p.LogError("failed to encode LiveKit session response", "err", err.Error())
+	}
+}
+
+// validateCallJoin runs the channel-level checks required before a user may join
+// a call: channel permission, archived channel, thread validity, and the bot's
+// job requirement. It returns the channel and, on failure, the HTTP status to
+// report.
+//
+// This mirrors the checks in handleJoin. The duplication is deliberate and
+// short-lived: handleJoin goes away with the Calls WebSocket (MM-69502), and
+// keeping the paths separate until then avoids changing the live WebSocket join.
+func (p *Plugin) validateCallJoin(userID, channelID, threadID, jobID string) (*model.Channel, int, error) {
+	if !(p.isBot(userID) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost)) {
+		return nil, http.StatusForbidden, fmt.Errorf("forbidden")
+	}
+
+	if userID == p.getBotID() && jobID == "" {
+		return nil, http.StatusBadRequest, fmt.Errorf("job_id should not be empty for bot connections")
+	}
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		return nil, http.StatusInternalServerError, appErr
+	}
+	if channel.DeleteAt > 0 {
+		return nil, http.StatusBadRequest, fmt.Errorf("cannot join call in archived channel")
+	}
+
+	if threadID != "" {
+		post, appErr := p.API.GetPost(threadID)
+		if appErr != nil {
+			return nil, http.StatusInternalServerError, appErr
+		}
+		if post.ChannelId != channelID {
+			return nil, http.StatusForbidden, fmt.Errorf("forbidden")
+		}
+		if post.DeleteAt > 0 {
+			return nil, http.StatusBadRequest, fmt.Errorf("cannot attach call to deleted thread")
+		}
+		if post.RootId != "" {
+			return nil, http.StatusBadRequest, fmt.Errorf("thread is not a root post")
+		}
+	}
+
+	return channel, http.StatusOK, nil
 }

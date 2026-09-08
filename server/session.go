@@ -67,7 +67,7 @@ func newUserSession(userID, channelID, connID, callID string) *session {
 	}
 }
 
-func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, connID, channelID, jobID string, ct model.ChannelType) (retState *callState, retErr error) {
+func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, connID, channelID, jobID, authSessionID string, ct model.ChannelType) (retState *callState, retErr error) {
 	defer func(start time.Time) {
 		p.metrics.ObserveAppHandlersTime("addUserSession", time.Since(start).Seconds())
 	}(time.Now())
@@ -175,10 +175,11 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 	}
 
 	state.sessions[connID] = &public.CallSession{
-		ID:     connID,
-		CallID: state.Call.ID,
-		UserID: userID,
-		JoinAt: time.Now().UnixMilli(),
+		ID:            connID,
+		CallID:        state.Call.ID,
+		UserID:        userID,
+		JoinAt:        time.Now().UnixMilli(),
+		AuthSessionID: authSessionID,
 	}
 
 	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
