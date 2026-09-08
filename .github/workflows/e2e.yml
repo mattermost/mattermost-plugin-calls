@@ -167,7 +167,12 @@ jobs:
         run: |
           ${{ github.workspace }}/e2e/scripts/run.sh
 
+      # run.sh copies the report, pw-results.json and test-results/ (traces and
+      # error-context.md) out of the container before it exits non-zero on failures, so the
+      # artifacts are on disk either way. Without always() the upload is skipped exactly when
+      # the traces are needed — on a red run.
       - name: e2e/persist-report-results
+        if: always()
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
         with:
           name: e2e-playwright-results-${{ matrix.run_id }}
@@ -176,7 +181,7 @@ jobs:
           retention-days: 1
 
       - name: e2e/persist-report-logs
-        if: ${{ fromJson(steps.test.outputs.FAILURES) > 0 }}
+        if: ${{ always() && fromJson(steps.test.outputs.FAILURES || '0') > 0 }}
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
         with:
           name: e2e-playwright-logs-${{ matrix.run_id }}
