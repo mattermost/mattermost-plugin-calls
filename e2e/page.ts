@@ -457,13 +457,7 @@ export default class PlaywrightDevPage {
         await expect(this.page.getByTestId('rhs-participant-list')).toBeHidden();
     }
 
-    async leaveFromPopout() {
-        await this.page.locator('#calls-popout-leave-button').click();
-
-        // The leave control is either a plain button that disconnects on click, or a dot menu
-        // that needs a second click on 'Leave call'. We can't tell which one we got from here,
-        // so give the menu a short window to render. isVisible() alone would be a non-blocking
-        // point-in-time check that races the menu.
+    async confirmLeaveFromMenuIfPresent() {
         try {
             await this.page.getByTestId('dropdownmenu').getByText('Leave call').click({timeout: 2000});
         } catch (err) {
@@ -471,18 +465,23 @@ export default class PlaywrightDevPage {
                 throw err;
             }
         }
+
+        await expect.poll(
+            () => (this.page.isClosed() ? true : this.page.evaluate(() => !window.callsClient || Boolean(window.callsClient.isDisconnected))),
+            {
+                message: 'clicking the leave control did not disconnect the call',
+                timeout: 10000,
+            },
+        ).toBe(true);
+    }
+
+    async leaveFromPopout() {
+        await this.page.locator('#calls-popout-leave-button').click();
+        await this.confirmLeaveFromMenuIfPresent();
     }
 
     async leaveFromWidget() {
         await this.page.locator('#calls-widget-leave-button').click();
-
-        // See leaveFromPopout: the menu is only there on the dot menu variant.
-        try {
-            await this.page.getByTestId('dropdownmenu').getByText('Leave call').click({timeout: 2000});
-        } catch (err) {
-            if (!(err instanceof errors.TimeoutError)) {
-                throw err;
-            }
-        }
+        await this.confirmLeaveFromMenuIfPresent();
     }
 }

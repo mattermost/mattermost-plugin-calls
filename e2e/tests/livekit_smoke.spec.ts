@@ -70,9 +70,7 @@ test.describe('livekit framework smoke', {tag: '@livekit-smoke'}, () => {
             await muteButton.click();
             await expect(muteButton).toHaveAttribute('aria-label', 'Mute');
 
-            // Leave cleanly via the widget menu and confirm the widget disappears.
-            await page.locator('#calls-widget-leave-button').click();
-            await page.getByTestId('dropdownmenu').getByText('Leave call').click();
+            await devPage.leaveFromWidget();
             await expect(page.locator('#calls-widget')).toBeHidden();
         });
     });
