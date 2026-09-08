@@ -58,6 +58,7 @@ test.describe('start/join call in channel with calls disabled', {tag: '@livekit'
         await devPage.disableCalls();
 
         await page.locator('#post_textbox').fill('/call start');
+
         // Dismiss slash-command autocomplete before clicking Send — the
         // dropdown's invisible MUI backdrop intercepts pointer events.
         await page.keyboard.press('Escape');
