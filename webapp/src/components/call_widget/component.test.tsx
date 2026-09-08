@@ -36,6 +36,7 @@ jest.mock('src/components/dot_menu/dot_menu', () => {
         // that reports the menu as open so tests can cover the menu-is-open state.
         default: ({children, onOpenChange}: {children: React.ReactNode; onOpenChange?: (open: boolean) => void}) => (
             <div>
+                {/* eslint-disable-next-line formatjs/no-literal-string-in-jsx */}
                 <button onClick={() => onOpenChange?.(true)}>{'open leave menu'}</button>
                 {children}
             </div>
