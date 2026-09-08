@@ -25,6 +25,7 @@ func TestCallsSessionsStore(t *testing.T) {
 		"TestGetCallSessionsCount":             testGetCallSessionsCount,
 		"TestIsUserInCall":                     testIsUserInCall,
 		"TestCallsSessionsTableColumnAddition": testCallsSessionsTableColumnAddition,
+		"TestCallSessionLiveKitColumns":        testCallSessionLiveKitColumns,
 	})
 }
 
@@ -375,4 +376,67 @@ func testCallsSessionsTableColumnAddition(t *testing.T, store *Store) {
 
 	_, err = store.wDB.Exec(dropColumnSQL)
 	require.NoError(t, err)
+}
+
+func testCallSessionLiveKitColumns(t *testing.T, store *Store) {
+	t.Run("round trip", func(t *testing.T) {
+		callID := model.NewId()
+		session := &public.CallSession{
+			ID:            model.NewId(),
+			CallID:        callID,
+			UserID:        model.NewId(),
+			JoinAt:        time.Now().UnixMilli(),
+			ConfirmedAt:   time.Now().UnixMilli(),
+			SID:           "PA_" + model.NewId(),
+			AuthSessionID: model.NewId(),
+		}
+
+		err := store.CreateCallSession(session)
+		require.NoError(t, err)
+
+		gotSession, err := store.GetCallSession(session.ID, GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Equal(t, session, gotSession)
+
+		// GetCallSessions scans columns positionally, so it needs its own check.
+		gotSessions, err := store.GetCallSessions(callID, GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Equal(t, session, gotSessions[session.ID])
+	})
+
+	t.Run("database defaults", func(t *testing.T) {
+		// CreateCallSession always writes the LiveKit columns explicitly, so it
+		// never exercises their SQL DEFAULT clauses. Insert the pre-LiveKit column
+		// set directly instead, which is the shape of a row written before the
+		// migration ran, and check it reads back as zero values rather than NULL.
+		session := &public.CallSession{
+			ID:     model.NewId(),
+			CallID: model.NewId(),
+			UserID: model.NewId(),
+			JoinAt: time.Now().UnixMilli(),
+		}
+
+		qb := getQueryBuilder(store.driverName).
+			Insert("calls_sessions").
+			Columns("ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "Video", "IsSIPParticipant").
+			Values(session.ID, session.CallID, session.UserID, session.JoinAt, false, 0, false, false)
+
+		q, args, err := qb.ToSql()
+		require.NoError(t, err)
+		_, err = store.wDB.Exec(q, args...)
+		require.NoError(t, err)
+
+		gotSession, err := store.GetCallSession(session.ID, GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Zero(t, gotSession.ConfirmedAt)
+		require.Empty(t, gotSession.SID)
+		require.Empty(t, gotSession.AuthSessionID)
+
+		gotSessions, err := store.GetCallSessions(session.CallID, GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Len(t, gotSessions, 1)
+		require.Zero(t, gotSessions[session.ID].ConfirmedAt)
+		require.Empty(t, gotSessions[session.ID].SID)
+		require.Empty(t, gotSessions[session.ID].AuthSessionID)
+	})
 }
