@@ -53,7 +53,7 @@ export default function JoinNotification(props: Props) {
 
     return (
         <div
-            className='calls-notification-bar calls-slide-top'
+            className='calls-notification-bar slideFadeInOutAnimation'
             data-testid={'calls-widget-on-join-notification'}
             onAnimationEnd={onAnimationEnd}
         >

@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallsConfig, LiveCaption, TranscribeAPI} from '@mattermost/calls-common/lib/types';
+import {CallPostProps, CallsConfig, LiveCaption, TranscribeAPI} from '@mattermost/calls-common/lib/types';
 import {MessageDescriptor} from 'react-intl';
 import {RTCStats} from 'src/types/webrtc';
 
@@ -167,11 +167,13 @@ export type CapturerSource = {
 export type CurrentCallData = {
     recordingPromptDismissedAt: number;
     missingScreenPermissions: boolean;
+    dmCalleeAnsweredAt: number;
 }
 
 export const CurrentCallDataDefault: CurrentCallData = {
     recordingPromptDismissedAt: 0,
     missingScreenPermissions: false,
+    dmCalleeAnsweredAt: 0,
 };
 
 // Similar to currentCallData, callActions is a cross-window function to trigger a change in that
@@ -242,6 +244,20 @@ export type LiveCaptions = {
     [sessionID: string]: LiveCaption;
 }
 
+// DM call status coming from post.props.call_status,
+// values are defined in server/dm_timer.go
+export enum CallPostStatus {
+    Calling = 'calling',
+    Ended = 'ended',
+    NoAnswer = 'no_answer',
+    Canceled = 'canceled_by_caller',
+    Declined = 'declined',
+}
+
+export type CallsPostProps = CallPostProps & {
+    call_status: CallPostStatus | '';
+}
+
 // Matching the type in server/public/stats.go
 export type CallsStats = {
     total_calls: number;
@@ -265,17 +281,3 @@ export type CallsDesktopJoinResponse = {
     // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
     type?: string;
 }
-
-// Internal Desktop communication
-
-export enum DesktopMessageType {
-    ShowEndCallModal = 'show_end_call_modal',
-}
-
-export const DesktopMessageShowEndCallModal = {
-    type: DesktopMessageType.ShowEndCallModal,
-};
-
-export type DesktopMessage = {
-    type: DesktopMessageType;
-};

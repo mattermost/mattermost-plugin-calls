@@ -40,6 +40,7 @@ import {
     DID_NOTIFY_FOR_CALL,
     DID_RING_FOR_CALL,
     DISMISS_CALL,
+    DM_CALLEE_ANSWERED_AT,
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
@@ -755,6 +756,39 @@ const hostControlNotices = (state: hostControlNoticeState = {},
     }
 };
 
+export type DmCalleeAnsweredAt = {
+    [callID: string]: number;
+}
+
+type DmCalleeAnsweredAtAction = {
+    type: string;
+    data: {
+        callID: string;
+        answeredAt: number;
+    };
+}
+
+// When a DM call was answered, keyed by call ID. Client-side only: the server has no notion of it,
+// and it deliberately excludes the time spent ringing so the call timer starts from zero.
+const dmCalleeAnsweredAt = (state: DmCalleeAnsweredAt = {}, action: DmCalleeAnsweredAtAction) => {
+    switch (action.type) {
+    case UN_INITIALIZED:
+        return {};
+    case DM_CALLEE_ANSWERED_AT:
+        return {
+            ...state,
+            [action.data.callID]: action.data.answeredAt,
+        };
+    case CALL_END: {
+        const nextState = {...state};
+        delete nextState[action.data.callID];
+        return nextState;
+    }
+    default:
+        return state;
+    }
+};
+
 const rootReducer = combineReducers({
     channels,
     clientStateReducer,
@@ -762,6 +796,7 @@ const rootReducer = combineReducers({
     sessions,
     calls,
     hosts,
+    dmCalleeAnsweredAt,
     screenSharingIDs,
     expandedView,
     switchCallModal,

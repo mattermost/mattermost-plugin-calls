@@ -472,12 +472,47 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 	}
 
+	// A DM call is between two people: once one of them is gone there is nobody for the other to
+	// talk to, so end the call rather than leave them alone in it. Deleting the LiveKit room
+	// disconnects the remaining participant, whose own removeUserSession then runs the branch
+	// below and ends the call. Phone calls are excluded: they're bot DMs with their own teardown,
+	// handled just above.
+	remainingUsers := state.distinctNonBotUserIDs(p.getBotID())
+	if _, leaverStillConnected := remainingUsers[userID]; len(remainingUsers) == 1 && !leaverStillConnected && userID != p.getBotID() {
+		channel, appErr := p.API.GetChannel(channelID)
+		if appErr != nil {
+			p.LogError("failed to get channel for DM auto-end check", "err", appErr.Error(), "channelID", channelID)
+		} else if p.isDMCallChannel(channel.Type, channelID) {
+			p.LogInfo("DM auto-end: participant left, ending call",
+				"callID", state.Call.ID, "channelID", channelID, "userID", userID)
+
+			p.endDMCallRoom("removeUserSession", channelID)
+		}
+	}
+
 	// Call has ended
 	if len(state.sessions) == 0 {
 		if state.Call.Props.ScreenStartAt > 0 {
 			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
 		}
+
+		// setCallEnded clears Props.Participants, so read it while it's still there.
+		participants := mapKeys(state.Call.Props.Participants)
+
 		setCallEnded(&state.Call)
+
+		p.cancelDMNoAnswerTimer(channelID)
+
+		// A DM call that only ever had the caller in it was never answered, so hanging up
+		// cancelled it rather than ended it.
+		endReason := callEndReasonNormal
+		if len(participants) == 1 {
+			if channel, appErr := p.API.GetChannel(channelID); appErr != nil {
+				p.LogError("failed to get channel for call end reason", "err", appErr.Error(), "channelID", channelID)
+			} else if p.isDMCallChannel(channel.Type, channelID) {
+				endReason = callEndReasonCanceledByCaller
+			}
+		}
 
 		p.LogInfo("call ended",
 			"callID", state.Call.ID,
@@ -492,7 +527,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		})
 
 		defer func() {
-			_, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants))
+			_, err := p.updateCallPostEnded(state.Call.PostID, participants, endReason)
 			if err != nil {
 				p.LogError("failed to update call post ended", "err", err.Error(), "channelID", channelID)
 			}

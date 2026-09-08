@@ -168,6 +168,7 @@ jobs:
           ${{ github.workspace }}/e2e/scripts/run.sh
 
       - name: e2e/persist-report-results
+        if: always()
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
         with:
           name: e2e-playwright-results-${{ matrix.run_id }}
@@ -176,7 +177,7 @@ jobs:
           retention-days: 1
 
       - name: e2e/persist-report-logs
-        if: ${{ fromJson(steps.test.outputs.FAILURES) > 0 }}
+        if: ${{ always() && fromJson(steps.test.outputs.FAILURES || '0') > 0 }}
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
         with:
           name: e2e-playwright-logs-${{ matrix.run_id }}

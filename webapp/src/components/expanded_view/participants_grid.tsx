@@ -4,13 +4,13 @@
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
-import {Client4} from 'mattermost-redux/client';
 import React, {useEffect, useRef, useState} from 'react';
-import {useIntl} from 'react-intl';
-import {getUserDisplayName} from 'src/utils';
+import {useDMCallingState} from 'src/components/use_dm_calling_state';
 import styled from 'styled-components';
 
-import CallParticipant, {TileSize} from './call_participant';
+import {TileSize} from './participant_cell';
+import {ParticipantTile} from './participant_tile';
+import {ParticipantTileLoading} from './participant_tile_loading';
 
 type Props = {
     callID: string,
@@ -44,7 +44,7 @@ const tileSizesMap = {
     },
 };
 
-export default function ParticipantsGrid({
+export function ParticipantsGrid({
     callID,
     callHostID,
     currentSessionID,
@@ -54,7 +54,7 @@ export default function ParticipantsGrid({
     onParticipantRemove,
     profileImages,
 }: Props) {
-    const {formatMessage} = useIntl();
+    const {isDMCalling, dmCalleeID, dmCallee} = useDMCallingState();
 
     const ref = useRef<HTMLDivElement>(null);
 
@@ -137,45 +137,6 @@ export default function ParticipantsGrid({
         setPaddingV(res.paddingV);
     }, [sessions.length, resize]);
 
-    const renderParticipants = () => {
-        return sessions.map((session) => {
-            const isMuted = !session.unmuted;
-            const isSpeaking = Boolean(session.voice);
-            const isHandRaised = Boolean(session.raised_hand > 0);
-            const profile = profiles[session.user_id];
-
-            if (!profile) {
-                return null;
-            }
-
-            return (
-                <CallParticipant
-                    key={session.session_id}
-                    name={`${getUserDisplayName(profile)} ${currentSessionID && session.session_id === currentSessionID ? formatMessage({defaultMessage: '(you)'}) : ''}`}
-                    size={tileSize}
-                    pictureURL={profileImages ? profileImages[profile.id] : Client4.getProfilePictureUrl(profile.id, profile.last_picture_update)}
-                    isMuted={isMuted}
-                    isSpeaking={isSpeaking}
-                    isHandRaised={isHandRaised}
-                    reaction={session?.reaction}
-                    isYou={currentSessionID ? session.session_id === currentSessionID : false}
-                    isHost={profile.id === callHostID}
-                    iAmHost={currentUserID ? currentUserID === callHostID : false}
-                    callID={callID}
-                    userID={session.user_id}
-                    sessionID={session.session_id}
-                    isSharingScreen={false}
-                    onRemove={() => {
-                        if (onParticipantRemove) {
-                            onParticipantRemove(session.session_id, session.user_id);
-                        }
-                    }
-                    }
-                />
-            );
-        });
-    };
-
     return (
         <ParticipantsGridContainer
             ref={ref}
@@ -185,7 +146,30 @@ export default function ParticipantsGrid({
             <ParticipantsList
                 id='calls-expanded-view-participants-grid'
             >
-                {renderParticipants()}
+                {sessions.map((session) => (
+                    <ParticipantTile
+                        key={session.session_id}
+                        session={session}
+                        profiles={profiles}
+                        tileSize={tileSize}
+                        profileImages={profileImages}
+                        currentSessionID={currentSessionID}
+                        currentUserID={currentUserID}
+                        callHostID={callHostID}
+                        callID={callID}
+                        onParticipantRemove={onParticipantRemove}
+                    />
+                ))}
+
+                {/* While a DM call is still ringing the grid shows a placeholder
+                tile for the callee, next to the caller's own. */}
+                {isDMCalling && (
+                    <ParticipantTileLoading
+                        userID={dmCalleeID}
+                        profile={dmCallee}
+                        tileSize={tileSize}
+                    />
+                )}
             </ParticipantsList>
         </ParticipantsGridContainer>
     );

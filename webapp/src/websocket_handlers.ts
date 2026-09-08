@@ -68,6 +68,7 @@ import {
 } from './action_types';
 import {logErr} from './log';
 import {
+    channelHasCall,
     channelIDForCurrentCall,
     profilesInCurrentCallMap,
     ringingEnabled,
@@ -78,6 +79,7 @@ import {
     getCallsClient,
     getUserDisplayName,
     hasLiveCallClient,
+    isDMChannel,
 } from './utils';
 
 export type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
@@ -287,6 +289,17 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
             hostChangeAt: Date.now(),
         },
     });
+
+    // A DM caller is made host the moment they place the call, which says nothing they don't
+    // already know — the widget is showing them "Calling…". The server sends this before
+    // call_start, so having no call in the store yet is what identifies us as the initiator.
+    if (
+        ev.data.hostID === getCurrentUserId(store.getState()) &&
+        isDMChannel(getChannel(store.getState(), channelID)) &&
+        !channelHasCall(store.getState(), channelID)
+    ) {
+        return;
+    }
 
     const hostProfile = profilesInCurrentCallMap(store.getState())[ev.data.hostID] ||
         getUser(store.getState(), ev.data.hostID);

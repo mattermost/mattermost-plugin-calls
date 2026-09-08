@@ -1,8 +1,6 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import './component.scss';
-
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
@@ -10,8 +8,8 @@ import React from 'react';
 import {useIntl} from 'react-intl';
 import {hostMuteOthers} from 'src/actions';
 import {Participant} from 'src/components/call_widget/participant';
-import {useHostControls} from 'src/components/expanded_view/hooks';
 import MutedIcon from 'src/components/icons/muted_icon';
+import {useHostControls} from 'src/components/use_host_controls';
 import styled from 'styled-components';
 
 type Props = {

@@ -4,7 +4,7 @@
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {CALL_START_POST_TYPE} from 'src/constants';
+import {CALL_EVENT_POST_TYPE} from 'src/constants';
 import {
     channelIDForCurrentCall,
     ringingEnabled,
@@ -29,8 +29,7 @@ export function desktopNotificationHandler(
         //  4. calls is enabled and is v0.18.0+ (it is if this is running)
         //  5. MM server is >= v8.1.0 (if not, this handler will not be called)
 
-        // @ts-ignore our imported webapp types are old
-        if (post.type === CALL_START_POST_TYPE &&
+        if (String(post.type) === CALL_EVENT_POST_TYPE &&
             isDmGmChannel(channel) &&
             ringingEnabled(store.getState())) {
             // e2eNotificationsRejected is added when running the e2e tests

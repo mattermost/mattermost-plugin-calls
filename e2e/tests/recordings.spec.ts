@@ -296,8 +296,6 @@ test.describe('call recordings, transcriptions, live-captions', {tag: '@livekit'
         // forcefully end call
         await page.locator('#post_textbox').fill('/call end');
         await page.getByTestId('SendMessageButton').click();
-        await expect(page.locator('#end_call_confirmation')).toBeVisible();
-        await page.getByTestId('modal-confirm-button').getByText('End call').click();
 
         // verify user has been kicked out
         await page.waitForFunction(() => !window.callsClient || window.callsClient.isDisconnected);

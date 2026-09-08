@@ -1,0 +1,185 @@
+@keyframes calls-slide-fade-in-out {
+  0%,
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  10% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  90% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes calls-pulsing {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.calls-notification-bar {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  border-radius: 8px;
+  padding: 4px 6px;
+  font-size: 11px;
+  line-height: 20px;
+  color: var(--center-channel-color);
+  background: var(--center-channel-bg);
+  white-space: pre;
+  gap: 4px;
+  border: solid 1px rgba(var(--center-channel-color-rgb), 0.16);
+  box-shadow: 0 6px 14px 0 rgba(0, 0, 0, 0.12);
+}
+
+a.calls-channel-link {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 4px;
+  color: rgba(var(--center-channel-color-rgb), 0.75);
+  padding: 0px 4px;
+  text-decoration: none;
+
+  i {
+    &::before {
+      color: rgba(var(--center-channel-color-rgb), 0.56);
+    }
+  }
+
+  &:link,
+  &:focus,
+  &:visited {
+    color: rgba(var(--center-channel-color-rgb), 0.75);
+    text-decoration: none;
+  }
+
+  &:hover {
+    color: rgba(var(--center-channel-color-rgb), 0.88);
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+    text-decoration: none;
+
+    i {
+      &::before {
+        color: rgba(var(--center-channel-color-rgb), 0.88);
+      }
+    }
+  }
+
+  &:active {
+    color: rgb(var(--button-bg-rgb));
+    background: rgba(var(--button-bg-rgb), 0.08);
+    text-decoration: none;
+
+    i {
+      &::before {
+        color: rgb(var(--button-bg-rgb));
+      }
+    }
+  }
+}
+
+#calls-widget .Menu {
+  position: static;
+  border: none;
+  box-shadow: none;
+
+  button:hover {
+    background: rgba(var(--center-channel-color-rgb), 0.1);
+  }
+}
+
+#calls-widget button {
+  app-region: no-drag;
+}
+
+#calls-widget-audio-input-button:hover:disabled,
+#calls-widget-audio-output-button:hover:disabled {
+  background: none;
+  cursor: auto;
+}
+
+#calls-widget-menu-screenshare.unavailable {
+  background: none;
+}
+
+#calls-widget #calls-widget-stop-screenshare {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--error-text);
+  color: white;
+  border-radius: 4px;
+  font-weight: 600;
+
+  &:hover {
+    background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+      linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
+    background-blend-mode: multiply;
+  }
+
+  &:active {
+    background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+      linear-gradient(0deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16));
+    background-blend-mode: multiply;
+  }
+}
+
+#calls-widget {
+  .participantAvatarContainer {
+    position: relative;
+    display: flex;
+    height: auto;
+    align-items: center;
+
+    .genericAvatar {
+      background: rgba(var(--center-channel-color-rgb), 0.16);
+      color: rgba(var(--center-channel-color-rgb), 0.48);
+      font-size: 18px;
+    }
+  }
+
+  .participantNameContainer {
+    font-size: 14px;
+    line-height: 20px;
+    display: flex;
+    white-space: pre;
+
+    &>span {
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  
+    span.nonNameText {
+      font-weight: 400;
+    }
+  }
+
+  .callStatusTimer {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(var(--center-channel-color-rgb), 0.75);
+    font-size: 11px;
+  }
+
+  .slideFadeInOutAnimation {
+    animation: calls-slide-fade-in-out 4s ease-in-out 0.2s both;
+  }
+
+  .pulsingAnimation {
+    animation: calls-pulsing 1.6s ease-in-out infinite;
+  }
+}

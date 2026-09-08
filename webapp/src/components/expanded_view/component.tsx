@@ -3,6 +3,8 @@
 
 /* eslint-disable max-lines */
 
+import './expanded_view.scss';
+
 import {EmojiData, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
@@ -20,7 +22,7 @@ import {hostMuteOthers, hostRemove} from 'src/actions';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
-import CallDuration from 'src/components/call_widget/call_duration';
+import {CallStatusTimer} from 'src/components/call_status_timer';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
@@ -83,7 +85,7 @@ import styled, {createGlobalStyle, css} from 'styled-components';
 import {CallSettingsButton} from './call_settings';
 import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './controls_button';
 import GlobalBanner from './global_banner';
-import ParticipantsGrid from './participants_grid';
+import {ParticipantsGrid} from './participants_grid';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 import RecordingInfoPrompt from './recording_info_prompt';
 import {RemoveConfirmation} from './remove_confirmation';
@@ -98,7 +100,6 @@ interface Props extends RouteComponentProps {
     sessions: UserSessionState[],
     sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
-    callStartAt: number,
     callHostID: string,
     callHostChangeAt: number,
     callRecording?: CallJobReduxState,
@@ -129,6 +130,8 @@ interface Props extends RouteComponentProps {
     openModal: <P>(modalData: ModalData<P>) => void;
     enableVideo: boolean;
     otherSessions: UserSessionState[];
+    isDMCalling: boolean;
+    clientConnecting: boolean;
     userMuted: (channelID: string, sessionID: string, userID: string) => void;
     userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
     joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
@@ -151,6 +154,7 @@ interface State {
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
     viewState: 'grid' | 'speaker',
+    leaveMenuOpen: boolean,
 }
 
 const StyledMediaController = styled(MediaController)`
@@ -317,6 +321,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             alerts: CallAlertStatesDefault,
             removeConfirmation: null,
             viewState: 'speaker',
+            leaveMenuOpen: false,
         };
 
         if (window.opener) {
@@ -460,6 +465,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 },
             },
         });
+    };
+
+    onLeaveMenuOpen = (open: boolean) => {
+        this.setState({leaveMenuOpen: open});
     };
 
     onDisconnectClick = () => {
@@ -995,6 +1004,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         return null;
     };
 
+    // True while we're the caller of a DM call still waiting for the other party. Their tile is
+    // rendered from the channel's other member, since they have no session yet.
+    isRingingCallee = () => this.props.isDMCalling && Boolean(this.props.connectedDMUser);
+
     renderTopVideoContainer = () => {
         const {formatMessage} = this.props.intl;
 
@@ -1019,6 +1032,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             hasVideo={Boolean(selfSession.video)}
                             isSpeaking={Boolean(selfSession.voice)}
                             mirrorVideo={localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
+                            testID='calls-popout-video-profile-self'
                         />
                     </div>
                 }
@@ -1056,9 +1070,37 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const stream = this.props.otherSessions.length === 0 ? this.state.selfVideoStream : this.state.otherVideoStream;
         const mirrorSelfVideo = localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true';
 
-        const shouldRenderTopVideoContainer = this.state.viewState === 'speaker' && ((this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video));
+        const ringing = this.isRingingCallee();
+
+        const shouldRenderTopVideoContainer = this.state.viewState === 'speaker' && ((this.props.currentSession?.video && (this.props.otherSessions.length > 0 || ringing)) || this.props.otherSessions.some((s) => s.video));
+
+        const renderRingingProfile = (sizing: {width?: string, aspectRatio?: string}) => {
+            if (!otherProfile) {
+                return null;
+            }
+
+            return (
+                <VideoProfile
+                    stream={null}
+                    profile={otherProfile}
+                    profileName={getUserDisplayName(otherProfile)}
+                    isMuted={false}
+                    hasVideo={false}
+                    isSpeaking={false}
+                    mirrorVideo={false}
+                    width={sizing.width}
+                    aspectRatio={sizing.aspectRatio}
+                    ringing={true}
+                    testID='calls-popout-video-profile-ringing'
+                />
+            );
+        };
 
         const renderSpeakerView = () => {
+            if (ringing) {
+                return renderRingingProfile({aspectRatio: '16/9'});
+            }
+
             if (!profile || !session) {
                 return null;
             }
@@ -1079,7 +1121,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const renderGridView = () => {
             return (
                 <>
-                    { otherProfile && otherSession &&
+                    {ringing && renderRingingProfile({width: '100%'})}
+
+                    { !ringing && otherProfile && otherSession &&
                     <VideoProfile
                         stream={this.state.otherVideoStream}
                         profile={otherProfile}
@@ -1332,17 +1376,25 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const hostControlsAvailable = this.props.hostControlsAllowed && (isHost || this.props.isAdmin);
         const showMuteOthers = hostControlsAvailable && this.props.sessions.some((s) => s.unmuted && s.user_id !== this.props.currentUserID);
 
+        // See the matching comment in the widget: keep the leave control a menu while its menu is
+        // open, so a session count change can't unmount it mid-interaction and eat the click.
+        const showLeaveMenu = !isDMChannel(this.props.channel) &&
+            (isHost || this.props.isAdmin) &&
+            (this.props.sessions.length > 1 || this.state.leaveMenuOpen);
+
         const isRecording = isHost && this.props.isRecording;
 
         const recordTooltipText = isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
         const RecordIcon = isRecording ? RecordSquareIcon : RecordCircleIcon;
         const ShareIcon = isSharing ? UnshareScreenIcon : ShareScreenIcon;
 
-        const leaveCallTooltipText = formatMessage({defaultMessage: 'Leave call'});
+        // A ringing DM call hasn't been answered yet, so hanging up cancels it rather than leaving it.
+        const leaveCallTooltipText = this.props.isDMCalling ? formatMessage({defaultMessage: 'Cancel call'}) : formatMessage({defaultMessage: 'Leave call'});
         const closeViewLabel = formatMessage({defaultMessage: 'Close window'});
 
         const shouldRenderVideoContainer = this.props.currentSession?.video || this.props.otherSessions.some((s) => s.video);
-        const shouldRenderTopVideoContainer = (this.state.viewState === 'speaker' || this.props.screenSharingSession) && ((this.props.currentSession?.video && this.props.otherSessions.length > 0) || this.props.otherSessions.some((s) => s.video));
+        const hasOtherParticipant = this.props.otherSessions.length > 0 || this.isRingingCallee();
+        const shouldRenderTopVideoContainer = (this.state.viewState === 'speaker' || this.props.screenSharingSession) && ((this.props.currentSession?.video && hasOtherParticipant) || this.props.otherSessions.some((s) => s.video));
 
         return (
             <div
@@ -1363,9 +1415,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         style={this.style.topContainer}
                     >
                         {this.renderRecordingBadge()}
-                        <CallDuration
-                            startAt={this.props.callStartAt}
-                        />
+                        <CallStatusTimer clientConnecting={this.props.clientConnecting}/>
 
                         <div style={this.style.headerSpreader}/>
                         <ExpandedIncomingCallContainer/>
@@ -1422,28 +1472,30 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         style={this.style.controls}
                     >
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-start'}}>
-                            <ControlsButton
-                                id='calls-popout-participants-button'
-                                ariaLabel={participantsText}
-                                ariaControls='rhs-participant-list'
-                                ariaExpanded={this.state.showParticipantsList}
-                                onToggle={() => this.onParticipantsListToggle()}
-                                tooltipText={participantsText}
-                                shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
-                                bgColor={this.state.showParticipantsList ? 'white' : ''}
-                                bgColorHover={this.state.showParticipantsList ? 'rgba(255, 255, 255, 0.92)' : ''}
-                                iconFill={this.state.showParticipantsList ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
-                                iconFillHover={this.state.showParticipantsList ? 'var(--calls-bg)' : ''}
-                                icon={
-                                    <ParticipantsIcon
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                        }}
-                                    />
-                                }
-                                text={`${this.props.sessions.length}`}
-                            />
+                            {!isDMChannel(this.props.channel) && (
+                                <ControlsButton
+                                    id='calls-popout-participants-button'
+                                    ariaLabel={participantsText}
+                                    ariaControls='rhs-participant-list'
+                                    ariaExpanded={this.state.showParticipantsList}
+                                    onToggle={() => this.onParticipantsListToggle()}
+                                    tooltipText={participantsText}
+                                    shortcut={reverseKeyMappings.popout[PARTICIPANTS_LIST_TOGGLE][0]}
+                                    bgColor={this.state.showParticipantsList ? 'white' : ''}
+                                    bgColorHover={this.state.showParticipantsList ? 'rgba(255, 255, 255, 0.92)' : ''}
+                                    iconFill={this.state.showParticipantsList ? 'rgba(var(--calls-bg-rgb), 0.80)' : ''}
+                                    iconFillHover={this.state.showParticipantsList ? 'var(--calls-bg)' : ''}
+                                    icon={
+                                        <ParticipantsIcon
+                                            style={{
+                                                width: '20px',
+                                                height: '20px',
+                                            }}
+                                        />
+                                    }
+                                    text={`${this.props.sessions.length}`}
+                                />
+                            )}
                         </div>
 
                         <div style={this.style.centerControls}>
@@ -1508,6 +1560,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                     id='calls-popout-record-button'
                                     ariaLabel={recordTooltipText}
                                     onToggle={() => this.onRecordToggle()}
+                                    disabled={this.props.isDMCalling}
                                     tooltipText={recordTooltipText}
                                     // eslint-disable-next-line no-undefined
                                     shortcut={reverseKeyMappings.popout[RECORDING_TOGGLE][0]}
@@ -1550,24 +1603,42 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         </div>
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
-                            <DotMenu
-                                id='calls-popout-leave-button'
-                                ariaLabel={leaveCallTooltipText}
-                                icon={<LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>}
-                                dotMenuButton={LeaveCallButton}
-                                dropdownMenu={StyledDropdownMenu}
-                                placement={'top-end'}
-                                strategy={'fixed'}
-                                shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
-                                tooltipText={leaveCallTooltipText}
-                            >
-                                <LeaveCallMenu
-                                    channelID={callsClient.channelID}
-                                    isHost={isHost}
-                                    numParticipants={this.props.sessions.length}
-                                    leaveCall={this.onDisconnectClick}
-                                />
-                            </DotMenu>
+                            {showLeaveMenu ? (
+                                <DotMenu
+                                    id='calls-popout-leave-button'
+                                    ariaLabel={leaveCallTooltipText}
+                                    icon={<LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>}
+                                    dotMenuButton={LeaveCallButton}
+                                    dropdownMenu={StyledDropdownMenu}
+                                    placement={'top-end'}
+                                    strategy={'fixed'}
+                                    shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
+                                    tooltipText={leaveCallTooltipText}
+                                    onOpenChange={this.onLeaveMenuOpen}
+                                >
+                                    <LeaveCallMenu
+                                        channelID={callsClient.channelID}
+                                        isHost={isHost}
+                                        numParticipants={this.props.sessions.length}
+                                        leaveCall={this.onDisconnectClick}
+                                    />
+                                </DotMenu>
+                            ) : (
+                                <OverlayTrigger
+                                    placement='top'
+                                    overlay={<Tooltip id='calls-popout-leave-button-tooltip'>{leaveCallTooltipText}</Tooltip>}
+                                >
+                                    <LeaveCallButton
+                                        id='calls-popout-leave-button'
+                                        $isActive={false}
+                                        onClick={this.onDisconnectClick}
+                                        role='button'
+                                        aria-label={leaveCallTooltipText}
+                                    >
+                                        <LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>
+                                    </LeaveCallButton>
+                                </OverlayTrigger>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1941,6 +2012,8 @@ type VideoProfileProps = {
     mirrorVideo: boolean;
     width?: string;
     aspectRatio?: string;
+    ringing?: boolean;
+    testID?: string;
 };
 
 const VideoProfile = (props: VideoProfileProps) => {
@@ -1958,6 +2031,7 @@ const VideoProfile = (props: VideoProfileProps) => {
         <VideoProfileContainer
             $width={props.width}
             $aspectRatio={props.aspectRatio}
+            data-testid={props.testID}
         >
             {!props.hasVideo &&
             <Avatar
@@ -1966,6 +2040,7 @@ const VideoProfile = (props: VideoProfileProps) => {
                 url={Client4.getProfilePictureUrl(props.profile.id, props.profile.last_picture_update)}
                 borderGlowWidth={props.isSpeaking ? 3 : 0}
                 borderGlowColor='white'
+                className={props.ringing ? 'pulsingAnimation' : ''}
             />
             }
 

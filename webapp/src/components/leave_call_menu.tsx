@@ -1,20 +1,13 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {Channel} from '@mattermost/types/channels';
-import {GlobalState} from '@mattermost/types/store';
-import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import React from 'react';
-import {useIntl} from 'react-intl';
+import {defineMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
-import {
-    EndCallConfirmation,
-    IDEndCallConfirmation,
-} from 'src/components/call_widget/end_call_confirmation';
-import {DropdownMenuItem, DropdownMenuSeparator} from 'src/components/dot_menu/dot_menu';
-import {DesktopMessageShowEndCallModal} from 'src/types/types';
-import {getChannelURL, sendDesktopMessage} from 'src/utils';
+import {displayGenericErrorModal, hostEndCallForEveryone} from 'src/actions';
+import {DropdownMenuItem} from 'src/components/dot_menu/dot_menu';
+import {logErr} from 'src/log';
 import {modals} from 'src/webapp_globals';
 import styled from 'styled-components';
 
@@ -27,39 +20,35 @@ type Props = {
 
 export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: Props) => {
     const {formatMessage} = useIntl();
-    const isAdmin = useSelector(isCurrentUserSystemAdmin);
-    const channel = useSelector<GlobalState, Channel|undefined>((state) => getChannel(state, channelID));
-    const channelURL = useSelector<GlobalState, string>((state) => getChannelURL(state, channel, channel?.team_id));
-    const showEndCall = (isHost || isAdmin) && numParticipants > 1;
+
     const dispatch = useDispatch();
 
-    const endCallHandler = () => {
-        if (modals) {
-            dispatch(modals.openModal({
-                modalId: IDEndCallConfirmation,
-                dialogType: EndCallConfirmation,
-                dialogProps: {
-                    channelID,
-                },
-            }));
-        } else {
-            // global widget case
-            sendDesktopMessage(DesktopMessageShowEndCallModal);
+    const isAdmin = useSelector(isCurrentUserSystemAdmin);
+    const shouldShowWarningMenuItemForEndingCall = (isHost || isAdmin) && numParticipants > 1;
 
-            // This is a workaround to ensure the center channel gets focus.
-            window.desktopAPI?.openLinkFromCalls(channelURL);
+    async function handleHostEndCallForEveryone() {
+        try {
+            await hostEndCallForEveryone(channelID);
+        } catch (err) {
+            logErr('failed to end call for everyone', err);
+            if (modals) {
+                dispatch(displayGenericErrorModal(
+                    defineMessage({defaultMessage: 'Unable to end the call'}),
+                    defineMessage({defaultMessage: 'Something went wrong while trying to end the call. Please try again.'}),
+                ));
+            }
         }
-    };
+    }
 
     return (
         <>
-            {showEndCall &&
-                <>
-                    <DropdownMenuItem onClick={() => endCallHandler()}>
+            {shouldShowWarningMenuItemForEndingCall &&
+                <DropdownMenuItem onClick={handleHostEndCallForEveryone}>
+                    <EndCallOption>
                         <RedText>{formatMessage({defaultMessage: 'End call for everyone'})}</RedText>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator/>
-                </>
+                        <SubtitleText>{formatMessage({defaultMessage: 'All participants will be disconnected'})}</SubtitleText>
+                    </EndCallOption>
+                </DropdownMenuItem>
             }
             <DropdownMenuItem onClick={leaveCall}>
                 <RedText>{formatMessage({defaultMessage: 'Leave call'})}</RedText>
@@ -73,4 +62,15 @@ export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: P
 
 const RedText = styled.span`
     color: var(--dnd-indicator);
+`;
+
+const EndCallOption = styled.div`
+    display: flex;
+    flex-direction: column;
+`;
+
+const SubtitleText = styled.span`
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: 12px;
+    margin-top: 2px;
 `;

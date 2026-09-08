@@ -503,6 +503,22 @@ describe('CallClient', () => {
             expect(mockRoom.removeAllListeners).toHaveBeenCalled();
         });
 
+        test('emits DISCONNECTED while the room is still set, so listeners can read getSessionID()', async () => {
+            // index.tsx's DISCONNECTED listener calls getSessionID() to dispatch leaveUser for the
+            // local session. getSessionID() reads this.room, so releasing the room before the emit
+            // makes it return null and silently drops that dispatch.
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.state = ConnectionState.Connected;
+
+            const sessionIDAtEmit = jest.fn();
+            client.on(CALL_EVENT.DISCONNECTED, () => sessionIDAtEmit(client.getSessionID()));
+
+            client.disconnect();
+            mockRoom.fire(RoomEvent.Disconnected);
+
+            expect(sessionIDAtEmit).toHaveBeenCalledWith('me-session');
+        });
+
         it('before the room connects, tears down directly (livekit room.disconnect would not emit)', () => {
             // The room sits in its initial Disconnected state for the whole pre-connect window;
             // livekit room.disconnect() is a silent no-op there, so disconnect() must drive

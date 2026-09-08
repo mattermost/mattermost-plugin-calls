@@ -167,6 +167,14 @@ func (p *Plugin) OnDeactivate() error {
 	p.LogDebug("deactivate")
 	close(p.stopCh)
 
+	// Pending no-answer timers have no call left to cancel once we're down.
+	p.dmNoAnswerTimersMut.Lock()
+	for _, t := range p.dmNoAnswerTimers {
+		t.Stop()
+	}
+	p.dmNoAnswerTimers = nil
+	p.dmNoAnswerTimersMut.Unlock()
+
 	if err := p.store.Close(); err != nil {
 		p.LogError(err.Error())
 	}

@@ -1,0 +1,27 @@
+// These are deliberately not scoped to #calls-expanded-view: the participants grid is also
+// rendered by the standalone recording view (#calls-recording-view), which never loads
+// expanded_view.scss. Keeping them here means any consumer of ParticipantCell gets them.
+li.participantCell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+
+    &.showHostControls {
+        border-radius: 8px;
+        background: rgba(var(--sidebar-text-rgb), 0.08);
+    }
+
+    span.participantName {
+        font-weight: 600;
+        text-align: center;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow-wrap: break-word;
+        width: 100%;
+    }
+}

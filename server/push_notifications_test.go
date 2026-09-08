@@ -123,7 +123,7 @@ func TestNotificationWillBePushed(t *testing.T) {
 			require.False(t, *p.getConfiguration().EnableRinging)
 
 			res, msg := p.NotificationWillBePushed(&model.PushNotification{
-				PostType: callStartPostType,
+				PostType: callEventPostType,
 			}, "userID")
 			require.Nil(t, res)
 			require.Empty(t, msg)
@@ -136,14 +136,14 @@ func TestNotificationWillBePushed(t *testing.T) {
 			require.True(t, *p.getConfiguration().EnableRinging)
 
 			res, msg := p.NotificationWillBePushed(&model.PushNotification{
-				PostType:    callStartPostType,
+				PostType:    callEventPostType,
 				ChannelType: model.ChannelTypeDirect,
 			}, "userID")
 			require.Nil(t, res)
 			require.Equal(t, "calls plugin will handle this notification", msg)
 
 			res, msg = p.NotificationWillBePushed(&model.PushNotification{
-				PostType:    callStartPostType,
+				PostType:    callEventPostType,
 				ChannelType: model.ChannelTypeGroup,
 			}, "userID")
 			require.Nil(t, res)
@@ -168,12 +168,12 @@ func TestNotificationWillBePushed(t *testing.T) {
 			}, nil).Once()
 
 			res, msg := p.NotificationWillBePushed(&model.PushNotification{
-				PostType:    callStartPostType,
+				PostType:    callEventPostType,
 				ChannelType: model.ChannelTypeOpen,
 				SenderId:    "senderID",
 			}, "receiverID")
 			require.Equal(t, &model.PushNotification{
-				PostType:    callStartPostType,
+				PostType:    callEventPostType,
 				ChannelType: model.ChannelTypeOpen,
 				SenderId:    "senderID",
 				Message:     "\u200bapp.push_notification.inviting_message",
@@ -182,13 +182,13 @@ func TestNotificationWillBePushed(t *testing.T) {
 
 			t.Run("id loaded", func(t *testing.T) {
 				res, msg := p.NotificationWillBePushed(&model.PushNotification{
-					PostType:    callStartPostType,
+					PostType:    callEventPostType,
 					ChannelType: model.ChannelTypeOpen,
 					SenderId:    "senderID",
 					IsIdLoaded:  true,
 				}, "receiverID")
 				require.Equal(t, &model.PushNotification{
-					PostType:    callStartPostType,
+					PostType:    callEventPostType,
 					ChannelType: model.ChannelTypeOpen,
 					SenderId:    "senderID",
 					IsIdLoaded:  true,

@@ -85,10 +85,6 @@ import TURNCredentialsExpirationMinutes from 'src/components/admin_console_setti
 import TURNStaticAuthSecret from 'src/components/admin_console_settings/turn_static_auth_secret';
 import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
 import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
-import {
-    EndCallConfirmation,
-    IDEndCallConfirmation,
-} from 'src/components/call_widget/end_call_confirmation';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
@@ -101,11 +97,11 @@ import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
-import {CALL_RECORDING_POST_TYPE, CALL_START_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
+import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
 import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
-import {CurrentCallDataDefault, DesktopMessageType} from 'src/types/types';
+import {CurrentCallDataDefault} from 'src/types/types';
 import {getWSConnectionURL} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 
@@ -120,7 +116,7 @@ import ChannelHeaderButton from './components/channel_header_button';
 import ChannelHeaderDropdownButton from './components/channel_header_dropdown_button';
 import ChannelHeaderMenuButton from './components/channel_header_menu_button';
 import ChannelLinkLabel from './components/channel_link_label';
-import PostType from './components/custom_post_types/post_type';
+import {PostTypeEvent} from './components/custom_post_types/post_type_event';
 import {PostTypeTranscription} from './components/custom_post_types/post_type_transcription';
 import ExpandedView from './components/expanded_view';
 import CompassIcon from './components/icons/compassIcon';
@@ -129,7 +125,7 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
-import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from './log';
+import {flushLogsToAccumulated, logDebug, logErr, logInfo} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
@@ -334,38 +330,11 @@ export default class Plugin {
             document.getElementById('calls')?.remove();
         });
 
-        if (window.desktop) {
-            const widgetCh = new BroadcastChannel('calls_widget');
-            this.unsubscribers.push(() => {
-                widgetCh.close();
-            });
-
-            widgetCh.onmessage = (ev) => {
-                switch (ev.data?.type) {
-                case DesktopMessageType.ShowEndCallModal: {
-                    const channelID = channelIDForCurrentCall(store.getState());
-                    if (channelID) {
-                        store.dispatch(modals.openModal({
-                            modalId: IDEndCallConfirmation,
-                            dialogType: EndCallConfirmation,
-                            dialogProps: {
-                                channelID,
-                            },
-                        }));
-                    }
-                    break;
-                }
-                default:
-                    logWarn('invalid message on widget channel', ev.data);
-                }
-            };
-        }
-
         registry.registerReducer(reducer);
         const sidebarChannelLinkLabelComponentID = registry.registerSidebarChannelLinkLabelComponent(ChannelLinkLabel);
         this.unsubscribers.push(() => registry.unregisterComponent(sidebarChannelLinkLabelComponentID));
         registry.registerChannelToastComponent(injectIntl(ChannelCallToast));
-        registry.registerPostTypeComponent(CALL_START_POST_TYPE, PostType);
+        registry.registerPostTypeComponent(CALL_EVENT_POST_TYPE, PostTypeEvent);
         registry.registerPostTypeComponent(CALL_RECORDING_POST_TYPE, PostTypeRecording);
         registry.registerPostTypeComponent(CALL_TRANSCRIPTION_POST_TYPE, PostTypeTranscription);
         registry.registerPostTypeComponent('custom_cloud_trial_req', PostTypeCloudTrialRequest);

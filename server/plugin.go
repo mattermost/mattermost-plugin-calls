@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	callStartPostType     = "custom_calls"
+	callEventPostType     = "custom_calls"
 	callRecordingPostType = "custom_calls_recording"
 	callTranscriptionType = "custom_calls_transcription"
 )
@@ -70,6 +70,9 @@ type Plugin struct {
 	// operations.
 	callsClusterLocks    map[string]*cluster.Mutex
 	callsClusterLocksMut sync.RWMutex
+
+	dmNoAnswerTimers    map[string]*time.Timer
+	dmNoAnswerTimersMut sync.Mutex
 
 	// Database
 	store *db.Store
@@ -151,7 +154,7 @@ func (p *Plugin) clusterEventsHandler() {
 	}
 }
 
-func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, title, threadID string) (string, string, error) {
+func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, title, threadID string, channelType model.ChannelType) (string, string, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return "", "", appErr
@@ -179,17 +182,25 @@ func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, titl
 		Text:     postMsg,
 	}
 
+	props := map[string]interface{}{
+		"attachments": []*model.SlackAttachment{&slackAttachment},
+		"start_at":    state.Call.StartAt,
+		"title":       title,
+	}
+
+	// Only DM calls are phone-like, so only they start out ringing. For every other channel type
+	// the prop is absent and clients read the card as an active call.
+	if channelType == model.ChannelTypeDirect {
+		props["call_status"] = callStatusCalling
+	}
+
 	post := &model.Post{
 		UserId:    userID,
 		ChannelId: channelID,
 		RootId:    threadID,
 		Message:   postMsg,
-		Type:      callStartPostType,
-		Props: map[string]interface{}{
-			"attachments": []*model.SlackAttachment{&slackAttachment},
-			"start_at":    state.Call.StartAt,
-			"title":       title,
-		},
+		Type:      callEventPostType,
+		Props:     props,
 	}
 
 	createdPost, appErr := p.API.CreatePost(post)
@@ -205,7 +216,7 @@ func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, titl
 	return createdPost.Id, threadID, nil
 }
 
-func (p *Plugin) updateCallPostEnded(postID string, participants []string) (float64, error) {
+func (p *Plugin) updateCallPostEnded(postID string, participants []string, reason callEndReason) (float64, error) {
 	if postID == "" {
 		return 0, fmt.Errorf("postID should not be empty")
 	}
@@ -217,7 +228,22 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 
 	T := p.getTranslationFunc("")
 
-	postMsg := T("app.call.ended_message")
+	var postMsg, callStatus string
+	switch reason {
+	case callEndReasonNoAnswer:
+		postMsg = T("app.call.no_answer_message")
+		callStatus = callStatusNoAnswer
+	case callEndReasonCanceledByCaller:
+		postMsg = T("app.call.canceled_by_caller_message")
+		callStatus = callStatusCanceledByCaller
+	case callEndReasonDeclined:
+		postMsg = T("app.call.declined_message")
+		callStatus = callStatusDeclined
+	default:
+		postMsg = T("app.call.ended_message")
+		callStatus = callStatusEnded
+	}
+
 	slackAttachment := model.SlackAttachment{
 		Fallback: postMsg,
 		Title:    postMsg,
@@ -228,6 +254,7 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string) (floa
 	post.DelProp("attachments")
 	post.AddProp("attachments", []*model.SlackAttachment{&slackAttachment})
 	post.AddProp("end_at", time.Now().UnixMilli())
+	post.AddProp("call_status", callStatus)
 	post.AddProp("participants", participants)
 
 	if _, appErr := p.API.UpdatePost(post); appErr != nil {
@@ -252,7 +279,7 @@ func (p *Plugin) ServeMetrics(_ *plugin.Context, w http.ResponseWriter, r *http.
 // call to avoid potentially messing with metadata (e.g. job ids).
 // Both Plugin and Calls bot should still be able to do it though.
 func (p *Plugin) MessageWillBeUpdated(c *plugin.Context, newPost, oldPost *model.Post) (*model.Post, string) {
-	if oldPost != nil && oldPost.Type == callStartPostType && c != nil && c.SessionId != "" {
+	if oldPost != nil && oldPost.Type == callEventPostType && c != nil && c.SessionId != "" {
 		if p.botSession == nil || c.SessionId != p.botSession.Id {
 			return nil, "you are not allowed to edit a call post"
 		}

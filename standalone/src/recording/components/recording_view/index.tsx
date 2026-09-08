@@ -4,7 +4,7 @@
 import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import Avatar from 'plugin/components/avatar/avatar';
-import ParticipantsGrid from 'plugin/components/expanded_view/participants_grid';
+import {ParticipantsGrid} from 'plugin/components/expanded_view/participants_grid';
 import {logErr} from 'plugin/log';
 import {alphaSortSessions, getUserDisplayName, stateSortSessions, untranslatable} from 'plugin/utils';
 import React, {useCallback, useEffect, useState} from 'react';

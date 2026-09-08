@@ -106,7 +106,7 @@ function connectCall(
 
         // Update the global instances.
         window.callsClient = callClient;
-        window.currentCallData = CurrentCallDataDefault;
+        window.currentCallData = {...CurrentCallDataDefault};
 
         // Subscribe to raw plugin-WS events BEFORE connect() so 'hello' isn't missed.
         callClient.on(CALL_EVENT.WEBSOCKET_EVENT, wsEventHandler);
