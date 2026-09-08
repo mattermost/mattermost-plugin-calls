@@ -154,6 +154,7 @@ interface State {
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
     viewState: 'grid' | 'speaker',
+    leaveMenuOpen: boolean,
 }
 
 const StyledMediaController = styled(MediaController)`
@@ -320,6 +321,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             alerts: CallAlertStatesDefault,
             removeConfirmation: null,
             viewState: 'speaker',
+            leaveMenuOpen: false,
         };
 
         if (window.opener) {
@@ -463,6 +465,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 },
             },
         });
+    };
+
+    onLeaveMenuOpen = (open: boolean) => {
+        this.setState({leaveMenuOpen: open});
     };
 
     onDisconnectClick = () => {
@@ -1370,6 +1376,12 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const hostControlsAvailable = this.props.hostControlsAllowed && (isHost || this.props.isAdmin);
         const showMuteOthers = hostControlsAvailable && this.props.sessions.some((s) => s.unmuted && s.user_id !== this.props.currentUserID);
 
+        // See the matching comment in the widget: keep the leave control a menu while its menu is
+        // open, so a session count change can't unmount it mid-interaction and eat the click.
+        const showLeaveMenu = !isDMChannel(this.props.channel) &&
+            (isHost || this.props.isAdmin) &&
+            (this.props.sessions.length > 1 || this.state.leaveMenuOpen);
+
         const isRecording = isHost && this.props.isRecording;
 
         const recordTooltipText = isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
@@ -1591,7 +1603,27 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             />
                         </div>
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
-                            {(isDMChannel(this.props.channel) || (!isHost && !this.props.isAdmin) || this.props.sessions.length <= 1) ? (
+                            {showLeaveMenu ? (
+                                <DotMenu
+                                    id='calls-popout-leave-button'
+                                    ariaLabel={leaveCallTooltipText}
+                                    icon={<LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>}
+                                    dotMenuButton={LeaveCallButton}
+                                    dropdownMenu={StyledDropdownMenu}
+                                    placement={'top-end'}
+                                    strategy={'fixed'}
+                                    shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
+                                    tooltipText={leaveCallTooltipText}
+                                    onOpenChange={this.onLeaveMenuOpen}
+                                >
+                                    <LeaveCallMenu
+                                        channelID={callsClient.channelID}
+                                        isHost={isHost}
+                                        numParticipants={this.props.sessions.length}
+                                        leaveCall={this.onDisconnectClick}
+                                    />
+                                </DotMenu>
+                            ) : (
                                 <OverlayTrigger
                                     placement='top'
                                     overlay={<Tooltip id='calls-popout-leave-button-tooltip'>{leaveCallTooltipText}</Tooltip>}
@@ -1606,25 +1638,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         <LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>
                                     </LeaveCallButton>
                                 </OverlayTrigger>
-                            ) : (
-                                <DotMenu
-                                    id='calls-popout-leave-button'
-                                    ariaLabel={leaveCallTooltipText}
-                                    icon={<LeaveCallIcon style={{fill: 'white', width: '20px', height: '20px'}}/>}
-                                    dotMenuButton={LeaveCallButton}
-                                    dropdownMenu={StyledDropdownMenu}
-                                    placement={'top-end'}
-                                    strategy={'fixed'}
-                                    shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
-                                    tooltipText={leaveCallTooltipText}
-                                >
-                                    <LeaveCallMenu
-                                        channelID={callsClient.channelID}
-                                        isHost={isHost}
-                                        numParticipants={this.props.sessions.length}
-                                        leaveCall={this.onDisconnectClick}
-                                    />
-                                </DotMenu>
                             )}
                         </div>
                     </div>

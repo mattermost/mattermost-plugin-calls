@@ -31,7 +31,15 @@ jest.mock('src/components/leave_call_menu', () => ({
 jest.mock('src/components/dot_menu/dot_menu', () => {
     return {
         __esModule: true,
-        default: ({children}: {children: React.ReactNode}) => <div>{children}</div>,
+
+        // Children render unconditionally (the real menu needs a click to open), plus a trigger
+        // that reports the menu as open so tests can cover the menu-is-open state.
+        default: ({children, onOpenChange}: {children: React.ReactNode; onOpenChange?: (open: boolean) => void}) => (
+            <div>
+                <button onClick={() => onOpenChange?.(true)}>{'open leave menu'}</button>
+                {children}
+            </div>
+        ),
         DotMenuButton: 'div',
         DropdownMenu: 'div',
         DropdownMenuItem: ({children, onClick}: {children: React.ReactNode; onClick?: () => void}) => (
@@ -336,6 +344,36 @@ describe('leave button behavior', () => {
         expect(leaveButton).toBeInTheDocument();
 
         await user.click(leaveButton);
+        expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    test('keeps the menu while it is open and the last other participant leaves', async () => {
+        const user = userEvent.setup();
+        const widget = (sessions: UserSessionState[]) => (
+            <Provider store={mockStore(stubState(stubChannel))}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        sessions={sessions}
+                        callHostID='user-id'
+                        isAdmin={false}
+                    />
+                </RawIntlProvider>
+            </Provider>
+        );
+
+        const {rerender} = render(widget([currentUserSession, otherSession]));
+
+        await user.click(screen.getByRole('button', {name: /open leave menu/i}));
+
+        // The other participant leaves, which on its own would drop this widget back to the
+        // plain one-click leave button — unmounting the menu the user is in the middle of using.
+        rerender(widget([currentUserSession]));
+
+        const leaveMenuItem = screen.getByText('Leave call');
+        expect(leaveMenuItem).toBeInTheDocument();
+
+        await user.click(leaveMenuItem);
         expect(disconnect).toHaveBeenCalledTimes(1);
     });
 });

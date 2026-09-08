@@ -2410,6 +2410,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // A ringing DM call hasn't been answered yet, so hanging up cancels it rather than leaving it.
         const leaveMenuLabel = this.props.isDMCalling ? formatMessage({defaultMessage: 'Cancel call'}) : formatMessage({defaultMessage: 'Leave call'});
 
+        const showLeaveMenu = !isDMChannel(this.props.channel) &&
+            (isHost || this.props.isAdmin) &&
+            (this.props.sessions.length > 1 || this.state.leaveMenuOpen);
+
         // const shouldRenderVideoContainer = this.props.currentSession?.video || this.state.initializingSelfVideo || this.props.otherSessions.some((s) => s.video);
 
         return (
@@ -2592,19 +2596,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             }
                             bgColor={this.state.showMenu ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
                         />
-                        {(isDMChannel(this.props.channel) || (!isHost && !this.props.isAdmin) || this.props.sessions.length <= 1) ? (
-                            <WidgetButton
-                                id='calls-widget-leave-button'
-                                icon={<LeaveCallIcon style={this.props.clientConnecting ? {} : {fill: 'white'}}/>}
-                                bgColor={this.props.clientConnecting ? 'rgba(var(--center-channel-color-rgb), 0.08)' : 'var(--dnd-indicator)'}
-                                bgColorHover='linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08))'
-                                ariaLabel={leaveMenuLabel}
-                                tooltipText={leaveMenuLabel}
-                                disabled={this.props.clientConnecting}
-                                shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
-                                onToggle={this.onDisconnectClick}
-                            />
-                        ) : (
+                        {showLeaveMenu ? (
                             <DotMenu
                                 id='calls-widget-leave-button'
                                 icon={<LeaveCallIcon style={{fill: 'white'}}/>}
@@ -2623,6 +2615,18 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                     leaveCall={this.onDisconnectClick}
                                 />
                             </DotMenu>
+                        ) : (
+                            <WidgetButton
+                                id='calls-widget-leave-button'
+                                icon={<LeaveCallIcon style={this.props.clientConnecting ? {} : {fill: 'white'}}/>}
+                                bgColor={this.props.clientConnecting ? 'rgba(var(--center-channel-color-rgb), 0.08)' : 'var(--dnd-indicator)'}
+                                bgColorHover='linear-gradient(0deg, var(--error-text), var(--error-text)), linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08))'
+                                ariaLabel={leaveMenuLabel}
+                                tooltipText={leaveMenuLabel}
+                                disabled={this.props.clientConnecting}
+                                shortcut={reverseKeyMappings.widget[LEAVE_CALL][0]}
+                                onToggle={this.onDisconnectClick}
+                            />
                         )}
                     </div>
                 </div>
