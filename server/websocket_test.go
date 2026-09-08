@@ -771,6 +771,7 @@ func TestHandleJoin(t *testing.T) {
 		sessions:               map[string]*session{},
 		addSessionsBatchers:    map[string]*batching.Batcher{},
 		removeSessionsBatchers: map[string]*batching.Batcher{},
+		dmNoAnswerTimers:       map[string]*time.Timer{},
 	}
 
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
@@ -817,7 +818,7 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
 			Id:   channelID,
 			Type: model.ChannelTypeOpen,
-		}, nil).Once()
+		}, nil)
 
 		mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
 			MemberCount: 10,
@@ -843,10 +844,6 @@ func TestHandleJoin(t *testing.T) {
 			SkuShortName: "enterprise",
 		}, nil).Unset()
 
-		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-			Id:   channelID,
-			Type: model.ChannelTypeOpen,
-		}, nil).Once()
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Once()
 		mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
@@ -955,16 +952,19 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything, mock.Anything)
 		defer mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything, mock.Anything).Unset()
 
+		// The channel is fetched on every join and again on the leave path, so this one is
+		// deliberately not count-bound.
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeOpen,
+		}, nil)
+
 		for i := 0; i < 10; i++ {
 			userID := model.NewId()
 			connID := model.NewId()
 			authSessionID := ""
 
 			mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
-			mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-				Id:   channelID,
-				Type: model.ChannelTypeOpen,
-			}, nil).Once()
 
 			mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
 				MemberCount: int64(minMembersCountForBatching),
@@ -980,11 +980,6 @@ func TestHandleJoin(t *testing.T) {
 				mockMetrics.On("IncWebSocketEvent", "out", wsEventCallStart).Once()
 				mockAPI.On("PublishWebSocketEvent", wsEventCallStart, mock.Anything,
 					&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
-
-				mockAPI.On("GetChannel", channelID).Return(&model.Channel{
-					Id:   channelID,
-					Type: model.ChannelTypeOpen,
-				}, nil).Once()
 			}
 
 			mockAPI.On("GetLicense").Return(&model.License{
@@ -1305,7 +1300,7 @@ func TestHandleJoin(t *testing.T) {
 		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
 			Id:   channelID,
 			Type: model.ChannelTypeDirect,
-		}, nil).Twice()
+		}, nil)
 
 		mockAPI.On("GetChannelStats", channelID).Return(&model.ChannelStats{
 			MemberCount: 1,
