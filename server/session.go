@@ -67,6 +67,11 @@ func newUserSession(userID, channelID, connID, callID string) *session {
 	}
 }
 
+// errStoreFailure marks an addUserSession failure that came from persistence
+// rather than from a permission or limit check, so HTTP callers can map it to
+// 500 instead of 403.
+var errStoreFailure = errors.New("store failure")
+
 func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, connID, channelID, jobID, authSessionID string, ct model.ChannelType) (retState *callState, retErr error) {
 	defer func(start time.Time) {
 		p.metrics.ObserveAppHandlersTime("addUserSession", time.Since(start).Seconds())
@@ -148,7 +153,7 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 
 			if err := p.store.UpdateCallJob(state.Recording); err != nil {
 				state.Recording.Props.BotConnID = ""
-				return nil, fmt.Errorf("failed to update call job: %w", err)
+				return nil, fmt.Errorf("%w: failed to update call job: %w", errStoreFailure, err)
 			}
 		} else if state.Transcription != nil && state.Transcription.ID == jobID && state.Transcription.StartAt == 0 {
 			p.LogDebug("bot joined, transcribing job is starting", "jobID", jobID)
@@ -159,13 +164,13 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 				state.LiveCaptions.Props.BotConnID = connID
 				if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
 					state.LiveCaptions.Props.BotConnID = ""
-					return nil, fmt.Errorf("failed to update call job: %w", err)
+					return nil, fmt.Errorf("%w: failed to update call job: %w", errStoreFailure, err)
 				}
 			}
 
 			if err := p.store.UpdateCallJob(state.Transcription); err != nil {
 				state.Transcription.Props.BotConnID = ""
-				return nil, fmt.Errorf("failed to update call job: %w", err)
+				return nil, fmt.Errorf("%w: failed to update call job: %w", errStoreFailure, err)
 			}
 		} else {
 			// In this case we should fail to prevent the bot from joining
@@ -208,7 +213,7 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 
 	if len(state.sessions) == 1 {
 		if err := p.store.CreateCall(&state.Call); err != nil {
-			return nil, fmt.Errorf("failed to create call: %w", err)
+			return nil, fmt.Errorf("%w: failed to create call: %w", errStoreFailure, err)
 		}
 
 		p.LogInfo("call created",
@@ -218,11 +223,11 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 			"nodeID", p.nodeID)
 	} else {
 		if err := p.store.UpdateCall(&state.Call); err != nil {
-			return nil, fmt.Errorf("failed to update call: %w", err)
+			return nil, fmt.Errorf("%w: failed to update call: %w", errStoreFailure, err)
 		}
 	}
 	if err := p.store.CreateCallSession(state.sessions[connID]); err != nil {
-		return nil, fmt.Errorf("failed to create call session: %w", err)
+		return nil, fmt.Errorf("%w: failed to create call session: %w", errStoreFailure, err)
 	}
 
 	p.LogInfo("call session joined",

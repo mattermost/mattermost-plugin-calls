@@ -1305,6 +1305,15 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 		callsEnabled = model.NewPointer(callsChannel.Enabled)
 	}
 
+	// Check LiveKit is configured before writing anything. Minting happens after
+	// the session is persisted, and an unconfigured deployment would otherwise
+	// leave a pending call and session behind on every join attempt.
+	if cfg := p.getConfiguration(); cfg.getLiveKitURL() == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
+		res.Err = errLiveKitNotConfigured.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
 	sessionID := model.NewId()
 
 	state, err := p.lockCallReturnState(req.ChannelID)
@@ -1316,8 +1325,19 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 	}
 	defer p.unlockCall(req.ChannelID)
 
+	// Whether this request is the first joiner, and so owns the call row for
+	// rollback purposes below.
+	createdCall := state == nil
+
 	state, err = p.addUserSession(state, callsEnabled, userID, sessionID, req.ChannelID, req.JobID, authSessionIDFromRequest(r), channel.Type)
 	if err != nil {
+		// Persistence failures are ours, not the caller's; only join denials are 403.
+		if errors.Is(err, errStoreFailure) {
+			p.LogError("failed to add user session", "err", err.Error(), "channelID", req.ChannelID)
+			res.Err = "Internal server error"
+			res.Code = http.StatusInternalServerError
+			return
+		}
 		res.Err = err.Error()
 		res.Code = http.StatusForbidden
 		return
@@ -1325,9 +1345,18 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 
 	token, lkURL, err := p.mintLiveKitToken(userID, req.ChannelID, sessionID)
 	if err != nil {
-		// The session row is already written; leaving it unconfirmed is safe,
-		// since an unconfirmed row is never announced and gets reaped (MM-69510).
+		// addUserSession already persisted the rows, so undo them rather than
+		// leaving a session nobody can use behind. Nothing was announced, so this
+		// is a plain delete rather than the call-ended path.
 		p.LogError("failed to mint LiveKit token", "err", err.Error(), "channelID", req.ChannelID)
+		if delErr := p.store.DeleteCallSession(sessionID); delErr != nil {
+			p.LogError("failed to roll back call session", "err", delErr.Error(), "sessionID", sessionID)
+		}
+		if createdCall {
+			if delErr := p.store.DeleteCall(state.Call.ID); delErr != nil {
+				p.LogError("failed to roll back call", "err", delErr.Error(), "callID", state.Call.ID)
+			}
+		}
 		res.Err = "Internal server error"
 		res.Code = http.StatusInternalServerError
 		return

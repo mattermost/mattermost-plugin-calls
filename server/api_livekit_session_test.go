@@ -135,6 +135,33 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
 	})
 
+	t.Run("livekit not configured writes nothing", func(t *testing.T) {
+		p, mockAPI, _ := setupPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		cfg := *p.configuration
+		cfg.LiveKitURL = ""
+		cfg.LiveKitAPIKey = ""
+		cfg.LiveKitAPISecret = ""
+		p.configuration = &cfg
+
+		userID := model.NewId()
+		channelID := model.NewId()
+
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id: channelID, Type: model.ChannelTypeOpen,
+		}, nil).Once()
+
+		w := postSession(t, p, userID, model.NewId(), map[string]string{"channel_id": channelID})
+		require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+
+		// The config is checked before anything is persisted, so no call or
+		// session is left behind for a deployment that never had LiveKit set up.
+		_, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
+		require.ErrorIs(t, err, db.ErrNotFound)
+	})
+
 	t.Run("creates pending session and call", func(t *testing.T) {
 		p, mockAPI, _ := setupPlugin(t)
 		defer ResetTestStore(t, p.store)
