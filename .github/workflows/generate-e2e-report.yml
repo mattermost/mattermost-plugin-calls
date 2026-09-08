@@ -12,7 +12,11 @@ permissions: read-all
 jobs:
   generate-report:
     runs-on: ubuntu-22.04
-    if: github.repository_owner == 'mattermost' && github.event.workflow_run.conclusion == 'success'
+    # Only report on runs originating from this repo (fork runs have no report to publish).
+    if: >-
+      github.repository_owner == 'mattermost' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == 'mattermost/mattermost-plugin-calls'
     permissions:
           statuses: write
     steps:
