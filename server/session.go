@@ -336,27 +336,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// If the bot is the only user left in the call we automatically stop any
 	// ongoing jobs.
 	if state.onlyUserLeft(p.getBotID()) {
-		p.LogDebug("all users left call with job(s) in progress, stopping", "channelID", channelID)
-
-		if state.Recording != nil {
-			p.LogDebug("stopping ongoing recording", "jobID", state.Recording.Props.JobID, "botConnID", state.Recording.Props.BotConnID)
-			if err := p.getJobService().StopJob(channelID, state.Recording.ID, p.getBotID(), state.Recording.Props.BotConnID); err != nil {
-				p.LogError("failed to stop recording job", "error", err.Error(),
-					"channelID", channelID,
-					"jobID", state.Recording.Props.JobID,
-					"botConnID", state.Recording.Props.BotConnID)
-			}
-		}
-
-		if state.Transcription != nil {
-			p.LogDebug("stopping ongoing transcription", "jobID", state.Transcription.Props.JobID, "botConnID", state.Transcription.Props.BotConnID)
-			if err := p.getJobService().StopJob(channelID, state.Transcription.ID, p.getBotID(), state.Transcription.Props.BotConnID); err != nil {
-				p.LogError("failed to stop transcribing job", "error", err.Error(),
-					"channelID", channelID,
-					"jobID", state.Transcription.Props.JobID,
-					"botConnID", state.Transcription.Props.BotConnID)
-			}
-		}
+		p.stopOngoingJobs(state, channelID)
 	}
 
 	// If the bot leaves the call and recording has not been stopped it either means
@@ -509,16 +489,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 
 		p.cancelDMNoAnswerTimer(channelID)
 
-		// A DM call that only ever had the caller in it was never answered, so hanging up
-		// cancelled it rather than ended it.
-		endReason := callEndReasonNormal
-		if len(participants) == 1 {
-			if channel, appErr := p.API.GetChannel(channelID); appErr != nil {
-				p.LogError("failed to get channel for call end reason", "err", appErr.Error(), "channelID", channelID)
-			} else if p.isDMCallChannel(channel.Type, channelID) {
-				endReason = callEndReasonCanceledByCaller
-			}
-		}
+		endReason := p.callEndReason(participants, channelID)
 
 		p.LogInfo("call ended",
 			"callID", state.Call.ID,
@@ -723,4 +694,57 @@ func (p *Plugin) hasSessionsForCall(callID string) bool {
 		}
 	}
 	return false
+}
+
+// stopOngoingJobs stops any recording or transcription in progress. Called when
+// the last human leaves a call: the bots have nobody left to record, so their
+// jobs are stopped rather than left running against an empty room.
+func (p *Plugin) stopOngoingJobs(state *callState, channelID string) {
+	if state.Recording == nil && state.Transcription == nil {
+		return
+	}
+
+	p.LogDebug("all users left call with job(s) in progress, stopping", "channelID", channelID)
+
+	if state.Recording != nil {
+		p.LogDebug("stopping ongoing recording", "jobID", state.Recording.Props.JobID, "botConnID", state.Recording.Props.BotConnID)
+		if err := p.getJobService().StopJob(channelID, state.Recording.ID, p.getBotID(), state.Recording.Props.BotConnID); err != nil {
+			p.LogError("failed to stop recording job", "error", err.Error(),
+				"channelID", channelID,
+				"jobID", state.Recording.Props.JobID,
+				"botConnID", state.Recording.Props.BotConnID)
+		}
+	}
+
+	if state.Transcription != nil {
+		p.LogDebug("stopping ongoing transcription", "jobID", state.Transcription.Props.JobID, "botConnID", state.Transcription.Props.BotConnID)
+		if err := p.getJobService().StopJob(channelID, state.Transcription.ID, p.getBotID(), state.Transcription.Props.BotConnID); err != nil {
+			p.LogError("failed to stop transcribing job", "error", err.Error(),
+				"channelID", channelID,
+				"jobID", state.Transcription.Props.JobID,
+				"botConnID", state.Transcription.Props.BotConnID)
+		}
+	}
+}
+
+// callEndReason reports what the call post should say happened when the last
+// participant leaves. A DM call that only ever had the caller in it was never
+// answered, so hanging up cancelled it rather than ended it.
+//
+// participants must be read before setCallEnded, which clears Props.Participants.
+func (p *Plugin) callEndReason(participants []string, channelID string) callEndReason {
+	if len(participants) != 1 {
+		return callEndReasonNormal
+	}
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.LogError("failed to get channel for call end reason", "err", appErr.Error(), "channelID", channelID)
+		return callEndReasonNormal
+	}
+	if p.isDMCallChannel(channel.Type, channelID) {
+		return callEndReasonCanceledByCaller
+	}
+
+	return callEndReasonNormal
 }

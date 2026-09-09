@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/livekit/protocol/livekit"
@@ -33,6 +34,18 @@ var errLiveKitNotConfigured = errors.New("LiveKit is not configured")
 
 func composeLivekitIdentity(userID, sessionID string) string {
 	return userID + userIDSessionIDSeparator + sessionID
+}
+
+// parseLivekitIdentity splits a participant identity minted by
+// composeLivekitIdentity back into its user and call-session ids. It reports
+// false for identities we did not mint, such as SIP participants whose identity
+// is a phone number.
+func parseLivekitIdentity(identity string) (userID, sessionID string, ok bool) {
+	userID, sessionID, found := strings.Cut(identity, userIDSessionIDSeparator)
+	if !found || userID == "" || sessionID == "" {
+		return "", "", false
+	}
+	return userID, sessionID, true
 }
 
 func (p *Plugin) getLiveKitRoomClient() (*lksdk.RoomServiceClient, error) {

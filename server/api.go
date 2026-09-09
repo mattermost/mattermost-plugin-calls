@@ -30,6 +30,13 @@ import (
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
+// livekitTokenTTL only has to cover the gap between minting a token and the
+// client connecting: once connected, LiveKit refreshes the token itself over
+// signaling and the plugin is not involved. Keeping it short bounds how long a
+// cached or leaked token could be replayed to rejoin a call without going back
+// through the join permission check.
+const livekitTokenTTL = 10 * time.Minute
+
 // logsUploadMaxSizeBytes is larger than the client's MAX_ACCUMULATED_LOG_SIZE
 // (1MB) to leave margin for JSON-escaping overhead: newlines, quotes and
 // control chars in the log text inflate the encoded body beyond the raw log
@@ -676,7 +683,7 @@ func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, 
 	at.SetVideoGrant(grant).
 		SetIdentity(composeLivekitIdentity(userID, sessionID)).
 		SetName(user.Id).
-		SetValidFor(time.Hour)
+		SetValidFor(livekitTokenTTL)
 
 	token, err := at.ToJWT()
 	if err != nil {
@@ -954,8 +961,16 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 	switch event.GetEvent() {
 	case webhook.EventParticipantJoined:
 		p.handleLiveKitSIPParticipantJoined(event)
+		p.handleLiveKitParticipantJoined(event)
 	case webhook.EventParticipantLeft:
 		p.handleLiveKitSIPParticipantLeft(event)
+		p.handleLiveKitParticipantLeft(event)
+	case webhook.EventRoomFinished:
+		p.handleLiveKitRoomFinished(event)
+	case webhook.EventTrackPublished:
+		p.handleLiveKitTrackPublished(event)
+	case webhook.EventTrackUnpublished:
+		p.handleLiveKitTrackUnpublished(event)
 	}
 
 	w.WriteHeader(http.StatusOK)
