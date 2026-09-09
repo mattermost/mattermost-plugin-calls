@@ -280,9 +280,7 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 	// them would keep it open indefinitely, so their jobs are stopped and the call
 	// ends here.
 	if !humanParticipantsRemain(state.sessions, p.getBotID()) {
-		if state.onlyUserLeft(p.getBotID()) {
-			p.stopOngoingJobs(state, channelID)
-		}
+		p.stopOngoingJobs(state, channelID)
 		p.endEmptyCall(state, channelID, "last_human_left")
 		return
 	}
@@ -317,6 +315,11 @@ func (p *Plugin) handleLiveKitRoomFinished(event *livekit.WebhookEvent) {
 
 	p.LogInfo("handleLiveKitRoomFinished: ending call for finished room",
 		"callID", state.Call.ID, "channelID", channelID, "sessionCount", len(state.sessions))
+
+	// This is the backstop for participant_left events that never arrived, so it
+	// is exactly the path where jobs have not been stopped yet. Do it before the
+	// sessions go, while the job's bot session is still visible in state.
+	p.stopOngoingJobs(state, channelID)
 
 	if _, err := p.store.DeleteCallsSessions(state.Call.ID); err != nil {
 		p.LogError("handleLiveKitRoomFinished: failed to delete calls sessions",

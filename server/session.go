@@ -709,6 +709,10 @@ func (p *Plugin) hasSessionsForCall(callID string) bool {
 // the last human leaves a call: the bots have nobody left to record, so their
 // jobs are stopped rather than left running against an empty room.
 func (p *Plugin) stopOngoingJobs(state *callState, channelID string) {
+	if state.Recording == nil && state.Transcription == nil {
+		return
+	}
+
 	p.LogDebug("all users left call with job(s) in progress, stopping", "channelID", channelID)
 
 	if state.Recording != nil {

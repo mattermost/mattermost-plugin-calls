@@ -342,6 +342,39 @@ func TestLiveKitParticipantWebhooks(t *testing.T) {
 		require.Empty(t, sessions)
 	})
 
+	t.Run("room_finished ends the call with a bot session still present", func(t *testing.T) {
+		p, _, _ := setupPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		botID := model.NewId()
+		p.botID = botID
+
+		channelID := model.NewId()
+		userID, sessionID := model.NewId(), model.NewId()
+		botSessionID := model.NewId()
+		call := createCall(t, p, channelID)
+		createPendingSession(t, p, call, userID, sessionID)
+		createPendingSession(t, p, call, botID, botSessionID)
+		send(t, p, participantEvent("participant_joined", channelID,
+			composeLivekitIdentity(userID, sessionID), "PA_human"))
+		send(t, p, participantEvent("participant_joined", channelID,
+			composeLivekitIdentity(botID, botSessionID), "PA_bot"))
+
+		// room_finished is the backstop for participant_left events that never
+		// arrived, so it must not depend on the room already being empty.
+		send(t, p, &livekit.WebhookEvent{
+			Event: "room_finished",
+			Room:  &livekit.Room{Name: channelID},
+		})
+
+		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Empty(t, sessions)
+
+		_, err = p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
+		require.ErrorIs(t, err, db.ErrNotFound)
+	})
+
 	t.Run("room_finished ends the call and clears sessions", func(t *testing.T) {
 		p, _, _ := setupPlugin(t)
 		defer ResetTestStore(t, p.store)
