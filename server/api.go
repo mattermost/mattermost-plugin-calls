@@ -954,8 +954,16 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 	switch event.GetEvent() {
 	case webhook.EventParticipantJoined:
 		p.handleLiveKitSIPParticipantJoined(event)
+		p.handleLiveKitParticipantJoined(event)
 	case webhook.EventParticipantLeft:
 		p.handleLiveKitSIPParticipantLeft(event)
+		p.handleLiveKitParticipantLeft(event)
+	case webhook.EventRoomFinished:
+		p.handleLiveKitRoomFinished(event)
+	case webhook.EventTrackPublished:
+		p.handleLiveKitTrackPublished(event)
+	case webhook.EventTrackUnpublished:
+		p.handleLiveKitTrackUnpublished(event)
 	}
 
 	w.WriteHeader(http.StatusOK)

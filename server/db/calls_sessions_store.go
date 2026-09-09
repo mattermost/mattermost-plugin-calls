@@ -257,3 +257,60 @@ func (s *Store) IsUserInCall(userID, callID string, opts GetCallSessionOpts) (bo
 
 	return ok, nil
 }
+
+// ConfirmCallSession records the LiveKit participant SID and marks the session
+// confirmed. Called when LiveKit reports the participant connected, which is
+// what promotes a token-minted session to a real, announced participant.
+func (s *Store) ConfirmCallSession(id, sid string, confirmedAt int64) error {
+	s.metrics.IncStoreOp("ConfirmCallSession")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("ConfirmCallSession", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder(s.driverName).
+		Update("calls_sessions").
+		Set("SID", sid).
+		Set("ConfirmedAt", confirmedAt).
+		Where(sq.Eq{"ID": id})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if _, err := s.wDB.ExecContext(ctx, q, args...); err != nil {
+		return fmt.Errorf("failed to run query: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateCallSessionSID rebinds a confirmed session to a new LiveKit participant
+// SID after a full reconnect. ConfirmedAt is deliberately left alone: the
+// session was already confirmed and announced, and a reconnect is not a re-join.
+func (s *Store) UpdateCallSessionSID(id, sid string) error {
+	s.metrics.IncStoreOp("UpdateCallSessionSID")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("UpdateCallSessionSID", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder(s.driverName).
+		Update("calls_sessions").
+		Set("SID", sid).
+		Where(sq.Eq{"ID": id})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if _, err := s.wDB.ExecContext(ctx, q, args...); err != nil {
+		return fmt.Errorf("failed to run query: %w", err)
+	}
+
+	return nil
+}
