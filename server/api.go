@@ -962,16 +962,6 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 	case webhook.EventParticipantJoined:
 		p.handleLiveKitSIPParticipantJoined(event)
 		p.handleLiveKitParticipantJoined(event)
-		// Seed the room metadata. It is otherwise only published on change, so a
-		// call whose host was settled by the token endpoint and never changed
-		// again would have none.
-		//
-		// This is the earliest point it can be done: room_started is too early,
-		// since a room with no confirmed session has nothing to publish to, and
-		// the handlers above are what confirm the session. Marking on every join
-		// rather than just the first also means a dropped publish heals on the
-		// next one. Repeats coalesce in the dirty set.
-		p.markCallDirty(event.GetRoom().GetName())
 	case webhook.EventParticipantLeft:
 		p.handleLiveKitSIPParticipantLeft(event)
 		p.handleLiveKitParticipantLeft(event)
@@ -1047,6 +1037,8 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 			UserIDs:             getUserIDsFromSessions(state.sessions),
 		})
 	}
+
+	p.markCallDirtyOnFirstParticipant(state, channelID)
 
 	if err := p.store.CreateCallSession(session); err != nil {
 		p.LogError("handleLiveKitSIPParticipantJoined: failed to create call session",

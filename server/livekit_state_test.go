@@ -337,15 +337,63 @@ func TestPublishCallRoomMetadata(t *testing.T) {
 	})
 }
 
-func TestAnyConfirmedSession(t *testing.T) {
-	require.False(t, anyConfirmedSession(nil))
-	require.False(t, anyConfirmedSession(map[string]*public.CallSession{
+func TestConfirmedSessionCount(t *testing.T) {
+	require.Zero(t, confirmedSessionCount(nil))
+	require.Zero(t, confirmedSessionCount(map[string]*public.CallSession{
 		"a": {ConfirmedAt: 0},
 	}))
-	require.True(t, anyConfirmedSession(map[string]*public.CallSession{
+	require.Equal(t, 1, confirmedSessionCount(map[string]*public.CallSession{
 		"a": {ConfirmedAt: 0},
 		"b": {ConfirmedAt: 1},
 	}))
+	require.Equal(t, 2, confirmedSessionCount(map[string]*public.CallSession{
+		"a": {ConfirmedAt: 1},
+		"b": {ConfirmedAt: 2},
+	}))
+}
+
+func TestMarkCallDirtyOnFirstParticipant(t *testing.T) {
+	newPlugin := func() *Plugin {
+		return &Plugin{dirtyCalls: map[string]struct{}{}, dirtyCallsCh: make(chan struct{}, 1)}
+	}
+
+	t.Run("marks on the first confirmed participant", func(t *testing.T) {
+		p := newPlugin()
+		state := &callState{sessions: map[string]*public.CallSession{
+			"a": {ConfirmedAt: 1},
+		}}
+
+		p.markCallDirtyOnFirstParticipant(state, "channelA")
+		require.Equal(t, map[string]struct{}{"channelA": {}}, dirtySet(p))
+	})
+
+	t.Run("does not mark on later joins", func(t *testing.T) {
+		// LiveKit fans metadata out to every client in the room, so seeding per
+		// join would be quadratic in identical payloads. Later joiners get the
+		// metadata on connect instead.
+		p := newPlugin()
+		state := &callState{sessions: map[string]*public.CallSession{
+			"a": {ConfirmedAt: 1},
+			"b": {ConfirmedAt: 2},
+		}}
+
+		p.markCallDirtyOnFirstParticipant(state, "channelA")
+		require.Empty(t, dirtySet(p))
+	})
+
+	t.Run("pending sessions do not count as participants", func(t *testing.T) {
+		// Rows minted by the token endpoint are not in the room yet, so a join
+		// alongside them is still the first one LiveKit can deliver to.
+		p := newPlugin()
+		state := &callState{sessions: map[string]*public.CallSession{
+			"a": {ConfirmedAt: 1},
+			"b": {},
+			"c": {},
+		}}
+
+		p.markCallDirtyOnFirstParticipant(state, "channelA")
+		require.Equal(t, map[string]struct{}{"channelA": {}}, dirtySet(p))
+	})
 }
 
 func TestHostSwitchOffParticipantScreen(t *testing.T) {

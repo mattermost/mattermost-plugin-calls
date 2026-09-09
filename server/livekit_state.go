@@ -174,10 +174,10 @@ func (p *Plugin) publishCallRoomMetadata(channelID string) error {
 			return nil, nil
 		}
 
-		if !anyConfirmedSession(state.sessions) {
+		if confirmedSessionCount(state.sessions) == 0 {
 			// The call exists but nobody has connected, so neither has the room:
 			// the token endpoint settles the host before the first client dials
-			// in. The room_started webhook marks the call dirty again once
+			// in. The first participant_joined marks the call dirty again once
 			// LiveKit has a room to update.
 			return nil, nil
 		}

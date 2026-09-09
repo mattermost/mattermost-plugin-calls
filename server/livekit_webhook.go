@@ -136,6 +136,8 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 	}
 
+	p.markCallDirtyOnFirstParticipant(state, channelID)
+
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("handleLiveKitParticipantJoined: failed to update call",
 			"channelID", channelID, "err", err.Error())
