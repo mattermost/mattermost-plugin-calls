@@ -48,7 +48,7 @@ func (p *Plugin) recJobTimeoutChecker(callID, jobID string) {
 
 		recState.Props.Err = "failed to start recording job: timed out waiting for bot to join call"
 		recState.EndAt = time.Now().UnixMilli()
-		if err := p.store.UpdateCallJob(recState); err != nil {
+		if err := p.updateCallJob(callID, recState); err != nil {
 			p.LogError("failed to update call job", "callID", callID, "jobID", jobID, "err", err.Error())
 		}
 
@@ -85,7 +85,7 @@ func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst
 	recState.CreatorID = userID
 	recState.InitAt = time.Now().UnixMilli()
 
-	if err := p.store.CreateCallJob(recState); err != nil {
+	if err := p.createCallJob(callID, recState); err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create call job: %w", err)
 	}
 
@@ -134,7 +134,7 @@ func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst
 	if jobErr != nil {
 		recState.EndAt = time.Now().UnixMilli()
 		recState.Props.Err = jobErr.Error()
-		if err := p.store.UpdateCallJob(recState); err != nil {
+		if err := p.updateCallJob(callID, recState); err != nil {
 			p.LogError("failed to update call job", "err", err.Error(), "jobID", recJobID, "callID", callID)
 		}
 
@@ -145,7 +145,7 @@ func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst
 		return nil, http.StatusForbidden, fmt.Errorf("recording job already in progress")
 	}
 	recState.Props.JobID = recJobID
-	if err := p.store.UpdateCallJob(recState); err != nil {
+	if err := p.updateCallJob(callID, recState); err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update call job: %w", err)
 	}
 
@@ -189,7 +189,7 @@ func (p *Plugin) stopRecordingJob(state *callState, callID string) (rst *JobStat
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to get recording state: %w", err)
 	}
 	recState.EndAt = time.Now().UnixMilli()
-	if err := p.store.UpdateCallJob(recState); err != nil {
+	if err := p.updateCallJob(callID, recState); err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update call job: %w", err)
 	}
 

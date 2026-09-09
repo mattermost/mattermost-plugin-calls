@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
@@ -54,6 +55,10 @@ func (p *Plugin) createBotSession() (*model.Session, error) {
 
 	return session, nil
 }
+
+// publisherShutdownTimeout bounds how long deactivation waits for the room
+// metadata publisher, which may be blocked acquiring a channel lock.
+const publisherShutdownTimeout = 2 * time.Second
 
 func (p *Plugin) OnActivate() (retErr error) {
 	p.LogDebug("activating")
@@ -158,6 +163,9 @@ func (p *Plugin) OnActivate() (retErr error) {
 
 	go p.clusterEventsHandler()
 
+	p.publisherWg.Add(1)
+	go p.roomMetadataPublisher()
+
 	p.LogDebug("activated", "ClusterID", status.ClusterId)
 
 	return nil
@@ -174,6 +182,9 @@ func (p *Plugin) OnDeactivate() error {
 	}
 	p.dmNoAnswerTimers = nil
 	p.dmNoAnswerTimersMut.Unlock()
+
+	// The publisher reads call state, so it has to be down before the store is.
+	p.waitForPublisher(publisherShutdownTimeout)
 
 	if err := p.store.Close(); err != nil {
 		p.LogError(err.Error())

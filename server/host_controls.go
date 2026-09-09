@@ -55,7 +55,7 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 		return ErrNotInCall
 	}
 
-	state.Call.Props.Hosts = []string{newHostID}
+	p.setCallHost(state, channelID, newHostID)
 	state.Call.Props.HostLockedUserID = newHostID
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
@@ -190,6 +190,24 @@ func (p *Plugin) hostSwitchOffParticipantScreen(requesterID, channelID, sessionI
 		"channel_id": channelID,
 		"session_id": sessionID,
 	}, &WebSocketBroadcast{UserID: ust.UserID, ReliableClusterSend: true})
+
+	// Also ask over LiveKit, which is the only path standalone will have left
+	// once it drops the Calls WebSocket. Unlike the other host controls this
+	// cannot be enforced server-side: muting the track would leave the capture
+	// running and the browser's sharing indicator lit while nobody receives
+	// anything, so the client has to tear it down. Once it does, the
+	// track_unpublished webhook clears the call's screen-sharing state.
+	//
+	// A client that handles both stops sharing twice, which is a no-op. The
+	// failure is logged rather than returned because the WebSocket event above
+	// is still the working path for every client today; this must become the
+	// returned error when that event is removed (MM-69502 PR 7).
+	if err := p.livekitSendHostControl(channelID,
+		composeLivekitIdentity(ust.UserID, sessionID),
+		hostControlActionStopScreenshare); err != nil {
+		p.LogError("failed to send stop screenshare host control",
+			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
+	}
 
 	return nil
 }

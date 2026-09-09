@@ -965,6 +965,11 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 	case webhook.EventParticipantLeft:
 		p.handleLiveKitSIPParticipantLeft(event)
 		p.handleLiveKitParticipantLeft(event)
+	case webhook.EventRoomStarted:
+		// Metadata is only published on change, so a call whose host was settled
+		// before anyone connected would have none. Seed it now that the room
+		// exists to be updated.
+		p.markCallDirty(event.GetRoom().GetName())
 	case webhook.EventRoomFinished:
 		p.handleLiveKitRoomFinished(event)
 	case webhook.EventTrackPublished:
@@ -1021,12 +1026,13 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 		CallID:           state.Call.ID,
 		UserID:           identity,
 		JoinAt:           time.Now().UnixMilli(),
+		ConfirmedAt:      time.Now().UnixMilli(),
 		IsSIPParticipant: true,
 	}
 	state.sessions[sid] = session
 
 	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
-		state.Call.Props.Hosts = []string{newHostID}
+		p.setCallHost(state, channelID, newHostID)
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 			"hostID":  newHostID,
 			"call_id": state.Call.ID,
@@ -1124,11 +1130,7 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 
 	if state.Call.GetHostID() == identity && len(state.sessions) > 0 {
 		if newHostID := state.getHostID(p.getBotID()); newHostID != identity {
-			if newHostID == "" {
-				state.Call.Props.Hosts = nil
-			} else {
-				state.Call.Props.Hosts = []string{newHostID}
-			}
+			p.setCallHost(state, channelID, newHostID)
 			p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 				"hostID":  newHostID,
 				"call_id": state.Call.ID,

@@ -49,6 +49,8 @@ func TestLiveKitParticipantWebhooks(t *testing.T) {
 			callsClusterLocks: map[string]*cluster.Mutex{},
 			store:             store,
 			nodeID:            "test-node",
+			dirtyCalls:        map[string]struct{}{},
+			dirtyCallsCh:      make(chan struct{}, 1),
 		}
 		p.licenseChecker = enterprise.NewLicenseChecker(p.API)
 
@@ -345,6 +347,69 @@ func TestLiveKitParticipantWebhooks(t *testing.T) {
 		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.Empty(t, sessions)
+	})
+
+	// Room metadata carries host and job state to clients that have no
+	// Mattermost WebSocket. It is only published on change, so the events that
+	// change it have to say so.
+	t.Run("room metadata", func(t *testing.T) {
+		t.Run("room_started seeds it", func(t *testing.T) {
+			// The token endpoint settles the host before anyone connects, so
+			// without this seed a call whose host never changed again would have
+			// no metadata at all.
+			p, _, _ := setupPlugin(t)
+			defer ResetTestStore(t, p.store)
+
+			channelID := model.NewId()
+			send(t, p, &livekit.WebhookEvent{
+				Event: "room_started",
+				Room:  &livekit.Room{Name: channelID},
+			})
+
+			require.Equal(t, map[string]struct{}{channelID: {}}, dirtySet(p))
+		})
+
+		t.Run("a host change on join marks it stale", func(t *testing.T) {
+			p, _, _ := setupPlugin(t)
+			defer ResetTestStore(t, p.store)
+
+			channelID := model.NewId()
+			userID, sessionID := model.NewId(), model.NewId()
+			call := createCall(t, p, channelID)
+			createPendingSession(t, p, call, userID, sessionID)
+
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(userID, sessionID), "PA_first"))
+
+			require.Equal(t, map[string]struct{}{channelID: {}}, dirtySet(p))
+		})
+
+		t.Run("a host change on leave marks it stale", func(t *testing.T) {
+			p, _, _ := setupPlugin(t)
+			defer ResetTestStore(t, p.store)
+
+			channelID := model.NewId()
+			userA, sessionA := model.NewId(), model.NewId()
+			userB, sessionB := model.NewId(), model.NewId()
+			call := createCall(t, p, channelID)
+			createPendingSession(t, p, call, userA, sessionA)
+			createPendingSession(t, p, call, userB, sessionB)
+
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(userA, sessionA), "PA_a"))
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(userB, sessionB), "PA_b"))
+
+			p.dirtyCallsMut.Lock()
+			p.dirtyCalls = map[string]struct{}{}
+			p.dirtyCallsMut.Unlock()
+
+			// The host leaving hands the role to the remaining participant.
+			send(t, p, participantEvent("participant_left", channelID,
+				composeLivekitIdentity(userA, sessionA), "PA_a"))
+
+			require.Equal(t, map[string]struct{}{channelID: {}}, dirtySet(p))
+		})
 	})
 
 	t.Run("room_finished ends the call with a bot session still present", func(t *testing.T) {

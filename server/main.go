@@ -37,6 +37,8 @@ func main() {
 		addSessionsBatchers:    map[string]*batching.Batcher{},
 		removeSessionsBatchers: map[string]*batching.Batcher{},
 		dmNoAnswerTimers:       map[string]*time.Timer{},
+		dirtyCalls:             map[string]struct{}{},
+		dirtyCallsCh:           make(chan struct{}, 1),
 	}
 	p.apiRouter = p.newAPIRouter()
 	plugin.ClientMain(p)

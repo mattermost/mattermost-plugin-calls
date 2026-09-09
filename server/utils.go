@@ -275,3 +275,15 @@ func humanParticipantsRemain(sessions map[string]*public.CallSession, botID stri
 	}
 	return false
 }
+
+// anyConfirmedSession reports whether any session has been confirmed connected
+// by LiveKit, which is also the test for whether the room exists: LiveKit
+// creates it when the first participant connects.
+func anyConfirmedSession(sessions map[string]*public.CallSession) bool {
+	for _, s := range sessions {
+		if s.ConfirmedAt > 0 {
+			return true
+		}
+	}
+	return false
+}
