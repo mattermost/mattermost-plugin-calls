@@ -336,27 +336,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// If the bot is the only user left in the call we automatically stop any
 	// ongoing jobs.
 	if state.onlyUserLeft(p.getBotID()) {
-		p.LogDebug("all users left call with job(s) in progress, stopping", "channelID", channelID)
-
-		if state.Recording != nil {
-			p.LogDebug("stopping ongoing recording", "jobID", state.Recording.Props.JobID, "botConnID", state.Recording.Props.BotConnID)
-			if err := p.getJobService().StopJob(channelID, state.Recording.ID, p.getBotID(), state.Recording.Props.BotConnID); err != nil {
-				p.LogError("failed to stop recording job", "error", err.Error(),
-					"channelID", channelID,
-					"jobID", state.Recording.Props.JobID,
-					"botConnID", state.Recording.Props.BotConnID)
-			}
-		}
-
-		if state.Transcription != nil {
-			p.LogDebug("stopping ongoing transcription", "jobID", state.Transcription.Props.JobID, "botConnID", state.Transcription.Props.BotConnID)
-			if err := p.getJobService().StopJob(channelID, state.Transcription.ID, p.getBotID(), state.Transcription.Props.BotConnID); err != nil {
-				p.LogError("failed to stop transcribing job", "error", err.Error(),
-					"channelID", channelID,
-					"jobID", state.Transcription.Props.JobID,
-					"botConnID", state.Transcription.Props.BotConnID)
-			}
-		}
+		p.stopOngoingJobs(state, channelID)
 	}
 
 	// If the bot leaves the call and recording has not been stopped it either means
@@ -723,4 +703,31 @@ func (p *Plugin) hasSessionsForCall(callID string) bool {
 		}
 	}
 	return false
+}
+
+// stopOngoingJobs stops any recording or transcription in progress. Called when
+// the last human leaves a call: the bots have nobody left to record, so their
+// jobs are stopped rather than left running against an empty room.
+func (p *Plugin) stopOngoingJobs(state *callState, channelID string) {
+	p.LogDebug("all users left call with job(s) in progress, stopping", "channelID", channelID)
+
+	if state.Recording != nil {
+		p.LogDebug("stopping ongoing recording", "jobID", state.Recording.Props.JobID, "botConnID", state.Recording.Props.BotConnID)
+		if err := p.getJobService().StopJob(channelID, state.Recording.ID, p.getBotID(), state.Recording.Props.BotConnID); err != nil {
+			p.LogError("failed to stop recording job", "error", err.Error(),
+				"channelID", channelID,
+				"jobID", state.Recording.Props.JobID,
+				"botConnID", state.Recording.Props.BotConnID)
+		}
+	}
+
+	if state.Transcription != nil {
+		p.LogDebug("stopping ongoing transcription", "jobID", state.Transcription.Props.JobID, "botConnID", state.Transcription.Props.BotConnID)
+		if err := p.getJobService().StopJob(channelID, state.Transcription.ID, p.getBotID(), state.Transcription.Props.BotConnID); err != nil {
+			p.LogError("failed to stop transcribing job", "error", err.Error(),
+				"channelID", channelID,
+				"jobID", state.Transcription.Props.JobID,
+				"botConnID", state.Transcription.Props.BotConnID)
+		}
+	}
 }

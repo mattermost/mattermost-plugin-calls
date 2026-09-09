@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
@@ -44,12 +45,6 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 	if !ok {
 		p.LogError("handleLiveKitParticipantJoined: unparseable identity",
 			"channelID", channelID, "identity", participant.Identity)
-		return
-	}
-
-	if p.isBot(userID) {
-		p.LogDebug("handleLiveKitParticipantJoined: ignoring bot participant",
-			"channelID", channelID, "sessionID", sessionID)
 		return
 	}
 
@@ -124,10 +119,14 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 		state.sessions[sessionID] = session
 	}
 
-	if state.Call.Props.Participants == nil {
-		state.Call.Props.Participants = map[string]struct{}{}
+	// Participants feeds the call post's attendee list, so the bot is excluded
+	// even though it holds a session — matching addUserSession.
+	if !p.isBot(userID) {
+		if state.Call.Props.Participants == nil {
+			state.Call.Props.Participants = map[string]struct{}{}
+		}
+		state.Call.Props.Participants[userID] = struct{}{}
 	}
-	state.Call.Props.Participants[userID] = struct{}{}
 
 	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
 		state.Call.Props.Hosts = []string{newHostID}
@@ -183,12 +182,6 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 	if !ok {
 		p.LogError("handleLiveKitParticipantLeft: unparseable identity",
 			"channelID", channelID, "identity", participant.Identity)
-		return
-	}
-
-	if p.isBot(userID) {
-		p.LogDebug("handleLiveKitParticipantLeft: ignoring bot participant",
-			"channelID", channelID, "sessionID", sessionID)
 		return
 	}
 
@@ -262,8 +255,35 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 	}
 
-	if len(state.sessions) == 0 {
-		p.endEmptyCall(state, channelID, "last_left")
+	// Outbound phone calls live in the user<->bot DM channel and are 1:1, so a
+	// lingering SIP leg has nobody to talk to once the last MM user goes. Hang up
+	// the phone before deciding whether the call is over.
+	if onlySIPParticipantsRemain(state.sessions) && p.isPhoneCallChannel(channelID) {
+		p.LogInfo("handleLiveKitParticipantLeft: last human left phone call, hanging up SIP",
+			"callID", state.Call.ID, "channelID", channelID)
+
+		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+			p.LogError("handleLiveKitParticipantLeft: failed to delete LiveKit room",
+				"channelID", channelID, "err", err.Error())
+		}
+		for sid := range state.sessions {
+			if err := p.store.DeleteCallSession(sid); err != nil {
+				p.LogError("handleLiveKitParticipantLeft: failed to delete SIP session",
+					"channelID", channelID, "sid", sid, "err", err.Error())
+			}
+			delete(state.sessions, sid)
+		}
+	}
+
+	// The call ends when no humans remain, not when no sessions remain. Recording
+	// and transcribing bots hold sessions of their own; leaving the call alive for
+	// them would keep it open indefinitely, so their jobs are stopped and the call
+	// ends here.
+	if !humanParticipantsRemain(state.sessions, p.getBotID()) {
+		if state.onlyUserLeft(p.getBotID()) {
+			p.stopOngoingJobs(state, channelID)
+		}
+		p.endEmptyCall(state, channelID, "last_human_left")
 		return
 	}
 

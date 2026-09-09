@@ -268,25 +268,64 @@ func TestLiveKitParticipantWebhooks(t *testing.T) {
 		require.Equal(t, first.ConfirmedAt, after.ConfirmedAt)
 	})
 
-	t.Run("bot participant is ignored", func(t *testing.T) {
-		p, _, _ := setupPlugin(t)
-		defer ResetTestStore(t, p.store)
+	// Bots hold session rows like anyone else — skipping their confirmation would
+	// leave the row pending forever, and the reconciliation sweep would then reap
+	// it mid-job (MM-69510). They are excluded from being *participants*, not from
+	// being tracked.
+	t.Run("bot sessions", func(t *testing.T) {
+		t.Run("confirmed, but not a participant or host", func(t *testing.T) {
+			p, _, _ := setupPlugin(t)
+			defer ResetTestStore(t, p.store)
 
-		botID := model.NewId()
-		p.botID = botID
+			botID := model.NewId()
+			p.botID = botID
 
-		channelID := model.NewId()
-		call := createCall(t, p, channelID)
-		sessionID := model.NewId()
+			channelID := model.NewId()
+			botSessionID := model.NewId()
+			call := createCall(t, p, channelID)
+			createPendingSession(t, p, call, botID, botSessionID)
 
-		send(t, p, participantEvent("participant_joined", channelID,
-			composeLivekitIdentity(botID, sessionID), "PA_bot"))
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(botID, botSessionID), "PA_bot"))
 
-		// The bot must not become a participant: its lifecycle is the job
-		// service's, and it must not be host-eligible or keep a call alive.
-		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
-		require.NoError(t, err)
-		require.Empty(t, sessions)
+			got, err := p.store.GetCallSession(botSessionID, db.GetCallSessionOpts{FromWriter: true})
+			require.NoError(t, err)
+			require.NotZero(t, got.ConfirmedAt, "bot row must be confirmed or the sweep will reap it")
+			require.Equal(t, "PA_bot", got.SID)
+
+			call, err = p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
+			require.NoError(t, err)
+			require.NotContains(t, call.Props.Participants, botID, "bot must not appear in the call post attendees")
+			require.NotEqual(t, botID, call.GetHostID(), "bot must not be host")
+		})
+
+		t.Run("call ends when the last human leaves a bot behind", func(t *testing.T) {
+			p, _, _ := setupPlugin(t)
+			defer ResetTestStore(t, p.store)
+
+			botID := model.NewId()
+			p.botID = botID
+
+			channelID := model.NewId()
+			userID, sessionID := model.NewId(), model.NewId()
+			botSessionID := model.NewId()
+			call := createCall(t, p, channelID)
+			createPendingSession(t, p, call, userID, sessionID)
+			createPendingSession(t, p, call, botID, botSessionID)
+
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(userID, sessionID), "PA_human"))
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(botID, botSessionID), "PA_bot"))
+
+			// The bot still holds a session, so ending on len(sessions) == 0 would
+			// leave this call open indefinitely.
+			send(t, p, participantEvent("participant_left", channelID,
+				composeLivekitIdentity(userID, sessionID), "PA_human"))
+
+			_, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
+			require.ErrorIs(t, err, db.ErrNotFound, "call must end when the last human leaves")
+		})
 	})
 
 	t.Run("unparseable identity is ignored", func(t *testing.T) {

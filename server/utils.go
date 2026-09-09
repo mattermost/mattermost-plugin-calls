@@ -262,3 +262,16 @@ func (p *Plugin) getTranslationFunc(locale string) i18n.TranslateFunc {
 
 	return i18n.GetUserTranslations(locale)
 }
+
+// humanParticipantsRemain reports whether any session other than the bot's is
+// still in the call. Recording and transcribing bots do not keep a call alive:
+// once the last human leaves there is nothing left to record. SIP participants
+// do count — a phone caller is a real participant.
+func humanParticipantsRemain(sessions map[string]*public.CallSession, botID string) bool {
+	for _, session := range sessions {
+		if session.UserID != botID {
+			return true
+		}
+	}
+	return false
+}
