@@ -385,7 +385,7 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 // from call_state), but should read LiveKit tracks directly instead — nothing
 // outside a call consumes it. Once the client is track-driven, the broadcast
 // and screen_sharing_session_id in CallStateClient both come out; the prop and
-// the duration accounting stay. See MM-69502 PR 6.
+// the duration accounting stay. See MM-69502 PR 7.
 //
 // Video is deliberately not handled here: MM-69116 is removing the server-side
 // video state that a handler would write, so mirroring camera tracks now would
