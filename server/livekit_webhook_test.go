@@ -502,12 +502,12 @@ func TestLiveKitTrackWebhooks(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	}
 
-	trackEvent := func(name, channelID, identity string, source livekit.TrackSource) *livekit.WebhookEvent {
+	trackEventSID := func(name, channelID, identity, sid string, source livekit.TrackSource) *livekit.WebhookEvent {
 		return &livekit.WebhookEvent{
 			Event: name,
 			Room:  &livekit.Room{Name: channelID},
 			Participant: &livekit.ParticipantInfo{
-				Sid:      "PA_x",
+				Sid:      sid,
 				Identity: identity,
 				Kind:     livekit.ParticipantInfo_STANDARD,
 			},
@@ -518,6 +518,10 @@ func TestLiveKitTrackWebhooks(t *testing.T) {
 		}
 	}
 
+	trackEvent := func(name, channelID, identity string, source livekit.TrackSource) *livekit.WebhookEvent {
+		return trackEventSID(name, channelID, identity, "PA_x", source)
+	}
+
 	t.Run("screen share sets and clears the sharing session", func(t *testing.T) {
 		p := setupPlugin(t)
 		defer ResetTestStore(t, p.store)
@@ -526,14 +530,17 @@ func TestLiveKitTrackWebhooks(t *testing.T) {
 		callWithSession(t, p, channelID, userID, sessionID)
 		identity := composeLivekitIdentity(userID, sessionID)
 
-		send(t, p, trackEvent("track_published", channelID, identity, livekit.TrackSource_SCREEN_SHARE))
+		// The publishing connection's SID matches the session row, as it would
+		// after participant_joined recorded it.
+		sid := "PA_" + sessionID
+		send(t, p, trackEventSID("track_published", channelID, identity, sid, livekit.TrackSource_SCREEN_SHARE))
 
 		call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.Equal(t, sessionID, call.Props.ScreenSharingSessionID)
 		require.NotZero(t, call.Props.ScreenStartAt)
 
-		send(t, p, trackEvent("track_unpublished", channelID, identity, livekit.TrackSource_SCREEN_SHARE))
+		send(t, p, trackEventSID("track_unpublished", channelID, identity, sid, livekit.TrackSource_SCREEN_SHARE))
 
 		call, err = p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
@@ -612,5 +619,38 @@ func TestLiveKitTrackWebhooks(t *testing.T) {
 		call, err = p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.Empty(t, call.Props.ScreenSharingSessionID, "sharer left, prop must be cleared")
+	})
+
+	t.Run("stale unpublish from a reconnected sharer does not clear the share", func(t *testing.T) {
+		p := setupPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID, userID, sessionID := model.NewId(), model.NewId(), model.NewId()
+		callWithSession(t, p, channelID, userID, sessionID)
+		identity := composeLivekitIdentity(userID, sessionID)
+
+		// callWithSession seeds the row's SID as "PA_"+sessionID.
+		oldSID := "PA_" + sessionID
+		send(t, p, trackEventSID("track_published", channelID, identity, oldSID, livekit.TrackSource_SCREEN_SHARE))
+
+		// Full reconnect: same session id, new participant SID. The row rebinds.
+		send(t, p, &livekit.WebhookEvent{
+			Event: "participant_joined",
+			Room:  &livekit.Room{Name: channelID},
+			Participant: &livekit.ParticipantInfo{
+				Sid:      "PA_reconnected",
+				Identity: identity,
+				Kind:     livekit.ParticipantInfo_STANDARD,
+			},
+		})
+
+		// The old connection's trailing unpublish must not clear a live share: the
+		// session id matches, but the connection it came from is superseded.
+		send(t, p, trackEventSID("track_unpublished", channelID, identity, oldSID, livekit.TrackSource_SCREEN_SHARE))
+
+		call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Equal(t, sessionID, call.Props.ScreenSharingSessionID,
+			"stale unpublish from the old connection must not clear the reconnected sharer")
 	})
 }

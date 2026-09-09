@@ -393,7 +393,7 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 
 // handleLiveKitTrackPublished records a participant's screen share.
 func (p *Plugin) handleLiveKitTrackPublished(event *livekit.WebhookEvent) {
-	channelID, sessionID, userID, ok := p.screenShareTrackEvent(event, "handleLiveKitTrackPublished")
+	channelID, sessionID, userID, _, ok := p.screenShareTrackEvent(event, "handleLiveKitTrackPublished")
 	if !ok {
 		return
 	}
@@ -441,7 +441,7 @@ func (p *Plugin) handleLiveKitTrackPublished(event *livekit.WebhookEvent) {
 
 // handleLiveKitTrackUnpublished clears a participant's screen share.
 func (p *Plugin) handleLiveKitTrackUnpublished(event *livekit.WebhookEvent) {
-	channelID, sessionID, userID, ok := p.screenShareTrackEvent(event, "handleLiveKitTrackUnpublished")
+	channelID, sessionID, userID, sid, ok := p.screenShareTrackEvent(event, "handleLiveKitTrackUnpublished")
 	if !ok {
 		return
 	}
@@ -462,6 +462,22 @@ func (p *Plugin) handleLiveKitTrackUnpublished(event *livekit.WebhookEvent) {
 	if state.Call.Props.ScreenSharingSessionID != sessionID {
 		p.LogDebug("handleLiveKitTrackUnpublished: not the current sharer, ignoring",
 			"channelID", channelID, "sessionID", sessionID, "current", state.Call.Props.ScreenSharingSessionID)
+		return
+	}
+
+	// The session id survives a reconnect, so it alone does not identify the
+	// connection. A participant who reconnects while sharing re-publishes under a
+	// new SID, and the old connection's trailing track_unpublished would
+	// otherwise clear a share that is still live — the same guard as
+	// participant_left, for the same reason.
+	//
+	// Deliberately not applied to track_published: there, rejecting an event
+	// because the row's SID has not been rebound yet would lose a real share,
+	// whereas here a wrongly-ignored unpublish only leaves a stale sharer that
+	// the reconciliation sweep corrects (MM-69510).
+	if session := state.sessions[sessionID]; session != nil && session.SID != sid {
+		p.LogDebug("handleLiveKitTrackUnpublished: stale unpublish from superseded connection, ignoring",
+			"channelID", channelID, "sessionID", sessionID, "eventSID", sid, "currentSID", session.SID)
 		return
 	}
 
@@ -490,39 +506,39 @@ func (p *Plugin) clearScreenSharingState(state *callState, channelID, sessionID,
 
 // screenShareTrackEvent filters a track event down to screen shares published by
 // a human participant, returning the call and session it belongs to.
-func (p *Plugin) screenShareTrackEvent(event *livekit.WebhookEvent, logPrefix string) (channelID, sessionID, userID string, ok bool) {
+func (p *Plugin) screenShareTrackEvent(event *livekit.WebhookEvent, logPrefix string) (channelID, sessionID, userID, sid string, ok bool) {
 	track := event.GetTrack()
 	if track == nil {
-		return "", "", "", false
+		return "", "", "", "", false
 	}
 
 	// Camera and microphone tracks fire the same events; only screen shares carry
 	// state the server needs to mirror. ScreenShareAudio is ignored: it always
 	// accompanies the video track, which is what we key the prop on.
 	if track.Source != livekit.TrackSource_SCREEN_SHARE {
-		return "", "", "", false
+		return "", "", "", "", false
 	}
 
 	participant := event.GetParticipant()
 	if participant == nil || participant.Kind == livekit.ParticipantInfo_SIP {
-		return "", "", "", false
+		return "", "", "", "", false
 	}
 
 	channelID = event.GetRoom().GetName()
 	if channelID == "" {
 		p.LogError(logPrefix + ": empty room name")
-		return "", "", "", false
+		return "", "", "", "", false
 	}
 
 	userID, sessionID, parsed := parseLivekitIdentity(participant.Identity)
 	if !parsed {
 		p.LogError(logPrefix+": unparseable identity", "channelID", channelID, "identity", participant.Identity)
-		return "", "", "", false
+		return "", "", "", "", false
 	}
 
 	if p.isBot(userID) {
-		return "", "", "", false
+		return "", "", "", "", false
 	}
 
-	return channelID, sessionID, userID, true
+	return channelID, sessionID, userID, participant.Sid, true
 }
