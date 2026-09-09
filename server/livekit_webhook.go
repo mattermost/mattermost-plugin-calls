@@ -338,10 +338,23 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 }
 
 // Screen sharing, driven by LiveKit track events rather than a WebSocket
-// message. The published screen track *is* the state, so there is no new
-// message or participant attribute — the server only mirrors it into
-// Call.Props for observers, who are not in the LiveKit room and cannot see
-// tracks themselves.
+// message. The published track *is* the state, so there is no replacement
+// message or participant attribute.
+//
+// The server mirrors it into Call.Props for two reasons, neither of which is
+// telling clients who is sharing:
+//
+//   - hostScreenOff validates that the session a host asks to stop really is
+//     the current sharer (host_controls.go), which needs server-side state;
+//   - Stats.ScreenDuration is a persisted call stat, and the server has no
+//     other way to know when a share started or ended.
+//
+// The user_screen_on/off broadcast below is transitional. In-call UI currently
+// reads this state (expanded view and widget, seeded from the broadcast and
+// from call_state), but should read LiveKit tracks directly instead — nothing
+// outside a call consumes it. Once the client is track-driven, the broadcast
+// and screen_sharing_session_id in CallStateClient both come out; the prop and
+// the duration accounting stay. See MM-69502 PR 6.
 //
 // Video is deliberately not handled here: MM-69116 is removing the server-side
 // video state that a handler would write, so mirroring camera tracks now would
