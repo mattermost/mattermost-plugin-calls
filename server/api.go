@@ -962,14 +962,19 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 	case webhook.EventParticipantJoined:
 		p.handleLiveKitSIPParticipantJoined(event)
 		p.handleLiveKitParticipantJoined(event)
+		// Seed the room metadata. It is otherwise only published on change, so a
+		// call whose host was settled by the token endpoint and never changed
+		// again would have none.
+		//
+		// This is the earliest point it can be done: room_started is too early,
+		// since a room with no confirmed session has nothing to publish to, and
+		// the handlers above are what confirm the session. Marking on every join
+		// rather than just the first also means a dropped publish heals on the
+		// next one. Repeats coalesce in the dirty set.
+		p.markCallDirty(event.GetRoom().GetName())
 	case webhook.EventParticipantLeft:
 		p.handleLiveKitSIPParticipantLeft(event)
 		p.handleLiveKitParticipantLeft(event)
-	case webhook.EventRoomStarted:
-		// Metadata is only published on change, so a call whose host was settled
-		// before anyone connected would have none. Seed it now that the room
-		// exists to be updated.
-		p.markCallDirty(event.GetRoom().GetName())
 	case webhook.EventRoomFinished:
 		p.handleLiveKitRoomFinished(event)
 	case webhook.EventTrackPublished:

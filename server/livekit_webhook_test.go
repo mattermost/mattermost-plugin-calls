@@ -353,20 +353,29 @@ func TestLiveKitParticipantWebhooks(t *testing.T) {
 	// Mattermost WebSocket. It is only published on change, so the events that
 	// change it have to say so.
 	t.Run("room metadata", func(t *testing.T) {
-		t.Run("room_started seeds it", func(t *testing.T) {
+		t.Run("participant_joined seeds it even when the host does not change", func(t *testing.T) {
 			// The token endpoint settles the host before anyone connects, so
 			// without this seed a call whose host never changed again would have
-			// no metadata at all.
+			// no metadata at all. room_started cannot do it: a room with no
+			// confirmed session has nothing to publish to.
 			p, _, _ := setupPlugin(t)
 			defer ResetTestStore(t, p.store)
 
 			channelID := model.NewId()
-			send(t, p, &livekit.WebhookEvent{
-				Event: "room_started",
-				Room:  &livekit.Room{Name: channelID},
-			})
+			userID, sessionID := model.NewId(), model.NewId()
+			call := createCall(t, p, channelID)
+			call.Props.Hosts = []string{userID}
+			require.NoError(t, p.store.UpdateCall(call))
+			createPendingSession(t, p, call, userID, sessionID)
+
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(userID, sessionID), "PA_first"))
 
 			require.Equal(t, map[string]struct{}{channelID: {}}, dirtySet(p))
+
+			// And the seed is publishable: the same webhook confirmed the
+			// session, so the room exists by the time the publisher looks.
+			require.ErrorIs(t, p.publishCallRoomMetadata(channelID), errLiveKitNotConfigured)
 		})
 
 		t.Run("a host change on join marks it stale", func(t *testing.T) {
