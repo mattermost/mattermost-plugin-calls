@@ -489,16 +489,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 
 		p.cancelDMNoAnswerTimer(channelID)
 
-		// A DM call that only ever had the caller in it was never answered, so hanging up
-		// cancelled it rather than ended it.
-		endReason := callEndReasonNormal
-		if len(participants) == 1 {
-			if channel, appErr := p.API.GetChannel(channelID); appErr != nil {
-				p.LogError("failed to get channel for call end reason", "err", appErr.Error(), "channelID", channelID)
-			} else if p.isDMCallChannel(channel.Type, channelID) {
-				endReason = callEndReasonCanceledByCaller
-			}
-		}
+		endReason := p.callEndReason(participants, channelID)
 
 		p.LogInfo("call ended",
 			"callID", state.Call.ID,
@@ -734,4 +725,26 @@ func (p *Plugin) stopOngoingJobs(state *callState, channelID string) {
 				"botConnID", state.Transcription.Props.BotConnID)
 		}
 	}
+}
+
+// callEndReason reports what the call post should say happened when the last
+// participant leaves. A DM call that only ever had the caller in it was never
+// answered, so hanging up cancelled it rather than ended it.
+//
+// participants must be read before setCallEnded, which clears Props.Participants.
+func (p *Plugin) callEndReason(participants []string, channelID string) callEndReason {
+	if len(participants) != 1 {
+		return callEndReasonNormal
+	}
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.LogError("failed to get channel for call end reason", "err", appErr.Error(), "channelID", channelID)
+		return callEndReasonNormal
+	}
+	if p.isDMCallChannel(channel.Type, channelID) {
+		return callEndReasonCanceledByCaller
+	}
+
+	return callEndReasonNormal
 }

@@ -337,7 +337,15 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 	if state.Call.Props.ScreenStartAt > 0 {
 		state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
 	}
+
+	// setCallEnded clears Props.Participants, so read it while it's still there.
+	participants := mapKeys(state.Call.Props.Participants)
+	endReason := p.callEndReason(participants, channelID)
+
 	setCallEnded(&state.Call)
+
+	// A DM call may still have a no-answer timer pending against it.
+	p.cancelDMNoAnswerTimer(channelID)
 
 	p.LogInfo("call ended",
 		"callID", state.Call.ID,
@@ -355,7 +363,7 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 		p.LogError("endEmptyCall: failed to update call", "channelID", channelID, "err", err.Error())
 	}
 
-	if _, err := p.updateCallPostEnded(state.Call.PostID, mapKeys(state.Call.Props.Participants)); err != nil {
+	if _, err := p.updateCallPostEnded(state.Call.PostID, participants, endReason); err != nil {
 		p.LogError("endEmptyCall: failed to update call post", "channelID", channelID, "err", err.Error())
 	}
 }

@@ -71,6 +71,11 @@ func TestLiveKitParticipantWebhooks(t *testing.T) {
 		mockAPI.On("KVDelete", mock.Anything).Return(nil).Maybe()
 		// The call-end path rewrites the call post.
 		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Maybe()
+		// callEndReason inspects the channel for single-participant calls, to tell
+		// a DM call cancelled before answer from one that simply ended.
+		mockAPI.On("GetChannel", mock.AnythingOfType("string")).Return(&model.Channel{
+			Type: model.ChannelTypeOpen,
+		}, nil).Maybe()
 		for _, method := range []string{"LogDebug", "LogInfo", "LogWarn", "LogError"} {
 			for n := 1; n <= 20; n++ {
 				args := make([]any, n)
@@ -444,6 +449,11 @@ func TestLiveKitTrackWebhooks(t *testing.T) {
 		mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
 		mockAPI.On("KVDelete", mock.Anything).Return(nil).Maybe()
 		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Maybe()
+		// callEndReason inspects the channel for single-participant calls, to tell
+		// a DM call cancelled before answer from one that simply ended.
+		mockAPI.On("GetChannel", mock.AnythingOfType("string")).Return(&model.Channel{
+			Type: model.ChannelTypeOpen,
+		}, nil).Maybe()
 		for _, method := range []string{"LogDebug", "LogInfo", "LogWarn", "LogError"} {
 			for n := 1; n <= 20; n++ {
 				args := make([]any, n)
