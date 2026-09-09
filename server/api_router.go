@@ -160,6 +160,7 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 
 	// LiveKit
 	router.HandleFunc("/livekit-token", p.handleGetLiveKitToken).Methods("GET")
+	router.HandleFunc("/livekit-token", p.handleCreateLiveKitSession).Methods("POST")
 
 	// Outbound phone call
 	router.HandleFunc("/phone-call", p.handlePhoneCall).Methods("POST")

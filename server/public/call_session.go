@@ -16,6 +16,17 @@ type CallSession struct {
 	RaisedHand       int64  `json:"raised_hand"`
 	Video            bool   `json:"video"`
 	IsSIPParticipant bool   `json:"is_sip_participant,omitempty"`
+
+	// ConfirmedAt is set when LiveKit reports the participant as connected. Zero
+	// means the session was minted by the token endpoint but has not joined yet.
+	ConfirmedAt int64 `json:"confirmed_at,omitempty"`
+	// SID is the LiveKit-assigned participant SID, which changes on every full
+	// reconnect. It disambiguates connection incarnations of a stable identity.
+	SID string `json:"sid,omitempty"`
+	// AuthSessionID is the Mattermost session backing this call session, set only
+	// for MM users. SIP, bot and guest participants leave it empty. Never
+	// serialized: it is a session identifier, not something clients should see.
+	AuthSessionID string `json:"-"`
 }
 
 func (s *CallSession) IsValid() error {
