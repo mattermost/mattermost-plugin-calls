@@ -129,12 +129,14 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 	}
 
 	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
-		state.Call.Props.Hosts = []string{newHostID}
+		p.setCallHost(state, channelID, newHostID)
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 			"hostID":  newHostID,
 			"call_id": state.Call.ID,
 		}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 	}
+
+	p.markCallDirtyOnFirstParticipant(state, channelID)
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("handleLiveKitParticipantJoined: failed to update call",
@@ -228,11 +230,7 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 
 	if state.Call.GetHostID() == userID && len(state.sessions) > 0 {
 		if newHostID := state.getHostID(p.getBotID()); newHostID != userID {
-			if newHostID == "" {
-				state.Call.Props.Hosts = nil
-			} else {
-				state.Call.Props.Hosts = []string{newHostID}
-			}
+			p.setCallHost(state, channelID, newHostID)
 			p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 				"hostID":  newHostID,
 				"call_id": state.Call.ID,

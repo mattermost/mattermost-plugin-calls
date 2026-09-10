@@ -1021,12 +1021,13 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 		CallID:           state.Call.ID,
 		UserID:           identity,
 		JoinAt:           time.Now().UnixMilli(),
+		ConfirmedAt:      time.Now().UnixMilli(),
 		IsSIPParticipant: true,
 	}
 	state.sessions[sid] = session
 
 	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
-		state.Call.Props.Hosts = []string{newHostID}
+		p.setCallHost(state, channelID, newHostID)
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 			"hostID":  newHostID,
 			"call_id": state.Call.ID,
@@ -1036,6 +1037,8 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 			UserIDs:             getUserIDsFromSessions(state.sessions),
 		})
 	}
+
+	p.markCallDirtyOnFirstParticipant(state, channelID)
 
 	if err := p.store.CreateCallSession(session); err != nil {
 		p.LogError("handleLiveKitSIPParticipantJoined: failed to create call session",
@@ -1124,11 +1127,7 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 
 	if state.Call.GetHostID() == identity && len(state.sessions) > 0 {
 		if newHostID := state.getHostID(p.getBotID()); newHostID != identity {
-			if newHostID == "" {
-				state.Call.Props.Hosts = nil
-			} else {
-				state.Call.Props.Hosts = []string{newHostID}
-			}
+			p.setCallHost(state, channelID, newHostID)
 			p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 				"hostID":  newHostID,
 				"call_id": state.Call.ID,

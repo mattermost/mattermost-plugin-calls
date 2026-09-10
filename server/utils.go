@@ -275,3 +275,36 @@ func humanParticipantsRemain(sessions map[string]*public.CallSession, botID stri
 	}
 	return false
 }
+
+// confirmedSessionCount returns how many sessions LiveKit has confirmed as
+// connected. Zero is also the test for whether the room exists, since LiveKit
+// creates it when the first participant connects, and one means the caller is
+// looking at that first participant.
+func confirmedSessionCount(sessions map[string]*public.CallSession) int {
+	var n int
+	for _, s := range sessions {
+		if s.ConfirmedAt > 0 {
+			n++
+		}
+	}
+	return n
+}
+
+// markCallDirtyOnFirstParticipant seeds the LiveKit room metadata when the room
+// first has someone in it to receive it.
+//
+// Metadata is otherwise only published on change, so a call whose host was
+// settled by the token endpoint and never changed again would have none. The
+// seed cannot happen any earlier: a room with no confirmed participant has
+// nothing to publish to. It must not happen on every join either — LiveKit fans
+// each metadata update out to every client in the room, so seeding per join
+// would make a burst join quadratic in identical payloads, and every publish
+// takes the channel lock the joins are contending for. Later joiners get the
+// metadata on connect.
+//
+// The caller must hold the channel lock and have confirmed its own session.
+func (p *Plugin) markCallDirtyOnFirstParticipant(state *callState, channelID string) {
+	if confirmedSessionCount(state.sessions) == 1 {
+		p.markCallDirty(channelID)
+	}
+}
