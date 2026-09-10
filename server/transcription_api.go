@@ -18,7 +18,12 @@ const transcriptionJobStartTimeout = time.Minute
 
 func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 	time.Sleep(transcriptionJobStartTimeout)
+	p.handleTranscriptionJobTimeout(callID, jobID)
+}
 
+// handleTranscriptionJobTimeout is the body of transcriptionJobTimeoutChecker,
+// split out so it can be exercised without waiting out the timeout.
+func (p *Plugin) handleTranscriptionJobTimeout(callID, jobID string) {
 	state, err := p.lockCallReturnState(callID)
 	if err != nil {
 		p.LogError("failed to lock call", "err", err.Error())
@@ -59,7 +64,7 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 
 		if lcState != nil {
 			lcState.EndAt = time.Now().UnixMilli()
-			if err := p.updateCallJob(callID, trState); err != nil {
+			if err := p.updateCallJob(callID, lcState); err != nil {
 				p.LogError("failed to update call job", "callID", callID, "jobID", jobID, "err", err.Error())
 			}
 		}

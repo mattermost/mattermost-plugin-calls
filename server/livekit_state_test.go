@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -189,7 +190,7 @@ func TestMarkCallDirty(t *testing.T) {
 		// is that the set comes back empty.
 		p.markCallDirty("channelA")
 		p.markCallDirty("channelB")
-		p.publishDirtyCalls()
+		p.publishDirtyCalls(context.Background())
 
 		require.Empty(t, dirtySet(p))
 	})
@@ -299,7 +300,7 @@ func TestPublishCallRoomMetadata(t *testing.T) {
 	t.Run("no call is a no-op", func(t *testing.T) {
 		// The call ended while the publish sat queued.
 		p, _ := setupStatePlugin(t)
-		require.NoError(t, p.publishCallRoomMetadata(model.NewId()))
+		require.NoError(t, p.publishCallRoomMetadata(context.Background(), model.NewId()))
 	})
 
 	t.Run("no confirmed session is a no-op", func(t *testing.T) {
@@ -316,7 +317,7 @@ func TestPublishCallRoomMetadata(t *testing.T) {
 			JoinAt: time.Now().UnixMilli(),
 		}))
 
-		require.NoError(t, p.publishCallRoomMetadata(channelID))
+		require.NoError(t, p.publishCallRoomMetadata(context.Background(), channelID))
 	})
 
 	t.Run("a confirmed session publishes", func(t *testing.T) {
@@ -333,7 +334,7 @@ func TestPublishCallRoomMetadata(t *testing.T) {
 
 		// LiveKit is unconfigured in tests, so reaching the client is how we know
 		// both guards were passed.
-		require.ErrorIs(t, p.publishCallRoomMetadata(channelID), errLiveKitNotConfigured)
+		require.ErrorIs(t, p.publishCallRoomMetadata(context.Background(), channelID), errLiveKitNotConfigured)
 	})
 }
 
@@ -454,5 +455,135 @@ func TestHostSwitchOffParticipantScreen(t *testing.T) {
 
 		mockAPI.AssertNotCalled(t, "PublishWebSocketEvent", wsEventHostScreenOff,
 			mock.Anything, mock.Anything)
+	})
+}
+
+func TestTranscriptionJobTimeoutChecker(t *testing.T) {
+	// A transcriber that never joins ends both the transcription job and the
+	// live-captions job that rides along with it. The live-captions row used to
+	// be left open because the update persisted the transcription job twice.
+	t.Run("ends the live captions job too", func(t *testing.T) {
+		p, _ := setupStatePlugin(t)
+
+		cfg := p.configuration.Clone()
+		cfg.EnableRecordings = model.NewPointer(true)
+		cfg.EnableTranscriptions = model.NewPointer(true)
+		cfg.EnableLiveCaptions = model.NewPointer(true)
+		p.configuration = cfg
+
+		channelID := model.NewId()
+		call := &public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			StartAt:   time.Now().UnixMilli(),
+			ChannelID: channelID,
+			OwnerID:   model.NewId(),
+		}
+		require.NoError(t, p.store.CreateCall(call))
+
+		jobID := model.NewId()
+		trJob := &public.CallJob{
+			ID:        model.NewId(),
+			CallID:    call.ID,
+			Type:      public.JobTypeTranscribing,
+			CreatorID: model.NewId(),
+			InitAt:    time.Now().UnixMilli(),
+			Props:     public.CallJobProps{JobID: jobID},
+		}
+		lcJob := &public.CallJob{
+			ID:        model.NewId(),
+			CallID:    call.ID,
+			Type:      public.JobTypeCaptioning,
+			CreatorID: model.NewId(),
+			InitAt:    time.Now().UnixMilli(),
+			Props:     public.CallJobProps{JobID: jobID},
+		}
+		require.NoError(t, p.store.CreateCallJob(trJob))
+		require.NoError(t, p.store.CreateCallJob(lcJob))
+
+		p.handleTranscriptionJobTimeout(channelID, jobID)
+
+		state, err := p.getCallState(channelID, true)
+		require.NoError(t, err)
+		require.Nil(t, state.Transcription, "the transcription job should no longer be active")
+		require.Nil(t, state.LiveCaptions, "the live captions job should no longer be active")
+	})
+}
+
+func TestRoomMetadataPublisherShutdown(t *testing.T) {
+	// Deactivation waits for the publisher with no timeout, so the publisher has
+	// to abandon a contended lock rather than run out lockTimeout against a store
+	// that is about to close.
+	//
+	// Note this covers the cross-node wait only. cluster.Mutex.Lock takes an
+	// in-process mutex before reaching its ctx-aware polling loop, so contention
+	// with another goroutine on this node is not cancellable; that wait is
+	// instead bounded by handlers not holding the call lock across network calls.
+	t.Run("abandons a contended lock instead of waiting out lockTimeout", func(t *testing.T) {
+		mockAPI := &pluginMocks.MockAPI{}
+		mockMetrics := &serverMocks.MockMetrics{}
+
+		p := &Plugin{
+			MattermostPlugin:  plugin.MattermostPlugin{API: mockAPI},
+			metrics:           mockMetrics,
+			callsClusterLocks: map[string]*cluster.Mutex{},
+			dirtyCalls:        map[string]struct{}{},
+			dirtyCallsCh:      make(chan struct{}, 1),
+			stopCh:            make(chan struct{}),
+		}
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		p.configuration = cfg
+
+		// Another node holds the lock: tryLock never succeeds, so the publisher
+		// parks in the polling loop with our cancellable context.
+		locking := make(chan struct{}, 1)
+		mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).
+			Return(false, nil).
+			Run(func(_ mock.Arguments) {
+				select {
+				case locking <- struct{}{}:
+				default:
+				}
+			})
+		mockAPI.On("KVDelete", mock.Anything).Return(nil).Maybe()
+		mockMetrics.On("ObserveClusterMutexGrabTime", mock.Anything, mock.AnythingOfType("float64")).Maybe()
+		mockMetrics.On("IncClusterMutexLockRetries", mock.Anything).Maybe()
+		for _, method := range []string{"LogDebug", "LogInfo", "LogWarn", "LogError"} {
+			for n := 1; n <= 20; n++ {
+				args := make([]any, n)
+				for i := range args {
+					args[i] = mock.Anything
+				}
+				mockAPI.On(method, args...).Maybe()
+			}
+		}
+
+		p.publisherWg.Add(1)
+		go p.roomMetadataPublisher()
+
+		p.markCallDirty(model.NewId())
+
+		select {
+		case <-locking:
+		case <-time.After(5 * time.Second):
+			require.Fail(t, "publisher never attempted the lock")
+		}
+
+		close(p.stopCh)
+
+		done := make(chan struct{})
+		go func() {
+			p.publisherWg.Wait()
+			close(done)
+		}()
+
+		// Well inside lockTimeout, which is what it would take without
+		// cancellation.
+		select {
+		case <-done:
+		case <-time.After(3 * time.Second):
+			require.Fail(t, "publisher did not exit; its lock wait was not cancelled")
+		}
 	})
 }

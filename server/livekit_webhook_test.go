@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -383,7 +384,7 @@ func TestLiveKitParticipantWebhooks(t *testing.T) {
 
 			// And the seed is publishable: the same webhook confirmed the
 			// session, so the room exists by the time the publisher looks.
-			require.ErrorIs(t, p.publishCallRoomMetadata(channelID), errLiveKitNotConfigured)
+			require.ErrorIs(t, p.publishCallRoomMetadata(context.Background(), channelID), errLiveKitNotConfigured)
 
 			p.dirtyCallsMut.Lock()
 			p.dirtyCalls = map[string]struct{}{}

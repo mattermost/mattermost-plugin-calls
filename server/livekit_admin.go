@@ -184,13 +184,13 @@ func (p *Plugin) livekitDeleteRoom(room string) error {
 // client, including standalone bundles with no Mattermost WebSocket, receives it
 // through RoomEvent.RoomMetadataChanged, and newly connected clients get the
 // current value on connect — so this needs no companion resync path.
-func (p *Plugin) livekitUpdateRoomMetadata(room, metadata string) error {
+func (p *Plugin) livekitUpdateRoomMetadata(ctx context.Context, room, metadata string) error {
 	client, err := p.getLiveKitRoomClient()
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), livekitAPITimeout)
+	ctx, cancel := context.WithTimeout(ctx, livekitAPITimeout)
 	defer cancel()
 
 	if _, err := client.UpdateRoomMetadata(ctx, &livekit.UpdateRoomMetadataRequest{

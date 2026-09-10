@@ -4,9 +4,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 )
@@ -118,10 +118,21 @@ func (p *Plugin) markCallDirty(channelID string) {
 func (p *Plugin) roomMetadataPublisher() {
 	defer p.publisherWg.Done()
 
+	// Cancelled on shutdown so an in-flight publish gives up its cross-node lock
+	// wait and its LiveKit request promptly. Without it, deactivation would
+	// either close the store from under a publish still in progress or wait out
+	// lockTimeout plus livekitAPITimeout.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		<-p.stopCh
+		cancel()
+	}()
+
 	for {
 		select {
 		case <-p.dirtyCallsCh:
-			p.publishDirtyCalls()
+			p.publishDirtyCalls(ctx)
 		case <-p.stopCh:
 			return
 		}
@@ -131,7 +142,7 @@ func (p *Plugin) roomMetadataPublisher() {
 // publishDirtyCalls takes the current dirty set and publishes each call's room
 // metadata. Marks arriving during a publish land in the fresh set with a wakeup
 // pending, so nothing is lost; at worst the same state is published twice.
-func (p *Plugin) publishDirtyCalls() {
+func (p *Plugin) publishDirtyCalls(ctx context.Context) {
 	p.dirtyCallsMut.Lock()
 	dirty := p.dirtyCalls
 	p.dirtyCalls = map[string]struct{}{}
@@ -144,7 +155,7 @@ func (p *Plugin) publishDirtyCalls() {
 		default:
 		}
 
-		if err := p.publishCallRoomMetadata(channelID); err != nil {
+		if err := p.publishCallRoomMetadata(ctx, channelID); err != nil {
 			p.LogError("failed to publish call room metadata",
 				"channelID", channelID, "err", err.Error())
 		}
@@ -160,9 +171,9 @@ func (p *Plugin) publishDirtyCalls() {
 // UpdateCall. The LiveKit round trip happens after the lock is released: it is a
 // network call, and holding the lock across it would block every other
 // operation on that call.
-func (p *Plugin) publishCallRoomMetadata(channelID string) error {
+func (p *Plugin) publishCallRoomMetadata(ctx context.Context, channelID string) error {
 	data, err := func() ([]byte, error) {
-		state, err := p.lockCallReturnState(channelID)
+		state, err := p.lockCallReturnStateCtx(ctx, channelID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to lock call: %w", err)
 		}
@@ -191,23 +202,5 @@ func (p *Plugin) publishCallRoomMetadata(channelID string) error {
 		return nil
 	}
 
-	return p.livekitUpdateRoomMetadata(channelID, string(data))
-}
-
-// waitForPublisher gives the metadata publisher a bounded window to exit on
-// deactivation, so it is not left reading from a store that is about to close.
-// It can be mid-lock-acquisition, hence the timeout rather than an open-ended
-// wait.
-func (p *Plugin) waitForPublisher(timeout time.Duration) {
-	done := make(chan struct{})
-	go func() {
-		p.publisherWg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(timeout):
-		p.LogWarn("timed out waiting for room metadata publisher to exit")
-	}
+	return p.livekitUpdateRoomMetadata(ctx, channelID, string(data))
 }

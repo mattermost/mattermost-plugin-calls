@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
@@ -55,10 +54,6 @@ func (p *Plugin) createBotSession() (*model.Session, error) {
 
 	return session, nil
 }
-
-// publisherShutdownTimeout bounds how long deactivation waits for the room
-// metadata publisher, which may be blocked acquiring a channel lock.
-const publisherShutdownTimeout = 2 * time.Second
 
 func (p *Plugin) OnActivate() (retErr error) {
 	p.LogDebug("activating")
@@ -183,8 +178,13 @@ func (p *Plugin) OnDeactivate() error {
 	p.dmNoAnswerTimers = nil
 	p.dmNoAnswerTimersMut.Unlock()
 
-	// The publisher reads call state, so it has to be down before the store is.
-	p.waitForPublisher(publisherShutdownTimeout)
+	// The publisher reads call state, so it has to be fully down before the store
+	// closes. Closing stopCh cancels its cross-node lock wait and its LiveKit
+	// request, so this normally returns at once. It can still block on a lock
+	// held by another goroutine on this node, or on one in-flight query — both
+	// bounded, the first by handlers not holding the call lock across network
+	// calls and the second by the SQL settings' QueryTimeout.
+	p.publisherWg.Wait()
 
 	if err := p.store.Close(); err != nil {
 		p.LogError(err.Error())

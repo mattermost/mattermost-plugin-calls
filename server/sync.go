@@ -17,6 +17,14 @@ const (
 
 // lockCall locks the global (cluster) mutex for the given channelID.
 func (p *Plugin) lockCall(channelID string) error {
+	return p.lockCallCtx(context.Background(), channelID)
+}
+
+// lockCallCtx locks the global (cluster) mutex for the given channelID, giving
+// up early if ctx is done. Background workers that must not outlive plugin
+// shutdown pass a cancellable context; everything else uses lockCall, since a
+// request handler waiting out lockTimeout is the desired behaviour.
+func (p *Plugin) lockCallCtx(ctx context.Context, channelID string) error {
 	p.callsClusterLocksMut.Lock()
 	mut := p.callsClusterLocks[channelID]
 	if mut == nil {
@@ -36,7 +44,7 @@ func (p *Plugin) lockCall(channelID string) error {
 	}
 	p.callsClusterLocksMut.Unlock()
 
-	lockCtx, cancelCtx := context.WithTimeout(context.Background(), lockTimeout)
+	lockCtx, cancelCtx := context.WithTimeout(ctx, lockTimeout)
 	defer cancelCtx()
 
 	if err := mut.Lock(lockCtx); err != nil {
@@ -49,7 +57,13 @@ func (p *Plugin) lockCall(channelID string) error {
 // lockCallReturnState locks the global (cluster) mutex for the given channelID and
 // returns the current state.
 func (p *Plugin) lockCallReturnState(channelID string) (*callState, error) {
-	if err := p.lockCall(channelID); err != nil {
+	return p.lockCallReturnStateCtx(context.Background(), channelID)
+}
+
+// lockCallReturnStateCtx is lockCallReturnState with a cancellable lock wait.
+// See lockCallCtx.
+func (p *Plugin) lockCallReturnStateCtx(ctx context.Context, channelID string) (*callState, error) {
+	if err := p.lockCallCtx(ctx, channelID); err != nil {
 		return nil, fmt.Errorf("failed to create call lock: %w", err)
 	}
 
