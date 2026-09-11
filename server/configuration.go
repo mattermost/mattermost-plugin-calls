@@ -58,6 +58,10 @@ type configuration struct {
 	LiveKitAPISecret string
 	// SIP outbound trunk ID for outbound phone calls (e.g., ST_xxx). Empty disables outbound dialing.
 	LiveKitSIPOutboundTrunkID string
+	// When set to true, only numbers in SIPOutboundAllowlist may be dialed. Intended for dev/test environments.
+	EnableSIPOutboundAllowlist *bool
+	// Newline/comma/semicolon-separated list of E.164 phone numbers permitted for outbound dialing when the allowlist is enabled.
+	SIPOutboundAllowlist string
 	// When set to true live captions will be enabled when starting transcription jobs.
 	EnableLiveCaptions *bool
 	// The speech-to-text model size to use to transcribe live captions.
@@ -158,6 +162,9 @@ func (c *configuration) SetDefaults() {
 	if c.EnableSIPOutbound == nil {
 		c.EnableSIPOutbound = model.NewPointer(false)
 	}
+	if c.EnableSIPOutboundAllowlist == nil {
+		c.EnableSIPOutboundAllowlist = model.NewPointer(false)
+	}
 	if c.TranscriberModelSize == "" {
 		c.TranscriberModelSize = transcriber.ModelSizeDefault
 	}
@@ -253,6 +260,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveKitAPIKey = c.LiveKitAPIKey
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
 	cfg.LiveKitSIPOutboundTrunkID = c.LiveKitSIPOutboundTrunkID
+	cfg.SIPOutboundAllowlist = c.SIPOutboundAllowlist
 
 	// AllowEnableCalls is always true
 	cfg.AllowEnableCalls = model.NewPointer(true)
@@ -299,6 +307,10 @@ func (c *configuration) Clone() *configuration {
 
 	if c.EnableSIPOutbound != nil {
 		cfg.EnableSIPOutbound = model.NewPointer(*c.EnableSIPOutbound)
+	}
+
+	if c.EnableSIPOutboundAllowlist != nil {
+		cfg.EnableSIPOutboundAllowlist = model.NewPointer(*c.EnableSIPOutboundAllowlist)
 	}
 
 	if c.LiveCaptionsNumTranscribers != nil {
@@ -581,6 +593,25 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.JobServiceURL = strings.TrimSpace(cfg.JobServiceURL)
 	cfg.LiveKitURL = strings.TrimSpace(cfg.LiveKitURL)
 	cfg.LiveKitSIPOutboundTrunkID = strings.TrimSpace(cfg.LiveKitSIPOutboundTrunkID)
+}
+
+func (c *configuration) sipOutboundAllowlistEnabled() bool {
+	return c.EnableSIPOutboundAllowlist != nil && *c.EnableSIPOutboundAllowlist
+}
+
+// isNumberInAllowlist reports whether number (already normalized to E.164) is
+// permitted by the outbound allowlist. Entries are split on newline, comma, or
+// semicolon and normalized before comparison. An empty allowlist blocks all
+// numbers (fail-closed).
+func (c *configuration) isNumberInAllowlist(number string) bool {
+	for _, entry := range strings.FieldsFunc(c.SIPOutboundAllowlist, func(r rune) bool {
+		return r == '\n' || r == ',' || r == ';'
+	}) {
+		if normalizePhoneNumber(entry) == number {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Plugin) isSingleHandler() bool {

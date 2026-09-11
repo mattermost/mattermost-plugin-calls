@@ -506,4 +506,77 @@ func TestHandlePhoneCall(t *testing.T) {
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
 		require.Equal(t, "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console.", res.Msg)
 	})
+
+	t.Run("allowlist disabled passes all numbers", func(t *testing.T) {
+		p, mockAPI := setupPlugin(t)
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.EnableSIPOutbound = model.NewPointer(true)
+		cfg.LiveKitSIPOutboundTrunkID = "ST_test"
+		// EnableSIPOutboundAllowlist defaults to false
+		p.configuration = cfg
+
+		mockAPI.On("GetDirectChannel", mock.AnythingOfType("string"), mock.AnythingOfType("string")).
+			Return(nil, &model.AppError{Message: "bot not initialized"})
+		mockAPI.On("GetBotIconImage", mock.AnythingOfType("string")).Return(nil, false)
+		mockAPI.On("LogError", mock.Anything, mock.Anything, mock.Anything).Maybe()
+
+		// Reaches bot-lookup stage, not rejected by allowlist.
+		resp := doRequest(t, p, "+19995550000")
+		require.NotEqual(t, http.StatusForbidden, resp.StatusCode)
+	})
+
+	t.Run("allowlist enabled rejects unlisted number", func(t *testing.T) {
+		p, _ := setupPlugin(t)
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.EnableSIPOutbound = model.NewPointer(true)
+		cfg.LiveKitSIPOutboundTrunkID = "ST_test"
+		cfg.EnableSIPOutboundAllowlist = model.NewPointer(true)
+		cfg.SIPOutboundAllowlist = "+14155551234"
+		p.configuration = cfg
+
+		resp := doRequest(t, p, "+19995550000")
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		var res httpResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
+		require.Equal(t, "number is not in the outbound calling allowlist", res.Msg)
+	})
+
+	t.Run("allowlist enabled passes listed number", func(t *testing.T) {
+		p, mockAPI := setupPlugin(t)
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.EnableSIPOutbound = model.NewPointer(true)
+		cfg.LiveKitSIPOutboundTrunkID = "ST_test"
+		cfg.EnableSIPOutboundAllowlist = model.NewPointer(true)
+		cfg.SIPOutboundAllowlist = "+14155551234\n+19995550000"
+		p.configuration = cfg
+
+		mockAPI.On("GetDirectChannel", mock.AnythingOfType("string"), mock.AnythingOfType("string")).
+			Return(nil, &model.AppError{Message: "bot not initialized"})
+		mockAPI.On("GetBotIconImage", mock.AnythingOfType("string")).Return(nil, false)
+		mockAPI.On("LogError", mock.Anything, mock.Anything, mock.Anything).Maybe()
+
+		// Passes allowlist, reaches bot-lookup stage.
+		resp := doRequest(t, p, "+19995550000")
+		require.NotEqual(t, http.StatusForbidden, resp.StatusCode)
+	})
+
+	t.Run("allowlist enabled empty list blocks all", func(t *testing.T) {
+		p, _ := setupPlugin(t)
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.EnableSIPOutbound = model.NewPointer(true)
+		cfg.LiveKitSIPOutboundTrunkID = "ST_test"
+		cfg.EnableSIPOutboundAllowlist = model.NewPointer(true)
+		cfg.SIPOutboundAllowlist = ""
+		p.configuration = cfg
+
+		resp := doRequest(t, p, "+14155551234")
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		var res httpResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
+		require.Equal(t, "number is not in the outbound calling allowlist", res.Msg)
+	})
 }

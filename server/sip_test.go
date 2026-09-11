@@ -34,6 +34,32 @@ func TestNormalizePhoneNumber(t *testing.T) {
 	}
 }
 
+func TestIsNumberInAllowlist(t *testing.T) {
+	tests := []struct {
+		name     string
+		list     string
+		number   string
+		expected bool
+	}{
+		{"empty list blocks all", "", "+17813078753", false},
+		{"exact match", "+17813078753", "+17813078753", true},
+		{"normalized match formatted entry", "+1 781-307-8753", "+17813078753", true},
+		{"newline separator", "+17813078753\n+14155551234", "+14155551234", true},
+		{"comma separator", "+17813078753,+14155551234", "+14155551234", true},
+		{"semicolon separator", "+17813078753;+14155551234", "+14155551234", true},
+		{"mixed separators", "+17813078753,+14155551234\n+12125550100;+19175550199", "+12125550100", true},
+		{"not in list", "+17813078753,+14155551234", "+19995550000", false},
+		{"whitespace around entries", "  +17813078753 , +14155551234 ", "+14155551234", true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &configuration{SIPOutboundAllowlist: tc.list}
+			require.Equal(t, tc.expected, cfg.isNumberInAllowlist(tc.number))
+		})
+	}
+}
+
 func TestLivekitHTTPURL(t *testing.T) {
 	require.Equal(t, "https://livekit.example.com", livekitHTTPURL("wss://livekit.example.com"))
 	require.Equal(t, "http://localhost:7880", livekitHTTPURL("ws://localhost:7880"))
