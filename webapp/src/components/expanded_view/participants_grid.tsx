@@ -56,8 +56,7 @@ export function ParticipantsGrid({
 }: Props) {
     const {isDMCalling, dmCalleeID, dmCallee} = useDMCallingState();
 
-    // The ringing placeholder occupies a tile, so sizing has to account for it or tiles would
-    // resize and shift the moment the callee answers.
+    // The ringing placeholder occupies a tile, so sizing has to account for it
     const tileCount = sessions.length + (isDMCalling ? 1 : 0);
 
     const ref = useRef<HTMLDivElement>(null);
