@@ -56,6 +56,10 @@ export function ParticipantsGrid({
 }: Props) {
     const {isDMCalling, dmCalleeID, dmCallee} = useDMCallingState();
 
+    // The ringing placeholder occupies a tile, so sizing has to account for it or tiles would
+    // resize and shift the moment the callee answers.
+    const tileCount = sessions.length + (isDMCalling ? 1 : 0);
+
     const ref = useRef<HTMLDivElement>(null);
 
     const [tileSize, setTileSize] = useState(TileSize.Small);
@@ -98,7 +102,7 @@ export function ParticipantsGrid({
             const tilesPerRow = Math.floor((availableWidth + tileSpacing) / tileWidthWithSpacing); // Adjust for effective width with spacing
 
             // Calculate rows needed based on tiles per row
-            const requiredRows = Math.ceil(sessions.length / tilesPerRow);
+            const requiredRows = Math.ceil(tileCount / tilesPerRow);
 
             // Calculate the total height required including the spacing between rows
             const totalHeightNeeded = (requiredRows * tileHeightWithSpacing) - tileSpacing; // Adjust for last row not needing spacing
@@ -135,7 +139,7 @@ export function ParticipantsGrid({
         setTileSize(res.tileSize);
         setPaddingH(res.paddingH);
         setPaddingV(res.paddingV);
-    }, [sessions.length, resize]);
+    }, [tileCount, resize]);
 
     return (
         <ParticipantsGridContainer
