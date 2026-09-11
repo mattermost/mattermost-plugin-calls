@@ -98,16 +98,15 @@ const VideoDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
                 className='react-select singleSelect'
                 classNamePrefix='react-select'
                 options={options}
-                clearable={false}
                 isClearable={false}
                 isSearchable={false}
                 components={{IndicatorSeparator: () => null}}
                 value={getOption()}
-                onChange={(opt: SelectOption) => {
-                    if (onSelectionChange) {
-                        onSelectionChange(opt);
+                onChange={(opt) => {
+                    if (opt) {
+                        onSelectionChange?.(opt);
+                        setSelectedOption(opt);
                     }
-                    setSelectedOption(opt);
                 }}
             />
         </SelectionWrapper>

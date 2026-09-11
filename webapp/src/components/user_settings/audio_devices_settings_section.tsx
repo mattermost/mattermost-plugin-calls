@@ -91,12 +91,11 @@ const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
                 className='react-select singleSelect'
                 classNamePrefix='react-select'
                 options={options}
-                clearable={false}
                 isClearable={false}
                 isSearchable={false}
                 components={{IndicatorSeparator: () => null}}
                 value={getOption()}
-                onChange={(opt: SelectOption) => setSelectedOption(opt)}
+                onChange={(opt) => setSelectedOption(opt)}
             />
         </SelectionWrapper>
     );
