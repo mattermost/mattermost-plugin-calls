@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {AnyAction} from 'redux';
-import {CALL_END, CALL_STATE, DM_CALLEE_ANSWERED_AT, UNINIT} from 'src/action_types';
+import {ADD_INCOMING_CALL, CALL_END, CALL_STATE, DM_CALLEE_ANSWERED_AT, REMOVE_INCOMING_CALL, UNINIT} from 'src/action_types';
 
 import reducer from './reducers';
 
@@ -73,5 +73,38 @@ describe('dmCalleeAnsweredAt', () => {
         const state = apply(callState(callID), callAnswered(callID, answeredAt), {type: UNINIT});
 
         expect(state.dmCalleeAnsweredAt).toEqual({});
+    });
+});
+
+const incomingCall = (cID: string, cAllID: string) => ({
+    type: ADD_INCOMING_CALL,
+    data: {callID: cAllID, channelID: cID, callerID: 'caller-id', startAt, type: 'D'},
+});
+
+const removeIncomingCall = (cAllID: string) => ({
+    type: REMOVE_INCOMING_CALL,
+    data: {callID: cAllID},
+});
+
+describe('incomingCalls', () => {
+    it('should add and remove incoming call notifications', () => {
+        const state = apply(incomingCall(channelID, callID));
+
+        expect(state.incomingCalls).toHaveLength(1);
+        expect(state.incomingCalls[0].callID).toBe(callID);
+
+        const state2 = apply(incomingCall(channelID, callID), removeIncomingCall(callID));
+
+        expect(state2.incomingCalls).toHaveLength(0);
+    });
+
+    it('should clear all incoming call notifications on UNINIT', () => {
+        const state = apply(
+            incomingCall(channelID, callID),
+            incomingCall('other-channel-id', 'other-call-id'),
+            {type: UNINIT},
+        );
+
+        expect(state.incomingCalls).toHaveLength(0);
     });
 });
