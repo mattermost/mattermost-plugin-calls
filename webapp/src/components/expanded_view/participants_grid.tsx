@@ -54,7 +54,7 @@ export function ParticipantsGrid({
     onParticipantRemove,
     profileImages,
 }: Props) {
-    const {isDMCalling, dmCalleeID, dmCallee} = useDMCallingState();
+    const {isDM, isDMCalling, dmCalleeID, dmCallee} = useDMCallingState();
 
     // The ringing placeholder occupies a tile, so sizing has to account for it
     const tileCount = sessions.length + (isDMCalling ? 1 : 0);
@@ -160,6 +160,9 @@ export function ParticipantsGrid({
                         currentUserID={currentUserID}
                         callHostID={callHostID}
                         callID={callID}
+
+                        // A 1:1 call has no meaningful host to point out.
+                        showHostBadge={!isDM}
                         onParticipantRemove={onParticipantRemove}
                     />
                 ))}
