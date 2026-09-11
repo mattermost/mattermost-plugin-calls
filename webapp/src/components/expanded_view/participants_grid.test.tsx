@@ -92,4 +92,23 @@ describe('ParticipantsGrid', () => {
         expect(screen.getAllByTestId('participant-tile')).toHaveLength(1);
         expect(screen.getByTestId('participant-tile-loading')).toHaveTextContent(calleeID);
     });
+
+    test('should keep the caller and callee in place when a DM call is answered', () => {
+        const tileOrder = (container: HTMLElement) => Array.from(
+            container.querySelectorAll('#calls-expanded-view-participants-grid > li'),
+        ).map((tile) => tile.textContent);
+
+        const ringing = renderGrid(
+            [session(callerID, 'caller-session-id')],
+            {isDMCalling: true, dmCalleeID: calleeID, dmCallee: callee},
+        );
+
+        expect(tileOrder(ringing.container)).toEqual([callerID, calleeID]);
+
+        ringing.unmount();
+
+        const answered = renderGrid([session(callerID, 'caller-session-id'), session(calleeID, 'callee-session-id')]);
+
+        expect(tileOrder(answered.container)).toEqual([callerID, calleeID]);
+    });
 });
