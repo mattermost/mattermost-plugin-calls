@@ -135,6 +135,22 @@
             "default": "",
             "help_text": "LiveKit outbound SIP trunk ID (e.g., ST_xxx). The trunk is created in LiveKit (via CLI or Cloud dashboard) with the SIP provider address and credentials. Leave empty to disable outbound dialing.",
             "hosting": "on-prem"
+          },
+          {
+            "key": "EnableSIPOutboundAllowlist",
+            "display_name": "Enable outbound phone number allowlist",
+            "type": "bool",
+            "default": false,
+            "help_text": "When set to true, only phone numbers listed in the allowlist below can be dialed. Intended for development and testing environments to prevent accidental calls to real numbers.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPOutboundAllowlist",
+            "display_name": "Outbound phone number allowlist",
+            "type": "longtext",
+            "default": "",
+            "help_text": "Phone numbers permitted for outbound dialing when the allowlist is enabled. Enter one number per line (commas and semicolons are also accepted as separators). Numbers are matched after normalization to E.164 format, so formatting variations like +1 555-123-4567 and 15551234567 are equivalent.",
+            "hosting": "on-prem"
           }
         ]
       },
@@ -376,6 +392,22 @@
         "type": "text",
         "default": "",
         "help_text": "LiveKit outbound SIP trunk ID (e.g., ST_xxx). The trunk is created in LiveKit (via CLI or Cloud dashboard) with the SIP provider address and credentials. Leave empty to disable outbound dialing.",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "EnableSIPOutboundAllowlist",
+        "display_name": "Enable outbound phone number allowlist",
+        "type": "bool",
+        "default": false,
+        "help_text": "When set to true, only phone numbers listed in the allowlist below can be dialed. Intended for development and testing environments to prevent accidental calls to real numbers.",
+        "hosting": "on-prem"
+      },
+      {
+        "key": "SIPOutboundAllowlist",
+        "display_name": "Outbound phone number allowlist",
+        "type": "longtext",
+        "default": "",
+        "help_text": "Phone numbers permitted for outbound dialing when the allowlist is enabled. Enter one number per line (commas and semicolons are also accepted as separators). Numbers are matched after normalization to E.164 format, so formatting variations like +1 555-123-4567 and 15551234567 are equivalent.",
         "hosting": "on-prem"
       },
       {

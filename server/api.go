@@ -716,6 +716,12 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if cfg.sipOutboundAllowlistEnabled() && !cfg.isNumberInAllowlist(number) {
+		res.Err = "number is not in the outbound calling allowlist"
+		res.Code = http.StatusForbidden
+		return
+	}
+
 	botID := p.getBotID()
 	if botID == "" {
 		res.Err = "bot not initialized"
