@@ -454,7 +454,10 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// phone by deleting the LiveKit room (which sends a SIP BYE) and drop the SIP
 	// session(s), so the call ends below instead of orphaning the PSTN leg. The
 	// resulting participant_left webhook finds the call already ended and no-ops.
-	if onlySIPParticipantsRemain(state.sessions) && p.isPhoneCallChannel(channelID) {
+	// The empty-sessions case handles deployments where LiveKit webhooks cannot
+	// reach Mattermost (e.g. local dev against LiveKit Cloud): the SIP session is
+	// never registered, but the room still exists and must be torn down explicitly.
+	if (onlySIPParticipantsRemain(state.sessions) || len(state.sessions) == 0) && p.isPhoneCallChannel(channelID) {
 		p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
 			"callID", state.Call.ID, "channelID", channelID)
 
