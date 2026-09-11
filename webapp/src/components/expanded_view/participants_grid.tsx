@@ -160,8 +160,6 @@ export function ParticipantsGrid({
                         currentUserID={currentUserID}
                         callHostID={callHostID}
                         callID={callID}
-
-                        // A 1:1 call has no meaningful host to point out.
                         showHostBadge={!isDM}
                         onParticipantRemove={onParticipantRemove}
                     />
