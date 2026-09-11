@@ -197,6 +197,12 @@ describe('ParticipantCell', () => {
         expect(screen.queryByTestId('host-badge')).not.toBeInTheDocument();
     });
 
+    test('should not badge the host when the badge is turned off', () => {
+        renderCell({isHost: true, showHostBadge: false});
+
+        expect(screen.queryByTestId('host-badge')).not.toBeInTheDocument();
+    });
+
     test.each([
         ['a small', TileSize.Small, '96px', '12px', '8px'],
         ['a medium', TileSize.Medium, '128px', '16px', '12px'],

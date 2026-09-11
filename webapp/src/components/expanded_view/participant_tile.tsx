@@ -20,6 +20,7 @@ interface Props {
     currentUserID?: UserProfile['id'];
     callHostID: UserProfile['id'];
     callID: string;
+    showHostBadge?: boolean;
     onParticipantRemove?: (sessionID: string, userID: string) => void,
 }
 
@@ -68,6 +69,7 @@ export function ParticipantTile(props: Props) {
             isYou={isYou}
             isHost={isHost}
             iAmHost={iAmHost}
+            showHostBadge={props.showHostBadge}
             callID={props.callID}
             userID={props.session.user_id}
             sessionID={props.session.session_id}

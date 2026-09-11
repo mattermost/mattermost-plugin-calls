@@ -38,6 +38,7 @@ export type Props = {
     isYou: boolean,
     isHost: boolean,
     iAmHost: boolean,
+    showHostBadge?: boolean,
     callID?: string,
     userID: string,
     sessionID: string,
@@ -99,6 +100,7 @@ export default function ParticipantCell({
     isYou,
     isHost,
     iAmHost,
+    showHostBadge = true,
     callID,
     userID,
     sessionID,
@@ -170,7 +172,7 @@ export default function ParticipantCell({
                 {name}
             </span>
 
-            {isHost && <HostBadge data-testid={'host-badge'}/>}
+            {isHost && showHostBadge && <HostBadge data-testid={'host-badge'}/>}
         </>
     );
 
