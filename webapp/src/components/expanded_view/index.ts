@@ -38,7 +38,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
-import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
+import {alphaSortSessions, getUserIdFromDM, isDMChannel, selfFirstSortSessions, stateSortSessions} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, modals, selectRhsPost} from 'src/webapp_globals';
 
 import ExpandedView from './component';
@@ -52,12 +52,13 @@ const mapStateToProps = (state: GlobalState) => {
     const threadID = threadIDForCallInChannel(state, channel?.id || '');
 
     const profiles = profilesInCurrentCallMap(state);
+    const isDM = isDMChannel(channel);
     const sessions = sessionsInCurrentCall(state)
         .sort(alphaSortSessions(profiles))
-        .sort(stateSortSessions(screenSharingSession?.session_id || '', true));
+        .sort(isDM ? selfFirstSortSessions(currentUserID) : stateSortSessions(screenSharingSession?.session_id || '', true));
 
     let connectedDMUser;
-    if (channel && isDMChannel(channel)) {
+    if (channel && isDM) {
         const otherID = getUserIdFromDM(channel.name, currentUserID);
         connectedDMUser = getUser(state, otherID);
     }
@@ -94,7 +95,7 @@ const mapStateToProps = (state: GlobalState) => {
         transcriptionsEnabled: transcriptionsEnabled(state),
         isAdmin: isCurrentUserSystemAdmin(state),
         hostControlsAllowed: areHostControlsAllowed(state),
-        enableVideo: callsConfig(state).EnableVideo && isDMChannel(channel),
+        enableVideo: callsConfig(state).EnableVideo && isDM,
         otherSessions: sessionsForOtherUsersInCall(state),
         isDMCalling: isCurrentDMCallInCallingState(state),
         clientConnecting: clientConnecting(state),

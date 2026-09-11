@@ -21,8 +21,11 @@ jest.mock('src/components/dot_menu/dot_menu', () => ({
 
 // Each tile has its own tests; here they only have to say who they were pointed at.
 jest.mock('./participant_tile', () => ({
-    ParticipantTile: ({session}: { session: UserSessionState }) => (
-        <li data-testid={'participant-tile'}>{session.user_id}</li>
+    ParticipantTile: ({session, showHostBadge}: { session: UserSessionState, showHostBadge?: boolean }) => (
+        <li
+            data-testid={'participant-tile'}
+            data-show-host-badge={String(showHostBadge)}
+        >{session.user_id}</li>
     ),
 }));
 
@@ -46,6 +49,7 @@ const session = (userID: string, sessionID: string) => ({
 } as UserSessionState);
 
 type DMCallingState = {
+    isDM?: boolean;
     isDMCalling: boolean;
     dmCalleeID?: string;
     dmCallee?: UserProfile;
@@ -91,5 +95,36 @@ describe('ParticipantsGrid', () => {
 
         expect(screen.getAllByTestId('participant-tile')).toHaveLength(1);
         expect(screen.getByTestId('participant-tile-loading')).toHaveTextContent(calleeID);
+    });
+
+    test('should not point out the host in a DM call', () => {
+        renderGrid([session(callerID, 'caller-session-id')], {isDM: true, isDMCalling: false});
+
+        expect(screen.getByTestId('participant-tile')).toHaveAttribute('data-show-host-badge', 'false');
+    });
+
+    test('should point out the host in a group call', () => {
+        renderGrid([session(callerID, 'caller-session-id')], {isDM: false, isDMCalling: false});
+
+        expect(screen.getByTestId('participant-tile')).toHaveAttribute('data-show-host-badge', 'true');
+    });
+
+    test('should keep the caller and callee in place when a DM call is answered', () => {
+        const tileOrder = (container: HTMLElement) => Array.from(
+            container.querySelectorAll('#calls-expanded-view-participants-grid > li'),
+        ).map((tile) => tile.textContent);
+
+        const ringing = renderGrid(
+            [session(callerID, 'caller-session-id')],
+            {isDMCalling: true, dmCalleeID: calleeID, dmCallee: callee},
+        );
+
+        expect(tileOrder(ringing.container)).toEqual([callerID, calleeID]);
+
+        ringing.unmount();
+
+        const answered = renderGrid([session(callerID, 'caller-session-id'), session(calleeID, 'callee-session-id')]);
+
+        expect(tileOrder(answered.container)).toEqual([callerID, calleeID]);
     });
 });
