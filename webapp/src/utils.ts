@@ -217,8 +217,7 @@ export function alphaSortSessions(profiles: IDMappedObjects<UserProfile>) {
     };
 }
 
-// DM calls hold a fixed order — the current user, then the other party — so tiles stay put
-// when the callee answers and when speaking, mute or raised hand state changes.
+// In DM calls, always list current user first, then the other participant.
 export function selfFirstSortSessions(currentUserID: string) {
     return (elA: UserSessionState, elB: UserSessionState) => {
         if (elA.user_id === elB.user_id) {
