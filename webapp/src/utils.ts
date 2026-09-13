@@ -217,6 +217,22 @@ export function alphaSortSessions(profiles: IDMappedObjects<UserProfile>) {
     };
 }
 
+// In DM calls, always list current user first, then the other participant.
+export function selfFirstSortSessions(currentUserID: string) {
+    return (elA: UserSessionState, elB: UserSessionState) => {
+        if (elA.user_id === elB.user_id) {
+            return 0;
+        }
+        if (elA.user_id === currentUserID) {
+            return -1;
+        }
+        if (elB.user_id === currentUserID) {
+            return 1;
+        }
+        return 0;
+    };
+}
+
 export function stateSortSessions(presenterID: string, considerReaction = false) {
     return (stateA: UserSessionState, stateB: UserSessionState) => {
         if (stateA.session_id === presenterID) {

@@ -1,6 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Post} from '@mattermost/types/posts';
 import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
@@ -18,6 +19,7 @@ import {
     getWSConnectionURL,
     maxAttemptsReachedErr,
     runWithRetry,
+    selfFirstSortSessions,
     shouldRenderCallsIncoming,
     shouldRenderDesktopWidget,
     sleep,
@@ -642,6 +644,38 @@ describe('utils', () => {
             expect(shouldRenderCallsIncoming()).toBe(false);
 
             global.window = originalWindow;
+        });
+    });
+
+    describe('selfFirstSortSessions', () => {
+        const selfID = 'self-user-id';
+        const otherID = 'other-user-id';
+
+        const session = (userID: string, state = {}) => ({
+            session_id: `${userID}-session`,
+            user_id: userID,
+            ...state,
+        }) as UserSessionState;
+
+        test('should place the current user first', () => {
+            const sessions = [session(otherID), session(selfID)];
+
+            expect(sessions.sort(selfFirstSortSessions(selfID)).map((s) => s.user_id)).toEqual([selfID, otherID]);
+        });
+
+        test('should keep the current user first regardless of speaking state', () => {
+            const sessions = [
+                session(selfID),
+                session(otherID, {unmuted: true, voice: true, raised_hand: 1234}),
+            ];
+
+            expect(sessions.sort(selfFirstSortSessions(selfID)).map((s) => s.user_id)).toEqual([selfID, otherID]);
+        });
+
+        test('should preserve the incoming order of sessions that are not the current user', () => {
+            const sessions = [session('a-user-id'), session('b-user-id'), session(selfID)];
+
+            expect(sessions.sort(selfFirstSortSessions(selfID)).map((s) => s.user_id)).toEqual([selfID, 'a-user-id', 'b-user-id']);
         });
     });
 
