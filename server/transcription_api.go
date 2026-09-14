@@ -18,7 +18,12 @@ const transcriptionJobStartTimeout = time.Minute
 
 func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 	time.Sleep(transcriptionJobStartTimeout)
+	p.handleTranscriptionJobTimeout(callID, jobID)
+}
 
+// handleTranscriptionJobTimeout is the body of transcriptionJobTimeoutChecker,
+// split out so it can be exercised without waiting out the timeout.
+func (p *Plugin) handleTranscriptionJobTimeout(callID, jobID string) {
 	state, err := p.lockCallReturnState(callID)
 	if err != nil {
 		p.LogError("failed to lock call", "err", err.Error())
@@ -53,13 +58,13 @@ func (p *Plugin) transcriptionJobTimeoutChecker(callID, jobID string) {
 
 		trState.EndAt = time.Now().UnixMilli()
 		trState.Props.Err = "failed to start transcriber job: timed out waiting for bot to join call"
-		if err := p.store.UpdateCallJob(trState); err != nil {
+		if err := p.updateCallJob(callID, trState); err != nil {
 			p.LogError("failed to update call job", "callID", callID, "jobID", jobID, "err", err.Error())
 		}
 
 		if lcState != nil {
 			lcState.EndAt = time.Now().UnixMilli()
-			if err := p.store.UpdateCallJob(trState); err != nil {
+			if err := p.updateCallJob(callID, lcState); err != nil {
 				p.LogError("failed to update call job", "callID", callID, "jobID", jobID, "err", err.Error())
 			}
 		}
@@ -115,7 +120,7 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	trState.CreatorID = userID
 	trState.InitAt = time.Now().UnixMilli()
 
-	if err := p.store.CreateCallJob(trState); err != nil {
+	if err := p.createCallJob(callID, trState); err != nil {
 		return fmt.Errorf("failed to create call job: %w", err)
 	}
 
@@ -128,7 +133,7 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 		lcState.Type = public.JobTypeCaptioning
 		lcState.CreatorID = userID
 		lcState.InitAt = time.Now().UnixMilli()
-		if err := p.store.CreateCallJob(lcState); err != nil {
+		if err := p.createCallJob(callID, lcState); err != nil {
 			return fmt.Errorf("failed to create call job: %w", err)
 		}
 	}
@@ -189,12 +194,12 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	if jobErr != nil {
 		trState.EndAt = time.Now().UnixMilli()
 		trState.Props.Err = jobErr.Error()
-		if err := p.store.UpdateCallJob(trState); err != nil {
+		if err := p.updateCallJob(callID, trState); err != nil {
 			p.LogError("failed to update call job", "err", err.Error(), "jobID", trJobID, "callID", callID)
 		}
 		if lcState != nil {
 			state.LiveCaptions.EndAt = time.Now().UnixMilli()
-			if err := p.store.UpdateCallJob(lcState); err != nil {
+			if err := p.updateCallJob(callID, lcState); err != nil {
 				p.LogError("failed to update call job", "err", err.Error(), "jobID", trJobID, "callID", callID)
 			}
 		}
@@ -205,12 +210,12 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 		return fmt.Errorf("transcription job already in progress")
 	}
 	trState.Props.JobID = trJobID
-	if err := p.store.UpdateCallJob(trState); err != nil {
+	if err := p.updateCallJob(callID, trState); err != nil {
 		return fmt.Errorf("failed to update call job: %w", err)
 	}
 	if lcState != nil {
 		lcState.Props.JobID = trJobID
-		if err := p.store.UpdateCallJob(lcState); err != nil {
+		if err := p.updateCallJob(callID, lcState); err != nil {
 			return fmt.Errorf("failed to update call job: %w", err)
 		}
 	}
@@ -243,13 +248,13 @@ func (p *Plugin) stopTranscribingJob(state *callState, callID string) (rerr erro
 		return fmt.Errorf("failed to get transcription state: %w", err)
 	}
 	trState.EndAt = time.Now().UnixMilli()
-	if err := p.store.UpdateCallJob(trState); err != nil {
+	if err := p.updateCallJob(callID, trState); err != nil {
 		return fmt.Errorf("failed to update call job: %w", err)
 	}
 	lcState, _ := state.getLiveCaptions()
 	if lcState != nil {
 		lcState.EndAt = time.Now().UnixMilli()
-		if err := p.store.UpdateCallJob(lcState); err != nil {
+		if err := p.updateCallJob(callID, lcState); err != nil {
 			return fmt.Errorf("failed to update call job: %w", err)
 		}
 	}
