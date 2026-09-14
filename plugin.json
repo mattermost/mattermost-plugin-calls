@@ -149,7 +149,7 @@
             "display_name": "Outbound phone number allowlist",
             "type": "longtext",
             "default": "",
-            "help_text": "Phone numbers permitted for outbound dialing when the allowlist is enabled. Enter one number per line (commas and semicolons are also accepted as separators). Numbers are matched after normalization to E.164 format, so formatting variations like +1 555-123-4567 and 15551234567 are equivalent.",
+            "help_text": "Phone numbers permitted for outbound dialing when the allowlist is enabled. Enter one number per line. Numbers are matched after normalization to E.164 format, so formatting variations like +1 555-123-4567 and 15551234567 are equivalent.",
             "hosting": "on-prem"
           }
         ]

@@ -60,7 +60,7 @@ type configuration struct {
 	LiveKitSIPOutboundTrunkID string
 	// When set to true, only numbers in SIPOutboundAllowlist may be dialed. Intended for dev/test environments.
 	EnableSIPOutboundAllowlist *bool
-	// Newline/comma/semicolon-separated list of E.164 phone numbers permitted for outbound dialing when the allowlist is enabled.
+	// Newline-separated list of E.164 phone numbers permitted for outbound dialing when the allowlist is enabled.
 	SIPOutboundAllowlist string
 	// When set to true live captions will be enabled when starting transcription jobs.
 	EnableLiveCaptions *bool
@@ -600,13 +600,11 @@ func (c *configuration) sipOutboundAllowlistEnabled() bool {
 }
 
 // isNumberInAllowlist reports whether number (already normalized to E.164) is
-// permitted by the outbound allowlist. Entries are split on newline, comma, or
-// semicolon and normalized before comparison. An empty allowlist blocks all
-// numbers (fail-closed).
+// permitted by the outbound allowlist. Entries are split on newline and
+// normalized before comparison. An empty allowlist blocks all numbers
+// (fail-closed).
 func (c *configuration) isNumberInAllowlist(number string) bool {
-	for _, entry := range strings.FieldsFunc(c.SIPOutboundAllowlist, func(r rune) bool {
-		return r == '\n' || r == ',' || r == ';'
-	}) {
+	for _, entry := range strings.Split(c.SIPOutboundAllowlist, "\n") {
 		if normalizePhoneNumber(entry) == number {
 			return true
 		}

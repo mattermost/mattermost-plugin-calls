@@ -45,11 +45,9 @@ func TestIsNumberInAllowlist(t *testing.T) {
 		{"exact match", "+17813078753", "+17813078753", true},
 		{"normalized match formatted entry", "+1 781-307-8753", "+17813078753", true},
 		{"newline separator", "+17813078753\n+14155551234", "+14155551234", true},
-		{"comma separator", "+17813078753,+14155551234", "+14155551234", true},
-		{"semicolon separator", "+17813078753;+14155551234", "+14155551234", true},
-		{"mixed separators", "+17813078753,+14155551234\n+12125550100;+19175550199", "+12125550100", true},
-		{"not in list", "+17813078753,+14155551234", "+19995550000", false},
-		{"whitespace around entries", "  +17813078753 , +14155551234 ", "+14155551234", true},
+		{"multiple newlines", "+17813078753\n+14155551234\n+12125550100", "+12125550100", true},
+		{"not in list", "+17813078753\n+14155551234", "+19995550000", false},
+		{"whitespace around entries", "  +17813078753 \n +14155551234 ", "+14155551234", true},
 	}
 
 	for _, tc := range tests {
