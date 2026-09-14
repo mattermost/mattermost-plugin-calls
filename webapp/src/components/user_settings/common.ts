@@ -1,7 +1,8 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import ReactSelect from 'react-select';
+import type {ComponentType} from 'react';
+import ReactSelect, {type Props} from 'react-select';
 import styled from 'styled-components';
 
 export type SelectOption = {
@@ -19,7 +20,9 @@ export type DevicesSelectionHandle = {
     getOption: () => SelectOption;
 };
 
-export const StyledReactSelect = styled(ReactSelect)`
+const DeviceSelect: ComponentType<Props<SelectOption, false>> = ReactSelect;
+
+export const StyledReactSelect = styled(DeviceSelect)`
   width: 260px;
 `;
 
