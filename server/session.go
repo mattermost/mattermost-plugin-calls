@@ -151,7 +151,7 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 			p.LogDebug("bot joined, recording job is starting", "jobID", jobID)
 			state.Recording.Props.BotConnID = connID
 
-			if err := p.store.UpdateCallJob(state.Recording); err != nil {
+			if err := p.updateCallJob(channelID, state.Recording); err != nil {
 				state.Recording.Props.BotConnID = ""
 				return nil, fmt.Errorf("%w: failed to update call job: %w", errStoreFailure, err)
 			}
@@ -162,13 +162,13 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 			if state.LiveCaptions != nil && state.LiveCaptions.StartAt == 0 {
 				p.LogDebug("bot joined, live captions job is starting", "jobID", state.LiveCaptions.ID, "trID", jobID)
 				state.LiveCaptions.Props.BotConnID = connID
-				if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
+				if err := p.updateCallJob(channelID, state.LiveCaptions); err != nil {
 					state.LiveCaptions.Props.BotConnID = ""
 					return nil, fmt.Errorf("%w: failed to update call job: %w", errStoreFailure, err)
 				}
 			}
 
-			if err := p.store.UpdateCallJob(state.Transcription); err != nil {
+			if err := p.updateCallJob(channelID, state.Transcription); err != nil {
 				state.Transcription.Props.BotConnID = ""
 				return nil, fmt.Errorf("%w: failed to update call job: %w", errStoreFailure, err)
 			}
@@ -188,7 +188,7 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 	}
 
 	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
-		state.Call.Props.Hosts = []string{newHostID}
+		p.setCallHost(state, channelID, newHostID)
 		defer func() {
 			if retErr == nil {
 				p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
@@ -345,7 +345,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		p.LogDebug("recording bot left the call", "channelID", channelID, "jobID", state.Recording.Props.JobID, "botConnID", originalConnID)
 
 		state.Recording.EndAt = time.Now().UnixMilli()
-		if err := p.store.UpdateCallJob(state.Recording); err != nil {
+		if err := p.updateCallJob(channelID, state.Recording); err != nil {
 			return fmt.Errorf("failed to update call job: %w", err)
 		}
 
@@ -372,7 +372,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		p.LogDebug("transcribing bot left the call", "channelID", channelID, "jobID", state.Transcription.Props.JobID, "botConnID", originalConnID)
 
 		state.Transcription.EndAt = time.Now().UnixMilli()
-		if err := p.store.UpdateCallJob(state.Transcription); err != nil {
+		if err := p.updateCallJob(channelID, state.Transcription); err != nil {
 			return fmt.Errorf("failed to update call job: %w", err)
 		}
 
@@ -406,7 +406,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 
 	if state.LiveCaptions != nil && state.LiveCaptions.EndAt == 0 && connID == state.LiveCaptions.Props.BotConnID {
 		state.LiveCaptions.EndAt = time.Now().UnixMilli()
-		if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
+		if err := p.updateCallJob(channelID, state.LiveCaptions); err != nil {
 			return fmt.Errorf("failed to update call job: %w", err)
 		}
 	}
@@ -419,11 +419,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// Change host if needed
 	if state.Call.GetHostID() == userID && len(state.sessions) > 0 {
 		if newHostID := state.getHostID(p.getBotID()); newHostID != userID {
-			if newHostID == "" {
-				state.Call.Props.Hosts = nil
-			} else {
-				state.Call.Props.Hosts = []string{newHostID}
-			}
+			p.setCallHost(state, channelID, newHostID)
 			p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 				"hostID":  newHostID,
 				"call_id": state.Call.ID,

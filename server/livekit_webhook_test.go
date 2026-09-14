@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -49,6 +50,8 @@ func TestLiveKitParticipantWebhooks(t *testing.T) {
 			callsClusterLocks: map[string]*cluster.Mutex{},
 			store:             store,
 			nodeID:            "test-node",
+			dirtyCalls:        map[string]struct{}{},
+			dirtyCallsCh:      make(chan struct{}, 1),
 		}
 		p.licenseChecker = enterprise.NewLicenseChecker(p.API)
 
@@ -109,16 +112,24 @@ func TestLiveKitParticipantWebhooks(t *testing.T) {
 		return call
 	}
 
-	// createPendingSession persists an unconfirmed session, as the POST token
-	// endpoint would.
-	createPendingSession := func(t *testing.T, p *Plugin, call *public.Call, userID, sessionID string) {
+	// createPendingSessionAt persists an unconfirmed session with an explicit join
+	// time. Host selection breaks ties on map iteration order, so any test whose
+	// premise is "A is the host" has to space the joins apart.
+	createPendingSessionAt := func(t *testing.T, p *Plugin, call *public.Call, userID, sessionID string, joinAt int64) {
 		t.Helper()
 		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
 			ID:     sessionID,
 			CallID: call.ID,
 			UserID: userID,
-			JoinAt: time.Now().UnixMilli(),
+			JoinAt: joinAt,
 		}))
+	}
+
+	// createPendingSession persists an unconfirmed session, as the POST token
+	// endpoint would.
+	createPendingSession := func(t *testing.T, p *Plugin, call *public.Call, userID, sessionID string) {
+		t.Helper()
+		createPendingSessionAt(t, p, call, userID, sessionID, time.Now().UnixMilli())
 	}
 
 	send := func(t *testing.T, p *Plugin, event *livekit.WebhookEvent) {
@@ -345,6 +356,98 @@ func TestLiveKitParticipantWebhooks(t *testing.T) {
 		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.Empty(t, sessions)
+	})
+
+	// Room metadata carries host and job state to clients that have no
+	// Mattermost WebSocket. It is only published on change, so the events that
+	// change it have to say so.
+	t.Run("room metadata", func(t *testing.T) {
+		t.Run("the first participant_joined seeds it, later ones do not", func(t *testing.T) {
+			// The token endpoint settles the host before anyone connects, so
+			// without this seed a call whose host never changed again would have
+			// no metadata at all. room_started cannot do it: a room with no
+			// confirmed session has nothing to publish to.
+			p, _, _ := setupPlugin(t)
+			defer ResetTestStore(t, p.store)
+
+			channelID := model.NewId()
+			userID, sessionID := model.NewId(), model.NewId()
+			call := createCall(t, p, channelID)
+			call.Props.Hosts = []string{userID}
+			require.NoError(t, p.store.UpdateCall(call))
+			createPendingSession(t, p, call, userID, sessionID)
+
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(userID, sessionID), "PA_first"))
+
+			require.Equal(t, map[string]struct{}{channelID: {}}, dirtySet(p))
+
+			// And the seed is publishable: the same webhook confirmed the
+			// session, so the room exists by the time the publisher looks.
+			require.ErrorIs(t, p.publishCallRoomMetadata(context.Background(), channelID), errLiveKitNotConfigured)
+
+			p.dirtyCallsMut.Lock()
+			p.dirtyCalls = map[string]struct{}{}
+			p.dirtyCallsMut.Unlock()
+
+			// A second joiner adds nothing: the room already has the metadata and
+			// they receive it on connect. Re-publishing per join would fan an
+			// identical payload out to everyone already in the room.
+			userB, sessionB := model.NewId(), model.NewId()
+			createPendingSession(t, p, call, userB, sessionB)
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(userB, sessionB), "PA_second"))
+
+			require.Empty(t, dirtySet(p))
+		})
+
+		t.Run("a host change on join marks it stale", func(t *testing.T) {
+			p, _, _ := setupPlugin(t)
+			defer ResetTestStore(t, p.store)
+
+			channelID := model.NewId()
+			userID, sessionID := model.NewId(), model.NewId()
+			call := createCall(t, p, channelID)
+			createPendingSession(t, p, call, userID, sessionID)
+
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(userID, sessionID), "PA_first"))
+
+			require.Equal(t, map[string]struct{}{channelID: {}}, dirtySet(p))
+		})
+
+		t.Run("a host change on leave marks it stale", func(t *testing.T) {
+			p, _, _ := setupPlugin(t)
+			defer ResetTestStore(t, p.store)
+
+			channelID := model.NewId()
+			userA, sessionA := model.NewId(), model.NewId()
+			userB, sessionB := model.NewId(), model.NewId()
+			call := createCall(t, p, channelID)
+			now := time.Now().UnixMilli()
+			createPendingSessionAt(t, p, call, userA, sessionA, now)
+			createPendingSessionAt(t, p, call, userB, sessionB, now+1000)
+
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(userA, sessionA), "PA_a"))
+			send(t, p, participantEvent("participant_joined", channelID,
+				composeLivekitIdentity(userB, sessionB), "PA_b"))
+
+			// The premise of the test: A joined first, so A is the host.
+			state, err := p.getCallState(channelID, true)
+			require.NoError(t, err)
+			require.Equal(t, userA, state.Call.GetHostID())
+
+			p.dirtyCallsMut.Lock()
+			p.dirtyCalls = map[string]struct{}{}
+			p.dirtyCallsMut.Unlock()
+
+			// The host leaving hands the role to the remaining participant.
+			send(t, p, participantEvent("participant_left", channelID,
+				composeLivekitIdentity(userA, sessionA), "PA_a"))
+
+			require.Equal(t, map[string]struct{}{channelID: {}}, dirtySet(p))
+		})
 	})
 
 	t.Run("room_finished ends the call with a bot session still present", func(t *testing.T) {
