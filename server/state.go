@@ -407,7 +407,7 @@ func (p *Plugin) cleanCallState(call *public.Call, reason string, endReason call
 	for _, job := range jobs {
 		if job.EndAt == 0 {
 			job.EndAt = time.Now().UnixMilli()
-			if err := p.store.UpdateCallJob(job); err != nil {
+			if err := p.updateCallJob(call.ChannelID, job); err != nil {
 				p.LogError("failed to update call job", "err", err.Error())
 			}
 
