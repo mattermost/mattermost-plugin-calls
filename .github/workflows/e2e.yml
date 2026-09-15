@@ -16,13 +16,14 @@ env:
   COMPOSE_PROJECT_NAME: "${{ github.run_id }}_playwright_1"
   # Control testing parallelism
   PARALLELISM: 1
-  # Pinned Mattermost server release for E2E. We pin to a fixed ESR so that
-  # unrelated changes in mattermost `master` can't turn Calls E2E red — E2E
-  # should surface regressions in Calls, not transient breakage upstream.
+  # Mattermost server version for E2E. Calls requires Mattermost 12 (see
+  # min_server_version), which needs the React 19 host exports and so is only
+  # available on `master` until a release-12.x branch is cut — pin to that
+  # branch once it exists, so upstream churn can't turn Calls E2E red.
   # This single var drives BOTH the server image tag (IMAGE_SERVER) and the
   # mattermost/mattermost checkout ref (used for config generation); the two
-  # must stay in sync. Bump deliberately when a new ESR is designated (~yearly).
-  MM_SERVER_IMAGE_TAG: release-11.7
+  # must stay in sync.
+  MM_SERVER_IMAGE_TAG: master
 
 jobs:
   build-mattermost-plugin-calls:

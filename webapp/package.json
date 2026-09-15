@@ -8,7 +8,7 @@
     "preinstall": "./install_mattermost_webapp.sh",
     "build": "webpack --mode=production",
     "build:watch": "webpack --mode=production --watch",
-    "debug": "webpack --mode=none",
+    "debug": "webpack --mode=development",
     "debug:watch": "webpack --mode=development --watch",
     "lint": "eslint --ext .js,.jsx,.tsx,.ts . --quiet --cache",
     "lint:fix": "eslint --ext .js,.jsx,.tsx,.ts . --quiet --fix --cache",

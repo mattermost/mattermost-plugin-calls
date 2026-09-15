@@ -106,10 +106,10 @@ const VideoDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
                 components={{IndicatorSeparator: () => null}}
                 value={getOption()}
                 onChange={(opt) => {
-                    if (onSelectionChange && opt) {
-                        onSelectionChange(opt);
+                    if (opt) {
+                        onSelectionChange?.(opt);
+                        setSelectedOption(opt);
                     }
-                    setSelectedOption(opt);
                 }}
             />
         </SelectionWrapper>
