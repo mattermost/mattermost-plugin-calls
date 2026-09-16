@@ -509,7 +509,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 			// then the live captioning has started. This can change in the future; if it does, we will
 			// only need to change the backend.
 			lcState.StartAt = time.Now().UnixMilli()
-			if err := p.store.UpdateCallJob(lcState); err != nil {
+			if err := p.updateCallJob(callID, lcState); err != nil {
 				res.Err = fmt.Errorf("failed to update call job: %w", err).Error()
 				res.Code = http.StatusInternalServerError
 				return
@@ -521,7 +521,7 @@ func (p *Plugin) handleBotPostJobsStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := p.store.UpdateCallJob(jb); err != nil {
+	if err := p.updateCallJob(callID, jb); err != nil {
 		res.Err = fmt.Errorf("failed to update call job: %w", err).Error()
 		res.Code = http.StatusInternalServerError
 		return

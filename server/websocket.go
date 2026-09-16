@@ -547,7 +547,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	addSessionToCall := func(state *callState) *callState {
 		var err error
 
-		state, err = p.addUserSession(state, callsEnabled, userID, connID, channelID, joinData.JobID, channel.Type)
+		state, err = p.addUserSession(state, callsEnabled, userID, connID, channelID, joinData.JobID, authSessionID, channel.Type)
 		if err != nil {
 			p.LogError("failed to add user session", "err", err.Error())
 			p.publishWebSocketEvent(wsEventError, map[string]interface{}{
@@ -1107,7 +1107,7 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 		)
 		state.Recording.Props.BotConnID = connID
 
-		if err := p.store.UpdateCallJob(state.Recording); err != nil {
+		if err := p.updateCallJob(channelID, state.Recording); err != nil {
 			return fmt.Errorf("failed to update call job: %w", err)
 		}
 	} else if state != nil && state.Transcription != nil && state.Transcription.Props.BotConnID == prevConnID {
@@ -1118,12 +1118,12 @@ func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channe
 			"botConnID", connID,
 		)
 		state.Transcription.Props.BotConnID = connID
-		if err := p.store.UpdateCallJob(state.Transcription); err != nil {
+		if err := p.updateCallJob(channelID, state.Transcription); err != nil {
 			return fmt.Errorf("failed to update call job: %w", err)
 		}
 		if state.LiveCaptions != nil && state.LiveCaptions.Props.BotConnID == prevConnID {
 			state.LiveCaptions.Props.BotConnID = connID
-			if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
+			if err := p.updateCallJob(channelID, state.LiveCaptions); err != nil {
 				return fmt.Errorf("failed to update call job: %w", err)
 			}
 		}
