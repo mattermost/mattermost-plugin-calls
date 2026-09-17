@@ -175,6 +175,7 @@ import {
     shouldRenderDesktopWidget,
 } from './utils';
 import {
+    applyCallHostChanged,
     applyCallJobState,
     dispatchReaction,
     handleCallEnd,

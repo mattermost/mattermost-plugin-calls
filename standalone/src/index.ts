@@ -37,6 +37,7 @@ import {
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
 import {
+    applyCallHostChanged,
     applyCallJobState,
     dispatchReaction,
 } from 'plugin/websocket_handlers';
