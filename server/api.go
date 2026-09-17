@@ -731,8 +731,8 @@ func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, 
 
 // handlePhoneCall dials an external phone number via LiveKit SIP and joins the
 // remote party to a call hosted on the requesting user's DM channel with the
-// Calls bot. LiveKit auto-creates the room on demand, so we dial in a goroutine
-// without waiting for the user's own join flow to create the room first.
+// Calls bot. The call record is created by handleCreateLiveKitSession before
+// this endpoint is called, so the SIP leg always dials into a known-good state.
 func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handlePhoneCall", &res, w, r)
@@ -799,16 +799,34 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	}
 	channelID := dmChannel.Id
 
-	go func() {
-		if err := p.createSIPParticipant(trunkID, number, channelID, req.Number); err != nil {
-			p.LogError("handlePhoneCall: failed to create SIP participant",
-				"err", err.Error(), "number", number, "channelID", channelID)
-		}
-	}()
+	// Dial synchronously so a failed dial reaches the caller as an error rather
+	// than a silently-logged goroutine failure. We don't set WaitUntilAnswered,
+	// so LiveKit returns once the SIP leg is created rather than once the callee
+	// picks up.
+	info, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
+	if err != nil {
+		p.LogError("handlePhoneCall: failed to create SIP participant",
+			"err", err.Error(), "number", number, "channelID", channelID)
+		res.Err = "failed to dial number"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	// The client creates/joins the call before dialing, so read from the writer:
+	// the call row may be younger than the replication lag.
+	var callID string
+	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		p.LogError("handlePhoneCall: failed to get active call", "err", err.Error(), "channelID", channelID)
+	} else if call != nil {
+		callID = call.ID
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
-		"channel_id": channelID,
+		"call_id":     callID,
+		"channel_id":  channelID,
+		"sip_call_id": info.GetSipCallId(),
 	}); err != nil {
 		p.LogError("failed to encode phone-call response", "err", err.Error())
 	}
