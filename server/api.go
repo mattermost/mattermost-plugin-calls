@@ -1040,7 +1040,20 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 	}
 	state.sessions[sid] = session
 
-	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
+	// Compute the host change now (while sessions includes the new SIP participant)
+	// but defer applying it until after the DB write so a CreateCallSession failure
+	// cannot leave state.Call.Props.Hosts inconsistent with the DB.
+	newHostID := state.getHostID(p.getBotID())
+	hostChanged := newHostID != state.Call.GetHostID()
+
+	if err := p.store.CreateCallSession(session); err != nil {
+		p.LogError("handleLiveKitSIPParticipantJoined: failed to create call session",
+			"channelID", channelID, "err", err.Error())
+		delete(state.sessions, sid)
+		return
+	}
+
+	if hostChanged {
 		p.setCallHost(state, channelID, newHostID)
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 			"hostID":  newHostID,
@@ -1053,13 +1066,6 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 	}
 
 	p.markCallDirtyOnFirstParticipant(state, channelID)
-
-	if err := p.store.CreateCallSession(session); err != nil {
-		p.LogError("handleLiveKitSIPParticipantJoined: failed to create call session",
-			"channelID", channelID, "err", err.Error())
-		delete(state.sessions, sid)
-		return
-	}
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("handleLiveKitSIPParticipantJoined: failed to update call",
