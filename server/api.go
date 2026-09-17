@@ -1221,11 +1221,11 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 		teamID = teams[0].Id
 	}
 
-	if p.botSession == nil {
+	botID := p.getBotID()
+	if botID == "" {
 		http.Error(w, "Bot user not available", http.StatusInternalServerError)
 		return
 	}
-	botID := p.botSession.UserId
 
 	dmChannel, appErr := p.API.GetDirectChannel(userID, botID)
 	if appErr != nil {
