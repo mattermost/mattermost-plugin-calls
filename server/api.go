@@ -1280,9 +1280,6 @@ type livekitSessionResponse struct {
 // The row starts unconfirmed (ConfirmedAt == 0): it becomes visible to the
 // channel only once LiveKit reports the participant connected, so a token that
 // is minted but never used leaves nothing in the participant list.
-//
-// Nothing calls this yet — the clients still join over the Calls WebSocket. See
-// MM-69502.
 func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleCreateLiveKitSession", &res, w, r)
@@ -1381,6 +1378,20 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 		res.Code = http.StatusInternalServerError
 		return
 	}
+
+	// The call-started post, the ringing deadline and the call_start broadcast are
+	// owed to observers and to the caller's own UI, none of which are in the
+	// LiveKit room, so they cannot wait on a participant_joined webhook. This is
+	// also the only place that still holds the title.
+	// Keyed on being the first session rather than on createdCall: an active call
+	// whose sessions were all reaped would otherwise never announce.
+	if len(state.sessions) == 1 {
+		p.announceCallStarted(state, userID, req.ChannelID, req.Title, req.ThreadID, channel.Type)
+	}
+
+	p.cancelDMNoAnswerTimerIfAnswered(state, userID, req.ChannelID, channel.Type)
+
+	p.maybeSendConcurrentSessionsWarning()
 
 	p.LogInfo("livekit session created",
 		"callID", state.Call.ID,

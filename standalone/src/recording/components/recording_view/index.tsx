@@ -11,6 +11,7 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {CALL_EVENT} from 'src/clients/call';
+import type {ScreenSharingSession} from 'src/clients/call/types';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import Timestamp from 'src/components/timestamp';
@@ -59,8 +60,11 @@ const RecordingView = () => {
         }
 
         setScreenStream(callsClient.getRemoteScreenStream());
-        callsClient.on(CALL_EVENT.REMOTE_SCREEN_STREAM, (stream: MediaStream) => {
-            setScreenStream(stream);
+
+        // One derived sharer, which also clears when sharing stops — the recorder
+        // previously only handled the ON event and never cleared.
+        callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
+            setScreenStream(session?.stream ?? null);
         });
 
         attachVoiceTracks(callsClient.getRemoteVoiceTracks());

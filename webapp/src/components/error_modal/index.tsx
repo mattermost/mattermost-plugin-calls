@@ -4,14 +4,14 @@
 import React, {ComponentProps} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {
+    HostRemovedYouFromCallErr,
     insecureContextErr,
     rtcPeerCloseErr,
     rtcPeerErr,
     rtcPeerTimeoutErr,
     userLeftChannelErr,
     userRemovedFromChannelErr,
-} from 'src/clients/calls';
-import {HostRemovedYouFromCallErr} from 'src/components/error_modal/error_messages';
+} from 'src/components/error_modal/error_messages';
 import {
     ColumnContainer,
     FooterContainer,

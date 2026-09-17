@@ -726,6 +726,85 @@ func (p *Plugin) stopOngoingJobs(state *callState, channelID string) {
 	}
 }
 
+// announceCallStarted performs the side effects owed to a brand new call: the
+// call-started post, the DM ringing deadline and the channel-wide call_start
+// broadcast. Split out of handleJoin so the HTTP join path
+// (handleCreateLiveKitSession) performs them too — without this a call started
+// over HTTP has no post, no banner for observers and no ringing.
+//
+// The caller must hold the channel lock and have already created the call.
+func (p *Plugin) announceCallStarted(state *callState, userID, channelID, title, threadID string, channelType model.ChannelType) {
+	// In TestMode (DefaultEnabled=false) a sysadmin is the only one who can get
+	// this far, so tell them why nobody else can.
+	if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
+		p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+		p.API.SendEphemeralPost(
+			userID,
+			&model.Post{
+				UserId:    p.botSession.UserId,
+				ChannelId: channelID,
+				Message:   "Currently calls are not enabled for non-admin users. You can change the setting through the system console",
+			},
+		)
+	}
+
+	postID, threadID, err := p.createCallStartedPost(state, userID, channelID, title, threadID, channelType)
+	if err != nil {
+		p.LogError(err.Error())
+	}
+
+	state.Call.PostID = postID
+	state.Call.ThreadID = threadID
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		p.LogError(err.Error())
+	}
+
+	// A DM call rings, so it needs a deadline: if nobody picks up we cancel it rather than
+	// leave the caller listening to a call that will never be answered.
+	if p.isDMCallChannel(channelType, channelID) {
+		p.startDMNoAnswerTimer(channelID, state.Call.ID)
+	}
+
+	p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
+		"id":        state.Call.ID,
+		"channelID": channelID,
+		"start_at":  state.Call.StartAt,
+		"thread_id": threadID,
+		"post_id":   postID,
+		"owner_id":  state.Call.OwnerID,
+		"host_id":   state.Call.GetHostID(),
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+}
+
+// cancelDMNoAnswerTimerIfAnswered clears the DM ringing deadline once a second
+// person is in the call, which is what "answered" means for a DM.
+//
+// Checked on every join, not just the second one, so a reconnect or a second
+// device can't leave a stale timer running. Pending sessions count: a client
+// that has minted a session is committed to joining, so the caller should stop
+// hearing ringback then rather than a webhook round trip later.
+//
+// The caller must hold the channel lock.
+func (p *Plugin) cancelDMNoAnswerTimerIfAnswered(state *callState, userID, channelID string, channelType model.ChannelType) {
+	if !p.isBot(userID) && p.isDMCallChannel(channelType, channelID) &&
+		len(state.distinctNonBotUserIDs(p.getBotID())) >= 2 {
+		p.cancelDMNoAnswerTimer(channelID)
+	}
+}
+
+// maybeSendConcurrentSessionsWarning notifies admins when the deployment is
+// running more concurrent sessions than the configured threshold.
+func (p *Plugin) maybeSendConcurrentSessionsWarning() {
+	if ok, err := p.shouldSendConcurrentSessionsWarning(getConcurrentSessionsThreshold(),
+		getConcurrentSessionsWarningBackoffTime()); err != nil {
+		p.LogError("shouldSendConcurrentSessionsWarning failed", "err", err.Error())
+	} else if ok {
+		if err := p.sendConcurrentSessionsWarning(); err != nil {
+			p.LogError("sendConcurrentSessionsWarning failed", "err", err.Error())
+		}
+	}
+}
+
 // callEndReason reports what the call post should say happened when the last
 // participant leaves. A DM call that only ever had the caller in it was never
 // answered, so hanging up cancelled it rather than ended it.

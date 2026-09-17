@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -312,11 +313,21 @@ func (p *Plugin) UserHasLeftChannel(_ *plugin.Context, cm *model.ChannelMember, 
 	}
 
 	// Remove call session(s) for the user who left the channel.
-	// LiveKit handles its own media cleanup when participants disconnect.
 	for connID, session := range state.sessions {
 		if session.UserID == cm.UserId {
 			p.LogDebug("UserHasLeftChannel: removing session for user who left channel",
 				"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
+
+			// Evicting the participant is what actually ends their call: their
+			// client sees RoomEvent.Disconnected and tears down, and the resulting
+			// participant_left webhook deletes the session row. This is the only
+			// path for a client with no Calls WebSocket, where the p.sessions
+			// lookup below finds nothing.
+			if err := p.livekitRemoveParticipant(cm.ChannelId, composeLivekitIdentity(session.UserID, connID)); err != nil &&
+				!errors.Is(err, errLiveKitNotConfigured) {
+				p.LogError("UserHasLeftChannel: failed to remove LiveKit participant", "err", err.Error(),
+					"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
+			}
 
 			us := p.getSessionByOriginalID(connID)
 			if us != nil {

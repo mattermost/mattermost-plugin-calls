@@ -557,56 +557,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			return state
 		} else if len(state.sessions) == 1 {
 			// new call has started
-
-			// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
-			if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
-				p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-				p.API.SendEphemeralPost(
-					userID,
-					&model.Post{
-						UserId:    p.botSession.UserId,
-						ChannelId: channelID,
-						Message:   "Currently calls are not enabled for non-admin users. You can change the setting through the system console",
-					},
-				)
-			}
-
-			postID, threadID, err := p.createCallStartedPost(state, userID, channelID, joinData.Title, joinData.ThreadID, channel.Type)
-			if err != nil {
-				p.LogError(err.Error())
-			}
-
-			state.Call.PostID = postID
-			state.Call.ThreadID = threadID
-			if err := p.store.UpdateCall(&state.Call); err != nil {
-				p.LogError(err.Error())
-			}
-
-			// A DM call rings, so it needs a deadline: if nobody picks up we cancel it rather than
-			// leave the caller listening to a call that will never be answered.
-			if p.isDMCallChannel(channel.Type, channelID) {
-				p.startDMNoAnswerTimer(channelID, state.Call.ID)
-			}
-
-			// TODO: send all the info attached to a call.
-			p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
-				"id":        state.Call.ID,
-				"channelID": channelID,
-				"start_at":  state.Call.StartAt,
-				"thread_id": threadID,
-				"post_id":   postID,
-				"owner_id":  state.Call.OwnerID,
-				"host_id":   state.Call.GetHostID(),
-			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+			p.announceCallStarted(state, userID, channelID, joinData.Title, joinData.ThreadID, channel.Type)
 		}
 
-		// The DM call has been answered once a second person is in it, so the no-answer deadline
-		// no longer applies. Checked on every join, not just the second one, so a reconnect or a
-		// second device can't leave a stale timer running.
-		if !p.isBot(userID) && p.isDMCallChannel(channel.Type, channelID) &&
-			len(state.distinctNonBotUserIDs(p.getBotID())) >= 2 {
-			p.cancelDMNoAnswerTimer(channelID)
-		}
+		p.cancelDMNoAnswerTimerIfAnswered(state, userID, channelID, channel.Type)
 
 		p.LogDebug("session has joined call",
 			"userID", userID, "sessionID", connID, "channelID", channelID, "callID", state.Call.ID,
@@ -618,14 +572,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		p.sessions[connID] = us
 		p.mut.Unlock()
 
-		if ok, err := p.shouldSendConcurrentSessionsWarning(getConcurrentSessionsThreshold(),
-			getConcurrentSessionsWarningBackoffTime()); err != nil {
-			p.LogError("shouldSendConcurrentSessionsWarning failed", "err", err.Error())
-		} else if ok {
-			if err := p.sendConcurrentSessionsWarning(); err != nil {
-				p.LogError("sendConcurrentSessionsWarning failed", "err", err.Error())
-			}
-		}
+		p.maybeSendConcurrentSessionsWarning()
 
 		// send successful join response
 		p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{

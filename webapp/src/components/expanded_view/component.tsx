@@ -20,6 +20,7 @@ import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
+import type {ScreenSharingSession} from 'src/clients/call/types';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
@@ -141,6 +142,8 @@ interface Props extends RouteComponentProps {
     userLoweredHand: (channelID: string, sessionID: string, userID: string) => void;
     userReacted: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
     userReactedTimeout: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
+    userScreenShared: (channelID: string, sessionID: string, userID: string) => void;
+    userScreenUnshared: (channelID: string, sessionID: string, userID: string) => void;
 }
 
 interface State {
@@ -703,21 +706,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.callClientUnsubscribers.push(() => callsClient.off(event, handler));
         };
 
-        onClient(CALL_EVENT.REMOTE_SCREEN_STREAM, (stream: MediaStream) => {
-            this.setState({
-                screenStream: stream,
-            });
-        });
-        onClient(CALL_EVENT.LOCAL_SCREEN_STREAM, (stream: MediaStream) => {
-            this.setState({
-                screenStream: stream,
-            });
-        });
-        onClient(CALL_EVENT.LOCAL_SCREEN_STREAM_OFF, () => {
-            this.setState({screenStream: null});
-        });
-        onClient(CALL_EVENT.REMOTE_SCREEN_STREAM_OFF, () => {
-            this.setState({screenStream: null});
+        // One derived sharer covers local and remote alike. The stream is null
+        // while a remote share is announced but not yet subscribed, and a
+        // follow-up emission fills it in.
+        onClient(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
+            this.setState({screenStream: session?.stream ?? null});
         });
         onClient(CALL_EVENT.MUTE, (sessionID: string, userID: string) => {
             this.props.userMuted(callsClient.channelID, sessionID, userID);
@@ -731,6 +724,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         // USERS_VOICE_ACTIVITY_CHANGED in its own index.tsx — gate on
         // window.opener so we don't double-dispatch in the inline case.
         if (window.opener) {
+            onClient(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
+                if (session) {
+                    this.props.userScreenShared(callsClient.channelID, session.sessionID, session.userID);
+                } else {
+                    this.props.userScreenUnshared(callsClient.channelID, '', '');
+                }
+            });
             onClient(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {
                 this.props.joinUser(callsClient.channelID, userID, sessionID, Boolean(isFromInitialSync));
             });

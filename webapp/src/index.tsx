@@ -2,13 +2,13 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
-import {CallChannelState, EmojiData} from '@mattermost/calls-common/lib/types';
+import {CallChannelState, CallJobState, CallState, EmojiData} from '@mattermost/calls-common/lib/types';
 import {WebSocketClient} from '@mattermost/client';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
+import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
@@ -30,6 +30,7 @@ import {
     incomingCallOnChannel,
     joinUser,
     leaveUser,
+    loadCallState,
     loadProfilesByIdsIfMissing,
     localSessionClose,
     openCallsUserSettings,
@@ -40,6 +41,7 @@ import {
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import CallClient, {CALL_EVENT} from 'src/clients/call';
+import type {ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
@@ -100,9 +102,9 @@ import VideoDevicesSettingsSection from 'src/components/user_settings/video_devi
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
+import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {CurrentCallDataDefault} from 'src/types/types';
-import {getWSConnectionURL} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 
 import {
@@ -137,6 +139,7 @@ import {
     channelIDForCurrentCall,
     clientConnecting,
     defaultEnabled,
+    getCallIDForChannel,
     hasPermissionsToEnableCalls,
     hostIDForCallInChannel,
     isCloudStarter,
@@ -161,6 +164,8 @@ import {
     shouldRenderDesktopWidget,
 } from './utils';
 import {
+    applyCallHostChanged,
+    applyCallJobState,
     dispatchReaction,
     handleCallEnd,
     handleCallHostChanged,
@@ -657,11 +662,8 @@ export default class Plugin {
                 }
 
                 const state = store.getState();
-                const websocketURLInConfig = getConfig(state)?.WebsocketURL ?? '';
 
-                window.callsClient = new CallClient({
-                    websocketURL: getWSConnectionURL(websocketURLInConfig),
-                });
+                window.callsClient = new CallClient();
                 window.currentCallData = {...CurrentCallDataDefault};
 
                 const locale = getCurrentUserLocale(state) || 'en';
@@ -771,6 +773,35 @@ export default class Plugin {
                         emoji,
                         timestamp,
                     });
+                });
+
+                // The snapshot returned by the join request, which replaces the
+                // call_state the Calls WebSocket used to push on join.
+                window.callsClient.on(CALL_EVENT.CALL_STATE, (callState: CallState) => {
+                    store.dispatch(loadCallState(window.callsClient?.channelID ?? '', callState));
+                });
+
+                // Host and job state arrive over LiveKit room metadata. Observers
+                // still get them over the main WebSocket, which is why the server
+                // publishes both.
+                window.callsClient.on(CALL_EVENT.HOST_CHANGED, (hostID: string) => {
+                    const callChannelID = window.callsClient?.channelID ?? '';
+                    applyCallHostChanged(store, callChannelID, hostID, getCallIDForChannel(store.getState(), callChannelID));
+                });
+
+                window.callsClient.on(CALL_EVENT.JOB_STATE, (jobState: CallJobState) => {
+                    // Job state is keyed on the channel id, matching the callID the
+                    // server sends on the call_job_state broadcast.
+                    applyCallJobState(store, window.callsClient?.channelID ?? '', jobState);
+                });
+
+                window.callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
+                    const callChannelID = window.callsClient?.channelID ?? '';
+                    if (session) {
+                        store.dispatch(userScreenShared(callChannelID, session.sessionID, session.userID));
+                    } else {
+                        store.dispatch(userScreenUnshared(callChannelID, '', ''));
+                    }
                 });
 
                 store.dispatch(setClientConnecting(true));
