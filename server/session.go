@@ -742,7 +742,7 @@ func (p *Plugin) announceCallStarted(state *callState, userID, channelID, title,
 		p.API.SendEphemeralPost(
 			userID,
 			&model.Post{
-				UserId:    p.botSession.UserId,
+				UserId:    p.getBotID(),
 				ChannelId: channelID,
 				Message:   "Currently calls are not enabled for non-admin users. You can change the setting through the system console",
 			},
