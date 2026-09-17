@@ -919,13 +919,24 @@ func (p *Plugin) isPhoneCallChannel(channelID string) bool {
 		p.LogError("isPhoneCallChannel: failed to get channel", "channelID", channelID, "err", appErr.Error())
 		return false
 	}
+	return p.isPhoneCallChannelFromChannel(channel)
+}
+
+// isPhoneCallChannelFromChannel is isPhoneCallChannel for callers that already
+// hold the channel object, avoiding the redundant GetChannel DB call.
+func (p *Plugin) isPhoneCallChannelFromChannel(channel *model.Channel) bool {
 	if channel.Type != model.ChannelTypeDirect {
 		return false
 	}
 
-	members, appErr := p.API.GetChannelMembers(channelID, 0, 10)
+	botID := p.getBotID()
+	if botID == "" {
+		return false
+	}
+
+	members, appErr := p.API.GetChannelMembers(channel.Id, 0, 10)
 	if appErr != nil {
-		p.LogError("isPhoneCallChannel: failed to get channel members", "channelID", channelID, "err", appErr.Error())
+		p.LogError("isPhoneCallChannel: failed to get channel members", "channelID", channel.Id, "err", appErr.Error())
 		return false
 	}
 	for _, m := range members {

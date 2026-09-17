@@ -431,6 +431,10 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 	}
 
+	// isPhoneCall is computed lazily by the SIP-teardown check below; the result
+	// is cached so the DM auto-end check can reuse it without an extra DB lookup.
+	isPhoneCall, isPhoneCallKnown := false, false
+
 	// Outbound phone calls (bot-DM containers) are 1:1: once the last human
 	// leaves, any lingering SIP participant has no one to talk to. Hang up the
 	// phone by deleting the LiveKit room (which sends a SIP BYE) and drop the SIP
@@ -439,25 +443,29 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// The empty-sessions case handles deployments where LiveKit webhooks cannot
 	// reach Mattermost (e.g. local dev against LiveKit Cloud): the SIP session is
 	// never registered, but the room still exists and must be torn down explicitly.
-	if (onlySIPParticipantsRemain(state.sessions) || len(state.sessions) == 0) && p.isPhoneCallChannel(channelID) {
-		p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
-			"callID", state.Call.ID, "channelID", channelID)
+	if onlySIPParticipantsRemain(state.sessions) || len(state.sessions) == 0 {
+		isPhoneCall = p.isPhoneCallChannel(channelID)
+		isPhoneCallKnown = true
+		if isPhoneCall {
+			p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
+				"callID", state.Call.ID, "channelID", channelID)
 
-		// livekitDeleteRoom is a network call; run it outside the call lock to
-		// avoid blocking concurrent webhook handlers for up to its 5s timeout.
-		go func() {
-			if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-				p.LogError("removeUserSession: failed to delete LiveKit room",
-					"channelID", channelID, "err", err.Error())
-			}
-		}()
+			// livekitDeleteRoom is a network call; run it outside the call lock to
+			// avoid blocking concurrent webhook handlers for up to its 5s timeout.
+			go func() {
+				if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+					p.LogError("removeUserSession: failed to delete LiveKit room",
+						"channelID", channelID, "err", err.Error())
+				}
+			}()
 
-		for sid := range state.sessions {
-			if err := p.store.DeleteCallSession(sid); err != nil {
-				p.LogError("removeUserSession: failed to delete SIP session",
-					"channelID", channelID, "sid", sid, "err", err.Error())
+			for sid := range state.sessions {
+				if err := p.store.DeleteCallSession(sid); err != nil {
+					p.LogError("removeUserSession: failed to delete SIP session",
+						"channelID", channelID, "sid", sid, "err", err.Error())
+				}
+				delete(state.sessions, sid)
 			}
-			delete(state.sessions, sid)
 		}
 	}
 
@@ -471,12 +479,18 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		channel, appErr := p.API.GetChannel(channelID)
 		if appErr != nil {
 			p.LogError("failed to get channel for DM auto-end check", "err", appErr.Error(), "channelID", channelID)
-		} else if p.isDMCallChannel(channel.Type, channelID) {
-			p.LogInfo("DM auto-end: participant left, ending call",
-				"callID", state.Call.ID, "channelID", channelID, "userID", userID)
+		} else {
+			if !isPhoneCallKnown {
+				// Reuse the already-fetched channel to avoid a second GetChannel call.
+				isPhoneCall = p.isPhoneCallChannelFromChannel(channel)
+			}
+			if channel.Type == model.ChannelTypeDirect && !isPhoneCall {
+				p.LogInfo("DM auto-end: participant left, ending call",
+					"callID", state.Call.ID, "channelID", channelID, "userID", userID)
 
-			// endDMCallRoom is a network call; run it outside the call lock.
-			go p.endDMCallRoom("removeUserSession", channelID)
+				// endDMCallRoom is a network call; run it outside the call lock.
+				go p.endDMCallRoom("removeUserSession", channelID)
+			}
 		}
 	}
 
