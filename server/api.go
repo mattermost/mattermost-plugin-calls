@@ -722,6 +722,12 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if allowedTeams := cfg.outboundAllowedTeams(); !p.isUserInAllowedTeams(userID, allowedTeams) {
+		res.Err = "user is not a member of a team permitted to place outbound calls"
+		res.Code = http.StatusForbidden
+		return
+	}
+
 	botID := p.getBotID()
 	if botID == "" {
 		res.Err = "bot not initialized"

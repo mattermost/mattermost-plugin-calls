@@ -277,3 +277,65 @@ func TestConfigurationWillBeSaved(t *testing.T) {
 		require.Contains(t, appErr.Message, "MaxCallParticipants is not valid")
 	})
 }
+
+func TestOutboundAllowedTeams(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{"empty returns nil", "", nil},
+		{"single name", "sales", []string{"sales"}},
+		{"semicolon separated", "sales;engineering", []string{"sales", "engineering"}},
+		{"comma separated", "sales,engineering", []string{"sales", "engineering"}},
+		{"mixed separators", "sales;engineering,support", []string{"sales", "engineering", "support"}},
+		{"whitespace trimmed", "  sales ; engineering ", []string{"sales", "engineering"}},
+		{"uppercased normalized", "Sales;ENGINEERING", []string{"sales", "engineering"}},
+		{"empty segments skipped", "sales;;engineering", []string{"sales", "engineering"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &configuration{LiveKitSIPOutboundAllowedTeams: tc.input}
+			require.Equal(t, tc.expected, cfg.outboundAllowedTeams())
+		})
+	}
+}
+
+func TestIsUserInAllowedTeams(t *testing.T) {
+	setup := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI) {
+		t.Helper()
+		mockAPI := &pluginMocks.MockAPI{}
+		p := &Plugin{MattermostPlugin: plugin.MattermostPlugin{API: mockAPI}}
+		return p, mockAPI
+	}
+
+	t.Run("empty allowed list permits anyone", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		require.True(t, p.isUserInAllowedTeams("user1", nil))
+	})
+
+	t.Run("member of allowed team returns true", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		mockAPI.On("GetTeamsForUser", "user1").Return([]*model.Team{{Name: "sales"}, {Name: "engineering"}}, nil)
+		require.True(t, p.isUserInAllowedTeams("user1", []string{"sales"}))
+	})
+
+	t.Run("not a member of any allowed team returns false", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		mockAPI.On("GetTeamsForUser", "user1").Return([]*model.Team{{Name: "finance"}}, nil)
+		require.False(t, p.isUserInAllowedTeams("user1", []string{"sales", "engineering"}))
+	})
+
+	t.Run("API error returns false", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		mockAPI.On("GetTeamsForUser", "user1").Return(nil, &model.AppError{Message: "db error"})
+		mockAPI.On("LogError", "isUserInAllowedTeams: failed to get teams",
+			"origin", mock.AnythingOfType("string"),
+			"userID", "user1", "err", "db error").Return()
+		require.False(t, p.isUserInAllowedTeams("user1", []string{"sales"}))
+	})
+}

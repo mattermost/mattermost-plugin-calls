@@ -62,6 +62,9 @@ type configuration struct {
 	EnableSIPOutboundAllowlist *bool
 	// Newline-separated list of E.164 phone numbers permitted for outbound dialing when the allowlist is enabled.
 	SIPOutboundAllowlist string
+	// Semicolon/comma-separated list of team URL-names whose members may place outbound phone calls.
+	// Empty means all authenticated users may dial.
+	LiveKitSIPOutboundAllowedTeams string
 	// When set to true live captions will be enabled when starting transcription jobs.
 	EnableLiveCaptions *bool
 	// The speech-to-text model size to use to transcribe live captions.
@@ -261,6 +264,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
 	cfg.LiveKitSIPOutboundTrunkID = c.LiveKitSIPOutboundTrunkID
 	cfg.SIPOutboundAllowlist = c.SIPOutboundAllowlist
+	cfg.LiveKitSIPOutboundAllowedTeams = c.LiveKitSIPOutboundAllowedTeams
 
 	// AllowEnableCalls is always true
 	cfg.AllowEnableCalls = model.NewPointer(true)
@@ -593,6 +597,7 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.JobServiceURL = strings.TrimSpace(cfg.JobServiceURL)
 	cfg.LiveKitURL = strings.TrimSpace(cfg.LiveKitURL)
 	cfg.LiveKitSIPOutboundTrunkID = strings.TrimSpace(cfg.LiveKitSIPOutboundTrunkID)
+	cfg.LiveKitSIPOutboundAllowedTeams = strings.TrimSpace(cfg.LiveKitSIPOutboundAllowedTeams)
 }
 
 func (c *configuration) sipOutboundAllowlistEnabled() bool {
@@ -606,6 +611,49 @@ func (c *configuration) sipOutboundAllowlistEnabled() bool {
 func (c *configuration) isNumberInAllowlist(number string) bool {
 	for _, entry := range strings.Split(c.SIPOutboundAllowlist, "\n") {
 		if normalizePhoneNumber(entry) == number {
+			return true
+		}
+	}
+	return false
+}
+
+// outboundAllowedTeams parses LiveKitSIPOutboundAllowedTeams (semicolon/comma
+// separated) and returns a lowercase set of team URL-names. An empty slice
+// means no restriction (all users may dial).
+func (c *configuration) outboundAllowedTeams() []string {
+	if c.LiveKitSIPOutboundAllowedTeams == "" {
+		return nil
+	}
+	raw := strings.FieldsFunc(c.LiveKitSIPOutboundAllowedTeams, func(r rune) bool {
+		return r == ';' || r == ','
+	})
+	names := make([]string, 0, len(raw))
+	for _, name := range raw {
+		if t := strings.ToLower(strings.TrimSpace(name)); t != "" {
+			names = append(names, t)
+		}
+	}
+	return names
+}
+
+// isUserInAllowedTeams returns true when the user is a member of at least one
+// team in the allowed list. It returns true unconditionally when the list is
+// empty (no restriction configured). Unknown team names are logged and skipped.
+func (p *Plugin) isUserInAllowedTeams(userID string, allowedNames []string) bool {
+	if len(allowedNames) == 0 {
+		return true
+	}
+	allowed := make(map[string]bool, len(allowedNames))
+	for _, n := range allowedNames {
+		allowed[n] = true
+	}
+	teams, appErr := p.API.GetTeamsForUser(userID)
+	if appErr != nil {
+		p.LogError("isUserInAllowedTeams: failed to get teams", "userID", userID, "err", appErr.Error())
+		return false
+	}
+	for _, team := range teams {
+		if allowed[team.Name] {
 			return true
 		}
 	}
