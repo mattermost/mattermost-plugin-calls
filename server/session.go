@@ -443,10 +443,14 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
 			"callID", state.Call.ID, "channelID", channelID)
 
-		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-			p.LogError("removeUserSession: failed to delete LiveKit room",
-				"channelID", channelID, "err", err.Error())
-		}
+		// livekitDeleteRoom is a network call; run it outside the call lock to
+		// avoid blocking concurrent webhook handlers for up to its 5s timeout.
+		go func() {
+			if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+				p.LogError("removeUserSession: failed to delete LiveKit room",
+					"channelID", channelID, "err", err.Error())
+			}
+		}()
 
 		for sid := range state.sessions {
 			if err := p.store.DeleteCallSession(sid); err != nil {
@@ -471,7 +475,8 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			p.LogInfo("DM auto-end: participant left, ending call",
 				"callID", state.Call.ID, "channelID", channelID, "userID", userID)
 
-			p.endDMCallRoom("removeUserSession", channelID)
+			// endDMCallRoom is a network call; run it outside the call lock.
+			go p.endDMCallRoom("removeUserSession", channelID)
 		}
 	}
 

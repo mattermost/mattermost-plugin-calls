@@ -310,7 +310,12 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("failed to lock call: %w", err)
 	}
-	defer p.unlockCall(channelID)
+	unlocked := false
+	defer func() {
+		if !unlocked {
+			p.unlockCall(channelID)
+		}
+	}()
 
 	if state == nil {
 		return http.StatusBadRequest, fmt.Errorf("no call ongoing")
@@ -334,6 +339,13 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 
 	p.cancelDMNoAnswerTimer(channelID)
 
+	if err := p.cleanCallState(&state.Call, "dm_declined", callEndReasonDeclined); err != nil {
+		return http.StatusInternalServerError, fmt.Errorf("failed to clean call state: %w", err)
+	}
+
+	unlocked = true
+	p.unlockCall(channelID)
+
 	p.endDMCallRoom("declineCall", channelID)
 
 	p.LogInfo("DM call was declined",
@@ -355,10 +367,6 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 		"userID": userID,
 		"callID": callID,
 	}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
-
-	if err := p.cleanCallState(&state.Call, "dm_declined", callEndReasonDeclined); err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("failed to clean call state: %w", err)
-	}
 
 	return http.StatusOK, nil
 }

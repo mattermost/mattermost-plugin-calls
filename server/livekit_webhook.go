@@ -260,10 +260,14 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 		p.LogInfo("handleLiveKitParticipantLeft: last human left phone call, hanging up SIP",
 			"callID", state.Call.ID, "channelID", channelID)
 
-		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-			p.LogError("handleLiveKitParticipantLeft: failed to delete LiveKit room",
-				"channelID", channelID, "err", err.Error())
-		}
+		// livekitDeleteRoom is a network call; run it outside the call lock to
+		// avoid blocking concurrent webhook handlers for up to its 5s timeout.
+		go func() {
+			if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+				p.LogError("handleLiveKitParticipantLeft: failed to delete LiveKit room",
+					"channelID", channelID, "err", err.Error())
+			}
+		}()
 		for sid := range state.sessions {
 			if err := p.store.DeleteCallSession(sid); err != nil {
 				p.LogError("handleLiveKitParticipantLeft: failed to delete SIP session",
