@@ -164,6 +164,8 @@ func (p *Plugin) OnActivate() (retErr error) {
 	p.publisherWg.Add(1)
 	go p.roomMetadataPublisher()
 
+	go p.reconciler()
+
 	p.LogDebug("activated", "ClusterID", status.ClusterId)
 
 	return nil
