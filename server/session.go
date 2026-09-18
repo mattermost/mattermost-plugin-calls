@@ -793,6 +793,21 @@ func (p *Plugin) cancelDMNoAnswerTimerIfAnswered(state *callState, userID, chann
 	}
 }
 
+// rollbackSession undoes the persistence side-effects of a failed join attempt:
+// it deletes the session row, and if this join created the call row (createdCall),
+// deletes that too. Nothing was announced, so this is a plain delete rather than
+// the call-ended path.
+func (p *Plugin) rollbackSession(sessionID, callID string, createdCall bool) {
+	if err := p.store.DeleteCallSession(sessionID); err != nil {
+		p.LogError("rollbackSession: failed to delete call session", "err", err.Error(), "sessionID", sessionID)
+	}
+	if createdCall {
+		if err := p.store.DeleteCall(callID); err != nil {
+			p.LogError("rollbackSession: failed to delete call", "err", err.Error(), "callID", callID)
+		}
+	}
+}
+
 // maybeSendConcurrentSessionsWarning notifies admins when the deployment is
 // running more concurrent sessions than the configured threshold.
 func (p *Plugin) maybeSendConcurrentSessionsWarning() {

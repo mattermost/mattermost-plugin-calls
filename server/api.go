@@ -729,13 +729,171 @@ func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, 
 	return token, lkURL, nil
 }
 
-// handlePhoneCall dials an external phone number via LiveKit SIP and joins the
-// remote party to a call hosted on the requesting user's DM channel with the
-// Calls bot. LiveKit auto-creates the room on demand, so we dial in a goroutine
-// without waiting for the user's own join flow to create the room first.
+// phoneCallResponse is returned by handlePhoneCall. It extends the standard
+// LiveKit session response with the outbound-call identifiers the client needs
+// to log and to correlate with the SIP leg.
+type phoneCallResponse struct {
+	SessionID string `json:"session_id"`
+	Token     string `json:"token"`
+	URL       string `json:"url"`
+	CallID    string `json:"call_id"`
+	ChannelID string `json:"channel_id"`
+	SIPCallID string `json:"sip_call_id"`
+}
+
+// handlePhoneCall is a self-contained outbound-call endpoint: it resolves the
+// bot DM channel, creates a LiveKit session, dials the SIP number, and returns
+// everything the client needs to connect in a single round trip.
 func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handlePhoneCall", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	var req struct {
+		Number string `json:"number"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&req); err != nil {
+		res.Err = "invalid request body"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	number := normalizePhoneNumber(req.Number)
+	if number == "" {
+		res.Err = "number is required"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	cfg := p.getConfiguration()
+	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
+		res.Err = "outbound dialing is disabled. Enable it in the admin console."
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	trunkID := cfg.LiveKitSIPOutboundTrunkID
+	if trunkID == "" {
+		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console."
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if cfg.sipOutboundAllowlistEnabled() && !cfg.isNumberInAllowlist(number) {
+		res.Err = "number is not in the outbound calling allowlist"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	if cfg.getLiveKitURL() == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
+		res.Err = errLiveKitNotConfigured.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	botID := p.getBotID()
+	if botID == "" {
+		res.Err = "bot not initialized"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	// The call is hosted on the user<->bot DM channel. The server resolves it
+	// here so the client needs no prior channel lookup.
+	dmChannel, appErr := p.API.GetDirectChannel(userID, botID)
+	if appErr != nil {
+		res.Err = fmt.Errorf("failed to get bot DM channel: %w", appErr).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	channelID := dmChannel.Id
+
+	sessionID := model.NewId()
+
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		p.LogError("handlePhoneCall: failed to lock call", "err", err.Error(), "channelID", channelID)
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer p.unlockCall(channelID)
+
+	createdCall := state == nil
+
+	// callsEnabled is intentionally nil: the bot DM channel has no per-channel
+	// enable/disable setting, and the SIP config checks above already gate access.
+	state, err = p.addUserSession(state, nil, userID, sessionID, channelID, "", authSessionIDFromRequest(r), dmChannel.Type)
+	if err != nil {
+		if errors.Is(err, errStoreFailure) {
+			p.LogError("handlePhoneCall: failed to add user session", "err", err.Error(), "channelID", channelID)
+			res.Err = "Internal server error"
+			res.Code = http.StatusInternalServerError
+			return
+		}
+		res.Err = err.Error()
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	token, lkURL, err := p.mintLiveKitToken(userID, channelID, sessionID)
+	if err != nil {
+		p.LogError("handlePhoneCall: failed to mint LiveKit token", "err", err.Error(), "channelID", channelID)
+		p.rollbackSession(sessionID, state.Call.ID, createdCall)
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	// Dial synchronously so a failed dial reaches the caller as an error. We
+	// don't set WaitUntilAnswered, so LiveKit returns once the SIP leg is created
+	// (INVITE dispatched) rather than once the callee picks up.
+	info, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
+	if err != nil {
+		p.LogError("handlePhoneCall: failed to create SIP participant",
+			"err", err.Error(), "number", number, "channelID", channelID)
+		p.rollbackSession(sessionID, state.Call.ID, createdCall)
+		res.Err = "failed to dial number"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	// Announce only after a successful dial: observers and the DM ring timer
+	// should not fire for a call that never connected.
+	if len(state.sessions) == 1 {
+		p.announceCallStarted(state, userID, channelID, "", "", dmChannel.Type)
+	}
+	p.cancelDMNoAnswerTimerIfAnswered(state, userID, channelID, dmChannel.Type)
+	p.maybeSendConcurrentSessionsWarning()
+
+	p.LogInfo("phone call session created",
+		"callID", state.Call.ID,
+		"channelID", channelID,
+		"sessionID", sessionID,
+		"userID", userID,
+		"sipCallID", info.GetSipCallId())
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(phoneCallResponse{
+		SessionID: sessionID,
+		Token:     token,
+		URL:       lkURL,
+		CallID:    state.Call.ID,
+		ChannelID: channelID,
+		SIPCallID: info.GetSipCallId(),
+	}); err != nil {
+		p.LogError("failed to encode phone-call response", "err", err.Error())
+	}
+}
+
+// handleOutboundCall dials an external phone number into an existing call. The
+// client must already have a live session in the bot DM channel before calling
+// this endpoint. Useful for testing and future multi-party dial-in scenarios.
+// Returns {call_id, channel_id, sip_call_id} without a LiveKit token.
+func (p *Plugin) handleOutboundCall(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleOutboundCall", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 
@@ -782,9 +940,6 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The call is hosted on the user<->bot DM channel. The client creates/joins
-	// the call on this channel before calling /phone-call, so the SIP leg dials
-	// into the existing call's room and the join webhook finds an active call.
 	dmChannel, appErr := p.API.GetDirectChannel(userID, botID)
 	if appErr != nil {
 		res.Err = fmt.Errorf("failed to get bot DM channel: %w", appErr).Error()
@@ -793,18 +948,31 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	}
 	channelID := dmChannel.Id
 
-	go func() {
-		if err := p.createSIPParticipant(trunkID, number, channelID, req.Number); err != nil {
-			p.LogError("handlePhoneCall: failed to create SIP participant",
-				"err", err.Error(), "number", number, "channelID", channelID)
-		}
-	}()
+	info, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
+	if err != nil {
+		p.LogError("handleOutboundCall: failed to create SIP participant",
+			"err", err.Error(), "number", number, "channelID", channelID)
+		res.Err = "failed to dial number"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		p.LogError("handleOutboundCall: failed to get active call", "err", err.Error(), "channelID", channelID)
+	}
+	var callID string
+	if call != nil {
+		callID = call.ID
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
-		"channel_id": channelID,
+		"call_id":     callID,
+		"channel_id":  channelID,
+		"sip_call_id": info.GetSipCallId(),
 	}); err != nil {
-		p.LogError("failed to encode phone-call response", "err", err.Error())
+		p.LogError("failed to encode outbound-call response", "err", err.Error())
 	}
 }
 
@@ -1415,18 +1583,8 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 
 	token, lkURL, err := p.mintLiveKitToken(userID, req.ChannelID, sessionID)
 	if err != nil {
-		// addUserSession already persisted the rows, so undo them rather than
-		// leaving a session nobody can use behind. Nothing was announced, so this
-		// is a plain delete rather than the call-ended path.
 		p.LogError("failed to mint LiveKit token", "err", err.Error(), "channelID", req.ChannelID)
-		if delErr := p.store.DeleteCallSession(sessionID); delErr != nil {
-			p.LogError("failed to roll back call session", "err", delErr.Error(), "sessionID", sessionID)
-		}
-		if createdCall {
-			if delErr := p.store.DeleteCall(state.Call.ID); delErr != nil {
-				p.LogError("failed to roll back call", "err", delErr.Error(), "callID", state.Call.ID)
-			}
-		}
+		p.rollbackSession(sessionID, state.Call.ID, createdCall)
 		res.Err = "Internal server error"
 		res.Code = http.StatusInternalServerError
 		return
