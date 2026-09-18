@@ -75,6 +75,12 @@ type Plugin struct {
 	dmNoAnswerTimers    map[string]*time.Timer
 	dmNoAnswerTimersMut sync.Mutex
 
+	// reconcilerSuspicions tracks how many consecutive ticks each confirmed
+	// session has been absent from LiveKit. Cleared when the session is confirmed
+	// present or reaped. Guarded by reconcilerSuspicionsMut.
+	reconcilerSuspicions    map[string]int
+	reconcilerSuspicionsMut sync.Mutex
+
 	// dirtyCalls is the set of channels whose LiveKit room metadata is stale.
 	// dirtyCallsCh is a doorbell: it signals that there is work, the set says
 	// what. See markCallDirty.

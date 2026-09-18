@@ -187,34 +187,43 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 		return
 	}
 
+	p.removeParticipantSession(channelID, userID, sessionID, sid)
+}
+
+// removeParticipantSession is the shared leave path used by both
+// handleLiveKitParticipantLeft and the reconciliation sweep (MM-69510). The
+// caller supplies the SID it observed from the webhook or the DB snapshot; the
+// SID guard inside the call lock ensures a concurrent reconnect that updated the
+// row prevents the removal.
+func (p *Plugin) removeParticipantSession(channelID, userID, sessionID, sid string) {
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
-		p.LogError("handleLiveKitParticipantLeft: failed to lock call", "channelID", channelID, "err", err.Error())
+		p.LogError("removeParticipantSession: failed to lock call", "channelID", channelID, "err", err.Error())
 		return
 	}
 	defer p.unlockCall(channelID)
 
 	if state == nil {
-		p.LogDebug("handleLiveKitParticipantLeft: no active call",
+		p.LogDebug("removeParticipantSession: no active call",
 			"channelID", channelID, "sessionID", sessionID)
 		return
 	}
 
 	session := state.sessions[sessionID]
 	if session == nil {
-		p.LogDebug("handleLiveKitParticipantLeft: session not found (idempotent)",
+		p.LogDebug("removeParticipantSession: session not found (idempotent)",
 			"channelID", channelID, "sessionID", sessionID)
 		return
 	}
 
 	if session.SID != sid {
-		p.LogDebug("handleLiveKitParticipantLeft: stale leave for superseded connection, ignoring",
+		p.LogDebug("removeParticipantSession: stale leave for superseded connection, ignoring",
 			"channelID", channelID, "sessionID", sessionID, "eventSID", sid, "currentSID", session.SID)
 		return
 	}
 
 	if err := p.store.DeleteCallSession(sessionID); err != nil {
-		p.LogError("handleLiveKitParticipantLeft: failed to delete session",
+		p.LogError("removeParticipantSession: failed to delete session",
 			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 		return
 	}
@@ -257,20 +266,20 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 	// lingering SIP leg has nobody to talk to once the last MM user goes. Hang up
 	// the phone before deciding whether the call is over.
 	if onlySIPParticipantsRemain(state.sessions) && p.isPhoneCallChannel(channelID) {
-		p.LogInfo("handleLiveKitParticipantLeft: last human left phone call, hanging up SIP",
+		p.LogInfo("removeParticipantSession: last human left phone call, hanging up SIP",
 			"callID", state.Call.ID, "channelID", channelID)
 
 		// livekitDeleteRoom is a network call; run it outside the call lock to
 		// avoid blocking concurrent webhook handlers for up to its 5s timeout.
 		go func() {
 			if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-				p.LogError("handleLiveKitParticipantLeft: failed to delete LiveKit room",
+				p.LogError("removeParticipantSession: failed to delete LiveKit room",
 					"channelID", channelID, "err", err.Error())
 			}
 		}()
 		for sid := range state.sessions {
 			if err := p.store.DeleteCallSession(sid); err != nil {
-				p.LogError("handleLiveKitParticipantLeft: failed to delete SIP session",
+				p.LogError("removeParticipantSession: failed to delete SIP session",
 					"channelID", channelID, "sid", sid, "err", err.Error())
 			}
 			delete(state.sessions, sid)
@@ -288,7 +297,7 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 	}
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
-		p.LogError("handleLiveKitParticipantLeft: failed to update call",
+		p.LogError("removeParticipantSession: failed to update call",
 			"channelID", channelID, "err", err.Error())
 	}
 }
