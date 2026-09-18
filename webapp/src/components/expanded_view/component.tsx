@@ -728,7 +728,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 if (session) {
                     this.props.userScreenShared(callsClient.channelID, session.sessionID, session.userID);
                 } else {
-                    this.props.userScreenUnshared(callsClient.channelID, '', '');
+                    const sharerSessionID = this.props.screenSharingSession?.session_id ?? '';
+                    this.props.userScreenUnshared(callsClient.channelID, sharerSessionID, '');
                 }
             });
             onClient(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {

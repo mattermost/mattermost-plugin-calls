@@ -145,6 +145,7 @@ import {
     isCloudStarter,
     isLimitRestricted,
     ringingEnabled,
+    screenSharingSessionForCurrentCall,
     sessionsInCurrentCall,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
@@ -800,7 +801,8 @@ export default class Plugin {
                     if (session) {
                         store.dispatch(userScreenShared(callChannelID, session.sessionID, session.userID));
                     } else {
-                        store.dispatch(userScreenUnshared(callChannelID, '', ''));
+                        const sharerSession = screenSharingSessionForCurrentCall(store.getState());
+                        store.dispatch(userScreenUnshared(callChannelID, sharerSession?.session_id ?? '', ''));
                     }
                 });
 
