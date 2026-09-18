@@ -30,6 +30,7 @@ export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: P
         logDebug('LeaveCallMenu.handleHostEndCallForEveryone: host ending call for everyone');
         try {
             await hostEndCallForEveryone(channelID);
+            logDebug('LeaveCallMenu.handleHostEndCallForEveryone: host ended call for everyone');
         } catch (err) {
             // A TypeError (e.g. "Failed to fetch") means the browser aborted the request
             // before JS could process the response — typically because the popout window
