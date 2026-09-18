@@ -893,6 +893,95 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleOutboundCall dials an external phone number into an existing call. The
+// client must already have a live session in the bot DM channel before calling
+// this endpoint. Useful for testing and future multi-party dial-in scenarios.
+// Returns {call_id, channel_id, sip_call_id} without a LiveKit token.
+func (p *Plugin) handleOutboundCall(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleOutboundCall", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	var req struct {
+		Number string `json:"number"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&req); err != nil {
+		res.Err = "invalid request body"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	number := normalizePhoneNumber(req.Number)
+	if number == "" {
+		res.Err = "number is required"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	cfg := p.getConfiguration()
+	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
+		res.Err = "outbound dialing is disabled. Enable it in the admin console."
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	trunkID := cfg.LiveKitSIPOutboundTrunkID
+	if trunkID == "" {
+		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console."
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if cfg.sipOutboundAllowlistEnabled() && !cfg.isNumberInAllowlist(number) {
+		res.Err = "number is not in the outbound calling allowlist"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	botID := p.getBotID()
+	if botID == "" {
+		res.Err = "bot not initialized"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	dmChannel, appErr := p.API.GetDirectChannel(userID, botID)
+	if appErr != nil {
+		res.Err = fmt.Errorf("failed to get bot DM channel: %w", appErr).Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	channelID := dmChannel.Id
+
+	info, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
+	if err != nil {
+		p.LogError("handleOutboundCall: failed to create SIP participant",
+			"err", err.Error(), "number", number, "channelID", channelID)
+		res.Err = "failed to dial number"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		p.LogError("handleOutboundCall: failed to get active call", "err", err.Error(), "channelID", channelID)
+	}
+	var callID string
+	if call != nil {
+		callID = call.ID
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"call_id":     callID,
+		"channel_id":  channelID,
+		"sip_call_id": info.GetSipCallId(),
+	}); err != nil {
+		p.LogError("failed to encode outbound-call response", "err", err.Error())
+	}
+}
+
 // handleConfig returns the client configuration, and cloud license information
 // that isn't exposed to clients yet on the webapp
 func (p *Plugin) handleConfig(w http.ResponseWriter, r *http.Request) error {
