@@ -7,8 +7,6 @@ import {
     CallJobState,
     CallJobStateData,
     CallStartData,
-    CallState,
-    CallStateData,
     EmptyData,
     HostControlLowerHand,
     HostControlMsg,
@@ -37,7 +35,6 @@ import {
     incomingCallOnChannel,
     joinUser,
     leaveUser,
-    loadCallState,
     removeIncomingCallNotification,
 } from 'src/actions';
 import {
@@ -70,7 +67,6 @@ import {
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
 } from './action_types';
-import {logErr} from './log';
 import {
     channelHasCall,
     channelIDForCurrentCall,
@@ -93,17 +89,6 @@ export type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch(callEnd(channelID));
-}
-
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleCallState(store: Store, ev: WebSocketMessage<CallStateData>) {
-    try {
-        const call: CallState = JSON.parse(ev.data.call);
-        store.dispatch(loadCallState(ev.data.channel_id, call));
-    } catch (err) {
-        logErr(err);
-    }
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of

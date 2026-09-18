@@ -144,6 +144,7 @@ interface Props extends RouteComponentProps {
     userReactedTimeout: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
     userScreenShared: (channelID: string, sessionID: string, userID: string) => void;
     userScreenUnshared: (channelID: string, sessionID: string, userID: string) => void;
+    fetchCallState: (channelID: string) => void;
 }
 
 interface State {
@@ -658,20 +659,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
-    requestCallState = () => {
-        const callsClient = getCallsClient();
-        if (!callsClient) {
-            logErr('callsClient should be defined');
-            return;
-        }
-
-        // On WebSocket connect we request the call state. This avoids
-        // making a potentially racy HTTP call and should guarantee
-        // a consistent state.
-        logDebug('requesting call state through ws');
-        this.context.sendMessage('custom_com.mattermost.calls_call_state', {channelID: callsClient.channelID});
-    };
-
     public componentDidMount() {
         const callsClient = getCallsClient();
         if (!callsClient) {
@@ -679,18 +666,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return;
         }
 
-        if (!this.context) {
-            logErr('context should be defined');
-            return;
-        }
-
-        // TODO: remove this type casting once MM repo make conn property not private
-        if ((this.context as unknown as {conn?: WebSocket})?.conn?.readyState === WebSocket.OPEN) {
-            this.requestCallState();
-        } else {
-            logDebug('ws not connected still, adding listener');
-            this.context.addFirstConnectListener(this.requestCallState);
-        }
+        logDebug('fetching call state via HTTP');
+        this.props.fetchCallState(callsClient.channelID);
 
         // keyboard shortcuts
         window.addEventListener('keydown', this.handleKBShortcuts, true);
@@ -915,7 +892,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.removeEventListener('keyup', this.handleKeyUp, true);
         window.removeEventListener('blur', this.handleBlur, true);
         this.#unlockNavigation?.();
-        this.context?.removeFirstConnectListener(this.requestCallState);
 
         this.callClientUnsubscribers.forEach((unsubscribe) => unsubscribe());
         this.callClientUnsubscribers = [];

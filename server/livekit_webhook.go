@@ -426,11 +426,16 @@ func (p *Plugin) handleLiveKitTrackPublished(event *livekit.WebhookEvent) {
 
 	// Reject concurrent sharers: first publisher wins. The client checks LiveKit
 	// track state before publishing, so a conflict means a race or a bypass. Keep
-	// the existing sharer as authoritative; the newcomer's track remains live in
-	// LK but is not reflected in DB state or WS events.
+	// the existing sharer as authoritative and ask the losing publisher to stop.
+	// The losing track remains live in LK until the client tears it down; clients
+	// pick the lexicographically first sessionID when multiple are present.
 	if state.Call.Props.ScreenSharingSessionID != "" {
 		p.LogWarn("handleLiveKitTrackPublished: rejecting second screen sharer, keeping existing",
 			"channelID", channelID, "existing", state.Call.Props.ScreenSharingSessionID, "rejected", sessionID)
+		if err := p.livekitSendHostControl(channelID, composeLivekitIdentity(userID, sessionID), hostControlActionStopScreenshare); err != nil {
+			p.LogError("handleLiveKitTrackPublished: failed to send stop screenshare to rejected publisher",
+				"channelID", channelID, "sessionID", sessionID, "err", err.Error())
+		}
 		return
 	}
 

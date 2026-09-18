@@ -3,7 +3,6 @@
 
 /* eslint-disable max-lines */
 import {CallChannelState, CallJobState, CallState, EmojiData} from '@mattermost/calls-common/lib/types';
-import {WebSocketClient} from '@mattermost/client';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
@@ -23,6 +22,7 @@ import {
     displayCallErrorModal,
     displayCallsTestModeUser,
     displayFreeTrial,
+    fetchCallState,
     getCallsConfig,
     getCallsConfigEnvOverrides,
     getCallsStats,
@@ -172,7 +172,6 @@ import {
     handleCallHostChanged,
     handleCallJobState,
     handleCallStart,
-    handleCallState,
     handleCaption,
     handleHostLowerHand,
     handleHostRemoved,
@@ -192,11 +191,9 @@ import {
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
-    private wsClient: WebSocketClient | null;
 
     constructor() {
         this.unsubscribers = [];
-        this.wsClient = null;
     }
 
     private registerReconnectHandler(registry: PluginRegistry, _store: Store, handler: () => void) {
@@ -268,10 +265,6 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_dismissed_notification`, (ev) => {
             handleUserDismissedNotification(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_state`, (ev) => {
-            handleCallState(store, ev);
         });
 
         registry.registerWebSocketEventHandler('user_removed', (ev) => {
@@ -974,7 +967,7 @@ export default class Plugin {
             }
         });
 
-        const onActivate = async (wsClient?: WebSocketClient) => {
+        const onActivate = async () => {
             if (!getCurrentUserId(store.getState())) {
                 // not logged in, returning. Shouldn't happen, but being defensive.
                 return;
@@ -1032,15 +1025,10 @@ export default class Plugin {
             const actions = await fetchChannels(currentCallChannelID);
             store.dispatch(batchActions(actions));
 
-            // If indeed we are in a call we should request the up-to-date
-            // state from websocket.
+            // If indeed we are in a call, fetch up-to-date state via HTTP.
             if (currentCallChannelID) {
-                if (wsClient) {
-                    logDebug('requesting call state through ws');
-                    wsClient.sendMessage('custom_com.mattermost.calls_call_state', {channelID: currentCallChannelID});
-                } else {
-                    logErr('unexpected missing wsClient');
-                }
+                logDebug('fetching call state via HTTP');
+                store.dispatch(fetchCallState(currentCallChannelID));
             }
 
             const currChannelId = getCurrentChannelId(store.getState());
@@ -1060,9 +1048,6 @@ export default class Plugin {
         // A dummy React component so we can access webapp's
         // WebSocket client through the provided hook. Just lovely.
         registry.registerGlobalComponent(() => {
-            const client = window.ProductApi.useWebSocketClient();
-            this.wsClient = client;
-
             useEffect(() => {
                 logDebug('registering ws reconnect handler');
                 // eslint-disable-next-line max-nested-callbacks
@@ -1076,7 +1061,7 @@ export default class Plugin {
                         logDebug('resetting state');
                         store.dispatch(unInitialized());
                     }
-                    onActivate(client);
+                    onActivate();
                 });
             }, []);
 
