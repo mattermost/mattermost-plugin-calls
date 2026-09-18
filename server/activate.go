@@ -161,6 +161,7 @@ func (p *Plugin) OnActivate() (retErr error) {
 
 	go p.reconciler()
 
+
 	p.publisherWg.Add(1)
 	go p.roomMetadataPublisher()
 
