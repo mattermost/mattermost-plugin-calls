@@ -171,10 +171,14 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 		authSessionID := model.NewId()
 
 		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
+		// Fetched again by the push-notification pass of the call-started post.
 		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
 			Id: channelID, Type: model.ChannelTypeOpen,
-		}, nil).Once()
-		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
+		}, nil).Twice()
+		// Once to mint the token, once to compose the call-started post.
+		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Twice()
+		mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).
+			Return(&model.Post{Id: model.NewId()}, nil).Once()
 
 		w := postSession(t, p, userID, authSessionID, map[string]string{"channel_id": channelID})
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
@@ -203,5 +207,37 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 		call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.Equal(t, callSession.CallID, call.ID)
+
+		// The call-started post is owed to observers, who are not in the LiveKit
+		// room and so cannot learn about the call any other way.
+		require.NotEmpty(t, call.PostID)
+	})
+
+	t.Run("announces the call only for the first joiner", func(t *testing.T) {
+		p, mockAPI, _ := setupPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+
+		mockAPI.On("HasPermissionToChannel", mock.AnythingOfType("string"), channelID,
+			model.PermissionCreatePost).Return(true).Maybe()
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id: channelID, Type: model.ChannelTypeOpen,
+		}, nil).Maybe()
+		mockAPI.On("GetUser", mock.AnythingOfType("string")).
+			Return(&model.User{Id: model.NewId()}, nil).Maybe()
+
+		var posts int
+		mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Run(func(_ mock.Arguments) {
+			posts++
+		}).Return(&model.Post{Id: model.NewId()}, nil).Maybe()
+
+		for range 2 {
+			w := postSession(t, p, model.NewId(), model.NewId(), map[string]string{"channel_id": channelID})
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		}
+
+		// A second session joining an existing call must not start it again.
+		require.Equal(t, 1, posts)
 	})
 }

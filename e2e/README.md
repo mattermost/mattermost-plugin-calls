@@ -46,13 +46,3 @@ tracked under MM-68570.
 - Tests blocked by deferred features (popout, recording, transcription,
   desktop, notifications-suite on v2): use `test.skip('…', …)`. Add a
   top-of-file comment referencing MM-68570 and naming the gating reason.
-
-### `_e2eForceWebsocketClose()` test hook
-
-`CallClient` exposes a hidden helper, `_e2eForceWebsocketClose()`, that
-closes the underlying plugin WebSocket without flagging it as a clean
-shutdown — so the reconnect logic fires as it would on a real network
-drop. Use it from Playwright via
-`await page.evaluate(() => window.callsClient._e2eForceWebsocketClose())`
-to exercise WS-reconnect paths (e.g. the "unmute after WS reconnect" media
-test). The hook is a no-op when there is no active call.

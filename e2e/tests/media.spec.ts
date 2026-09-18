@@ -89,6 +89,58 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
 
+    // Two clients going for the share at once. Keyed on session, not user, so
+    // the same person on two clients collides with themselves — which is also
+    // the cheapest way to stage it.
+    //
+    // Both clients must converge on the *same* sharer. Before the derivation
+    // landed each client kept whichever track arrived last, so viewers could
+    // render different screens and one sharer stopping blanked people watching
+    // the other. The winner is whoever the shared tie-break picks (lowest
+    // session id), not whoever clicked first, so the test asserts agreement
+    // rather than a particular winner.
+    test('concurrent screen shares converge on one presenter', {
+        tag: '@core',
+    }, async ({page}) => {
+        const devPage = new PlaywrightDevPage(page);
+
+        const [userPage, _] = await Promise.all([
+            startCall(userStorages[1]),
+            devPage.joinCall(),
+        ]);
+
+        // Fire both without awaiting in between, so neither client has seen the
+        // other's track by the time it starts its own.
+        await Promise.all([
+            (async () => {
+                await page.locator('#calls-widget-toggle-menu-button').click();
+                await page.locator('#calls-widget-menu-screenshare').click();
+            })(),
+            (async () => {
+                await userPage.page.locator('#calls-widget-toggle-menu-button').click();
+                await userPage.page.locator('#calls-widget-menu-screenshare').click();
+            })(),
+        ]);
+
+        // Exactly one share is presented, and both sides are showing it.
+        await expect(page.locator('#screen-player')).toBeVisible();
+        await expect(userPage.page.locator('#screen-player')).toBeVisible();
+
+        const presentedSession = (p: PlaywrightDevPage) => p.page.evaluate(() => {
+            return window.callsClient.getCurrentScreenSharingSessionID?.() ?? null;
+        });
+
+        const [sessionA, sessionB] = await Promise.all([
+            presentedSession(devPage),
+            presentedSession(userPage),
+        ]);
+
+        expect(sessionA).toBeTruthy();
+        expect(sessionA).toBe(sessionB);
+
+        await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
+    });
+
     // MM-68570: flaky on the rejoin step. After leaveCall, when joinCall is
     // immediately called again on the same page, window.callsClient races —
     // the new CallClient instance's isConnected doesn't flip within 150s.
@@ -381,63 +433,6 @@ test.describe('sending voice', {tag: '@livekit'}, () => {
             return window.callsClient.getRemoteVoiceTracks()[0]?.id;
         })).evaluate(() => {
             return window.callsClient.getRemoteVoiceTracks()[0]?.id;
-        });
-
-        await expect(page.getByTestId(voiceTrackID)).toBeHidden();
-        await expect(page.getByTestId(voiceTrackID)).toHaveAttribute('autoplay', '');
-
-        await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
-    });
-
-    // MM-68570: PR 1 added `_e2eForceWebsocketClose()` so the close side is
-    // doable, but observing the reconnect event still needs an emitter on
-    // CallClient (the RTCD-era `callsClient.ws.on('open', …)` path is gone).
-    // Revisit once that hook lands; until then, the test would have no
-    // reliable signal that the WS came back before unmuting.
-    test.fixme('unmuting after ws reconnect', {
-        tag: '@core',
-    }, async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-
-        const [userPage, _] = await Promise.all([
-            startCall(userStorages[1]),
-            devPage.joinCall(),
-        ]);
-
-        const reconnectHandler = () => {
-            return new Promise((resolve) => {
-                window.callsClient.ws.on('open', (connID: string, originalConnID: string, isReconnect: boolean) => {
-                    resolve(isReconnect);
-                });
-                window.callsClient.ws.ws.close();
-            });
-        };
-
-        // Trigger a WS reconnect on userA
-        const reconnectedA = await page.evaluate(reconnectHandler);
-        expect(reconnectedA).toBe(true);
-
-        // Trigger a WS reconnect on userB
-        const reconnectedB = await userPage.page.evaluate(reconnectHandler);
-        expect(reconnectedB).toBe(true);
-
-        await page.locator('#voice-mute-unmute').click();
-
-        let voiceTrackID = await (await userPage.page.waitForFunction(() => {
-            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
-        })).evaluate(() => {
-            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
-        });
-
-        await expect(userPage.page.getByTestId(voiceTrackID)).toBeHidden();
-        await expect(userPage.page.getByTestId(voiceTrackID)).toHaveAttribute('autoplay', '');
-
-        await userPage.page.locator('#voice-mute-unmute').click();
-
-        voiceTrackID = await (await devPage.page.waitForFunction(() => {
-            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
-        })).evaluate(() => {
-            return window.callsClient.streams[1]?.getAudioTracks()[0]?.id;
         });
 
         await expect(page.getByTestId(voiceTrackID)).toBeHidden();

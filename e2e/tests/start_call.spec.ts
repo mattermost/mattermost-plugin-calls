@@ -170,34 +170,6 @@ test.describe('start new call', {tag: '@livekit'}, () => {
 
         await devPage.leaveCall();
     });
-
-    // MM-68570: The RTCD-era test reached into `callsClient.ws` (the private
-    // WebSocketClient) to subscribe to the 'open' event and to close the raw
-    // ws. On LiveKit, that field is private and the event API isn't exposed.
-    // PR 1 added `_e2eForceWebsocketClose()` for the drop side, but we still
-    // need a way to observe the reconnect — either an emitter on CallClient
-    // or a UI signal (e.g. connection-quality indicator). Leaving fixme'd
-    // until that hook lands.
-    test.fixme('ws reconnect', async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.startCall();
-
-        const reconnected = await page.evaluate(() => {
-            return new Promise((resolve) => {
-                window.callsClient.ws.on('open', (connID: string, originalConnID: string, isReconnect: boolean) => {
-                    resolve(isReconnect);
-                });
-                window.callsClient.ws.ws.close();
-            });
-        });
-
-        expect(reconnected).toBe(true);
-
-        // Waiting a bit to make extra sure connection won't close after a timeout.
-        await devPage.wait(15000);
-
-        await devPage.leaveCall();
-    });
 });
 
 test.describe('auto join link', {tag: '@livekit'}, () => {

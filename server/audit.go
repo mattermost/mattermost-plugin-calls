@@ -27,11 +27,13 @@ func (p *Plugin) httpResponseHandler(res *httpResponse, w http.ResponseWriter) {
 		res.Err = ""
 	}
 	if !res.isEmpty() {
+		if res.Code != http.StatusNoContent {
+			w.Header().Add("Content-Type", "application/json")
+		}
 		if res.Code != 0 {
 			w.WriteHeader(res.Code)
 		}
 		if res.Code != http.StatusNoContent {
-			w.Header().Add("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(res); err != nil {
 				p.LogError(fmt.Sprintf("failed to encode data: %s", err))
 			}

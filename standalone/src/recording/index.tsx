@@ -1,12 +1,11 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallState, CallStateData, JobStopData, UserJoinedData, WebsocketEventData} from '@mattermost/calls-common/lib/types';
-import {BaseWebSocketMessage} from '@mattermost/client';
+import {CallState} from '@mattermost/calls-common/lib/types';
 import {ChannelTypes} from 'mattermost-redux/action_types';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
-import {logErr, logInfo} from 'plugin/log';
-import {pluginId} from 'plugin/manifest';
+import CallClient, {CALL_EVENT} from 'plugin/clients/call';
+import {logErr} from 'plugin/log';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
     getPluginPath,
@@ -20,7 +19,6 @@ import {createRoot, Root} from 'react-dom/client';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import RestClient from 'src/clients/rest';
-import {getJobID} from 'src/common';
 import recordingReducer from 'src/recording/reducers';
 
 import initialiseEmbedApp, {InitCbProps} from '../index';
@@ -28,8 +26,6 @@ import {
     RECEIVED_CALL_PROFILE_IMAGES,
 } from './action_types';
 import RecordingView from './components/recording_view';
-
-type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 
 let recordingRoot: Root | null = null;
 
@@ -100,62 +96,45 @@ async function initRecording({store, theme}: InitCbProps) {
     }
 }
 
-function wsHandlerRecording(store: Store, ev: WebSocketMessage<WebsocketEventData>) {
-    switch (ev.event) {
-    case `custom_${pluginId}_user_joined`: {
-        const data = ev.data as UserJoinedData;
+// loadProfileImages fetches avatars for the given users into the recording
+// store, which renders participant tiles.
+function loadProfileImages(store: Store, channelID: string, userIDs: string[]) {
+    if (userIDs.length === 0) {
+        return;
+    }
 
-        runWithRetry(() => {
-            return fetchProfileImages([data.user_id]);
-        }).then((images) => {
-            store.dispatch({
-                type: RECEIVED_CALL_PROFILE_IMAGES,
-                data: {
-                    channelID: data.channelID,
-                    profileImages: images,
-                },
-            });
-        }).catch((err) => {
-            logErr('failed to fetch user profiles', err);
+    runWithRetry(() => {
+        return fetchProfileImages(userIDs);
+    }).then((images) => {
+        store.dispatch({
+            type: RECEIVED_CALL_PROFILE_IMAGES,
+            data: {
+                channelID,
+                profileImages: images,
+            },
         });
+    }).catch((err) => {
+        logErr('failed to fetch profile images', err);
+    });
+}
 
-        break;
-    }
-    case `custom_${pluginId}_call_state`: {
-        const data = ev.data as CallStateData;
-        const call: CallState = JSON.parse(data.call);
-
+// Avatars used to be fetched off plugin WebSocket events. They now hang off the
+// same two sources everything else does: the join response snapshot for whoever
+// is already in the call, and LiveKit participant events for later joiners.
+//
+// The job_stop event is gone with the WebSocket and has no replacement here: the
+// server evicts the bot from the LiveKit room instead, which surfaces as a
+// normal disconnect and runs deinitRecording.
+function callEventHandlerRecording(store: Store, callClient: CallClient) {
+    callClient.on(CALL_EVENT.CALL_STATE, (call: CallState) => {
         if (call.sessions?.length > 0) {
-            runWithRetry(() => {
-                return fetchProfileImages(getUserIDsForSessions(call.sessions));
-            }).then((images) => {
-                store.dispatch({
-                    type: RECEIVED_CALL_PROFILE_IMAGES,
-                    data: {
-                        channelID: data.channel_id,
-                        profileImages: images,
-                    },
-                });
-            }).catch((err) => {
-                logErr('failed to fetch profile images', err);
-            });
+            loadProfileImages(store, callClient.channelID, getUserIDsForSessions(call.sessions));
         }
+    });
 
-        break;
-    }
-    case `custom_${pluginId}_job_stop`: {
-        const data = ev.data as JobStopData;
-
-        if (getJobID() === data.job_id) {
-            logInfo('received job stop event, disconnecting');
-            window.callsClient?.disconnect();
-        }
-
-        break;
-    }
-    default:
-        break;
-    }
+    callClient.on(CALL_EVENT.USER_JOINED, (_sessionID: string, userID: string) => {
+        loadProfileImages(store, callClient.channelID, [userID]);
+    });
 }
 
 function deinitRecording() {
@@ -169,6 +148,6 @@ runWithRetry(() => initialiseEmbedApp({
     reducer: recordingReducer,
     initStore: initRecordingStore,
     initCb: initRecording,
-    wsHandler: wsHandlerRecording,
+    callEventHandler: callEventHandlerRecording,
     closeCb: deinitRecording,
 }));

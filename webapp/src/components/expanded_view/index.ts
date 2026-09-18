@@ -8,6 +8,7 @@ import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-re
 import {connect} from 'react-redux';
 import {withRouter} from 'react-router-dom';
 import {
+    fetchCallState,
     hideExpandedView,
     joinUser,
     leaveUser,
@@ -40,6 +41,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
+import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, selfFirstSortSessions, stateSortSessions} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, modals, selectRhsPost} from 'src/webapp_globals';
@@ -106,6 +108,7 @@ const mapStateToProps = (state: GlobalState) => {
 };
 
 const mapDispatchToProps = {
+    fetchCallState,
     hideExpandedView,
     showScreenSourceModal,
     closeRhs,
@@ -123,6 +126,8 @@ const mapDispatchToProps = {
     userLoweredHand,
     userReacted,
     userReactedTimeout,
+    userScreenShared,
+    userScreenUnshared,
 };
 
 export default withRouter(connect(mapStateToProps, mapDispatchToProps)(ExpandedView));

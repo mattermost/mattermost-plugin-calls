@@ -202,6 +202,22 @@ func (p *Plugin) livekitUpdateRoomMetadata(ctx context.Context, room, metadata s
 	return nil
 }
 
+func (p *Plugin) livekitListParticipants(room string) ([]*livekit.ParticipantInfo, error) {
+	client, err := p.getLiveKitRoomClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), livekitAPITimeout)
+	defer cancel()
+
+	res, err := client.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: room})
+	if err != nil {
+		return nil, fmt.Errorf("livekit ListParticipants: %w", err)
+	}
+	return res.GetParticipants(), nil
+}
+
 // livekitSendHostControl asks a single client to carry out a host action that
 // the server cannot enforce itself.
 //

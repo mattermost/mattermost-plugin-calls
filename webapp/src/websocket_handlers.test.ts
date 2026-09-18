@@ -5,8 +5,7 @@ import {HostControlRemoved, UserRemovedData} from '@mattermost/calls-common/lib/
 import {BaseWebSocketMessage} from '@mattermost/client';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {displayCallErrorModal, joinUser, leaveUser} from 'src/actions';
-import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/clients/calls';
-import {HostRemovedYouFromCallErr} from 'src/components/error_modal/error_messages';
+import {HostRemovedYouFromCallErr, userLeftChannelErr, userRemovedFromChannelErr} from 'src/components/error_modal/error_messages';
 
 import {channelIDForCurrentCall} from './selectors';
 import {getCallsClient, hasLiveCallClient} from './utils';

@@ -12,7 +12,6 @@ import {
     Track,
 } from 'livekit-client';
 import RestClient from 'src/clients/rest';
-import {WEBSOCKET_EVENT, WebSocketClient} from 'src/clients/websocket';
 import {
     STORAGE_CALLS_CLIENT_LOGS_KEY,
     STORAGE_CALLS_CLIENT_STATS_KEY,
@@ -23,7 +22,7 @@ import {flushLogsToAccumulated} from 'src/log';
 import {getPersistentStorage, getScreenStream} from 'src/utils';
 
 import CallClient from './call_client';
-import {CALL_EVENT} from './constants';
+import {CALL_EVENT, CALL_MESSAGE_TOPICS} from './constants';
 
 jest.mock('livekit-client', () => {
     const actual = jest.requireActual('livekit-client');
@@ -41,9 +40,16 @@ jest.mock('livekit-client', () => {
 
     // Lightweight stand-ins for the screen-share track wrappers so the desktop
     // path can be exercised without jsdom/WebRTC. Production code sets `.source`
-    // on the instance, so a plain mutable object is enough.
-    const LocalVideoTrackMock = jest.fn().mockImplementation((mediaStreamTrack: MediaStreamTrack) => ({mediaStreamTrack, source: undefined}));
-    const LocalAudioTrackMock = jest.fn().mockImplementation((mediaStreamTrack: MediaStreamTrack) => ({mediaStreamTrack, source: undefined}));
+    // on the instance, so a plain mutable object is enough. stop() delegates to
+    // the underlying MediaStreamTrack as the real wrappers do, which is what
+    // releases the capture when a publish is abandoned.
+    const localTrackMock = (mediaStreamTrack: MediaStreamTrack) => ({
+        mediaStreamTrack,
+        source: undefined,
+        stop: jest.fn(() => mediaStreamTrack.stop?.()),
+    });
+    const LocalVideoTrackMock = jest.fn().mockImplementation(localTrackMock);
+    const LocalAudioTrackMock = jest.fn().mockImplementation(localTrackMock);
 
     return {
         ...actual,
@@ -65,14 +71,6 @@ jest.mock('src/clients/rest', () => ({
     },
 }));
 
-jest.mock('src/clients/websocket', () => {
-    const actual = jest.requireActual('src/clients/websocket');
-    return {
-        ...actual,
-        WebSocketClient: jest.fn(),
-    };
-});
-
 // Mock factory for a Room instance — captures every `room.on(event, handler)`
 // call so tests can fire events back through the registered handler.
 type RoomEventHandler = (...args: any[]) => void;
@@ -87,6 +85,7 @@ type MockRoom = {
     switchActiveDevice: jest.Mock;
     localParticipant: any;
     remoteParticipants: Map<string, any>;
+    metadata?: string;
     fire: RoomEventHandler;
 };
 
@@ -108,7 +107,9 @@ function createMockRoom(): MockRoom {
             getTrackPublication: jest.fn(),
             setMicrophoneEnabled: jest.fn().mockResolvedValue(null),
             setScreenShareEnabled: jest.fn().mockResolvedValue(null),
+            createScreenTracks: jest.fn().mockResolvedValue([]),
             publishTrack: jest.fn().mockResolvedValue(null),
+            unpublishTrack: jest.fn().mockResolvedValue(null),
             setAttributes: jest.fn().mockResolvedValue(undefined),
             publishData: jest.fn().mockResolvedValue(undefined),
             audioTrackPublications: new Map(),
@@ -127,48 +128,14 @@ function createMockRoom(): MockRoom {
     return room;
 }
 
-type WebSocketEventHandler = (...args: any[]) => void;
-
-type MockWebSocketClient = {
-    on: jest.Mock;
-    connect: jest.Mock;
-    ready: jest.Mock;
-    sendJoin: jest.Mock;
-    sendReconnect: jest.Mock;
-    sendLeaveAndClose: jest.Mock;
-    sendScreenOn: jest.Mock;
-    sendScreenOff: jest.Mock;
-    close: jest.Mock;
-    getOriginalConnID: jest.Mock;
-    fire: (event: string, ...args: any[]) => void;
+// The shape POST /livekit-token returns: session id, LiveKit credentials and the
+// call state snapshot, all in one round trip.
+const sessionResponse = {
+    session_id: 'me-session',
+    token: 'fake-token',
+    url: 'wss://fake.url',
+    call_state: {id: 'call-id', sessions: []},
 };
-
-function createMockWebSocketClient(): MockWebSocketClient {
-    const handlers = new Map<string, WebSocketEventHandler>();
-    const websocketClient: MockWebSocketClient = {
-        on: jest.fn((event: string, handler: WebSocketEventHandler) => {
-            handlers.set(event, handler);
-            return websocketClient;
-        }),
-        connect: jest.fn(),
-        ready: jest.fn().mockResolvedValue('orig-conn-id'),
-        sendJoin: jest.fn(),
-        sendReconnect: jest.fn(),
-        sendLeaveAndClose: jest.fn(),
-        sendScreenOn: jest.fn(),
-        sendScreenOff: jest.fn(),
-        close: jest.fn(),
-        getOriginalConnID: jest.fn().mockReturnValue('orig-conn-id'),
-        fire: (event: string, ...args: any[]) => {
-            const handler = handlers.get(event);
-            if (!handler) {
-                throw new Error(`No handler registered for websocket event: ${event}`);
-            }
-            handler(...args);
-        },
-    };
-    return websocketClient;
-}
 
 beforeAll(() => {
     Object.defineProperty(navigator, 'mediaDevices', {
@@ -208,19 +175,13 @@ beforeEach(() => {
 describe('CallClient', () => {
     let client: CallClient;
     let mockRoom: MockRoom;
-    let mockWebSocketClient: MockWebSocketClient;
 
     beforeEach(() => {
         mockRoom = createMockRoom();
-        mockWebSocketClient = createMockWebSocketClient();
         (Room as unknown as jest.Mock).mockImplementation(() => mockRoom);
-        (WebSocketClient as unknown as jest.Mock).mockImplementation(() => mockWebSocketClient);
-        (RestClient.fetch as jest.Mock).mockResolvedValue({
-            token: 'fake-token',
-            url: 'wss://fake.url',
-        });
+        (RestClient.fetch as jest.Mock).mockResolvedValue({...sessionResponse});
 
-        client = new CallClient({websocketURL: 'wss://fake.ws'});
+        client = new CallClient();
     });
 
     afterEach(() => {
@@ -234,60 +195,43 @@ describe('CallClient', () => {
         it('initializes fields to defaults', () => {
             expect(client.channelID).toBe('');
             expect(client.initTime).toBe(0);
+            expect(client.getSessionID()).toBeNull();
             expect(Room).toHaveBeenCalledTimes(1);
-
-            // CallClient constructs WebSocketClient as `new WebSocketClient(url, authToken)`,
-            // with authToken left unset by default. Assert on the first positional arg only —
-            // the no-undefined lint rule blocks asserting the literal `undefined` value.
-            const wsCtorArgs = (WebSocketClient as unknown as jest.Mock).mock.calls[0];
-            expect(wsCtorArgs[0]).toBe('wss://fake.ws');
-            expect(wsCtorArgs[1]).toBeFalsy();
-        });
-    });
-
-    describe('constructor options', () => {
-        it('threads authToken to the underlying WebSocketClient', () => {
-            const standaloneClient = new CallClient({websocketURL: 'wss://standalone.ws', authToken: 'tok-abc'});
-            expect(standaloneClient).toBeDefined();
-            expect(WebSocketClient).toHaveBeenLastCalledWith('wss://standalone.ws', 'tok-abc');
-        });
-    });
-
-    describe('raw plugin websocket events', () => {
-        it('re-emits plugin-WS event subscriptions via CALL_EVENT.WS_EVENT', () => {
-            const listener = jest.fn();
-            client.on(CALL_EVENT.WEBSOCKET_EVENT, listener);
-
-            const fakeEvent = {event: 'custom_com.mattermost.calls_user_joined', data: {userID: 'u1'}};
-            mockWebSocketClient.fire('event', fakeEvent);
-
-            expect(listener).toHaveBeenCalledWith(fakeEvent);
         });
     });
 
     describe('connect', () => {
-        it('fetches a token (with channel_id + session_id) and calls room.connect', async () => {
-            await client.connect({channelID: 'test-channel'});
+        it('creates the session over HTTP and calls room.connect with the returned credentials', async () => {
+            await client.connect({channelID: 'test-channel', title: 'Test Call', threadID: 'thread-id'});
 
-            const fetchURL = (RestClient.fetch as jest.Mock).mock.calls[0][0];
-            expect(fetchURL).toContain('channel_id=test-channel');
-            expect(fetchURL).toContain('session_id=orig-conn-id');
             expect(RestClient.fetch).toHaveBeenCalledWith(
-                expect.any(String),
-                expect.objectContaining({method: 'GET'}),
+                expect.stringContaining('livekit-token'),
+                expect.objectContaining({
+                    method: 'POST',
+                    body: JSON.stringify({
+                        channel_id: 'test-channel',
+                        title: 'Test Call',
+                        thread_id: 'thread-id',
+                    }),
+                }),
             );
-            expect(mockWebSocketClient.connect).toHaveBeenCalled();
             expect(mockRoom.connect).toHaveBeenCalledWith('wss://fake.url', 'fake-token');
         });
 
-        it('reuses the stored connect payload when the websocket opens', async () => {
-            const payload = {channelID: 'test-channel', title: 'Test Call', threadID: 'thread-id'};
-            const connectPromise = client.connect(payload);
-
-            mockWebSocketClient.fire(WEBSOCKET_EVENT.OPEN, 'orig-conn-id', '', false);
+        it('takes the session id from the join response, so it is known before the room connects', async () => {
+            const connectPromise = client.connect({channelID: 'test-channel'});
             await connectPromise;
 
-            expect(mockWebSocketClient.sendJoin).toHaveBeenCalledWith(payload);
+            expect(client.getSessionID()).toBe('me-session');
+        });
+
+        it('emits the call state snapshot from the join response', async () => {
+            const listener = jest.fn();
+            client.on(CALL_EVENT.CALL_STATE, listener);
+
+            await client.connect({channelID: 'test-channel'});
+
+            expect(listener).toHaveBeenCalledWith(sessionResponse.call_state);
         });
 
         it('throws if a room is already connected', async () => {
@@ -295,12 +239,13 @@ describe('CallClient', () => {
             await expect(client.connect({channelID: 'test-channel'})).rejects.toThrow('already connected');
         });
 
-        it('throws and emits ERROR if token fetch returns empty values', async () => {
-            (RestClient.fetch as jest.Mock).mockResolvedValueOnce({token: '', url: ''});
+        it('throws and emits ERROR if the join response is incomplete', async () => {
+            (RestClient.fetch as jest.Mock).mockResolvedValueOnce({session_id: '', token: '', url: ''});
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
-            await expect(client.connect({channelID: 'test-channel'})).rejects.toThrow('token or url');
+            await expect(client.connect({channelID: 'test-channel'})).rejects.toThrow('incomplete session response');
+            expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
         });
 
         it('emits ERROR when room.connect rejects', async () => {
@@ -343,7 +288,6 @@ describe('CallClient', () => {
             // Teardown is driven by the resulting RoomEvent.Disconnected, not synchronously here.
             mockRoom.fire(RoomEvent.Disconnected);
             expect(client.isDisconnected).toBe(true);
-            expect(mockWebSocketClient.sendLeaveAndClose).toHaveBeenCalled();
             expect(disconnectedListener).toHaveBeenCalled();
         });
 
@@ -533,18 +477,17 @@ describe('CallClient', () => {
 
             expect(mockRoom.disconnect).not.toHaveBeenCalled();
             expect(client.isDisconnected).toBe(true);
-            expect(mockWebSocketClient.sendLeaveAndClose).toHaveBeenCalled();
             expect(disconnectedListener).toHaveBeenCalled();
         });
 
         it('cancelling mid-connect bails quietly without emitting ERROR', async () => {
             mockRoom.state = ConnectionState.Disconnected;
 
-            // Hold the WS handshake open so we can cancel while still "Connecting…".
-            let rejectReady: (e: Error) => void = () => {};
-            mockWebSocketClient.ready.mockImplementationOnce(
-                () => new Promise<string>((_resolve, reject) => {
-                    rejectReady = reject;
+            // Hold the join request open so we can cancel while still "Connecting…".
+            let rejectSession: (e: Error) => void = () => {};
+            (RestClient.fetch as jest.Mock).mockImplementationOnce(
+                () => new Promise((_resolve, reject) => {
+                    rejectSession = reject;
                 }),
             );
 
@@ -556,8 +499,7 @@ describe('CallClient', () => {
             // User hangs up before the room connected → direct teardown.
             client.disconnect();
 
-            // Teardown closed the WS, so the in-flight ready() rejects.
-            rejectReady(new Error('websocket closed'));
+            rejectSession(new Error('request aborted'));
 
             await expect(connectPromise).resolves.toBeUndefined();
             expect(errorListener).not.toHaveBeenCalled();
@@ -1379,6 +1321,87 @@ describe('CallClient', () => {
         });
     });
 
+    describe('room metadata', () => {
+        const metadata = {
+            host_id: 'host-user',
+            recording: {type: 'recording', init_at: 1, start_at: 2, end_at: 0},
+        };
+
+        it('applies the metadata already on the room when it connects', async () => {
+            mockRoom.metadata = JSON.stringify(metadata);
+            const hostListener = jest.fn();
+            const jobListener = jest.fn();
+            client.on(CALL_EVENT.HOST_CHANGED, hostListener);
+            client.on(CALL_EVENT.JOB_STATE, jobListener);
+
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Connected);
+
+            // Metadata is delivered on connect, which is what lets it need no
+            // separate resync path.
+            expect(hostListener).toHaveBeenCalledWith('host-user');
+            expect(jobListener).toHaveBeenCalledWith(metadata.recording);
+        });
+
+        it('applies subsequent metadata changes', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const hostListener = jest.fn();
+            client.on(CALL_EVENT.HOST_CHANGED, hostListener);
+
+            mockRoom.fire(RoomEvent.RoomMetadataChanged, JSON.stringify({host_id: 'new-host'}));
+
+            expect(hostListener).toHaveBeenCalledWith('new-host');
+        });
+
+        it('survives unparseable metadata without emitting', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const hostListener = jest.fn();
+            client.on(CALL_EVENT.HOST_CHANGED, hostListener);
+
+            mockRoom.fire(RoomEvent.RoomMetadataChanged, 'not json');
+
+            expect(hostListener).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('host control messages', () => {
+        const encode = (payload: unknown) => new TextEncoder().encode(JSON.stringify(payload));
+
+        it('stops the local screen share on a stop_screenshare command', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            // The server sends this through the admin API, so there is no sending
+            // participant — the handler must not treat that as a reason to drop it.
+            mockRoom.fire(
+                RoomEvent.DataReceived,
+                encode({action: 'stop_screenshare'}),
+                undefined,
+                undefined,
+                CALL_MESSAGE_TOPICS.HOST_CONTROL,
+            );
+
+            await new Promise((resolve) => setImmediate(resolve));
+
+            expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(false);
+        });
+
+        it('ignores an unknown action', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.fire(
+                RoomEvent.DataReceived,
+                encode({action: 'do_something_else'}),
+                undefined,
+                undefined,
+                CALL_MESSAGE_TOPICS.HOST_CONTROL,
+            );
+
+            await new Promise((resolve) => setImmediate(resolve));
+
+            expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
+        });
+    });
+
     describe('screen share', () => {
         // Models LiveKit's behavior: by the time LocalTrackPublished / TrackSubscribed
         // fires, the participant's getTrackPublication already returns the publication.
@@ -1409,33 +1432,53 @@ describe('CallClient', () => {
             };
         }
 
-        it('publishes a screen video track, emits LOCAL_SCREEN_STREAM and sends screen_on over plugin WS', async () => {
+        // Models createScreenTracks: hands back unpublished tracks, and publishing
+        // one makes the participant's getTrackPublication reflect it, as LiveKit does.
+        function stubCapture(video: MediaStreamTrack, audio?: MediaStreamTrack) {
+            const tracks: any[] = [{mediaStreamTrack: video, source: Track.Source.ScreenShare, stop: jest.fn()}];
+            if (audio) {
+                tracks.push({mediaStreamTrack: audio, source: Track.Source.ScreenShareAudio, stop: jest.fn()});
+            }
+            mockRoom.localParticipant.createScreenTracks.mockResolvedValueOnce(tracks);
+
+            let publishedVideo = false;
+            let publishedAudio = false;
+            mockRoom.localParticipant.publishTrack.mockImplementation((track: any) => {
+                if (track.source === Track.Source.ScreenShare) {
+                    publishedVideo = true;
+                } else if (track.source === Track.Source.ScreenShareAudio) {
+                    publishedAudio = true;
+                }
+                setLocalScreenPublications(
+                    publishedVideo ? {mediaStreamTrack: video} : undefined,
+                    publishedAudio && audio ? {mediaStreamTrack: audio} : undefined,
+                );
+                mockRoom.fire(RoomEvent.LocalTrackPublished, {source: track.source, track}, mockRoom.localParticipant);
+                return Promise.resolve();
+            });
+            return tracks;
+        }
+
+        it('captures then publishes a screen video track and emits the derived sharer', async () => {
             await client.connect({channelID: 'test-channel'});
 
             const videoTrack = {} as MediaStreamTrack;
-            const videoPub = {source: Track.Source.ScreenShare, track: {mediaStreamTrack: videoTrack}};
+            stubCapture(videoTrack);
 
-            // LiveKit fires LocalTrackPublished synchronously inside setScreenShareEnabled,
-            // before the returned promise resolves — and the participant's getTrackPublication
-            // already reflects the new publication.
-            mockRoom.localParticipant.setScreenShareEnabled.mockImplementationOnce(() => {
-                setLocalScreenPublications({mediaStreamTrack: videoTrack});
-                mockRoom.fire(RoomEvent.LocalTrackPublished, videoPub, mockRoom.localParticipant);
-                return Promise.resolve();
-            });
-
-            const localScreenListener = jest.fn();
-            client.on(CALL_EVENT.LOCAL_SCREEN_STREAM, localScreenListener);
+            const listener = jest.fn();
+            client.on(CALL_EVENT.SCREEN_SHARING_CHANGED, listener);
 
             const result = await client.shareScreen('', false);
 
-            expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(true, {audio: false});
-            expect(localScreenListener).toHaveBeenCalledWith(expect.anything(), 'me-session', 'me-id');
+            expect(mockRoom.localParticipant.createScreenTracks).toHaveBeenCalledWith({audio: false});
+            expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+                sessionID: 'me-session',
+                userID: 'me-id',
+                isLocal: true,
+            }));
             const [stream] = result;
             expect(stream).not.toBeNull();
             expect(stream!.getTracks()).toEqual([videoTrack]);
-            expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledTimes(1);
-            expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledWith({screenStreamID: expect.any(String)});
         });
 
         it('merges ScreenShareAudio into the same MediaStream as ScreenShare', async () => {
@@ -1443,28 +1486,34 @@ describe('CallClient', () => {
 
             const videoTrack = {} as MediaStreamTrack;
             const audioTrack = {} as MediaStreamTrack;
-
-            mockRoom.localParticipant.setScreenShareEnabled.mockImplementationOnce(() => {
-                setLocalScreenPublications({mediaStreamTrack: videoTrack});
-                mockRoom.fire(
-                    RoomEvent.LocalTrackPublished,
-                    {source: Track.Source.ScreenShare, track: {mediaStreamTrack: videoTrack}},
-                    mockRoom.localParticipant,
-                );
-                setLocalScreenPublications({mediaStreamTrack: videoTrack}, {mediaStreamTrack: audioTrack});
-                mockRoom.fire(
-                    RoomEvent.LocalTrackPublished,
-                    {source: Track.Source.ScreenShareAudio, track: {mediaStreamTrack: audioTrack}},
-                    mockRoom.localParticipant,
-                );
-                return Promise.resolve();
-            });
+            stubCapture(videoTrack, audioTrack);
 
             const result = await client.shareScreen('', true);
 
             const [stream] = result;
             expect(stream).not.toBeNull();
             expect(stream!.getTracks()).toEqual([videoTrack, audioTrack]);
+        });
+
+        it('bails without publishing when someone else starts sharing while the picker is open', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const captured: any = {mediaStreamTrack: {}, source: Track.Source.ScreenShare, stop: jest.fn()};
+
+            // The competing share appears only once capture resolves, which is the
+            // window the pre-capture check cannot see — the user was in the picker.
+            mockRoom.localParticipant.createScreenTracks.mockImplementationOnce(() => {
+                mockRoom.remoteParticipants.set('p1', makeRemoteParticipant('user1___p1-session', {mediaStreamTrack: {} as MediaStreamTrack}));
+                return Promise.resolve([captured]);
+            });
+
+            const result = await client.shareScreen('', false);
+
+            expect(result).toEqual([null, 'already-sharing']);
+            expect(mockRoom.localParticipant.publishTrack).not.toHaveBeenCalled();
+
+            // The capture is released rather than left running with nobody receiving it.
+            expect(captured.stop).toHaveBeenCalled();
         });
 
         describe('desktop (Electron) source picker', () => {
@@ -1502,23 +1551,24 @@ describe('CallClient', () => {
                     return Promise.resolve();
                 });
 
-                const localScreenListener = jest.fn();
-                client.on(CALL_EVENT.LOCAL_SCREEN_STREAM, localScreenListener);
+                const listener = jest.fn();
+                client.on(CALL_EVENT.SCREEN_SHARING_CHANGED, listener);
 
                 const result = await client.shareScreen('screen:1:0', false);
 
                 expect(getScreenStream).toHaveBeenCalledWith('screen:1:0', false);
-                expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
+                expect(mockRoom.localParticipant.createScreenTracks).not.toHaveBeenCalled();
 
                 // Published the captured video track, tagged as ScreenShare.
                 expect(LocalVideoTrack).toHaveBeenCalledWith(videoTrack, undefined, false);
                 const publishedVideo = mockRoom.localParticipant.publishTrack.mock.calls[0][0];
                 expect(publishedVideo.source).toBe(Track.Source.ScreenShare);
 
-                expect(localScreenListener).toHaveBeenCalledWith(expect.anything(), 'me-session', 'me-id');
+                expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+                    sessionID: 'me-session',
+                    isLocal: true,
+                }));
                 expect(result[0]).not.toBeNull();
-                expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledTimes(1);
-                expect(mockWebSocketClient.sendScreenOn).toHaveBeenCalledWith({screenStreamID: expect.any(String)});
             });
 
             it('also publishes the system-audio track as ScreenShareAudio when withAudio is true', async () => {
@@ -1550,7 +1600,6 @@ describe('CallClient', () => {
 
                 expect(result).toEqual([null, 'capture-error']);
                 expect(mockRoom.localParticipant.publishTrack).not.toHaveBeenCalled();
-                expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
             });
         });
 
@@ -1558,49 +1607,29 @@ describe('CallClient', () => {
             await client.connect({channelID: 'test-channel'});
 
             const videoTrack: any = {};
-
-            mockRoom.localParticipant.setScreenShareEnabled.mockImplementationOnce(() => {
-                setLocalScreenPublications({mediaStreamTrack: videoTrack});
-                mockRoom.fire(
-                    RoomEvent.LocalTrackPublished,
-                    {source: Track.Source.ScreenShare, track: {mediaStreamTrack: videoTrack}},
-                    mockRoom.localParticipant,
-                );
-                return Promise.resolve();
-            });
+            stubCapture(videoTrack);
             await client.shareScreen();
 
             expect(typeof videoTrack.onended).toBe('function');
 
-            mockRoom.localParticipant.setScreenShareEnabled.mockClear();
             videoTrack.onended();
 
-            // unshareScreen is async and `onended` is a fire-and-forget caller.
-            // Flush the microtask queue so unshareScreen's awaited
-            // setScreenShareEnabled(false) resolves and sendScreenOff runs.
+            // unshareScreen is async and `onended` is a fire-and-forget caller, so
+            // flush the microtask queue before asserting.
             await new Promise((resolve) => setImmediate(resolve));
 
             expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(false);
-            expect(mockWebSocketClient.sendScreenOff).toHaveBeenCalled();
         });
 
-        it('emits LOCAL_SCREEN_STREAM_OFF on LocalTrackUnpublished for ScreenShare', async () => {
+        it('clears the derived sharer on LocalTrackUnpublished for ScreenShare', async () => {
             await client.connect({channelID: 'test-channel'});
 
             const videoTrack = {} as MediaStreamTrack;
-            mockRoom.localParticipant.setScreenShareEnabled.mockImplementationOnce(() => {
-                setLocalScreenPublications({mediaStreamTrack: videoTrack});
-                mockRoom.fire(
-                    RoomEvent.LocalTrackPublished,
-                    {source: Track.Source.ScreenShare, track: {mediaStreamTrack: videoTrack}},
-                    mockRoom.localParticipant,
-                );
-                return Promise.resolve();
-            });
+            stubCapture(videoTrack);
             await client.shareScreen();
 
-            const offListener = jest.fn();
-            client.on(CALL_EVENT.LOCAL_SCREEN_STREAM_OFF, offListener);
+            const listener = jest.fn();
+            client.on(CALL_EVENT.SCREEN_SHARING_CHANGED, listener);
 
             // LiveKit clears the publication before firing LocalTrackUnpublished.
             setLocalScreenPublications();
@@ -1610,17 +1639,18 @@ describe('CallClient', () => {
                 mockRoom.localParticipant,
             );
 
-            expect(offListener).toHaveBeenCalledWith('me-session', 'me-id');
+            expect(listener).toHaveBeenCalledWith(null);
             expect(client.getLocalScreenStream()).toBeNull();
         });
 
-        it('emits REMOTE_SCREEN_STREAM when a remote ScreenShare track is subscribed', async () => {
+        it('emits the derived sharer when a remote ScreenShare track is subscribed', async () => {
             await client.connect({channelID: 'test-channel'});
             const listener = jest.fn();
-            client.on(CALL_EVENT.REMOTE_SCREEN_STREAM, listener);
+            client.on(CALL_EVENT.SCREEN_SHARING_CHANGED, listener);
 
             const videoTrack = {} as MediaStreamTrack;
             const remoteParticipant = makeRemoteParticipant('user1___p1-session', {mediaStreamTrack: videoTrack});
+            mockRoom.remoteParticipants.set('p1', remoteParticipant);
 
             mockRoom.fire(
                 RoomEvent.TrackSubscribed,
@@ -1629,9 +1659,13 @@ describe('CallClient', () => {
                 remoteParticipant,
             );
 
-            expect(listener).toHaveBeenCalledWith(expect.anything(), 'p1-session', 'user1');
-            const emittedStream = listener.mock.calls[0][0] as MediaStream;
-            expect(emittedStream.getTracks()).toEqual([videoTrack]);
+            expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+                sessionID: 'p1-session',
+                userID: 'user1',
+                isLocal: false,
+            }));
+            const emitted = listener.mock.calls[0][0];
+            expect(emitted.stream.getTracks()).toEqual([videoTrack]);
         });
 
         it('merges remote ScreenShareAudio into the same MediaStream as ScreenShare for the same sharer', async () => {
@@ -1640,9 +1674,10 @@ describe('CallClient', () => {
             const videoTrack = {} as MediaStreamTrack;
             const audioTrack = {} as MediaStreamTrack;
             const remoteParticipant = makeRemoteParticipant('user1___p1-session', {mediaStreamTrack: videoTrack});
+            mockRoom.remoteParticipants.set('p1', remoteParticipant);
 
             const listener = jest.fn();
-            client.on(CALL_EVENT.REMOTE_SCREEN_STREAM, listener);
+            client.on(CALL_EVENT.SCREEN_SHARING_CHANGED, listener);
 
             mockRoom.fire(
                 RoomEvent.TrackSubscribed,
@@ -1654,10 +1689,10 @@ describe('CallClient', () => {
             // Audio joins the participant's publications, then its event fires.
             (remoteParticipant.getTrackPublication as jest.Mock).mockImplementation((source: Track.Source) => {
                 if (source === Track.Source.ScreenShare) {
-                    return {source, track: {mediaStreamTrack: videoTrack}};
+                    return {source, trackSid: 'video-sid', track: {mediaStreamTrack: videoTrack}};
                 }
                 if (source === Track.Source.ScreenShareAudio) {
-                    return {source, track: {mediaStreamTrack: audioTrack}};
+                    return {source, trackSid: 'audio-sid', track: {mediaStreamTrack: audioTrack}};
                 }
                 return null;
             });
@@ -1668,14 +1703,15 @@ describe('CallClient', () => {
                 remoteParticipant,
             );
 
-            const latestStream = listener.mock.calls.at(-1)?.[0] as MediaStream;
-            expect(latestStream.getTracks()).toEqual([videoTrack, audioTrack]);
+            const latest = listener.mock.calls.at(-1)?.[0];
+            expect(latest.stream.getTracks()).toEqual([videoTrack, audioTrack]);
         });
 
-        it('emits REMOTE_SCREEN_STREAM_OFF when a remote ScreenShare track is unpublished', async () => {
+        it('clears the derived sharer when a remote ScreenShare track is unpublished', async () => {
             await client.connect({channelID: 'test-channel'});
 
             const remoteParticipant = makeRemoteParticipant('user1___p1-session', {mediaStreamTrack: {} as MediaStreamTrack});
+            mockRoom.remoteParticipants.set('p1', remoteParticipant);
             mockRoom.fire(
                 RoomEvent.TrackSubscribed,
                 {source: Track.Source.ScreenShare, mediaStreamTrack: {}},
@@ -1683,16 +1719,85 @@ describe('CallClient', () => {
                 remoteParticipant,
             );
 
-            const offListener = jest.fn();
-            client.on(CALL_EVENT.REMOTE_SCREEN_STREAM_OFF, offListener);
+            const listener = jest.fn();
+            client.on(CALL_EVENT.SCREEN_SHARING_CHANGED, listener);
 
+            // LiveKit drops the publication before firing TrackUnpublished.
+            (remoteParticipant.getTrackPublication as jest.Mock).mockReturnValue(null);
             mockRoom.fire(
                 RoomEvent.TrackUnpublished,
                 {source: Track.Source.ScreenShare},
                 remoteParticipant,
             );
 
-            expect(offListener).toHaveBeenCalledWith('p1-session', 'user1');
+            expect(listener).toHaveBeenCalledWith(null);
+        });
+
+        it('clears the derived sharer when the sharer disconnects, which fires no track event', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const remoteParticipant = makeRemoteParticipant('user1___p1-session', {mediaStreamTrack: {} as MediaStreamTrack});
+            mockRoom.remoteParticipants.set('p1', remoteParticipant);
+            mockRoom.fire(
+                RoomEvent.TrackSubscribed,
+                {source: Track.Source.ScreenShare, mediaStreamTrack: {}},
+                {},
+                remoteParticipant,
+            );
+
+            const listener = jest.fn();
+            client.on(CALL_EVENT.SCREEN_SHARING_CHANGED, listener);
+
+            mockRoom.remoteParticipants.delete('p1');
+            mockRoom.fire(RoomEvent.ParticipantDisconnected, remoteParticipant);
+
+            expect(listener).toHaveBeenCalledWith(null);
+        });
+
+        it('presents the lowest session id when two participants share at once', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const listener = jest.fn();
+            client.on(CALL_EVENT.SCREEN_SHARING_CHANGED, listener);
+
+            // Inserted highest-first so a correct result cannot come from map order.
+            const late = makeRemoteParticipant('user2___zzz-session', {mediaStreamTrack: {} as MediaStreamTrack});
+            const early = makeRemoteParticipant('user1___aaa-session', {mediaStreamTrack: {} as MediaStreamTrack});
+            mockRoom.remoteParticipants.set('p2', late);
+            mockRoom.remoteParticipants.set('p1', early);
+
+            mockRoom.fire(
+                RoomEvent.TrackSubscribed,
+                {source: Track.Source.ScreenShare, mediaStreamTrack: {}},
+                {},
+                late,
+            );
+
+            expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({sessionID: 'aaa-session'}));
+        });
+
+        it('does not re-emit when a recompute finds the same sharer and tracks', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const videoTrack = {} as MediaStreamTrack;
+            const remoteParticipant = makeRemoteParticipant('user1___p1-session', {mediaStreamTrack: videoTrack});
+            mockRoom.remoteParticipants.set('p1', remoteParticipant);
+
+            const listener = jest.fn();
+            client.on(CALL_EVENT.SCREEN_SHARING_CHANGED, listener);
+
+            const subscribe = () => mockRoom.fire(
+                RoomEvent.TrackSubscribed,
+                {source: Track.Source.ScreenShare, mediaStreamTrack: videoTrack},
+                {},
+                remoteParticipant,
+            );
+            subscribe();
+            subscribe();
+
+            // A duplicated event must not hand consumers a fresh MediaStream to
+            // re-attach, which is what made the video flicker.
+            expect(listener).toHaveBeenCalledTimes(1);
         });
 
         it('getRemoteScreenStream finds the sharer among remoteParticipants', async () => {
@@ -1715,23 +1820,21 @@ describe('CallClient', () => {
             expect(client.getRemoteScreenStream()).toBeNull();
         });
 
-        it('unshareScreen calls setScreenShareEnabled(false) and sends screen_off', async () => {
+        it('unshareScreen calls setScreenShareEnabled(false)', async () => {
             await client.connect({channelID: 'test-channel'});
             await client.unshareScreen();
 
             expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(false);
-            expect(mockWebSocketClient.sendScreenOff).toHaveBeenCalled();
         });
 
-        it('unshareScreen returns early without WS message when not connected', async () => {
+        it('unshareScreen returns early when not connected', async () => {
             // No connect() — isRoomConnected stays false.
             await client.unshareScreen();
 
             expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
-            expect(mockWebSocketClient.sendScreenOff).not.toHaveBeenCalled();
         });
 
-        it('unshareScreen emits ERROR and skips sendScreenOff when setScreenShareEnabled rejects', async () => {
+        it('unshareScreen emits ERROR when setScreenShareEnabled rejects', async () => {
             await client.connect({channelID: 'test-channel'});
 
             mockRoom.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(new Error('unpublish failed'));
@@ -1741,7 +1844,6 @@ describe('CallClient', () => {
             await client.unshareScreen();
 
             expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
-            expect(mockWebSocketClient.sendScreenOff).not.toHaveBeenCalled();
         });
 
         it('shareScreen returns existing stream without publishing when this client is already sharing', async () => {
@@ -1757,20 +1859,18 @@ describe('CallClient', () => {
             const [stream] = result;
             expect(stream).not.toBeNull();
             expect(stream!.getTracks()).toEqual([videoTrack]);
-            expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
-            expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
+            expect(mockRoom.localParticipant.createScreenTracks).not.toHaveBeenCalled();
         });
 
         it('shareScreen passes systemAudio: include only when withAudio is true', async () => {
             await client.connect({channelID: 'test-channel'});
 
-            mockRoom.localParticipant.setScreenShareEnabled.mockResolvedValue(null);
             await client.shareScreen('', true);
 
-            expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(true, {audio: true, systemAudio: 'include'});
+            expect(mockRoom.localParticipant.createScreenTracks).toHaveBeenCalledWith({audio: true, systemAudio: 'include'});
         });
 
-        it('shareScreen returns already-sharing error without publishing when a remote participant is already sharing', async () => {
+        it('shareScreen returns already-sharing error without capturing when a remote participant is already sharing', async () => {
             await client.connect({channelID: 'test-channel'});
 
             const otherSharer = makeRemoteParticipant('user1___p1-session', {mediaStreamTrack: {} as MediaStreamTrack});
@@ -1779,8 +1879,7 @@ describe('CallClient', () => {
             const result = await client.shareScreen();
 
             expect(result).toEqual([null, 'already-sharing']);
-            expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
-            expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
+            expect(mockRoom.localParticipant.createScreenTracks).not.toHaveBeenCalled();
         });
 
         it('shareScreen returns capture-error and emits ERROR for a non-permission failure', async () => {
@@ -1788,7 +1887,7 @@ describe('CallClient', () => {
 
             // A generic failure (name !== NotAllowedError) is not classified as PermissionDenied,
             // so it still surfaces as a call error.
-            mockRoom.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(new Error('publish failed'));
+            mockRoom.localParticipant.createScreenTracks.mockRejectedValueOnce(new Error('publish failed'));
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
@@ -1796,17 +1895,16 @@ describe('CallClient', () => {
 
             expect(result).toEqual([null, 'capture-error']);
             expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
-            expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });
 
         it('shareScreen returns permission-denied and does NOT emit ERROR when the picker is cancelled/denied (PermissionDenied)', async () => {
             await client.connect({channelID: 'test-channel'});
 
             // Dismissing the screen picker rejects getDisplayMedia with NotAllowedError, which
-            // LiveKit re-throws from setScreenShareEnabled. MediaDeviceFailure classifies that as
+            // LiveKit re-throws from createScreenTracks. MediaDeviceFailure classifies that as
             // PermissionDenied (it reads err.name), so we must NOT raise the global error modal.
             const notAllowed = Object.assign(new Error('Permission denied'), {name: 'NotAllowedError'});
-            mockRoom.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(notAllowed);
+            mockRoom.localParticipant.createScreenTracks.mockRejectedValueOnce(notAllowed);
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
 
@@ -1814,7 +1912,6 @@ describe('CallClient', () => {
 
             expect(result).toEqual([null, 'permission-denied']);
             expect(errorListener).not.toHaveBeenCalled();
-            expect(mockWebSocketClient.sendScreenOn).not.toHaveBeenCalled();
         });
     });
 

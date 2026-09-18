@@ -735,6 +735,21 @@ export const getCallsStats = async () => {
     return RestClient.fetch<CallsStats>(`${getPluginPath()}/stats`, {method: 'get'});
 };
 
+export const fetchCallState = (channelID: string): ActionFuncAsync => {
+    return async (dispatch: DispatchFunc) => {
+        try {
+            const state = await RestClient.fetch<CallState>(
+                `${getPluginPath()}/calls/${channelID}/state`,
+                {method: 'get'},
+            );
+            dispatch(loadCallState(channelID, state));
+        } catch (err) {
+            logErr('fetchCallState failed', err);
+        }
+        return {};
+    };
+};
+
 export const selectRHSPost = (postID: string): ActionFuncAsync => {
     return async (dispatch: DispatchFunc) => {
         if (window.ProductApi) {
