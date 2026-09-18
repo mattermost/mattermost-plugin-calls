@@ -520,6 +520,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         if (this.props.isRecording) {
+            logDebug('ExpandedView.onRecordToggle: stopping recording');
             this.props.openModal({
                 modalId: IDStopRecordingConfirmation,
                 dialogType: StopRecordingConfirmation,
@@ -570,11 +571,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
         const callsClient = getCallsClient();
         if (this.props.screenSharingSession && this.props.screenSharingSession?.session_id === this.props.currentSession?.session_id) {
+            logDebug('ExpandedView.onShareScreenToggle: stopping screen share');
             callsClient?.unshareScreen();
             this.setState({
                 screenStream: null,
             });
         } else if (!this.props.screenSharingSession) {
+            logDebug('ExpandedView.onShareScreenToggle: starting screen share');
             if (window.opener && isFirefox()) {
                 this.setState({showFirefoxScreenShareWarning: true});
             } else {

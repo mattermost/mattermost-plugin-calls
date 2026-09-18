@@ -7,7 +7,7 @@ import {defineMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {displayGenericErrorModal, hostEndCallForEveryone} from 'src/actions';
 import {DropdownMenuItem} from 'src/components/dot_menu/dot_menu';
-import {logErr} from 'src/log';
+import {logDebug, logErr} from 'src/log';
 import {modals} from 'src/webapp_globals';
 import styled from 'styled-components';
 
@@ -29,6 +29,7 @@ export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: P
     async function handleHostEndCallForEveryone() {
         try {
             await hostEndCallForEveryone(channelID);
+            logDebug('LeaveCallMenu.handleHostEndCallForEveryone: host ended call for everyone');
         } catch (err) {
             logErr('failed to end call for everyone', err);
             if (modals) {
