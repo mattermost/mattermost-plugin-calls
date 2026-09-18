@@ -27,11 +27,20 @@ export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: P
     const shouldShowWarningMenuItemForEndingCall = (isHost || isAdmin) && numParticipants > 1;
 
     async function handleHostEndCallForEveryone() {
+        logDebug('LeaveCallMenu.handleHostEndCallForEveryone: host ending call for everyone');
         try {
             await hostEndCallForEveryone(channelID);
-            logDebug('LeaveCallMenu.handleHostEndCallForEveryone: host ended call for everyone');
         } catch (err) {
             logErr('failed to end call for everyone', err);
+
+            // A TypeError means the HTTP connection was reset at the network level (e.g.
+            // "Failed to fetch"). This happens when the server ends the call and cleans
+            // up state before the response body reaches the client — the call did end
+            // successfully. Suppress the error modal; there's nothing for the user to do.
+            if (err instanceof TypeError) {
+                return;
+            }
+
             if (modals) {
                 dispatch(displayGenericErrorModal(
                     defineMessage({defaultMessage: 'Unable to end the call'}),
