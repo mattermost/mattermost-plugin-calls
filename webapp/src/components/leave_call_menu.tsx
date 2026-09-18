@@ -31,15 +31,15 @@ export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: P
         try {
             await hostEndCallForEveryone(channelID);
         } catch (err) {
-            logErr('failed to end call for everyone', err);
-
-            // A TypeError means the HTTP connection was reset at the network level (e.g.
-            // "Failed to fetch"). This happens when the server ends the call and cleans
-            // up state before the response body reaches the client — the call did end
-            // successfully. Suppress the error modal; there's nothing for the user to do.
+            // A TypeError (e.g. "Failed to fetch") means the browser aborted the request
+            // before JS could process the response — typically because the popout window
+            // was closed by the DISCONNECTED handler while the fetch was in-flight. The
+            // call did end successfully; nothing to surface.
             if (err instanceof TypeError) {
                 return;
             }
+
+            logErr('failed to end call for everyone', err);
 
             if (modals) {
                 dispatch(displayGenericErrorModal(
