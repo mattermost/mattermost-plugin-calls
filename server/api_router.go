@@ -112,6 +112,7 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/decline", p.handleDeclineCall).Methods("POST")
 	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/dismiss-notification", p.handleDismissNotification).Methods("POST")
 	router.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/recording/{action}", p.handleRecordingAction).Methods("POST")
+	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/state", p.handleGetCallState).Methods("GET")
 	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/active", p.handleGetCallActive).Methods("GET")
 
 	// Deprecated for hostCtrlRounder /end, but needed for mobile backward compatibility (pre 2.18)

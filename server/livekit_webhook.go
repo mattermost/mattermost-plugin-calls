@@ -424,16 +424,14 @@ func (p *Plugin) handleLiveKitTrackPublished(event *livekit.WebhookEvent) {
 		return
 	}
 
-	// The client refuses to start a second share by checking LiveKit track state
-	// directly, so a conflict here means that check was bypassed or raced. Record
-	// the newcomer rather than dropping the event: LiveKit already accepted the
-	// track, so the prop would otherwise name a sharer nobody can see.
+	// Reject concurrent sharers: first publisher wins. The client checks LiveKit
+	// track state before publishing, so a conflict means a race or a bypass. Keep
+	// the existing sharer as authoritative; the newcomer's track remains live in
+	// LK but is not reflected in DB state or WS events.
 	if state.Call.Props.ScreenSharingSessionID != "" {
-		p.LogWarn("handleLiveKitTrackPublished: replacing existing screen sharer",
-			"channelID", channelID, "previous", state.Call.Props.ScreenSharingSessionID, "current", sessionID)
-		if state.Call.Props.ScreenStartAt > 0 {
-			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
-		}
+		p.LogWarn("handleLiveKitTrackPublished: rejecting second screen sharer, keeping existing",
+			"channelID", channelID, "existing", state.Call.Props.ScreenSharingSessionID, "rejected", sessionID)
+		return
 	}
 
 	state.Call.Props.ScreenSharingSessionID = sessionID

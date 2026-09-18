@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -47,11 +46,10 @@ type Plugin struct {
 
 	metrics interfaces.Metrics
 
-	mut         sync.RWMutex
-	nodeID      string // the node cluster id
-	stopCh      chan struct{}
-	clusterEvCh chan model.PluginClusterEvent
-	sessions    map[string]*session
+	mut     sync.RWMutex
+	nodeID  string // the node cluster id
+	stopCh  chan struct{}
+	sessions map[string]*session
 
 	jobService *jobService
 
@@ -97,77 +95,6 @@ type Plugin struct {
 	removeSessionsBatchers map[string]*batching.Batcher
 }
 
-func (p *Plugin) OnPluginClusterEvent(_ *plugin.Context, ev model.PluginClusterEvent) {
-	select {
-	case p.clusterEvCh <- ev:
-	default:
-		p.LogError("too many cluster events, channel is full, dropping.")
-	}
-}
-
-func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
-	p.LogDebug("got cluster event", "type", ev.Id)
-
-	var msg clusterMessage
-	if err := msg.FromJSON(ev.Data); err != nil {
-		return err
-	}
-
-	switch clusterMessageType(ev.Id) {
-	case clusterMessageTypeReconnect:
-		p.LogDebug("reconnect event", "UserID", msg.UserID, "ConnID", msg.ConnID)
-
-		p.mut.Lock()
-		defer p.mut.Unlock()
-
-		us := p.sessions[msg.ConnID]
-		if us == nil {
-			return nil
-		}
-
-		if atomic.CompareAndSwapInt32(&us.wsReconnected, 0, 1) {
-			p.LogDebug("closing reconnectCh", "connID", msg.ConnID)
-			close(us.wsReconnectCh)
-			delete(p.sessions, us.connID)
-		} else {
-			return fmt.Errorf("session already reconnected, connID=%q", msg.ConnID)
-		}
-
-		return nil
-	case clusterMessageTypeLeave:
-		p.LogDebug("leave event", "UserID", msg.UserID, "ConnID", msg.ConnID)
-
-		p.mut.RLock()
-		us := p.sessions[msg.ConnID]
-		p.mut.RUnlock()
-
-		if us == nil {
-			return nil
-		}
-
-		if atomic.CompareAndSwapInt32(&us.left, 0, 1) {
-			p.LogDebug("closing leaveCh", "connID", msg.ConnID)
-			close(us.leaveCh)
-		}
-	default:
-		return fmt.Errorf("unexpected event type %q", ev.Id)
-	}
-
-	return nil
-}
-
-func (p *Plugin) clusterEventsHandler() {
-	for {
-		select {
-		case ev := <-p.clusterEvCh:
-			if err := p.handleEvent(ev); err != nil {
-				p.LogError(err.Error())
-			}
-		case <-p.stopCh:
-			return
-		}
-	}
-}
 
 func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, title, threadID string, channelType model.ChannelType) (string, string, error) {
 	user, appErr := p.API.GetUser(userID)

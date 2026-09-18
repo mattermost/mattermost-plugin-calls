@@ -156,8 +156,6 @@ func (p *Plugin) OnActivate() (retErr error) {
 
 	p.nodeID = status.ClusterId
 
-	go p.clusterEventsHandler()
-
 	p.publisherWg.Add(1)
 	go p.roomMetadataPublisher()
 

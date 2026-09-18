@@ -9,17 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/time/rate"
-
 	"github.com/mattermost/mattermost-plugin-calls/server/batching"
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost/server/public/model"
-)
-
-const (
-	msgChSize = 50
 )
 
 var errGroupCallsNotAllowed = fmt.Errorf("unlicensed servers only allow calls in DMs")
@@ -31,15 +25,9 @@ type session struct {
 	originalConnID string
 	callID         string
 
-	// WebSocket
-
-	wsMsgCh chan clientMessage
 	// to notify of websocket disconnect.
 	wsCloseCh chan struct{}
 	wsClosed  int32
-	// to notify of websocket reconnection.
-	wsReconnectCh chan struct{}
-	wsReconnected int32
 
 	// to notify of session leaving a call.
 	leaveCh chan struct{}
@@ -47,9 +35,6 @@ type session struct {
 
 	// removed tracks whether the session was removed from state.
 	removed int32
-
-	// rate limiter for incoming WebSocket messages.
-	wsMsgLimiter *rate.Limiter
 }
 
 func newUserSession(userID, channelID, connID, callID string) *session {
@@ -59,11 +44,8 @@ func newUserSession(userID, channelID, connID, callID string) *session {
 		connID:         connID,
 		originalConnID: connID,
 		callID:         callID,
-		wsMsgCh:        make(chan clientMessage, msgChSize*2),
 		wsCloseCh:      make(chan struct{}),
-		wsReconnectCh:  make(chan struct{}),
 		leaveCh:        make(chan struct{}),
-		wsMsgLimiter:   rate.NewLimiter(10, 100),
 	}
 }
 

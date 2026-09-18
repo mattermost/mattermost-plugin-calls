@@ -121,6 +121,34 @@ func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (p *Plugin) handleGetCallState(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
+
+	if !(p.isBotSession(r) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		p.LogError("handleGetCallState: failed to get call state", "err", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer p.unlockCall(channelID)
+
+	if state == nil {
+		http.Error(w, "no call ongoing", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(state.getClientState(p.getBotID(), userID)); err != nil {
+		p.LogError("handleGetCallState: failed to encode response", "err", err.Error())
+	}
+}
+
 func (p *Plugin) handleGetCallActive(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
 	channelID := mux.Vars(r)["channel_id"]
