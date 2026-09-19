@@ -198,6 +198,58 @@ func TestRemoveUserSessionDMAutoEnd(t *testing.T) {
 		require.Len(t, state.sessions, 2)
 	})
 
+	t.Run("DM: publishes call_end when the last of a user's two devices leaves", func(t *testing.T) {
+		defer mockAPI.AssertExpectations(t)
+		defer mockMetrics.AssertExpectations(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		state := buildDMCallState(t, channelID)
+
+		err := p.store.CreateCallSession(&public.CallSession{
+			ID:     "connA2",
+			CallID: state.Call.ID,
+			UserID: "userA",
+			JoinAt: time.Now().UnixMilli(),
+		})
+		require.NoError(t, err)
+		state.sessions["connA2"] = &public.CallSession{
+			ID:     "connA2",
+			CallID: state.Call.ID,
+			UserID: "userA",
+		}
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserLeft).Twice()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{
+			"session_id": "connA",
+			"user_id":    "userA",
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserLeft, map[string]any{
+			"session_id": "connA2",
+			"user_id":    "userA",
+		}, &model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		err = p.removeUserSession(state, "userA", "connA", "connA", channelID)
+		require.NoError(t, err)
+		require.Len(t, state.sessions, 2)
+
+		// Closing the remaining device leaves userB alone, which is what ends the call.
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeDirect,
+		}, nil).Once()
+
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{},
+			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
+
+		err = p.removeUserSession(state, "userA", "connA2", "connA2", channelID)
+		require.NoError(t, err)
+
+		require.Zero(t, state.Call.EndAt)
+		require.Len(t, state.sessions, 1)
+	})
+
 	t.Run("does not publish call_end when the channel can't be read", func(t *testing.T) {
 		defer mockAPI.AssertExpectations(t)
 		defer mockMetrics.AssertExpectations(t)
