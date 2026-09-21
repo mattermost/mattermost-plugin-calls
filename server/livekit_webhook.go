@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
+	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/livekit/protocol/livekit"
 )
@@ -283,6 +284,31 @@ func (p *Plugin) removeParticipantSession(channelID, userID, sessionID, sid stri
 					"channelID", channelID, "sid", sid, "err", err.Error())
 			}
 			delete(state.sessions, sid)
+		}
+	}
+
+	// For 1:1 DM user calls, delete the LiveKit room when only one human
+	// participant remains: they have nobody to talk to. The resulting
+	// participant_left (ROOM_DELETED) webhook will handle the final cleanup.
+	if humanParticipantsRemain(state.sessions, p.getBotID()) {
+		nHumans := 0
+		for _, s := range state.sessions {
+			if s.UserID != p.getBotID() {
+				nHumans++
+			}
+		}
+		if nHumans == 1 {
+			channel, appErr := p.API.GetChannel(channelID)
+			if appErr == nil && channel.Type == model.ChannelTypeDirect && !p.isPhoneCallChannelFromChannel(channel) {
+				p.LogInfo("removeParticipantSession: last remote participant left DM call, ending room",
+					"callID", state.Call.ID, "channelID", channelID)
+				go func() {
+					if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+						p.LogError("removeParticipantSession: failed to delete DM LiveKit room",
+							"channelID", channelID, "err", err.Error())
+					}
+				}()
+			}
 		}
 	}
 
