@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func TestWSReader(t *testing.T) {
 	mockAPI := &pluginMocks.MockAPI{}
 	mockMetrics := &serverMocks.MockMetrics{}
@@ -183,7 +182,6 @@ func TestWSReader(t *testing.T) {
 		})
 	})
 }
-
 
 func TestWebSocketBroadcastToModel(t *testing.T) {
 	t.Run("nil/empty", func(t *testing.T) {

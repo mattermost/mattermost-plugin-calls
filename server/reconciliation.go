@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	reconcilerInterval      = 60 * time.Second
-	reconcilerLockKey       = "calls_reconcile"
+	reconcilerInterval       = 60 * time.Second
+	reconcilerLockKey        = "calls_reconcile"
 	reconcilerSuspicionLimit = 2
 )
 

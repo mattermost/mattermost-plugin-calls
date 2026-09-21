@@ -156,24 +156,6 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 	p.API.PublishWebSocketEvent(ev, data, broadcast.ToModel())
 }
 
-
-type EmojiData struct {
-	Name    string `json:"name"`
-	Skin    string `json:"skin,omitempty"`
-	Unified string `json:"unified"`
-	Literal string `json:"literal,omitempty"`
-}
-
-func (ed EmojiData) toMap() map[string]interface{} {
-	return map[string]interface{}{
-		"name":    ed.Name,
-		"skin":    ed.Skin,
-		"unified": ed.Unified,
-		"literal": ed.Literal,
-	}
-}
-
-
 func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 	if userID == "" {
 		return
@@ -478,7 +460,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	return nil
 }
 
-
 func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model.WebSocketRequest) {
 	if !utf8.ValidString(req.Action) {
 		p.LogError("invalid UTF-8 in action")
@@ -602,9 +583,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		}
 		return
 	}
-
 }
-
 
 func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, text string, newAudioLenMs float64) error {
 	sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{})

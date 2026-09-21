@@ -46,9 +46,9 @@ type Plugin struct {
 
 	metrics interfaces.Metrics
 
-	mut     sync.RWMutex
-	nodeID  string // the node cluster id
-	stopCh  chan struct{}
+	mut      sync.RWMutex
+	nodeID   string // the node cluster id
+	stopCh   chan struct{}
 	sessions map[string]*session
 
 	jobService *jobService
@@ -94,7 +94,6 @@ type Plugin struct {
 	addSessionsBatchers    map[string]*batching.Batcher
 	removeSessionsBatchers map[string]*batching.Batcher
 }
-
 
 func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, title, threadID string, channelType model.ChannelType) (string, string, error) {
 	user, appErr := p.API.GetUser(userID)
