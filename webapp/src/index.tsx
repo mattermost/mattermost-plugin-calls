@@ -127,6 +127,7 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
+import {applyCallHostChanged} from './host_change';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
@@ -165,7 +166,6 @@ import {
     shouldRenderDesktopWidget,
 } from './utils';
 import {
-    applyCallHostChanged,
     applyCallJobState,
     dispatchReaction,
     handleCallEnd,
