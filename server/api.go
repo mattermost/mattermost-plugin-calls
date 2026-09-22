@@ -1167,10 +1167,14 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 
 		// Tear down the media room so the MM user's client disconnects, mirroring
 		// the host-end path; clients also get wsEventCallEnd as a fallback.
-		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-			p.LogError("handleLiveKitSIPParticipantLeft: failed to delete LiveKit room",
-				"channelID", channelID, "err", err.Error())
-		}
+		// livekitDeleteRoom is a network call; run it outside the call lock to
+		// avoid holding the lock for up to the API timeout.
+		go func() {
+			if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+				p.LogError("handleLiveKitSIPParticipantLeft: failed to delete LiveKit room",
+					"channelID", channelID, "err", err.Error())
+			}
+		}()
 
 		p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
 			ChannelID:           channelID,
