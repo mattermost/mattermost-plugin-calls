@@ -35,8 +35,8 @@ import {Store} from 'plugin/types/mattermost-webapp';
 import {
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
+import {applyCallHostChanged} from 'plugin/host_change';
 import {
-    applyCallHostChanged,
     applyCallJobState,
     dispatchReaction,
 } from 'plugin/websocket_handlers';
