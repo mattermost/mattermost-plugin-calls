@@ -42,6 +42,14 @@ Without this flag, the build only produces binaries for Linux, FreeBSD, and Open
 
 *Note:* If the upload fails with a file size error, increase the maximum file size in *System Console → Environment → File Storage → Maximum File Size* (e.g. 256 MB).
 
+*Note:* On Mattermost Cloud instances you cannot raise that limit, and the multi-arch bundle produced by `make deploy` is usually too large to upload. Build a single-platform bundle instead and upload it manually via *System Console → Plugins → Plugin Management*:
+
+```bash
+make dist-linux-amd64
+```
+
+This produces `dist/com.mattermost.calls-<version>-linux-amd64-slim.tar.gz` containing only the one server binary. `dist-linux-arm64`, `dist-freebsd-amd64` and `dist-openbsd-amd64` are also available.
+
 For more details on how to develop a plugin refer to the official [documentation](https://developers.mattermost.com/extend/plugins/).
 
 ## How to Release

@@ -1,0 +1,31 @@
+---
+description: How the webapp plugin bundle loads, joins calls and drives the popout
+globs: webapp/**
+alwaysApply: false
+---
+
+`webapp/` is the Calls UI as a Mattermost webapp plugin. It is not a page on its own: the host webapp loads `dist/main.js`, hands it a `PluginRegistry` and its Redux store, and the plugin adds itself to the host UI through that registry.
+
+`standalone/` reuses this code through its `plugin/*` alias, so changes under `src/` can also affect the Desktop widget and the recording page.
+
+## Loading
+
+- `src/entry.tsx` sets `__webpack_public_path__` so lazy chunks and web workers resolve under `/static/plugins/<id>/`, then imports `src/index.tsx`.
+- `src/index.tsx` defines `Plugin` and calls `window.registerPlugin`. `initialize` registers the reducer, websocket handlers (`custom_<pluginId>_*`), channel header and call button actions, channel toast, post types for call, recording and transcription posts, admin console settings, user settings, slash command hooks, global modals and the `/expanded` route. Everything it registers is pushed onto `unsubscribers` and torn down in `uninitialize`.
+- React, Redux, react-intl, react-bootstrap and react-router come from the host through webpack `externals`. Don't bundle a second copy.
+- Host-only helpers (`WebappUtils`, `ProductApi`) come in through `src/webapp_globals.ts` and may be undefined on older servers. `mattermost-webapp` is the core webapp source, installed at a pinned commit by `install_mattermost_webapp.sh`, and is used for types and SCSS.
+
+## Joining a call
+
+`connectCall` in `src/index.tsx` picks one of three paths:
+
+- Desktop with `window.desktopAPI.joinCall`: hands the join to the Desktop app, which opens `standalone/widget.html` in its own window. No `CallClient` is created in this renderer.
+- Legacy Desktop (5.6.0 and older): the same handoff, sent as a `calls-join-call` message.
+- Browser: creates `window.callsClient` (the LiveKit-based `src/clients/call`), resets `window.currentCallData`, mounts `CallWidget` into the host's `#calls` element with its own `Provider` and `IntlProvider`.
+
+## Expanded View
+
+The widget opens `/<team>/<pluginId>/expanded/<channelID>` (`getPopOutURL`) with `window.open`. That window loads the full webapp and this plugin again, and `ExpandedView` is served by the `/expanded` team route.
+
+- `isCallsPopOut()` is true when `window.opener.callsClient` exists. The popout never creates its own client; it drives the opener's through `window.opener.callsClient`, and the two windows share actions through `window.callActions`.
+- In the popout, `initialize` skips fetching other channels' call state, and the join-call keyboard shortcut is disabled.

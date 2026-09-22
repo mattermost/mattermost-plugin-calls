@@ -1,0 +1,12 @@
+---
+description: React/TypeScript conventions for the webapp and standalone packages
+globs: webapp/**/*.ts,webapp/src/**/*.tsx,standalone/**/*.ts,standalone/**/*.tsx
+alwaysApply: false
+---
+
+- The license header required by `AGENTS.md` is enforced here by the `header/header` ESLint rule.
+- Check a package with `npm run lint` and `npm run check-types` from within `webapp/` or `standalone/`.
+- Imports are sorted by `simple-import-sort`; unused imports fail the lint.
+- User-facing strings go through `react-intl`. After adding or changing one, run `make i18n-extract` and commit the regenerated `i18n/en.json`. Never hand-edit other locale files.
+- Unit tests are Jest, named `*.test.ts(x)` beside the code. Component tests use `@testing-library/react`.
+- `webapp/` and `standalone/` are independent npm packages with their own `node_modules`; install and run scripts inside the relevant directory.
