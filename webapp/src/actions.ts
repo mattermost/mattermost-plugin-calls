@@ -784,3 +784,10 @@ export const localSessionClose = (channelID: string) => (dispatch: Dispatch) => 
         },
     });
 };
+
+// Lazy import breaks the actions ↔ websocket_handlers circular dependency.
+export const callHostChanged = (channelID: string, hostID: string) => (dispatch: Dispatch, getState: GetStateFunc) => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const {applyCallHostChanged} = require('src/websocket_handlers');
+    applyCallHostChanged({dispatch, getState}, channelID, hostID, getCallIDForChannel(getState(), channelID));
+};

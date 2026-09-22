@@ -8,6 +8,7 @@ import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-re
 import {connect} from 'react-redux';
 import {withRouter} from 'react-router-dom';
 import {
+    callHostChanged,
     fetchCallState,
     hideExpandedView,
     joinUser,
@@ -108,6 +109,7 @@ const mapStateToProps = (state: GlobalState) => {
 };
 
 const mapDispatchToProps = {
+    callHostChanged,
     fetchCallState,
     hideExpandedView,
     showScreenSourceModal,

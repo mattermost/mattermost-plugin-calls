@@ -133,6 +133,7 @@ interface Props extends RouteComponentProps {
     otherSessions: UserSessionState[];
     isDMCalling: boolean;
     clientConnecting: boolean;
+    callHostChanged: (channelID: string, hostID: string) => void;
     userMuted: (channelID: string, sessionID: string, userID: string) => void;
     userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
     joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
@@ -704,6 +705,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         // USERS_VOICE_ACTIVITY_CHANGED in its own index.tsx — gate on
         // window.opener so we don't double-dispatch in the inline case.
         if (window.opener) {
+            onClient(CALL_EVENT.HOST_CHANGED, (hostID: string) => {
+                this.props.callHostChanged(callsClient.channelID, hostID);
+            });
             onClient(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
                 if (session) {
                     this.props.userScreenShared(callsClient.channelID, session.sessionID, session.userID);
