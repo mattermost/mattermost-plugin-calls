@@ -253,3 +253,30 @@ test.describe('end call', {tag: '@livekit'}, () => {
         await expect(userBPage.page.locator('#calls-widget')).toBeHidden();
     });
 });
+
+test.describe('abandoned session', {tag: '@livekit'}, () => {
+    test.use({storageState: userStorages[0]});
+
+    test('tab close removes participant from the call', {
+        tag: '@core',
+    }, async ({page}) => {
+        const userAPage = new PlaywrightDevPage(page);
+        const [_, userBPage] = await Promise.all([
+            userAPage.startCall(),
+            joinCall(userStorages[1]),
+        ]);
+
+        const participantsList = await userAPage.getWidgetParticipantList();
+
+        // Verify that the user is in the participants list
+        await expect(participantsList.getByText(usernames[1])).toBeVisible();
+
+        // Close the page for another user
+        await userBPage.page.close({runBeforeUnload: true});
+
+        // Verify that the user is not in the participants list anymore
+        await expect(participantsList.getByText(usernames[1])).toBeHidden({timeout: 15000});
+
+        await userAPage.leaveCall();
+    });
+});
