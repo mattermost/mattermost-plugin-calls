@@ -466,7 +466,7 @@ func (p *Plugin) handleLiveKitTrackPublished(event *livekit.WebhookEvent) {
 	}
 
 	state.Call.Props.ScreenSharingSessionID = sessionID
-	state.Call.Props.ScreenStartAt = time.Now().UnixMilli()
+	state.Call.Props.ScreenStartAt = time.Now().Unix()
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("handleLiveKitTrackPublished: failed to update call", "channelID", channelID, "err", err.Error())
