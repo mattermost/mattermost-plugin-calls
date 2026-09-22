@@ -338,7 +338,12 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
     const removedUserID = ev.data.user_id || ev.broadcast.user_id;
     const removerUserID = ev.data.remover_id;
 
-    if (removedUserID === currentUserID && channelID === channelIDForCurrentCall(store.getState())) {
+    // channelIDForCurrentCall reads window.callsClient?.channelID, which may already
+    // be deleted when user_removed arrives after a LiveKit PARTICIPANT_REMOVED kick.
+    // window.callsClientLastChannelID is set at join time and survives disconnect.
+    const currentCallChannelID = channelIDForCurrentCall(store.getState()) ||
+        window.callsClientLastChannelID || '';
+    if (removedUserID === currentUserID && channelID === currentCallChannelID) {
         const errorMessage = removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr;
         store.dispatch(displayCallErrorModal(errorMessage, channelID));
         getCallsClient()?.disconnect();

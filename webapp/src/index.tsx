@@ -658,6 +658,7 @@ export default class Plugin {
                 const state = store.getState();
 
                 window.callsClient = new CallClient();
+                window.callsClientLastChannelID = channelID;
                 window.currentCallData = {...CurrentCallDataDefault};
 
                 const locale = getCurrentUserLocale(state) || 'en';

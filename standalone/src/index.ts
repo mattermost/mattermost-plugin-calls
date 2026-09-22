@@ -22,6 +22,7 @@ import {getCallActive, getCallsConfig, getCallsVersionInfo, joinUser, leaveUser,
 import CallClient, {CALL_EVENT, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
 import type {ScreenSharingSession} from 'plugin/clients/call/types';
 import RestClient from 'plugin/clients/rest';
+import {applyCallHostChanged} from 'plugin/host_change';
 import {
     logDebug,
     logErr,
@@ -35,7 +36,6 @@ import {Store} from 'plugin/types/mattermost-webapp';
 import {
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
-import {applyCallHostChanged} from 'plugin/host_change';
 import {
     applyCallJobState,
     dispatchReaction,
