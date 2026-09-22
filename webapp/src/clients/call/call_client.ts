@@ -872,9 +872,14 @@ export default class CallClient extends EventEmitter {
         // USER_JOINED creates the session, then the LiveKit-owned fields (mic mute +
         // raised hand) are layered on top.
         const localParticipant = this.room.localParticipant;
-        const {userID: localUserId, sessionID: localSessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
-        this.emit(CALL_EVENT.USER_JOINED, localSessionID, localUserId, true);
-        this.emitLiveKitOwnedState(localParticipant);
+
+        // The recording/transcribing bot joins as local participant too; filter it
+        // out the same way we do for remote bots below.
+        if (!this.isBotParticipant(localParticipant)) {
+            const {userID: localUserId, sessionID: localSessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
+            this.emit(CALL_EVENT.USER_JOINED, localSessionID, localUserId, true);
+            this.emitLiveKitOwnedState(localParticipant);
+        }
 
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             // The bot is not a call participant; keep it out of the list.
