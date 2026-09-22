@@ -51,6 +51,13 @@ import EnableVideo from 'src/components/admin_console_settings/enable_video';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
 import ICEServersConfigs from 'src/components/admin_console_settings/ice_servers_configs';
+import EnableSIPOutbound from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound';
+import EnableSIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound_allowlist';
+import LiveKitAPIKey from 'src/components/admin_console_settings/livekit_service/livekit_api_key';
+import LiveKitAPISecret from 'src/components/admin_console_settings/livekit_service/livekit_api_secret';
+import LiveKitSIPOutboundTrunkID from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_trunk_id';
+import LiveKitURL from 'src/components/admin_console_settings/livekit_service/livekit_url';
+import SIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/sip_outbound_allowlist';
 import MaxCallParticipants from 'src/components/admin_console_settings/max_call_participants';
 import EnableLiveCaptions from 'src/components/admin_console_settings/recordings/enable_live_captions';
 import EnableRecordings from 'src/components/admin_console_settings/recordings/enable_recordings';
@@ -75,6 +82,7 @@ import CallRecordingsSection from 'src/components/admin_console_settings/section
 import CallTranscriptionsSection from 'src/components/admin_console_settings/sections/call_transcriptions';
 import GeneralSettingsSection from 'src/components/admin_console_settings/sections/general_settings';
 import ICEAndTURNSection from 'src/components/admin_console_settings/sections/ice_and_turn';
+import LiveKitServiceSection from 'src/components/admin_console_settings/sections/livekit_service';
 import RTCServerSection from 'src/components/admin_console_settings/sections/rtc_server';
 import RTCDServiceSection from 'src/components/admin_console_settings/sections/rtcd_service';
 import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
@@ -491,6 +499,18 @@ export default class Plugin {
             registry.registerAdminConsoleCustomSection('RTCDService', RTCDServiceSection);
         }
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceURL);
+
+        // LiveKit Service
+        if (registry.registerAdminConsoleCustomSection) {
+            registry.registerAdminConsoleCustomSection('LiveKitService', LiveKitServiceSection);
+        }
+        registry.registerAdminConsoleCustomSetting('LiveKitURL', LiveKitURL);
+        registry.registerAdminConsoleCustomSetting('LiveKitAPIKey', LiveKitAPIKey);
+        registry.registerAdminConsoleCustomSetting('LiveKitAPISecret', LiveKitAPISecret);
+        registry.registerAdminConsoleCustomSetting('EnableSIPOutbound', EnableSIPOutbound);
+        registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundTrunkID', LiveKitSIPOutboundTrunkID);
+        registry.registerAdminConsoleCustomSetting('EnableSIPOutboundAllowlist', EnableSIPOutboundAllowlist);
+        registry.registerAdminConsoleCustomSetting('SIPOutboundAllowlist', SIPOutboundAllowlist);
 
         // RTC Server
         if (registry.registerAdminConsoleCustomSection) {
