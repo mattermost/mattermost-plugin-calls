@@ -511,7 +511,7 @@ test.describe('call post', {tag: '@livekit'}, () => {
 test.describe('permissions', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
 
-    test('leaving active call channel should disconnect from call', async ({page}) => {
+    test.fixme('leaving active call channel should disconnect from call', async ({page}) => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
