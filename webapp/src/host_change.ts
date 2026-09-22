@@ -1,17 +1,23 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {GlobalState} from '@mattermost/types/store';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {generateId} from 'mattermost-redux/utils/helpers';
 import {CALL_HOST, HOST_CONTROL_NOTICE, HOST_CONTROL_NOTICE_TIMEOUT_EVENT} from 'src/action_types';
 import {HOST_CONTROL_NOTICE_TIMEOUT} from 'src/constants';
 import {channelHasCall, profilesInCurrentCallMap} from 'src/selectors';
-import {Store} from 'src/types/mattermost-webapp';
 import {HostControlNotice, HostControlNoticeType} from 'src/types/types';
 import {getUserDisplayName, isDMChannel} from 'src/utils';
 
-export function applyCallHostChanged(store: Store, channelID: string, hostID: string, callID: string) {
+type StoreAPI = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    dispatch: (action: any) => any;
+    getState: () => GlobalState;
+}
+
+export function applyCallHostChanged(store: StoreAPI, channelID: string, hostID: string, callID: string) {
     store.dispatch({
         type: CALL_HOST,
         data: {
