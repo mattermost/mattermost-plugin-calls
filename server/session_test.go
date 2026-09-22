@@ -271,11 +271,12 @@ func TestRemoveUserSessionDMAutoEnd(t *testing.T) {
 
 		// Closing the remaining device leaves userB alone, which is what ends the call. The
 		// channel is a regular DM rather than a phone-call container, so the bot is not a member.
-		// The channel is read twice: once by the auto-end check, once by isPhoneCallChannel.
+		// The channel is read once by the auto-end check; isPhoneCallChannelFromChannel reuses
+		// the already-fetched channel to avoid a second GetChannel call.
 		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
 			Id:   channelID,
 			Type: model.ChannelTypeDirect,
-		}, nil).Twice()
+		}, nil).Once()
 		mockAPI.On("GetChannelMembers", channelID, 0, 10).Return(model.ChannelMembers{
 			{ChannelId: channelID, UserId: "userA"},
 			{ChannelId: channelID, UserId: "userB"},
