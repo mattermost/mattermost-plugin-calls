@@ -49,6 +49,7 @@ import {
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
+import {applyCallHostChanged} from 'src/host_change';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/session/actions';
 import {
@@ -68,7 +69,6 @@ import {
     LIVE_CAPTION_TIMEOUT_EVENT,
 } from './action_types';
 import {
-    channelHasCall,
     channelIDForCurrentCall,
     profilesInCurrentCallMap,
     ringingEnabled,
@@ -79,7 +79,6 @@ import {
     getCallsClient,
     getUserDisplayName,
     hasLiveCallClient,
-    isDMChannel,
 } from './utils';
 
 export type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
@@ -281,66 +280,6 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
 export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHostChangedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     applyCallHostChanged(store, channelID, ev.data.hostID, ev.data.call_id);
-}
-
-/**
- * Applies a host change and raises the accompanying notice.
- *
- * Shared because host state now reaches clients two ways: over the main
- * WebSocket for observers, and over LiveKit room metadata for clients in the
- * call. Both audiences are unreachable by the other path, so the server
- * publishes both and this is the one place that interprets it.
- */
-export function applyCallHostChanged(store: Store, channelID: string, hostID: string, callID: string) {
-    store.dispatch({
-        type: CALL_HOST,
-        data: {
-            channelID,
-            hostID,
-            hostChangeAt: Date.now(),
-        },
-    });
-
-    // A DM caller is made host the moment they place the call, which says nothing they don't
-    // already know — the widget is showing them "Calling…". The server sends this before
-    // call_start, so having no call in the store yet is what identifies us as the initiator.
-    if (
-        hostID === getCurrentUserId(store.getState()) &&
-        isDMChannel(getChannel(store.getState(), channelID)) &&
-        !channelHasCall(store.getState(), channelID)
-    ) {
-        return;
-    }
-
-    const hostProfile = profilesInCurrentCallMap(store.getState())[hostID] ||
-        getUser(store.getState(), hostID);
-    if (!hostProfile) {
-        return;
-    }
-    const displayName = getUserDisplayName(hostProfile);
-
-    const hostNotice: HostControlNotice = {
-        type: HostControlNoticeType.HostChanged,
-        callID,
-        noticeID: generateId(),
-        displayName,
-        userID: hostID,
-    };
-
-    store.dispatch({
-        type: HOST_CONTROL_NOTICE,
-        data: hostNotice,
-    });
-
-    setTimeout(() => {
-        store.dispatch({
-            type: HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
-            data: {
-                callID,
-                noticeID: hostNotice.noticeID,
-            },
-        });
-    }, HOST_CONTROL_NOTICE_TIMEOUT);
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of

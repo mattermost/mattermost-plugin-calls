@@ -24,6 +24,7 @@ import {ErrorModal, IdForErrorModel} from 'src/components/error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, RING_LENGTH} from 'src/constants';
+import {applyCallHostChanged} from 'src/host_change';
 import {logErr} from 'src/log';
 import {
     callDismissedNotification,
@@ -785,9 +786,6 @@ export const localSessionClose = (channelID: string) => (dispatch: Dispatch) => 
     });
 };
 
-// Lazy import breaks the actions ↔ websocket_handlers circular dependency.
 export const callHostChanged = (channelID: string, hostID: string) => (dispatch: Dispatch, getState: GetStateFunc) => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const {applyCallHostChanged} = require('src/websocket_handlers');
     applyCallHostChanged({dispatch, getState}, channelID, hostID, getCallIDForChannel(getState(), channelID));
 };
