@@ -4,10 +4,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -46,11 +46,10 @@ type Plugin struct {
 
 	metrics interfaces.Metrics
 
-	mut         sync.RWMutex
-	nodeID      string // the node cluster id
-	stopCh      chan struct{}
-	clusterEvCh chan model.PluginClusterEvent
-	sessions    map[string]*session
+	mut      sync.RWMutex
+	nodeID   string // the node cluster id
+	stopCh   chan struct{}
+	sessions map[string]*session
 
 	jobService *jobService
 
@@ -74,6 +73,12 @@ type Plugin struct {
 	dmNoAnswerTimers    map[string]*time.Timer
 	dmNoAnswerTimersMut sync.Mutex
 
+	// reconcilerSuspicions tracks how many consecutive ticks each confirmed
+	// session has been absent from LiveKit. Cleared when the session is confirmed
+	// present or reaped. Guarded by reconcilerSuspicionsMut.
+	reconcilerSuspicions    map[string]int
+	reconcilerSuspicionsMut sync.Mutex
+
 	// dirtyCalls is the set of channels whose LiveKit room metadata is stale.
 	// dirtyCallsCh is a doorbell: it signals that there is work, the set says
 	// what. See markCallDirty.
@@ -88,78 +93,6 @@ type Plugin struct {
 	// Batchers
 	addSessionsBatchers    map[string]*batching.Batcher
 	removeSessionsBatchers map[string]*batching.Batcher
-}
-
-func (p *Plugin) OnPluginClusterEvent(_ *plugin.Context, ev model.PluginClusterEvent) {
-	select {
-	case p.clusterEvCh <- ev:
-	default:
-		p.LogError("too many cluster events, channel is full, dropping.")
-	}
-}
-
-func (p *Plugin) handleEvent(ev model.PluginClusterEvent) error {
-	p.LogDebug("got cluster event", "type", ev.Id)
-
-	var msg clusterMessage
-	if err := msg.FromJSON(ev.Data); err != nil {
-		return err
-	}
-
-	switch clusterMessageType(ev.Id) {
-	case clusterMessageTypeReconnect:
-		p.LogDebug("reconnect event", "UserID", msg.UserID, "ConnID", msg.ConnID)
-
-		p.mut.Lock()
-		defer p.mut.Unlock()
-
-		us := p.sessions[msg.ConnID]
-		if us == nil {
-			return nil
-		}
-
-		if atomic.CompareAndSwapInt32(&us.wsReconnected, 0, 1) {
-			p.LogDebug("closing reconnectCh", "connID", msg.ConnID)
-			close(us.wsReconnectCh)
-			delete(p.sessions, us.connID)
-		} else {
-			return fmt.Errorf("session already reconnected, connID=%q", msg.ConnID)
-		}
-
-		return nil
-	case clusterMessageTypeLeave:
-		p.LogDebug("leave event", "UserID", msg.UserID, "ConnID", msg.ConnID)
-
-		p.mut.RLock()
-		us := p.sessions[msg.ConnID]
-		p.mut.RUnlock()
-
-		if us == nil {
-			return nil
-		}
-
-		if atomic.CompareAndSwapInt32(&us.left, 0, 1) {
-			p.LogDebug("closing leaveCh", "connID", msg.ConnID)
-			close(us.leaveCh)
-		}
-	default:
-		return fmt.Errorf("unexpected event type %q", ev.Id)
-	}
-
-	return nil
-}
-
-func (p *Plugin) clusterEventsHandler() {
-	for {
-		select {
-		case ev := <-p.clusterEvCh:
-			if err := p.handleEvent(ev); err != nil {
-				p.LogError(err.Error())
-			}
-		case <-p.stopCh:
-			return
-		}
-	}
 }
 
 func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, title, threadID string, channelType model.ChannelType) (string, string, error) {
@@ -312,11 +245,21 @@ func (p *Plugin) UserHasLeftChannel(_ *plugin.Context, cm *model.ChannelMember, 
 	}
 
 	// Remove call session(s) for the user who left the channel.
-	// LiveKit handles its own media cleanup when participants disconnect.
 	for connID, session := range state.sessions {
 		if session.UserID == cm.UserId {
 			p.LogDebug("UserHasLeftChannel: removing session for user who left channel",
 				"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
+
+			// Evicting the participant is what actually ends their call: their
+			// client sees RoomEvent.Disconnected and tears down, and the resulting
+			// participant_left webhook deletes the session row. This is the only
+			// path for a client with no Calls WebSocket, where the p.sessions
+			// lookup below finds nothing.
+			if err := p.livekitRemoveParticipant(cm.ChannelId, composeLivekitIdentity(session.UserID, connID)); err != nil &&
+				!errors.Is(err, errLiveKitNotConfigured) {
+				p.LogError("UserHasLeftChannel: failed to remove LiveKit participant", "err", err.Error(),
+					"userID", session.UserID, "channelID", cm.ChannelId, "connID", connID)
+			}
 
 			us := p.getSessionByOriginalID(connID)
 			if us != nil {

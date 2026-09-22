@@ -2,13 +2,12 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
-import {CallChannelState, EmojiData} from '@mattermost/calls-common/lib/types';
-import {WebSocketClient} from '@mattermost/client';
+import {CallChannelState, CallJobState, CallState, EmojiData} from '@mattermost/calls-common/lib/types';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
-import {getConfig, getServerVersion} from 'mattermost-redux/selectors/entities/general';
+import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
@@ -23,6 +22,7 @@ import {
     displayCallErrorModal,
     displayCallsTestModeUser,
     displayFreeTrial,
+    fetchCallState,
     getCallsConfig,
     getCallsConfigEnvOverrides,
     getCallsStats,
@@ -30,6 +30,7 @@ import {
     incomingCallOnChannel,
     joinUser,
     leaveUser,
+    loadCallState,
     loadProfilesByIdsIfMissing,
     localSessionClose,
     openCallsUserSettings,
@@ -40,6 +41,7 @@ import {
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import CallClient, {CALL_EVENT} from 'src/clients/call';
+import type {ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
@@ -100,9 +102,9 @@ import VideoDevicesSettingsSection from 'src/components/user_settings/video_devi
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import slashCommandsHandler from 'src/slash_commands';
+import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {CurrentCallDataDefault} from 'src/types/types';
-import {getWSConnectionURL} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 
 import {
@@ -137,11 +139,13 @@ import {
     channelIDForCurrentCall,
     clientConnecting,
     defaultEnabled,
+    getCallIDForChannel,
     hasPermissionsToEnableCalls,
     hostIDForCallInChannel,
     isCloudStarter,
     isLimitRestricted,
     ringingEnabled,
+    screenSharingSessionForCurrentCall,
     sessionsInCurrentCall,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
@@ -161,12 +165,13 @@ import {
     shouldRenderDesktopWidget,
 } from './utils';
 import {
+    applyCallHostChanged,
+    applyCallJobState,
     dispatchReaction,
     handleCallEnd,
     handleCallHostChanged,
     handleCallJobState,
     handleCallStart,
-    handleCallState,
     handleCaption,
     handleHostLowerHand,
     handleHostRemoved,
@@ -186,11 +191,9 @@ import {
 
 export default class Plugin {
     private unsubscribers: (() => void)[];
-    private wsClient: WebSocketClient | null;
 
     constructor() {
         this.unsubscribers = [];
-        this.wsClient = null;
     }
 
     private registerReconnectHandler(registry: PluginRegistry, _store: Store, handler: () => void) {
@@ -262,10 +265,6 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_dismissed_notification`, (ev) => {
             handleUserDismissedNotification(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_call_state`, (ev) => {
-            handleCallState(store, ev);
         });
 
         registry.registerWebSocketEventHandler('user_removed', (ev) => {
@@ -657,11 +656,8 @@ export default class Plugin {
                 }
 
                 const state = store.getState();
-                const websocketURLInConfig = getConfig(state)?.WebsocketURL ?? '';
 
-                window.callsClient = new CallClient({
-                    websocketURL: getWSConnectionURL(websocketURLInConfig),
-                });
+                window.callsClient = new CallClient();
                 window.currentCallData = {...CurrentCallDataDefault};
 
                 const locale = getCurrentUserLocale(state) || 'en';
@@ -771,6 +767,36 @@ export default class Plugin {
                         emoji,
                         timestamp,
                     });
+                });
+
+                // The snapshot returned by the join request, which replaces the
+                // call_state the Calls WebSocket used to push on join.
+                window.callsClient.on(CALL_EVENT.CALL_STATE, (callState: CallState) => {
+                    store.dispatch(loadCallState(window.callsClient?.channelID ?? '', callState));
+                });
+
+                // Host and job state arrive over LiveKit room metadata. Observers
+                // still get them over the main WebSocket, which is why the server
+                // publishes both.
+                window.callsClient.on(CALL_EVENT.HOST_CHANGED, (hostID: string) => {
+                    const callChannelID = window.callsClient?.channelID ?? '';
+                    applyCallHostChanged(store, callChannelID, hostID, getCallIDForChannel(store.getState(), callChannelID));
+                });
+
+                window.callsClient.on(CALL_EVENT.JOB_STATE, (jobState: CallJobState) => {
+                    // Job state is keyed on the channel id, matching the callID the
+                    // server sends on the call_job_state broadcast.
+                    applyCallJobState(store, window.callsClient?.channelID ?? '', jobState);
+                });
+
+                window.callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
+                    const callChannelID = window.callsClient?.channelID ?? '';
+                    if (session) {
+                        store.dispatch(userScreenShared(callChannelID, session.sessionID, session.userID));
+                    } else {
+                        const sharerSession = screenSharingSessionForCurrentCall(store.getState());
+                        store.dispatch(userScreenUnshared(callChannelID, sharerSession?.session_id ?? '', ''));
+                    }
                 });
 
                 store.dispatch(setClientConnecting(true));
@@ -941,7 +967,7 @@ export default class Plugin {
             }
         });
 
-        const onActivate = async (wsClient?: WebSocketClient) => {
+        const onActivate = async () => {
             if (!getCurrentUserId(store.getState())) {
                 // not logged in, returning. Shouldn't happen, but being defensive.
                 return;
@@ -999,15 +1025,10 @@ export default class Plugin {
             const actions = await fetchChannels(currentCallChannelID);
             store.dispatch(batchActions(actions));
 
-            // If indeed we are in a call we should request the up-to-date
-            // state from websocket.
+            // If indeed we are in a call, fetch up-to-date state via HTTP.
             if (currentCallChannelID) {
-                if (wsClient) {
-                    logDebug('requesting call state through ws');
-                    wsClient.sendMessage('custom_com.mattermost.calls_call_state', {channelID: currentCallChannelID});
-                } else {
-                    logErr('unexpected missing wsClient');
-                }
+                logDebug('fetching call state via HTTP');
+                store.dispatch(fetchCallState(currentCallChannelID));
             }
 
             const currChannelId = getCurrentChannelId(store.getState());
@@ -1027,9 +1048,6 @@ export default class Plugin {
         // A dummy React component so we can access webapp's
         // WebSocket client through the provided hook. Just lovely.
         registry.registerGlobalComponent(() => {
-            const client = window.ProductApi.useWebSocketClient();
-            this.wsClient = client;
-
             useEffect(() => {
                 logDebug('registering ws reconnect handler');
                 // eslint-disable-next-line max-nested-callbacks
@@ -1043,7 +1061,7 @@ export default class Plugin {
                         logDebug('resetting state');
                         store.dispatch(unInitialized());
                     }
-                    onActivate(client);
+                    onActivate();
                 });
             }, []);
 

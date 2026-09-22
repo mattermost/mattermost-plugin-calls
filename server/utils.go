@@ -4,11 +4,8 @@
 package main
 
 import (
-	"bytes"
-	"compress/zlib"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"net/url"
 	"regexp"
@@ -91,19 +88,6 @@ func getChannelNameForNotification(channel *model.Channel, sender *model.User, u
 	default:
 		return channel.DisplayName
 	}
-}
-
-func unpackSDPData(data []byte) ([]byte, error) {
-	buf := bytes.NewBuffer(data)
-	rd, err := zlib.NewReader(buf)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create reader: %w", err)
-	}
-	unpacked, err := io.ReadAll(rd)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read data: %w", err)
-	}
-	return unpacked, nil
 }
 
 func parseURL(u string) (string, string, string, error) {

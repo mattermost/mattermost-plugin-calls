@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
+	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/livekit/protocol/livekit"
 )
@@ -187,34 +188,43 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 		return
 	}
 
+	p.removeParticipantSession(channelID, userID, sessionID, sid)
+}
+
+// removeParticipantSession is the shared leave path used by both
+// handleLiveKitParticipantLeft and the reconciliation sweep (MM-69510). The
+// caller supplies the SID it observed from the webhook or the DB snapshot; the
+// SID guard inside the call lock ensures a concurrent reconnect that updated the
+// row prevents the removal.
+func (p *Plugin) removeParticipantSession(channelID, userID, sessionID, sid string) {
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
-		p.LogError("handleLiveKitParticipantLeft: failed to lock call", "channelID", channelID, "err", err.Error())
+		p.LogError("removeParticipantSession: failed to lock call", "channelID", channelID, "err", err.Error())
 		return
 	}
 	defer p.unlockCall(channelID)
 
 	if state == nil {
-		p.LogDebug("handleLiveKitParticipantLeft: no active call",
+		p.LogDebug("removeParticipantSession: no active call",
 			"channelID", channelID, "sessionID", sessionID)
 		return
 	}
 
 	session := state.sessions[sessionID]
 	if session == nil {
-		p.LogDebug("handleLiveKitParticipantLeft: session not found (idempotent)",
+		p.LogDebug("removeParticipantSession: session not found (idempotent)",
 			"channelID", channelID, "sessionID", sessionID)
 		return
 	}
 
 	if session.SID != sid {
-		p.LogDebug("handleLiveKitParticipantLeft: stale leave for superseded connection, ignoring",
+		p.LogDebug("removeParticipantSession: stale leave for superseded connection, ignoring",
 			"channelID", channelID, "sessionID", sessionID, "eventSID", sid, "currentSID", session.SID)
 		return
 	}
 
 	if err := p.store.DeleteCallSession(sessionID); err != nil {
-		p.LogError("handleLiveKitParticipantLeft: failed to delete session",
+		p.LogError("removeParticipantSession: failed to delete session",
 			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 		return
 	}
@@ -257,19 +267,48 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 	// lingering SIP leg has nobody to talk to once the last MM user goes. Hang up
 	// the phone before deciding whether the call is over.
 	if onlySIPParticipantsRemain(state.sessions) && p.isPhoneCallChannel(channelID) {
-		p.LogInfo("handleLiveKitParticipantLeft: last human left phone call, hanging up SIP",
+		p.LogInfo("removeParticipantSession: last human left phone call, hanging up SIP",
 			"callID", state.Call.ID, "channelID", channelID)
 
-		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-			p.LogError("handleLiveKitParticipantLeft: failed to delete LiveKit room",
-				"channelID", channelID, "err", err.Error())
-		}
+		// livekitDeleteRoom is a network call; run it outside the call lock to
+		// avoid blocking concurrent webhook handlers for up to its 5s timeout.
+		go func() {
+			if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+				p.LogError("removeParticipantSession: failed to delete LiveKit room",
+					"channelID", channelID, "err", err.Error())
+			}
+		}()
 		for sid := range state.sessions {
 			if err := p.store.DeleteCallSession(sid); err != nil {
-				p.LogError("handleLiveKitParticipantLeft: failed to delete SIP session",
+				p.LogError("removeParticipantSession: failed to delete SIP session",
 					"channelID", channelID, "sid", sid, "err", err.Error())
 			}
 			delete(state.sessions, sid)
+		}
+	}
+
+	// For 1:1 DM user calls, delete the LiveKit room when only one human
+	// participant remains: they have nobody to talk to. The resulting
+	// participant_left (ROOM_DELETED) webhook will handle the final cleanup.
+	if humanParticipantsRemain(state.sessions, p.getBotID()) {
+		nHumans := 0
+		for _, s := range state.sessions {
+			if s.UserID != p.getBotID() {
+				nHumans++
+			}
+		}
+		if nHumans == 1 {
+			channel, appErr := p.API.GetChannel(channelID)
+			if appErr == nil && channel.Type == model.ChannelTypeDirect && !p.isPhoneCallChannelFromChannel(channel) {
+				p.LogInfo("removeParticipantSession: last remote participant left DM call, ending room",
+					"callID", state.Call.ID, "channelID", channelID)
+				go func() {
+					if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+						p.LogError("removeParticipantSession: failed to delete DM LiveKit room",
+							"channelID", channelID, "err", err.Error())
+					}
+				}()
+			}
 		}
 	}
 
@@ -284,7 +323,7 @@ func (p *Plugin) handleLiveKitParticipantLeft(event *livekit.WebhookEvent) {
 	}
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
-		p.LogError("handleLiveKitParticipantLeft: failed to update call",
+		p.LogError("removeParticipantSession: failed to update call",
 			"channelID", channelID, "err", err.Error())
 	}
 }
@@ -411,16 +450,19 @@ func (p *Plugin) handleLiveKitTrackPublished(event *livekit.WebhookEvent) {
 		return
 	}
 
-	// The client refuses to start a second share by checking LiveKit track state
-	// directly, so a conflict here means that check was bypassed or raced. Record
-	// the newcomer rather than dropping the event: LiveKit already accepted the
-	// track, so the prop would otherwise name a sharer nobody can see.
+	// Reject concurrent sharers: first publisher wins. The client checks LiveKit
+	// track state before publishing, so a conflict means a race or a bypass. Keep
+	// the existing sharer as authoritative and ask the losing publisher to stop.
+	// The losing track remains live in LK until the client tears it down; clients
+	// pick the lexicographically first sessionID when multiple are present.
 	if state.Call.Props.ScreenSharingSessionID != "" {
-		p.LogWarn("handleLiveKitTrackPublished: replacing existing screen sharer",
-			"channelID", channelID, "previous", state.Call.Props.ScreenSharingSessionID, "current", sessionID)
-		if state.Call.Props.ScreenStartAt > 0 {
-			state.Call.Stats.ScreenDuration += secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
+		p.LogWarn("handleLiveKitTrackPublished: rejecting second screen sharer, keeping existing",
+			"channelID", channelID, "existing", state.Call.Props.ScreenSharingSessionID, "rejected", sessionID)
+		if err := p.livekitSendHostControl(channelID, composeLivekitIdentity(userID, sessionID), hostControlActionStopScreenshare); err != nil {
+			p.LogError("handleLiveKitTrackPublished: failed to send stop screenshare to rejected publisher",
+				"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 		}
+		return
 	}
 
 	state.Call.Props.ScreenSharingSessionID = sessionID

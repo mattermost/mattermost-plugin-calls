@@ -9,17 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/time/rate"
-
 	"github.com/mattermost/mattermost-plugin-calls/server/batching"
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost/server/public/model"
-)
-
-const (
-	msgChSize = 50
 )
 
 var errGroupCallsNotAllowed = fmt.Errorf("unlicensed servers only allow calls in DMs")
@@ -31,15 +25,9 @@ type session struct {
 	originalConnID string
 	callID         string
 
-	// WebSocket
-
-	wsMsgCh chan clientMessage
 	// to notify of websocket disconnect.
 	wsCloseCh chan struct{}
 	wsClosed  int32
-	// to notify of websocket reconnection.
-	wsReconnectCh chan struct{}
-	wsReconnected int32
 
 	// to notify of session leaving a call.
 	leaveCh chan struct{}
@@ -47,9 +35,6 @@ type session struct {
 
 	// removed tracks whether the session was removed from state.
 	removed int32
-
-	// rate limiter for incoming WebSocket messages.
-	wsMsgLimiter *rate.Limiter
 }
 
 func newUserSession(userID, channelID, connID, callID string) *session {
@@ -59,11 +44,8 @@ func newUserSession(userID, channelID, connID, callID string) *session {
 		connID:         connID,
 		originalConnID: connID,
 		callID:         callID,
-		wsMsgCh:        make(chan clientMessage, msgChSize*2),
 		wsCloseCh:      make(chan struct{}),
-		wsReconnectCh:  make(chan struct{}),
 		leaveCh:        make(chan struct{}),
-		wsMsgLimiter:   rate.NewLimiter(10, 100),
 	}
 }
 
@@ -431,6 +413,10 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 	}
 
+	// isPhoneCall is computed lazily by the SIP-teardown check below; the result
+	// is cached so the DM auto-end check can reuse it without an extra DB lookup.
+	isPhoneCall, isPhoneCallKnown := false, false
+
 	// Outbound phone calls (bot-DM containers) are 1:1: once the last human
 	// leaves, any lingering SIP participant has no one to talk to. Hang up the
 	// phone by deleting the LiveKit room (which sends a SIP BYE) and drop the SIP
@@ -439,21 +425,29 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// The empty-sessions case handles deployments where LiveKit webhooks cannot
 	// reach Mattermost (e.g. local dev against LiveKit Cloud): the SIP session is
 	// never registered, but the room still exists and must be torn down explicitly.
-	if (onlySIPParticipantsRemain(state.sessions) || len(state.sessions) == 0) && p.isPhoneCallChannel(channelID) {
-		p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
-			"callID", state.Call.ID, "channelID", channelID)
+	if onlySIPParticipantsRemain(state.sessions) || len(state.sessions) == 0 {
+		isPhoneCall = p.isPhoneCallChannel(channelID)
+		isPhoneCallKnown = true
+		if isPhoneCall {
+			p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
+				"callID", state.Call.ID, "channelID", channelID)
 
-		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-			p.LogError("removeUserSession: failed to delete LiveKit room",
-				"channelID", channelID, "err", err.Error())
-		}
+			// livekitDeleteRoom is a network call; run it outside the call lock to
+			// avoid blocking concurrent webhook handlers for up to its 5s timeout.
+			go func() {
+				if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+					p.LogError("removeUserSession: failed to delete LiveKit room",
+						"channelID", channelID, "err", err.Error())
+				}
+			}()
 
-		for sid := range state.sessions {
-			if err := p.store.DeleteCallSession(sid); err != nil {
-				p.LogError("removeUserSession: failed to delete SIP session",
-					"channelID", channelID, "sid", sid, "err", err.Error())
+			for sid := range state.sessions {
+				if err := p.store.DeleteCallSession(sid); err != nil {
+					p.LogError("removeUserSession: failed to delete SIP session",
+						"channelID", channelID, "sid", sid, "err", err.Error())
+				}
+				delete(state.sessions, sid)
 			}
-			delete(state.sessions, sid)
 		}
 	}
 
@@ -467,11 +461,18 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		channel, appErr := p.API.GetChannel(channelID)
 		if appErr != nil {
 			p.LogError("failed to get channel for DM auto-end check", "err", appErr.Error(), "channelID", channelID)
-		} else if p.isDMCallChannel(channel.Type, channelID) {
-			p.LogInfo("DM auto-end: participant left, ending call",
-				"callID", state.Call.ID, "channelID", channelID, "userID", userID)
+		} else {
+			if !isPhoneCallKnown {
+				// Reuse the already-fetched channel to avoid a second GetChannel call.
+				isPhoneCall = p.isPhoneCallChannelFromChannel(channel)
+			}
+			if channel.Type == model.ChannelTypeDirect && !isPhoneCall {
+				p.LogInfo("DM auto-end: participant left, ending call",
+					"callID", state.Call.ID, "channelID", channelID, "userID", userID)
 
-			p.endDMCallRoom("removeUserSession", channelID)
+				// endDMCallRoom is a network call; run it outside the call lock.
+				go p.endDMCallRoom("removeUserSession", channelID)
+			}
 		}
 	}
 
@@ -722,6 +723,85 @@ func (p *Plugin) stopOngoingJobs(state *callState, channelID string) {
 				"channelID", channelID,
 				"jobID", state.Transcription.Props.JobID,
 				"botConnID", state.Transcription.Props.BotConnID)
+		}
+	}
+}
+
+// announceCallStarted performs the side effects owed to a brand new call: the
+// call-started post, the DM ringing deadline and the channel-wide call_start
+// broadcast. Split out of handleJoin so the HTTP join path
+// (handleCreateLiveKitSession) performs them too — without this a call started
+// over HTTP has no post, no banner for observers and no ringing.
+//
+// The caller must hold the channel lock and have already created the call.
+func (p *Plugin) announceCallStarted(state *callState, userID, channelID, title, threadID string, channelType model.ChannelType) {
+	// In TestMode (DefaultEnabled=false) a sysadmin is the only one who can get
+	// this far, so tell them why nobody else can.
+	if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
+		p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+		p.API.SendEphemeralPost(
+			userID,
+			&model.Post{
+				UserId:    p.getBotID(),
+				ChannelId: channelID,
+				Message:   "Currently calls are not enabled for non-admin users. You can change the setting through the system console",
+			},
+		)
+	}
+
+	postID, threadID, err := p.createCallStartedPost(state, userID, channelID, title, threadID, channelType)
+	if err != nil {
+		p.LogError(err.Error())
+	}
+
+	state.Call.PostID = postID
+	state.Call.ThreadID = threadID
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		p.LogError(err.Error())
+	}
+
+	// A DM call rings, so it needs a deadline: if nobody picks up we cancel it rather than
+	// leave the caller listening to a call that will never be answered.
+	if p.isDMCallChannel(channelType, channelID) {
+		p.startDMNoAnswerTimer(channelID, state.Call.ID)
+	}
+
+	p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
+		"id":        state.Call.ID,
+		"channelID": channelID,
+		"start_at":  state.Call.StartAt,
+		"thread_id": threadID,
+		"post_id":   postID,
+		"owner_id":  state.Call.OwnerID,
+		"host_id":   state.Call.GetHostID(),
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+}
+
+// cancelDMNoAnswerTimerIfAnswered clears the DM ringing deadline once a second
+// person is in the call, which is what "answered" means for a DM.
+//
+// Checked on every join, not just the second one, so a reconnect or a second
+// device can't leave a stale timer running. Pending sessions count: a client
+// that has minted a session is committed to joining, so the caller should stop
+// hearing ringback then rather than a webhook round trip later.
+//
+// The caller must hold the channel lock.
+func (p *Plugin) cancelDMNoAnswerTimerIfAnswered(state *callState, userID, channelID string, channelType model.ChannelType) {
+	if !p.isBot(userID) && p.isDMCallChannel(channelType, channelID) &&
+		len(state.distinctNonBotUserIDs(p.getBotID())) >= 2 {
+		p.cancelDMNoAnswerTimer(channelID)
+	}
+}
+
+// maybeSendConcurrentSessionsWarning notifies admins when the deployment is
+// running more concurrent sessions than the configured threshold.
+func (p *Plugin) maybeSendConcurrentSessionsWarning() {
+	if ok, err := p.shouldSendConcurrentSessionsWarning(getConcurrentSessionsThreshold(),
+		getConcurrentSessionsWarningBackoffTime()); err != nil {
+		p.LogError("shouldSendConcurrentSessionsWarning failed", "err", err.Error())
+	} else if ok {
+		if err := p.sendConcurrentSessionsWarning(); err != nil {
+			p.LogError("sendConcurrentSessionsWarning failed", "err", err.Error())
 		}
 	}
 }

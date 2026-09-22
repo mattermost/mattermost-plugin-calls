@@ -87,7 +87,12 @@ func (p *Plugin) handleDMNoAnswer(channelID, callID string) {
 		p.LogError("handleDMNoAnswer: failed to lock call", "channelID", channelID, "err", err.Error())
 		return
 	}
-	defer p.unlockCall(channelID)
+	unlocked := false
+	defer func() {
+		if !unlocked {
+			p.unlockCall(channelID)
+		}
+	}()
 
 	// A different call in the same channel, or one the callee has since answered, is not ours to
 	// cancel.
@@ -95,10 +100,19 @@ func (p *Plugin) handleDMNoAnswer(channelID, callID string) {
 		return
 	}
 
+	logCallID := state.Call.ID
+
+	if err := p.cleanCallState(&state.Call, "dm_no_answer", callEndReasonNoAnswer); err != nil {
+		p.LogError("handleDMNoAnswer: failed to clean call state", "channelID", channelID, "err", err.Error())
+	}
+
+	unlocked = true
+	p.unlockCall(channelID)
+
 	p.endDMCallRoom("handleDMNoAnswer", channelID)
 
 	p.LogInfo("DM call was not answered, cancelling",
-		"callID", state.Call.ID,
+		"callID", logCallID,
 		"channelID", channelID,
 		"nodeID", p.nodeID)
 
@@ -108,8 +122,4 @@ func (p *Plugin) handleDMNoAnswer(channelID, callID string) {
 		ChannelID:           channelID,
 		ReliableClusterSend: true,
 	})
-
-	if err := p.cleanCallState(&state.Call, "dm_no_answer", callEndReasonNoAnswer); err != nil {
-		p.LogError("handleDMNoAnswer: failed to clean call state", "channelID", channelID, "err", err.Error())
-	}
 }

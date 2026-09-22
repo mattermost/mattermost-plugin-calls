@@ -12,7 +12,6 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/performance"
 
-	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 )
 
@@ -21,15 +20,9 @@ var (
 	buildHash string
 )
 
-// This value should be high enough to handle up to N events where N is the maximum
-// expected number of concurrent user sessions in calls handled by a single
-// instance.
-const clusterEventQueueSize = 4096
-
 func main() {
 	p := &Plugin{
 		stopCh:                 make(chan struct{}),
-		clusterEvCh:            make(chan model.PluginClusterEvent, clusterEventQueueSize),
 		sessions:               map[string]*session{},
 		metrics:                performance.NewMetrics(),
 		apiLimiters:            map[string]*rate.Limiter{},
@@ -38,6 +31,7 @@ func main() {
 		removeSessionsBatchers: map[string]*batching.Batcher{},
 		dmNoAnswerTimers:       map[string]*time.Timer{},
 		dirtyCalls:             map[string]struct{}{},
+		reconcilerSuspicions:   map[string]int{},
 		dirtyCallsCh:           make(chan struct{}, 1),
 	}
 	p.apiRouter = p.newAPIRouter()
