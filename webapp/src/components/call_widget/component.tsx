@@ -17,14 +17,14 @@ import {compareSemVer} from 'semver-parser';
 import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call';
-import {VideoInputPermissionsError} from 'src/clients/calls';
+import type {ScreenSharingSession} from 'src/clients/call/types';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
-import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
+import {AudioInputPermissionsErr, VideoInputPermissionsError} from 'src/components/error_modal/error_messages';
 import {
     IDStopRecordingConfirmation,
     StopRecordingConfirmation,
@@ -515,16 +515,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             screenStream: window.callsClient.getRemoteScreenStream(),
         });
 
-        window.callsClient.on(CALL_EVENT.REMOTE_SCREEN_STREAM, (stream: MediaStream) => {
-            this.setState({
-                screenStream: stream,
-            });
-        });
-
-        window.callsClient.on(CALL_EVENT.LOCAL_SCREEN_STREAM, (stream: MediaStream) => {
-            this.setState({
-                screenStream: stream,
-            });
+        // One derived sharer covers local and remote alike, and clears when
+        // nobody is sharing — the widget previously only handled the ON events.
+        window.callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
+            this.setState({screenStream: session?.stream ?? null});
         });
 
         window.callsClient.on('localVideoStream', (stream: MediaStream) => {

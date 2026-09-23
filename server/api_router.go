@@ -101,17 +101,15 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	}).Methods("GET")
 
 	// CallsChannels
-	router.HandleFunc("/{channel_id:[a-z0-9]{26}}", p.handleGetCallChannelState).Methods("GET") // DEPRECATED as of v1
-	router.HandleFunc("/{channel_id:[a-z0-9]{26}}", p.handlePostCallsChannel).Methods("POST")   // DEPRECATED as of v1
-	router.HandleFunc("/channels", p.handleGetAllCallChannelStates).Methods("GET")              // DEPRECATED as of v1
-
-	// router.HandleFunc("/channels/{channel_id:[a-z0-9]{26}}", p.handleGetCallsChannel).Methods("GET")
-	// router.HandleFunc("/channels/{channel_id:[a-z0-9]{26}}", p.handlePostCallsChannel).Methods("POST")
+	router.HandleFunc("/{channel_id:[a-z0-9]{26}}", p.handleGetCallChannelState).Methods("GET") // no known callers; kept for external integrations
+	router.HandleFunc("/{channel_id:[a-z0-9]{26}}", p.handlePostCallsChannel).Methods("POST")   // channel header menu: enable/disable calls in channel
+	router.HandleFunc("/channels", p.handleGetAllCallChannelStates).Methods("GET")
 
 	// Calls
-	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/decline", p.handleDeclineCall).Methods("POST")
+	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/decline", p.handleDeclineCall).Methods("POST") // mobile only; no webapp caller
 	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/dismiss-notification", p.handleDismissNotification).Methods("POST")
 	router.HandleFunc("/calls/{call_id:[a-z0-9]{26}}/recording/{action}", p.handleRecordingAction).Methods("POST")
+	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/state", p.handleGetCallState).Methods("GET")
 	router.HandleFunc("/calls/{channel_id:[a-z0-9]{26}}/active", p.handleGetCallActive).Methods("GET")
 
 	// Deprecated for hostCtrlRounder /end, but needed for mobile backward compatibility (pre 2.18)
@@ -160,6 +158,7 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 
 	// LiveKit
 	router.HandleFunc("/livekit-token", p.handleGetLiveKitToken).Methods("GET")
+	router.HandleFunc("/livekit-token", p.handleCreateLiveKitSession).Methods("POST")
 
 	// Outbound phone call
 	router.HandleFunc("/phone-call", p.handlePhoneCall).Methods("POST")

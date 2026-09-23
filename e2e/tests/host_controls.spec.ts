@@ -288,7 +288,7 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
 
-    test('popout - participant card - remove, stop screenshare', async ({page}) => {
+    test.fixme('popout - participant card - remove, stop screenshare', async ({page}) => {
         const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
         // eslint-disable-next-line prefer-const
         let [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);

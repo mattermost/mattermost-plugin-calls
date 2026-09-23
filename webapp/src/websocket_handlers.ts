@@ -4,10 +4,9 @@
 /* eslint-disable max-lines */
 import {
     CallHostChangedData,
+    CallJobState,
     CallJobStateData,
     CallStartData,
-    CallState,
-    CallStateData,
     EmptyData,
     HostControlLowerHand,
     HostControlMsg,
@@ -36,11 +35,13 @@ import {
     incomingCallOnChannel,
     joinUser,
     leaveUser,
-    loadCallState,
     removeIncomingCallNotification,
 } from 'src/actions';
-import {userLeftChannelErr, userRemovedFromChannelErr} from 'src/clients/calls';
-import {HostRemovedYouFromCallErr} from 'src/components/error_modal/error_messages';
+import {
+    HostRemovedYouFromCallErr,
+    userLeftChannelErr,
+    userRemovedFromChannelErr,
+} from 'src/components/error_modal/error_messages';
 import {
     HOST_CONTROL_NOTICE_TIMEOUT,
     JOB_TYPE_CAPTIONING,
@@ -48,6 +49,7 @@ import {
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
+import {applyCallHostChanged} from 'src/host_change';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/session/actions';
 import {
@@ -66,9 +68,7 @@ import {
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
 } from './action_types';
-import {logErr} from './log';
 import {
-    channelHasCall,
     channelIDForCurrentCall,
     profilesInCurrentCallMap,
     ringingEnabled,
@@ -79,7 +79,6 @@ import {
     getCallsClient,
     getUserDisplayName,
     hasLiveCallClient,
-    isDMChannel,
 } from './utils';
 
 export type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
@@ -89,17 +88,6 @@ export type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch(callEnd(channelID));
-}
-
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleCallState(store: Store, ev: WebSocketMessage<CallStateData>) {
-    try {
-        const call: CallState = JSON.parse(ev.data.call);
-        store.dispatch(loadCallState(ev.data.channel_id, call));
-    } catch (err) {
-        logErr(err);
-    }
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
@@ -226,6 +214,13 @@ export function handleUserVoiceOff(store: Store, ev: WebSocketMessage<UserVoiceO
 // state mutating operations.
 export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreenOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
+
+    // The broadcast keeps observers' screen state live. Where this renderer owns
+    // the live client, the sharer is derived from LiveKit track state instead, so
+    // skip the broadcast to avoid racing it — the same split as join/leave.
+    if (hasLiveCallClient(channelID)) {
+        return;
+    }
     store.dispatch(userScreenShared(channelID, ev.data.session_id, ev.data.userID));
 }
 
@@ -233,6 +228,10 @@ export function handleUserScreenOn(store: Store, ev: WebSocketMessage<UserScreen
 // state mutating operations.
 export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScreenOnOffData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
+
+    if (hasLiveCallClient(channelID)) {
+        return;
+    }
     store.dispatch(userScreenUnshared(channelID, ev.data.session_id, ev.data.userID));
 }
 
@@ -280,67 +279,27 @@ export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReacti
 // state mutating operations.
 export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHostChangedData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
-
-    store.dispatch({
-        type: CALL_HOST,
-        data: {
-            channelID,
-            hostID: ev.data.hostID,
-            hostChangeAt: Date.now(),
-        },
-    });
-
-    // A DM caller is made host the moment they place the call, which says nothing they don't
-    // already know — the widget is showing them "Calling…". The server sends this before
-    // call_start, so having no call in the store yet is what identifies us as the initiator.
-    if (
-        ev.data.hostID === getCurrentUserId(store.getState()) &&
-        isDMChannel(getChannel(store.getState(), channelID)) &&
-        !channelHasCall(store.getState(), channelID)
-    ) {
-        return;
-    }
-
-    const hostProfile = profilesInCurrentCallMap(store.getState())[ev.data.hostID] ||
-        getUser(store.getState(), ev.data.hostID);
-    if (!hostProfile) {
-        return;
-    }
-    const displayName = getUserDisplayName(hostProfile);
-
-    const hostNotice: HostControlNotice = {
-        type: HostControlNoticeType.HostChanged,
-        callID: ev.data.call_id,
-        noticeID: generateId(),
-        displayName,
-        userID: ev.data.hostID,
-    };
-
-    store.dispatch({
-        type: HOST_CONTROL_NOTICE,
-        data: hostNotice,
-    });
-
-    setTimeout(() => {
-        store.dispatch({
-            type: HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
-            data: {
-                callID: ev.data.call_id,
-                noticeID: hostNotice.noticeID,
-            },
-        });
-    }, HOST_CONTROL_NOTICE_TIMEOUT);
+    applyCallHostChanged(store, channelID, ev.data.hostID, ev.data.call_id);
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
 export function handleCallJobState(store: Store, ev: WebSocketMessage<CallJobStateData>) {
-    if (ev.data.jobState.err) {
-        ev.data.jobState.error_at = Date.now();
+    applyCallJobState(store, ev.data.callID, ev.data.jobState);
+}
+
+/**
+ * Applies recording, transcription or live-caption job state. Shared between the
+ * observer WebSocket broadcast and the LiveKit room metadata, which carries the
+ * job sub-objects in this same shape for exactly that reason.
+ */
+export function applyCallJobState(store: Store, callID: string, jobState: CallJobState) {
+    if (jobState.err) {
+        jobState.error_at = Date.now();
     }
 
     let type = '';
-    switch (ev.data.jobState.type) {
+    switch (jobState.type) {
     case JOB_TYPE_RECORDING:
         type = CALL_RECORDING_STATE;
         break;
@@ -352,8 +311,8 @@ export function handleCallJobState(store: Store, ev: WebSocketMessage<CallJobSta
     store.dispatch({
         type,
         data: {
-            callID: ev.data.callID,
-            jobState: ev.data.jobState,
+            callID,
+            jobState,
         },
     });
 }
@@ -379,7 +338,12 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
     const removedUserID = ev.data.user_id || ev.broadcast.user_id;
     const removerUserID = ev.data.remover_id;
 
-    if (removedUserID === currentUserID && channelID === channelIDForCurrentCall(store.getState())) {
+    // channelIDForCurrentCall reads window.callsClient?.channelID, which may already
+    // be deleted when user_removed arrives after a LiveKit PARTICIPANT_REMOVED kick.
+    // window.callsClientLastChannelID is set at join time and survives disconnect.
+    const currentCallChannelID = channelIDForCurrentCall(store.getState()) ||
+        window.callsClientLastChannelID || '';
+    if (removedUserID === currentUserID && channelID === currentCallChannelID) {
         const errorMessage = removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr;
         store.dispatch(displayCallErrorModal(errorMessage, channelID));
         getCallsClient()?.disconnect();

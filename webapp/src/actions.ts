@@ -24,6 +24,7 @@ import {ErrorModal, IdForErrorModel} from 'src/components/error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, RING_LENGTH} from 'src/constants';
+import {applyCallHostChanged} from 'src/host_change';
 import {logErr} from 'src/log';
 import {
     callDismissedNotification,
@@ -735,6 +736,21 @@ export const getCallsStats = async () => {
     return RestClient.fetch<CallsStats>(`${getPluginPath()}/stats`, {method: 'get'});
 };
 
+export const fetchCallState = (channelID: string): ActionFuncAsync => {
+    return async (dispatch: DispatchFunc) => {
+        try {
+            const state = await RestClient.fetch<CallState>(
+                `${getPluginPath()}/calls/${channelID}/state`,
+                {method: 'get'},
+            );
+            dispatch(loadCallState(channelID, state));
+        } catch (err) {
+            logErr('fetchCallState failed', err);
+        }
+        return {};
+    };
+};
+
 export const selectRHSPost = (postID: string): ActionFuncAsync => {
     return async (dispatch: DispatchFunc) => {
         if (window.ProductApi) {
@@ -768,4 +784,8 @@ export const localSessionClose = (channelID: string) => (dispatch: Dispatch) => 
             channelID,
         },
     });
+};
+
+export const callHostChanged = (channelID: string, hostID: string) => (dispatch: Dispatch, getState: GetStateFunc) => {
+    applyCallHostChanged({dispatch, getState}, channelID, hostID, getCallIDForChannel(getState(), channelID));
 };

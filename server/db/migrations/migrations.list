@@ -12,6 +12,8 @@ server/db/migrations/mysql/000005_calls_sessions_video.down.sql
 server/db/migrations/mysql/000005_calls_sessions_video.up.sql
 server/db/migrations/mysql/000006_calls_sessions_sip.down.sql
 server/db/migrations/mysql/000006_calls_sessions_sip.up.sql
+server/db/migrations/mysql/000007_calls_sessions_livekit.down.sql
+server/db/migrations/mysql/000007_calls_sessions_livekit.up.sql
 server/db/migrations/postgres/000001_create_calls_channels.down.sql
 server/db/migrations/postgres/000001_create_calls_channels.up.sql
 server/db/migrations/postgres/000002_create_calls.down.sql
@@ -24,3 +26,5 @@ server/db/migrations/postgres/000005_calls_sessions_video.down.sql
 server/db/migrations/postgres/000005_calls_sessions_video.up.sql
 server/db/migrations/postgres/000006_calls_sessions_sip.down.sql
 server/db/migrations/postgres/000006_calls_sessions_sip.up.sql
+server/db/migrations/postgres/000007_calls_sessions_livekit.down.sql
+server/db/migrations/postgres/000007_calls_sessions_livekit.up.sql

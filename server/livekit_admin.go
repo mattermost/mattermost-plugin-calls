@@ -5,8 +5,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/livekit/protocol/livekit"
@@ -29,10 +31,40 @@ const livekitAttributeRaisedHand = "raised_hand"
 // the participant list independently of the plugin-WS bot filter.
 const livekitAttributeBot = "bot"
 
+// livekitTopicHostControl is the data-message topic for host commands the
+// server cannot enforce through the admin API. It mirrors
+// CALL_MESSAGE_TOPICS.HOST_CONTROL on the clients.
+//
+// One topic with an action field rather than a topic per command: any future
+// host action the admin API cannot carry out has this same shape — the server
+// has to ask the client. Requesting an unmute is the clearest case, since the
+// server can mute someone but can never unmute them.
+const livekitTopicHostControl = "host_control"
+
+// hostControlActionStopScreenshare asks the client to stop its screen share.
+const hostControlActionStopScreenshare = "stop_screenshare"
+
+// hostControlPayload is the host_control data-message body.
+type hostControlPayload struct {
+	Action string `json:"action"`
+}
+
 var errLiveKitNotConfigured = errors.New("LiveKit is not configured")
 
 func composeLivekitIdentity(userID, sessionID string) string {
 	return userID + userIDSessionIDSeparator + sessionID
+}
+
+// parseLivekitIdentity splits a participant identity minted by
+// composeLivekitIdentity back into its user and call-session ids. It reports
+// false for identities we did not mint, such as SIP participants whose identity
+// is a phone number.
+func parseLivekitIdentity(identity string) (userID, sessionID string, ok bool) {
+	userID, sessionID, found := strings.Cut(identity, userIDSessionIDSeparator)
+	if !found || userID == "" || sessionID == "" {
+		return "", "", false
+	}
+	return userID, sessionID, true
 }
 
 func (p *Plugin) getLiveKitRoomClient() (*lksdk.RoomServiceClient, error) {
@@ -144,6 +176,83 @@ func (p *Plugin) livekitDeleteRoom(room string) error {
 		Room: room,
 	}); err != nil {
 		return fmt.Errorf("livekit DeleteRoom: %w", err)
+	}
+	return nil
+}
+
+// livekitUpdateRoomMetadata pushes call-level state to the room. Every connected
+// client, including standalone bundles with no Mattermost WebSocket, receives it
+// through RoomEvent.RoomMetadataChanged, and newly connected clients get the
+// current value on connect — so this needs no companion resync path.
+func (p *Plugin) livekitUpdateRoomMetadata(ctx context.Context, room, metadata string) error {
+	client, err := p.getLiveKitRoomClient()
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, livekitAPITimeout)
+	defer cancel()
+
+	if _, err := client.UpdateRoomMetadata(ctx, &livekit.UpdateRoomMetadataRequest{
+		Room:     room,
+		Metadata: metadata,
+	}); err != nil {
+		return fmt.Errorf("livekit UpdateRoomMetadata: %w", err)
+	}
+	return nil
+}
+
+func (p *Plugin) livekitListParticipants(room string) ([]*livekit.ParticipantInfo, error) {
+	client, err := p.getLiveKitRoomClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), livekitAPITimeout)
+	defer cancel()
+
+	res, err := client.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: room})
+	if err != nil {
+		return nil, fmt.Errorf("livekit ListParticipants: %w", err)
+	}
+	return res.GetParticipants(), nil
+}
+
+// livekitSendHostControl asks a single client to carry out a host action that
+// the server cannot enforce itself.
+//
+// Almost every host control is enforced through the admin API and needs no
+// message: mutes land as TrackMuted, a lowered hand as an attribute change, a
+// removal as a disconnect. The exception is stopping a screen share.
+// MutePublishedTrack does not stop the client publishing, so the capture stays
+// live and the browser's sharing indicator stays lit while nobody receives
+// anything. Only the client can tear the track down, so it has to be asked.
+//
+// Delivery is best-effort and fails safe: a lost message leaves the share
+// running and the host clicks again.
+func (p *Plugin) livekitSendHostControl(room, identity, action string) error {
+	client, err := p.getLiveKitRoomClient()
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(hostControlPayload{Action: action})
+	if err != nil {
+		return fmt.Errorf("failed to marshal host control payload: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), livekitAPITimeout)
+	defer cancel()
+
+	topic := livekitTopicHostControl
+	if _, err := client.SendData(ctx, &livekit.SendDataRequest{
+		Room:                  room,
+		Data:                  data,
+		Kind:                  livekit.DataPacket_RELIABLE,
+		DestinationIdentities: []string{identity},
+		Topic:                 &topic,
+	}); err != nil {
+		return fmt.Errorf("livekit SendData: %w", err)
 	}
 	return nil
 }

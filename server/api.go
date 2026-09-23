@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,6 +29,13 @@ import (
 )
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
+
+// livekitTokenTTL only has to cover the gap between minting a token and the
+// client connecting: once connected, LiveKit refreshes the token itself over
+// signaling and the plugin is not involved. Keeping it short bounds how long a
+// cached or leaked token could be replayed to rejoin a call without going back
+// through the join permission check.
+const livekitTokenTTL = 10 * time.Minute
 
 // logsUploadMaxSizeBytes is larger than the client's MAX_ACCUMULATED_LOG_SIZE
 // (1MB) to leave margin for JSON-escaping overhead: newlines, quotes and
@@ -110,6 +118,34 @@ func (p *Plugin) handleGetCallChannelState(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		p.LogError(err.Error())
+	}
+}
+
+func (p *Plugin) handleGetCallState(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-Id")
+	channelID := mux.Vars(r)["channel_id"]
+
+	if !(p.isBotSession(r) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		p.LogError("handleGetCallState: failed to get call state", "err", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer p.unlockCall(channelID)
+
+	if state == nil {
+		http.Error(w, "no call ongoing", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(state.getClientState(p.getBotID(), userID)); err != nil {
+		p.LogError("handleGetCallState: failed to encode response", "err", err.Error())
 	}
 }
 
@@ -302,7 +338,12 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("failed to lock call: %w", err)
 	}
-	defer p.unlockCall(channelID)
+	unlocked := false
+	defer func() {
+		if !unlocked {
+			p.unlockCall(channelID)
+		}
+	}()
 
 	if state == nil {
 		return http.StatusBadRequest, fmt.Errorf("no call ongoing")
@@ -326,6 +367,13 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 
 	p.cancelDMNoAnswerTimer(channelID)
 
+	if err := p.cleanCallState(&state.Call, "dm_declined", callEndReasonDeclined); err != nil {
+		return http.StatusInternalServerError, fmt.Errorf("failed to clean call state: %w", err)
+	}
+
+	unlocked = true
+	p.unlockCall(channelID)
+
 	p.endDMCallRoom("declineCall", channelID)
 
 	p.LogInfo("DM call was declined",
@@ -347,10 +395,6 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 		"userID": userID,
 		"callID": callID,
 	}, &WebSocketBroadcast{UserID: userID, ReliableClusterSend: true})
-
-	if err := p.cleanCallState(&state.Call, "dm_declined", callEndReasonDeclined); err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("failed to clean call state: %w", err)
-	}
 
 	return http.StatusOK, nil
 }
@@ -612,33 +656,50 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, lkURL, err := p.mintLiveKitToken(requestingUserID, requestingChannelID, requestingSessionID)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"token": token,
+		"url":   lkURL,
+	}); err != nil {
+		p.LogError("failed to encode LiveKit token response", "err", err.Error())
+	}
+}
+
+// mintLiveKitToken generates a LiveKit access token for the given user and call
+// session, returning the token and the signaling URL the caller should use. The
+// room is the channel; the identity carries both user and session so multiple
+// sessions of the same user are distinct participants.
+func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, string, error) {
 	cfg := p.getConfiguration()
 	lkURL := cfg.getLiveKitURL()
 	if lkURL == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
-		res.Err = "LiveKit is not configured"
-		res.Code = http.StatusInternalServerError
-		return
+		return "", "", errLiveKitNotConfigured
 	}
 
 	// Bot (recorder/transcriber) jobs may reach LiveKit at a different address than
 	// browser clients do, so hand them the bot-specific signaling URL if configured.
-	if requestingUserID == p.getBotID() {
+	if userID == p.getBotID() {
 		lkURL = cfg.getLiveKitURLForBot()
 	}
 
-	user, appErr := p.API.GetUser(requestingUserID)
+	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
-		res.Err = appErr.Error()
-		res.Code = http.StatusInternalServerError
-		return
+		return "", "", appErr
 	}
 
 	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 	grant := &auth.VideoGrant{
 		RoomJoin: true,
-		Room:     requestingChannelID,
+		Room:     channelID,
 	}
-	if requestingUserID == p.getBotID() {
+	if userID == p.getBotID() {
 		// The recording/transcribing bot only consumes media — it never publishes
 		// tracks or data, and never updates its own metadata (no raised hand).
 		// Restrict its grant to subscribe-only so the bot token can't be used to
@@ -656,24 +717,16 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		grant.SetCanUpdateOwnMetadata(true)
 	}
 	at.SetVideoGrant(grant).
-		SetIdentity(composeLivekitIdentity(requestingUserID, requestingSessionID)).
+		SetIdentity(composeLivekitIdentity(userID, sessionID)).
 		SetName(user.Id).
-		SetValidFor(time.Hour)
+		SetValidFor(livekitTokenTTL)
 
 	token, err := at.ToJWT()
 	if err != nil {
-		res.Err = fmt.Errorf("failed to generate LiveKit token: %w", err).Error()
-		res.Code = http.StatusInternalServerError
-		return
+		return "", "", fmt.Errorf("failed to generate LiveKit token: %w", err)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]string{
-		"token": token,
-		"url":   lkURL,
-	}); err != nil {
-		p.LogError("failed to encode LiveKit token response", "err", err.Error())
-	}
+	return token, lkURL, nil
 }
 
 // handlePhoneCall dials an external phone number via LiveKit SIP and joins the
@@ -718,6 +771,12 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	if cfg.sipOutboundAllowlistEnabled() && !cfg.isNumberInAllowlist(number) {
 		res.Err = "number is not in the outbound calling allowlist"
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	if allowedTeams := cfg.outboundAllowedTeams(); !p.isUserInAllowedTeams(userID, allowedTeams) {
+		res.Err = "user is not a member of a team permitted to place outbound calls"
 		res.Code = http.StatusForbidden
 		return
 	}
@@ -813,12 +872,29 @@ func (p *Plugin) getAPILimiter(userID string) *rate.Limiter {
 	return limiter
 }
 
-func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
+type ctxKey int
+
+// ctxKeyAuthSessionID keys the Mattermost session id on the request context.
+const ctxKeyAuthSessionID ctxKey = iota
+
+// authSessionIDFromRequest returns the Mattermost session backing the request.
+// The server supplies it on plugin.Context rather than as a header, so ServeHTTP
+// stashes it on the request context for handlers to read.
+func authSessionIDFromRequest(r *http.Request) string {
+	id, _ := r.Context().Value(ctxKeyAuthSessionID).(string)
+	return id
+}
+
+func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
 			p.logPanic(r)
 		}
 	}()
+
+	if c != nil && c.SessionId != "" {
+		r = r.WithContext(context.WithValue(r.Context(), ctxKeyAuthSessionID, c.SessionId))
+	}
 
 	p.apiRouter.ServeHTTP(w, r)
 }
@@ -877,13 +953,24 @@ func (p *Plugin) isPhoneCallChannel(channelID string) bool {
 		p.LogError("isPhoneCallChannel: failed to get channel", "channelID", channelID, "err", appErr.Error())
 		return false
 	}
+	return p.isPhoneCallChannelFromChannel(channel)
+}
+
+// isPhoneCallChannelFromChannel is isPhoneCallChannel for callers that already
+// hold the channel object, avoiding the redundant GetChannel DB call.
+func (p *Plugin) isPhoneCallChannelFromChannel(channel *model.Channel) bool {
 	if channel.Type != model.ChannelTypeDirect {
 		return false
 	}
 
-	members, appErr := p.API.GetChannelMembers(channelID, 0, 10)
+	botID := p.getBotID()
+	if botID == "" {
+		return false
+	}
+
+	members, appErr := p.API.GetChannelMembers(channel.Id, 0, 10)
 	if appErr != nil {
-		p.LogError("isPhoneCallChannel: failed to get channel members", "channelID", channelID, "err", appErr.Error())
+		p.LogError("isPhoneCallChannel: failed to get channel members", "channelID", channel.Id, "err", appErr.Error())
 		return false
 	}
 	for _, m := range members {
@@ -933,8 +1020,16 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 	switch event.GetEvent() {
 	case webhook.EventParticipantJoined:
 		p.handleLiveKitSIPParticipantJoined(event)
+		p.handleLiveKitParticipantJoined(event)
 	case webhook.EventParticipantLeft:
 		p.handleLiveKitSIPParticipantLeft(event)
+		p.handleLiveKitParticipantLeft(event)
+	case webhook.EventRoomFinished:
+		p.handleLiveKitRoomFinished(event)
+	case webhook.EventTrackPublished:
+		p.handleLiveKitTrackPublished(event)
+	case webhook.EventTrackUnpublished:
+		p.handleLiveKitTrackUnpublished(event)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -985,12 +1080,26 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 		CallID:           state.Call.ID,
 		UserID:           identity,
 		JoinAt:           time.Now().UnixMilli(),
+		ConfirmedAt:      time.Now().UnixMilli(),
 		IsSIPParticipant: true,
 	}
 	state.sessions[sid] = session
 
-	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
-		state.Call.Props.Hosts = []string{newHostID}
+	// Compute the host change now (while sessions includes the new SIP participant)
+	// but defer applying it until after the DB write so a CreateCallSession failure
+	// cannot leave state.Call.Props.Hosts inconsistent with the DB.
+	newHostID := state.getHostID(p.getBotID())
+	hostChanged := newHostID != state.Call.GetHostID()
+
+	if err := p.store.CreateCallSession(session); err != nil {
+		p.LogError("handleLiveKitSIPParticipantJoined: failed to create call session",
+			"channelID", channelID, "err", err.Error())
+		delete(state.sessions, sid)
+		return
+	}
+
+	if hostChanged {
+		p.setCallHost(state, channelID, newHostID)
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 			"hostID":  newHostID,
 			"call_id": state.Call.ID,
@@ -1001,12 +1110,7 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 		})
 	}
 
-	if err := p.store.CreateCallSession(session); err != nil {
-		p.LogError("handleLiveKitSIPParticipantJoined: failed to create call session",
-			"channelID", channelID, "err", err.Error())
-		delete(state.sessions, sid)
-		return
-	}
+	p.markCallDirtyOnFirstParticipant(state, channelID)
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("handleLiveKitSIPParticipantJoined: failed to update call",
@@ -1069,10 +1173,14 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 
 		// Tear down the media room so the MM user's client disconnects, mirroring
 		// the host-end path; clients also get wsEventCallEnd as a fallback.
-		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-			p.LogError("handleLiveKitSIPParticipantLeft: failed to delete LiveKit room",
-				"channelID", channelID, "err", err.Error())
-		}
+		// livekitDeleteRoom is a network call; run it outside the call lock to
+		// avoid holding the lock for up to the API timeout.
+		go func() {
+			if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+				p.LogError("handleLiveKitSIPParticipantLeft: failed to delete LiveKit room",
+					"channelID", channelID, "err", err.Error())
+			}
+		}()
 
 		p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
 			ChannelID:           channelID,
@@ -1088,11 +1196,7 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 
 	if state.Call.GetHostID() == identity && len(state.sessions) > 0 {
 		if newHostID := state.getHostID(p.getBotID()); newHostID != identity {
-			if newHostID == "" {
-				state.Call.Props.Hosts = nil
-			} else {
-				state.Call.Props.Hosts = []string{newHostID}
-			}
+			p.setCallHost(state, channelID, newHostID)
 			p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 				"hostID":  newHostID,
 				"call_id": state.Call.ID,
@@ -1166,11 +1270,11 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 		teamID = teams[0].Id
 	}
 
-	if p.botSession == nil {
+	botID := p.getBotID()
+	if botID == "" {
 		http.Error(w, "Bot user not available", http.StatusInternalServerError)
 		return
 	}
-	botID := p.botSession.UserId
 
 	dmChannel, appErr := p.API.GetDirectChannel(userID, botID)
 	if appErr != nil {
@@ -1218,4 +1322,198 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write([]byte("{}")); err != nil {
 		p.LogError("failed to write logs upload response", "error", err.Error())
 	}
+}
+
+// livekitSessionResponse is returned by handleCreateLiveKitSession. It carries
+// everything a client needs to join in a single round trip, so no follow-up
+// fetch is required (and no read-replica lag can hide the just-written session).
+type livekitSessionResponse struct {
+	SessionID string           `json:"session_id"`
+	Token     string           `json:"token"`
+	URL       string           `json:"url"`
+	CallState *CallStateClient `json:"call_state"`
+}
+
+// handleCreateLiveKitSession mints a call session and its LiveKit token in one
+// step: it creates the CallSession row — and the call itself, if this is the
+// first joiner — then returns the session id, token and call state.
+//
+// The session id is server-minted here rather than derived from a WebSocket
+// connection, which is what lets a client join with no Calls WebSocket at all.
+// The row starts unconfirmed (ConfirmedAt == 0): it becomes visible to the
+// channel only once LiveKit reports the participant connected, so a token that
+// is minted but never used leaves nothing in the participant list.
+func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Request) {
+	var res httpResponse
+	defer p.httpAudit("handleCreateLiveKitSession", &res, w, r)
+
+	userID := r.Header.Get("Mattermost-User-Id")
+
+	var req struct {
+		ChannelID string `json:"channel_id"`
+		Title     string `json:"title"`
+		ThreadID  string `json:"thread_id"`
+		JobID     string `json:"job_id"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&req); err != nil {
+		res.Err = "invalid request body"
+		res.Code = http.StatusBadRequest
+		return
+	}
+	if req.ChannelID == "" {
+		res.Err = "channel_id is required"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	channel, code, err := p.validateCallJoin(userID, req.ChannelID, req.ThreadID, req.JobID)
+	if err != nil {
+		res.Err = err.Error()
+		res.Code = code
+		return
+	}
+
+	callsChannel, err := p.store.GetCallsChannel(req.ChannelID, db.GetCallsChannelOpts{})
+	if err != nil && !errors.Is(err, db.ErrNotFound) {
+		p.LogError("failed to get calls channel", "err", err.Error(), "channelID", req.ChannelID)
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	var callsEnabled *bool
+	if callsChannel != nil {
+		callsEnabled = model.NewPointer(callsChannel.Enabled)
+	}
+
+	// Check LiveKit is configured before writing anything. Minting happens after
+	// the session is persisted, and an unconfigured deployment would otherwise
+	// leave a pending call and session behind on every join attempt.
+	if cfg := p.getConfiguration(); cfg.getLiveKitURL() == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
+		res.Err = errLiveKitNotConfigured.Error()
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	sessionID := model.NewId()
+
+	state, err := p.lockCallReturnState(req.ChannelID)
+	if err != nil {
+		p.LogError("failed to lock call", "err", err.Error(), "channelID", req.ChannelID)
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	defer p.unlockCall(req.ChannelID)
+
+	// Whether this request is the first joiner, and so owns the call row for
+	// rollback purposes below.
+	createdCall := state == nil
+
+	state, err = p.addUserSession(state, callsEnabled, userID, sessionID, req.ChannelID, req.JobID, authSessionIDFromRequest(r), channel.Type)
+	if err != nil {
+		// Persistence failures are ours, not the caller's; only join denials are 403.
+		if errors.Is(err, errStoreFailure) {
+			p.LogError("failed to add user session", "err", err.Error(), "channelID", req.ChannelID)
+			res.Err = "Internal server error"
+			res.Code = http.StatusInternalServerError
+			return
+		}
+		res.Err = err.Error()
+		res.Code = http.StatusForbidden
+		return
+	}
+
+	token, lkURL, err := p.mintLiveKitToken(userID, req.ChannelID, sessionID)
+	if err != nil {
+		// addUserSession already persisted the rows, so undo them rather than
+		// leaving a session nobody can use behind. Nothing was announced, so this
+		// is a plain delete rather than the call-ended path.
+		p.LogError("failed to mint LiveKit token", "err", err.Error(), "channelID", req.ChannelID)
+		if delErr := p.store.DeleteCallSession(sessionID); delErr != nil {
+			p.LogError("failed to roll back call session", "err", delErr.Error(), "sessionID", sessionID)
+		}
+		if createdCall {
+			if delErr := p.store.DeleteCall(state.Call.ID); delErr != nil {
+				p.LogError("failed to roll back call", "err", delErr.Error(), "callID", state.Call.ID)
+			}
+		}
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	// The call-started post, the ringing deadline and the call_start broadcast are
+	// owed to observers and to the caller's own UI, none of which are in the
+	// LiveKit room, so they cannot wait on a participant_joined webhook. This is
+	// also the only place that still holds the title.
+	// Keyed on being the first session rather than on createdCall: an active call
+	// whose sessions were all reaped would otherwise never announce.
+	if len(state.sessions) == 1 {
+		p.announceCallStarted(state, userID, req.ChannelID, req.Title, req.ThreadID, channel.Type)
+	}
+
+	p.cancelDMNoAnswerTimerIfAnswered(state, userID, req.ChannelID, channel.Type)
+
+	p.maybeSendConcurrentSessionsWarning()
+
+	p.LogInfo("livekit session created",
+		"callID", state.Call.ID,
+		"channelID", req.ChannelID,
+		"sessionID", sessionID,
+		"userID", userID,
+		"nodeID", p.nodeID)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(livekitSessionResponse{
+		SessionID: sessionID,
+		Token:     token,
+		URL:       lkURL,
+		CallState: state.getClientState(p.getBotID(), userID),
+	}); err != nil {
+		p.LogError("failed to encode LiveKit session response", "err", err.Error())
+	}
+}
+
+// validateCallJoin runs the channel-level checks required before a user may join
+// a call: channel permission, archived channel, thread validity, and the bot's
+// job requirement. It returns the channel and, on failure, the HTTP status to
+// report.
+//
+// This mirrors the checks in handleJoin. The duplication is deliberate and
+// short-lived: handleJoin goes away with the Calls WebSocket (MM-69502), and
+// keeping the paths separate until then avoids changing the live WebSocket join.
+func (p *Plugin) validateCallJoin(userID, channelID, threadID, jobID string) (*model.Channel, int, error) {
+	if !(p.isBot(userID) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost)) {
+		return nil, http.StatusForbidden, fmt.Errorf("forbidden")
+	}
+
+	if userID == p.getBotID() && jobID == "" {
+		return nil, http.StatusBadRequest, fmt.Errorf("job_id should not be empty for bot connections")
+	}
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		return nil, http.StatusInternalServerError, appErr
+	}
+	if channel.DeleteAt > 0 {
+		return nil, http.StatusBadRequest, fmt.Errorf("cannot join call in archived channel")
+	}
+
+	if threadID != "" {
+		post, appErr := p.API.GetPost(threadID)
+		if appErr != nil {
+			return nil, http.StatusInternalServerError, appErr
+		}
+		if post.ChannelId != channelID {
+			return nil, http.StatusForbidden, fmt.Errorf("forbidden")
+		}
+		if post.DeleteAt > 0 {
+			return nil, http.StatusBadRequest, fmt.Errorf("cannot attach call to deleted thread")
+		}
+		if post.RootId != "" {
+			return nil, http.StatusBadRequest, fmt.Errorf("thread is not a root post")
+		}
+	}
+
+	return channel, http.StatusOK, nil
 }

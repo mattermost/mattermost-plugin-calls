@@ -63,7 +63,7 @@ func TestAddUserSession(t *testing.T) {
 		}, nil).Once()
 
 		var cs *callState
-		state, err := p.addUserSession(cs, model.NewPointer(false), "userID", "connID", "channelID", "", model.ChannelTypeOpen)
+		state, err := p.addUserSession(cs, model.NewPointer(false), "userID", "connID", "channelID", "", "", model.ChannelTypeOpen)
 		require.Nil(t, state)
 		require.EqualError(t, err, "calls are disabled in the channel")
 	})
@@ -84,7 +84,7 @@ func TestAddUserSession(t *testing.T) {
 			&model.WebsocketBroadcast{UserId: "userA", ChannelId: "channelID", ReliableClusterSend: true}).Once()
 
 		// Start call
-		retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", model.ChannelTypeOpen)
+		retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", "", model.ChannelTypeOpen)
 		require.NoError(t, err)
 		require.NotNil(t, retState)
 		require.Equal(t, map[string]struct{}{"userA": {}}, retState.Props.Participants)
@@ -100,9 +100,9 @@ func TestAddUserSession(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		retState2, err := p.addUserSession(retState, model.NewPointer(true), "userB", "connB", "channelID", "", model.ChannelTypeOpen)
+		retState2, err := p.addUserSession(retState, model.NewPointer(true), "userB", "connB", "channelID", "", "", model.ChannelTypeOpen)
 		require.NotNil(t, retState2)
-		require.EqualError(t, err, "failed to create call session: failed to run query: pq: duplicate key value violates unique constraint \"calls_sessions_pkey\"")
+		require.EqualError(t, err, "store failure: failed to create call session: failed to run query: pq: duplicate key value violates unique constraint \"calls_sessions_pkey\"")
 
 		// Verify the original state has not mutated.
 		require.Equal(t, map[string]struct{}{"userA": {}}, retState.Props.Participants)
@@ -126,7 +126,7 @@ func TestAddUserSession(t *testing.T) {
 				Message:   "app.add_user_session.group_calls_not_allowed_error",
 			}).Return(nil).Once()
 
-			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", model.ChannelTypeOpen)
+			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", "", model.ChannelTypeOpen)
 			require.Equal(t, errGroupCallsNotAllowed, err)
 			require.Nil(t, retState)
 		})
@@ -137,7 +137,7 @@ func TestAddUserSession(t *testing.T) {
 				Message:   "app.add_user_session.group_calls_not_allowed_error",
 			}).Return(nil).Once()
 
-			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", model.ChannelTypePrivate)
+			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", "", model.ChannelTypePrivate)
 			require.Equal(t, errGroupCallsNotAllowed, err)
 			require.Nil(t, retState)
 		})
@@ -148,7 +148,7 @@ func TestAddUserSession(t *testing.T) {
 				Message:   "app.add_user_session.group_calls_not_allowed_error",
 			}).Return(nil).Once()
 
-			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", model.ChannelTypeGroup)
+			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", "", model.ChannelTypeGroup)
 			require.Equal(t, errGroupCallsNotAllowed, err)
 			require.Nil(t, retState)
 		})
@@ -158,13 +158,135 @@ func TestAddUserSession(t *testing.T) {
 			mockAPI.On("PublishWebSocketEvent", wsEventCallHostChanged, mock.Anything,
 				&model.WebsocketBroadcast{UserId: "userA", ChannelId: "channelID", ReliableClusterSend: true}).Once()
 
-			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", model.ChannelTypeDirect)
+			retState, err := p.addUserSession(nil, model.NewPointer(true), "userA", "connA", "channelID", "", "", model.ChannelTypeDirect)
 			require.NoError(t, err)
 			require.NotNil(t, retState)
 			require.Equal(t, map[string]struct{}{"userA": {}}, retState.Props.Participants)
 			require.Len(t, retState.sessions, 1)
 			require.NotNil(t, retState.sessions["connA"])
 		})
+	})
+}
+
+// TestRemoveUserSessionDMAutoEnd covers the multi-device side of the DM auto-end rule. The rule
+// is about parties, not connections: a user connected from two devices is still in the call after
+// closing one of them, so the call must survive, and only end once their last device is gone.
+//
+// isDMCallChannel (and with it the auto-end) is only reached when the guard passes, so whether the
+// channel is looked up at all is what tells the two cases apart.
+func TestRemoveUserSessionDMAutoEnd(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	mockMetrics := &serverMocks.MockMetrics{}
+
+	botID := model.NewId()
+	p := Plugin{
+		MattermostPlugin:  plugin.MattermostPlugin{API: mockAPI},
+		callsClusterLocks: map[string]*cluster.Mutex{},
+		metrics:           mockMetrics,
+		configuration:     &configuration{}, // no LiveKitURL: livekitDeleteRoom is a no-op
+		botSession:        &model.Session{UserId: botID},
+		botID:             botID, // getBotID reads p.botID, not botSession
+		sessions:          map[string]*session{},
+	}
+	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
+
+	store, tearDown := NewTestStore(t)
+	t.Cleanup(tearDown)
+	p.store = store
+
+	mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Maybe()
+	mockMetrics.On("IncWebSocketEvent", mock.Anything, mock.Anything).Maybe()
+	anys := make([]interface{}, 18)
+	for i := range anys {
+		anys[i] = mock.Anything
+	}
+	mockAPI.On("LogInfo", append([]interface{}{mock.AnythingOfType("string")}, anys...)...).Maybe()
+	mockAPI.On("LogDebug", append([]interface{}{mock.AnythingOfType("string")}, anys...)...).Maybe()
+	mockAPI.On("LogError", append([]interface{}{mock.AnythingOfType("string")}, anys...)...).Maybe()
+	mockAPI.On("PublishWebSocketEvent", mock.AnythingOfType("string"), mock.Anything,
+		mock.AnythingOfType("*model.WebsocketBroadcast")).Maybe()
+
+	// A DM call between userA and userB, with userA connected from two devices.
+	buildTwoDeviceCallState := func(t *testing.T, channelID string) *callState {
+		t.Helper()
+
+		callID := model.NewId()
+		postID := model.NewId()
+		createPost(t, store, postID, "userA", channelID)
+
+		call := &public.Call{
+			ID:        callID,
+			CreateAt:  time.Now().UnixMilli(),
+			StartAt:   time.Now().UnixMilli(),
+			ChannelID: channelID,
+			PostID:    postID,
+			ThreadID:  model.NewId(),
+			OwnerID:   "userA",
+			Props: public.CallProps{
+				NodeID: "test-node",
+				Participants: map[string]struct{}{
+					"userA": {},
+					"userB": {},
+				},
+			},
+		}
+		require.NoError(t, store.CreateCall(call))
+
+		sessions := map[string]*public.CallSession{}
+		for _, s := range []*public.CallSession{
+			{ID: "connA", CallID: callID, UserID: "userA", JoinAt: time.Now().UnixMilli()},
+			{ID: "connA2", CallID: callID, UserID: "userA", JoinAt: time.Now().UnixMilli()},
+			{ID: "connB", CallID: callID, UserID: "userB", JoinAt: time.Now().UnixMilli()},
+		} {
+			require.NoError(t, store.CreateCallSession(s))
+			sessions[s.ID] = s
+		}
+
+		return &callState{Call: *call, sessions: sessions}
+	}
+
+	t.Run("does not end the call when a user closes one of their two devices", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		state := buildTwoDeviceCallState(t, channelID)
+
+		err := p.removeUserSession(state, "userA", "connA", "connA", channelID)
+		require.NoError(t, err)
+
+		// userA is still in the call on their other device, so both parties remain. No GetChannel
+		// expectation is set, so the strict mock would fail the test if the auto-end were reached.
+		mockAPI.AssertNotCalled(t, "GetChannel", channelID)
+		require.Zero(t, state.Call.EndAt)
+		require.Len(t, state.sessions, 2)
+	})
+
+	t.Run("ends the call when the last of a user's two devices leaves", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		state := buildTwoDeviceCallState(t, channelID)
+
+		require.NoError(t, p.removeUserSession(state, "userA", "connA", "connA", channelID))
+
+		// Closing the remaining device leaves userB alone, which is what ends the call. The
+		// channel is a regular DM rather than a phone-call container, so the bot is not a member.
+		// The channel is read once by the auto-end check; isPhoneCallChannelFromChannel reuses
+		// the already-fetched channel to avoid a second GetChannel call.
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id:   channelID,
+			Type: model.ChannelTypeDirect,
+		}, nil).Once()
+		mockAPI.On("GetChannelMembers", channelID, 0, 10).Return(model.ChannelMembers{
+			{ChannelId: channelID, UserId: "userA"},
+			{ChannelId: channelID, UserId: "userB"},
+		}, nil).Once()
+
+		err := p.removeUserSession(state, "userA", "connA2", "connA2", channelID)
+		require.NoError(t, err)
+
+		mockAPI.AssertExpectations(t)
+		require.Len(t, state.sessions, 1)
 	})
 }
 

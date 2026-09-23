@@ -140,3 +140,17 @@ export const STORAGE_CALLS_BLUR_BACKGROUND_KEY = 'calls_blur_background';
 
 // Log buffer size limit
 export const MAX_ACCUMULATED_LOG_SIZE = 1024 * 1024; // 1 MB
+
+export const DefaultVideoTrackOptions: MediaTrackConstraints = {
+
+    // TODO: consider exposing in user preferences
+    frameRate: {
+        ideal: 30,
+    },
+    width: {
+        ideal: 640,
+    },
+    height: {
+        ideal: 360,
+    },
+};

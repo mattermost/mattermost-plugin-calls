@@ -1,0 +1,44 @@
+SET @preparedStatement = (SELECT IF(
+    EXISTS(
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE table_name = 'calls_sessions'
+        AND table_schema = DATABASE()
+        AND column_name = 'AuthSessionID'
+    ),
+    'ALTER TABLE calls_sessions DROP COLUMN AuthSessionID;',
+    'SELECT 1;'
+));
+
+PREPARE dropColumnIfExists FROM @preparedStatement;
+EXECUTE dropColumnIfExists;
+DEALLOCATE PREPARE dropColumnIfExists;
+
+SET @preparedStatement = (SELECT IF(
+    EXISTS(
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE table_name = 'calls_sessions'
+        AND table_schema = DATABASE()
+        AND column_name = 'SID'
+    ),
+    'ALTER TABLE calls_sessions DROP COLUMN SID;',
+    'SELECT 1;'
+));
+
+PREPARE dropColumnIfExists FROM @preparedStatement;
+EXECUTE dropColumnIfExists;
+DEALLOCATE PREPARE dropColumnIfExists;
+
+SET @preparedStatement = (SELECT IF(
+    EXISTS(
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE table_name = 'calls_sessions'
+        AND table_schema = DATABASE()
+        AND column_name = 'ConfirmedAt'
+    ),
+    'ALTER TABLE calls_sessions DROP COLUMN ConfirmedAt;',
+    'SELECT 1;'
+));
+
+PREPARE dropColumnIfExists FROM @preparedStatement;
+EXECUTE dropColumnIfExists;
+DEALLOCATE PREPARE dropColumnIfExists;

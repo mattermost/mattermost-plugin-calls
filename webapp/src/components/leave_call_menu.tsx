@@ -7,7 +7,7 @@ import {defineMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {displayGenericErrorModal, hostEndCallForEveryone} from 'src/actions';
 import {DropdownMenuItem} from 'src/components/dot_menu/dot_menu';
-import {logErr} from 'src/log';
+import {logDebug, logErr} from 'src/log';
 import {modals} from 'src/webapp_globals';
 import styled from 'styled-components';
 
@@ -27,10 +27,20 @@ export const LeaveCallMenu = ({channelID, isHost, numParticipants, leaveCall}: P
     const shouldShowWarningMenuItemForEndingCall = (isHost || isAdmin) && numParticipants > 1;
 
     async function handleHostEndCallForEveryone() {
+        logDebug('LeaveCallMenu.handleHostEndCallForEveryone: host ending call for everyone');
         try {
             await hostEndCallForEveryone(channelID);
         } catch (err) {
+            // A TypeError (e.g. "Failed to fetch") means the browser aborted the request
+            // before JS could process the response — typically because the popout window
+            // was closed by the DISCONNECTED handler while the fetch was in-flight. The
+            // call did end successfully; nothing to surface.
+            if (err instanceof TypeError) {
+                return;
+            }
+
             logErr('failed to end call for everyone', err);
+
             if (modals) {
                 dispatch(displayGenericErrorModal(
                     defineMessage({defaultMessage: 'Unable to end the call'}),
