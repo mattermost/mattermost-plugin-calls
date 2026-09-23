@@ -50,7 +50,7 @@ export const ServerSideTURN = (props: CustomComponentProps) => {
                         type='radio'
                         value='on'
                         id={props.id + '_on'}
-                        name={props.id + '_on'}
+                        name={props.id}
                         checked={checked}
                         onChange={handleChange}
                         disabled={disabled}
@@ -63,7 +63,7 @@ export const ServerSideTURN = (props: CustomComponentProps) => {
                         type='radio'
                         value='off'
                         id={props.id + '_off'}
-                        name={props.id + '_off'}
+                        name={props.id}
                         checked={!checked}
                         onChange={handleChange}
                         disabled={disabled}

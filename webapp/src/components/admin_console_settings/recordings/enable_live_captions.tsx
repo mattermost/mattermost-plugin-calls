@@ -63,7 +63,7 @@ export const EnableLiveCaptions = (props: CustomComponentProps) => {
                         type='radio'
                         value='true'
                         id={props.id + 'true'}
-                        name={props.id + 'true'}
+                        name={props.id}
                         checked={checked}
                         onChange={handleChange}
                         disabled={disabled}
@@ -76,7 +76,7 @@ export const EnableLiveCaptions = (props: CustomComponentProps) => {
                         type='radio'
                         value='false'
                         id={props.id + 'false'}
-                        name={props.id + 'false'}
+                        name={props.id}
                         checked={!checked}
                         onChange={handleChange}
                         disabled={disabled}
