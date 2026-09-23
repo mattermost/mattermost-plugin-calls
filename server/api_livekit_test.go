@@ -579,4 +579,31 @@ func TestHandlePhoneCall(t *testing.T) {
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
 		require.Equal(t, "number is not in the outbound calling allowlist", res.Msg)
 	})
+
+	t.Run("non-member of allowed teams is rejected", func(t *testing.T) {
+		p, mockAPI := setupPlugin(t)
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.EnableSIPOutbound = model.NewPointer(true)
+		cfg.LiveKitSIPOutboundTrunkID = "ST_test"
+		cfg.LiveKitSIPOutboundAllowedTeams = "sales;engineering"
+		p.configuration = cfg
+
+		userID := model.NewId()
+		mockAPI.On("GetTeamsForUser", userID).Return([]*model.Team{{Name: "finance"}}, nil)
+
+		apiRouter := p.newAPIRouter()
+		body, err := json.Marshal(map[string]string{"number": "+14155551234"})
+		require.NoError(t, err)
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/phone-call", bytes.NewReader(body))
+		r.Header.Set("Mattermost-User-Id", userID)
+		apiRouter.ServeHTTP(w, r)
+		resp := w.Result()
+
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		var res httpResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
+		require.Equal(t, "user is not a member of a team permitted to place outbound calls", res.Msg)
+	})
 }
