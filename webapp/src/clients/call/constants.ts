@@ -7,7 +7,6 @@ import {AudioCaptureOptions, AudioPresets, ConnectionQuality, TrackPublishDefaul
  * CallClient emitted public event names.
  */
 export const CALL_EVENT = {
-    WEBSOCKET_EVENT: 'websocketEvent',
     CONNECTED: 'connect',
     DISCONNECTED: 'close',
     RECONNECTING: 'reconnecting',
@@ -22,14 +21,26 @@ export const CALL_EVENT = {
     USER_LEFT: 'userLeft',
     DEVICE_CHANGE: 'devicechange',
     DEVICE_FALLBACK: 'devicefallback',
-    LOCAL_SCREEN_STREAM: 'localScreenStream',
-    LOCAL_SCREEN_STREAM_OFF: 'localScreenStreamOff',
-    REMOTE_SCREEN_STREAM: 'remoteScreenStream',
-    REMOTE_SCREEN_STREAM_OFF: 'remoteScreenStreamOff',
     QUALITY_CHANGED: 'qualityChanged',
     RAISE_HAND: 'raiseHand',
     LOWER_HAND: 'lowerHand',
     REACTION: 'reaction',
+
+    // CALL_STATE is the full snapshot returned by the join request. It arrives
+    // before the room connects, so consumers can seed their store knowing no
+    // LiveKit-sourced state has been emitted yet.
+    CALL_STATE: 'callState',
+
+    // Call-level state that LiveKit cannot supply on its own, delivered through
+    // room metadata: on connect and again on every change.
+    HOST_CHANGED: 'hostChanged',
+    JOB_STATE: 'jobState',
+
+    // SCREEN_SHARING_CHANGED carries the single derived screen sharer, or null
+    // when nobody is sharing. Recomputed from LiveKit track state on every
+    // screen event rather than assigned per event, so it is order-independent
+    // and self-healing.
+    SCREEN_SHARING_CHANGED: 'screenSharingChanged',
 } as const;
 
 export const CALL_ATTRIBUTES = {
@@ -43,6 +54,22 @@ export const CALL_ATTRIBUTES = {
 
 export const CALL_MESSAGE_TOPICS = {
     REACTION: 'reaction',
+
+    // HOST_CONTROL carries host commands the server cannot enforce through the
+    // LiveKit admin API. Sent by the server, so these messages have no sending
+    // participant. Mirrors livekitTopicHostControl server-side.
+    HOST_CONTROL: 'host_control',
+} as const;
+
+/**
+ * Actions carried by a HOST_CONTROL message.
+ *
+ * Stopping a screen share is the only one today: MutePublishedTrack leaves the
+ * capture running and the browser's sharing indicator lit, so only the client
+ * can actually tear the track down.
+ */
+export const HOST_CONTROL_ACTIONS = {
+    STOP_SCREENSHARE: 'stop_screenshare',
 } as const;
 
 export {ConnectionQuality as CONNECTION_QUALITY};

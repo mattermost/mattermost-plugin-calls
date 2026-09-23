@@ -4,7 +4,6 @@
 /* eslint-disable max-lines */
 
 import type {EmojiData} from '@mattermost/calls-common/lib/types';
-import {ClientConfig} from '@mattermost/types/config';
 import {EventEmitter} from 'events';
 import {
     ConnectionQuality,
@@ -28,7 +27,6 @@ import {
     TrackPublication,
 } from 'livekit-client';
 import RestClient from 'src/clients/rest';
-import {WEBSOCKET_EVENT, WebSocketClient, WebSocketError, WebSocketErrorType} from 'src/clients/websocket';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     STORAGE_CALLS_CLIENT_STATS_KEY,
@@ -46,10 +44,18 @@ import {
     CALL_EVENT,
     CALL_MESSAGE_TOPICS,
     CALL_TOKEN_API_PATH,
+    HOST_CONTROL_ACTIONS,
     TRACK_PUBLISHING_DEFAULTS,
     USER_ID_SESSION_ID_SEPARATOR,
 } from './constants';
-import {ConnectPayload, ReactionPayload, RtcTokenResponse} from './types';
+import {
+    CallRoomMetadata,
+    ConnectPayload,
+    HostControlPayload,
+    LiveKitSessionResponse,
+    ReactionPayload,
+    ScreenSharingSession,
+} from './types';
 
 // trackMetadata extracts the diagnostic fields getStats() reports for a track,
 // from its underlying MediaStreamTrack. Mirrors the shape produced by the legacy
@@ -97,12 +103,20 @@ export default class CallClient extends EventEmitter {
     public currentAudioInputDevice: MediaDeviceInfo | null = null;
     public currentAudioOutputDevice: MediaDeviceInfo | null = null;
 
-    private websocketClient: WebSocketClient | null = null;
     private room: Room | null = null;
     private roomConnected = false;
     private disconnecting = false;
     private disconnected = false;
     private connectPayload: ConnectPayload | null = null;
+
+    // Server-minted session id from the join request. Held here rather than read
+    // back off the LiveKit identity so it is available before the room connects.
+    private sessionID = '';
+
+    // The screen sharer last emitted, so a recompute that changes nothing stays
+    // silent instead of handing consumers a fresh MediaStream to re-attach.
+    private screenSharingSessionID: string | null = null;
+    private screenShareTrackSIDs = '';
 
     // Most recent periodic stats sample, captured while the call is live. On a
     // remote-initiated teardown (host ends the call, network drop) the peer
@@ -118,20 +132,8 @@ export default class CallClient extends EventEmitter {
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
 
-    constructor({websocketURL, authToken}: {
-        websocketURL: ClientConfig['WebsocketURL'];
-        authToken?: string;
-    }) {
+    constructor() {
         super();
-
-        const websocketClient = new WebSocketClient(websocketURL, authToken);
-        this.websocketClient = websocketClient;
-        websocketClient.on(WEBSOCKET_EVENT.OPEN, this.handleWebsocketOpened.bind(this));
-        websocketClient.on(WEBSOCKET_EVENT.JOIN, this.handleWebsocketJoined.bind(this));
-        websocketClient.on(WEBSOCKET_EVENT.MESSAGE, this.handleWebsocketMessageReceived.bind(this));
-        websocketClient.on(WEBSOCKET_EVENT.EVENT, this.handleWebsocketEvent.bind(this));
-        websocketClient.on(WEBSOCKET_EVENT.ERROR, this.handleWebsocketErrored.bind(this));
-        websocketClient.on(WEBSOCKET_EVENT.CLOSE, this.handleWebsocketClosed.bind(this));
 
         const room = new Room({
             audioCaptureDefaults: AUDIO_CAPTURE_DEFAULTS,
@@ -160,12 +162,14 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.LocalTrackUnpublished, this.handleLocalTrackUnpublished.bind(this));
         room.on(RoomEvent.TrackPublished, this.handleRemoteTrackPublished.bind(this));
         room.on(RoomEvent.TrackSubscribed, this.handleRemoteTrackSubscribed.bind(this));
+        room.on(RoomEvent.TrackUnsubscribed, this.handleRemoteTrackUnsubscribed.bind(this));
         room.on(RoomEvent.TrackUnpublished, this.handleRemoteTrackUnpublished.bind(this));
         room.on(RoomEvent.TrackMuted, this.handleTrackMuted.bind(this));
         room.on(RoomEvent.TrackUnmuted, this.handleTrackUnmuted.bind(this));
         room.on(RoomEvent.ParticipantConnected, this.handleParticipantConnected.bind(this));
         room.on(RoomEvent.ParticipantDisconnected, this.handleParticipantDisconnected.bind(this));
         room.on(RoomEvent.ParticipantAttributesChanged, this.handleParticipantAttributesChanged.bind(this));
+        room.on(RoomEvent.RoomMetadataChanged, this.handleRoomMetadataChanged.bind(this));
         room.on(RoomEvent.ActiveSpeakersChanged, this.handleActiveSpeakersChanged.bind(this));
         room.on(RoomEvent.DataReceived, this.handleDataReceivedFromParticipant.bind(this));
         room.on(RoomEvent.MediaDevicesChanged, this.handleMediaDevicesChanged.bind(this));
@@ -209,8 +213,8 @@ export default class CallClient extends EventEmitter {
     }
 
     // True while the LiveKit room is connected and we haven't torn down. Note this
-    // reflects the media plane only; plugin call state (host/sessions) hydrates via WS
-    // separately, so callers needing that should wait on it themselves (see MM-69019).
+    // reflects the media plane only; the call state snapshot arrives from the join
+    // request before this flips, and host/job state follows over room metadata.
     public get isConnected(): boolean {
         return this.roomConnected && !this.disconnected;
     }
@@ -232,13 +236,6 @@ export default class CallClient extends EventEmitter {
         return this.isDisconnected;
     }
 
-    // _e2eForceWebsocketClose closes the plugin WebSocket without telling the
-    // client to stay closed, so reconnect logic runs — used by E2E tests to
-    // exercise the WS-reconnect path.
-    public _e2eForceWebsocketClose(): void {
-        this.websocketClient?.e2eForceClose();
-    }
-
     public async connect(connectPayload: ConnectPayload): Promise<void> {
         if (this.roomConnected) {
             throw new Error('CallClient: room already connected');
@@ -248,66 +245,41 @@ export default class CallClient extends EventEmitter {
             throw new Error('CallClient: room not initialized');
         }
 
-        if (!this.websocketClient) {
-            throw new Error('CallClient: pluginWS not initialized');
-        }
-
         this.connectPayload = connectPayload;
         this.channelID = connectPayload.channelID;
-
-        let connectionId: string;
-        try {
-            this.websocketClient.connect();
-
-            // We obtain the connection ID from the pluginWS so we can use it to fetch the JWT token and URL.
-            // this would be the same sessionID which would also be embedded in the identity of the participant.
-            connectionId = await this.websocketClient.ready();
-
-            logDebug('CallClient: pluginWS ready with connection_id', connectionId);
-        } catch (err) {
-            // If the user cancelled the call before it connected, we will have already teared down
-            if (this.disconnecting) {
-                logDebug('CallClient: connect aborted by concurrent disconnect (during pluginWS connect)');
-                return;
-            }
-
-            logErr('CallClient: pluginWS connection error', err);
-            this.connectPayload = null;
-
-            // RoomEvent.Disconnected never fires for a pre-Connected failure, so clean up
-            this.websocketClient?.close();
-            this.websocketClient = null;
-
-            this.emit(CALL_EVENT.ERROR, err);
-            throw err;
-        }
 
         let token: string;
         let url: string;
         try {
-            const response = await this.fetchJwtTokenAndUrl(connectPayload.channelID, connectionId);
+            // One round trip mints the session, creates the call if we are the
+            // first joiner, and returns the state snapshot. The session id comes
+            // from the server rather than from a WebSocket connection, which is
+            // what lets us join with no Calls WebSocket at all.
+            const response = await this.createSession(connectPayload);
             token = response.token;
             url = response.url;
+            this.sessionID = response.session_id;
 
-            if (!token || !url) {
-                throw new Error('CallClient: either token or url were not received from token API');
+            if (!token || !url || !this.sessionID) {
+                throw new Error('CallClient: incomplete session response from join API');
             }
 
-            logDebug('CallClient: token fetched from token API', url);
+            logDebug('CallClient: session created', {url, sessionID: this.sessionID});
+
+            // Emitted before the room connects, so consumers seed their store
+            // ahead of any LiveKit-sourced state.
+            if (response.call_state) {
+                this.emit(CALL_EVENT.CALL_STATE, response.call_state);
+            }
         } catch (err) {
             // If the user cancelled the network request before it connected, we will have already teared down
             if (this.disconnecting) {
-                logDebug('CallClient: connect aborted by concurrent disconnect (during token fetch)');
+                logDebug('CallClient: connect aborted by concurrent disconnect (during session create)');
                 return;
             }
 
-            logErr('CallClient: token fetch error', err);
+            logErr('CallClient: session create error', err);
             this.connectPayload = null;
-
-            // The plugin WS is already open and the join was sent, so tell the server we're
-            // leaving before closing — otherwise it keeps the session until its own timeout.
-            this.websocketClient?.sendLeaveAndClose();
-            this.websocketClient = null;
 
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
@@ -342,11 +314,9 @@ export default class CallClient extends EventEmitter {
             this.connectPayload = null;
             this.room = null;
 
-            // The plugin WS is already open and the join was sent, so tell the server we're
-            // leaving before closing — otherwise it keeps the session until its own timeout.
-            this.websocketClient?.sendLeaveAndClose();
-            this.websocketClient = null;
-
+            // The session row was created by the join request but never confirmed,
+            // since LiveKit has no participant to report. It stays invisible to the
+            // channel and is reaped by the reconciliation sweep (MM-69510).
             this.emit(CALL_EVENT.ERROR, err);
             throw err;
         }
@@ -485,24 +455,17 @@ export default class CallClient extends EventEmitter {
 
         // If another participant is already sharing, report it distinctly so callers can show a
         // targeted notice rather than the generic permission-denied error.
-        for (const remoteParticipant of this.room.remoteParticipants.values()) {
-            if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
-                logDebug('CallClient: another participant is already sharing screen');
-                return fail('already-sharing');
-            }
+        if (this.remoteScreenSharerExists()) {
+            logDebug('CallClient: another participant is already sharing screen');
+            return fail('already-sharing');
         }
 
         try {
-            if (window.desktop) {
-                await this.shareScreenInDesktop(sourceID, withAudio);
-            } else {
-                // Browser: let LiveKit drive getDisplayMedia + its native picker / "Stop sharing" bar.
-                // Only hint systemAudio when audio capture is actually requested.
-                const captureOptions: ScreenShareCaptureOptions = {audio: Boolean(withAudio)};
-                if (withAudio) {
-                    captureOptions.systemAudio = 'include';
-                }
-                await this.room.localParticipant.setScreenShareEnabled(true, captureOptions);
+            const shareErr = window.desktop ?
+                await this.shareScreenInDesktop(sourceID, withAudio) :
+                await this.shareScreenInBrowser(withAudio);
+            if (shareErr) {
+                return fail(shareErr);
             }
 
             const stream = this.getLocalScreenStream();
@@ -539,42 +502,67 @@ export default class CallClient extends EventEmitter {
             return false;
         }
 
-        // Bail if another participant is already sharing screen.
-        for (const remoteParticipant of this.room.remoteParticipants.values()) {
-            if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
-                logDebug('CallClient: another participant is already sharing screen');
-                stream.getTracks().forEach((t) => t.stop());
-                return false;
-            }
+        const tracks: LocalTrack[] = [];
+        const [videoTrack] = stream.getVideoTracks();
+        if (videoTrack) {
+            const screenVideo = new LocalVideoTrack(videoTrack, undefined, false);
+            screenVideo.source = Track.Source.ScreenShare;
+            tracks.push(screenVideo);
+        }
+        const [audioTrack] = stream.getAudioTracks();
+        if (audioTrack) {
+            const screenAudio = new LocalAudioTrack(audioTrack, undefined, false);
+            screenAudio.source = Track.Source.ScreenShareAudio;
+            tracks.push(screenAudio);
         }
 
-        const publishedTracks: LocalTrack[] = [];
         try {
-            const [videoTrack] = stream.getVideoTracks();
-            if (videoTrack) {
-                const screenVideo = new LocalVideoTrack(videoTrack, undefined, false);
-                screenVideo.source = Track.Source.ScreenShare;
-                await this.room.localParticipant.publishTrack(screenVideo);
-                publishedTracks.push(screenVideo);
-            }
-
-            const [audioTrack] = stream.getAudioTracks();
-            if (audioTrack) {
-                const screenAudio = new LocalAudioTrack(audioTrack, undefined, false);
-                screenAudio.source = Track.Source.ScreenShareAudio;
-                await this.room.localParticipant.publishTrack(screenAudio);
-                publishedTracks.push(screenAudio);
+            // The stream was captured in the popout, so the picker has already been
+            // through; publishScreenTracks does the competing-share check.
+            if (await this.publishScreenTracks(tracks)) {
+                stream.getTracks().forEach((t) => t.stop());
+                return false;
             }
 
             logDebug('CallClient: shareScreenWithStream published', {streamID: stream.id});
             return true;
         } catch (err) {
-            await Promise.allSettled(publishedTracks.map((track) => this.room!.localParticipant.unpublishTrack(track, true)));
+            // The caller captured this stream and handed it over, so releasing it is
+            // ours to do — and it is not necessarily the same set of tracks we
+            // wrapped for publishing.
             stream.getTracks().forEach((t) => t.stop());
             logErr('CallClient: shareScreenWithStream failed', err);
             this.emit(CALL_EVENT.ERROR, err);
             return false;
         }
+    }
+
+    // shareScreenInBrowser captures the screen and publishes it, re-checking for a
+    // competing share in between.
+    //
+    // setScreenShareEnabled() would be shorter, but it opens the picker and
+    // publishes in one step, leaving no seam to check in. The user can sit in the
+    // picker for seconds, which is easily long enough for someone else to start
+    // sharing — so the check has to happen after the picker resolves, immediately
+    // before publishing. createScreenTracks() captures without publishing, which
+    // gives us that seam.
+    private async shareScreenInBrowser(withAudio?: boolean): Promise<ShareScreenError | null> {
+        if (!this.room) {
+            return 'capture-error';
+        }
+
+        // Only hint systemAudio when audio capture is actually requested.
+        const captureOptions: ScreenShareCaptureOptions = {audio: Boolean(withAudio)};
+        if (withAudio) {
+            captureOptions.systemAudio = 'include';
+        }
+
+        const tracks = await this.room.localParticipant.createScreenTracks(captureOptions);
+        if (tracks.length === 0) {
+            return 'capture-error';
+        }
+
+        return this.publishScreenTracks(tracks);
     }
 
     // shareScreenInDesktop captures and publishes the source already chosen via
@@ -583,42 +571,88 @@ export default class CallClient extends EventEmitter {
     // specific source ourselves (getScreenStream uses getUserMedia +
     // chromeMediaSourceId) and publish the tracks tagged as ScreenShare,
     // mirroring LiveKit's own createScreenTracks().
-    private async shareScreenInDesktop(sourceID?: string, withAudio?: boolean): Promise<void> {
+    private async shareScreenInDesktop(sourceID?: string, withAudio?: boolean): Promise<ShareScreenError | null> {
         if (!this.room) {
-            return;
+            return 'capture-error';
         }
 
         const screenStream = await getScreenStream(sourceID, withAudio);
         if (!screenStream) {
-            return;
+            return 'capture-error';
         }
 
-        const publishedTracks: LocalTrack[] = [];
-        try {
-            const [videoTrack] = screenStream.getVideoTracks();
-            if (videoTrack) {
-                const screenVideo = new LocalVideoTrack(videoTrack, undefined, false);
-                screenVideo.source = Track.Source.ScreenShare;
-                await this.room.localParticipant.publishTrack(screenVideo);
-                publishedTracks.push(screenVideo);
-            }
+        const tracks: LocalTrack[] = [];
+        const [videoTrack] = screenStream.getVideoTracks();
+        if (videoTrack) {
+            const screenVideo = new LocalVideoTrack(videoTrack, undefined, false);
+            screenVideo.source = Track.Source.ScreenShare;
+            tracks.push(screenVideo);
+        }
+        const [audioTrack] = screenStream.getAudioTracks();
+        if (audioTrack) {
+            const screenAudio = new LocalAudioTrack(audioTrack, undefined, false);
+            screenAudio.source = Track.Source.ScreenShareAudio;
+            tracks.push(screenAudio);
+        }
 
-            const [audioTrack] = screenStream.getAudioTracks();
-            if (audioTrack) {
-                const screenAudio = new LocalAudioTrack(audioTrack, undefined, false);
-                screenAudio.source = Track.Source.ScreenShareAudio;
-                await this.room.localParticipant.publishTrack(screenAudio);
-                publishedTracks.push(screenAudio);
-            }
+        return this.publishScreenTracks(tracks);
+    }
+
+    // publishScreenTracks publishes already-captured screen tracks, bailing if
+    // someone else started sharing while we were capturing.
+    //
+    // Re-checking here rather than only before capture is what collapses the
+    // double-share window from the user's entire picker time down to SFU
+    // propagation. The server arbitrates whatever still slips through.
+    private async publishScreenTracks(tracks: LocalTrack[]): Promise<ShareScreenError | null> {
+        const stopAll = () => tracks.forEach((track) => track.stop());
+
+        if (!this.room || !this.roomConnected) {
+            stopAll();
+            return 'not-connected';
+        }
+
+        if (this.remoteScreenSharerExists()) {
+            logDebug('CallClient: another participant started sharing while we were capturing');
+            stopAll();
+            return 'already-sharing';
+        }
+
+        const published: LocalTrack[] = [];
+        try {
+            // Sequential, so the video publication lands before its audio: consumers
+            // key the share on the video track and treat audio as an addition to it.
+            await tracks.reduce(
+                (chain, track) => chain.then(async () => {
+                    await this.room!.localParticipant.publishTrack(track);
+                    published.push(track);
+                }),
+                Promise.resolve(),
+            );
+            return null;
         } catch (err) {
             // Roll back any partial publishes so we don't leave a live ScreenShare
-            // track behind, which would desync LiveKit and plugin WS state. Use
-            // allSettled so a teardown failure can't mask the original publish
-            // error (err), which is what we actually want to surface.
-            await Promise.allSettled(publishedTracks.map((track) => this.room!.localParticipant.unpublishTrack(track, true)));
-            screenStream.getTracks().forEach((track) => track.stop());
+            // track behind, which would desync us from LiveKit. Use allSettled so a
+            // teardown failure can't mask the original publish error, which is what
+            // we actually want to surface.
+            await Promise.allSettled(published.map((track) => this.room!.localParticipant.unpublishTrack(track, true)));
+            stopAll();
             throw err;
         }
+    }
+
+    // Whether any remote participant holds a live screen-share publication.
+    private remoteScreenSharerExists(): boolean {
+        if (!this.room) {
+            return false;
+        }
+
+        for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public async unshareScreen(): Promise<void> {
@@ -627,11 +661,10 @@ export default class CallClient extends EventEmitter {
         }
 
         try {
-            // handleLocalTrackUnpublished will fire and emit LOCAL_SCREEN_STREAM_OFF.
-            // We await the unpublish before telling the server so server-side state
-            // only flips to "off" once LiveKit has actually torn down the publication.
+            // handleLocalTrackUnpublished fires and recomputes the screen sharer.
+            // The server learns about it from the track_unpublished webhook, so
+            // there is nothing to tell it here.
             await this.room.localParticipant.setScreenShareEnabled(false);
-            this.websocketClient?.sendScreenOff();
         } catch (err) {
             logErr('CallClient: unsharing screen failed', err);
             this.emit(CALL_EVENT.ERROR, err);
@@ -803,86 +836,21 @@ export default class CallClient extends EventEmitter {
         };
     }
 
+    // Server-minted at join and stable for the lifetime of the client, so it
+    // survives both a LiveKit reconnect and the room being released at teardown.
     public getSessionID() {
-        if (!this.room?.localParticipant) {
-            return null;
-        }
+        return this.sessionID || null;
+    }
 
-        const {sessionID} = this.parseUserIdAndSessionIdFromIdentity(this.room.localParticipant);
-        return sessionID;
+    // The session currently presenting a screen share, or null if nobody is.
+    // Derived from LiveKit track state, so every client agrees on it.
+    public getCurrentScreenSharingSessionID(): string | null {
+        return this.screenSharingSessionID;
     }
 
     // ------------------------------------------------------------
     // Private methods
     // ------------------------------------------------------------
-
-    private handleWebsocketOpened(originalConnID: string, prevConnID: string, isReconnect: boolean) {
-        if (!this.connectPayload) {
-            logErr('CallClient: pluginWS open received without connect payload');
-            return;
-        }
-
-        if (isReconnect) {
-            logDebug('CallClient: pluginWS reconnect, sending reconnect msg');
-            this.websocketClient?.sendReconnect({
-                channelID: this.connectPayload.channelID,
-                originalConnID,
-                prevConnID,
-            });
-        } else {
-            logDebug('CallClient: pluginWS open, sending join msg');
-            this.websocketClient?.sendJoin(this.connectPayload);
-        }
-    }
-
-    private handleWebsocketJoined() {
-        logDebug('CallClient: pluginWS join ack received');
-    }
-
-    private handleWebsocketMessageReceived({data}: {data: string}) {
-        try {
-            const msg = JSON.parse(data);
-            if (!msg) {
-                logErr('CallClient: pluginWS on(message): invalid message', data);
-                return;
-            }
-            logDebug('CallClient: pluginWS on(message): message received', msg);
-        } catch (err) {
-            logErr('CallClient: pluginWS on(message): failed to handle message', err, 'data:', data);
-        }
-    }
-
-    private handleWebsocketEvent(event: unknown) {
-        this.emit(CALL_EVENT.WEBSOCKET_EVENT, event);
-    }
-
-    private handleWebsocketErrored(err: WebSocketError) {
-        switch (err.type) {
-        case WebSocketErrorType.Native:{
-            // This is transient state, reconnect will be attempted
-            logWarn('CallClient: pluginWS transient error, reconnect will be attempted', err);
-            break;
-        }
-        case WebSocketErrorType.ReconnectTimeout: {
-            logErr('CallClient: pluginWS reconnect timed out, disconnecting', err);
-            this.emit(CALL_EVENT.ERROR, err);
-            this.disconnect();
-            break;
-        }
-        case WebSocketErrorType.Join: {
-            logErr('CallClient: pluginWS join failed, disconnecting', err);
-            this.emit(CALL_EVENT.ERROR, err);
-            this.disconnect();
-            break;
-        }
-        default:
-            logErr('CallClient: pluginWS errored with unknown type', err);
-        }
-    }
-
-    private handleWebsocketClosed(code?: number) {
-        logDebug(`CallClient: pluginWS close: ${code}`);
-    }
 
     private handleConnected() {
         if (!this.room) {
@@ -904,9 +872,14 @@ export default class CallClient extends EventEmitter {
         // USER_JOINED creates the session, then the LiveKit-owned fields (mic mute +
         // raised hand) are layered on top.
         const localParticipant = this.room.localParticipant;
-        const {userID: localUserId, sessionID: localSessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
-        this.emit(CALL_EVENT.USER_JOINED, localSessionID, localUserId, true);
-        this.emitLiveKitOwnedState(localParticipant);
+
+        // The recording/transcribing bot joins as local participant too; filter it
+        // out the same way we do for remote bots below.
+        if (!this.isBotParticipant(localParticipant)) {
+            const {userID: localUserId, sessionID: localSessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
+            this.emit(CALL_EVENT.USER_JOINED, localSessionID, localUserId, true);
+            this.emitLiveKitOwnedState(localParticipant);
+        }
 
         for (const remoteParticipant of this.room.remoteParticipants.values()) {
             // The bot is not a call participant; keep it out of the list.
@@ -918,15 +891,61 @@ export default class CallClient extends EventEmitter {
             this.emitLiveKitOwnedState(remoteParticipant);
         }
 
+        // Room metadata is delivered on connect, so the current host and job state
+        // are already on the room object. Applying it here is what makes metadata
+        // need no companion resync path.
+        this.emitRoomMetadata(this.room.metadata);
+
+        // The screen share, likewise: a share already in progress has its track
+        // published, so derive from that rather than waiting for an event that
+        // has already fired.
+        this.emitScreenSharingSession();
+
         logDebug(`CallClient: connected and seeded initial state for ${this.room.remoteParticipants.size + 1} participant(s)`);
         this.emit(CALL_EVENT.CONNECTED);
     }
 
     /**
+     * Fires when the server publishes new room metadata, which carries the
+     * call-level state LiveKit cannot supply: who the host is and whether a job
+     * is running.
+     */
+    private handleRoomMetadataChanged(metadata: string) {
+        this.emitRoomMetadata(metadata);
+    }
+
+    private emitRoomMetadata(metadata?: string) {
+        if (!metadata) {
+            return;
+        }
+
+        let parsed: CallRoomMetadata;
+        try {
+            parsed = JSON.parse(metadata) as CallRoomMetadata;
+        } catch (err) {
+            logErr('CallClient: failed to parse room metadata', err, 'metadata:', metadata);
+            return;
+        }
+
+        if (parsed.host_id) {
+            this.emit(CALL_EVENT.HOST_CHANGED, parsed.host_id);
+        }
+
+        // Each job is emitted separately: consumers key their store on the job
+        // type, which is carried inside the job state itself.
+        for (const job of [parsed.recording, parsed.transcription, parsed.live_captions]) {
+            if (job) {
+                this.emit(CALL_EVENT.JOB_STATE, job);
+            }
+        }
+
+        logDebug('CallClient: room metadata applied', parsed);
+    }
+
+    /**
      * Emits the LiveKit-owned per-participant state — mic mute and raised hand —
-     * that the server no longer tracks (those moved to LiveKit, so the plugin-WS
-     * call_state ships stale values). Layered on top of an already-created session;
-     * does NOT emit USER_JOINED.
+     * that the server does not track. Layered on top of an already-created
+     * session; does NOT emit USER_JOINED.
      */
     private emitLiveKitOwnedState(participant: Participant) {
         const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
@@ -1074,9 +1093,6 @@ export default class CallClient extends EventEmitter {
 
         this.stopStatsPolling();
 
-        // Emitted before the room reference is released below: listeners call getSessionID(),
-        // which reads this.room and returns null once it is nulled — dropping the local
-        // leaveUser dispatch and leaving it to the user_left websocket round-trip.
         this.emit(CALL_EVENT.DISCONNECTED, reason);
 
         // Sever our EventEmitter listeners from the room before releasing the reference.
@@ -1088,17 +1104,6 @@ export default class CallClient extends EventEmitter {
         const room = this.room;
         this.room = null;
         room?.removeAllListeners();
-
-        if (this.websocketClient) {
-            try {
-                this.websocketClient.sendLeaveAndClose();
-            } catch (error) {
-                logErr('CallClient: pluginWS teardown error', error);
-            } finally {
-                this.websocketClient = null;
-                logDebug('CallClient: pluginWS disconnected');
-            }
-        }
 
         // Persist final diagnostics: the last periodic stats sample (lastStats is
         // null for a call torn down within the first poll interval) folded into the
@@ -1148,30 +1153,14 @@ export default class CallClient extends EventEmitter {
                 this.unshareScreen();
                 logDebug('CallClient: local screen share stream teared down by user action on native "Stop sharing" bar');
             };
-
-            // Notify the server that screen sharing has started. We do this here rather than in
-            // shareScreen() to guarantee the track is fully published and accessible before the
-            // server broadcasts user_screen_on to all participants. This avoids a race where
-            // getLocalScreenStream() could return null if called immediately after
-            // setScreenShareEnabled() resolves (e.g. when using fake media in E2E tests).
-            if (this.websocketClient) {
-                this.websocketClient.sendScreenOn({screenStreamID: localTrackPublication.track.mediaStreamTrack?.id ?? ''});
-            }
         }
 
-        // LiveKit publishes ScreenShare (video) and ScreenShareAudio as two separate tracks, so this
-        // handler fires once per source. When sharing with audio, that means we emit LOCAL_SCREEN_STREAM
-        // twice in quick succession:
-        // - on ScreenShare publish — composeScreenShareStream returns a stream with just video.
-        // - on ScreenShareAudio publish — composeScreenShareStream returns a fresh stream with both
-        //      video + audio (it reads the participant's current publications each call).
+        // LiveKit publishes ScreenShare and ScreenShareAudio as two separate tracks,
+        // so this fires once per source and the composed stream legitimately changes
+        // shortly after the video first appears.
         if (localTrackPublication.source === Track.Source.ScreenShare || localTrackPublication.source === Track.Source.ScreenShareAudio) {
-            const screenShareStream = this.composeScreenShareStream(localParticipant);
-            if (screenShareStream) {
-                const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
-                this.emit(CALL_EVENT.LOCAL_SCREEN_STREAM, screenShareStream, sessionID, userID);
-                logDebug(`CallClient: local screen share stream published for user ${userID}`, this.trackPubSummary(localTrackPublication));
-            }
+            logDebug('CallClient: local screen share track published', this.trackPubSummary(localTrackPublication));
+            this.emitScreenSharingSession();
         }
     }
 
@@ -1189,8 +1178,8 @@ export default class CallClient extends EventEmitter {
         }
 
         if (localTrackPublication.source === Track.Source.ScreenShare) {
-            this.emit(CALL_EVENT.LOCAL_SCREEN_STREAM_OFF, sessionID, userID);
             logDebug(`CallClient: local screen share stream unpublished for user ${userID}`, this.trackPubSummary(localTrackPublication));
+            this.emitScreenSharingSession();
         }
     }
 
@@ -1209,9 +1198,10 @@ export default class CallClient extends EventEmitter {
 
         if (remoteTrackPublication.source === Track.Source.ScreenShare || remoteTrackPublication.source === Track.Source.ScreenShareAudio) {
             // Screen-share publications do not carry stream state before subscription:
-            // `remoteTrackPublication.track` is undefined here. The actual MediaStreamTrack arrives in
-            // handleRemoteTrackSubscribed, which is where we compose and emit REMOTE_SCREEN_STREAM.
+            // `remoteTrackPublication.track` is undefined here, so the recompute names
+            // the sharer with a null stream and the follow-up on subscription fills it in.
             logDebug(`CallClient: remote screen share stream announced (awaiting subscription) for user ${userID}`, this.trackPubSummary(remoteTrackPublication));
+            this.emitScreenSharingSession();
         }
     }
 
@@ -1230,11 +1220,21 @@ export default class CallClient extends EventEmitter {
         }
 
         if (remoteTrack.source === Track.Source.ScreenShare || remoteTrack.source === Track.Source.ScreenShareAudio) {
-            const screenShareStream = this.composeScreenShareStream(remoteParticipant);
-            if (screenShareStream) {
-                this.emit(CALL_EVENT.REMOTE_SCREEN_STREAM, screenShareStream, sessionID, userID);
-                logDebug(`CallClient: remote screen share stream subscribed for user ${userID}`, this.trackSummary(remoteTrack));
-            }
+            logDebug(`CallClient: remote screen share stream subscribed for user ${userID}`, this.trackSummary(remoteTrack));
+            this.emitScreenSharingSession();
+        }
+    }
+
+    /**
+     * Fires when a remote track we were subscribed to goes away without the
+     * publication being removed. Folded into the same recompute so the derived
+     * sharer never outlives the media.
+     */
+    private handleRemoteTrackUnsubscribed(remoteTrack: RemoteTrack, _remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
+        if (remoteTrack.source === Track.Source.ScreenShare || remoteTrack.source === Track.Source.ScreenShareAudio) {
+            const {userID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
+            logDebug(`CallClient: remote screen share stream unsubscribed for user ${userID}`, this.trackSummary(remoteTrack));
+            this.emitScreenSharingSession();
         }
     }
 
@@ -1252,8 +1252,8 @@ export default class CallClient extends EventEmitter {
         }
 
         if (remoteTrackPublication.source === Track.Source.ScreenShare) {
-            this.emit(CALL_EVENT.REMOTE_SCREEN_STREAM_OFF, sessionID, userID);
             logDebug(`CallClient: remote screen share stream unpublished for user ${userID}`, this.trackPubSummary(remoteTrackPublication));
+            this.emitScreenSharingSession();
         }
     }
 
@@ -1312,6 +1312,10 @@ export default class CallClient extends EventEmitter {
         this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
         logDebug(`CallClient: participant disconnected ${userID}`);
+
+        // A disconnect removes the participant's publications without firing
+        // trackUnpublished, so a sharer leaving is only visible here.
+        this.emitScreenSharingSession();
     }
 
     /**
@@ -1339,6 +1343,14 @@ export default class CallClient extends EventEmitter {
      * Fires when a participant publishes a data message.
      */
     private handleDataReceivedFromParticipant(payload: Uint8Array, participant?: RemoteParticipant, _kind?: number, topic?: string) {
+        if (topic === CALL_MESSAGE_TOPICS.HOST_CONTROL) {
+            // Sent by the server through the admin API, so there is deliberately
+            // no sending participant here.
+            this.handleHostControl(payload);
+            return;
+        }
+
+        // Everything below is participant-to-participant.
         if (!participant) {
             return;
         }
@@ -1354,6 +1366,32 @@ export default class CallClient extends EventEmitter {
             } catch (err) {
                 logErr(`CallClient: reactions received from user ${userID} failed to parse`, err);
             }
+        }
+    }
+
+    /**
+     * Carries out a host command the server cannot enforce itself. Stopping a
+     * screen share is the only one: muting the track would leave the capture
+     * running and the browser's sharing indicator lit, so the client has to tear
+     * it down. Once it does, the track_unpublished webhook clears server state.
+     */
+    private handleHostControl(payload: Uint8Array) {
+        let action: string;
+        try {
+            ({action} = JSON.parse(new TextDecoder().decode(payload)) as HostControlPayload);
+        } catch (err) {
+            logErr('CallClient: host control message failed to parse', err);
+            return;
+        }
+
+        logDebug('CallClient: host control message received', action);
+
+        switch (action) {
+        case HOST_CONTROL_ACTIONS.STOP_SCREENSHARE:
+            void this.unshareScreen();
+            break;
+        default:
+            logWarn('CallClient: unhandled host control action', action);
         }
     }
 
@@ -1483,10 +1521,100 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    private async fetchJwtTokenAndUrl(channelID: string, sessionID: string): Promise<RtcTokenResponse> {
-        const params = new URLSearchParams({channel_id: channelID, session_id: sessionID});
-        const url = `${getPluginPath()}/${CALL_TOKEN_API_PATH}?${params.toString()}`;
-        return RestClient.fetch<RtcTokenResponse>(url, {method: 'GET'});
+    private async createSession(connectPayload: ConnectPayload): Promise<LiveKitSessionResponse> {
+        return RestClient.fetch<LiveKitSessionResponse>(
+            `${getPluginPath()}/${CALL_TOKEN_API_PATH}`,
+            {
+                method: 'POST',
+                body: JSON.stringify({
+                    channel_id: connectPayload.channelID,
+                    title: connectPayload.title,
+                    thread_id: connectPayload.threadID,
+                    job_id: connectPayload.jobID,
+                }),
+            },
+        );
+    }
+
+    /**
+     * Recomputes which screen share is being presented and emits it if anything
+     * changed.
+     *
+     * Derived on every screen event rather than assigned by each event, because
+     * screen events are unordered and can be dropped or duplicated. Assigning the
+     * slot from whichever event arrived last meant two simultaneous shares left
+     * viewers rendering different screens, and one sharer stopping blanked
+     * everyone watching the other. Recomputing from scratch is idempotent,
+     * order-independent and self-healing.
+     *
+     * When two participants do share at once the lowest session id wins. The
+     * tie-break only has to be a total order every client computes identically —
+     * LiveKit publications carry no timestamp, so "whoever started first" is not
+     * available to us. Keyed on session id, never user id, since the same person
+     * on two devices is two sharers.
+     */
+    private emitScreenSharingSession() {
+        if (!this.room) {
+            return;
+        }
+
+        const candidates: Participant[] = [];
+        if (this.room.localParticipant.getTrackPublication(Track.Source.ScreenShare)) {
+            candidates.push(this.room.localParticipant);
+        }
+        for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            if (remoteParticipant.getTrackPublication(Track.Source.ScreenShare)) {
+                candidates.push(remoteParticipant);
+            }
+        }
+
+        let winner: Participant | null = null;
+        let winnerSessionID: string | null = null;
+        for (const candidate of candidates) {
+            const {sessionID} = this.parseUserIdAndSessionIdFromIdentity(candidate);
+            if (winnerSessionID === null || sessionID < winnerSessionID) {
+                winner = candidate;
+                winnerSessionID = sessionID;
+            }
+        }
+
+        if (candidates.length > 1) {
+            logWarn(`CallClient: ${candidates.length} concurrent screen shares, presenting session ${winnerSessionID}`);
+        }
+
+        // Keyed on the track set as well as the sharer: composeScreenShareStream
+        // allocates a new MediaStream per call, so re-emitting an unchanged share
+        // would make consumers re-attach it and flicker. A publication with no
+        // track yet (announced, not subscribed) contributes nothing to the key, so
+        // subscription registers as a change and re-emits with the stream.
+        const trackKey = winner ? [Track.Source.ScreenShare, Track.Source.ScreenShareAudio]
+            .map((source) => {
+                const pub = winner?.getTrackPublication(source);
+                return pub?.track ? pub.trackSid : '';
+            }).join(',') : '';
+
+        if (winnerSessionID === this.screenSharingSessionID && trackKey === this.screenShareTrackSIDs) {
+            return;
+        }
+        this.screenSharingSessionID = winnerSessionID;
+        this.screenShareTrackSIDs = trackKey;
+
+        if (!winner) {
+            logDebug('CallClient: no screen share being presented');
+            this.emit(CALL_EVENT.SCREEN_SHARING_CHANGED, null);
+            return;
+        }
+
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(winner);
+        const session: ScreenSharingSession = {
+            sessionID,
+            userID,
+            isLocal: winner === this.room.localParticipant,
+            stream: this.composeScreenShareStream(winner),
+        };
+
+        logDebug('CallClient: screen share presented', {sessionID, userID, isLocal: session.isLocal, hasStream: Boolean(session.stream)});
+        this.emit(CALL_EVENT.SCREEN_SHARING_CHANGED, session);
     }
 
     /*

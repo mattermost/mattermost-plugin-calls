@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -238,6 +239,18 @@ func (s *jobService) StopJob(channelID, jobID, botUserID, botConnID string) erro
 	s.ctx.publishWebSocketEvent(wsEventJobStop, map[string]interface{}{
 		"job_id": jobID,
 	}, &WebSocketBroadcast{UserID: botUserID, ReliableClusterSend: true})
+
+	// The bot has no Mattermost WebSocket of its own, so the broadcast above
+	// cannot reach it. Evicting it from the room is what actually stops the job:
+	// its client sees RoomEvent.Disconnected and tears the capture down, exactly
+	// as it does when a host ends the call.
+	if botConnID != "" {
+		if err := s.ctx.livekitRemoveParticipant(channelID, composeLivekitIdentity(botUserID, botConnID)); err != nil &&
+			!errors.Is(err, errLiveKitNotConfigured) {
+			s.ctx.LogError("failed to remove job bot from LiveKit room", "err", err.Error(),
+				"channelID", channelID, "jobID", jobID)
+		}
+	}
 
 	return nil
 }

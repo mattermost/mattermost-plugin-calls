@@ -156,217 +156,6 @@ func (p *Plugin) publishWebSocketEvent(ev string, data map[string]interface{}, b
 	p.API.PublishWebSocketEvent(ev, data, broadcast.ToModel())
 }
 
-func (p *Plugin) handleClientMessageTypeScreen(us *session, msg clientMessage) error {
-	if cfg := p.getConfiguration(); cfg == nil || cfg.AllowScreenSharing == nil || !*cfg.AllowScreenSharing {
-		return fmt.Errorf("screen sharing is not allowed")
-	}
-
-	state, err := p.lockCallReturnState(us.channelID)
-	if err != nil {
-		return fmt.Errorf("failed to lock call: %w", err)
-	}
-	defer p.unlockCall(us.channelID)
-	if state == nil {
-		return fmt.Errorf("no call ongoing")
-	}
-
-	if msg.Type == clientMessageTypeScreenOn {
-		if state.Call.Props.ScreenSharingSessionID != "" {
-			return fmt.Errorf("cannot start screen sharing, someone else is sharing already: connID=%s", state.Call.Props.ScreenSharingSessionID)
-		}
-		state.Call.Props.ScreenSharingSessionID = us.originalConnID
-		state.Call.Props.ScreenStartAt = time.Now().Unix()
-	} else {
-		if state.Call.Props.ScreenSharingSessionID != us.originalConnID {
-			return fmt.Errorf("cannot stop screen sharing, someone else is sharing already: connID=%s", state.Call.Props.ScreenSharingSessionID)
-		}
-		state.Call.Props.ScreenSharingSessionID = ""
-		if state.Call.Props.ScreenStartAt > 0 {
-			state.Call.Stats.ScreenDuration = secondsSinceTimestamp(state.Call.Props.ScreenStartAt)
-			state.Call.Props.ScreenStartAt = 0
-		}
-	}
-
-	if err := p.store.UpdateCall(&state.Call); err != nil {
-		return fmt.Errorf("failed to update call: %w", err)
-	}
-
-	wsMsgType := wsEventUserScreenOn
-	if msg.Type == clientMessageTypeScreenOff {
-		wsMsgType = wsEventUserScreenOff
-	}
-
-	p.publishWebSocketEvent(wsMsgType, map[string]interface{}{
-		"userID":     us.userID,
-		"session_id": us.originalConnID,
-	}, &WebSocketBroadcast{ChannelID: us.channelID, ReliableClusterSend: true, UserIDs: getUserIDsFromSessions(state.sessions)})
-
-	return nil
-}
-
-type EmojiData struct {
-	Name    string `json:"name"`
-	Skin    string `json:"skin,omitempty"`
-	Unified string `json:"unified"`
-	Literal string `json:"literal,omitempty"`
-}
-
-func (ed EmojiData) toMap() map[string]interface{} {
-	return map[string]interface{}{
-		"name":    ed.Name,
-		"skin":    ed.Skin,
-		"unified": ed.Unified,
-		"literal": ed.Literal,
-	}
-}
-
-func (p *Plugin) handleClientMsg(us *session, msg clientMessage) error {
-	p.metrics.IncWebSocketEvent("in", msg.Type)
-	switch msg.Type {
-	case clientMessageTypeSDP:
-		// No-op: LiveKit SDK handles signaling directly.
-		p.LogDebug("received sdp (ignored, LiveKit handles signaling)", "connID", us.connID, "userID", us.userID)
-	case clientMessageTypeICE:
-		// No-op: LiveKit SDK handles ICE candidates directly.
-		p.LogDebug("received ice (ignored, LiveKit handles signaling)", "connID", us.connID, "userID", us.userID)
-	case clientMessageTypeMute, clientMessageTypeUnmute:
-		// State-update-only: update DB and broadcast WS event.
-		// LiveKit SDK handles the actual media track muting on the client.
-		state, err := p.lockCallReturnState(us.channelID)
-		if err != nil {
-			return fmt.Errorf("failed to lock call: %w", err)
-		}
-		defer p.unlockCall(us.channelID)
-		if state == nil {
-			return fmt.Errorf("no call ongoing")
-		}
-		session := state.sessions[us.originalConnID]
-		if session == nil {
-			return fmt.Errorf("user state is missing from call state")
-		}
-		session.Unmuted = msg.Type == clientMessageTypeUnmute
-
-		if err := p.store.UpdateCallSession(session); err != nil {
-			return fmt.Errorf("failed to update call session: %w", err)
-		}
-
-		evType := wsEventUserUnmuted
-		if msg.Type == clientMessageTypeMute {
-			evType = wsEventUserMuted
-		}
-		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID":     us.userID,
-			"session_id": us.originalConnID,
-		}, &WebSocketBroadcast{
-			ChannelID:           us.channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
-	case clientMessageTypeScreenOn, clientMessageTypeScreenOff:
-		if err := p.handleClientMessageTypeScreen(us, msg); err != nil {
-			return err
-		}
-	case clientMessageTypeVideoOn, clientMessageTypeVideoOff:
-		// State-update-only: update DB and broadcast WS event.
-		// LiveKit SDK handles the actual video track on the client.
-		state, err := p.lockCallReturnState(us.channelID)
-		if err != nil {
-			return fmt.Errorf("failed to lock call: %w", err)
-		}
-		defer p.unlockCall(us.channelID)
-		if state == nil {
-			return fmt.Errorf("channel state is missing from store")
-		}
-		session := state.sessions[us.originalConnID]
-		if session == nil {
-			return fmt.Errorf("user session is missing from call state")
-		}
-		session.Video = msg.Type == clientMessageTypeVideoOn
-
-		if err := p.store.UpdateCallSession(session); err != nil {
-			return fmt.Errorf("failed to update call session: %w", err)
-		}
-
-		evType := wsEventUserVideoOn
-		if msg.Type == clientMessageTypeVideoOff {
-			evType = wsEventUserVideoOff
-		}
-		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID":     us.userID,
-			"session_id": us.originalConnID,
-		}, &WebSocketBroadcast{
-			ChannelID:           us.channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
-	case clientMessageTypeRaiseHand, clientMessageTypeUnraiseHand:
-		evType := wsEventUserUnraiseHand
-		if msg.Type == clientMessageTypeRaiseHand {
-			evType = wsEventUserRaiseHand
-		}
-
-		state, err := p.lockCallReturnState(us.channelID)
-		if err != nil {
-			return fmt.Errorf("failed to lock call: %w", err)
-		}
-		defer p.unlockCall(us.channelID)
-		if state == nil {
-			return fmt.Errorf("no call ongoing")
-		}
-
-		session := state.sessions[us.originalConnID]
-		if session == nil {
-			return fmt.Errorf("user session is missing from call state")
-		}
-
-		if msg.Type == clientMessageTypeRaiseHand {
-			session.RaisedHand = time.Now().UnixMilli()
-		} else {
-			session.RaisedHand = 0
-		}
-
-		if err := p.store.UpdateCallSession(session); err != nil {
-			return fmt.Errorf("failed to update call session: %w", err)
-		}
-
-		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"userID":      us.userID,
-			"session_id":  us.originalConnID,
-			"raised_hand": session.RaisedHand,
-		}, &WebSocketBroadcast{
-			ChannelID:           us.channelID,
-			ReliableClusterSend: true,
-			UserIDs:             getUserIDsFromSessions(state.sessions),
-		})
-	case clientMessageTypeReact:
-		evType := wsEventUserReacted
-
-		var emoji EmojiData
-		if err := json.Unmarshal(msg.Data, &emoji); err != nil {
-			return fmt.Errorf("failed to unmarshal emoji data: %w", err)
-		}
-
-		sessions, err := p.store.GetCallSessions(us.callID, db.GetCallSessionOpts{})
-		if err != nil {
-			return fmt.Errorf("failed to get call sessions: %w", err)
-		}
-
-		p.publishWebSocketEvent(evType, map[string]interface{}{
-			"user_id":    us.userID,
-			"session_id": us.originalConnID,
-			"emoji":      emoji.toMap(),
-			"timestamp":  time.Now().UnixMilli(),
-		}, &WebSocketBroadcast{
-			ChannelID: us.channelID,
-			UserIDs:   getUserIDsFromSessions(sessions),
-		})
-	default:
-		return fmt.Errorf("invalid client message type %q", msg.Type)
-	}
-
-	return nil
-}
-
 func (p *Plugin) OnWebSocketDisconnect(connID, userID string) {
 	if userID == "" {
 		return
@@ -405,15 +194,6 @@ func (p *Plugin) wsReader(us *session, authSessionID string) {
 
 	for {
 		select {
-		case msg, ok := <-us.wsMsgCh:
-			if !ok {
-				return
-			}
-			if err := p.handleClientMsg(us, msg); err != nil {
-				p.LogError("handleClientMsg failed", "err", err.Error(), "connID", us.connID)
-			}
-		case <-us.wsReconnectCh:
-			return
 		case <-us.leaveCh:
 			return
 		case <-us.wsCloseCh:
@@ -464,23 +244,10 @@ func (p *Plugin) handleLeave(us *session, userID, connID, channelID string) erro
 	p.LogDebug("handleLeave", "userID", userID, "connID", connID, "channelID", channelID)
 
 	select {
-	case <-us.wsReconnectCh:
-		p.LogDebug("reconnected, returning", "userID", userID, "connID", connID, "channelID", channelID)
-
-		// Clearing the previous session since it gets copied over after
-		// successful reconnect. Only delete if it's still our (old) session:
-		// a same-connID reconnect on the same node installs a new session
-		// under this connID, and deleting unconditionally would orphan it.
-		p.mut.Lock()
-		if p.sessions[connID] == us {
-			delete(p.sessions, connID)
-		}
-		p.mut.Unlock()
-		return nil
 	case <-us.leaveCh:
 		p.LogDebug("user left call", "userID", userID, "connID", connID, "channelID", us.channelID)
 	case <-time.After(wsReconnectionTimeout):
-		p.LogDebug("timeout waiting for reconnection", "userID", userID, "connID", connID, "channelID", channelID)
+		p.LogDebug("timeout waiting for leave", "userID", userID, "connID", connID, "channelID", channelID)
 	}
 
 	if err := p.removeSession(us); err != nil {
@@ -547,7 +314,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	addSessionToCall := func(state *callState) *callState {
 		var err error
 
-		state, err = p.addUserSession(state, callsEnabled, userID, connID, channelID, joinData.JobID, channel.Type)
+		state, err = p.addUserSession(state, callsEnabled, userID, connID, channelID, joinData.JobID, authSessionID, channel.Type)
 		if err != nil {
 			p.LogError("failed to add user session", "err", err.Error())
 			p.publishWebSocketEvent(wsEventError, map[string]interface{}{
@@ -557,56 +324,10 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 			return state
 		} else if len(state.sessions) == 1 {
 			// new call has started
-
-			// If this is TestMode (DefaultEnabled=false) and sysadmin, send an ephemeral message
-			if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
-				p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
-				p.API.SendEphemeralPost(
-					userID,
-					&model.Post{
-						UserId:    p.botSession.UserId,
-						ChannelId: channelID,
-						Message:   "Currently calls are not enabled for non-admin users. You can change the setting through the system console",
-					},
-				)
-			}
-
-			postID, threadID, err := p.createCallStartedPost(state, userID, channelID, joinData.Title, joinData.ThreadID, channel.Type)
-			if err != nil {
-				p.LogError(err.Error())
-			}
-
-			state.Call.PostID = postID
-			state.Call.ThreadID = threadID
-			if err := p.store.UpdateCall(&state.Call); err != nil {
-				p.LogError(err.Error())
-			}
-
-			// A DM call rings, so it needs a deadline: if nobody picks up we cancel it rather than
-			// leave the caller listening to a call that will never be answered.
-			if p.isDMCallChannel(channel.Type, channelID) {
-				p.startDMNoAnswerTimer(channelID, state.Call.ID)
-			}
-
-			// TODO: send all the info attached to a call.
-			p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
-				"id":        state.Call.ID,
-				"channelID": channelID,
-				"start_at":  state.Call.StartAt,
-				"thread_id": threadID,
-				"post_id":   postID,
-				"owner_id":  state.Call.OwnerID,
-				"host_id":   state.Call.GetHostID(),
-			}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+			p.announceCallStarted(state, userID, channelID, joinData.Title, joinData.ThreadID, channel.Type)
 		}
 
-		// The DM call has been answered once a second person is in it, so the no-answer deadline
-		// no longer applies. Checked on every join, not just the second one, so a reconnect or a
-		// second device can't leave a stale timer running.
-		if !p.isBot(userID) && p.isDMCallChannel(channel.Type, channelID) &&
-			len(state.distinctNonBotUserIDs(p.getBotID())) >= 2 {
-			p.cancelDMNoAnswerTimer(channelID)
-		}
+		p.cancelDMNoAnswerTimerIfAnswered(state, userID, channelID, channel.Type)
 
 		p.LogDebug("session has joined call",
 			"userID", userID, "sessionID", connID, "channelID", channelID, "callID", state.Call.ID,
@@ -618,14 +339,7 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		p.sessions[connID] = us
 		p.mut.Unlock()
 
-		if ok, err := p.shouldSendConcurrentSessionsWarning(getConcurrentSessionsThreshold(),
-			getConcurrentSessionsWarningBackoffTime()); err != nil {
-			p.LogError("shouldSendConcurrentSessionsWarning failed", "err", err.Error())
-		} else if ok {
-			if err := p.sendConcurrentSessionsWarning(); err != nil {
-				p.LogError("sendConcurrentSessionsWarning failed", "err", err.Error())
-			}
-		}
+		p.maybeSendConcurrentSessionsWarning()
 
 		// send successful join response
 		p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
@@ -746,128 +460,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 	return nil
 }
 
-func (p *Plugin) handleReconnect(userID, connID, channelID, originalConnID, prevConnID, authSessionID string) error {
-	p.LogDebug("handleReconnect", "userID", userID, "connID", connID, "channelID", channelID,
-		"originalConnID", originalConnID, "prevConnID", prevConnID)
-
-	if !p.isBot(userID) && !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
-		return fmt.Errorf("forbidden")
-	}
-
-	state, err := p.getCallState(channelID, false)
-	if err != nil {
-		return err
-	} else if state == nil {
-		return fmt.Errorf("no call ongoing")
-	} else if state, ok := state.sessions[originalConnID]; !ok || state.UserID != userID {
-		return fmt.Errorf("session not found in call state")
-	}
-
-	p.mut.Lock()
-	us := p.sessions[connID]
-
-	// Covering the edge case of a client getting a new connection ID even if reconnecting
-	// to the same instance/node. In such case we need to use the previous connection ID
-	// to find the existing session.
-	if us == nil {
-		us = p.sessions[prevConnID]
-	}
-
-	if us != nil {
-		if atomic.CompareAndSwapInt32(&us.wsReconnected, 0, 1) {
-			p.LogDebug("closing reconnectCh", "userID", userID, "connID", connID, "channelID", channelID,
-				"originalConnID", originalConnID)
-			close(us.wsReconnectCh)
-		} else {
-			p.mut.Unlock()
-			return fmt.Errorf("session already reconnected")
-		}
-	} else {
-		if p.isHA() {
-			// If we are running in HA this case can be expected as it's likely the
-			// reconnect happened on a different node which is not storing the
-			// original session.
-			p.LogDebug("session not found", "userID", userID, "connID", connID, "channelID", channelID,
-				"originalConnID", originalConnID)
-		} else {
-			// If not running in HA, this should not happen.
-			p.LogError("session not found", "userID", userID, "connID", connID, "channelID", channelID,
-				"originalConnID", originalConnID)
-		}
-	}
-
-	// Handle bot reconnection. This is needed to update the bot connection
-	// IDs for any potentially running jobs.
-	if p.isBot(userID) {
-		if err := p.handleBotWSReconnect(connID, prevConnID, originalConnID, channelID); err != nil {
-			p.mut.Unlock()
-			return fmt.Errorf("handleBotWSReconnect failed: %w", err)
-		}
-	}
-
-	us = newUserSession(userID, channelID, connID, state.Call.ID)
-	us.originalConnID = originalConnID
-	if p.sessions[originalConnID] != nil {
-		// We need to ensure to clear the original session to avoid potentially tracking it twice in case the ID has changed.
-		p.LogDebug("clearing original session after reconnect", "userID", userID, "connID", connID, "originalConnID", originalConnID, "channelID", channelID)
-		delete(p.sessions, originalConnID)
-	}
-	p.sessions[connID] = us
-	p.mut.Unlock()
-
-	if err := p.sendClusterMessage(clusterMessage{
-		ConnID:    prevConnID,
-		NewConnID: connID,
-		UserID:    userID,
-		CallID:    state.Call.ID,
-		SenderID:  p.nodeID,
-	}, clusterMessageTypeReconnect, ""); err != nil {
-		p.LogError(err.Error())
-	}
-
-	p.wsReader(us, authSessionID)
-
-	if err := p.handleLeave(us, userID, connID, channelID); err != nil {
-		p.LogError(err.Error())
-	}
-
-	return nil
-}
-
-func (p *Plugin) handleCallStateRequest(channelID, userID, connID string) error {
-	// We should go through only if the user has permissions to the requested channel
-	// or if the user is the Calls bot.
-	if !(p.isBot(userID) || p.API.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)) {
-		return fmt.Errorf("forbidden")
-	}
-
-	// Locking is not ideal but it's the only way to guarantee a race free
-	// sequence and a consistent state.
-	// On the client we should make sure to make this request only when strictly
-	// necessary (i.e first load, joining call, reconnecting).
-	state, err := p.lockCallReturnState(channelID)
-	if err != nil {
-		return fmt.Errorf("failed to lock call: %w", err)
-	}
-	defer p.unlockCall(channelID)
-
-	if state == nil {
-		return fmt.Errorf("no call ongoing")
-	}
-
-	clientStateData, err := json.Marshal(state.getClientState(p.getBotID(), userID))
-	if err != nil {
-		return fmt.Errorf("failed to marshal client state: %w", err)
-	}
-
-	p.publishWebSocketEvent(wsEventCallState, map[string]interface{}{
-		"channel_id": channelID,
-		"call":       string(clientStateData),
-	}, &WebSocketBroadcast{ConnectionID: connID, ReliableClusterSend: true})
-
-	return nil
-}
-
 func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model.WebSocketRequest) {
 	if !utf8.ValidString(req.Action) {
 		p.LogError("invalid UTF-8 in action")
@@ -895,18 +487,10 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 	p.mut.RUnlock()
 
 	if us == nil {
-		// Only a few events don't require a user session to exist. For anything else
-		// we should return.
-		switch msg.Type {
-		case clientMessageTypeJoin, clientMessageTypeLeave, clientMessageTypeReconnect, clientMessageTypeCallState:
-		default:
+		// Only join doesn't require a prior session to exist.
+		if msg.Type != clientMessageTypeJoin {
 			return
 		}
-	}
-
-	if us != nil && !us.wsMsgLimiter.Allow() {
-		p.LogError("message was dropped by rate limiter", "msgType", msg.Type, "userID", us.userID, "connID", us.connID)
-		return
 	}
 
 	switch msg.Type {
@@ -917,21 +501,11 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			return
 		}
 
-		// Title is optional, so if it's not present,
-		// it will be an empty string.
 		title, _ := req.Data["title"].(string)
-
-		// ThreadID is optional, so if it's not present,
-		// it will be an empty string.
 		threadID, _ := req.Data["threadID"].(string)
-
-		// JobID is optional, so if it's not present,
-		// it will be an empty string.
 		jobID, _ := req.Data["jobID"].(string)
-
 		av1Support, _ := req.Data["av1Support"].(bool)
 		dcSignaling, _ := req.Data["dcSignaling"].(bool)
-
 		remoteAddr, _ := req.Data[model.WebSocketRemoteAddr].(string)
 		xff, _ := req.Data[model.WebSocketXForwardedFor].(string)
 
@@ -959,30 +533,6 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			}
 		}()
 		return
-	case clientMessageTypeReconnect:
-		channelID, _ := req.Data["channelID"].(string)
-		if channelID == "" {
-			p.LogError("missing channelID")
-			return
-		}
-		originalConnID, _ := req.Data["originalConnID"].(string)
-		if originalConnID == "" {
-			p.LogError("missing originalConnID")
-			return
-		}
-		prevConnID, _ := req.Data["prevConnID"].(string)
-		if prevConnID == "" {
-			p.LogError("missing prevConnID")
-			return
-		}
-
-		go func() {
-			if err := p.handleReconnect(userID, connID, channelID, originalConnID, prevConnID, req.Session.Id); err != nil {
-				p.LogWarn(err.Error(), "userID", userID, "connID", connID,
-					"originalConnID", originalConnID, "prevConnID", prevConnID, "channelID", channelID)
-			}
-		}()
-		return
 	case clientMessageTypeLeave:
 		p.metrics.IncWebSocketEvent("in", "leave")
 		p.LogDebug("leave message", "userID", userID, "connID", connID)
@@ -991,54 +541,7 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 			close(us.leaveCh)
 		}
 
-		if err := p.sendClusterMessage(clusterMessage{
-			ConnID:   connID,
-			UserID:   userID,
-			SenderID: p.nodeID,
-		}, clusterMessageTypeLeave, ""); err != nil {
-			p.LogError(err.Error())
-		}
-
 		return
-	case clientMessageTypeCallState:
-		p.metrics.IncWebSocketEvent("in", "call_state")
-
-		channelID, _ := req.Data["channelID"].(string)
-		if channelID == "" {
-			p.LogError("missing channelID")
-			return
-		}
-
-		if err := p.handleCallStateRequest(channelID, userID, connID); err != nil {
-			p.LogError("handleCallStateRequest failed", "err", err.Error(), "userID", userID, "connID", connID)
-		}
-		return
-	case clientMessageTypeSDP:
-		msgData, ok := req.Data["data"].([]byte)
-		if !ok {
-			p.LogError("invalid or missing sdp data")
-			return
-		}
-		data, err := unpackSDPData(msgData)
-		if err != nil {
-			p.LogError(err.Error())
-			return
-		}
-		msg.Data = data
-	case clientMessageTypeICE, clientMessageTypeScreenOn, clientMessageTypeVideoOn:
-		msgData, ok := req.Data["data"].(string)
-		if !ok {
-			p.LogError("invalid or missing data")
-			return
-		}
-		msg.Data = []byte(msgData)
-	case clientMessageTypeReact:
-		msgData, ok := req.Data["data"].(string)
-		if !ok {
-			p.LogError("invalid or missing reaction data")
-			return
-		}
-		msg.Data = []byte(msgData)
 	case clientMessageTypeCaption:
 		// Sent from the transcriber.
 		p.metrics.IncWebSocketEvent("in", msg.Type)
@@ -1080,56 +583,6 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		}
 		return
 	}
-
-	select {
-	case us.wsMsgCh <- msg:
-	default:
-		p.LogError("chan is full, dropping ws msg", "type", msg.Type)
-		return
-	}
-}
-
-func (p *Plugin) handleBotWSReconnect(connID, prevConnID, originalConnID, channelID string) error {
-	p.LogDebug("bot ws reconnection", "connID", connID, "prevConnID", prevConnID, "originalConnID", originalConnID, "channelID", channelID)
-
-	state, err := p.lockCallReturnState(channelID)
-	if err != nil {
-		return fmt.Errorf("failed to lock call: %w", err)
-	}
-	defer p.unlockCall(channelID)
-
-	if state != nil && state.Recording != nil && state.Recording.Props.BotConnID == prevConnID {
-		p.LogDebug("updating bot conn ID for recording job",
-			"recID", state.Recording.ID,
-			"recJobID", state.Recording.Props.JobID,
-			"botOriginalConnID", originalConnID,
-			"botConnID", connID,
-		)
-		state.Recording.Props.BotConnID = connID
-
-		if err := p.store.UpdateCallJob(state.Recording); err != nil {
-			return fmt.Errorf("failed to update call job: %w", err)
-		}
-	} else if state != nil && state.Transcription != nil && state.Transcription.Props.BotConnID == prevConnID {
-		p.LogDebug("updating bot conn ID for transcribing job",
-			"trID", state.Transcription.ID,
-			"trJobID", state.Transcription.Props.JobID,
-			"botOriginalConnID", originalConnID,
-			"botConnID", connID,
-		)
-		state.Transcription.Props.BotConnID = connID
-		if err := p.store.UpdateCallJob(state.Transcription); err != nil {
-			return fmt.Errorf("failed to update call job: %w", err)
-		}
-		if state.LiveCaptions != nil && state.LiveCaptions.Props.BotConnID == prevConnID {
-			state.LiveCaptions.Props.BotConnID = connID
-			if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
-				return fmt.Errorf("failed to update call job: %w", err)
-			}
-		}
-	}
-
-	return nil
 }
 
 func (p *Plugin) handleCaptionMessage(callID, channelID, captionFromSessionID, text string, newAudioLenMs float64) error {

@@ -9,17 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/time/rate"
-
 	"github.com/mattermost/mattermost-plugin-calls/server/batching"
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost/server/public/model"
-)
-
-const (
-	msgChSize = 50
 )
 
 var errGroupCallsNotAllowed = fmt.Errorf("unlicensed servers only allow calls in DMs")
@@ -31,15 +25,9 @@ type session struct {
 	originalConnID string
 	callID         string
 
-	// WebSocket
-
-	wsMsgCh chan clientMessage
 	// to notify of websocket disconnect.
 	wsCloseCh chan struct{}
 	wsClosed  int32
-	// to notify of websocket reconnection.
-	wsReconnectCh chan struct{}
-	wsReconnected int32
 
 	// to notify of session leaving a call.
 	leaveCh chan struct{}
@@ -47,9 +35,6 @@ type session struct {
 
 	// removed tracks whether the session was removed from state.
 	removed int32
-
-	// rate limiter for incoming WebSocket messages.
-	wsMsgLimiter *rate.Limiter
 }
 
 func newUserSession(userID, channelID, connID, callID string) *session {
@@ -59,15 +44,17 @@ func newUserSession(userID, channelID, connID, callID string) *session {
 		connID:         connID,
 		originalConnID: connID,
 		callID:         callID,
-		wsMsgCh:        make(chan clientMessage, msgChSize*2),
 		wsCloseCh:      make(chan struct{}),
-		wsReconnectCh:  make(chan struct{}),
 		leaveCh:        make(chan struct{}),
-		wsMsgLimiter:   rate.NewLimiter(10, 100),
 	}
 }
 
-func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, connID, channelID, jobID string, ct model.ChannelType) (retState *callState, retErr error) {
+// errStoreFailure marks an addUserSession failure that came from persistence
+// rather than from a permission or limit check, so HTTP callers can map it to
+// 500 instead of 403.
+var errStoreFailure = errors.New("store failure")
+
+func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, connID, channelID, jobID, authSessionID string, ct model.ChannelType) (retState *callState, retErr error) {
 	defer func(start time.Time) {
 		p.metrics.ObserveAppHandlersTime("addUserSession", time.Since(start).Seconds())
 	}(time.Now())
@@ -146,9 +133,9 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 			p.LogDebug("bot joined, recording job is starting", "jobID", jobID)
 			state.Recording.Props.BotConnID = connID
 
-			if err := p.store.UpdateCallJob(state.Recording); err != nil {
+			if err := p.updateCallJob(channelID, state.Recording); err != nil {
 				state.Recording.Props.BotConnID = ""
-				return nil, fmt.Errorf("failed to update call job: %w", err)
+				return nil, fmt.Errorf("%w: failed to update call job: %w", errStoreFailure, err)
 			}
 		} else if state.Transcription != nil && state.Transcription.ID == jobID && state.Transcription.StartAt == 0 {
 			p.LogDebug("bot joined, transcribing job is starting", "jobID", jobID)
@@ -157,15 +144,15 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 			if state.LiveCaptions != nil && state.LiveCaptions.StartAt == 0 {
 				p.LogDebug("bot joined, live captions job is starting", "jobID", state.LiveCaptions.ID, "trID", jobID)
 				state.LiveCaptions.Props.BotConnID = connID
-				if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
+				if err := p.updateCallJob(channelID, state.LiveCaptions); err != nil {
 					state.LiveCaptions.Props.BotConnID = ""
-					return nil, fmt.Errorf("failed to update call job: %w", err)
+					return nil, fmt.Errorf("%w: failed to update call job: %w", errStoreFailure, err)
 				}
 			}
 
-			if err := p.store.UpdateCallJob(state.Transcription); err != nil {
+			if err := p.updateCallJob(channelID, state.Transcription); err != nil {
 				state.Transcription.Props.BotConnID = ""
-				return nil, fmt.Errorf("failed to update call job: %w", err)
+				return nil, fmt.Errorf("%w: failed to update call job: %w", errStoreFailure, err)
 			}
 		} else {
 			// In this case we should fail to prevent the bot from joining
@@ -175,14 +162,15 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 	}
 
 	state.sessions[connID] = &public.CallSession{
-		ID:     connID,
-		CallID: state.Call.ID,
-		UserID: userID,
-		JoinAt: time.Now().UnixMilli(),
+		ID:            connID,
+		CallID:        state.Call.ID,
+		UserID:        userID,
+		JoinAt:        time.Now().UnixMilli(),
+		AuthSessionID: authSessionID,
 	}
 
 	if newHostID := state.getHostID(p.getBotID()); newHostID != state.Call.GetHostID() {
-		state.Call.Props.Hosts = []string{newHostID}
+		p.setCallHost(state, channelID, newHostID)
 		defer func() {
 			if retErr == nil {
 				p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
@@ -207,7 +195,7 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 
 	if len(state.sessions) == 1 {
 		if err := p.store.CreateCall(&state.Call); err != nil {
-			return nil, fmt.Errorf("failed to create call: %w", err)
+			return nil, fmt.Errorf("%w: failed to create call: %w", errStoreFailure, err)
 		}
 
 		p.LogInfo("call created",
@@ -217,11 +205,11 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 			"nodeID", p.nodeID)
 	} else {
 		if err := p.store.UpdateCall(&state.Call); err != nil {
-			return nil, fmt.Errorf("failed to update call: %w", err)
+			return nil, fmt.Errorf("%w: failed to update call: %w", errStoreFailure, err)
 		}
 	}
 	if err := p.store.CreateCallSession(state.sessions[connID]); err != nil {
-		return nil, fmt.Errorf("failed to create call session: %w", err)
+		return nil, fmt.Errorf("%w: failed to create call session: %w", errStoreFailure, err)
 	}
 
 	p.LogInfo("call session joined",
@@ -330,27 +318,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// If the bot is the only user left in the call we automatically stop any
 	// ongoing jobs.
 	if state.onlyUserLeft(p.getBotID()) {
-		p.LogDebug("all users left call with job(s) in progress, stopping", "channelID", channelID)
-
-		if state.Recording != nil {
-			p.LogDebug("stopping ongoing recording", "jobID", state.Recording.Props.JobID, "botConnID", state.Recording.Props.BotConnID)
-			if err := p.getJobService().StopJob(channelID, state.Recording.ID, p.getBotID(), state.Recording.Props.BotConnID); err != nil {
-				p.LogError("failed to stop recording job", "error", err.Error(),
-					"channelID", channelID,
-					"jobID", state.Recording.Props.JobID,
-					"botConnID", state.Recording.Props.BotConnID)
-			}
-		}
-
-		if state.Transcription != nil {
-			p.LogDebug("stopping ongoing transcription", "jobID", state.Transcription.Props.JobID, "botConnID", state.Transcription.Props.BotConnID)
-			if err := p.getJobService().StopJob(channelID, state.Transcription.ID, p.getBotID(), state.Transcription.Props.BotConnID); err != nil {
-				p.LogError("failed to stop transcribing job", "error", err.Error(),
-					"channelID", channelID,
-					"jobID", state.Transcription.Props.JobID,
-					"botConnID", state.Transcription.Props.BotConnID)
-			}
-		}
+		p.stopOngoingJobs(state, channelID)
 	}
 
 	// If the bot leaves the call and recording has not been stopped it either means
@@ -359,7 +327,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		p.LogDebug("recording bot left the call", "channelID", channelID, "jobID", state.Recording.Props.JobID, "botConnID", originalConnID)
 
 		state.Recording.EndAt = time.Now().UnixMilli()
-		if err := p.store.UpdateCallJob(state.Recording); err != nil {
+		if err := p.updateCallJob(channelID, state.Recording); err != nil {
 			return fmt.Errorf("failed to update call job: %w", err)
 		}
 
@@ -386,7 +354,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		p.LogDebug("transcribing bot left the call", "channelID", channelID, "jobID", state.Transcription.Props.JobID, "botConnID", originalConnID)
 
 		state.Transcription.EndAt = time.Now().UnixMilli()
-		if err := p.store.UpdateCallJob(state.Transcription); err != nil {
+		if err := p.updateCallJob(channelID, state.Transcription); err != nil {
 			return fmt.Errorf("failed to update call job: %w", err)
 		}
 
@@ -420,7 +388,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 
 	if state.LiveCaptions != nil && state.LiveCaptions.EndAt == 0 && connID == state.LiveCaptions.Props.BotConnID {
 		state.LiveCaptions.EndAt = time.Now().UnixMilli()
-		if err := p.store.UpdateCallJob(state.LiveCaptions); err != nil {
+		if err := p.updateCallJob(channelID, state.LiveCaptions); err != nil {
 			return fmt.Errorf("failed to update call job: %w", err)
 		}
 	}
@@ -433,11 +401,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// Change host if needed
 	if state.Call.GetHostID() == userID && len(state.sessions) > 0 {
 		if newHostID := state.getHostID(p.getBotID()); newHostID != userID {
-			if newHostID == "" {
-				state.Call.Props.Hosts = nil
-			} else {
-				state.Call.Props.Hosts = []string{newHostID}
-			}
+			p.setCallHost(state, channelID, newHostID)
 			p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
 				"hostID":  newHostID,
 				"call_id": state.Call.ID,
@@ -449,6 +413,10 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		}
 	}
 
+	// isPhoneCall is computed lazily by the SIP-teardown check below; the result
+	// is cached so the DM auto-end check can reuse it without an extra DB lookup.
+	isPhoneCall, isPhoneCallKnown := false, false
+
 	// Outbound phone calls (bot-DM containers) are 1:1: once the last human
 	// leaves, any lingering SIP participant has no one to talk to. Hang up the
 	// phone by deleting the LiveKit room (which sends a SIP BYE) and drop the SIP
@@ -457,21 +425,29 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// The empty-sessions case handles deployments where LiveKit webhooks cannot
 	// reach Mattermost (e.g. local dev against LiveKit Cloud): the SIP session is
 	// never registered, but the room still exists and must be torn down explicitly.
-	if (onlySIPParticipantsRemain(state.sessions) || len(state.sessions) == 0) && p.isPhoneCallChannel(channelID) {
-		p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
-			"callID", state.Call.ID, "channelID", channelID)
+	if onlySIPParticipantsRemain(state.sessions) || len(state.sessions) == 0 {
+		isPhoneCall = p.isPhoneCallChannel(channelID)
+		isPhoneCallKnown = true
+		if isPhoneCall {
+			p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
+				"callID", state.Call.ID, "channelID", channelID)
 
-		if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-			p.LogError("removeUserSession: failed to delete LiveKit room",
-				"channelID", channelID, "err", err.Error())
-		}
+			// livekitDeleteRoom is a network call; run it outside the call lock to
+			// avoid blocking concurrent webhook handlers for up to its 5s timeout.
+			go func() {
+				if err := p.livekitDeleteRoom(channelID); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+					p.LogError("removeUserSession: failed to delete LiveKit room",
+						"channelID", channelID, "err", err.Error())
+				}
+			}()
 
-		for sid := range state.sessions {
-			if err := p.store.DeleteCallSession(sid); err != nil {
-				p.LogError("removeUserSession: failed to delete SIP session",
-					"channelID", channelID, "sid", sid, "err", err.Error())
+			for sid := range state.sessions {
+				if err := p.store.DeleteCallSession(sid); err != nil {
+					p.LogError("removeUserSession: failed to delete SIP session",
+						"channelID", channelID, "sid", sid, "err", err.Error())
+				}
+				delete(state.sessions, sid)
 			}
-			delete(state.sessions, sid)
 		}
 	}
 
@@ -485,11 +461,18 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		channel, appErr := p.API.GetChannel(channelID)
 		if appErr != nil {
 			p.LogError("failed to get channel for DM auto-end check", "err", appErr.Error(), "channelID", channelID)
-		} else if p.isDMCallChannel(channel.Type, channelID) {
-			p.LogInfo("DM auto-end: participant left, ending call",
-				"callID", state.Call.ID, "channelID", channelID, "userID", userID)
+		} else {
+			if !isPhoneCallKnown {
+				// Reuse the already-fetched channel to avoid a second GetChannel call.
+				isPhoneCall = p.isPhoneCallChannelFromChannel(channel)
+			}
+			if channel.Type == model.ChannelTypeDirect && !isPhoneCall {
+				p.LogInfo("DM auto-end: participant left, ending call",
+					"callID", state.Call.ID, "channelID", channelID, "userID", userID)
 
-			p.endDMCallRoom("removeUserSession", channelID)
+				// endDMCallRoom is a network call; run it outside the call lock.
+				go p.endDMCallRoom("removeUserSession", channelID)
+			}
 		}
 	}
 
@@ -506,16 +489,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 
 		p.cancelDMNoAnswerTimer(channelID)
 
-		// A DM call that only ever had the caller in it was never answered, so hanging up
-		// cancelled it rather than ended it.
-		endReason := callEndReasonNormal
-		if len(participants) == 1 {
-			if channel, appErr := p.API.GetChannel(channelID); appErr != nil {
-				p.LogError("failed to get channel for call end reason", "err", appErr.Error(), "channelID", channelID)
-			} else if p.isDMCallChannel(channel.Type, channelID) {
-				endReason = callEndReasonCanceledByCaller
-			}
-		}
+		endReason := p.callEndReason(participants, channelID)
 
 		p.LogInfo("call ended",
 			"callID", state.Call.ID,
@@ -720,4 +694,136 @@ func (p *Plugin) hasSessionsForCall(callID string) bool {
 		}
 	}
 	return false
+}
+
+// stopOngoingJobs stops any recording or transcription in progress. Called when
+// the last human leaves a call: the bots have nobody left to record, so their
+// jobs are stopped rather than left running against an empty room.
+func (p *Plugin) stopOngoingJobs(state *callState, channelID string) {
+	if state.Recording == nil && state.Transcription == nil {
+		return
+	}
+
+	p.LogDebug("all users left call with job(s) in progress, stopping", "channelID", channelID)
+
+	if state.Recording != nil {
+		p.LogDebug("stopping ongoing recording", "jobID", state.Recording.Props.JobID, "botConnID", state.Recording.Props.BotConnID)
+		if err := p.getJobService().StopJob(channelID, state.Recording.ID, p.getBotID(), state.Recording.Props.BotConnID); err != nil {
+			p.LogError("failed to stop recording job", "error", err.Error(),
+				"channelID", channelID,
+				"jobID", state.Recording.Props.JobID,
+				"botConnID", state.Recording.Props.BotConnID)
+		}
+	}
+
+	if state.Transcription != nil {
+		p.LogDebug("stopping ongoing transcription", "jobID", state.Transcription.Props.JobID, "botConnID", state.Transcription.Props.BotConnID)
+		if err := p.getJobService().StopJob(channelID, state.Transcription.ID, p.getBotID(), state.Transcription.Props.BotConnID); err != nil {
+			p.LogError("failed to stop transcribing job", "error", err.Error(),
+				"channelID", channelID,
+				"jobID", state.Transcription.Props.JobID,
+				"botConnID", state.Transcription.Props.BotConnID)
+		}
+	}
+}
+
+// announceCallStarted performs the side effects owed to a brand new call: the
+// call-started post, the DM ringing deadline and the channel-wide call_start
+// broadcast. Split out of handleJoin so the HTTP join path
+// (handleCreateLiveKitSession) performs them too — without this a call started
+// over HTTP has no post, no banner for observers and no ringing.
+//
+// The caller must hold the channel lock and have already created the call.
+func (p *Plugin) announceCallStarted(state *callState, userID, channelID, title, threadID string, channelType model.ChannelType) {
+	// In TestMode (DefaultEnabled=false) a sysadmin is the only one who can get
+	// this far, so tell them why nobody else can.
+	if cfg := p.getConfiguration(); cfg.DefaultEnabled != nil && !*cfg.DefaultEnabled &&
+		p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+		p.API.SendEphemeralPost(
+			userID,
+			&model.Post{
+				UserId:    p.getBotID(),
+				ChannelId: channelID,
+				Message:   "Currently calls are not enabled for non-admin users. You can change the setting through the system console",
+			},
+		)
+	}
+
+	postID, threadID, err := p.createCallStartedPost(state, userID, channelID, title, threadID, channelType)
+	if err != nil {
+		p.LogError(err.Error())
+	}
+
+	state.Call.PostID = postID
+	state.Call.ThreadID = threadID
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		p.LogError(err.Error())
+	}
+
+	// A DM call rings, so it needs a deadline: if nobody picks up we cancel it rather than
+	// leave the caller listening to a call that will never be answered.
+	if p.isDMCallChannel(channelType, channelID) {
+		p.startDMNoAnswerTimer(channelID, state.Call.ID)
+	}
+
+	p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
+		"id":        state.Call.ID,
+		"channelID": channelID,
+		"start_at":  state.Call.StartAt,
+		"thread_id": threadID,
+		"post_id":   postID,
+		"owner_id":  state.Call.OwnerID,
+		"host_id":   state.Call.GetHostID(),
+	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+}
+
+// cancelDMNoAnswerTimerIfAnswered clears the DM ringing deadline once a second
+// person is in the call, which is what "answered" means for a DM.
+//
+// Checked on every join, not just the second one, so a reconnect or a second
+// device can't leave a stale timer running. Pending sessions count: a client
+// that has minted a session is committed to joining, so the caller should stop
+// hearing ringback then rather than a webhook round trip later.
+//
+// The caller must hold the channel lock.
+func (p *Plugin) cancelDMNoAnswerTimerIfAnswered(state *callState, userID, channelID string, channelType model.ChannelType) {
+	if !p.isBot(userID) && p.isDMCallChannel(channelType, channelID) &&
+		len(state.distinctNonBotUserIDs(p.getBotID())) >= 2 {
+		p.cancelDMNoAnswerTimer(channelID)
+	}
+}
+
+// maybeSendConcurrentSessionsWarning notifies admins when the deployment is
+// running more concurrent sessions than the configured threshold.
+func (p *Plugin) maybeSendConcurrentSessionsWarning() {
+	if ok, err := p.shouldSendConcurrentSessionsWarning(getConcurrentSessionsThreshold(),
+		getConcurrentSessionsWarningBackoffTime()); err != nil {
+		p.LogError("shouldSendConcurrentSessionsWarning failed", "err", err.Error())
+	} else if ok {
+		if err := p.sendConcurrentSessionsWarning(); err != nil {
+			p.LogError("sendConcurrentSessionsWarning failed", "err", err.Error())
+		}
+	}
+}
+
+// callEndReason reports what the call post should say happened when the last
+// participant leaves. A DM call that only ever had the caller in it was never
+// answered, so hanging up cancelled it rather than ended it.
+//
+// participants must be read before setCallEnded, which clears Props.Participants.
+func (p *Plugin) callEndReason(participants []string, channelID string) callEndReason {
+	if len(participants) != 1 {
+		return callEndReasonNormal
+	}
+
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.LogError("failed to get channel for call end reason", "err", appErr.Error(), "channelID", channelID)
+		return callEndReasonNormal
+	}
+	if p.isDMCallChannel(channel.Type, channelID) {
+		return callEndReasonCanceledByCaller
+	}
+
+	return callEndReasonNormal
 }

@@ -20,6 +20,7 @@ import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
+import type {ScreenSharingSession} from 'src/clients/call/types';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
@@ -132,6 +133,7 @@ interface Props extends RouteComponentProps {
     otherSessions: UserSessionState[];
     isDMCalling: boolean;
     clientConnecting: boolean;
+    callHostChanged: (channelID: string, hostID: string) => void;
     userMuted: (channelID: string, sessionID: string, userID: string) => void;
     userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
     joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
@@ -141,6 +143,9 @@ interface Props extends RouteComponentProps {
     userLoweredHand: (channelID: string, sessionID: string, userID: string) => void;
     userReacted: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
     userReactedTimeout: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
+    userScreenShared: (channelID: string, sessionID: string, userID: string) => void;
+    userScreenUnshared: (channelID: string, sessionID: string, userID: string) => void;
+    fetchCallState: (channelID: string) => void;
 }
 
 interface State {
@@ -516,6 +521,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
 
         if (this.props.isRecording) {
+            logDebug('ExpandedView.onRecordToggle: stopping recording');
             this.props.openModal({
                 modalId: IDStopRecordingConfirmation,
                 dialogType: StopRecordingConfirmation,
@@ -566,11 +572,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
         const callsClient = getCallsClient();
         if (this.props.screenSharingSession && this.props.screenSharingSession?.session_id === this.props.currentSession?.session_id) {
+            logDebug('ExpandedView.onShareScreenToggle: stopping screen share');
             callsClient?.unshareScreen();
             this.setState({
                 screenStream: null,
             });
         } else if (!this.props.screenSharingSession) {
+            logDebug('ExpandedView.onShareScreenToggle: starting screen share');
             if (window.opener && isFirefox()) {
                 this.setState({showFirefoxScreenShareWarning: true});
             } else {
@@ -655,20 +663,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         }
     }
 
-    requestCallState = () => {
-        const callsClient = getCallsClient();
-        if (!callsClient) {
-            logErr('callsClient should be defined');
-            return;
-        }
-
-        // On WebSocket connect we request the call state. This avoids
-        // making a potentially racy HTTP call and should guarantee
-        // a consistent state.
-        logDebug('requesting call state through ws');
-        this.context.sendMessage('custom_com.mattermost.calls_call_state', {channelID: callsClient.channelID});
-    };
-
     public componentDidMount() {
         const callsClient = getCallsClient();
         if (!callsClient) {
@@ -676,18 +670,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             return;
         }
 
-        if (!this.context) {
-            logErr('context should be defined');
-            return;
-        }
-
-        // TODO: remove this type casting once MM repo make conn property not private
-        if ((this.context as unknown as {conn?: WebSocket})?.conn?.readyState === WebSocket.OPEN) {
-            this.requestCallState();
-        } else {
-            logDebug('ws not connected still, adding listener');
-            this.context.addFirstConnectListener(this.requestCallState);
-        }
+        logDebug('fetching call state via HTTP');
+        this.props.fetchCallState(callsClient.channelID);
 
         // keyboard shortcuts
         window.addEventListener('keydown', this.handleKBShortcuts, true);
@@ -703,21 +687,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.callClientUnsubscribers.push(() => callsClient.off(event, handler));
         };
 
-        onClient(CALL_EVENT.REMOTE_SCREEN_STREAM, (stream: MediaStream) => {
-            this.setState({
-                screenStream: stream,
-            });
-        });
-        onClient(CALL_EVENT.LOCAL_SCREEN_STREAM, (stream: MediaStream) => {
-            this.setState({
-                screenStream: stream,
-            });
-        });
-        onClient(CALL_EVENT.LOCAL_SCREEN_STREAM_OFF, () => {
-            this.setState({screenStream: null});
-        });
-        onClient(CALL_EVENT.REMOTE_SCREEN_STREAM_OFF, () => {
-            this.setState({screenStream: null});
+        // One derived sharer covers local and remote alike. The stream is null
+        // while a remote share is announced but not yet subscribed, and a
+        // follow-up emission fills it in.
+        onClient(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
+            this.setState({screenStream: session?.stream ?? null});
         });
         onClient(CALL_EVENT.MUTE, (sessionID: string, userID: string) => {
             this.props.userMuted(callsClient.channelID, sessionID, userID);
@@ -731,6 +705,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         // USERS_VOICE_ACTIVITY_CHANGED in its own index.tsx — gate on
         // window.opener so we don't double-dispatch in the inline case.
         if (window.opener) {
+            onClient(CALL_EVENT.HOST_CHANGED, (hostID: string) => {
+                this.props.callHostChanged(callsClient.channelID, hostID);
+            });
+            onClient(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
+                if (session) {
+                    this.props.userScreenShared(callsClient.channelID, session.sessionID, session.userID);
+                } else {
+                    const sharerSessionID = this.props.screenSharingSession?.session_id ?? '';
+                    this.props.userScreenUnshared(callsClient.channelID, sharerSessionID, '');
+                }
+            });
             onClient(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {
                 this.props.joinUser(callsClient.channelID, userID, sessionID, Boolean(isFromInitialSync));
             });
@@ -914,7 +899,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         window.removeEventListener('keyup', this.handleKeyUp, true);
         window.removeEventListener('blur', this.handleBlur, true);
         this.#unlockNavigation?.();
-        this.context?.removeFirstConnectListener(this.requestCallState);
 
         this.callClientUnsubscribers.forEach((unsubscribe) => unsubscribe());
         this.callClientUnsubscribers = [];

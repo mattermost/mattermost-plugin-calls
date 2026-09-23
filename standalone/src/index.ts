@@ -10,64 +10,35 @@ import 'mattermost-webapp/components/widgets/menu/menu_items/menu_item.scss';
 import '@mattermost/compass-icons/css/compass-icons.css';
 
 import {
-    CallHostChangedData,
-    CallJobStateData,
-    CallStartData,
-    CallStateData,
+    CallJobState,
+    CallState,
     EmojiData,
-    EmptyData,
-    HelloData,
-    HostControlLowerHand,
-    HostControlMsg,
-    HostControlRemoved,
-    UserDismissedNotification,
-    UserJoinedData,
-    UserLeftData,
-    UserRemovedData,
-    UserScreenOnOffData,
-    UserVideoOnOffData,
-    WebsocketEventData,
 } from '@mattermost/calls-common/lib/types';
-import {setServerVersion} from 'mattermost-redux/actions/general';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {getCallActive, getCallsConfig, getCallsVersionInfo, joinUser, leaveUser, localSessionClose, setClientConnecting} from 'plugin/actions';
+import {getCallActive, getCallsConfig, getCallsVersionInfo, joinUser, leaveUser, loadCallState, localSessionClose, setClientConnecting} from 'plugin/actions';
 import CallClient, {CALL_EVENT, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
+import type {ScreenSharingSession} from 'plugin/clients/call/types';
 import RestClient from 'plugin/clients/rest';
+import {applyCallHostChanged} from 'plugin/host_change';
 import {
     logDebug,
     logErr,
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
 import reducer from 'plugin/reducers';
+import {getCallIDForChannel} from 'plugin/selectors';
+import {userScreenShared, userScreenUnshared} from 'plugin/state/screen_sharing_ids/actions';
 import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/session/actions';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
-    getWSConnectionURL,
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
 import {
+    applyCallJobState,
     dispatchReaction,
-    handleCallEnd,
-    handleCallHostChanged,
-    handleCallJobState,
-    handleCallStart,
-    handleCallState,
-    handleHostLowerHand,
-    handleHostRemoved,
-    handleHostScreenOff,
-    handleUserDismissedNotification,
-    handleUserJoined,
-    handleUserLeft,
-    handleUserRemovedFromChannel,
-    handleUserScreenOff,
-    handleUserScreenOn,
-    handleUserVideoOff,
-    handleUserVideoOn,
-    WebSocketMessage,
 } from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
 import {CurrentCallDataDefault} from 'src/types/types';
@@ -90,11 +61,9 @@ function setBasename() {
 
 function connectCall(
     connectPayload: ConnectPayload,
-    websocketURL: string,
-    authToken: string,
-    wsEventHandler: (ev: WebSocketMessage<WebsocketEventData>) => void,
     store: Store,
     closeCb?: (err?: Error) => void,
+    callEventHandler?: (store: Store, callClient: CallClient) => void,
 ) {
     try {
         if (window.callsClient) {
@@ -102,24 +71,40 @@ function connectCall(
             return;
         }
 
-        const callClient = new CallClient({websocketURL, authToken});
+        const callClient = new CallClient();
 
         // Update the global instances.
         window.callsClient = callClient;
         window.currentCallData = {...CurrentCallDataDefault};
 
-        // Subscribe to raw plugin-WS events BEFORE connect() so 'hello' isn't missed.
-        callClient.on(CALL_EVENT.WEBSOCKET_EVENT, wsEventHandler);
+        // Standalone has no main Mattermost WebSocket, so everything it knows about
+        // the call comes from the join response and from LiveKit: participants,
+        // mute, speaking, hands and reactions from the room itself, and the
+        // call-level state LiveKit cannot supply (host, jobs) from room metadata.
+        //
+        // The full call state snapshot arrives before the room connects, which is
+        // what lets the LiveKit-sourced state below layer on top of a populated
+        // session list without any ordering dance.
+        callClient.on(CALL_EVENT.CALL_STATE, (callState: CallState) => {
+            store.dispatch(loadCallState(callClient.channelID, callState));
+        });
 
-        // Bridge LiveKit-owned per-participant state into the store. After the
-        // LiveKit migration session membership and mute/speaking/raised-hand/reactions
-        // no longer travel over the plugin WebSocket; CallClient re-emits them as
-        // CALL_EVENTs. The main webapp wires these in its own index.tsx and the popout
-        // reuses the opener's client — the standalone bundles (widget + recording) need
-        // the same bridge here so their participant list and indicators reflect real,
-        // live state. (The channel-wide user_joined/user_left WS broadcast is gated off
-        // for a renderer that owns the live client, so these LiveKit events are the only
-        // source of session join/leave here.)
+        callClient.on(CALL_EVENT.HOST_CHANGED, (hostID: string) => {
+            applyCallHostChanged(store, callClient.channelID, hostID, getCallIDForChannel(store.getState(), callClient.channelID));
+        });
+
+        callClient.on(CALL_EVENT.JOB_STATE, (jobState: CallJobState) => {
+            applyCallJobState(store, callClient.channelID, jobState);
+        });
+
+        callClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
+            if (session) {
+                store.dispatch(userScreenShared(callClient.channelID, session.sessionID, session.userID));
+            } else {
+                store.dispatch(userScreenUnshared(callClient.channelID, '', ''));
+            }
+        });
+
         callClient.on(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {
             store.dispatch(joinUser(callClient.channelID, userID, sessionID, Boolean(isFromInitialSync)));
         });
@@ -150,30 +135,6 @@ function connectCall(
             });
         });
 
-        // The WS call_state seed carries the server's stale unmuted/voice/raised_hand
-        // (those fields moved to LiveKit). reSyncMuteAndHandState() replays the live
-        // state for every current participant, but only works once (a) the LiveKit
-        // room is connected and (b) the seed has populated the session list — the
-        // session reducers drop events for sessions they don't yet know about. The
-        // two can arrive in either order (notably the recording bot joining mid-call),
-        // so trigger the replay once both conditions hold.
-        let liveKitStateSynced = false;
-        let roomConnected = false;
-        let seedReceived = false;
-        const maybeReSyncLiveKitState = () => {
-            if (liveKitStateSynced || !roomConnected || !seedReceived) {
-                return;
-            }
-            liveKitStateSynced = true;
-            callClient.reSyncMuteAndHandState();
-        };
-        callClient.on(CALL_EVENT.WEBSOCKET_EVENT, (ev: WebSocketMessage<WebsocketEventData>) => {
-            if (ev.event === `custom_${pluginId}_call_state`) {
-                seedReceived = true;
-                maybeReSyncLiveKitState();
-            }
-        });
-
         let lastError: Error | undefined;
 
         callClient.on(CALL_EVENT.ERROR, (e: unknown) => {
@@ -183,8 +144,13 @@ function connectCall(
         });
         callClient.on(CALL_EVENT.CONNECTED, () => {
             store.dispatch(setClientConnecting(false));
-            roomConnected = true;
-            maybeReSyncLiveKitState();
+
+            // The snapshot carries the server's stale unmuted/raised_hand (those
+            // fields live in LiveKit now), so replay the live values. Safe to do
+            // unconditionally here: the snapshot arrives from the join response
+            // before the room connects, so the session list the reducers need is
+            // already populated.
+            callClient.reSyncMuteAndHandState();
         });
         callClient.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
             store.dispatch(setClientConnecting(false));
@@ -211,6 +177,10 @@ function connectCall(
             }
         });
 
+        // Registered before connect() so the bundle's own listeners are in place
+        // for the call state snapshot, which is emitted during it.
+        callEventHandler?.(store, callClient);
+
         store.dispatch(setClientConnecting(true));
 
         callClient.connect(connectPayload).catch((err: unknown) => {
@@ -236,7 +206,7 @@ type InitConfig = {
     initCb: (props: InitCbProps) => void,
     closeCb?: (err?: Error) => void,
     reducer?: Reducer,
-    wsHandler?: (store: Store, ev: WebSocketMessage<WebsocketEventData>) => void,
+    callEventHandler?: (store: Store, callClient: CallClient) => void,
     initStore?: (store: Store, channelID: string) => Promise<void>,
 };
 
@@ -290,67 +260,6 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
         throw new Error(`failed to fetch channel data: ${e}`);
     }
 
-    const wsEventHandler = (ev: WebSocketMessage<WebsocketEventData>) => {
-        switch (ev.event) {
-        case 'hello':
-            store.dispatch(setServerVersion((ev.data as HelloData).server_version));
-            break;
-        case `custom_${pluginId}_call_start`:
-            handleCallStart(store, ev as WebSocketMessage<CallStartData>);
-            break;
-        case `custom_${pluginId}_call_end`:
-            handleCallEnd(store, ev as WebSocketMessage<EmptyData>);
-            break;
-        case `custom_${pluginId}_user_joined`:
-            handleUserJoined(store, ev as WebSocketMessage<UserJoinedData>);
-            break;
-        case `custom_${pluginId}_user_left`:
-            handleUserLeft(store, ev as WebSocketMessage<UserLeftData>);
-            break;
-        case `custom_${pluginId}_user_screen_on`:
-            handleUserScreenOn(store, ev as WebSocketMessage<UserScreenOnOffData>);
-            break;
-        case `custom_${pluginId}_user_screen_off`:
-            handleUserScreenOff(store, ev as WebSocketMessage<UserScreenOnOffData>);
-            break;
-        case `custom_${pluginId}_call_host_changed`:
-            handleCallHostChanged(store, ev as WebSocketMessage<CallHostChangedData>);
-            break;
-        case `custom_${pluginId}_call_job_state`:
-            handleCallJobState(store, ev as WebSocketMessage<CallJobStateData>);
-            break;
-        case `custom_${pluginId}_user_dismissed_notification`:
-            handleUserDismissedNotification(store, ev as WebSocketMessage<UserDismissedNotification>);
-            break;
-        case `custom_${pluginId}_call_state`:
-            handleCallState(store, ev as WebSocketMessage<CallStateData>);
-            break;
-        case `custom_${pluginId}_host_screen_off`:
-            handleHostScreenOff(store, ev as WebSocketMessage<HostControlMsg>);
-            break;
-        case `custom_${pluginId}_host_lower_hand`:
-            handleHostLowerHand(store, ev as WebSocketMessage<HostControlLowerHand>);
-            break;
-        case `custom_${pluginId}_host_removed`:
-            handleHostRemoved(store, ev as WebSocketMessage<HostControlRemoved>);
-            break;
-        case `custom_${pluginId}_user_video_on`:
-            handleUserVideoOn(store, ev as WebSocketMessage<UserVideoOnOffData>);
-            break;
-        case `custom_${pluginId}_user_video_off`:
-            handleUserVideoOff(store, ev as WebSocketMessage<UserVideoOnOffData>);
-            break;
-        case 'user_removed':
-            handleUserRemovedFromChannel(store, ev as WebSocketMessage<UserRemovedData>);
-            break;
-        default:
-        }
-
-        if (cfg.wsHandler) {
-            cfg.wsHandler(store, ev);
-        }
-    };
-
     connectCall(
         {
             channelID,
@@ -358,11 +267,9 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
             threadID: getRootID(),
             jobID: getJobID(),
         },
-        getWSConnectionURL(getConfig(store.getState())?.WebsocketURL),
-        getToken(),
-        wsEventHandler,
         store,
         cfg.closeCb,
+        cfg.callEventHandler,
     );
 
     const theme = getTheme(store.getState());

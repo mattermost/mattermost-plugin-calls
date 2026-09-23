@@ -13,25 +13,10 @@ type clientMessage struct {
 }
 
 const (
-	clientMessageTypeJoin        = "join"
-	clientMessageTypeLeave       = "leave"
-	clientMessageTypeReconnect   = "reconnect"
-	clientMessageTypeSDP         = "sdp"
-	clientMessageTypeICE         = "ice"
-	clientMessageTypeMute        = "mute"
-	clientMessageTypeUnmute      = "unmute"
-	clientMessageTypeVoiceOn     = "voice_on"
-	clientMessageTypeVoiceOff    = "voice_off"
-	clientMessageTypeScreenOn    = "screen_on"
-	clientMessageTypeScreenOff   = "screen_off"
-	clientMessageTypeVideoOn     = "video_on"
-	clientMessageTypeVideoOff    = "video_off"
-	clientMessageTypeRaiseHand   = "raise_hand"
-	clientMessageTypeUnraiseHand = "unraise_hand"
-	clientMessageTypeReact       = "react"
-	clientMessageTypeCaption     = "caption"
-	clientMessageTypeMetric      = "metric"
-	clientMessageTypeCallState   = "call_state"
+	clientMessageTypeJoin    = "join"
+	clientMessageTypeLeave   = "leave"
+	clientMessageTypeCaption = "caption"
+	clientMessageTypeMetric  = "metric"
 )
 
 func (m *clientMessage) ToJSON() ([]byte, error) {
@@ -43,26 +28,11 @@ func (m *clientMessage) FromJSON(data []byte) error {
 }
 
 var validClientMessageTypes = map[string]bool{
-	clientMessageTypeJoin:        true,
-	clientMessageTypeLeave:       true,
-	clientMessageTypeReconnect:   true,
-	clientMessageTypeSDP:         true,
-	clientMessageTypeICE:         true,
-	clientMessageTypeMute:        true,
-	clientMessageTypeUnmute:      true,
-	clientMessageTypeVoiceOn:     true,
-	clientMessageTypeVoiceOff:    true,
-	clientMessageTypeScreenOn:    true,
-	clientMessageTypeScreenOff:   true,
-	clientMessageTypeVideoOn:     true,
-	clientMessageTypeVideoOff:    true,
-	clientMessageTypeRaiseHand:   true,
-	clientMessageTypeUnraiseHand: true,
-	clientMessageTypeReact:       true,
-	clientMessageTypeCaption:     true,
-	clientMessageTypeMetric:      true,
-	clientMessageTypeCallState:   true,
-	"ping":                       true, // Special case: standard ping message
+	clientMessageTypeJoin:    true,
+	clientMessageTypeLeave:   true,
+	clientMessageTypeCaption: true,
+	clientMessageTypeMetric:  true,
+	"ping":                   true,
 }
 
 func isValidClientMessageType(msgType string) bool {

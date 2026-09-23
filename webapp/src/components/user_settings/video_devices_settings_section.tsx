@@ -7,11 +7,11 @@ import {isFirefox} from '@mattermost/calls-common/lib/utils';
 import React, {forwardRef, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 import ReactSelect from 'react-select';
-import {DefaultVideoTrackOptions} from 'src/clients/calls';
 import {
     Description, type DevicesSelectionHandle, type DevicesSelectionProps, Fieldset,
     SelectionWrapper, SelectLabel, type SelectOption} from 'src/components/user_settings/common';
 import {
+    DefaultVideoTrackOptions,
     STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY,
     STORAGE_CALLS_MIRROR_VIDEO_KEY,
 } from 'src/constants';

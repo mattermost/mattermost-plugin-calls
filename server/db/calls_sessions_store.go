@@ -14,7 +14,7 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
-var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "Video", "IsSIPParticipant"}
+var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "Video", "IsSIPParticipant", "ConfirmedAt", "SID", "AuthSessionID"}
 
 func (s *Store) CreateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("CreateCallSession")
@@ -29,7 +29,7 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 	qb := getQueryBuilder(s.driverName).
 		Insert("calls_sessions").
 		Columns(callsSessionsColumns...).
-		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.Unmuted, session.RaisedHand, session.Video, session.IsSIPParticipant)
+		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.Unmuted, session.RaisedHand, session.Video, session.IsSIPParticipant, session.ConfirmedAt, session.SID, session.AuthSessionID)
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -156,7 +156,7 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 
 	for rows.Next() {
 		var session public.CallSession
-		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.Unmuted, &session.RaisedHand, &session.Video, &session.IsSIPParticipant); err != nil {
+		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.Unmuted, &session.RaisedHand, &session.Video, &session.IsSIPParticipant, &session.ConfirmedAt, &session.SID, &session.AuthSessionID); err != nil {
 			return nil, fmt.Errorf("failed to scan rows: %w", err)
 		}
 		sessionsMap[session.ID] = &session
@@ -256,4 +256,61 @@ func (s *Store) IsUserInCall(userID, callID string, opts GetCallSessionOpts) (bo
 	}
 
 	return ok, nil
+}
+
+// ConfirmCallSession records the LiveKit participant SID and marks the session
+// confirmed. Called when LiveKit reports the participant connected, which is
+// what promotes a token-minted session to a real, announced participant.
+func (s *Store) ConfirmCallSession(id, sid string, confirmedAt int64) error {
+	s.metrics.IncStoreOp("ConfirmCallSession")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("ConfirmCallSession", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder(s.driverName).
+		Update("calls_sessions").
+		Set("SID", sid).
+		Set("ConfirmedAt", confirmedAt).
+		Where(sq.Eq{"ID": id})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if _, err := s.wDB.ExecContext(ctx, q, args...); err != nil {
+		return fmt.Errorf("failed to run query: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateCallSessionSID rebinds a confirmed session to a new LiveKit participant
+// SID after a full reconnect. ConfirmedAt is deliberately left alone: the
+// session was already confirmed and announced, and a reconnect is not a re-join.
+func (s *Store) UpdateCallSessionSID(id, sid string) error {
+	s.metrics.IncStoreOp("UpdateCallSessionSID")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("UpdateCallSessionSID", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder(s.driverName).
+		Update("calls_sessions").
+		Set("SID", sid).
+		Where(sq.Eq{"ID": id})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if _, err := s.wDB.ExecContext(ctx, q, args...); err != nil {
+		return fmt.Errorf("failed to run query: %w", err)
+	}
+
+	return nil
 }
