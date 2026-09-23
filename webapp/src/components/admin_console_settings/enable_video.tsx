@@ -31,7 +31,7 @@ export default function EnableVideo(props: CustomComponentProps) {
                         type='radio'
                         value='true'
                         id={props.id + 'true'}
-                        name={props.id + 'true'}
+                        name={props.id}
                         checked={checked}
                         onChange={handleChange}
                         disabled={props.disabled}
@@ -44,7 +44,7 @@ export default function EnableVideo(props: CustomComponentProps) {
                         type='radio'
                         value='false'
                         id={props.id + 'false'}
-                        name={props.id + 'false'}
+                        name={props.id}
                         checked={!checked}
                         onChange={handleChange}
                         disabled={props.disabled}
