@@ -14,7 +14,7 @@ export default function LiveKitURL(props: CustomComponentProps) {
     const overrides = useSelector(callsConfigEnvOverrides);
     const overridden = 'LiveKitURL' in overrides;
 
-    const placeholder = manifest.settings_schema?.settings.find((e) => e.key === 'LiveKitURL')?.placeholder || '';
+    const placeholder = manifest.settings_schema?.sections?.flatMap((s) => s.settings ?? []).find((e) => e.key === 'LiveKitURL')?.placeholder ?? '';
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
