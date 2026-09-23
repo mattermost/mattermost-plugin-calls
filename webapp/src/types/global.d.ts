@@ -11,6 +11,7 @@ import type {CallActions, CurrentCallData} from 'src/types/types';
 declare global {
     interface Window {
         callsClient?: CallClient,
+        callsClientLastChannelID?: string,
 
         // The channel ID of the most recent call this client connected to. Unlike
         // callsClient.channelID (which is deleted on disconnect), this survives the

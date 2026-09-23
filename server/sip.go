@@ -23,7 +23,7 @@ const sipOutboundRingingTimeout = 60 * time.Second
 // sipOutboundDialTimeout bounds the CreateSIPParticipant request. We don't set
 // WaitUntilAnswered, so LiveKit returns as soon as the SIP leg is created; this
 // only guards against an unresponsive LiveKit SIP service.
-const sipOutboundDialTimeout = 10 * time.Second
+const sipOutboundDialTimeout = 5 * time.Second
 
 // livekitHTTPURL converts the configured LiveKit WebSocket URL to an HTTP URL
 // suitable for Twirp API calls.
