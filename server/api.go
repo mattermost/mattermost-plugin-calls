@@ -786,15 +786,15 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if cfg.getLiveKitURL() == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
-		res.Err = errLiveKitNotConfigured.Error()
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
 	if allowedTeams := cfg.outboundAllowedTeams(); !p.isUserInAllowedTeams(userID, allowedTeams) {
 		res.Err = "user is not a member of a team permitted to place outbound calls"
 		res.Code = http.StatusForbidden
+		return
+	}
+
+	if cfg.getLiveKitURL() == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
+		res.Err = errLiveKitNotConfigured.Error()
+		res.Code = http.StatusInternalServerError
 		return
 	}
 
