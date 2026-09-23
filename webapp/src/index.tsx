@@ -482,9 +482,7 @@ export default class Plugin {
 
         // General settings
 
-        if (registry.registerAdminConsoleCustomSection) {
-            registry.registerAdminConsoleCustomSection('GeneralSettings', GeneralSettingsSection);
-        }
+        registry.registerAdminConsoleCustomSection('GeneralSettings', GeneralSettingsSection);
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
         registry.registerAdminConsoleCustomSetting('MaxCallParticipants', MaxCallParticipants);
         registry.registerAdminConsoleCustomSetting('AllowScreenSharing', AllowScreenSharing);
@@ -495,15 +493,11 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('EnableVideo', EnableVideo);
 
         // RTCD Service
-        if (registry.registerAdminConsoleCustomSection) {
-            registry.registerAdminConsoleCustomSection('RTCDService', RTCDServiceSection);
-        }
+        registry.registerAdminConsoleCustomSection('RTCDService', RTCDServiceSection);
         registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceURL);
 
         // LiveKit Service
-        if (registry.registerAdminConsoleCustomSection) {
-            registry.registerAdminConsoleCustomSection('LiveKitService', LiveKitServiceSection);
-        }
+        registry.registerAdminConsoleCustomSection('LiveKitService', LiveKitServiceSection);
         registry.registerAdminConsoleCustomSetting('LiveKitURL', LiveKitURL);
         registry.registerAdminConsoleCustomSetting('LiveKitAPIKey', LiveKitAPIKey);
         registry.registerAdminConsoleCustomSetting('LiveKitAPISecret', LiveKitAPISecret);
@@ -513,9 +507,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('SIPOutboundAllowlist', SIPOutboundAllowlist);
 
         // RTC Server
-        if (registry.registerAdminConsoleCustomSection) {
-            registry.registerAdminConsoleCustomSection('RTCServer', RTCServerSection);
-        }
+        registry.registerAdminConsoleCustomSection('RTCServer', RTCServerSection);
         registry.registerAdminConsoleCustomSetting('UDPServerAddress', UDPServerAddress);
         registry.registerAdminConsoleCustomSetting('UDPServerPort', UDPServerPort);
         registry.registerAdminConsoleCustomSetting('TCPServerAddress', TCPServerAddress);
@@ -523,9 +515,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('EnableIPv6', EnableIPv6);
 
         // ICE and TURN
-        if (registry.registerAdminConsoleCustomSection) {
-            registry.registerAdminConsoleCustomSection('ICEAndTURN', ICEAndTURNSection);
-        }
+        registry.registerAdminConsoleCustomSection('ICEAndTURN', ICEAndTURNSection);
         registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
         registry.registerAdminConsoleCustomSetting('ICEHostPortOverride', ICEHostPortOverride);
         registry.registerAdminConsoleCustomSetting('ICEServersConfigs', ICEServersConfigs);
@@ -534,18 +524,14 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
 
         // Recordings
-        if (registry.registerAdminConsoleCustomSection) {
-            registry.registerAdminConsoleCustomSection('CallRecordings', CallRecordingsSection);
-        }
+        registry.registerAdminConsoleCustomSection('CallRecordings', CallRecordingsSection);
         registry.registerAdminConsoleCustomSetting('EnableRecordings', EnableRecordings);
         registry.registerAdminConsoleCustomSetting('JobServiceURL', JobServiceURL);
         registry.registerAdminConsoleCustomSetting('MaxRecordingDuration', MaxRecordingDuration);
         registry.registerAdminConsoleCustomSetting('RecordingQuality', RecordingQuality);
 
         // Transcriptions
-        if (registry.registerAdminConsoleCustomSection) {
-            registry.registerAdminConsoleCustomSection('CallTranscriptions', CallTranscriptionsSection);
-        }
+        registry.registerAdminConsoleCustomSection('CallTranscriptions', CallTranscriptionsSection);
         registry.registerAdminConsoleCustomSetting('EnableTranscriptions', EnableTranscriptions);
         registry.registerAdminConsoleCustomSetting('TranscribeAPI', TranscribeAPI);
         registry.registerAdminConsoleCustomSetting('TranscriberModelSize', TranscriberModelSize);
@@ -554,9 +540,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('TranscribeAPIAzureSpeechRegion', TranscribeAPIAzureSpeechRegion);
 
         // Live Captions
-        if (registry.registerAdminConsoleCustomSection) {
-            registry.registerAdminConsoleCustomSection('CallLiveCaptions', CallLiveCaptionsSection);
-        }
+        registry.registerAdminConsoleCustomSection('CallLiveCaptions', CallLiveCaptionsSection);
         registry.registerAdminConsoleCustomSetting('EnableLiveCaptions', EnableLiveCaptions);
         registry.registerAdminConsoleCustomSetting('LiveCaptionsModelSize', LiveCaptionsModelSize);
         registry.registerAdminConsoleCustomSetting('LiveCaptionsNumTranscribers', LiveCaptionsNumTranscribers);
