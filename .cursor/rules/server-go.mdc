@@ -1,0 +1,14 @@
+---
+description: Go conventions for the plugin server
+globs: server/**/*.go,lt/**/*.go
+alwaysApply: false
+---
+
+- The license header required by `AGENTS.md` is enforced here by `mattermost-govet -license`, which runs as part of `make check-style`.
+- Lint with `golangci-lint run --timeout 5m ./server/...` from the repo root. `server/public` is a nested module that this command skips — lint it with `cd server/public && golangci-lint run --timeout 5m ./...`.
+- `errcheck` and `govet` (enable-all minus `fieldalignment` and `shadow`) are on, so handle or explicitly discard every returned error.
+- Imports are grouped by `goimports` — stdlib, third-party, then `github.com/mattermost/mattermost-plugin-calls/...`.
+- Tests live next to the code as `*_test.go` and run with `-race`.
+- `server/public` and `lt/` are separate modules; `make setup-go-work` wires them into `go.work`.
+- After changing `Metrics` or `Store` in `server/interfaces`, run `make server-mocks`.
+- After adding a file under `server/db/migrations`, run `make migrations-extract`.
