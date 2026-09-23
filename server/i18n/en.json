@@ -32,10 +32,6 @@
     "translation": "Call ended"
   },
   {
-    "id": "app.call.no_answer_message",
-    "translation": "No answer"
-  },
-  {
     "id": "app.call.new_recording_and_transcription_message",
     "translation": "Here's the call recording. Transcription is processing and will be posted when ready."
   },
@@ -46,6 +42,10 @@
   {
     "id": "app.call.new_transcription_message",
     "translation": "Here's the call transcription"
+  },
+  {
+    "id": "app.call.no_answer_message",
+    "translation": "No answer"
   },
   {
     "id": "app.call.started_message",
