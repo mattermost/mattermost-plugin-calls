@@ -22,7 +22,6 @@ import {getCallActive, getCallsConfig, getCallsVersionInfo, joinUser, leaveUser,
 import CallClient, {CALL_EVENT, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
 import type {ScreenSharingSession} from 'plugin/clients/call/types';
 import RestClient from 'plugin/clients/rest';
-import {applyCallHostChanged} from 'plugin/host_change';
 import {
     logDebug,
     logErr,
