@@ -1,0 +1,27 @@
+---
+description: How the standalone widget and recording pages work
+globs: standalone/**
+alwaysApply: false
+---
+
+`standalone/` packages the Calls UI as self-contained HTML pages for the two places with no Mattermost webapp: the Desktop app's floating call widget and the recorder bot's headless browser.
+
+The dependency runs one way — `standalone/` imports from `webapp/src`, never the reverse.
+
+## The two pages
+
+`webpack.config.js` builds two entries into `standalone/dist/`:
+
+- `widget.html` from `src/widget/index.tsx` — the always-on-top window the Desktop app opens during a call, in its own renderer process. It reaches the shell through `window.desktopAPI`. Nothing in `webapp/src` opens it; Desktop loads it by URL.
+- `recording.html` from `src/recording/index.tsx` — the page the recorder captures. It takes the call ID and auth token from the URL (see `src/common.ts`) rather than a logged-in session.
+
+## Bootstrap
+
+`src/index.ts` is the shared bootstrap and rebuilds what the host webapp would normally supply: a `mattermost-redux` store using the plugin reducer, `Client4` with server version, config and theme, and a `CallClient` with websocket and LiveKit events wired into that store. `webapp/src/index.tsx` does this job inside the webapp. The popout window doesn't need any of it because it reuses the opener's client.
+
+## Serving
+
+`server/api_router.go` registers `/standalone/` to `handleServeStandalone`, which serves `standalone/dist/` as static files. Two deliberate exceptions, both worth preserving:
+
+- The route bypasses the auth middleware, so `handleServeStandalone` does referrer-based CSRF protection instead: a same-origin `Referer` is required, with exemptions for the Desktop app (User-Agent containing `Mattermost` and `Electron`), the recorder (`X-Calls-Recorder: true`) and E2E (`X-Calls-E2E: true`).
+- The route also bypasses the per-user API limiter. Loading the widget's html, js and fonts on a cold cache used to exhaust the burst and 429 the join's `/livekit-token` call (MM-68569).
