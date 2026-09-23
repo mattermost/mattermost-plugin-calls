@@ -68,6 +68,7 @@ import {
     LIVE_CAPTION_TIMEOUT_EVENT,
 } from './action_types';
 import {
+    channelHasCall,
     channelIDForCurrentCall,
     profilesInCurrentCallMap,
     ringingEnabled,
@@ -78,6 +79,7 @@ import {
     getCallsClient,
     getUserDisplayName,
     hasLiveCallClient,
+    isDMChannel,
 } from './utils';
 
 export type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
