@@ -361,7 +361,7 @@ test.describe('switching products', {tag: '@livekit'}, () => {
         await expect(switchProductsButton).toBeVisible();
         await switchProductsButton.click();
 
-        const boardsButton = devPage.page.locator('#product-switcher-menu-dropdown div', {hasText: 'Playbooks'});
+        const boardsButton = devPage.page.locator('#product-switcher-menu-dropdown #product-menu-item-playbooks');
         await expect(boardsButton).toBeVisible();
         await boardsButton.click();
 
