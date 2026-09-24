@@ -607,3 +607,62 @@ func TestHandlePhoneCall(t *testing.T) {
 		require.Equal(t, "user is not a member of a team permitted to place outbound calls", res.Msg)
 	})
 }
+
+func TestHandleAddPhoneCall(t *testing.T) {
+	setupPlugin := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI) {
+		t.Helper()
+		mockAPI := &pluginMocks.MockAPI{}
+		mockMetrics := &serverMocks.MockMetrics{}
+
+		p := &Plugin{
+			MattermostPlugin:  plugin.MattermostPlugin{API: mockAPI},
+			metrics:           mockMetrics,
+			apiLimiters:       map[string]*rate.Limiter{},
+			callsClusterLocks: map[string]*cluster.Mutex{},
+			sessions:          map[string]*session{},
+		}
+		p.licenseChecker = enterprise.NewLicenseChecker(p.API)
+
+		mockMetrics.On("Handler").Return(nil)
+		mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Maybe()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil)
+		mockAPI.On("LogDebug", "handleAddPhoneCall",
+			"origin", mock.AnythingOfType("string"), mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+
+		return p, mockAPI
+	}
+
+	doRequest := func(t *testing.T, p *Plugin, userID, number string) *http.Response {
+		t.Helper()
+		apiRouter := p.newAPIRouter()
+		body, err := json.Marshal(map[string]string{"number": number})
+		require.NoError(t, err)
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/add-phone-call", bytes.NewReader(body))
+		r.Header.Set("Mattermost-User-Id", userID)
+		apiRouter.ServeHTTP(w, r)
+		return w.Result()
+	}
+
+	t.Run("non-member of allowed teams is rejected", func(t *testing.T) {
+		p, mockAPI := setupPlugin(t)
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.EnableSIPOutbound = model.NewPointer(true)
+		cfg.LiveKitSIPOutboundTrunkID = "ST_test"
+		cfg.LiveKitSIPOutboundAllowedTeams = "sales;engineering"
+		p.configuration = cfg
+
+		userID := model.NewId()
+		mockAPI.On("GetTeamsForUser", userID).Return([]*model.Team{{Name: "finance"}}, nil)
+
+		resp := doRequest(t, p, userID, "+14155551234")
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		var res httpResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
+		require.Equal(t, "user is not a member of a team permitted to place outbound calls", res.Msg)
+	})
+}
