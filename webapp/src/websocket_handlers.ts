@@ -84,6 +84,16 @@ import {
 
 export type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 
+// Channel ID saved when the client is evicted from a LiveKit room (PARTICIPANT_REMOVED).
+// Lets handleUserRemovedFromChannel show the error modal even if the Mattermost WS
+// user_removed event arrives after window.callsClient has already been torn down.
+// Cleared after the modal is shown or on any non-eviction disconnect.
+let participantRemovedChannelID = '';
+
+export function setParticipantRemovedChannelID(channelID: string) {
+    participantRemovedChannelID = channelID;
+}
+
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
 export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
@@ -401,10 +411,11 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
 
     // channelIDForCurrentCall reads window.callsClient?.channelID, which may already
     // be deleted when user_removed arrives after a LiveKit PARTICIPANT_REMOVED kick.
-    // window.callsClientLastChannelID is set at join time and survives disconnect.
+    // participantRemovedChannelID is set in that case and survives the disconnect.
     const currentCallChannelID = channelIDForCurrentCall(store.getState()) ||
-        window.callsClientLastChannelID || '';
+        participantRemovedChannelID;
     if (removedUserID === currentUserID && channelID === currentCallChannelID) {
+        participantRemovedChannelID = '';
         const errorMessage = removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr;
         store.dispatch(displayCallErrorModal(errorMessage, channelID));
         getCallsClient()?.disconnect();

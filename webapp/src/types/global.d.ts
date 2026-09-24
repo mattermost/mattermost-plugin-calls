@@ -11,14 +11,6 @@ import type {CallActions, CurrentCallData} from 'src/types/types';
 declare global {
     interface Window {
         callsClient?: CallClient,
-        callsClientLastChannelID?: string,
-
-        // The channel ID of the most recent call this client connected to. Unlike
-        // callsClient.channelID (which is deleted on disconnect), this survives the
-        // DISCONNECTED cleanup so handleUserRemovedFromChannel can use it when the
-        // main-WS user_removed arrives after the LiveKit kick has already torn down
-        // window.callsClient. Overwritten on each new call join.
-        callsClientLastChannelID?: string,
 
         // Appends a pre-formatted log line to this realm's in-memory client-log
         // buffer. Exposed so the expanded-view popout can write through to its
