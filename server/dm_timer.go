@@ -30,6 +30,11 @@ const (
 // A var rather than a const so tests can shorten it.
 var dmNoAnswerTimeout = 30 * time.Second
 
+// sipNoAnswerTimeout is the deadline for both the human caller to connect to
+// the LiveKit room and the SIP callee to answer. If either side hasn't
+// connected when the timer fires, the outbound call is hung up.
+var sipNoAnswerTimeout = 60 * time.Second
+
 // endDMCallRoom destroys the LiveKit room backing a DM call. That forcibly disconnects every
 // connected participant, and each client's LiveKit SDK fires RoomEvent.Disconnected
 // (reason=ROOM_DELETED), driving in-call UI teardown independently of plugin-WebSocket delivery.
@@ -75,6 +80,90 @@ func (p *Plugin) cancelDMNoAnswerTimer(channelID string) bool {
 	delete(p.dmNoAnswerTimers, channelID)
 
 	return true
+}
+
+func (p *Plugin) startSIPNoAnswerTimer(channelID, callID string) {
+	p.sipNoAnswerTimersMut.Lock()
+	defer p.sipNoAnswerTimersMut.Unlock()
+
+	if _, ok := p.sipNoAnswerTimers[channelID]; ok {
+		return
+	}
+
+	p.sipNoAnswerTimers[channelID] = time.AfterFunc(sipNoAnswerTimeout, func() {
+		p.handleSIPNoAnswer(channelID, callID)
+	})
+}
+
+func (p *Plugin) cancelSIPNoAnswerTimer(channelID string) bool {
+	p.sipNoAnswerTimersMut.Lock()
+	defer p.sipNoAnswerTimersMut.Unlock()
+
+	t, ok := p.sipNoAnswerTimers[channelID]
+	if !ok {
+		return false
+	}
+
+	t.Stop()
+	delete(p.sipNoAnswerTimers, channelID)
+
+	return true
+}
+
+// cancelSIPNoAnswerTimerIfAnswered cancels the SIP no-answer timer once both
+// the human caller and the SIP callee have confirmed sessions in the LiveKit
+// room. Must be called under the channel lock.
+func (p *Plugin) cancelSIPNoAnswerTimerIfAnswered(state *callState, channelID string) {
+	for _, session := range state.sessions {
+		if session.UserID == p.getBotID() {
+			continue
+		}
+		if session.ConfirmedAt == 0 {
+			return
+		}
+	}
+	p.cancelSIPNoAnswerTimer(channelID)
+}
+
+func (p *Plugin) handleSIPNoAnswer(channelID, callID string) {
+	p.sipNoAnswerTimersMut.Lock()
+	delete(p.sipNoAnswerTimers, channelID)
+	p.sipNoAnswerTimersMut.Unlock()
+
+	p.LogInfo("SIP outbound call not answered, hanging up",
+		"channelID", channelID,
+		"callID", callID,
+		"nodeID", p.nodeID)
+
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		p.LogError("handleSIPNoAnswer: failed to lock call", "channelID", channelID, "err", err.Error())
+		return
+	}
+	unlocked := false
+	defer func() {
+		if !unlocked {
+			p.unlockCall(channelID)
+		}
+	}()
+
+	if state == nil || state.Call.ID != callID {
+		return
+	}
+
+	if err := p.cleanCallState(&state.Call, "sip_no_answer", callEndReasonNoAnswer); err != nil {
+		p.LogError("handleSIPNoAnswer: failed to clean call state", "channelID", channelID, "err", err.Error())
+	}
+
+	unlocked = true
+	p.unlockCall(channelID)
+
+	p.endDMCallRoom("handleSIPNoAnswer", channelID)
+
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
+		ChannelID:           channelID,
+		ReliableClusterSend: true,
+	})
 }
 
 func (p *Plugin) handleDMNoAnswer(channelID, callID string) {

@@ -178,6 +178,13 @@ func (p *Plugin) OnDeactivate() error {
 	p.dmNoAnswerTimers = nil
 	p.dmNoAnswerTimersMut.Unlock()
 
+	p.sipNoAnswerTimersMut.Lock()
+	for _, t := range p.sipNoAnswerTimers {
+		t.Stop()
+	}
+	p.sipNoAnswerTimers = nil
+	p.sipNoAnswerTimersMut.Unlock()
+
 	// The publisher reads call state, so it has to be fully down before the store
 	// closes. Closing stopCh cancels its cross-node lock wait and its LiveKit
 	// request, so this normally returns at once. It can still block on a lock

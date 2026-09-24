@@ -144,6 +144,8 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 			"channelID", channelID, "err", err.Error())
 	}
 
+	p.cancelSIPNoAnswerTimerIfAnswered(state, channelID)
+
 	p.LogInfo("call session confirmed",
 		"callID", state.Call.ID,
 		"channelID", channelID,

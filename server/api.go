@@ -849,6 +849,19 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	createdCall := state == nil
 
+	// Reject a second concurrent dial from the same user. A duplicate /phone-call
+	// while the first is connecting would produce two SIP legs and two unconfirmed
+	// sessions that the /livekit-token reuse logic (Fix 2) could not distinguish.
+	if !createdCall {
+		for _, session := range state.sessions {
+			if session.UserID == userID && session.ConfirmedAt == 0 {
+				res.Err = "a phone call is already connecting"
+				res.Code = http.StatusConflict
+				return
+			}
+		}
+	}
+
 	// callsEnabled is intentionally nil: the bot DM channel has no per-channel
 	// enable/disable setting, and the SIP config checks above already gate access.
 	state, err = p.addUserSession(state, nil, userID, sessionID, channelID, "", authSessionIDFromRequest(r), dmChannel.Type)
@@ -920,12 +933,18 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Announce only after a successful dial: observers and the DM ring timer
-	// should not fire for a call that never connected.
+	// Announce only after a successful dial: observers and the ring timer should
+	// not fire for a call that never connected.
 	if len(state.sessions) == 1 {
 		p.announceCallStarted(state, userID, channelID, "", "", dmChannel.Type)
 	}
 	p.cancelDMNoAnswerTimerIfAnswered(state, userID, channelID, dmChannel.Type)
+
+	// Start the SIP no-answer timer. It fires if either the human caller's
+	// client or the SIP callee has not confirmed within sipNoAnswerTimeout,
+	// and is cancelled in participant_joined once both sides are live.
+	p.startSIPNoAnswerTimer(channelID, callID)
+
 	p.maybeSendConcurrentSessionsWarning()
 
 	p.LogInfo("phone call session created",
@@ -1352,6 +1371,8 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 			"channelID", channelID, "err", err.Error())
 	}
 
+	p.cancelSIPNoAnswerTimerIfAnswered(state, channelID)
+
 	p.publishWebSocketEvent(wsEventUserJoined, map[string]interface{}{
 		"user_id":    identity,
 		"session_id": sid,
@@ -1643,6 +1664,42 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 	// Whether this request is the first joiner, and so owns the call row for
 	// rollback purposes below.
 	createdCall := state == nil
+
+	// Desktop phone-call path: /phone-call already created a session for this
+	// user (unconfirmed, ConfirmedAt == 0) and minted a token that was discarded
+	// by the main window. The widget calling /livekit-token is the same user
+	// arriving via a separate Electron window — reuse the existing session rather
+	// than creating a duplicate.
+	if state != nil && state.Call.Props.Type == "phone" {
+		for _, existing := range state.sessions {
+			if existing.UserID == userID && existing.ConfirmedAt == 0 {
+				token, lkURL, err := p.mintLiveKitToken(userID, req.ChannelID, existing.ID)
+				if err != nil {
+					p.LogError("handleCreateLiveKitSession: failed to re-mint token for phone call session",
+						"err", err.Error(), "channelID", req.ChannelID, "sessionID", existing.ID)
+					res.Err = "Internal server error"
+					res.Code = http.StatusInternalServerError
+					return
+				}
+				p.LogInfo("livekit session reused for phone call",
+					"callID", state.Call.ID,
+					"channelID", req.ChannelID,
+					"sessionID", existing.ID,
+					"userID", userID,
+					"nodeID", p.nodeID)
+				w.Header().Set("Content-Type", "application/json")
+				if err := json.NewEncoder(w).Encode(livekitSessionResponse{
+					SessionID: existing.ID,
+					Token:     token,
+					URL:       lkURL,
+					CallState: state.getClientState(p.getBotID(), userID),
+				}); err != nil {
+					p.LogError("failed to encode LiveKit session response", "err", err.Error())
+				}
+				return
+			}
+		}
+	}
 
 	state, err = p.addUserSession(state, callsEnabled, userID, sessionID, req.ChannelID, req.JobID, authSessionIDFromRequest(r), channel.Type)
 	if err != nil {
