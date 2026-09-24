@@ -167,7 +167,7 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	// Dial into an existing call — client must have already joined the bot DM
 	// channel call. Returns {call_id, channel_id, sip_call_id} only.
 	// Useful for testing and future multi-party dial-in.
-	router.HandleFunc("/outbound-call", p.handleOutboundCall).Methods("POST")
+	router.HandleFunc("/add-phone-call", p.handleAddPhoneCall).Methods("POST")
 
 	// Cloud
 	router.HandleFunc("/cloud-notify-admins", func(w http.ResponseWriter, r *http.Request) {

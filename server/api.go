@@ -730,7 +730,7 @@ func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, 
 }
 
 // phoneCallResponse is returned by handlePhoneCall. It extends the standard
-// LiveKit session response with the outbound-call identifiers the client needs
+// LiveKit session response with the add-phone-call identifiers the client needs
 // to log and to correlate with the SIP leg.
 type phoneCallResponse struct {
 	SessionID string `json:"session_id"`
@@ -741,7 +741,7 @@ type phoneCallResponse struct {
 	SIPCallID string `json:"sip_call_id"`
 }
 
-// handlePhoneCall is a self-contained outbound-call endpoint: it resolves the
+// handlePhoneCall is a self-contained phone-call endpoint: it resolves the
 // bot DM channel, creates a LiveKit session, dials the SIP number, and returns
 // everything the client needs to connect in a single round trip.
 func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
@@ -920,13 +920,13 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleOutboundCall dials an external phone number into an existing call. The
+// handleAddPhoneCall dials an external phone number into an existing call. The
 // client must already have a live session in the bot DM channel before calling
 // this endpoint. Useful for testing and future multi-party dial-in scenarios.
 // Returns {call_id, channel_id, sip_call_id} without a LiveKit token.
-func (p *Plugin) handleOutboundCall(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
-	defer p.httpAudit("handleOutboundCall", &res, w, r)
+	defer p.httpAudit("handleAddPhoneCall", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
 
@@ -983,7 +983,7 @@ func (p *Plugin) handleOutboundCall(w http.ResponseWriter, r *http.Request) {
 
 	info, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
 	if err != nil {
-		p.LogError("handleOutboundCall: failed to create SIP participant",
+		p.LogError("handleAddPhoneCall: failed to create SIP participant",
 			"err", err.Error(), "number", number, "channelID", channelID)
 		res.Err = "failed to dial number"
 		res.Code = http.StatusInternalServerError
@@ -992,7 +992,7 @@ func (p *Plugin) handleOutboundCall(w http.ResponseWriter, r *http.Request) {
 
 	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
 	if err != nil && !errors.Is(err, db.ErrNotFound) {
-		p.LogError("handleOutboundCall: failed to get active call", "err", err.Error(), "channelID", channelID)
+		p.LogError("handleAddPhoneCall: failed to get active call", "err", err.Error(), "channelID", channelID)
 	}
 	var callID string
 	if call != nil {
@@ -1005,7 +1005,7 @@ func (p *Plugin) handleOutboundCall(w http.ResponseWriter, r *http.Request) {
 		"channel_id":  channelID,
 		"sip_call_id": info.GetSipCallId(),
 	}); err != nil {
-		p.LogError("failed to encode outbound-call response", "err", err.Error())
+		p.LogError("handleAddPhoneCall: failed to encode response", "err", err.Error())
 	}
 }
 
