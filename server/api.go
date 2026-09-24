@@ -33,11 +33,11 @@ const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 // Stable error IDs for SIP outbound dialing errors. Clients should match on
 // these rather than on human-readable message strings.
 const (
-	errIDInvalidNumber           = "invalid_number"
-	errIDOutboundDisabled        = "outbound_disabled"
-	errIDOutboundNotConfigured   = "outbound_not_configured"
-	errIDSIPNumberNotAllowed     = "sip_number_not_allowed"
-	errIDSIPTeamNotAllowed       = "sip_team_not_allowed"
+	errIDInvalidNumber         = "invalid_number"
+	errIDOutboundDisabled      = "outbound_disabled"
+	errIDOutboundNotConfigured = "outbound_not_configured"
+	errIDSIPNumberNotAllowed   = "sip_number_not_allowed"
+	errIDSIPTeamNotAllowed     = "sip_team_not_allowed"
 )
 
 // livekitTokenTTL only has to cover the gap between minting a token and the
