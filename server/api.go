@@ -38,6 +38,8 @@ const (
 	errIDOutboundNotConfigured = "outbound_not_configured"
 	errIDSIPNumberNotAllowed   = "sip_number_not_allowed"
 	errIDSIPTeamNotAllowed     = "sip_team_not_allowed"
+	errIDCallInProgress        = "call_in_progress"
+	errIDDialFailed            = "dial_failed"
 )
 
 // livekitTokenTTL only has to cover the gap between minting a token and the
@@ -856,6 +858,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		for _, session := range state.sessions {
 			if session.UserID == userID && session.ConfirmedAt == 0 {
 				res.Err = "a phone call is already connecting"
+				res.ErrID = errIDCallInProgress
 				res.Code = http.StatusConflict
 				return
 			}
@@ -929,6 +932,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 			"err", dialErr.Error(), "number", number, "channelID", channelID)
 		p.rollbackSession(sessionID, callID, createdCall)
 		res.Err = "failed to dial number"
+		res.ErrID = errIDDialFailed
 		res.Code = http.StatusInternalServerError
 		return
 	}
@@ -1047,6 +1051,7 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		p.LogError("handleAddPhoneCall: failed to create SIP participant",
 			"err", err.Error(), "number", number, "channelID", channelID)
 		res.Err = "failed to dial number"
+		res.ErrID = errIDDialFailed
 		res.Code = http.StatusInternalServerError
 		return
 	}
