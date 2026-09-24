@@ -733,12 +733,13 @@ func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, 
 // LiveKit session response with the add-phone-call identifiers the client needs
 // to log and to correlate with the SIP leg.
 type phoneCallResponse struct {
-	SessionID string `json:"session_id"`
-	Token     string `json:"token"`
-	URL       string `json:"url"`
-	CallID    string `json:"call_id"`
-	ChannelID string `json:"channel_id"`
-	SIPCallID string `json:"sip_call_id"`
+	SessionID string           `json:"session_id"`
+	Token     string           `json:"token"`
+	URL       string           `json:"url"`
+	CallID    string           `json:"call_id"`
+	ChannelID string           `json:"channel_id"`
+	SIPCallID string           `json:"sip_call_id"`
+	CallState *CallStateClient `json:"call_state"`
 }
 
 // handlePhoneCall is a self-contained phone-call endpoint: it resolves the
@@ -915,6 +916,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		CallID:    callID,
 		ChannelID: channelID,
 		SIPCallID: info.GetSipCallId(),
+		CallState: state.getClientState(p.getBotID(), userID),
 	}); err != nil {
 		p.LogError("failed to encode phone-call response", "err", err.Error())
 	}
