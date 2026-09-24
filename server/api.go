@@ -934,8 +934,10 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Announce only after a successful dial: observers and the ring timer should
-	// not fire for a call that never connected.
-	if len(state.sessions) == 1 {
+	// not fire for a call that never connected. Use createdCall rather than
+	// len(state.sessions)==1 because the lock was released during the dial and
+	// the SIP participant_joined webhook may have already added a session.
+	if createdCall {
 		p.announceCallStarted(state, userID, channelID, "", "", dmChannel.Type)
 	}
 	p.cancelDMNoAnswerTimerIfAnswered(state, userID, channelID, dmChannel.Type)
