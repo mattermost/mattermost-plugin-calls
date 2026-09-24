@@ -12,9 +12,10 @@ import (
 // httpResponse holds data returned to API clients.
 // JSON fields are overridden to be compliant with what MM server would return.
 type httpResponse struct {
-	Msg  string `json:"message,omitempty"`
-	Err  string `json:"detailed_error,omitempty"`
-	Code int    `json:"status_code"`
+	Msg   string `json:"message,omitempty"`
+	Err   string `json:"detailed_error,omitempty"`
+	Code  int    `json:"status_code"`
+	ErrID string `json:"id,omitempty"`
 }
 
 func (r httpResponse) isEmpty() bool {

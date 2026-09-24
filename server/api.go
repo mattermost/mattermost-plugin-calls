@@ -30,6 +30,16 @@ import (
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
+// Stable error IDs for SIP outbound dialing errors. Clients should match on
+// these rather than on human-readable message strings.
+const (
+	errIDInvalidNumber           = "invalid_number"
+	errIDOutboundDisabled        = "outbound_disabled"
+	errIDOutboundNotConfigured   = "outbound_not_configured"
+	errIDSIPNumberNotAllowed     = "sip_number_not_allowed"
+	errIDSIPTeamNotAllowed       = "sip_team_not_allowed"
+)
+
 // livekitTokenTTL only has to cover the gap between minting a token and the
 // client connecting: once connected, LiveKit refreshes the token itself over
 // signaling and the plugin is not involved. Keeping it short bounds how long a
@@ -763,6 +773,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	number := normalizePhoneNumber(req.Number)
 	if number == "" {
 		res.Err = "number is required"
+		res.ErrID = errIDInvalidNumber
 		res.Code = http.StatusBadRequest
 		return
 	}
@@ -770,6 +781,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	cfg := p.getConfiguration()
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
 		res.Err = "outbound dialing is disabled. Enable it in the admin console."
+		res.ErrID = errIDOutboundDisabled
 		res.Code = http.StatusBadRequest
 		return
 	}
@@ -777,18 +789,21 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	trunkID := cfg.LiveKitSIPOutboundTrunkID
 	if trunkID == "" {
 		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console."
+		res.ErrID = errIDOutboundNotConfigured
 		res.Code = http.StatusBadRequest
 		return
 	}
 
 	if cfg.sipOutboundAllowlistEnabled() && !cfg.isNumberInAllowlist(number) {
 		res.Err = "number is not in the outbound calling allowlist"
+		res.ErrID = errIDSIPNumberNotAllowed
 		res.Code = http.StatusForbidden
 		return
 	}
 
 	if allowedTeams := cfg.outboundAllowedTeams(); !p.isUserInAllowedTeams(userID, allowedTeams) {
 		res.Err = "user is not a member of a team permitted to place outbound calls"
+		res.ErrID = errIDSIPTeamNotAllowed
 		res.Code = http.StatusForbidden
 		return
 	}
@@ -956,6 +971,7 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 	number := normalizePhoneNumber(req.Number)
 	if number == "" {
 		res.Err = "number is required"
+		res.ErrID = errIDInvalidNumber
 		res.Code = http.StatusBadRequest
 		return
 	}
@@ -963,6 +979,7 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 	cfg := p.getConfiguration()
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
 		res.Err = "outbound dialing is disabled. Enable it in the admin console."
+		res.ErrID = errIDOutboundDisabled
 		res.Code = http.StatusBadRequest
 		return
 	}
@@ -970,18 +987,21 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 	trunkID := cfg.LiveKitSIPOutboundTrunkID
 	if trunkID == "" {
 		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console."
+		res.ErrID = errIDOutboundNotConfigured
 		res.Code = http.StatusBadRequest
 		return
 	}
 
 	if cfg.sipOutboundAllowlistEnabled() && !cfg.isNumberInAllowlist(number) {
 		res.Err = "number is not in the outbound calling allowlist"
+		res.ErrID = errIDSIPNumberNotAllowed
 		res.Code = http.StatusForbidden
 		return
 	}
 
 	if allowedTeams := cfg.outboundAllowedTeams(); !p.isUserInAllowedTeams(userID, allowedTeams) {
 		res.Err = "user is not a member of a team permitted to place outbound calls"
+		res.ErrID = errIDSIPTeamNotAllowed
 		res.Code = http.StatusForbidden
 		return
 	}

@@ -477,6 +477,7 @@ func TestHandlePhoneCall(t *testing.T) {
 		var res httpResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
 		require.Equal(t, "number is required", res.Msg)
+		require.Equal(t, errIDInvalidNumber, res.ErrID)
 	})
 
 	t.Run("disabled toggle rejects even with trunk configured", func(t *testing.T) {
@@ -491,6 +492,7 @@ func TestHandlePhoneCall(t *testing.T) {
 		var res httpResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
 		require.Equal(t, "outbound dialing is disabled. Enable it in the admin console.", res.Msg)
+		require.Equal(t, errIDOutboundDisabled, res.ErrID)
 	})
 
 	t.Run("enabled but no trunk configured", func(t *testing.T) {
@@ -505,6 +507,7 @@ func TestHandlePhoneCall(t *testing.T) {
 		var res httpResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
 		require.Equal(t, "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console.", res.Msg)
+		require.Equal(t, errIDOutboundNotConfigured, res.ErrID)
 	})
 
 	t.Run("allowlist disabled passes all numbers", func(t *testing.T) {
@@ -541,6 +544,7 @@ func TestHandlePhoneCall(t *testing.T) {
 		var res httpResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
 		require.Equal(t, "number is not in the outbound calling allowlist", res.Msg)
+		require.Equal(t, errIDSIPNumberNotAllowed, res.ErrID)
 	})
 
 	t.Run("allowlist enabled passes listed number", func(t *testing.T) {
@@ -578,6 +582,7 @@ func TestHandlePhoneCall(t *testing.T) {
 		var res httpResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
 		require.Equal(t, "number is not in the outbound calling allowlist", res.Msg)
+		require.Equal(t, errIDSIPNumberNotAllowed, res.ErrID)
 	})
 
 	t.Run("non-member of allowed teams is rejected", func(t *testing.T) {
@@ -605,6 +610,7 @@ func TestHandlePhoneCall(t *testing.T) {
 		var res httpResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
 		require.Equal(t, "user is not a member of a team permitted to place outbound calls", res.Msg)
+		require.Equal(t, errIDSIPTeamNotAllowed, res.ErrID)
 	})
 }
 
@@ -664,5 +670,6 @@ func TestHandleAddPhoneCall(t *testing.T) {
 		var res httpResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
 		require.Equal(t, "user is not a member of a team permitted to place outbound calls", res.Msg)
+		require.Equal(t, errIDSIPTeamNotAllowed, res.ErrID)
 	})
 }
