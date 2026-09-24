@@ -824,7 +824,12 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		res.Code = http.StatusInternalServerError
 		return
 	}
-	defer p.unlockCall(channelID)
+	unlocked := false
+	defer func() {
+		if !unlocked {
+			p.unlockCall(channelID)
+		}
+	}()
 
 	createdCall := state == nil
 
@@ -852,14 +857,36 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	callID := state.Call.ID
+
+	// Release the lock before the SIP dial: it can take the full sipOutboundDialTimeout
+	// and holding it blocks every other operation on this call (including plugin shutdown).
+	// Same pattern as publishCallRoomMetadata.
+	unlocked = true
+	p.unlockCall(channelID)
+
 	// Dial synchronously so a failed dial reaches the caller as an error. We
 	// don't set WaitUntilAnswered, so LiveKit returns once the SIP leg is created
 	// (INVITE dispatched) rather than once the callee picks up.
-	info, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
+	info, dialErr := p.createSIPParticipant(trunkID, number, channelID, req.Number)
+
+	// Re-acquire the lock to announce the new call or roll back.
+	state, err = p.lockCallReturnState(channelID)
 	if err != nil {
+		p.LogError("handlePhoneCall: failed to re-lock call after SIP dial", "err", err.Error(), "channelID", channelID)
+		if dialErr == nil {
+			p.rollbackSession(sessionID, callID, createdCall)
+		}
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	unlocked = false
+
+	if dialErr != nil {
 		p.LogError("handlePhoneCall: failed to create SIP participant",
-			"err", err.Error(), "number", number, "channelID", channelID)
-		p.rollbackSession(sessionID, state.Call.ID, createdCall)
+			"err", dialErr.Error(), "number", number, "channelID", channelID)
+		p.rollbackSession(sessionID, callID, createdCall)
 		res.Err = "failed to dial number"
 		res.Code = http.StatusInternalServerError
 		return
@@ -874,7 +901,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	p.maybeSendConcurrentSessionsWarning()
 
 	p.LogInfo("phone call session created",
-		"callID", state.Call.ID,
+		"callID", callID,
 		"channelID", channelID,
 		"sessionID", sessionID,
 		"userID", userID,
@@ -885,7 +912,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		SessionID: sessionID,
 		Token:     token,
 		URL:       lkURL,
-		CallID:    state.Call.ID,
+		CallID:    callID,
 		ChannelID: channelID,
 		SIPCallID: info.GetSipCallId(),
 	}); err != nil {
