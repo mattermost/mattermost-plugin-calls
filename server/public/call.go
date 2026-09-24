@@ -70,6 +70,13 @@ type CallProps struct {
 	NodeID                 string              `json:"node_id,omitempty"`
 	Participants           map[string]struct{} `json:"participants,omitempty"`
 	HostLockedUserID       string              `json:"host_locked_user_id,omitempty"`
+
+	// Phone-call fields. Type is "phone" for calls placed via /phone-call.
+	// PhoneNumber is the normalized E.164 number; DisplayNumber is the
+	// user-supplied form (may include formatting characters).
+	Type          string `json:"type,omitempty"`
+	PhoneNumber   string `json:"phone_number,omitempty"`
+	DisplayNumber string `json:"display_number,omitempty"`
 }
 
 type CallStats struct {

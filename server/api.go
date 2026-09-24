@@ -860,6 +860,18 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	callID := state.Call.ID
 
+	// Stamp the call as a phone call on first creation so the client and any
+	// future isPhoneCallChannel checks can key on props.type rather than
+	// "DM with the Calls bot".
+	if createdCall {
+		state.Call.Props.Type = "phone"
+		state.Call.Props.PhoneNumber = number
+		state.Call.Props.DisplayNumber = req.Number
+		if err := p.store.UpdateCall(&state.Call); err != nil {
+			p.LogError("handlePhoneCall: failed to set phone call props", "err", err.Error(), "callID", callID)
+		}
+	}
+
 	// Release the lock before the SIP dial: it can take the full sipOutboundDialTimeout
 	// and holding it blocks every other operation on this call (including plugin shutdown).
 	// Same pattern as publishCallRoomMetadata.
