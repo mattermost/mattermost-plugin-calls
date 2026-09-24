@@ -9,9 +9,33 @@ import {getPersistentStorage} from 'src/utils';
 
 import {pluginId} from './manifest';
 
+declare global {
+    interface Window {
+        callsClientLogAppend?: (line: string) => void;
+        callsClientFlushAndGetLogs?: () => string;
+    }
+}
+
 let clientLogs = '';
 
 const maxArgLength = 256;
+
+// Flush the in-memory buffer to storage once it exceeds this size. Keeps
+// memory bounded between calls and during plugin-inactive periods when the
+// window error/unhandledrejection listeners are still writing to the buffer.
+// String .length is O(1) in JS so this check is cheap on every write.
+const maxInMemoryLogSize = 50 * 1024;
+
+function maybeFlush() {
+    if (clientLogs.length > maxInMemoryLogSize) {
+        try {
+            flushLogsToAccumulated();
+        } catch {
+            // Storage quota or security error — keep only the most recent portion in memory.
+            clientLogs = clientLogs.slice(-maxInMemoryLogSize);
+        }
+    }
+}
 
 function formatArg(a: unknown): string {
     if (a instanceof Error) {
@@ -28,8 +52,59 @@ function formatArg(a: unknown): string {
     return String(a);
 }
 
+// Appends a fully-formatted log line to this realm's in-memory buffer. Exposed
+// on `window` so the expanded-view popout can write through to its opener's
+// buffer rather than persisting separately.
+function appendLogLine(line: string) {
+    clientLogs += line;
+    maybeFlush();
+}
+
 function appendClientLog(level: string, ...args: unknown[]) {
-    clientLogs += `${level} [${new Date().toISOString()}] ${args.map(formatArg).join(' ')}\n`;
+    // Serialize in the originating realm: Error/object args belong to this
+    // window's realm and would fail instanceof checks if passed to the opener.
+    const line = `${level} [${new Date().toISOString()}] ${args.map(formatArg).join(' ')}\n`;
+
+    // In the expanded-view popout, route the line to the opener's buffer so
+    // popout-realm logs ride the main window's existing flush machinery (single
+    // source of truth, no cross-window storage read-modify-write race).
+    try {
+        const opener = window.opener as Window | null;
+        if (opener && opener !== window && typeof opener.callsClientLogAppend === 'function') {
+            opener.callsClientLogAppend(line);
+            return;
+        }
+    } catch {
+        // Cross-origin opener: fall through to this realm's local buffer.
+    }
+
+    clientLogs += line;
+    maybeFlush();
+}
+
+// Expose this realm's appender and flush+getter so an expanded-view popout can
+// write logs through to (and read them back from) the opener's realm.
+if (typeof window !== 'undefined') {
+    window.callsClientLogAppend = appendLogLine;
+    window.callsClientFlushAndGetLogs = flushAndGetLogs;
+
+    // Wire uncaught JS errors and unhandled promise rejections into the client-
+    // log buffer. Without this, exceptions that crash a handler go only to
+    // console.error and never appear in /call logs uploads.
+    window.addEventListener('error', (event: ErrorEvent) => {
+        const {message, filename, lineno, colno, error} = event;
+        const errStr = error instanceof Error ?
+            (error.stack || `${error.name}: ${error.message}`) :
+            String(error || message);
+        appendClientLog('error', `[uncaught] ${errStr} (${filename}:${lineno}:${colno})`);
+    });
+
+    window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+        const reason = event.reason instanceof Error ?
+            (event.reason.stack || `${event.reason.name}: ${event.reason.message}`) :
+            formatArg(event.reason);
+        appendClientLog('error', `[unhandledrejection] ${reason}`);
+    });
 }
 
 export function flushLogsToAccumulated(stats?: CallsClientStats | null) {
@@ -72,6 +147,14 @@ export function persistClientLogs() {
 
 export function getClientLogs() {
     return getPersistentStorage().getItem(STORAGE_CALLS_CLIENT_LOGS_KEY) || '';
+}
+
+// Flushes this realm's in-memory buffer to storage and returns the full
+// accumulated log string. Exposed on `window` so a popout can delegate the
+// entire flush+read to its opener's realm in one call.
+export function flushAndGetLogs(): string {
+    flushLogsToAccumulated();
+    return getClientLogs();
 }
 
 export function logErr(...args: unknown[]) {

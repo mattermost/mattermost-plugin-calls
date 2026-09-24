@@ -4,7 +4,7 @@
 import {MAX_ACCUMULATED_LOG_SIZE, STORAGE_CALLS_CLIENT_LOGS_KEY} from 'src/constants';
 import type {CallsClientStats} from 'src/types/types';
 
-import {flushLogsToAccumulated, getClientLogs, logDebug, logErr, logInfo, logWarn} from './log';
+import {flushAndGetLogs, flushLogsToAccumulated, getClientLogs, logDebug, logErr, logInfo, logWarn} from './log';
 
 // Mock the manifest
 jest.mock('./manifest', () => ({
@@ -299,6 +299,155 @@ describe('log', () => {
             mockStorage.set(STORAGE_CALLS_CLIENT_LOGS_KEY, 'test logs');
             const logs = getClientLogs();
             expect(logs).toBe('test logs');
+        });
+    });
+
+    describe('flushAndGetLogs', () => {
+        test('flushes in-memory buffer and returns accumulated logs', () => {
+            logInfo('hello from flushAndGetLogs');
+
+            const result = flushAndGetLogs();
+
+            expect(result).toContain('hello from flushAndGetLogs');
+
+            // In-memory is now clear; a second call returns the same storage content.
+            expect(flushAndGetLogs()).toBe(result);
+        });
+
+        test('returns empty string when no logs have been written', () => {
+            expect(flushAndGetLogs()).toBe('');
+        });
+
+        test('is exposed as window.callsClientFlushAndGetLogs', () => {
+            expect(typeof window.callsClientFlushAndGetLogs).toBe('function');
+
+            logInfo('via window');
+            const result = window.callsClientFlushAndGetLogs!();
+            expect(result).toContain('via window');
+        });
+    });
+
+    describe('in-memory auto-flush at 50 KB', () => {
+        test('flushes to storage without an explicit call when the buffer exceeds 50 KB', () => {
+            // A log line is the message plus a ~36-char timestamp prefix.
+            // Logging 51 KB of data pushes the buffer over the threshold.
+            const bigMessage = 'x'.repeat(51 * 1024);
+            logDebug(bigMessage);
+
+            // maybeFlush() ran automatically — storage should already contain the data.
+            expect(getClientLogs()).toContain(bigMessage.slice(0, 100));
+        });
+
+        test('small writes do not flush prematurely', () => {
+            logDebug('small');
+
+            // Buffer is well under 50 KB — storage should still be empty.
+            expect(getClientLogs()).toBe('');
+        });
+    });
+
+    describe('popout write-through', () => {
+        const originalOpener = Object.getOwnPropertyDescriptor(window, 'opener');
+
+        const setOpener = (opener: unknown) => {
+            Object.defineProperty(window, 'opener', {value: opener, configurable: true, writable: true});
+        };
+
+        afterEach(() => {
+            if (originalOpener) {
+                Object.defineProperty(window, 'opener', originalOpener);
+            } else {
+                setOpener(null);
+            }
+        });
+
+        test('routes logs to opener buffer when running as a popout', () => {
+            const append = jest.fn();
+            setOpener({callsClientLogAppend: append});
+
+            logInfo('popout gesture');
+            flushLogsToAccumulated();
+
+            // The formatted line went to the opener, not this realm's buffer.
+            expect(append).toHaveBeenCalledTimes(1);
+            expect(append.mock.calls[0][0]).toContain('popout gesture');
+            expect(append.mock.calls[0][0]).toContain('info');
+            expect(getClientLogs()).not.toContain('popout gesture');
+        });
+
+        test('falls back to local buffer when opener has no appender', () => {
+            setOpener({});
+
+            logInfo('no appender');
+            flushLogsToAccumulated();
+
+            expect(getClientLogs()).toContain('no appender');
+        });
+
+        test('falls back to local buffer when opener access throws (cross-origin)', () => {
+            setOpener(new Proxy({}, {
+                get() {
+                    throw new Error('Blocked a frame with origin');
+                },
+            }));
+
+            logInfo('cross origin opener');
+            flushLogsToAccumulated();
+
+            expect(getClientLogs()).toContain('cross origin opener');
+        });
+
+        test('does not route to itself when there is no opener', () => {
+            setOpener(null);
+
+            logInfo('main window');
+            flushLogsToAccumulated();
+
+            expect(getClientLogs()).toContain('main window');
+        });
+    });
+
+    describe('window error listeners', () => {
+        test('uncaught error event is captured in the log buffer', () => {
+            window.dispatchEvent(new ErrorEvent('error', {
+                message: 'test uncaught error',
+                filename: 'app.js',
+                lineno: 10,
+                colno: 5,
+                error: new Error('test uncaught error'),
+            }));
+            flushLogsToAccumulated();
+
+            const logs = getClientLogs();
+            expect(logs).toContain('[uncaught]');
+            expect(logs).toContain('test uncaught error');
+            expect(logs).toContain('app.js:10:5');
+        });
+
+        test('unhandledrejection event is captured in the log buffer', () => {
+            // PromiseRejectionEvent is not available in JSDOM, so synthesize an
+            // event with the same shape our handler reads (event.reason).
+            const reason = new Error('rejected promise');
+            const event = new Event('unhandledrejection') as PromiseRejectionEvent;
+            Object.defineProperty(event, 'reason', {value: reason});
+            window.dispatchEvent(event);
+            flushLogsToAccumulated();
+
+            const logs = getClientLogs();
+            expect(logs).toContain('[unhandledrejection]');
+            expect(logs).toContain('rejected promise');
+        });
+
+        test('unhandledrejection with non-Error reason uses formatArg (not [object Object])', () => {
+            const event = new Event('unhandledrejection') as PromiseRejectionEvent;
+            Object.defineProperty(event, 'reason', {value: {code: 42, msg: 'oops'}});
+            window.dispatchEvent(event);
+            flushLogsToAccumulated();
+
+            const logs = getClientLogs();
+            expect(logs).toContain('[unhandledrejection]');
+            expect(logs).toContain('"code":42');
+            expect(logs).not.toContain('[object Object]');
         });
     });
 });
