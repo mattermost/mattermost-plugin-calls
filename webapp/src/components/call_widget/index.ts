@@ -19,6 +19,7 @@ import {
 } from 'src/actions';
 import {
     allowScreenSharing,
+    callOwnerIDForCurrentCall,
     callsConfig,
     clientConnecting,
     expandedView,
@@ -102,6 +103,7 @@ const mapStateToProps = (state: GlobalState) => {
         otherSessions: sessionsForOtherUsersInCall(state),
         isAdmin: isCurrentUserSystemAdmin(state),
         isDMCalling: isCurrentDMCallInCallingState(state),
+        callOwnerID: callOwnerIDForCurrentCall(state),
     };
 };
 

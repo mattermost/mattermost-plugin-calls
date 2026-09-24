@@ -148,6 +148,7 @@ interface Props {
     connectedDMUser: UserProfile | undefined,
     isAdmin: boolean,
     isDMCalling: boolean,
+    callOwnerID?: string,
 }
 
 interface DraggingState {
@@ -2322,6 +2323,59 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const calleePending = (this.props.clientConnecting || this.props.isDMCalling) && Boolean(otherProfile);
         const selfOnly = this.props.otherSessions.length === 0 && !calleePending;
 
+        // Before the call exists there is no owner yet, and only the caller can be connecting to it.
+        const selfIsCaller = !this.props.callOwnerID || this.props.callOwnerID === this.props.currentUserID;
+
+        let otherTile = null;
+        if (calleePending && otherProfile) {
+            otherTile = (
+                <CallsWidgetProfile
+                    key='ringing'
+                    videoStream={null}
+                    profile={otherProfile}
+                    isSpeaking={false}
+                    isMuted={false}
+                    hasVideo={false}
+                    videoView={videoView}
+                    mirrorVideo={false}
+                    ringing={true}
+                    testID='calls-widget-profile-ringing'
+                />
+            );
+        } else if (otherProfile && otherSession) {
+            otherTile = (
+                <CallsWidgetProfile
+                    key='other'
+                    videoStream={this.state.otherVideoStream}
+                    profile={otherProfile}
+                    isSpeaking={Boolean(otherSession.voice)}
+                    isMuted={!otherSession.unmuted}
+                    hasVideo={Boolean(otherSession.video)}
+                    videoView={videoView}
+                    mirrorVideo={false}
+                    testID='calls-widget-profile-other'
+                />
+            );
+        }
+
+        let selfTile = null;
+        if (selfProfile && (selfSession || this.props.clientConnecting)) {
+            selfTile = (
+                <CallsWidgetProfile
+                    key='self'
+                    videoStream={this.state.selfVideoStream}
+                    profile={selfProfile}
+                    isSpeaking={Boolean(selfSession?.voice)}
+                    isMuted={!calleePending && Boolean(selfSession) && !selfSession?.unmuted}
+                    hasVideo={Boolean(selfSession?.video)}
+                    videoView={videoView}
+                    mirrorVideo={localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
+                    singleSession={selfOnly}
+                    testID='calls-widget-profile-self'
+                />
+            );
+        }
+
         return (
             <div
                 className='calls-widget-profiles'
@@ -2333,47 +2387,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     width: '100%',
                 }}
             >
-
-                { calleePending && otherProfile &&
-                <CallsWidgetProfile
-                    videoStream={null}
-                    profile={otherProfile}
-                    isSpeaking={false}
-                    isMuted={false}
-                    hasVideo={false}
-                    videoView={videoView}
-                    mirrorVideo={false}
-                    ringing={true}
-                    testID='calls-widget-profile-ringing'
-                />
-                }
-
-                { !calleePending && otherProfile && otherSession &&
-                <CallsWidgetProfile
-                    videoStream={this.state.otherVideoStream}
-                    profile={otherProfile}
-                    isSpeaking={Boolean(otherSession.voice)}
-                    isMuted={!otherSession.unmuted}
-                    hasVideo={Boolean(otherSession.video)}
-                    videoView={videoView}
-                    mirrorVideo={false}
-                    testID='calls-widget-profile-other'
-                />
-                }
-
-                { selfProfile && (selfSession || this.props.clientConnecting) &&
-                <CallsWidgetProfile
-                    videoStream={this.state.selfVideoStream}
-                    profile={selfProfile}
-                    isSpeaking={Boolean(selfSession?.voice)}
-                    isMuted={!calleePending && Boolean(selfSession) && !selfSession?.unmuted}
-                    hasVideo={Boolean(selfSession?.video)}
-                    videoView={videoView}
-                    mirrorVideo={localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
-                    singleSession={selfOnly}
-                    testID='calls-widget-profile-self'
-                />
-                }
+                {selfIsCaller ? [selfTile, otherTile] : [otherTile, selfTile]}
             </div>
         );
     };

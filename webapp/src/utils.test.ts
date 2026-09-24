@@ -9,6 +9,7 @@ import {createIntl} from 'react-intl';
 import CallsClient from './client';
 import {pluginId} from './manifest';
 import {
+    callerFirstSortSessions,
     callStartedTimestampFn,
     getCallPropsFromPost,
     getCallRecordingPropsFromPost,
@@ -19,7 +20,6 @@ import {
     getWSConnectionURL,
     maxAttemptsReachedErr,
     runWithRetry,
-    selfFirstSortSessions,
     shouldRenderCallsIncoming,
     shouldRenderDesktopWidget,
     sleep,
@@ -647,9 +647,9 @@ describe('utils', () => {
         });
     });
 
-    describe('selfFirstSortSessions', () => {
-        const selfID = 'self-user-id';
-        const otherID = 'other-user-id';
+    describe('callerFirstSortSessions', () => {
+        const callerID = 'caller-user-id';
+        const calleeID = 'callee-user-id';
 
         const session = (userID: string, state = {}) => ({
             session_id: `${userID}-session`,
@@ -657,25 +657,25 @@ describe('utils', () => {
             ...state,
         }) as UserSessionState;
 
-        test('should place the current user first', () => {
-            const sessions = [session(otherID), session(selfID)];
+        test('should place the caller first', () => {
+            const sessions = [session(calleeID), session(callerID)];
 
-            expect(sessions.sort(selfFirstSortSessions(selfID)).map((s) => s.user_id)).toEqual([selfID, otherID]);
+            expect(sessions.sort(callerFirstSortSessions(callerID)).map((s) => s.user_id)).toEqual([callerID, calleeID]);
         });
 
-        test('should keep the current user first regardless of speaking state', () => {
+        test('should keep the caller first regardless of speaking state', () => {
             const sessions = [
-                session(selfID),
-                session(otherID, {unmuted: true, voice: true, raised_hand: 1234}),
+                session(callerID),
+                session(calleeID, {unmuted: true, voice: true, raised_hand: 1234}),
             ];
 
-            expect(sessions.sort(selfFirstSortSessions(selfID)).map((s) => s.user_id)).toEqual([selfID, otherID]);
+            expect(sessions.sort(callerFirstSortSessions(callerID)).map((s) => s.user_id)).toEqual([callerID, calleeID]);
         });
 
-        test('should preserve the incoming order of sessions that are not the current user', () => {
-            const sessions = [session('a-user-id'), session('b-user-id'), session(selfID)];
+        test('should preserve the incoming order of sessions that are not the caller', () => {
+            const sessions = [session('a-user-id'), session('b-user-id'), session(callerID)];
 
-            expect(sessions.sort(selfFirstSortSessions(selfID)).map((s) => s.user_id)).toEqual([selfID, 'a-user-id', 'b-user-id']);
+            expect(sessions.sort(callerFirstSortSessions(callerID)).map((s) => s.user_id)).toEqual([callerID, 'a-user-id', 'b-user-id']);
         });
     });
 
