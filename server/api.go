@@ -1447,6 +1447,8 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 			}
 		}()
 
+		p.cancelSIPNoAnswerTimer(channelID)
+
 		p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
 			ChannelID:           channelID,
 			ReliableClusterSend: true,
