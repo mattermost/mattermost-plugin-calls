@@ -851,13 +851,13 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	createdCall := state == nil
 
-	// Reject a second concurrent dial from the same user. A duplicate /phone-call
-	// while the first is connecting would produce two SIP legs and two unconfirmed
-	// sessions that the /livekit-token reuse logic (Fix 2) could not distinguish.
+	// Reject a second dial from the same user whether the session is still
+	// connecting (ConfirmedAt == 0) or already confirmed (user is in the call).
+	// Both cases would produce a redundant SIP leg.
 	if !createdCall {
 		for _, session := range state.sessions {
-			if session.UserID == userID && session.ConfirmedAt == 0 {
-				res.Err = "a phone call is already connecting"
+			if session.UserID == userID {
+				res.Err = "a phone call is already in progress"
 				res.ErrID = errIDCallInProgress
 				res.Code = http.StatusConflict
 				return
