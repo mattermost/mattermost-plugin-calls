@@ -92,7 +92,7 @@ func (p *Plugin) startSIPNoAnswerTimer(channelID, callID string) {
 	}
 
 	p.sipNoAnswerTimers[channelID] = time.AfterFunc(sipNoAnswerTimeout, func() {
-		p.handleSIPTimer(channelID, callID)
+		p.handleSIPNoAnswerTimer(channelID, callID)
 	})
 }
 
@@ -132,7 +132,7 @@ func (p *Plugin) sipCalleeIsActive(channelID string) bool {
 	return false
 }
 
-func (p *Plugin) handleSIPTimer(channelID, callID string) {
+func (p *Plugin) handleSIPNoAnswerTimer(channelID, callID string) {
 	p.sipNoAnswerTimersMut.Lock()
 	delete(p.sipNoAnswerTimers, channelID)
 	p.sipNoAnswerTimersMut.Unlock()
@@ -141,20 +141,20 @@ func (p *Plugin) handleSIPTimer(channelID, callID string) {
 	// before the callee answers. Check the live participant attributes to avoid
 	// tearing down a call where the callee has already answered.
 	if p.sipCalleeIsActive(channelID) {
-		p.LogInfo("handleSIPTimer: SIP callee is active, not hanging up",
+		p.LogInfo("handleSIPNoAnswerTimer: SIP callee is active, not hanging up",
 			"channelID", channelID,
 			"callID", callID)
 		return
 	}
 
-	p.LogInfo("handleSIPTimer: SIP callee did not answer, hanging up",
+	p.LogInfo("handleSIPNoAnswerTimer: SIP callee did not answer, hanging up",
 		"channelID", channelID,
 		"callID", callID,
 		"nodeID", p.nodeID)
 
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
-		p.LogError("handleSIPTimer: failed to lock call", "channelID", channelID, "err", err.Error())
+		p.LogError("handleSIPNoAnswerTimer: failed to lock call", "channelID", channelID, "err", err.Error())
 		return
 	}
 	unlocked := false
@@ -169,13 +169,13 @@ func (p *Plugin) handleSIPTimer(channelID, callID string) {
 	}
 
 	if err := p.cleanCallState(&state.Call, "sip_no_answer", callEndReasonNoAnswer); err != nil {
-		p.LogError("handleSIPTimer: failed to clean call state", "channelID", channelID, "err", err.Error())
+		p.LogError("handleSIPNoAnswerTimer: failed to clean call state", "channelID", channelID, "err", err.Error())
 	}
 
 	unlocked = true
 	p.unlockCall(channelID)
 
-	p.endDMCallRoom("handleSIPTimer", channelID)
+	p.endDMCallRoom("handleSIPNoAnswerTimer", channelID)
 
 	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
 		ChannelID:           channelID,
