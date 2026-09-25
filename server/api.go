@@ -900,6 +900,10 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		state.Call.Props.DisplayNumber = req.Number
 		if err := p.store.UpdateCall(&state.Call); err != nil {
 			p.LogError("handlePhoneCall: failed to set phone call props", "err", err.Error(), "callID", callID)
+			p.rollbackSession(sessionID, callID, createdCall)
+			res.Err = "Internal server error"
+			res.Code = http.StatusInternalServerError
+			return
 		}
 	}
 
