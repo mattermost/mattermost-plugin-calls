@@ -1050,6 +1050,32 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 	}
 	channelID := dmChannel.Id
 
+	// Verify an active call exists and the caller has a confirmed session in it
+	// before dialing, so we can return the call_id without a racy post-dial lookup.
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		p.LogError("handleAddPhoneCall: failed to lock call", "channelID", channelID, "err", err.Error())
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	var callID string
+	if state != nil {
+		for _, s := range state.sessions {
+			if s.UserID == userID && s.ConfirmedAt > 0 {
+				callID = state.Call.ID
+				break
+			}
+		}
+	}
+	p.unlockCall(channelID)
+
+	if callID == "" {
+		res.Err = "no active call or caller is not in the call"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
 	info, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
 	if err != nil {
 		p.LogError("handleAddPhoneCall: failed to create SIP participant",
@@ -1058,15 +1084,6 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		res.ErrID = errIDDialFailed
 		res.Code = http.StatusInternalServerError
 		return
-	}
-
-	call, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
-	if err != nil && !errors.Is(err, db.ErrNotFound) {
-		p.LogError("handleAddPhoneCall: failed to get active call", "err", err.Error(), "channelID", channelID)
-	}
-	var callID string
-	if call != nil {
-		callID = call.ID
 	}
 
 	w.Header().Set("Content-Type", "application/json")
