@@ -1382,8 +1382,6 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 			"channelID", channelID, "err", err.Error())
 	}
 
-	p.cancelSIPNoAnswerTimerIfAnswered(state, channelID)
-
 	p.publishWebSocketEvent(wsEventUserJoined, map[string]interface{}{
 		"user_id":    identity,
 		"session_id": sid,
