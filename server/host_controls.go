@@ -105,7 +105,7 @@ func (p *Plugin) hostMuteParticipant(requesterID, channelID, sessionID string) e
 	// send a RemoteMute signal over the participant's own signaling connection,
 	// which the livekit-client SDK handles by calling pub.mute() locally — the
 	// same effect as the WS-driven path, without the extra round-trip.
-	if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(ust.UserID, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+	if err := p.livekitMuteParticipant(channelID, livekitIdentity(ust, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
 		p.LogError("hostMuteParticipant: failed to mute participant via LiveKit",
 			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 	}
@@ -150,7 +150,7 @@ func (p *Plugin) hostMuteAllParticipants(requesterID, channelID string) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := p.livekitMuteParticipant(channelID, composeLivekitIdentity(s.UserID, id)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+			if err := p.livekitMuteParticipant(channelID, livekitIdentity(s, id)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
 				p.LogError("hostMuteAllParticipants: failed to mute participant via LiveKit",
 					"channelID", channelID, "sessionID", id, "err", err.Error())
 			}
@@ -203,7 +203,7 @@ func (p *Plugin) hostSwitchOffParticipantScreen(requesterID, channelID, sessionI
 	// is still the working path for every client today; this must become the
 	// returned error when that event is removed (MM-69502 PR 7).
 	if err := p.livekitSendHostControl(channelID,
-		composeLivekitIdentity(ust.UserID, sessionID),
+		livekitIdentity(ust, sessionID),
 		hostControlActionStopScreenshare); err != nil {
 		p.LogError("failed to send stop screenshare host control",
 			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
@@ -244,7 +244,7 @@ func (p *Plugin) hostLowerParticipantHand(requesterID, channelID, sessionID stri
 	// ParticipantAttributesChanged. The WS event below still goes to the target
 	// client to surface the "host lowered your hand" notice (and acts as a fallback
 	// when LiveKit is not configured).
-	if err := p.livekitLowerParticipantHand(channelID, composeLivekitIdentity(ust.UserID, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+	if err := p.livekitLowerParticipantHand(channelID, livekitIdentity(ust, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
 		p.LogError("hostLowerParticipantHand: failed to lower hand via LiveKit",
 			"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 	}
@@ -312,7 +312,7 @@ func (p *Plugin) hostRemoveParticipant(requesterID, channelID, sessionID string)
 			return
 		}
 
-		if err := p.livekitRemoveParticipant(channelID, composeLivekitIdentity(ust.UserID, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+		if err := p.livekitRemoveParticipant(channelID, livekitIdentity(ust, sessionID)); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
 			p.LogError("hostRemoveParticipant: failed to remove participant via LiveKit",
 				"channelID", channelID, "sessionID", sessionID, "err", err.Error())
 		}

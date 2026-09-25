@@ -9,7 +9,7 @@ import {HostRemovedYouFromCallErr, userLeftChannelErr, userRemovedFromChannelErr
 
 import {channelIDForCurrentCall} from './selectors';
 import {getCallsClient, hasLiveCallClient} from './utils';
-import {handleHostRemoved, handleUserJoined, handleUserLeft, handleUserRemovedFromChannel} from './websocket_handlers';
+import {handleHostRemoved, handleUserJoined, handleUserLeft, handleUserRemovedFromChannel, setParticipantRemovedChannelID} from './websocket_handlers';
 
 type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 
@@ -124,6 +124,35 @@ describe('websocket_handlers', () => {
             expect(mockedDisplayCallErrorModal).not.toHaveBeenCalled();
             expect(store.dispatch).not.toHaveBeenCalled();
             expect(disconnect).not.toHaveBeenCalled();
+        });
+
+        it('callsClient already torn down (PARTICIPANT_REMOVED race): shows modal via module variable', () => {
+            mockedGetCurrentUserId.mockReturnValue('me');
+            mockedChannelIDForCurrentCall.mockReturnValue('');
+            const disconnect = jest.fn();
+            mockedGetCallsClient.mockReturnValue({disconnect});
+            const store = makeStore();
+
+            setParticipantRemovedChannelID('call-channel');
+
+            handleUserRemovedFromChannel(store as never, buildEvent({
+                channel_id: 'call-channel',
+                user_id: 'me',
+                remover_id: 'admin',
+            }));
+
+            expect(mockedDisplayCallErrorModal).toHaveBeenCalledWith(userRemovedFromChannelErr, 'call-channel');
+            expect(disconnect).toHaveBeenCalledTimes(1);
+
+            // Module variable is cleared after the modal so a subsequent channel leave
+            // for a different channel does not spuriously show the in-call error.
+            mockedChannelIDForCurrentCall.mockReturnValue('');
+            handleUserRemovedFromChannel(store as never, buildEvent({
+                channel_id: 'call-channel',
+                user_id: 'me',
+                remover_id: 'admin',
+            }));
+            expect(mockedDisplayCallErrorModal).toHaveBeenCalledTimes(1);
         });
     });
 

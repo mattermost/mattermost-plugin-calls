@@ -30,6 +30,7 @@ func main() {
 		addSessionsBatchers:    map[string]*batching.Batcher{},
 		removeSessionsBatchers: map[string]*batching.Batcher{},
 		dmNoAnswerTimers:       map[string]*time.Timer{},
+		sipNoAnswerTimers:      map[string]*time.Timer{},
 		dirtyCalls:             map[string]struct{}{},
 		reconcilerSuspicions:   map[string]int{},
 		dirtyCallsCh:           make(chan struct{}, 1),

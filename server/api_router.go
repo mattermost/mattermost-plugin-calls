@@ -160,8 +160,14 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 	router.HandleFunc("/livekit-token", p.handleGetLiveKitToken).Methods("GET")
 	router.HandleFunc("/livekit-token", p.handleCreateLiveKitSession).Methods("POST")
 
-	// Outbound phone call
+	// Outbound phone call — self-contained: creates the call session and returns
+	// a LiveKit token in one round trip (no prior join required).
 	router.HandleFunc("/phone-call", p.handlePhoneCall).Methods("POST")
+
+	// Dial into an existing call — client must have already joined the bot DM
+	// channel call. Returns {call_id, channel_id, sip_call_id} only.
+	// Useful for testing and future multi-party dial-in.
+	router.HandleFunc("/add-phone-call", p.handleAddPhoneCall).Methods("POST")
 
 	// Cloud
 	router.HandleFunc("/cloud-notify-admins", func(w http.ResponseWriter, r *http.Request) {

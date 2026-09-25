@@ -40,7 +40,7 @@ import {
     showSwitchCallModal,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import CallClient, {CALL_EVENT} from 'src/clients/call';
+import CallClient, {CALL_EVENT, DisconnectReason} from 'src/clients/call';
 import type {ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
@@ -136,7 +136,6 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
-import {applyCallHostChanged} from './host_change';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
@@ -175,6 +174,7 @@ import {
     shouldRenderDesktopWidget,
 } from './utils';
 import {
+    applyCallHostChanged,
     applyCallJobState,
     dispatchReaction,
     handleCallEnd,
@@ -196,6 +196,7 @@ import {
     handleUserUnraisedHand,
     handleUserVideoOff,
     handleUserVideoOn,
+    setParticipantRemovedChannelID,
 } from './websocket_handlers';
 
 export default class Plugin {
@@ -664,7 +665,6 @@ export default class Plugin {
                 const state = store.getState();
 
                 window.callsClient = new CallClient();
-                window.callsClientLastChannelID = channelID;
                 window.currentCallData = {...CurrentCallDataDefault};
 
                 const locale = getCurrentUserLocale(state) || 'en';
@@ -705,7 +705,7 @@ export default class Plugin {
 
                 window.callsClient.on(CALL_EVENT.CONNECTED, () => store.dispatch(setClientConnecting(false)));
 
-                window.callsClient.on(CALL_EVENT.DISCONNECTED, () => {
+                window.callsClient.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
                     store.dispatch(setClientConnecting(false));
 
                     unmountCallWidget();
@@ -719,6 +719,12 @@ export default class Plugin {
                         const currentUserID = getCurrentUserId(store.getState());
 
                         playSound('leave_self');
+
+                        if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
+                            setParticipantRemovedChannelID(channelID);
+                        } else {
+                            setParticipantRemovedChannelID('');
+                        }
 
                         delete window.callsClient;
                         delete window.currentCallData;

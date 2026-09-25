@@ -103,6 +103,10 @@ type CallStateClient struct {
 	Transcription          *JobStateClient `json:"transcription,omitempty"`
 	LiveCaptions           *JobStateClient `json:"live_captions,omitempty"`
 	DismissedNotification  map[string]bool `json:"dismissed_notification,omitempty"`
+
+	Type          string `json:"type,omitempty"`
+	PhoneNumber   string `json:"phone_number,omitempty"`
+	DisplayNumber string `json:"display_number,omitempty"`
 }
 
 type JobStateClient struct {
@@ -243,6 +247,9 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		Transcription:          getClientStateFromCallJob(cs.Transcription),
 		LiveCaptions:           getClientStateFromCallJob(cs.LiveCaptions),
 		DismissedNotification:  dismissed,
+		Type:                   cs.Props.Type,
+		PhoneNumber:            cs.Props.PhoneNumber,
+		DisplayNumber:          cs.Props.DisplayNumber,
 	}
 }
 

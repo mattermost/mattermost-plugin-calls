@@ -381,8 +381,9 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 
 	setCallEnded(&state.Call)
 
-	// A DM call may still have a no-answer timer pending against it.
+	// A DM/phone call may still have no-answer timers pending against it.
 	p.cancelDMNoAnswerTimer(channelID)
+	p.cancelSIPNoAnswerTimer(channelID)
 
 	p.LogInfo("call ended",
 		"callID", state.Call.ID,

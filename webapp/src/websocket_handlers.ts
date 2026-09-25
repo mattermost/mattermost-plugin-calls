@@ -49,7 +49,6 @@ import {
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
-import {applyCallHostChanged} from 'src/host_change';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/session/actions';
 import {
@@ -68,6 +67,7 @@ import {
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
 } from './action_types';
+import {applyCallHostChanged} from './host_change';
 import {
     channelIDForCurrentCall,
     profilesInCurrentCallMap,
@@ -82,6 +82,16 @@ import {
 } from './utils';
 
 export type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
+
+// Channel ID saved when the client is evicted from a LiveKit room (PARTICIPANT_REMOVED).
+// Lets handleUserRemovedFromChannel show the error modal even if the Mattermost WS
+// user_removed event arrives after window.callsClient has already been torn down.
+// Cleared after the modal is shown or on any non-eviction disconnect.
+let participantRemovedChannelID = '';
+
+export function setParticipantRemovedChannelID(channelID: string) {
+    participantRemovedChannelID = channelID;
+}
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
@@ -282,6 +292,8 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
     applyCallHostChanged(store, channelID, ev.data.hostID, ev.data.call_id);
 }
 
+export {applyCallHostChanged};
+
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
 export function handleCallJobState(store: Store, ev: WebSocketMessage<CallJobStateData>) {
@@ -340,10 +352,11 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
 
     // channelIDForCurrentCall reads window.callsClient?.channelID, which may already
     // be deleted when user_removed arrives after a LiveKit PARTICIPANT_REMOVED kick.
-    // window.callsClientLastChannelID is set at join time and survives disconnect.
+    // participantRemovedChannelID is set in that case and survives the disconnect.
     const currentCallChannelID = channelIDForCurrentCall(store.getState()) ||
-        window.callsClientLastChannelID || '';
+        participantRemovedChannelID;
     if (removedUserID === currentUserID && channelID === currentCallChannelID) {
+        participantRemovedChannelID = '';
         const errorMessage = removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr;
         store.dispatch(displayCallErrorModal(errorMessage, channelID));
         getCallsClient()?.disconnect();

@@ -73,6 +73,9 @@ type Plugin struct {
 	dmNoAnswerTimers    map[string]*time.Timer
 	dmNoAnswerTimersMut sync.Mutex
 
+	sipNoAnswerTimers    map[string]*time.Timer
+	sipNoAnswerTimersMut sync.Mutex
+
 	// reconcilerSuspicions tracks how many consecutive ticks each confirmed
 	// session has been absent from LiveKit. Cleared when the session is confirmed
 	// present or reaped. Guarded by reconcilerSuspicionsMut.

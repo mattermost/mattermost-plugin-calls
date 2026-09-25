@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	"github.com/livekit/protocol/livekit"
 	lksdk "github.com/livekit/server-sdk-go/v2"
 )
@@ -53,6 +55,17 @@ var errLiveKitNotConfigured = errors.New("LiveKit is not configured")
 
 func composeLivekitIdentity(userID, sessionID string) string {
 	return userID + userIDSessionIDSeparator + sessionID
+}
+
+// livekitIdentity returns the LiveKit participant identity for a session.
+// Regular participants use userID___sessionID; SIP participants use their
+// phone-number identity directly ("sip:+15551234") with no suffix — that is
+// what was set as ParticipantIdentity when the SIP leg was created.
+func livekitIdentity(s *public.CallSession, sessionID string) string {
+	if s.IsSIPParticipant {
+		return s.UserID
+	}
+	return composeLivekitIdentity(s.UserID, sessionID)
 }
 
 // parseLivekitIdentity splits a participant identity minted by
