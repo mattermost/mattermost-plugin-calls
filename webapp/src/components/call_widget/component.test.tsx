@@ -566,7 +566,6 @@ describe('DM call presentation with video enabled', () => {
                     connectedDMUser={callee}
                     enableVideo={true}
                     isDMCalling={sessions.length > 0 && sessions.every((s) => s.user_id === 'user-id')}
-                    callOwnerID='user-id'
                     {...overrides}
                 />
             </RawIntlProvider>
@@ -629,43 +628,12 @@ describe('DM call presentation with video enabled', () => {
         expect(screen.queryByTestId('calls-widget-profile-other')).not.toBeInTheDocument();
     });
 
-    const tileOrder = () => screen.getAllByTestId(/^calls-widget-profile-(ringing|self|other)$/).map((tile) => tile.dataset.testid);
+    test.each(stages)('a DM call %s renders the current user\'s own tile first', (_, sessions, overrides) => {
+        renderWidget(sessions, overrides);
 
-    test('a ringing DM call renders the caller tile before the callee tile', () => {
-        renderWidget([ownSession]);
+        const tiles = screen.getAllByTestId(/^calls-widget-profile-(ringing|self|other)$/);
 
-        expect(tileOrder()).toEqual([
-            'calls-widget-profile-self',
-            'calls-widget-profile-ringing',
-        ]);
-    });
-
-    // The call does not exist yet while the caller is connecting, so there is no owner to go by.
-    test('a DM call still connecting without an owner renders the caller tile first', () => {
-        renderWidget([], {clientConnecting: true, profiles: {}, callOwnerID: undefined});
-
-        expect(tileOrder()).toEqual([
-            'calls-widget-profile-self',
-            'calls-widget-profile-ringing',
-        ]);
-    });
-
-    test('an answered DM call renders the caller tile first on the caller side', () => {
-        renderWidget([ownSession, calleeSession]);
-
-        expect(tileOrder()).toEqual([
-            'calls-widget-profile-self',
-            'calls-widget-profile-other',
-        ]);
-    });
-
-    test('an answered DM call renders the caller tile first on the callee side', () => {
-        renderWidget([ownSession, calleeSession], {callOwnerID: calleeID});
-
-        expect(tileOrder()).toEqual([
-            'calls-widget-profile-other',
-            'calls-widget-profile-self',
-        ]);
+        expect(tiles[0].dataset.testid).toBe('calls-widget-profile-self');
     });
 
     test('the ringing callee avatar pulses while the caller avatar does not', () => {

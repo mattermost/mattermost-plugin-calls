@@ -17,7 +17,6 @@ import {
 import {
     allowScreenSharing,
     areHostControlsAllowed,
-    callOwnerIDForCurrentCall,
     callsConfig,
     channelForCurrentCall,
     clientConnecting,
@@ -39,7 +38,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
-import {alphaSortSessions, callerFirstSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
+import {alphaSortSessions, getUserIdFromDM, isDMChannel, selfFirstSortSessions, stateSortSessions} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, modals, selectRhsPost} from 'src/webapp_globals';
 
 import ExpandedView from './component';
@@ -56,7 +55,7 @@ const mapStateToProps = (state: GlobalState) => {
     const isDM = isDMChannel(channel);
     const sessions = sessionsInCurrentCall(state)
         .sort(alphaSortSessions(profiles))
-        .sort(isDM ? callerFirstSortSessions(callOwnerIDForCurrentCall(state) || currentUserID) : stateSortSessions(screenSharingSession?.session_id || '', true));
+        .sort(isDM ? selfFirstSortSessions(currentUserID) : stateSortSessions(screenSharingSession?.session_id || '', true));
 
     let connectedDMUser;
     if (channel && isDM) {

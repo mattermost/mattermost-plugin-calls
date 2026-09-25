@@ -45,7 +45,7 @@ const dmChannelID = 'dm-channel-id';
 const callerID = 'caller-id';
 const calleeID = 'callee-id';
 
-// The callee sorts first alphabetically, so the caller only leads if caller-first wins.
+// The callee sorts first alphabetically, so the caller only leads on their own side if self-first wins.
 const caller = {id: callerID, username: 'zed', first_name: 'Zed', last_name: 'Caller', roles: ''} as UserProfile;
 const callee = {id: calleeID, username: 'alice', first_name: 'Alice', last_name: 'Callee', roles: ''} as UserProfile;
 
@@ -94,15 +94,15 @@ const renderAs = (currentUserID: string) => render(
 const sessionOrder = () => screen.getAllByTestId('session').map((el) => el.textContent);
 
 describe('ExpandedView (connected)', () => {
-    test('a DM call lists the caller first on the caller side', () => {
+    test('a DM call seen by the caller lists the caller first', () => {
         renderAs(callerID);
 
         expect(sessionOrder()).toEqual([callerID, calleeID]);
     });
 
-    test('a DM call lists the caller first on the callee side', () => {
+    test('a DM call seen by the callee lists the callee first', () => {
         renderAs(calleeID);
 
-        expect(sessionOrder()).toEqual([callerID, calleeID]);
+        expect(sessionOrder()).toEqual([calleeID, callerID]);
     });
 });
