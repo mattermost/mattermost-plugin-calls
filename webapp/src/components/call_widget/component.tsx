@@ -2323,16 +2323,20 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const selfOnly = this.props.otherSessions.length === 0 && !calleePending;
 
         return (
-            <div
-                className='calls-widget-profiles'
-                style={{
-                    display: 'flex',
-                    gap: '8px',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '100%',
-                }}
-            >
+            <div className='calls-widget-profiles'>
+                { selfProfile && (selfSession || this.props.clientConnecting) &&
+                <CallsWidgetProfile
+                    videoStream={this.state.selfVideoStream}
+                    profile={selfProfile}
+                    isSpeaking={Boolean(selfSession?.voice)}
+                    isMuted={!calleePending && Boolean(selfSession) && !selfSession?.unmuted}
+                    hasVideo={Boolean(selfSession?.video)}
+                    videoView={videoView}
+                    mirrorVideo={localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
+                    singleSession={selfOnly}
+                    testID='calls-widget-profile-self'
+                />
+                }
 
                 { calleePending && otherProfile &&
                 <CallsWidgetProfile
@@ -2358,20 +2362,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     videoView={videoView}
                     mirrorVideo={false}
                     testID='calls-widget-profile-other'
-                />
-                }
-
-                { selfProfile && (selfSession || this.props.clientConnecting) &&
-                <CallsWidgetProfile
-                    videoStream={this.state.selfVideoStream}
-                    profile={selfProfile}
-                    isSpeaking={Boolean(selfSession?.voice)}
-                    isMuted={!calleePending && Boolean(selfSession) && !selfSession?.unmuted}
-                    hasVideo={Boolean(selfSession?.video)}
-                    videoView={videoView}
-                    mirrorVideo={localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO_KEY) === 'true'}
-                    singleSession={selfOnly}
-                    testID='calls-widget-profile-self'
                 />
                 }
             </div>
