@@ -67,6 +67,7 @@ import {
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
 } from './action_types';
+import {applyCallHostChanged} from './host_change';
 import {
     channelIDForCurrentCall,
     profilesInCurrentCallMap,
@@ -291,7 +292,7 @@ export function handleCallHostChanged(store: Store, ev: WebSocketMessage<CallHos
     applyCallHostChanged(store, channelID, ev.data.hostID, ev.data.call_id);
 }
 
-export {applyCallHostChanged} from './host_change';
+export {applyCallHostChanged};
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
