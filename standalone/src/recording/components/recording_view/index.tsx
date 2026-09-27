@@ -6,7 +6,7 @@ import {UserProfile} from '@mattermost/types/users';
 import Avatar from 'plugin/components/avatar/avatar';
 import {ParticipantsGrid} from 'plugin/components/expanded_view/participants_grid';
 import {logErr} from 'plugin/log';
-import {alphaSortSessions, getUserDisplayName, stateSortSessions, untranslatable} from 'plugin/utils';
+import {getUserDisplayName, untranslatable} from 'plugin/utils';
 import React, {useCallback, useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
@@ -18,7 +18,7 @@ import {
     hostIDForCurrentCall,
     profilesInCurrentCallMap,
     screenSharingSessionForCurrentCall,
-    sessionsInCurrentCall,
+    sortedSessionsInCurrentCall,
 } from 'src/selectors';
 
 const RecordingView = () => {
@@ -29,9 +29,7 @@ const RecordingView = () => {
     const screenSharingSession = useSelector(screenSharingSessionForCurrentCall);
 
     const profiles = useSelector(profilesInCurrentCallMap);
-    const sessions = useSelector((state: GlobalState) => sessionsInCurrentCall(state)
-        .sort(alphaSortSessions(profiles))
-        .sort(stateSortSessions(screenSharingSession?.session_id || '', true)));
+    const sessions = useSelector(sortedSessionsInCurrentCall);
     const profileImages = useSelector((state: GlobalState) => callProfileImages(state, callsClient?.channelID || ''));
 
     const hostID = useSelector((state: GlobalState) => hostIDForCurrentCall(state));

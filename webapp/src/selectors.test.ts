@@ -4,6 +4,7 @@
 import type {UserSessionState} from '@mattermost/calls-common/lib/types';
 import type {Channel} from '@mattermost/types/channels';
 import type {GlobalState} from '@mattermost/types/store';
+import type {UserProfile} from '@mattermost/types/users';
 import type CallsClient from 'src/client';
 
 import {
@@ -13,6 +14,9 @@ import {
     isCurrentUserOwnerOfCurrentCall,
     numUsersInCallInChannel,
     otherUserIDForCurrentDMCall,
+    selfFirstSessionsInCurrentCall,
+    sessionsInCurrentCall,
+    sortedSessionsInCurrentCall,
 } from './selectors';
 
 const channelID = 'dm-channel-id';
@@ -58,6 +62,8 @@ type StateOpts = {
     sessions?: UserSessionState[] | null;
     clientStateChannelID?: string;
     dmCalleeAnsweredAt?: number;
+    profiles?: UserProfile[];
+    screenSharingSessionID?: string;
 };
 
 const stubState = ({
@@ -66,16 +72,19 @@ const stubState = ({
     sessions = [ownSession],
     clientStateChannelID,
     dmCalleeAnsweredAt = 0,
+    profiles = [],
+    screenSharingSessionID,
 }: StateOpts = {}) => ({
     'plugins-com.mattermost.calls': {
         calls: call ? {[channelID]: {channelID, startAt: 0, threadID: '', ...call}} : {},
         sessions: sessions ? {[channelID]: Object.fromEntries(sessions.map((s) => [s.session_id, s]))} : {},
         clientStateReducer: clientStateChannelID ? {channelID: clientStateChannelID, sessionID: 'widget-session'} : null,
         dmCalleeAnsweredAt: dmCalleeAnsweredAt ? {[callID]: dmCalleeAnsweredAt} : {},
+        screenSharingIDs: screenSharingSessionID ? {[channelID]: screenSharingSessionID} : {},
     },
     entities: {
         channels: {channels: channel ? {[channel.id]: channel} : {}},
-        users: {currentUserId: currentUserID, profiles: {}},
+        users: {currentUserId: currentUserID, profiles: Object.fromEntries(profiles.map((p) => [p.id, p]))},
     },
 } as unknown as GlobalState);
 
@@ -259,5 +268,73 @@ describe('numUsersInCallInChannel', () => {
 
     test('should return zero when there is no call in the channel', () => {
         expect(numUsersInCallInChannel(stubState({sessions: null}), channelID)).toBe(0);
+    });
+});
+
+const thirdUserID = 'third-user-id';
+const thirdSession = stubSession('third-session', thirdUserID);
+
+// The current user sorts last alphabetically, so any order that puts them first came from something else.
+const namedProfiles = [
+    {id: currentUserID, username: 'zed', first_name: 'Zed', last_name: ''},
+    {id: otherUserID, username: 'alice', first_name: 'Alice', last_name: ''},
+    {id: thirdUserID, username: 'bob', first_name: 'Bob', last_name: ''},
+] as UserProfile[];
+
+const sessionIDs = (sessions: UserSessionState[]) => sessions.map((s) => s.session_id);
+
+describe('sortedSessionsInCurrentCall', () => {
+    test('should sort alphabetically when nobody stands out', () => {
+        const state = stubState({channel: openChannel, sessions: [ownSession, otherSession, thirdSession], profiles: namedProfiles});
+
+        expect(sessionIDs(sortedSessionsInCurrentCall(state))).toEqual(['other-session', 'third-session', 'own-session']);
+    });
+
+    test('should put unmuted sessions ahead of the alphabetical order', () => {
+        const state = stubState({channel: openChannel, sessions: [{...ownSession, unmuted: true}, otherSession, thirdSession], profiles: namedProfiles});
+
+        expect(sessionIDs(sortedSessionsInCurrentCall(state))).toEqual(['own-session', 'other-session', 'third-session']);
+    });
+
+    test('should put the screen sharer first', () => {
+        const state = stubState({
+            channel: openChannel,
+            sessions: [ownSession, otherSession, thirdSession],
+            profiles: namedProfiles,
+            screenSharingSessionID: thirdSession.session_id,
+        });
+
+        expect(sessionIDs(sortedSessionsInCurrentCall(state))).toEqual(['third-session', 'other-session', 'own-session']);
+    });
+
+    test('should not reorder the sessions shared with other selectors', () => {
+        const state = stubState({channel: openChannel, sessions: [ownSession, otherSession, thirdSession], profiles: namedProfiles});
+        const before = sessionIDs(sessionsInCurrentCall(state));
+
+        sortedSessionsInCurrentCall(state);
+
+        expect(sessionIDs(sessionsInCurrentCall(state))).toEqual(before);
+    });
+
+    test('should return the same array while the state is unchanged', () => {
+        const state = stubState({channel: openChannel, sessions: [ownSession, otherSession], profiles: namedProfiles});
+
+        expect(sortedSessionsInCurrentCall(state)).toBe(sortedSessionsInCurrentCall(state));
+    });
+});
+
+describe('selfFirstSessionsInCurrentCall', () => {
+    test('should put the current user first even when they sort last and the other side is unmuted', () => {
+        const state = stubState({sessions: [{...otherSession, unmuted: true}, ownSession], profiles: namedProfiles});
+
+        expect(sessionIDs(selfFirstSessionsInCurrentCall(state))).toEqual(['own-session', 'other-session']);
+    });
+
+    test('should not reorder the sessions shared with other selectors', () => {
+        const state = stubState({sessions: [otherSession, ownSession], profiles: namedProfiles});
+
+        selfFirstSessionsInCurrentCall(state);
+
+        expect(sessionIDs(sessionsInCurrentCall(state))).toEqual(['other-session', 'own-session']);
     });
 });

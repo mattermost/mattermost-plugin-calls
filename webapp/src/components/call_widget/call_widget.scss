@@ -182,4 +182,12 @@ a.calls-channel-link {
   .pulsingAnimation {
     animation: calls-pulsing 1.6s ease-in-out infinite;
   }
+
+  .calls-widget-profiles {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
 }

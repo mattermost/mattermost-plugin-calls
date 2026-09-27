@@ -31,14 +31,15 @@ import {
     recordingMaxDuration,
     recordingsEnabled,
     screenSharingSessionForCurrentCall,
+    selfFirstSessionsInCurrentCall,
     sessionForCurrentCall,
     sessionsForOtherUsersInCall,
-    sessionsInCurrentCall,
     sessionsInCurrentCallMap,
+    sortedSessionsInCurrentCall,
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
-import {alphaSortSessions, getUserIdFromDM, isDMChannel, selfFirstSortSessions, stateSortSessions} from 'src/utils';
+import {getUserIdFromDM, isDMChannel} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, modals, selectRhsPost} from 'src/webapp_globals';
 
 import ExpandedView from './component';
@@ -53,9 +54,7 @@ const mapStateToProps = (state: GlobalState) => {
 
     const profiles = profilesInCurrentCallMap(state);
     const isDM = isDMChannel(channel);
-    const sessions = sessionsInCurrentCall(state)
-        .sort(alphaSortSessions(profiles))
-        .sort(isDM ? selfFirstSortSessions(currentUserID) : stateSortSessions(screenSharingSession?.session_id || '', true));
+    const sessions = isDM ? selfFirstSessionsInCurrentCall(state) : sortedSessionsInCurrentCall(state);
 
     let connectedDMUser;
     if (channel && isDM) {

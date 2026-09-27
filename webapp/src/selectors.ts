@@ -46,7 +46,16 @@ import {
     IncomingCallNotification,
     LiveCaptions,
 } from 'src/types/types';
-import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL, getUserIdFromDM} from 'src/utils';
+import {
+    alphaSortSessions,
+    getCallsClientChannelID,
+    getCallsClientInitTime,
+    getCallsClientSessionID,
+    getChannelURL,
+    getUserIdFromDM,
+    selfFirstSortSessions,
+    stateSortSessions,
+} from 'src/utils';
 
 import {pluginId} from './manifest';
 
@@ -360,6 +369,25 @@ export const screenSharingSessionForCurrentCall: (state: GlobalState) => UserSes
         channelIDForCurrentCall,
         sessionsInCalls,
         (ids, channelID, sessions) => sessions[channelID]?.[ids[channelID]],
+    );
+
+export const sortedSessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
+    createSelector(
+        'sortedSessionsInCurrentCall',
+        sessionsInCurrentCall,
+        profilesInCurrentCallMap,
+        screenSharingSessionForCurrentCall,
+        (sessions, profiles, screenSharingSession) => sessions
+            .toSorted(alphaSortSessions(profiles))
+            .toSorted(stateSortSessions(screenSharingSession?.session_id || '', true)),
+    );
+
+export const selfFirstSessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
+    createSelector(
+        'selfFirstSessionsInCurrentCall',
+        sessionsInCurrentCall,
+        getCurrentUserId,
+        (sessions, currentUserID) => sessions.toSorted(selfFirstSortSessions(currentUserID)),
     );
 
 export const threadIDForCallInChannel = (state: GlobalState, channelID: string) => {
