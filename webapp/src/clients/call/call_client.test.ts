@@ -23,6 +23,7 @@ import {getPersistentStorage, getScreenStream} from 'src/utils';
 
 import CallClient from './call_client';
 import {CALL_EVENT, CALL_MESSAGE_TOPICS} from './constants';
+import type {LiveKitSessionResponse} from './types';
 
 jest.mock('livekit-client', () => {
     const actual = jest.requireActual('livekit-client');
@@ -232,6 +233,33 @@ describe('CallClient', () => {
             await client.connect({channelID: 'test-channel'});
 
             expect(listener).toHaveBeenCalledWith(sessionResponse.call_state);
+        });
+
+        it('joins with a session the server already created instead of creating another', async () => {
+            const session: LiveKitSessionResponse = {
+                session_id: 'phone-session',
+                token: 'phone-token',
+                url: 'wss://phone.url',
+                call_state: {
+                    id: 'phone-call-id',
+                    start_at: 1,
+                    sessions: [],
+                    thread_id: '',
+                    post_id: '',
+                    screen_sharing_session_id: '',
+                    owner_id: 'me-id',
+                    host_id: 'me-id',
+                },
+            };
+            const listener = jest.fn();
+            client.on(CALL_EVENT.CALL_STATE, listener);
+
+            await client.connect({channelID: 'bot-dm', session});
+
+            expect(RestClient.fetch).not.toHaveBeenCalledWith(expect.stringContaining('livekit-token'), expect.anything());
+            expect(mockRoom.connect).toHaveBeenCalledWith('wss://phone.url', 'phone-token');
+            expect(client.getSessionID()).toBe('phone-session');
+            expect(listener).toHaveBeenCalledWith(session.call_state);
         });
 
         it('throws if a room is already connected', async () => {

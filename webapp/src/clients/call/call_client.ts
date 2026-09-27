@@ -255,7 +255,7 @@ export default class CallClient extends EventEmitter {
             // first joiner, and returns the state snapshot. The session id comes
             // from the server rather than from a WebSocket connection, which is
             // what lets us join with no Calls WebSocket at all.
-            const response = await this.createSession(connectPayload);
+            const response = connectPayload.session ?? await this.createSession(connectPayload);
             token = response.token;
             url = response.url;
             this.sessionID = response.session_id;
