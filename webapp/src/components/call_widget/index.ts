@@ -35,13 +35,13 @@ import {
     screenSharingSessionForCurrentCall,
     sessionForCurrentCall,
     sessionsForOtherUsersInCall,
-    sessionsInCurrentCall,
     sessionsInCurrentCallMap,
     sortedIncomingCalls,
+    sortedSessionsInCurrentCall,
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
-import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
+import {getUserIdFromDM, isDMChannel} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 
 import CallWidget from './component';
@@ -57,9 +57,7 @@ const mapStateToProps = (state: GlobalState) => {
     const screenSharingSession = screenSharingSessionForCurrentCall(state);
 
     const profiles = profilesInCurrentCallMap(state);
-    const sessions = sessionsInCurrentCall(state)
-        .sort(alphaSortSessions(profiles))
-        .sort(stateSortSessions(screenSharingSession?.session_id || '', true));
+    const sessions = sortedSessionsInCurrentCall(state);
 
     const {channelURL, channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
 

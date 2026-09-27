@@ -628,12 +628,18 @@ describe('DM call presentation with video enabled', () => {
         expect(screen.queryByTestId('calls-widget-profile-other')).not.toBeInTheDocument();
     });
 
-    test.each(stages)('a DM call %s renders the current user\'s own tile first', (_, sessions, overrides) => {
+    const tileOrders: Array<[string, UserSessionState[], Partial<Props>, string[]]> = [
+        ['still connecting', [], {clientConnecting: true, profiles: {}}, ['calls-widget-profile-self', 'calls-widget-profile-ringing']],
+        ['ringing', [ownSession], {}, ['calls-widget-profile-self', 'calls-widget-profile-ringing']],
+        ['answered', [ownSession, calleeSession], {}, ['calls-widget-profile-self', 'calls-widget-profile-other']],
+    ];
+
+    test.each(tileOrders)('a DM call %s renders the current user\'s own tile first', (_, sessions, overrides, expected) => {
         renderWidget(sessions, overrides);
 
         const tiles = screen.getAllByTestId(/^calls-widget-profile-(ringing|self|other)$/);
 
-        expect(tiles[0].dataset.testid).toBe('calls-widget-profile-self');
+        expect(tiles.map((tile) => tile.dataset.testid)).toEqual(expected);
     });
 
     test('the ringing callee avatar pulses while the caller avatar does not', () => {
