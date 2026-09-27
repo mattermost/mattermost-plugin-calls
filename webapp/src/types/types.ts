@@ -1,9 +1,13 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallPostProps, CallsConfig, LiveCaption, TranscribeAPI} from '@mattermost/calls-common/lib/types';
+import {CallPostProps, CallsConfig as BaseCallsConfig, LiveCaption, TranscribeAPI} from '@mattermost/calls-common/lib/types';
 import {MessageDescriptor} from 'react-intl';
 import {RTCStats} from 'src/types/webrtc';
+
+export type CallsConfig = BaseCallsConfig & {
+    EnableSIPOutbound?: boolean;
+};
 
 export const CallsConfigDefault: CallsConfig = {
     ICEServers: [],
@@ -25,6 +29,7 @@ export const CallsConfigDefault: CallsConfig = {
     GroupCallsAllowed: false,
     EnableDCSignaling: false,
     EnableVideo: false,
+    EnableSIPOutbound: false,
 };
 
 export type ChannelState = {
