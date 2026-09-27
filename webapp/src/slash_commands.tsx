@@ -32,8 +32,9 @@ import {Store} from './types/mattermost-webapp';
 import {getCallsClient, getCallsWindow, getPersistentStorage, getPluginPath, isDMChannel, sendDesktopEvent, shouldRenderDesktopWidget} from './utils';
 
 type joinCallFn = (channelId: string, teamId?: string, title?: string, rootId?: string) => void;
+type dialPhoneNumberFn = (number: string) => void;
 
-export default async function slashCommandsHandler(store: Store, joinCall: joinCallFn, message: string, args: CommandArgs) {
+export default async function slashCommandsHandler(store: Store, joinCall: joinCallFn, dialPhoneNumber: dialPhoneNumberFn, message: string, args: CommandArgs) {
     const fullCmd = message.trim();
     const fields = fullCmd.split(/\s+/);
     if (fields.length < 2) {
@@ -157,6 +158,17 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             ));
         }
 
+        return {};
+    case 'dial':
+        if (fields.length < 3) {
+            store.dispatch(displayGenericErrorModal(
+                defineMessage({defaultMessage: 'Unable to place phone call'}),
+                defineMessage({defaultMessage: 'Usage: /call dial [number]'}),
+            ));
+            return {};
+        }
+
+        dialPhoneNumber(fields.slice(2).join(' '));
         return {};
     case 'link':
         break;

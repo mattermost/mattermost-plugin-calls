@@ -27,6 +27,7 @@ import {
     getCallsConfigEnvOverrides,
     getCallsStats,
     getCallsVersionInfo,
+    hostEndCallForEveryone,
     incomingCallOnChannel,
     joinUser,
     leaveUser,
@@ -41,7 +42,7 @@ import {
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import CallClient, {CALL_EVENT, DisconnectReason} from 'src/clients/call';
-import type {ScreenSharingSession} from 'src/clients/call/types';
+import type {LiveKitSessionResponse, ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
@@ -110,6 +111,7 @@ import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sh
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
+import {dialPhoneNumber, installTelLinkInterceptor, telLinkInterceptionSupported} from 'src/phone_call';
 import slashCommandsHandler from 'src/slash_commands';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
@@ -156,6 +158,7 @@ import {
     ringingEnabled,
     screenSharingSessionForCurrentCall,
     sessionsInCurrentCall,
+    sipOutboundEnabled,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {convertStatsToPanels} from './stats';
@@ -377,7 +380,7 @@ export default class Plugin {
         });
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
-            return slashCommandsHandler(store, joinCall, message, args);
+            return slashCommandsHandler(store, joinCall, dialNumber, message, args);
         });
 
         registry.registerDesktopNotificationHook?.(async (post, msgProps, channel, teamId, args) => {
@@ -444,6 +447,22 @@ export default class Plugin {
                 store.dispatch(displayCallsTestModeUser());
             }
         };
+
+        const dialNumber = (number: string) => dialPhoneNumber(store, number, (channelID, phoneSession) => connectCall(channelID, '', '', phoneSession));
+
+        if (telLinkInterceptionSupported()) {
+            let uninstallTelLinkInterceptor: (() => void) | undefined;
+            this.unsubscribers.push(store.subscribe(() => {
+                const enabled = sipOutboundEnabled(store.getState());
+                if (enabled && !uninstallTelLinkInterceptor) {
+                    uninstallTelLinkInterceptor = installTelLinkInterceptor(dialNumber);
+                } else if (!enabled && uninstallTelLinkInterceptor) {
+                    uninstallTelLinkInterceptor();
+                    uninstallTelLinkInterceptor = undefined;
+                }
+            }));
+            this.unsubscribers.push(() => uninstallTelLinkInterceptor?.());
+        }
 
         let channelHeaderMenuButtonID: string;
         const unregisterChannelHeaderMenuButton = () => {
@@ -618,7 +637,7 @@ export default class Plugin {
             }));
         }
 
-        const connectCall = async (channelID: string, title?: string, rootId?: string) => {
+        const connectCall = async (channelID: string, title?: string, rootId?: string, preparedSession?: LiveKitSessionResponse) => {
             const channel = getChannel(store.getState(), channelID);
 
             // Flush any pending logs from previous call
@@ -815,7 +834,19 @@ export default class Plugin {
                 store.dispatch(setClientConnecting(true));
 
                 const connectingClient = window.callsClient;
-                connectingClient.connect({channelID, title, threadID: rootId}).catch((err: Error) => {
+                const phoneChannelID = channelID;
+
+                // With a session from /phone-call the phone is already ringing, so a join
+                // that fails or is cancelled has to end the call to hang up the phone leg.
+                const endPhoneCallIfNotJoined = () => {
+                    if (preparedSession && !connectingClient.isConnected) {
+                        hostEndCallForEveryone(phoneChannelID).catch((err) => logErr('failed to end phone call after join did not complete', err));
+                    }
+                };
+
+                connectingClient.connect({channelID, title, threadID: rootId, session: preparedSession}).then(endPhoneCallIfNotJoined).catch((err: Error) => {
+                    endPhoneCallIfNotJoined();
+
                     // If a concurrent DISCONNECTED teardown already cleaned up (it deletes
                     // window.callsClient) or a new call has since replaced this client, this
                     // is a stale error — skip the error flow to avoid a spurious modal.
@@ -858,7 +889,7 @@ export default class Plugin {
                 store.dispatch(setClientConnecting(false));
                 store.dispatch(displayCallErrorModal(new Error(ev.data.message.errMsg), ev.data.message.callID));
             } else if (ev.data?.type === 'calls-run-slash-command') {
-                slashCommandsHandler(store, joinCall, ev.data.message, ev.data.args);
+                slashCommandsHandler(store, joinCall, dialNumber, ev.data.message, ev.data.args);
             } else if (ev.data?.type === 'calls-link-click' && !window.desktopAPI?.openLinkFromCalls) {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 navigateToURL(ev.data.message.link);

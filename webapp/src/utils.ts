@@ -563,6 +563,10 @@ export function isDesktopApp(): boolean {
     return userAgent().indexOf('Mattermost') !== -1 && userAgent().indexOf('Electron') !== -1;
 }
 
+export function isMobileBrowser(): boolean {
+    return (/Android|iPhone|iPad|iPod/i).test(userAgent());
+}
+
 export function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
