@@ -16,6 +16,7 @@ import {
     LocalVideoTrack,
     MediaDeviceFailure,
     Participant,
+    ParticipantKind,
     RemoteParticipant,
     RemoteTrack,
     RemoteTrackPublication,
@@ -846,6 +847,11 @@ export default class CallClient extends EventEmitter {
     // Derived from LiveKit track state, so every client agrees on it.
     public getCurrentScreenSharingSessionID(): string | null {
         return this.screenSharingSessionID;
+    }
+
+    // Whether a phone leg, bridged in over SIP, is in the room.
+    public hasSIPParticipant(): boolean {
+        return Array.from(this.room?.remoteParticipants.values() ?? []).some((p) => p.kind === ParticipantKind.SIP);
     }
 
     // ------------------------------------------------------------

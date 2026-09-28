@@ -1,10 +1,20 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {EventEmitter} from 'events';
+import {DisconnectReason} from 'livekit-client';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {defineMessage} from 'react-intl';
-import {displayCallsTestModeUser, displayGenericErrorModal, setClientConnecting} from 'src/actions';
+import {
+    displayCallsTestModeUser,
+    displayGenericErrorModal,
+    getCallsConfig,
+    hostEndCallForEveryone,
+    setClientConnecting,
+} from 'src/actions';
+import type CallClient from 'src/clients/call/call_client';
+import {CALL_EVENT} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
 import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
 import {isCallsPopOut, isMobileBrowser, shouldRenderDesktopWidget} from 'src/utils';
@@ -12,10 +22,13 @@ import {isCallsPopOut, isMobileBrowser, shouldRenderDesktopWidget} from 'src/uti
 import {
     dialPhoneNumber,
     installTelLinkInterceptor,
+    openInOSDialer,
     parseTelHref,
     phoneCallErrorMessage,
     placePhoneCall,
+    registerTelLinkDialing,
     telLinkInterceptionSupported,
+    watchPhoneCall,
 } from './phone_call';
 
 jest.mock('mattermost-redux/actions/channels', () => ({
@@ -28,6 +41,8 @@ jest.mock('mattermost-redux/selectors/entities/users', () => ({
 jest.mock('src/actions', () => ({
     displayCallsTestModeUser: jest.fn(() => ({type: 'mock/displayCallsTestModeUser'})),
     displayGenericErrorModal: jest.fn((title, message) => ({type: 'mock/displayGenericErrorModal', title, message})),
+    getCallsConfig: jest.fn(() => ({type: 'mock/getCallsConfig'})),
+    hostEndCallForEveryone: jest.fn(),
     setClientConnecting: jest.fn((value) => ({type: 'mock/setClientConnecting', value})),
 }));
 jest.mock('src/clients/rest', () => ({
@@ -59,6 +74,8 @@ const mockedIsCurrentUserSystemAdmin = isCurrentUserSystemAdmin as unknown as je
 const mockedDisplayCallsTestModeUser = displayCallsTestModeUser as unknown as jest.Mock;
 const mockedDisplayGenericErrorModal = displayGenericErrorModal as unknown as jest.Mock;
 const mockedSetClientConnecting = setClientConnecting as unknown as jest.Mock;
+const mockedGetCallsConfig = getCallsConfig as unknown as jest.Mock;
+const mockedHostEndCallForEveryone = hostEndCallForEveryone as jest.Mock;
 const mockedChannelIDForCurrentCall = channelIDForCurrentCall as jest.Mock;
 const mockedClientConnecting = clientConnecting as jest.Mock;
 const mockedDefaultEnabled = defaultEnabled as jest.Mock;
@@ -188,7 +205,7 @@ describe('phone_call', () => {
             const event = click(link.querySelector('span') as Element);
             uninstall();
 
-            expect(onDial).toHaveBeenCalledWith('+15550100', {trunk: 'pstn'});
+            expect(onDial).toHaveBeenCalledWith('+15550100', {trunk: 'pstn'}, 'tel:+15550100;trunk=pstn');
             expect(event.defaultPrevented).toBe(true);
             expect(coreHandler).not.toHaveBeenCalled();
         });
@@ -243,6 +260,17 @@ describe('phone_call', () => {
             setUp();
 
             expect(telLinkInterceptionSupported()).toBe(false);
+        });
+    });
+
+    describe('openInOSDialer', () => {
+        it('opens the tel: link in a new tab, as core would', () => {
+            const openSpy = jest.spyOn(window, 'open').mockReturnValue(null);
+
+            openInOSDialer('tel:+15550100');
+
+            expect(openSpy).toHaveBeenCalledWith('tel:+15550100', '_blank', 'noreferrer');
+            openSpy.mockRestore();
         });
     });
 
@@ -347,6 +375,256 @@ describe('phone_call', () => {
 
             expect(store.dispatch).not.toHaveBeenCalled();
             expect(mockedFetch).not.toHaveBeenCalled();
+        });
+
+        describe.each(['outbound_disabled', 'outbound_not_configured'])('when the server says %s', (id) => {
+            const unavailableMessage = defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'});
+
+            it('refetches the config and hands off instead of showing an error', async () => {
+                mockedFetch.mockRejectedValueOnce({server_error_id: id, status_code: 400});
+                const store = makeStore();
+                const onOutboundUnavailable = jest.fn();
+
+                await dialPhoneNumber(store as never, '+15550100', jest.fn(), onOutboundUnavailable);
+
+                expect(store.dispatch).toHaveBeenCalledWith(mockedGetCallsConfig.mock.results[0].value);
+                expect(mockedSetClientConnecting).toHaveBeenLastCalledWith(false);
+                expect(onOutboundUnavailable).toHaveBeenCalled();
+                expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
+            });
+
+            it('refetches the config and shows the error when there is no hand-off', async () => {
+                mockedFetch.mockRejectedValueOnce({server_error_id: id, status_code: 400});
+                const store = makeStore();
+
+                await dialPhoneNumber(store as never, '+15550100', jest.fn());
+
+                expect(mockedGetCallsConfig).toHaveBeenCalled();
+                expect(mockedDisplayGenericErrorModal).toHaveBeenCalledWith(errorTitle, unavailableMessage);
+            });
+        });
+
+        it('does not refetch the config for other server errors', async () => {
+            mockedFetch.mockRejectedValueOnce({server_error_id: 'dial_failed', status_code: 500});
+            const onOutboundUnavailable = jest.fn();
+
+            await dialPhoneNumber(makeStore() as never, '+15550100', jest.fn(), onOutboundUnavailable);
+
+            expect(mockedGetCallsConfig).not.toHaveBeenCalled();
+            expect(onOutboundUnavailable).not.toHaveBeenCalled();
+            expect(mockedDisplayGenericErrorModal).toHaveBeenCalled();
+        });
+
+        it('hands off without dialing when outbound dialing is already known to be off', async () => {
+            mockedSipOutboundEnabled.mockReturnValue(false);
+            const onOutboundUnavailable = jest.fn();
+
+            await dialPhoneNumber(makeStore() as never, '+15550100', jest.fn(), onOutboundUnavailable);
+
+            expect(onOutboundUnavailable).toHaveBeenCalled();
+            expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
+            expect(mockedFetch).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('registerTelLinkDialing', () => {
+        let onStoreChange: () => void;
+        let store: {dispatch: jest.Mock; getState: jest.Mock; subscribe: jest.Mock};
+        let unsubscribe: jest.Mock;
+        let addListenerSpy: jest.SpyInstance;
+        let removeListenerSpy: jest.SpyInstance;
+
+        const telClickListeners = (spy: jest.SpyInstance) => spy.mock.calls.filter(([type, , capture]) => type === 'click' && capture === true);
+
+        beforeEach(() => {
+            unsubscribe = jest.fn();
+            store = {
+                dispatch: jest.fn(),
+                getState: jest.fn(() => ({})),
+                subscribe: jest.fn((listener) => {
+                    onStoreChange = listener;
+                    return unsubscribe;
+                }),
+            };
+            addListenerSpy = jest.spyOn(document, 'addEventListener');
+            removeListenerSpy = jest.spyOn(document, 'removeEventListener');
+        });
+
+        afterEach(() => {
+            addListenerSpy.mockRestore();
+            removeListenerSpy.mockRestore();
+        });
+
+        it('intercepts tel: links only while outbound dialing is enabled', () => {
+            registerTelLinkDialing(store as never, jest.fn());
+
+            onStoreChange();
+            onStoreChange();
+            expect(telClickListeners(addListenerSpy)).toHaveLength(1);
+
+            mockedSipOutboundEnabled.mockReturnValue(false);
+            onStoreChange();
+            expect(telClickListeners(removeListenerSpy)).toEqual([['click', telClickListeners(addListenerSpy)[0][1], true]]);
+        });
+
+        it('stops watching and removes the interceptor on cleanup', () => {
+            const cleanup = registerTelLinkDialing(store as never, jest.fn());
+            onStoreChange();
+
+            cleanup();
+
+            expect(unsubscribe).toHaveBeenCalled();
+            expect(telClickListeners(removeListenerSpy)).toHaveLength(1);
+        });
+
+        it('leaves tel: links alone where interception is not supported', () => {
+            setDesktopAPI({joinCall: jest.fn()});
+
+            registerTelLinkDialing(store as never, jest.fn());
+            onStoreChange();
+
+            expect(telClickListeners(addListenerSpy)).toHaveLength(0);
+        });
+    });
+
+    describe('watchPhoneCall', () => {
+        const dialFailed = defineMessage({defaultMessage: 'The call couldn\'t be placed. Please try again.'});
+
+        class FakeClient extends EventEmitter {
+            isConnected = true;
+            hasSIPParticipant = jest.fn(() => true);
+            disconnect = jest.fn(() => {
+                this.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
+                return Promise.resolve();
+            });
+        }
+
+        let client: FakeClient;
+        let store: {dispatch: jest.Mock; getState: jest.Mock};
+
+        const watch = (connecting: Promise<void> = Promise.resolve()) => watchPhoneCall(store as never, client as unknown as CallClient, 'bot-dm', connecting);
+
+        beforeEach(() => {
+            jest.useFakeTimers();
+            client = new FakeClient();
+            store = {dispatch: jest.fn(), getState: jest.fn(() => ({}))};
+            mockedHostEndCallForEveryone.mockResolvedValue({});
+        });
+
+        afterEach(() => {
+            jest.useRealTimers();
+        });
+
+        it('ends the call on the server when the caller leaves', () => {
+            watch();
+
+            client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
+
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+        });
+
+        it('does not end the call again when the server already deleted the room', () => {
+            watch();
+
+            client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.ROOM_DELETED);
+
+            expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
+        });
+
+        it('ends the call when the join fails', async () => {
+            const connecting = Promise.reject(new Error('join failed'));
+            watch(connecting);
+
+            await connecting.catch(() => {});
+
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+        });
+
+        it('ends the call when the caller cancels before joining', async () => {
+            client.isConnected = false;
+            const connecting = Promise.resolve();
+            watch(connecting);
+
+            await connecting;
+
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+        });
+
+        it('keeps the call once the join succeeds', async () => {
+            const connecting = Promise.resolve();
+            watch(connecting);
+
+            await connecting;
+
+            expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
+        });
+
+        it('ends the call only once', async () => {
+            const connecting = Promise.reject(new Error('join failed'));
+            watch(connecting);
+
+            await connecting.catch(() => {});
+            client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
+
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
+        });
+
+        it('hangs up when the phone leg leaves', () => {
+            watch();
+            client.emit(CALL_EVENT.CONNECTED);
+            client.hasSIPParticipant.mockReturnValue(false);
+
+            client.emit(CALL_EVENT.USER_LEFT, 'sip:+15550100', '');
+
+            expect(client.disconnect).toHaveBeenCalled();
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+        });
+
+        it('stays in the call when someone other than the phone leg leaves', () => {
+            watch();
+            client.emit(CALL_EVENT.CONNECTED);
+
+            client.emit(CALL_EVENT.USER_LEFT, 'session', 'user');
+
+            expect(client.disconnect).not.toHaveBeenCalled();
+        });
+
+        it('reports a failed dial when the phone leg is already gone after joining', () => {
+            watch();
+            client.hasSIPParticipant.mockReturnValue(false);
+            client.emit(CALL_EVENT.CONNECTED);
+
+            jest.advanceTimersByTime(4999);
+            expect(client.disconnect).not.toHaveBeenCalled();
+
+            jest.advanceTimersByTime(1);
+            expect(mockedDisplayGenericErrorModal).toHaveBeenCalledWith(
+                defineMessage({defaultMessage: 'Unable to place phone call'}),
+                dialFailed,
+            );
+            expect(client.disconnect).toHaveBeenCalled();
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+        });
+
+        it('keeps the call when the phone leg shows up within the grace period', () => {
+            watch();
+            client.emit(CALL_EVENT.CONNECTED);
+
+            jest.advanceTimersByTime(5000);
+
+            expect(client.disconnect).not.toHaveBeenCalled();
+            expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
+        });
+
+        it('does not report a failed dial after the caller has left', () => {
+            watch();
+            client.hasSIPParticipant.mockReturnValue(false);
+            client.emit(CALL_EVENT.CONNECTED);
+            client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
+
+            jest.advanceTimersByTime(5000);
+
+            expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
         });
     });
 });

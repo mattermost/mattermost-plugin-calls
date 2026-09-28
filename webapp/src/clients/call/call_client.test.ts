@@ -7,6 +7,7 @@ import {
     ConnectionState,
     LocalAudioTrack,
     LocalVideoTrack,
+    ParticipantKind,
     Room,
     RoomEvent,
     Track,
@@ -791,6 +792,20 @@ describe('CallClient', () => {
             mockRoom.fire(RoomEvent.ParticipantDisconnected, {sid: 'p1-sid', identity: 'user1___p1-session'});
 
             expect(userLeftListener).toHaveBeenCalledWith('p1-session', 'user1');
+        });
+    });
+
+    describe('hasSIPParticipant', () => {
+        it('is true only while a SIP participant is in the room', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.remoteParticipants.set('user1___p1-session', {identity: 'user1___p1-session', kind: ParticipantKind.STANDARD});
+            expect(client.hasSIPParticipant()).toBe(false);
+
+            mockRoom.remoteParticipants.set('sip:+15550100', {identity: 'sip:+15550100', kind: ParticipantKind.SIP});
+            expect(client.hasSIPParticipant()).toBe(true);
+
+            mockRoom.remoteParticipants.delete('sip:+15550100');
+            expect(client.hasSIPParticipant()).toBe(false);
         });
     });
 
