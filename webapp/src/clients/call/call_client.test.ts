@@ -793,6 +793,25 @@ describe('CallClient', () => {
 
             expect(userLeftListener).toHaveBeenCalledWith('p1-session', 'user1');
         });
+
+        it('logs the phone participant and its last call status when it leaves', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+
+            mockRoom.fire(RoomEvent.ParticipantDisconnected, {
+                sid: 'sip-sid',
+                identity: 'sip:+15550100',
+                kind: ParticipantKind.SIP,
+                attributes: {'sip.callStatus': 'ringing'},
+            });
+
+            expect(infoSpy).toHaveBeenCalledWith(
+                expect.any(String),
+                'CallClient: phone participant disconnected',
+                {identity: 'sip:+15550100', callStatus: 'ringing'},
+            );
+            infoSpy.mockRestore();
+        });
     });
 
     describe('hasSIPParticipant', () => {

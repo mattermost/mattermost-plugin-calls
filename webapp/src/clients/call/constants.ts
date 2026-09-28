@@ -50,6 +50,10 @@ export const CALL_ATTRIBUTES = {
     // token grant (see livekitAttributeBot server-side); used to filter the bot
     // out of the participant list regardless of how participants are discovered.
     BOT: 'bot',
+
+    // SIP_CALL_STATUS is set by the LiveKit SIP bridge on the phone participant:
+    // dialing, ringing, active (answered) or hangup.
+    SIP_CALL_STATUS: 'sip.callStatus',
 } as const;
 
 export const CALL_MESSAGE_TOPICS = {

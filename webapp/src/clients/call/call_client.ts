@@ -1317,7 +1317,14 @@ export default class CallClient extends EventEmitter {
         const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
         this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
-        logDebug(`CallClient: participant disconnected ${userID}`);
+        if (remoteParticipant.kind === ParticipantKind.SIP) {
+            logInfo('CallClient: phone participant disconnected', {
+                identity: remoteParticipant.identity,
+                callStatus: remoteParticipant.attributes[CALL_ATTRIBUTES.SIP_CALL_STATUS],
+            });
+        } else {
+            logDebug(`CallClient: participant disconnected ${userID}`);
+        }
 
         // A disconnect removes the participant's publications without firing
         // trackUnpublished, so a sharer leaving is only visible here.
