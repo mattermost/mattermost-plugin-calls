@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallsVersionInfo, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallsConfig, CallsVersionInfo, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
@@ -40,7 +40,6 @@ import {
 } from 'src/reducers';
 import {
     CallJobReduxState,
-    CallsConfig,
     CallsUserPreferences,
     ChannelState,
     HostControlNotice,
@@ -498,7 +497,7 @@ export const recordingMaxDuration = (state: GlobalState) =>
     callsConfig(state).MaxRecordingDuration;
 
 export const sipOutboundEnabled = (state: GlobalState) =>
-    Boolean(callsConfig(state).EnableSIPOutbound);
+    callsConfig(state).EnableSIPOutbound;
 
 export const rtcdEnabled = (state: GlobalState) =>
     pluginReduxStore(state).rtcdEnabled;
