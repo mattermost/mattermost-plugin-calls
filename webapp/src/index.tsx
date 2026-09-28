@@ -279,14 +279,6 @@ export default class Plugin {
             handleUserDismissedNotification(store, ev);
         });
 
-        registry.registerWebSocketEventHandler('user_removed', (ev) => {
-            handleUserRemovedFromChannel(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler('config_changed', () => {
-            handleConfigChanged(store);
-        });
-
         registry.registerWebSocketEventHandler(`custom_${pluginId}_caption`, (ev) => {
             handleCaption(store, ev);
         });
@@ -309,6 +301,16 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_video_off`, (ev) => {
             handleUserVideoOff(store, ev);
+        });
+
+        // Following are the core Mattermost Websocket event handlers which plugin reacts to.
+
+        registry.registerWebSocketEventHandler('user_removed', (ev) => {
+            handleUserRemovedFromChannel(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler('config_changed', () => {
+            handleConfigChanged(store);
         });
     }
 

@@ -563,8 +563,9 @@ export function isDesktopApp(): boolean {
     return userAgent().indexOf('Mattermost') !== -1 && userAgent().indexOf('Electron') !== -1;
 }
 
-export function isMobileBrowser(): boolean {
-    return (/Android|iPhone|iPad|iPod/i).test(userAgent());
+// Returns true if the user is using Mattermost from the web browser on a mobile device.
+export function isMobile(): boolean {
+    return userAgent().indexOf('iPhone') !== -1 || userAgent().indexOf('iPad') !== -1 || userAgent().indexOf('Android') !== -1;
 }
 
 export function sleep(ms: number) {

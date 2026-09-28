@@ -17,7 +17,7 @@ import type CallClient from 'src/clients/call/call_client';
 import {CALL_EVENT} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
 import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
-import {isCallsPopOut, isMobileBrowser, shouldRenderDesktopWidget} from 'src/utils';
+import {isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
 
 import {
     dialPhoneNumber,
@@ -64,7 +64,7 @@ jest.mock('src/selectors', () => ({
 jest.mock('src/utils', () => ({
     ...jest.requireActual('src/utils'),
     isCallsPopOut: jest.fn(),
-    isMobileBrowser: jest.fn(),
+    isMobile: jest.fn(),
     shouldRenderDesktopWidget: jest.fn(),
 }));
 
@@ -81,7 +81,7 @@ const mockedClientConnecting = clientConnecting as jest.Mock;
 const mockedDefaultEnabled = defaultEnabled as jest.Mock;
 const mockedSipOutboundEnabled = sipOutboundEnabled as jest.Mock;
 const mockedIsCallsPopOut = isCallsPopOut as jest.Mock;
-const mockedIsMobileBrowser = isMobileBrowser as jest.Mock;
+const mockedIsMobile = isMobile as jest.Mock;
 const mockedShouldRenderDesktopWidget = shouldRenderDesktopWidget as jest.Mock;
 
 const setDesktopAPI = (desktopAPI?: unknown) => {
@@ -92,7 +92,7 @@ describe('phone_call', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockedIsCallsPopOut.mockReturnValue(false);
-        mockedIsMobileBrowser.mockReturnValue(false);
+        mockedIsMobile.mockReturnValue(false);
         mockedShouldRenderDesktopWidget.mockReturnValue(false);
         mockedSipOutboundEnabled.mockReturnValue(true);
         mockedDefaultEnabled.mockReturnValue(true);
@@ -255,7 +255,7 @@ describe('phone_call', () => {
             {label: 'the Desktop app', setUp: () => setDesktopAPI({joinCall: jest.fn()})},
             {label: 'a legacy Desktop app', setUp: () => mockedShouldRenderDesktopWidget.mockReturnValue(true)},
             {label: 'the expanded-view pop-out', setUp: () => mockedIsCallsPopOut.mockReturnValue(true)},
-            {label: 'a mobile browser', setUp: () => mockedIsMobileBrowser.mockReturnValue(true)},
+            {label: 'a mobile browser', setUp: () => mockedIsMobile.mockReturnValue(true)},
         ])('is not supported in $label', ({setUp}) => {
             setUp();
 

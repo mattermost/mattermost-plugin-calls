@@ -20,7 +20,7 @@ import RestClient from 'src/clients/rest';
 import {logErr} from 'src/log';
 import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
 import type {Store} from 'src/types/mattermost-webapp';
-import {getPluginPath, isCallsPopOut, isMobileBrowser, shouldRenderDesktopWidget} from 'src/utils';
+import {getPluginPath, isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
 
 export type PhoneCallResponse = LiveKitSessionResponse & {
     call_id: string;
@@ -129,7 +129,7 @@ function joinsInDesktopWidget() {
 }
 
 export function telLinkInterceptionSupported() {
-    return !joinsInDesktopWidget() && !isCallsPopOut() && !isMobileBrowser();
+    return !joinsInDesktopWidget() && !isCallsPopOut() && !isMobile();
 }
 
 // onOutboundUnavailable replaces the error shown when outbound dialing turns out
