@@ -5,6 +5,7 @@ import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {
     ConnectionQuality,
     ConnectionState,
+    DisconnectReason,
     LocalAudioTrack,
     LocalVideoTrack,
     ParticipantKind,
@@ -318,6 +319,44 @@ describe('CallClient', () => {
             mockRoom.fire(RoomEvent.Disconnected);
             expect(client.isDisconnected).toBe(true);
             expect(disconnectedListener).toHaveBeenCalled();
+        });
+
+        it('emits DISCONNECTING as soon as a disconnect starts, before DISCONNECTED', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.state = ConnectionState.Connected;
+
+            const events: string[] = [];
+            client.on(CALL_EVENT.DISCONNECTING, () => events.push(CALL_EVENT.DISCONNECTING));
+            client.on(CALL_EVENT.DISCONNECTED, () => events.push(CALL_EVENT.DISCONNECTED));
+
+            client.disconnect();
+            expect(events).toEqual([CALL_EVENT.DISCONNECTING]);
+
+            mockRoom.fire(RoomEvent.Disconnected);
+            expect(events).toEqual([CALL_EVENT.DISCONNECTING, CALL_EVENT.DISCONNECTED]);
+        });
+
+        it('does not emit DISCONNECTING once already torn down', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Disconnected);
+
+            const disconnectingListener = jest.fn();
+            client.on(CALL_EVENT.DISCONNECTING, disconnectingListener);
+
+            await client.disconnect();
+
+            expect(disconnectingListener).not.toHaveBeenCalled();
+        });
+
+        it('does not emit DISCONNECTING on a remote teardown', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const disconnectingListener = jest.fn();
+            client.on(CALL_EVENT.DISCONNECTING, disconnectingListener);
+
+            mockRoom.fire(RoomEvent.Disconnected, DisconnectReason.ROOM_DELETED);
+
+            expect(disconnectingListener).not.toHaveBeenCalled();
         });
 
         // Builds a publication whose track returns the given stats report, and seeds

@@ -51,8 +51,6 @@ const serverErrorMessages = new Map<string, MessageDescriptor>([
     ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
 ]);
 
-const outboundUnavailableErrorIDs = new Set(['outbound_disabled', 'outbound_not_configured']);
-
 // LiveKit adds the phone leg to the room before /phone-call returns; the grace
 // period only covers a late room update.
 const phoneLegGraceMs = 5000;
@@ -184,7 +182,8 @@ export async function dialPhoneNumber(
         store.dispatch(setClientConnecting(false));
 
         // The config is only fetched on load, so an admin may have turned dialing off since.
-        if (outboundUnavailableErrorIDs.has((err as Partial<ClientError> | undefined)?.server_error_id ?? '')) {
+        // A missing trunk always shows the error, even for tel: links, so admins notice it.
+        if ((err as Partial<ClientError> | undefined)?.server_error_id === 'outbound_disabled') {
             store.dispatch(getCallsConfig());
             handleOutboundUnavailable();
             return;
@@ -261,6 +260,10 @@ export function watchPhoneCall(store: Store, client: CallClient, channelID: stri
             client.disconnect();
         }
     });
+
+    // Ending the call deletes the room, which hangs up the phone, so don't wait
+    // for the LiveKit leave to finish first.
+    client.on(CALL_EVENT.DISCONNECTING, endPhoneCall);
 
     client.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
         clearTimeout(phoneLegTimer);

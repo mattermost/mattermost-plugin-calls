@@ -502,6 +502,9 @@ export const sipOutboundEnabled = (state: GlobalState) =>
 export const rtcdEnabled = (state: GlobalState) =>
     pluginReduxStore(state).rtcdEnabled;
 
+export const sipOutboundAllowlistEnabled = (state: GlobalState) =>
+    pluginReduxStore(state).sipOutboundAllowlistEnabled;
+
 export const ringingEnabled = (state: GlobalState) =>
     callsConfig(state).EnableRinging;
 

@@ -333,6 +333,7 @@ export default class CallClient extends EventEmitter {
             return Promise.resolve();
         }
         this.disconnecting = true;
+        this.emit(CALL_EVENT.DISCONNECTING);
 
         const isDisconnectCompleted = new Promise<void>((resolve) => this.once(CALL_EVENT.DISCONNECTED, () => resolve()));
 
@@ -1312,23 +1313,24 @@ export default class CallClient extends EventEmitter {
         // The bot was never added to the list (see handleParticipantConnected),
         // so don't emit USER_LEFT for it.
         if (this.isBotParticipant(remoteParticipant)) {
+            logDebug('CallClient: participant bot disconnected');
             return;
         }
-        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
-        this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
-        if (remoteParticipant.kind === ParticipantKind.SIP) {
-            logInfo('CallClient: phone participant disconnected', {
-                identity: remoteParticipant.identity,
-                callStatus: remoteParticipant.attributes[CALL_ATTRIBUTES.SIP_CALL_STATUS],
-            });
-        } else {
-            logDebug(`CallClient: participant disconnected ${userID}`);
+        if (this.isSipParticipant(remoteParticipant)) {
+            logDebug('CallClient: participant phone disconnected', remoteParticipant.identity, 'reason', remoteParticipant.attributes['sip.callStatus']);
+            this.emit(CALL_EVENT.USER_LEFT, remoteParticipant.identity, '');
         }
 
-        // A disconnect removes the participant's publications without firing
-        // trackUnpublished, so a sharer leaving is only visible here.
-        this.emitScreenSharingSession();
+        if (this.isHumanParticipant(remoteParticipant)) {
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
+            logDebug(`CallClient: participant human disconnected ${userID}`);
+            this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
+
+            // A disconnect removes the participant's publications without firing
+            // trackUnpublished, so a sharer leaving is only visible here.
+            this.emitScreenSharingSession();
+        }
     }
 
     /**
@@ -1657,6 +1659,14 @@ export default class CallClient extends EventEmitter {
      */
     private isBotParticipant(p: Participant): boolean {
         return p.attributes?.[CALL_ATTRIBUTES.BOT] === 'true';
+    }
+
+    private isSipParticipant(p: Participant): boolean {
+        return p.kind === ParticipantKind.SIP;
+    }
+
+    private isHumanParticipant(p: Participant): boolean {
+        return p.kind === ParticipantKind.STANDARD;
     }
 
     private parseUserIdAndSessionIdFromIdentity(p: Participant): {userID: string; sessionID: string} {

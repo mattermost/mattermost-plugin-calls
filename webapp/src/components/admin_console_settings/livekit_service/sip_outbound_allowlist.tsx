@@ -5,19 +5,20 @@ import React, {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
-import {callsConfigEnvOverrides} from 'src/selectors';
+import {callsConfigEnvOverrides, sipOutboundAllowlistEnabled} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 export default function SIPOutboundAllowlist(props: CustomComponentProps) {
     const {formatMessage} = useIntl();
     const overrides = useSelector(callsConfigEnvOverrides);
+    const allowlistEnabled = useSelector(sipOutboundAllowlistEnabled);
     const overridden = 'SIPOutboundAllowlist' in overrides;
 
     const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
         props.onChange(props.id, e.target.value);
     };
 
-    const disabled = props.disabled || overridden;
+    const disabled = props.disabled || overridden || !allowlistEnabled;
 
     return (
         <div

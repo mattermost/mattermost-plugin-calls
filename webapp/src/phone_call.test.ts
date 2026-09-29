@@ -377,30 +377,51 @@ describe('phone_call', () => {
             expect(mockedFetch).not.toHaveBeenCalled();
         });
 
-        describe.each(['outbound_disabled', 'outbound_not_configured'])('when the server says %s', (id) => {
+        describe('when the server says outbound dialing is unavailable', () => {
             const unavailableMessage = defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'});
+            const telHref = 'tel:+15550100';
+            let openSpy: jest.SpyInstance;
 
-            it('refetches the config and hands off instead of showing an error', async () => {
-                mockedFetch.mockRejectedValueOnce({server_error_id: id, status_code: 400});
+            const dialFromTelLink = (store: ReturnType<typeof makeStore>) => dialPhoneNumber(store as never, '+15550100', jest.fn(), () => openInOSDialer(telHref));
+
+            beforeEach(() => {
+                openSpy = jest.spyOn(window, 'open').mockReturnValue(null);
+            });
+
+            afterEach(() => {
+                openSpy.mockRestore();
+            });
+
+            it('refetches the config and opens a tel: link in the OS dialer when dialing was turned off', async () => {
+                mockedFetch.mockRejectedValueOnce({server_error_id: 'outbound_disabled', status_code: 400});
                 const store = makeStore();
-                const onOutboundUnavailable = jest.fn();
 
-                await dialPhoneNumber(store as never, '+15550100', jest.fn(), onOutboundUnavailable);
+                await dialFromTelLink(store);
 
                 expect(store.dispatch).toHaveBeenCalledWith(mockedGetCallsConfig.mock.results[0].value);
                 expect(mockedSetClientConnecting).toHaveBeenLastCalledWith(false);
-                expect(onOutboundUnavailable).toHaveBeenCalled();
+                expect(openSpy).toHaveBeenCalledWith(telHref, '_blank', 'noreferrer');
                 expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
             });
 
-            it('refetches the config and shows the error when there is no hand-off', async () => {
-                mockedFetch.mockRejectedValueOnce({server_error_id: id, status_code: 400});
-                const store = makeStore();
+            it('shows the error for a tel: link instead of opening the OS dialer when no trunk is configured', async () => {
+                mockedFetch.mockRejectedValueOnce({server_error_id: 'outbound_not_configured', status_code: 400});
 
-                await dialPhoneNumber(store as never, '+15550100', jest.fn());
+                await dialFromTelLink(makeStore());
 
-                expect(mockedGetCallsConfig).toHaveBeenCalled();
                 expect(mockedDisplayGenericErrorModal).toHaveBeenCalledWith(errorTitle, unavailableMessage);
+                expect(mockedSetClientConnecting).toHaveBeenLastCalledWith(false);
+                expect(openSpy).not.toHaveBeenCalled();
+                expect(mockedGetCallsConfig).not.toHaveBeenCalled();
+            });
+
+            it.each(['outbound_disabled', 'outbound_not_configured'])('shows the error for /call dial when the server says %s', async (id) => {
+                mockedFetch.mockRejectedValueOnce({server_error_id: id, status_code: 400});
+
+                await dialPhoneNumber(makeStore() as never, '+15550100', jest.fn());
+
+                expect(mockedDisplayGenericErrorModal).toHaveBeenCalledWith(errorTitle, unavailableMessage);
+                expect(openSpy).not.toHaveBeenCalled();
             });
         });
 
@@ -494,6 +515,7 @@ describe('phone_call', () => {
             isConnected = true;
             hasSIPParticipant = jest.fn(() => true);
             disconnect = jest.fn(() => {
+                this.emit(CALL_EVENT.DISCONNECTING);
                 this.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
                 return Promise.resolve();
             });
@@ -515,7 +537,17 @@ describe('phone_call', () => {
             jest.useRealTimers();
         });
 
-        it('ends the call on the server when the caller leaves', () => {
+        it('ends the call on the server as soon as the caller starts leaving', () => {
+            watch();
+
+            client.emit(CALL_EVENT.DISCONNECTING);
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+
+            client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
+        });
+
+        it('ends the call on the server when the caller is disconnected without leaving', () => {
             watch();
 
             client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
@@ -577,6 +609,7 @@ describe('phone_call', () => {
             client.emit(CALL_EVENT.USER_LEFT, 'sip:+15550100', '');
 
             expect(client.disconnect).toHaveBeenCalled();
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
             expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
         });
 
@@ -603,6 +636,7 @@ describe('phone_call', () => {
                 dialFailed,
             );
             expect(client.disconnect).toHaveBeenCalled();
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
             expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
         });
 

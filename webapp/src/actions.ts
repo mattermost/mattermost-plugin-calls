@@ -80,6 +80,7 @@ import {
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
+    SIP_OUTBOUND_ALLOWLIST_ENABLED,
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
     USER_JOINED_TIMEOUT,
@@ -176,6 +177,13 @@ export const setRecordingsEnabled = (enabled: boolean) => (dispatch: Dispatch) =
 export const setRTCDEnabled = (enabled: boolean) => (dispatch: Dispatch) => {
     dispatch({
         type: RTCD_ENABLED,
+        data: enabled,
+    });
+};
+
+export const setSIPOutboundAllowlistEnabled = (enabled: boolean) => (dispatch: Dispatch) => {
+    dispatch({
+        type: SIP_OUTBOUND_ALLOWLIST_ENABLED,
         data: enabled,
     });
 };

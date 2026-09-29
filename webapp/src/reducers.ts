@@ -62,6 +62,7 @@ import {
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
+    SIP_OUTBOUND_ALLOWLIST_ENABLED,
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
     USER_JOINED_TIMEOUT,
@@ -542,6 +543,15 @@ const rtcdEnabled = (state = false, action: {type: string, data: boolean}) => {
     }
 };
 
+const sipOutboundAllowlistEnabled = (state = false, action: {type: string, data: boolean}) => {
+    switch (action.type) {
+    case SIP_OUTBOUND_ALLOWLIST_ENABLED:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { type: string, data: CallsUserPreferences }) => {
     switch (action.type) {
     case RECEIVED_CALLS_USER_PREFERENCES:
@@ -805,6 +815,7 @@ const rootReducer = combineReducers({
     callsConfigEnvOverrides,
     callsVersionInfo,
     rtcdEnabled,
+    sipOutboundAllowlistEnabled,
     callsUserPreferences,
     recordings,
     callLiveCaptionsState,

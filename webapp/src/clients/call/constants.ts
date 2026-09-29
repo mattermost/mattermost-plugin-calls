@@ -8,6 +8,10 @@ import {AudioCaptureOptions, AudioPresets, ConnectionQuality, TrackPublishDefaul
  */
 export const CALL_EVENT = {
     CONNECTED: 'connect',
+
+    // DISCONNECTING fires when disconnect() starts a local leave, before the
+    // LiveKit leave completes. A remote teardown emits only DISCONNECTED.
+    DISCONNECTING: 'disconnecting',
     DISCONNECTED: 'close',
     RECONNECTING: 'reconnecting',
     RECONNECTED: 'reconnected',
