@@ -828,14 +828,14 @@ describe('CallClient', () => {
             const userLeftListener = jest.fn();
             client.on(CALL_EVENT.USER_LEFT, userLeftListener);
 
-            mockRoom.fire(RoomEvent.ParticipantDisconnected, {sid: 'p1-sid', identity: 'user1___p1-session'});
+            mockRoom.fire(RoomEvent.ParticipantDisconnected, {sid: 'p1-sid', identity: 'user1___p1-session', kind: ParticipantKind.STANDARD});
 
             expect(userLeftListener).toHaveBeenCalledWith('p1-session', 'user1');
         });
 
         it('logs the phone participant and its last call status when it leaves', async () => {
             await client.connect({channelID: 'test-channel'});
-            const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+            const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
 
             mockRoom.fire(RoomEvent.ParticipantDisconnected, {
                 sid: 'sip-sid',
@@ -844,12 +844,12 @@ describe('CallClient', () => {
                 attributes: {'sip.callStatus': 'ringing'},
             });
 
-            expect(infoSpy).toHaveBeenCalledWith(
+            expect(debugSpy).toHaveBeenCalledWith(
                 expect.any(String),
-                'CallClient: phone participant disconnected',
-                {identity: 'sip:+15550100', callStatus: 'ringing'},
+                'CallClient: participant disconnected',
+                {type: 'phone', identity: 'sip:+15550100', reason: 'ringing'},
             );
-            infoSpy.mockRestore();
+            debugSpy.mockRestore();
         });
     });
 
@@ -1521,6 +1521,7 @@ describe('CallClient', () => {
         function makeRemoteParticipant(identity: string, video?: {mediaStreamTrack: MediaStreamTrack}, audio?: {mediaStreamTrack: MediaStreamTrack}) {
             return {
                 identity,
+                kind: ParticipantKind.STANDARD,
                 getTrackPublication: jest.fn((source: Track.Source) => {
                     if (source === Track.Source.ScreenShare && video) {
                         return {source, track: video};
