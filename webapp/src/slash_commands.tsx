@@ -159,17 +159,20 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
         }
 
         return {};
-    case 'dial':
+    case 'dial': {
         if (fields.length < 3) {
             store.dispatch(displayGenericErrorModal(
                 defineMessage({defaultMessage: 'Unable to place phone call'}),
-                defineMessage({defaultMessage: 'Usage: /call dial [number]'}),
+                defineMessage({defaultMessage: 'Enter a phone number to call'}),
             ));
             return {};
         }
 
-        dialPhoneNumber(fields.slice(2).join(' '));
+        const phoneNumber = fields.slice(2).join(' ');
+        dialPhoneNumber(phoneNumber);
+
         return {};
+    }
     case 'link':
         break;
     case 'stats': {
