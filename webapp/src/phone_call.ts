@@ -247,6 +247,7 @@ export function watchPhoneCall(store: Store, client: CallClient, channelID: stri
 
     // A dial the carrier rejects straight away can leave the room before we join it.
     client.on(CALL_EVENT.CONNECTED, () => {
+        // TODO: Move this temporary fix to server-side MM-71035
         phoneLegTimer = setTimeout(() => {
             if (!client.hasSIPParticipant()) {
                 store.dispatch(displayGenericErrorModal(dialErrorTitle, dialFailedMessage));
