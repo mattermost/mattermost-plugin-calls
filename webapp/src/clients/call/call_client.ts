@@ -1338,7 +1338,7 @@ export default class CallClient extends EventEmitter {
             logDebug('CallClient: participant disconnected', {
                 type: 'phone',
                 identity: remoteParticipant.identity,
-                reason: remoteParticipant.attributes['sip.callStatus'],
+                reason: remoteParticipant.attributes[CALL_ATTRIBUTES.SIP_CALL_STATUS],
             });
             this.emit(CALL_EVENT.USER_LEFT, remoteParticipant.identity, '');
         }
