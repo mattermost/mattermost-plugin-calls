@@ -851,8 +851,9 @@ export default class CallClient extends EventEmitter {
     }
 
     // Whether a phone leg, bridged in over SIP, is in the room.
+    // It can either be one or many SIP participants.
     public hasSIPParticipant(): boolean {
-        return Array.from(this.room?.remoteParticipants.values() ?? []).some((p) => p.kind === ParticipantKind.SIP);
+        return Array.from(this.room?.remoteParticipants.values() ?? []).some(this.isSipParticipant);
     }
 
     // ------------------------------------------------------------
