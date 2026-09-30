@@ -265,7 +265,11 @@ export default class CallClient extends EventEmitter {
                 throw new Error('CallClient: incomplete session response from join API');
             }
 
-            logDebug('CallClient: session created', {url, sessionID: this.sessionID});
+            logDebug('CallClient: session ready', {
+                source: connectPayload.session ? 'phone_dial' : 'join_api',
+                url,
+                sessionID: this.sessionID,
+            });
 
             // Emitted before the room connects, so consumers seed their store
             // ahead of any LiveKit-sourced state.
@@ -853,7 +857,16 @@ export default class CallClient extends EventEmitter {
     // Whether a phone leg, bridged in over SIP, is in the room.
     // It can either be one or many SIP participants.
     public hasSIPParticipant(): boolean {
-        return Array.from(this.room?.remoteParticipants.values() ?? []).some(this.isSipParticipant);
+        if (!this.room) {
+            return false;
+        }
+
+        for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            if (this.isSipParticipant(remoteParticipant)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ------------------------------------------------------------
@@ -1312,20 +1325,30 @@ export default class CallClient extends EventEmitter {
      */
     private handleParticipantDisconnected(remoteParticipant: RemoteParticipant) {
         // The bot was never added to the list (see handleParticipantConnected),
-        // so don't emit USER_LEFT for it.
+        // so we don't emit USER_LEFT for it.
         if (this.isBotParticipant(remoteParticipant)) {
-            logDebug('CallClient: participant bot disconnected');
+            logDebug('CallClient: participant disconnected', {
+                type: 'bot',
+                identity: remoteParticipant.identity,
+            });
             return;
         }
 
         if (this.isSipParticipant(remoteParticipant)) {
-            logDebug('CallClient: participant phone disconnected', remoteParticipant.identity, 'reason', remoteParticipant.attributes['sip.callStatus']);
+            logDebug('CallClient: participant disconnected', {
+                type: 'phone',
+                identity: remoteParticipant.identity,
+                reason: remoteParticipant.attributes['sip.callStatus'],
+            });
             this.emit(CALL_EVENT.USER_LEFT, remoteParticipant.identity, '');
         }
 
         if (this.isHumanParticipant(remoteParticipant)) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
-            logDebug(`CallClient: participant human disconnected ${userID}`);
+            logDebug('CallClient: participant disconnected', {
+                type: 'human',
+                identity: remoteParticipant.identity,
+            });
             this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
             // A disconnect removes the participant's publications without firing
