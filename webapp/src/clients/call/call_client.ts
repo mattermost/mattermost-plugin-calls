@@ -16,6 +16,7 @@ import {
     LocalVideoTrack,
     MediaDeviceFailure,
     Participant,
+    ParticipantKind,
     RemoteParticipant,
     RemoteTrack,
     RemoteTrackPublication,
@@ -95,7 +96,7 @@ function mergeStatsReports(reports: RTCStatsReport[]): RTCStatsReport {
 // How often we sample RTC stats during a live call, so a last-known-good sample
 // is available to log if the call is torn down remotely. Matches the v1 client's
 // RTCMonitor cadence.
-const statsPollIntervalMs = 10000;
+const STATS_POLL_INTERVAL_MS = 10_000;
 
 export default class CallClient extends EventEmitter {
     public channelID = '';
@@ -255,7 +256,7 @@ export default class CallClient extends EventEmitter {
             // first joiner, and returns the state snapshot. The session id comes
             // from the server rather than from a WebSocket connection, which is
             // what lets us join with no Calls WebSocket at all.
-            const response = await this.createSession(connectPayload);
+            const response = connectPayload.session ?? await this.createSession(connectPayload);
             token = response.token;
             url = response.url;
             this.sessionID = response.session_id;
@@ -264,7 +265,11 @@ export default class CallClient extends EventEmitter {
                 throw new Error('CallClient: incomplete session response from join API');
             }
 
-            logDebug('CallClient: session created', {url, sessionID: this.sessionID});
+            logDebug('CallClient: session ready', {
+                source: connectPayload.session ? 'phone_dial' : 'join_api',
+                url,
+                sessionID: this.sessionID,
+            });
 
             // Emitted before the room connects, so consumers seed their store
             // ahead of any LiveKit-sourced state.
@@ -332,6 +337,7 @@ export default class CallClient extends EventEmitter {
             return Promise.resolve();
         }
         this.disconnecting = true;
+        this.emit(CALL_EVENT.DISCONNECTING);
 
         const isDisconnectCompleted = new Promise<void>((resolve) => this.once(CALL_EVENT.DISCONNECTED, () => resolve()));
 
@@ -358,7 +364,7 @@ export default class CallClient extends EventEmitter {
         // which are the key diagnostic for a connection that never stabilized.
         void this.pollStats();
 
-        this.statsPollTimer = setInterval(this.pollStats, statsPollIntervalMs);
+        this.statsPollTimer = setInterval(this.pollStats, STATS_POLL_INTERVAL_MS);
     }
 
     private stopStatsPolling(): void {
@@ -848,6 +854,21 @@ export default class CallClient extends EventEmitter {
         return this.screenSharingSessionID;
     }
 
+    // Whether a phone leg, bridged in over SIP, is in the room.
+    // It can either be one or many SIP participants.
+    public hasSIPParticipant(): boolean {
+        if (!this.room) {
+            return false;
+        }
+
+        for (const remoteParticipant of this.room.remoteParticipants.values()) {
+            if (this.isSipParticipant(remoteParticipant)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // ------------------------------------------------------------
     // Private methods
     // ------------------------------------------------------------
@@ -1304,18 +1325,36 @@ export default class CallClient extends EventEmitter {
      */
     private handleParticipantDisconnected(remoteParticipant: RemoteParticipant) {
         // The bot was never added to the list (see handleParticipantConnected),
-        // so don't emit USER_LEFT for it.
+        // so we don't emit USER_LEFT for it.
         if (this.isBotParticipant(remoteParticipant)) {
+            logDebug('CallClient: participant disconnected', {
+                type: 'bot',
+                identity: remoteParticipant.identity,
+            });
             return;
         }
-        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
-        this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
-        logDebug(`CallClient: participant disconnected ${userID}`);
+        if (this.isSipParticipant(remoteParticipant)) {
+            logDebug('CallClient: participant disconnected', {
+                type: 'phone',
+                identity: remoteParticipant.identity,
+                reason: remoteParticipant.attributes[CALL_ATTRIBUTES.SIP_CALL_STATUS],
+            });
+            this.emit(CALL_EVENT.USER_LEFT, remoteParticipant.identity, '');
+        }
 
-        // A disconnect removes the participant's publications without firing
-        // trackUnpublished, so a sharer leaving is only visible here.
-        this.emitScreenSharingSession();
+        if (this.isHumanParticipant(remoteParticipant)) {
+            const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
+            logDebug('CallClient: participant disconnected', {
+                type: 'human',
+                identity: remoteParticipant.identity,
+            });
+            this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
+
+            // A disconnect removes the participant's publications without firing
+            // trackUnpublished, so a sharer leaving is only visible here.
+            this.emitScreenSharingSession();
+        }
     }
 
     /**
@@ -1644,6 +1683,14 @@ export default class CallClient extends EventEmitter {
      */
     private isBotParticipant(p: Participant): boolean {
         return p.attributes?.[CALL_ATTRIBUTES.BOT] === 'true';
+    }
+
+    private isSipParticipant(p: Participant): boolean {
+        return p.kind === ParticipantKind.SIP;
+    }
+
+    private isHumanParticipant(p: Participant): boolean {
+        return p.kind === ParticipantKind.STANDARD;
     }
 
     private parseUserIdAndSessionIdFromIdentity(p: Participant): {userID: string; sessionID: string} {

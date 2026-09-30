@@ -41,7 +41,7 @@ import {
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import CallClient, {CALL_EVENT, DisconnectReason} from 'src/clients/call';
-import type {ScreenSharingSession} from 'src/clients/call/types';
+import type {LiveKitSessionResponse, ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
@@ -110,6 +110,7 @@ import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sh
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
+import {dialPhoneNumber, registerTelLinkDialing, watchPhoneCall} from 'src/phone_call';
 import slashCommandsHandler from 'src/slash_commands';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
@@ -182,6 +183,7 @@ import {
     handleCallJobState,
     handleCallStart,
     handleCaption,
+    handleConfigChanged,
     handleHostLowerHand,
     handleHostRemoved,
     handleHostScreenOff,
@@ -277,10 +279,6 @@ export default class Plugin {
             handleUserDismissedNotification(store, ev);
         });
 
-        registry.registerWebSocketEventHandler('user_removed', (ev) => {
-            handleUserRemovedFromChannel(store, ev);
-        });
-
         registry.registerWebSocketEventHandler(`custom_${pluginId}_caption`, (ev) => {
             handleCaption(store, ev);
         });
@@ -303,6 +301,16 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_video_off`, (ev) => {
             handleUserVideoOff(store, ev);
+        });
+
+        // Following are the core Mattermost Websocket event handlers which plugin reacts to.
+
+        registry.registerWebSocketEventHandler('user_removed', (ev) => {
+            handleUserRemovedFromChannel(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler('config_changed', () => {
+            handleConfigChanged(store);
         });
     }
 
@@ -377,7 +385,7 @@ export default class Plugin {
         });
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
-            return slashCommandsHandler(store, joinCall, message, args);
+            return slashCommandsHandler(store, joinCall, dialNumber, message, args);
         });
 
         registry.registerDesktopNotificationHook?.(async (post, msgProps, channel, teamId, args) => {
@@ -444,6 +452,10 @@ export default class Plugin {
                 store.dispatch(displayCallsTestModeUser());
             }
         };
+
+        const connectPhoneCall = (channelID: string, phoneSession: LiveKitSessionResponse) => connectCall(channelID, '', '', phoneSession);
+        const dialNumber = (number: string) => dialPhoneNumber(store, number, connectPhoneCall);
+        this.unsubscribers.push(registerTelLinkDialing(store, connectPhoneCall));
 
         let channelHeaderMenuButtonID: string;
         const unregisterChannelHeaderMenuButton = () => {
@@ -618,7 +630,7 @@ export default class Plugin {
             }));
         }
 
-        const connectCall = async (channelID: string, title?: string, rootId?: string) => {
+        const connectCall = async (channelID: string, title?: string, rootId?: string, phoneSession?: LiveKitSessionResponse) => {
             const channel = getChannel(store.getState(), channelID);
 
             // Flush any pending logs from previous call
@@ -815,7 +827,11 @@ export default class Plugin {
                 store.dispatch(setClientConnecting(true));
 
                 const connectingClient = window.callsClient;
-                connectingClient.connect({channelID, title, threadID: rootId}).catch((err: Error) => {
+                const connecting = connectingClient.connect({channelID, title, threadID: rootId, session: phoneSession});
+                if (phoneSession) {
+                    watchPhoneCall(store, connectingClient, channelID, connecting);
+                }
+                connecting.catch((err: Error) => {
                     // If a concurrent DISCONNECTED teardown already cleaned up (it deletes
                     // window.callsClient) or a new call has since replaced this client, this
                     // is a stale error — skip the error flow to avoid a spurious modal.
@@ -858,7 +874,7 @@ export default class Plugin {
                 store.dispatch(setClientConnecting(false));
                 store.dispatch(displayCallErrorModal(new Error(ev.data.message.errMsg), ev.data.message.callID));
             } else if (ev.data?.type === 'calls-run-slash-command') {
-                slashCommandsHandler(store, joinCall, ev.data.message, ev.data.args);
+                slashCommandsHandler(store, joinCall, dialNumber, ev.data.message, ev.data.args);
             } else if (ev.data?.type === 'calls-link-click' && !window.desktopAPI?.openLinkFromCalls) {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 navigateToURL(ev.data.message.link);

@@ -211,10 +211,6 @@
         "max": 1
       }
     ],
-    "multiline-ternary": [
-      1,
-      "never"
-    ],
     "new-cap": 2,
     "new-parens": 2,
     "newline-before-return": 0,

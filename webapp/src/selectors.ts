@@ -496,6 +496,12 @@ export const liveCaptionsEnabled = (state: GlobalState) =>
 export const recordingMaxDuration = (state: GlobalState) =>
     callsConfig(state).MaxRecordingDuration;
 
+export const sipOutboundEnabled = (state: GlobalState) =>
+    callsConfig(state).EnableSIPOutbound;
+
+export const sipOutboundAllowlistEnabled = (state: GlobalState): boolean =>
+    callsConfig(state).EnableSIPOutboundAllowlist || false;
+
 export const rtcdEnabled = (state: GlobalState) =>
     pluginReduxStore(state).rtcdEnabled;
 

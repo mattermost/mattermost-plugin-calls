@@ -62,6 +62,7 @@ import {
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
+    SIP_OUTBOUND_ALLOWLIST_ENABLED,
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
     USER_JOINED_TIMEOUT,
@@ -510,6 +511,8 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: a
         return {...state, EnableLiveCaptions: action.data};
     case TRANSCRIBE_API:
         return {...state, TranscribeAPI: action.data};
+    case SIP_OUTBOUND_ALLOWLIST_ENABLED:
+        return {...state, EnableSIPOutboundAllowlist: action.data};
     default:
         return state;
     }

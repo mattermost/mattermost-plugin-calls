@@ -32,6 +32,7 @@ import {generateId} from 'mattermost-redux/utils/helpers';
 import {
     callEnd,
     displayCallErrorModal,
+    getCallsConfig,
     incomingCallOnChannel,
     joinUser,
     leaveUser,
@@ -91,6 +92,21 @@ let participantRemovedChannelID = '';
 
 export function setParticipantRemovedChannelID(channelID: string) {
     participantRemovedChannelID = channelID;
+}
+
+const CONFIG_FETCH_MIN_DELAY_MS = 1_000;
+const CONFIG_FETCH_JITTER_MS = 4_000;
+let configRefetchTimer: ReturnType<typeof setTimeout> | undefined;
+
+// Core sends config_changed to every client on any config save, plugin settings
+// included, and can send it before the plugin has loaded the new config. The
+// delay covers that, and the random spread keeps every client from refetching
+// at the same moment.
+export function handleConfigChanged(store: Store) {
+    clearTimeout(configRefetchTimer);
+
+    const configFetchDelayMs = CONFIG_FETCH_MIN_DELAY_MS + (Math.random() * CONFIG_FETCH_JITTER_MS);
+    configRefetchTimer = setTimeout(() => store.dispatch(getCallsConfig()), configFetchDelayMs);
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of

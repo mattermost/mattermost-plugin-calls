@@ -1,15 +1,17 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {ChangeEvent} from 'react';
+import React, {ChangeEvent, useEffect} from 'react';
 import {useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
+import {setSIPOutboundAllowlistEnabled} from 'src/actions';
 import {leftCol, RadioInput, RadioInputLabel, rightCol} from 'src/components/admin_console_settings/common';
 import {callsConfigEnvOverrides} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
 export default function EnableSIPOutboundAllowlist(props: CustomComponentProps) {
     const {formatMessage} = useIntl();
+    const dispatch = useDispatch();
     const overrides = useSelector(callsConfigEnvOverrides);
     const overridden = 'EnableSIPOutboundAllowlist' in overrides;
 
@@ -17,9 +19,20 @@ export default function EnableSIPOutboundAllowlist(props: CustomComponentProps) 
         props.onChange(props.id, e.target.value === 'true');
     };
 
-    // @ts-ignore val is a boolean, but the signature says 'string'
-    const checked = props.value === 'true' || props.value === true;
+    let checked: boolean;
+    if (overridden) {
+        // The server only reports env values that Go's strconv.ParseBool accepts.
+        checked = ['1', 't', 'true'].includes(overrides.EnableSIPOutboundAllowlist.toLowerCase());
+    } else {
+        // @ts-ignore val is a boolean, but the signature says 'string'
+        checked = props.value === 'true' || props.value === true;
+    }
     const disabled = props.disabled || overridden;
+
+    // Share the unsaved value so the allowlist setting can react before saving.
+    useEffect(() => {
+        dispatch(setSIPOutboundAllowlistEnabled(checked));
+    }, [dispatch, checked]);
 
     return (
         <div
