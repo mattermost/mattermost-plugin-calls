@@ -53,7 +53,7 @@ const serverErrorMessages = new Map<string, MessageDescriptor>([
 
 // LiveKit adds the phone leg to the room before /phone-call returns; the grace
 // period only covers a late room update.
-const phoneLegGraceMs = 5000;
+const PHONE_LEG_GRACE_MS = 5_000;
 
 export function placePhoneCall(number: string) {
     return RestClient.fetch<PhoneCallResponse>(
@@ -253,7 +253,7 @@ export function watchPhoneCall(store: Store, client: CallClient, channelID: stri
                 store.dispatch(displayGenericErrorModal(dialErrorTitle, dialFailedMessage));
                 client.disconnect();
             }
-        }, phoneLegGraceMs);
+        }, PHONE_LEG_GRACE_MS);
     });
 
     client.on(CALL_EVENT.USER_LEFT, () => {

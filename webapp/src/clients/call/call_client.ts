@@ -96,7 +96,7 @@ function mergeStatsReports(reports: RTCStatsReport[]): RTCStatsReport {
 // How often we sample RTC stats during a live call, so a last-known-good sample
 // is available to log if the call is torn down remotely. Matches the v1 client's
 // RTCMonitor cadence.
-const statsPollIntervalMs = 10000;
+const STATS_POLL_INTERVAL_MS = 10_000;
 
 export default class CallClient extends EventEmitter {
     public channelID = '';
@@ -364,7 +364,7 @@ export default class CallClient extends EventEmitter {
         // which are the key diagnostic for a connection that never stabilized.
         void this.pollStats();
 
-        this.statsPollTimer = setInterval(this.pollStats, statsPollIntervalMs);
+        this.statsPollTimer = setInterval(this.pollStats, STATS_POLL_INTERVAL_MS);
     }
 
     private stopStatsPolling(): void {
