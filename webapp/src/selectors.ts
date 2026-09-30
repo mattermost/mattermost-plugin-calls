@@ -499,11 +499,11 @@ export const recordingMaxDuration = (state: GlobalState) =>
 export const sipOutboundEnabled = (state: GlobalState) =>
     callsConfig(state).EnableSIPOutbound;
 
+export const sipOutboundAllowlistEnabled = (state: GlobalState): boolean =>
+    callsConfig(state).EnableSIPOutboundAllowlist || false;
+
 export const rtcdEnabled = (state: GlobalState) =>
     pluginReduxStore(state).rtcdEnabled;
-
-export const sipOutboundAllowlistEnabled = (state: GlobalState) =>
-    pluginReduxStore(state).sipOutboundAllowlistEnabled;
 
 export const ringingEnabled = (state: GlobalState) =>
     callsConfig(state).EnableRinging;

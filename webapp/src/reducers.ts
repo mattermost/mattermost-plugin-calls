@@ -511,6 +511,8 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: a
         return {...state, EnableLiveCaptions: action.data};
     case TRANSCRIBE_API:
         return {...state, TranscribeAPI: action.data};
+    case SIP_OUTBOUND_ALLOWLIST_ENABLED:
+        return {...state, EnableSIPOutboundAllowlist: action.data};
     default:
         return state;
     }
@@ -537,15 +539,6 @@ const callsVersionInfo = (state = {}, action: { type: string, data: CallsVersion
 const rtcdEnabled = (state = false, action: {type: string, data: boolean}) => {
     switch (action.type) {
     case RTCD_ENABLED:
-        return action.data;
-    default:
-        return state;
-    }
-};
-
-const sipOutboundAllowlistEnabled = (state = false, action: {type: string, data: boolean}) => {
-    switch (action.type) {
-    case SIP_OUTBOUND_ALLOWLIST_ENABLED:
         return action.data;
     default:
         return state;
@@ -815,7 +808,6 @@ const rootReducer = combineReducers({
     callsConfigEnvOverrides,
     callsVersionInfo,
     rtcdEnabled,
-    sipOutboundAllowlistEnabled,
     callsUserPreferences,
     recordings,
     callLiveCaptionsState,

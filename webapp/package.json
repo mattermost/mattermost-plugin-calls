@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@floating-ui/react": "0.26.12",
-    "@mattermost/calls-common": "github:mattermost/calls-common#cf306f5f5aa2b481e6f35f224024afe351958ee0",
+    "@mattermost/calls-common": "github:mattermost/calls-common#27f51ad83e0426d850bb4313a00c654f9c890f38",
     "@mattermost/client": "11.8.0",
     "@mediapipe/tasks-vision": "0.10.22-rc.20250304",
     "@msgpack/msgpack": "2.7.1",

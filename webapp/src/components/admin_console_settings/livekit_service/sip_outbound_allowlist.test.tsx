@@ -37,8 +37,10 @@ describe('SIPOutboundAllowlist', () => {
     const renderComponent = (props = {}, pluginState = {}) => {
         const store = mockStore({
             'plugins-com.mattermost.calls': {
+                callsConfig: {
+                    EnableSIPOutboundAllowlist: true,
+                },
                 callsConfigEnvOverrides: {},
-                sipOutboundAllowlistEnabled: true,
                 ...pluginState,
             },
         });
@@ -68,7 +70,7 @@ describe('SIPOutboundAllowlist', () => {
     });
 
     it('should be read-only but keep its value when the allowlist is disabled', () => {
-        renderComponent({}, {sipOutboundAllowlistEnabled: false});
+        renderComponent({}, {callsConfig: {EnableSIPOutboundAllowlist: false}});
 
         const input = screen.getByTestId('SIPOutboundAllowlistinput');
         expect(input).toHaveValue('+15551234567');
