@@ -96,7 +96,7 @@ export function setParticipantRemovedChannelID(channelID: string) {
 
 const CONFIG_FETCH_MIN_DELAY_MS = 1_000;
 const CONFIG_FETCH_JITTER_MS = 4_000;
-let configRefetchTimer : ReturnType<typeof setTimeout> | undefined;
+let configRefetchTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Core sends config_changed to every client on any config save, plugin settings
 // included, and can send it before the plugin has loaded the new config. The
