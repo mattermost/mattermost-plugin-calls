@@ -9,7 +9,6 @@
   "/VnS9f": "Phone numbers permitted for outbound dialing when the allowlist is enabled. Enter one number per line. Numbers are matched after normalization to E.164 format, so formatting variations like +1 555-123-4567 and 15551234567 are equivalent.",
   "/Voey4": "Set up video devices to be used for Mattermost calls",
   "/WMCDd": "Something went wrong!",
-  "/Xzt2+": "Usage: /call dial [number]",
   "/c+F8S": "Call from <b>{callerName}</b> with <b>{others}</b>",
   "/n/Skb": "Joining call…",
   "08RGJ8": "You're already on a phone call.",

@@ -32,7 +32,7 @@ describe('slashCommandsHandler', () => {
     });
 
     describe('dial', () => {
-        it.each(['/call dial', '/call dial   '])('shows a usage error when no number is given (%p)', async (message) => {
+        it.each(['/call dial', '/call dial   '])('asks for a phone number when none is given (%p)', async (message) => {
             const store = makeStore();
             const joinCall = jest.fn();
             const dialPhoneNumber = jest.fn();
@@ -44,7 +44,7 @@ describe('slashCommandsHandler', () => {
             expect(joinCall).not.toHaveBeenCalled();
             expect(mockedDisplayGenericErrorModal).toHaveBeenCalledWith(
                 defineMessage({defaultMessage: 'Unable to place phone call'}),
-                defineMessage({defaultMessage: 'Usage: /call dial [number]'}),
+                defineMessage({defaultMessage: 'Enter a phone number to call'}),
             );
             expect(store.dispatch).toHaveBeenCalledWith(mockedDisplayGenericErrorModal.mock.results[0].value);
         });
