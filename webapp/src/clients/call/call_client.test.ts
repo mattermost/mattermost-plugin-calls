@@ -833,9 +833,12 @@ describe('CallClient', () => {
             expect(userLeftListener).toHaveBeenCalledWith('p1-session', 'user1');
         });
 
-        it('logs the phone participant and its last call status when it leaves', async () => {
+        it('emits SIP_LEFT with the last call status instead of USER_LEFT when the phone participant leaves', async () => {
             await client.connect({channelID: 'test-channel'});
-            const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
+            const userLeftListener = jest.fn();
+            const sipLeftListener = jest.fn();
+            client.on(CALL_EVENT.USER_LEFT, userLeftListener);
+            client.on(CALL_EVENT.SIP_LEFT, sipLeftListener);
 
             mockRoom.fire(RoomEvent.ParticipantDisconnected, {
                 sid: 'sip-sid',
@@ -844,12 +847,109 @@ describe('CallClient', () => {
                 attributes: {'sip.callStatus': 'ringing'},
             });
 
-            expect(debugSpy).toHaveBeenCalledWith(
-                expect.any(String),
-                'CallClient: participant disconnected',
-                {type: 'phone', identity: 'sip:+15550100', reason: 'ringing'},
+            expect(sipLeftListener).toHaveBeenCalledWith('ringing');
+            expect(userLeftListener).not.toHaveBeenCalled();
+        });
+
+        it('emits SIP_LEFT with an empty status when the phone participant never reported one', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const sipLeftListener = jest.fn();
+            client.on(CALL_EVENT.SIP_LEFT, sipLeftListener);
+
+            mockRoom.fire(RoomEvent.ParticipantDisconnected, {
+                sid: 'sip-sid',
+                identity: 'sip:+15550100',
+                kind: ParticipantKind.SIP,
+            });
+
+            expect(sipLeftListener).toHaveBeenCalledWith('');
+        });
+    });
+
+    describe('phone participant status', () => {
+        it('emits SIP_STATUS_CHANGED instead of USER_JOINED when the phone participant connects', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const userJoinedListener = jest.fn();
+            const statusListener = jest.fn();
+            client.on(CALL_EVENT.USER_JOINED, userJoinedListener);
+            client.on(CALL_EVENT.SIP_STATUS_CHANGED, statusListener);
+
+            mockRoom.fire(RoomEvent.ParticipantConnected, {
+                sid: 'sip-sid',
+                identity: 'sip:+15550100',
+                kind: ParticipantKind.SIP,
+                attributes: {'sip.callStatus': 'dialing'},
+            });
+
+            expect(statusListener).toHaveBeenCalledWith('dialing');
+            expect(userJoinedListener).not.toHaveBeenCalled();
+        });
+
+        it('does not emit a status when the phone participant connects without one', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const statusListener = jest.fn();
+            client.on(CALL_EVENT.SIP_STATUS_CHANGED, statusListener);
+
+            mockRoom.fire(RoomEvent.ParticipantConnected, {
+                sid: 'sip-sid',
+                identity: 'sip:+15550100',
+                kind: ParticipantKind.SIP,
+                attributes: {},
+            });
+
+            expect(statusListener).not.toHaveBeenCalled();
+        });
+
+        it('seeds SIP_STATUS_CHANGED for a phone participant already in the room on connect', async () => {
+            mockRoom.remoteParticipants.set('sip', {
+                sid: 'sip-sid',
+                identity: 'sip:+15550100',
+                kind: ParticipantKind.SIP,
+                attributes: {'sip.callStatus': 'ringing'},
+                getTrackPublication: jest.fn(() => null),
+            });
+            const userJoinedListener = jest.fn();
+            const statusListener = jest.fn();
+            client.on(CALL_EVENT.USER_JOINED, userJoinedListener);
+            client.on(CALL_EVENT.SIP_STATUS_CHANGED, statusListener);
+
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Connected);
+
+            expect(statusListener).toHaveBeenCalledWith('ringing');
+            expect(userJoinedListener).not.toHaveBeenCalledWith(expect.anything(), '', expect.anything());
+            expect(userJoinedListener).toHaveBeenCalledTimes(1);
+        });
+
+        it('emits SIP_STATUS_CHANGED when the phone participant status attribute changes', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const statusListener = jest.fn();
+            const raiseListener = jest.fn();
+            client.on(CALL_EVENT.SIP_STATUS_CHANGED, statusListener);
+            client.on(CALL_EVENT.RAISE_HAND, raiseListener);
+
+            mockRoom.fire(
+                RoomEvent.ParticipantAttributesChanged,
+                {'sip.callStatus': 'active', raised_hand: '1700000000000'},
+                {sid: 'sip-sid', identity: 'sip:+15550100', kind: ParticipantKind.SIP, attributes: {'sip.callStatus': 'active'}},
             );
-            debugSpy.mockRestore();
+
+            expect(statusListener).toHaveBeenCalledWith('active');
+            expect(raiseListener).not.toHaveBeenCalled();
+        });
+
+        it('ignores other attribute changes on the phone participant', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const statusListener = jest.fn();
+            client.on(CALL_EVENT.SIP_STATUS_CHANGED, statusListener);
+
+            mockRoom.fire(
+                RoomEvent.ParticipantAttributesChanged,
+                {'sip.trunkID': 'trunk'},
+                {sid: 'sip-sid', identity: 'sip:+15550100', kind: ParticipantKind.SIP, attributes: {'sip.callStatus': 'active'}},
+            );
+
+            expect(statusListener).not.toHaveBeenCalled();
         });
     });
 

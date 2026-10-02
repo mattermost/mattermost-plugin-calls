@@ -72,6 +72,7 @@ const stubState = (channel: Channel) => ({
         calls: {},
         sessions: {},
         dmCalleeAnsweredAt: {},
+        sipCallStates: {},
     },
     entities: {
         channels: {channels: {[channel.id]: channel}},
@@ -117,6 +118,8 @@ const props: Props = {
     connectedDMUser: undefined,
     isAdmin: false,
     isDMCalling: false,
+    isPhoneCall: false,
+    isPhoneCallRinging: false,
 };
 
 describe('CallWidget', () => {
@@ -376,5 +379,125 @@ describe('leave button behavior', () => {
 
         await user.click(leaveMenuItem);
         expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('phone call', () => {
+    // Phone calls live in the caller's DM with the Calls bot.
+    const botDMChannel = {...stubChannel, type: 'D', name: 'user-id__calls-bot'} as Channel;
+    const currentUserSession: UserSessionState = {session_id: 'session-1', user_id: 'user-id', unmuted: true, raised_hand: 0};
+
+    const phoneState = (phone: Record<string, string>, sipState?: {status: string; answeredAt: number}) => {
+        const state = stubState(botDMChannel);
+        return {
+            ...state,
+            'plugins-com.mattermost.calls': {
+                ...state['plugins-com.mattermost.calls'],
+                calls: {
+                    [botDMChannel.id]: {
+                        ID: 'call-id',
+                        channelID: botDMChannel.id,
+                        startAt: 1000,
+                        ownerID: 'user-id',
+                        threadID: 'thread-id',
+                        phone: {number: '+13125550174', displayNumber: '312-555-0174', label: 'DSN', targetUserID: '', ...phone},
+                    },
+                },
+                sipCallStates: sipState ? {[botDMChannel.id]: sipState} : {},
+            },
+            entities: {
+                ...state.entities,
+                users: {
+                    currentUserId: 'user-id',
+                    profiles: {
+                        'other-user': {id: 'other-user', username: 'leonard', first_name: 'Leonard', last_name: 'Riley'} as UserProfile,
+                        'calls-bot': {id: 'calls-bot', username: 'calls', is_bot: true} as UserProfile,
+                    },
+                },
+            },
+        };
+    };
+
+    const renderWidget = (state: ReturnType<typeof phoneState>, overrides: Partial<Props> = {}) => render(
+        <Provider store={mockStore(state)}>
+            <RawIntlProvider value={intl}>
+                <CallWidget
+                    {...props}
+                    channel={botDMChannel}
+                    sessions={[currentUserSession]}
+                    currentSession={currentUserSession}
+                    isPhoneCall={true}
+                    isPhoneCallRinging={true}
+                    {...overrides}
+                />
+            </RawIntlProvider>
+        </Provider>,
+    );
+
+    let originalWebappUtils: typeof window.WebappUtils;
+
+    beforeEach(() => {
+        window.callsClient = {
+            disconnect: jest.fn(),
+            channelID: 'channel-id',
+            getRemoteVoiceTracks: () => [],
+            getRemoteScreenStream: () => null,
+            getLocalScreenStream: () => null,
+            on: jest.fn(),
+            off: jest.fn(),
+        } as unknown as (typeof window)['callsClient'];
+
+        // The settings menu reads window.WebappUtils, which the host webapp provides.
+        originalWebappUtils = window.WebappUtils;
+        window.WebappUtils = {} as typeof window.WebappUtils;
+    });
+
+    afterEach(() => {
+        window.callsClient = undefined;
+        window.WebappUtils = originalWebappUtils;
+    });
+
+    test('while ringing: shows who is being called with the number and label', () => {
+        renderWidget(phoneState({targetUserID: 'other-user'}, {status: 'ringing', answeredAt: 0}));
+
+        expect(screen.getByTestId('calls-widget-phone-call-title')).toHaveTextContent('Calling Leonard Riley…');
+        expect(screen.getByTestId('calls-widget-phone-call-subtitle')).toHaveTextContent('312-555-0174 • DSN');
+    });
+
+    test('while ringing with no target user: shows the number as the name', () => {
+        renderWidget(phoneState({}, {status: 'dialing', answeredAt: 0}));
+
+        expect(screen.getByTestId('calls-widget-phone-call-title')).toHaveTextContent('Calling 312-555-0174…');
+    });
+
+    test('once answered: shows the name with the elapsed time and label', () => {
+        renderWidget(
+            phoneState({targetUserID: 'other-user'}, {status: 'active', answeredAt: Date.now() - 5000}),
+            {isPhoneCallRinging: false},
+        );
+
+        expect(screen.getByTestId('calls-widget-phone-call-title')).toHaveTextContent(/^Leonard Riley$/);
+        expect(screen.getByTestId('calls-widget-phone-call-subtitle')).toHaveTextContent(/00:0[4-6] • DSN/);
+    });
+
+    test('hides the pop-out, screen share and chat thread controls', async () => {
+        const user = userEvent.setup();
+        renderWidget(phoneState({targetUserID: 'other-user'}, {status: 'ringing', answeredAt: 0}));
+
+        expect(screen.queryByRole('button', {name: /open in new window/i})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: /start presenting/i})).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', {name: /more options/i}));
+        expect(screen.getByTestId('calls-widget-menu')).toBeInTheDocument();
+        expect(screen.queryByText(/start presenting/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/show chat thread/i)).not.toBeInTheDocument();
+    });
+
+    test('hangs up with a single click', async () => {
+        const user = userEvent.setup();
+        renderWidget(phoneState({targetUserID: 'other-user'}, {status: 'active', answeredAt: 1000}), {isPhoneCallRinging: false});
+
+        await user.click(screen.getByRole('button', {name: /^hang up$/i}));
+        expect(window.callsClient?.disconnect).toHaveBeenCalledTimes(1);
     });
 });

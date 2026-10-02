@@ -20,12 +20,15 @@ import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEn
 import {isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
 
 import {
+    dialFromUI,
     dialPhoneNumber,
     installTelLinkInterceptor,
     openInOSDialer,
     parseTelHref,
     phoneCallErrorMessage,
+    phoneDialingSupported,
     placePhoneCall,
+    registerPhoneDialer,
     registerTelLinkDialing,
     telLinkInterceptionSupported,
     watchPhoneCall,
@@ -138,18 +141,25 @@ describe('phone_call', () => {
             ['outbound_disabled', defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'})],
             ['outbound_not_configured', defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'})],
             ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
+            ['invalid_target', defineMessage({defaultMessage: 'The person you\'re trying to call couldn\'t be found.'})],
         ])('maps the %s server error to its message', (id, message) => {
-            expect(phoneCallErrorMessage({server_error_id: id})).toEqual(message);
+            expect(phoneCallErrorMessage({server_error_id: id, status_code: 400})).toEqual(message);
         });
 
         it.each([
-            ['the dial_failed server error', {server_error_id: 'dial_failed'}],
-            ['an unknown server error', {server_error_id: 'something_else'}],
-            ['an id that is an Object prototype key', {server_error_id: 'constructor'}],
-            ['an error without an id', new Error('network down')],
+            ['the dial_failed server error', {server_error_id: 'dial_failed', status_code: 500}],
+            ['an unknown server error', {server_error_id: 'something_else', status_code: 500}],
+            ['an id that is an Object prototype key', {server_error_id: 'constructor', status_code: 500}],
             ['no error at all', undefined],
         ])('falls back to the generic message for %s', (_label, err) => {
             expect(phoneCallErrorMessage(err)).toEqual(defineMessage({defaultMessage: 'The call couldn\'t be placed. Please try again.'}));
+        });
+
+        it.each([
+            ['a fetch failure', new TypeError('Failed to fetch')],
+            ['a client error without a status code', {message: 'Received invalid response from the server.'}],
+        ])('reports a connection problem for %s', (_label, err) => {
+            expect(phoneCallErrorMessage(err)).toEqual(defineMessage({defaultMessage: 'Couldn\'t reach the server. Check your connection and try again.'}));
         });
     });
 
@@ -163,6 +173,81 @@ describe('phone_call', () => {
                 expect.stringMatching(/\/plugins\/com\.mattermost\.calls\/phone-call$/),
                 {method: 'post', body: JSON.stringify({number: '+15550100'})},
             );
+        });
+
+        it('sends who the number belongs to when known', async () => {
+            mockedFetch.mockResolvedValueOnce({channel_id: 'bot-dm'});
+
+            await placePhoneCall('+15550100', {targetUserID: 'other-user', label: 'Mobile'});
+
+            expect(mockedFetch).toHaveBeenCalledWith(
+                expect.any(String),
+                {method: 'post', body: JSON.stringify({number: '+15550100', target_user_id: 'other-user', display_label: 'Mobile'})},
+            );
+        });
+
+        it('leaves out empty target fields', async () => {
+            mockedFetch.mockResolvedValueOnce({channel_id: 'bot-dm'});
+
+            await placePhoneCall('+15550100', {targetUserID: '', label: ''});
+
+            expect(mockedFetch).toHaveBeenCalledWith(
+                expect.any(String),
+                {method: 'post', body: JSON.stringify({number: '+15550100'})},
+            );
+        });
+    });
+
+    describe('dialFromUI', () => {
+        it('dials through the registered dialer', async () => {
+            const dialer = jest.fn().mockResolvedValue(undefined);
+            const unregister = registerPhoneDialer(dialer);
+
+            await dialFromUI('+15550100', {targetUserID: 'other-user'});
+            unregister();
+
+            expect(dialer).toHaveBeenCalledWith('+15550100', {targetUserID: 'other-user'});
+        });
+
+        it('does nothing once the dialer is unregistered', async () => {
+            const dialer = jest.fn();
+            registerPhoneDialer(dialer)();
+
+            await dialFromUI('+15550100');
+
+            expect(dialer).not.toHaveBeenCalled();
+        });
+
+        it('keeps a newer dialer when an older registration is cleaned up', async () => {
+            const oldDialer = jest.fn();
+            const newDialer = jest.fn().mockResolvedValue(undefined);
+            const unregisterOld = registerPhoneDialer(oldDialer);
+            const unregisterNew = registerPhoneDialer(newDialer);
+
+            unregisterOld();
+            await dialFromUI('+15550100');
+            unregisterNew();
+
+            expect(oldDialer).not.toHaveBeenCalled();
+            expect(newDialer).toHaveBeenCalledWith('+15550100', undefined);
+        });
+    });
+
+    describe('phoneDialingSupported', () => {
+        it('is supported in a browser, including a mobile one', () => {
+            mockedIsMobile.mockReturnValue(true);
+
+            expect(phoneDialingSupported()).toBe(true);
+        });
+
+        it.each([
+            {label: 'the Desktop app', setUp: () => setDesktopAPI({joinCall: jest.fn()})},
+            {label: 'a legacy Desktop app', setUp: () => mockedShouldRenderDesktopWidget.mockReturnValue(true)},
+            {label: 'the expanded-view pop-out', setUp: () => mockedIsCallsPopOut.mockReturnValue(true)},
+        ])('is not supported in $label', ({setUp}) => {
+            setUp();
+
+            expect(phoneDialingSupported()).toBe(false);
         });
     });
 
@@ -306,6 +391,17 @@ describe('phone_call', () => {
             expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
         });
 
+        it('passes the target along to the server', async () => {
+            mockedFetch.mockResolvedValueOnce(phoneCallResponse);
+
+            await dialPhoneNumber(makeStore() as never, '+15550100', jest.fn(), {target: {targetUserID: 'other-user', label: 'Work'}});
+
+            expect(mockedFetch).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({body: JSON.stringify({number: '+15550100', target_user_id: 'other-user', display_label: 'Work'})}),
+            );
+        });
+
         it('shows the mapped error and clears connecting when the server rejects the call', async () => {
             mockedFetch.mockRejectedValueOnce({server_error_id: 'sip_number_not_allowed', status_code: 403});
             const connect = jest.fn();
@@ -382,7 +478,7 @@ describe('phone_call', () => {
             const telHref = 'tel:+15550100';
             let openSpy: jest.SpyInstance;
 
-            const dialFromTelLink = (store: ReturnType<typeof makeStore>) => dialPhoneNumber(store as never, '+15550100', jest.fn(), () => openInOSDialer(telHref));
+            const dialFromTelLink = (store: ReturnType<typeof makeStore>) => dialPhoneNumber(store as never, '+15550100', jest.fn(), {onOutboundUnavailable: () => openInOSDialer(telHref)});
 
             beforeEach(() => {
                 openSpy = jest.spyOn(window, 'open').mockReturnValue(null);
@@ -429,7 +525,7 @@ describe('phone_call', () => {
             mockedFetch.mockRejectedValueOnce({server_error_id: 'dial_failed', status_code: 500});
             const onOutboundUnavailable = jest.fn();
 
-            await dialPhoneNumber(makeStore() as never, '+15550100', jest.fn(), onOutboundUnavailable);
+            await dialPhoneNumber(makeStore() as never, '+15550100', jest.fn(), {onOutboundUnavailable});
 
             expect(mockedGetCallsConfig).not.toHaveBeenCalled();
             expect(onOutboundUnavailable).not.toHaveBeenCalled();
@@ -440,7 +536,7 @@ describe('phone_call', () => {
             mockedSipOutboundEnabled.mockReturnValue(false);
             const onOutboundUnavailable = jest.fn();
 
-            await dialPhoneNumber(makeStore() as never, '+15550100', jest.fn(), onOutboundUnavailable);
+            await dialPhoneNumber(makeStore() as never, '+15550100', jest.fn(), {onOutboundUnavailable});
 
             expect(onOutboundUnavailable).toHaveBeenCalled();
             expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
@@ -606,7 +702,7 @@ describe('phone_call', () => {
             client.emit(CALL_EVENT.CONNECTED);
             client.hasSIPParticipant.mockReturnValue(false);
 
-            client.emit(CALL_EVENT.USER_LEFT, 'sip:+15550100', '');
+            client.emit(CALL_EVENT.SIP_LEFT, 'hangup');
 
             expect(client.disconnect).toHaveBeenCalled();
             expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
@@ -618,6 +714,15 @@ describe('phone_call', () => {
             client.emit(CALL_EVENT.CONNECTED);
 
             client.emit(CALL_EVENT.USER_LEFT, 'session', 'user');
+
+            expect(client.disconnect).not.toHaveBeenCalled();
+        });
+
+        it('stays in the call while another phone leg is still in the room', () => {
+            watch();
+            client.emit(CALL_EVENT.CONNECTED);
+
+            client.emit(CALL_EVENT.SIP_LEFT, 'hangup');
 
             expect(client.disconnect).not.toHaveBeenCalled();
         });

@@ -12,6 +12,9 @@ import {getActiveSpeakerProfile} from './active_speaker';
 
 interface ParticipantAvatarProps {
     profile?: UserProfile | null;
+
+    // Shown when there is no profile. Defaults to a generic person.
+    icon?: string;
 }
 
 export function ParticipantAvatar(props: ParticipantAvatarProps) {
@@ -32,7 +35,7 @@ export function ParticipantAvatar(props: ParticipantAvatarProps) {
         <div className='participantAvatarContainer'>
             <Avatar
                 size={32}
-                icon='account-outline'
+                icon={props.icon ?? 'account-outline'}
                 border={false}
                 className='genericAvatar'
             />

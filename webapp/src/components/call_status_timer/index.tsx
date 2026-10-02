@@ -7,13 +7,14 @@ import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {setDMCalleeAnsweredAt} from 'src/actions';
 import {useDMCallingState} from 'src/components/use_dm_calling_state';
+import {PHONE_CALL_SUBTITLE_SEPARATOR, usePhoneCallInfo} from 'src/components/use_phone_call_info';
 import {
     callStartAtForCurrentCall,
     channelForCurrentCall,
     getCallIDForCurrentCall,
     isCurrentUserOwnerOfCurrentCall,
 } from 'src/selectors';
-import {getCallsClientInitTime, getCallsWindow} from 'src/utils';
+import {getCallsClientInitTime, getCallsWindow, untranslatable} from 'src/utils';
 
 import {ElapsedTimer} from './elapsed_timer';
 
@@ -32,6 +33,7 @@ export function CallStatusTimer(props: Props) {
     const dispatch = useDispatch();
 
     const {isDMCalling, dmCalleeAnsweredAt} = useDMCallingState();
+    const phoneCall = usePhoneCallInfo();
 
     const callID = useSelector(getCallIDForCurrentCall);
     const channel = useSelector(channelForCurrentCall);
@@ -55,6 +57,32 @@ export function CallStatusTimer(props: Props) {
 
     if (!channel) {
         return null;
+    }
+
+    if (phoneCall.isPhoneCall) {
+        // The number and label stay under the title until the phone is answered,
+        // then the timer takes the number's place.
+        if (props.clientConnecting || phoneCall.isRinging) {
+            return (
+                <div
+                    className='callStatusTimer'
+                    data-testid='calls-widget-phone-call-subtitle'
+                >
+                    {phoneCall.subtitle}
+                </div>
+            );
+        }
+
+        return (
+            <div
+                className='callStatusTimer'
+                style={{display: 'flex'}}
+                data-testid='calls-widget-phone-call-subtitle'
+            >
+                <ElapsedTimer startAt={phoneCall.answeredAt}/>
+                {phoneCall.phone?.label && <span>{untranslatable(PHONE_CALL_SUBTITLE_SEPARATOR)}{phoneCall.phone.label}</span>}
+            </div>
+        );
     }
 
     if (isDirectChannel(channel)) {

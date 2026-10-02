@@ -42,6 +42,12 @@ export const CALL_EVENT = {
     // screen event rather than assigned per event, so it is order-independent
     // and self-healing.
     SCREEN_SHARING_CHANGED: 'screenSharingChanged',
+
+    // Phone legs bridged in over SIP are not call participants (no USER_JOINED/
+    // USER_LEFT). Their progress is reported through these two events instead,
+    // carrying the SIP_CALL_STATUS attribute value.
+    SIP_STATUS_CHANGED: 'sipStatusChanged',
+    SIP_LEFT: 'sipLeft',
 } as const;
 
 export const CALL_ATTRIBUTES = {

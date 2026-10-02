@@ -26,6 +26,7 @@ import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, RING_LENGTH} from 'src/constants';
 import {applyCallHostChanged} from 'src/host_change';
 import {logErr} from 'src/log';
+import {getPhoneCallProps, withoutSIPSessions} from 'src/phone_utils';
 import {
     callDismissedNotification,
     dmCalleeAnsweredAtForCurrentCall,
@@ -34,6 +35,7 @@ import {
     hostChangeAtForCurrentCall,
     incomingCalls,
     isCurrentUserOwnerOfCurrentCall,
+    isPhoneCallInChannel,
     numSessionsInCallInChannel,
     ringingEnabled,
     ringingForCall,
@@ -41,7 +43,7 @@ import {
 } from 'src/selectors';
 import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {callEnded, getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/session/actions';
-import {CallsStats, ChannelType} from 'src/types/types';
+import {CallsStats, ChannelType, PhoneCallState} from 'src/types/types';
 import {
     getCallsClientSessionID,
     getCallsWindow,
@@ -429,8 +431,9 @@ export const joinUser = (channelID: string, userID: string, sessionID: string, i
         // Only play the join sound if we're in the call this event is about.
         if (window.callsClient?.channelID === channelID) {
             if (isOurSession) {
-                // The DM caller hears the outbound ringback instead of the join-self sound.
-                if (!(ringingEnabled(state) && amDMCaller)) {
+                // The DM or phone caller hears the outbound ringback instead of the join-self sound.
+                const hearsRingback = (ringingEnabled(state) && amDMCaller) || isPhoneCallInChannel(state, channelID);
+                if (!hearsRingback) {
                     playSound('join_self');
                 }
             } else if (!isFromInitialSync && !isSameUser && shouldPlayJoinUserSound(state)) {
@@ -598,8 +601,9 @@ export const loadProfilesByIdsIfMissing = (ids: string[]) => {
  * It is used to set the initial state of the call when the page is loaded when for example user joins an ongoing call,
  * or a client drop the connection and reconnects after a period of time.
  */
-export const loadCallState = (channelID: string, call: CallState) => (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export const loadCallState = (channelID: string, call: PhoneCallState) => (dispatch: DispatchFunc, getState: GetStateFunc) => {
     const actions: AnyAction[] = [];
+    const sessions = withoutSIPSessions(call.sessions);
 
     actions.push({
         type: CALL_STATE,
@@ -609,6 +613,7 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
             startAt: call.start_at,
             ownerID: call.owner_id,
             threadID: call.thread_id,
+            phone: getPhoneCallProps(call),
         },
     });
 
@@ -629,7 +634,7 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
     });
 
     if (call.screen_sharing_session_id) {
-        const screenSharer = call.sessions.find((session) => session.session_id === call.screen_sharing_session_id);
+        const screenSharer = sessions.find((session) => session.session_id === call.screen_sharing_session_id);
         if (screenSharer?.user_id) {
             actions.push(userScreenShared(channelID, call.screen_sharing_session_id, screenSharer.user_id));
         }
@@ -657,13 +662,13 @@ export const loadCallState = (channelID: string, call: CallState) => (dispatch: 
         }
     }
 
-    if (call.sessions.length > 0) {
+    if (sessions.length > 0) {
         // This is async, which is expected as we are okay with setting the state while we wait
         // for any missing user profiles.
-        dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(call.sessions)));
+        dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(sessions)));
     }
 
-    actions.push(sessionsReceived(channelID, getSessionsMapFromSessions(call.sessions)));
+    actions.push(sessionsReceived(channelID, getSessionsMapFromSessions(sessions)));
 
     dispatch(batchActions(actions));
 };

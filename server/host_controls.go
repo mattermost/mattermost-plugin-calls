@@ -343,6 +343,11 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 	p.cancelDMNoAnswerTimer(channelID)
 	p.cancelSIPNoAnswerTimer(channelID)
 
+	// A phone caller hanging up ends the call through here. Ask LiveKit whether
+	// the callee had answered before the room goes away, so the card can say
+	// canceled rather than ended.
+	endReason := p.phoneCallerHangupReason(&state.Call, channelID)
+
 	// Destroy the LiveKit room. This forcibly disconnects every connected
 	// participant; each client's LiveKit SDK fires RoomEvent.Disconnected
 	// (reason=ROOM_DELETED), driving in-call UI teardown independently of
@@ -370,7 +375,7 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 		ReliableClusterSend: true,
 	})
 
-	if err := p.cleanCallState(&state.Call, "host_end", callEndReasonNormal); err != nil {
+	if err := p.cleanCallState(&state.Call, "host_end", endReason); err != nil {
 		return fmt.Errorf("failed to clean call state: %w", err)
 	}
 

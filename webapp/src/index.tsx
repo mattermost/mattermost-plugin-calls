@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
-import {CallChannelState, CallJobState, CallState, EmojiData} from '@mattermost/calls-common/lib/types';
+import {CallChannelState, CallJobState, EmojiData} from '@mattermost/calls-common/lib/types';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
@@ -110,11 +110,20 @@ import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sh
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
-import {dialPhoneNumber, registerTelLinkDialing, watchPhoneCall} from 'src/phone_call';
+import {
+    dialPhoneNumber,
+    PhoneCallTarget,
+    phoneDialingSupported,
+    registerPhoneDialer,
+    registerTelLinkDialing,
+    watchPhoneCall,
+} from 'src/phone_call';
+import {getPhoneCallProps, toSIPCallStatus, withoutSIPSessions} from 'src/phone_utils';
 import slashCommandsHandler from 'src/slash_commands';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
-import {CurrentCallDataDefault} from 'src/types/types';
+import {sipCallStatusChanged} from 'src/state/sip_call_state/actions';
+import {CurrentCallDataDefault, PhoneCallState} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
 
 import {
@@ -160,7 +169,7 @@ import {
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {convertStatsToPanels} from './stats';
-import {PluginRegistry, Store} from './types/mattermost-webapp';
+import {PhoneCallRequest, PluginRegistry, Store} from './types/mattermost-webapp';
 import {
     followThread,
     getCallsClient,
@@ -454,8 +463,9 @@ export default class Plugin {
         };
 
         const connectPhoneCall = (channelID: string, phoneSession: LiveKitSessionResponse) => connectCall(channelID, '', '', phoneSession);
-        const dialNumber = (number: string) => dialPhoneNumber(store, number, connectPhoneCall);
+        const dialNumber = (number: string, target?: PhoneCallTarget) => dialPhoneNumber(store, number, connectPhoneCall, {target});
         this.unsubscribers.push(registerTelLinkDialing(store, connectPhoneCall));
+        this.unsubscribers.push(registerPhoneDialer(dialNumber));
 
         let channelHeaderMenuButtonID: string;
         const unregisterChannelHeaderMenuButton = () => {
@@ -472,6 +482,12 @@ export default class Plugin {
             />
         );
         const ChannelHeaderDropdownText = () => (<FormattedMessage defaultMessage='Start call'/>);
+
+        // Older core builds ignore the extra argument, so the button behaves as before there.
+        const phoneAction = phoneDialingSupported() ? ({number, userId, label}: PhoneCallRequest) => {
+            dialNumber(number, {targetUserID: userId, label});
+        } : undefined;
+
         const registerChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 return;
@@ -485,6 +501,7 @@ export default class Plugin {
                 },
                 ChannelHeaderIcon,
                 ChannelHeaderDropdownText,
+                phoneAction,
             );
         };
 
@@ -796,7 +813,7 @@ export default class Plugin {
 
                 // The snapshot returned by the join request, which replaces the
                 // call_state the Calls WebSocket used to push on join.
-                window.callsClient.on(CALL_EVENT.CALL_STATE, (callState: CallState) => {
+                window.callsClient.on(CALL_EVENT.CALL_STATE, (callState: PhoneCallState) => {
                     store.dispatch(loadCallState(window.callsClient?.channelID ?? '', callState));
                 });
 
@@ -812,6 +829,20 @@ export default class Plugin {
                     // Job state is keyed on the channel id, matching the callID the
                     // server sends on the call_job_state broadcast.
                     applyCallJobState(store, window.callsClient?.channelID ?? '', jobState);
+                });
+
+                window.callsClient.on(CALL_EVENT.SIP_STATUS_CHANGED, (status: string) => {
+                    const sipStatus = toSIPCallStatus(status);
+                    if (sipStatus) {
+                        store.dispatch(sipCallStatusChanged(window.callsClient?.channelID ?? '', sipStatus));
+                    }
+                });
+
+                window.callsClient.on(CALL_EVENT.SIP_LEFT, (status: string) => {
+                    const sipStatus = toSIPCallStatus(status);
+                    if (sipStatus) {
+                        store.dispatch(sipCallStatusChanged(window.callsClient?.channelID ?? '', sipStatus));
+                    }
                 });
 
                 window.callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
@@ -929,13 +960,14 @@ export default class Plugin {
                         },
                     });
 
-                    const call = data[i].call;
+                    const call = data[i].call as PhoneCallState | undefined;
 
                     if (!call || !call.sessions?.length) {
                         continue;
                     }
 
-                    store.dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(call.sessions)));
+                    const sessions = withoutSIPSessions(call.sessions);
+                    store.dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(sessions)));
 
                     if (!callStartAtForCallInChannel(store.getState(), data[i].channel_id)) {
                         actions.push({
@@ -946,10 +978,11 @@ export default class Plugin {
                                 startAt: call.start_at,
                                 ownerID: call.owner_id,
                                 threadID: call.thread_id,
+                                phone: getPhoneCallProps(call),
                             },
                         });
 
-                        actions.push(sessionsReceived(data[i].channel_id, getSessionsMapFromSessions(call.sessions)));
+                        actions.push(sessionsReceived(data[i].channel_id, getSessionsMapFromSessions(sessions)));
 
                         if (ringingEnabled(store.getState()) && data[i].call) {
                             // dismissedNotification is populated after the actions array has been batched, so manually check:

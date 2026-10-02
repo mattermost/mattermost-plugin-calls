@@ -907,6 +907,10 @@ export default class CallClient extends EventEmitter {
             if (this.isBotParticipant(remoteParticipant)) {
                 continue;
             }
+            if (this.isSipParticipant(remoteParticipant)) {
+                this.emitSipCallStatus(remoteParticipant);
+                continue;
+            }
             const {userID: remoteUserId, sessionID: remoteSessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
             this.emit(CALL_EVENT.USER_JOINED, remoteSessionID, remoteUserId, true);
             this.emitLiveKitOwnedState(remoteParticipant);
@@ -1313,6 +1317,11 @@ export default class CallClient extends EventEmitter {
         if (this.isBotParticipant(remoteParticipant)) {
             return;
         }
+        if (this.isSipParticipant(remoteParticipant)) {
+            logDebug('CallClient: phone participant connected', {identity: remoteParticipant.identity});
+            this.emitSipCallStatus(remoteParticipant);
+            return;
+        }
         const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
         this.emit(CALL_EVENT.USER_JOINED, sessionID, userID);
 
@@ -1335,12 +1344,14 @@ export default class CallClient extends EventEmitter {
         }
 
         if (this.isSipParticipant(remoteParticipant)) {
+            const status = remoteParticipant.attributes?.[CALL_ATTRIBUTES.SIP_CALL_STATUS] ?? '';
             logDebug('CallClient: participant disconnected', {
                 type: 'phone',
                 identity: remoteParticipant.identity,
-                reason: remoteParticipant.attributes[CALL_ATTRIBUTES.SIP_CALL_STATUS],
+                reason: status,
             });
-            this.emit(CALL_EVENT.USER_LEFT, remoteParticipant.identity, '');
+            this.emit(CALL_EVENT.SIP_LEFT, status);
+            return;
         }
 
         if (this.isHumanParticipant(remoteParticipant)) {
@@ -1362,6 +1373,13 @@ export default class CallClient extends EventEmitter {
      */
     private handleParticipantAttributesChanged(changedAttributes: Participant['attributes'], participant: Participant) {
         if (!participant) {
+            return;
+        }
+
+        if (this.isSipParticipant(participant)) {
+            if (CALL_ATTRIBUTES.SIP_CALL_STATUS in changedAttributes) {
+                this.emitSipCallStatus(participant);
+            }
             return;
         }
 
@@ -1687,6 +1705,15 @@ export default class CallClient extends EventEmitter {
 
     private isSipParticipant(p: Participant): boolean {
         return p.kind === ParticipantKind.SIP;
+    }
+
+    private emitSipCallStatus(p: Participant) {
+        const status = p.attributes?.[CALL_ATTRIBUTES.SIP_CALL_STATUS];
+        if (!status) {
+            return;
+        }
+        logDebug('CallClient: phone call status changed', {identity: p.identity, status});
+        this.emit(CALL_EVENT.SIP_STATUS_CHANGED, status);
     }
 
     private isHumanParticipant(p: Participant): boolean {

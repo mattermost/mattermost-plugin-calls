@@ -150,6 +150,48 @@ func TestNotificationWillBePushed(t *testing.T) {
 			require.Equal(t, "calls plugin will handle this notification", msg)
 		})
 
+		t.Run("phone call card in a DM is pushed as called you", func(t *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+
+			postID := model.NewId()
+			phonePost := &model.Post{Id: postID, Type: callEventPostType}
+			phonePost.AddProp(phoneCallTypeProp, callTypePhone)
+			mockAPI.On("GetPost", postID).Return(phonePost, nil).Once()
+			mockAPI.On("GetUser", "receiverID").Return(&model.User{Id: "receiverID"}, nil).Once()
+			mockAPI.On("GetUser", "senderID").Return(&model.User{Id: "senderID", Username: "sender"}, nil).Once()
+			mockAPI.On("GetConfig").Return(&model.Config{}).Once()
+
+			res, msg := p.NotificationWillBePushed(&model.PushNotification{
+				PostType:    callEventPostType,
+				PostId:      postID,
+				ChannelType: model.ChannelTypeDirect,
+				SenderId:    "senderID",
+			}, "receiverID")
+			require.Empty(t, msg)
+			require.Equal(t, &model.PushNotification{
+				PostType:    callEventPostType,
+				PostId:      postID,
+				ChannelType: model.ChannelTypeDirect,
+				SenderId:    "senderID",
+				Message:     "\u200bapp.push_notification.phone_call_message",
+			}, res)
+		})
+
+		t.Run("regular call post in a DM is still handled by the plugin", func(t *testing.T) {
+			defer mockAPI.AssertExpectations(t)
+
+			postID := model.NewId()
+			mockAPI.On("GetPost", postID).Return(&model.Post{Id: postID, Type: callEventPostType}, nil).Once()
+
+			res, msg := p.NotificationWillBePushed(&model.PushNotification{
+				PostType:    callEventPostType,
+				PostId:      postID,
+				ChannelType: model.ChannelTypeDirect,
+			}, "userID")
+			require.Nil(t, res)
+			require.Equal(t, "calls plugin will handle this notification", msg)
+		})
+
 		t.Run("regular channel", func(t *testing.T) {
 			mockAPI.On("GetUser", "receiverID").Return(&model.User{
 				FirstName: "Firstname",
