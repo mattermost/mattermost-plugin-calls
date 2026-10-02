@@ -17,6 +17,7 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/interfaces"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
@@ -138,6 +139,10 @@ func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, titl
 		props["call_status"] = callStatusCalling
 	}
 
+	for k, v := range phoneCallPostProps(state.Call.Props) {
+		props[k] = v
+	}
+
 	post := &model.Post{
 		UserId:    userID,
 		ChannelId: channelID,
@@ -172,21 +177,20 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string, reaso
 
 	T := p.getTranslationFunc("")
 
-	var postMsg, callStatus string
+	var postMsg string
 	switch reason {
 	case callEndReasonNoAnswer:
 		postMsg = T("app.call.no_answer_message")
-		callStatus = callStatusNoAnswer
 	case callEndReasonCanceledByCaller:
 		postMsg = T("app.call.canceled_by_caller_message")
-		callStatus = callStatusCanceledByCaller
 	case callEndReasonDeclined:
 		postMsg = T("app.call.declined_message")
-		callStatus = callStatusDeclined
+	case callEndReasonFailed:
+		postMsg = T("app.call.failed_message")
 	default:
 		postMsg = T("app.call.ended_message")
-		callStatus = callStatusEnded
 	}
+	callStatus := reason.status()
 
 	slackAttachment := model.SlackAttachment{
 		Fallback: postMsg,
@@ -201,6 +205,10 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string, reaso
 	post.AddProp("call_status", callStatus)
 	post.AddProp("participants", participants)
 
+	if crossPostID := p.crossPostPhoneCallCard(post, callStatus); crossPostID != "" {
+		post.AddProp(phoneCrossPostIDProp, crossPostID)
+	}
+
 	if _, appErr := p.API.UpdatePost(post); appErr != nil {
 		return 0, appErr
 	}
@@ -213,6 +221,109 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string, reaso
 	}
 
 	return dur, nil
+}
+
+// Post props carrying the phone-call fields. The call type is stored as call_type
+// rather than type: core treats a string props.type as the post type when picking
+// a renderer, so a type prop would make the card render as plain text.
+const (
+	phoneCallTypeProp     = "call_type"
+	phoneNumberProp       = "phone_number"
+	phoneDisplayNumProp   = "display_number"
+	phoneDisplayLabelProp = "display_label"
+	phoneTargetUserIDProp = "target_user_id"
+	phoneCrossPostIDProp  = "cross_post_id"
+)
+
+// phoneCallFields returns the phone-call props as sent to clients in call events.
+// Empty for non-phone calls.
+func phoneCallFields(props public.CallProps) map[string]interface{} {
+	if props.Type != callTypePhone {
+		return nil
+	}
+	fields := map[string]interface{}{
+		"type":         props.Type,
+		"phone_number": props.PhoneNumber,
+	}
+	if props.DisplayNumber != "" {
+		fields["display_number"] = props.DisplayNumber
+	}
+	if props.DisplayLabel != "" {
+		fields["display_label"] = props.DisplayLabel
+	}
+	if props.TargetUserID != "" {
+		fields["target_user_id"] = props.TargetUserID
+	}
+	return fields
+}
+
+// phoneCallPostProps returns the phone-call fields as post props so the call
+// card can render from scrollback. Empty for non-phone calls.
+func phoneCallPostProps(props public.CallProps) map[string]interface{} {
+	fields := phoneCallFields(props)
+	if fields == nil {
+		return nil
+	}
+	postProps := make(map[string]interface{}, len(fields))
+	for k, v := range fields {
+		if k == "type" {
+			k = phoneCallTypeProp
+		}
+		postProps[k] = v
+	}
+	return postProps
+}
+
+func postPropString(post *model.Post, key string) string {
+	s, _ := post.GetProp(key).(string)
+	return s
+}
+
+// crossPostPhoneCallCard copies the final card of a phone call that named a
+// target user into the DM between the caller and that user, so the person who
+// was called sees it where they'd expect. The full record, including recordings,
+// stays on the original post in the Calls bot DM. Returns the new post's id, or
+// "" when nothing was posted. Posts at most once per call.
+func (p *Plugin) crossPostPhoneCallCard(post *model.Post, callStatus string) string {
+	if postPropString(post, phoneCallTypeProp) != callTypePhone {
+		return ""
+	}
+	targetUserID := postPropString(post, phoneTargetUserIDProp)
+	if targetUserID == "" || postPropString(post, phoneCrossPostIDProp) != "" {
+		return ""
+	}
+	switch callStatus {
+	case callStatusEnded, callStatusNoAnswer, callStatusCanceledByCaller:
+	default:
+		return ""
+	}
+
+	dm, appErr := p.API.GetDirectChannel(post.UserId, targetUserID)
+	if appErr != nil {
+		p.LogError("crossPostPhoneCallCard: failed to get DM channel",
+			"callerID", post.UserId, "targetUserID", targetUserID, "err", appErr.Error())
+		return ""
+	}
+
+	props := make(map[string]interface{}, len(post.GetProps()))
+	for k, v := range post.GetProps() {
+		props[k] = v
+	}
+	delete(props, phoneCrossPostIDProp)
+
+	crossPost, appErr := p.API.CreatePost(&model.Post{
+		UserId:    post.UserId,
+		ChannelId: dm.Id,
+		Message:   post.Message,
+		Type:      callEventPostType,
+		Props:     props,
+	})
+	if appErr != nil {
+		p.LogError("crossPostPhoneCallCard: failed to create post",
+			"channelID", dm.Id, "err", appErr.Error())
+		return ""
+	}
+	return crossPost.Id
 }
 
 func (p *Plugin) ServeMetrics(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {

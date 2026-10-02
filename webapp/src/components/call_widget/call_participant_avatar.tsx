@@ -8,6 +8,7 @@ import {isDirectChannel} from 'mattermost-redux/utils/channel_utils';
 import React from 'react';
 import {useSelector} from 'react-redux';
 import {useDMCallingState} from 'src/components/use_dm_calling_state';
+import {usePhoneCallInfo} from 'src/components/use_phone_call_info';
 import {channelForCurrentCall} from 'src/selectors';
 
 import {ParticipantAvatar, SpeakerAvatar} from './speaker_avatar';
@@ -21,9 +22,20 @@ interface Props {
 export function CallParticipantAvatar(props: Props) {
     const channel = useSelector(channelForCurrentCall);
     const {isDMCalling, dmCallee} = useDMCallingState();
+    const phoneCall = usePhoneCallInfo();
 
     if (!channel) {
         return null;
+    }
+
+    if (phoneCall.isPhoneCall) {
+        // The other side is a phone, so there is never an active speaker profile for it.
+        return (
+            <ParticipantAvatar
+                profile={phoneCall.targetUser}
+                icon='phone'
+            />
+        );
     }
 
     if (isDirectChannel(channel) && (isDMCalling || props.clientConnecting)) {

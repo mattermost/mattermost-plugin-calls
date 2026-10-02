@@ -270,6 +270,10 @@ func (p *Plugin) removeParticipantSession(channelID, userID, sessionID, sid stri
 		p.LogInfo("removeParticipantSession: last human left phone call, hanging up SIP",
 			"callID", state.Call.ID, "channelID", channelID)
 
+		// Ask LiveKit whether the callee had answered before the room goes away.
+		endReason := p.phoneCallerHangupReason(&state.Call, channelID)
+		state.endReasonOverride = &endReason
+
 		// livekitDeleteRoom is a network call; run it outside the call lock to
 		// avoid blocking concurrent webhook handlers for up to its 5s timeout.
 		go func() {
@@ -377,7 +381,7 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 
 	// setCallEnded clears Props.Participants, so read it while it's still there.
 	participants := mapKeys(state.Call.Props.Participants)
-	endReason := p.callEndReason(participants, channelID)
+	endReason := p.resolveCallEndReason(state, participants, channelID)
 
 	setCallEnded(&state.Call)
 

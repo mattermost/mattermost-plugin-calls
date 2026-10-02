@@ -16,6 +16,15 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
+// callTypePhone marks a call placed through /phone-call in Call.Props.Type.
+const callTypePhone = "phone"
+
+// sipCallStatusActive is the sip.callStatus attribute value once the callee has answered.
+const sipCallStatusActive = "active"
+
+// phoneDisplayLabelMaxLen caps the user-supplied label on a dialed number.
+const phoneDisplayLabelMaxLen = 64
+
 // sipOutboundRingingTimeout cancels an unanswered outbound call so a ringing
 // leg doesn't hold a trunk channel indefinitely.
 const sipOutboundRingingTimeout = 60 * time.Second
@@ -68,8 +77,9 @@ func (p *Plugin) createSIPParticipant(trunkID, phoneNumber, roomName, displayNam
 		RoomName:            roomName,
 		ParticipantIdentity: "sip:" + phoneNumber,
 		ParticipantName:     displayName,
-		PlayDialtone:        true,
-		RingingTimeout:      durationpb.New(sipOutboundRingingTimeout),
+		// The browser plays its own ringback until sip.callStatus reaches active.
+		PlayDialtone:   false,
+		RingingTimeout: durationpb.New(sipOutboundRingingTimeout),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SIP participant: %w", err)

@@ -32,6 +32,10 @@
     "translation": "Call ended"
   },
   {
+    "id": "app.call.failed_message",
+    "translation": "Call failed"
+  },
+  {
     "id": "app.call.new_recording_and_transcription_message",
     "translation": "Here's the call recording. Transcription is processing and will be posted when ready."
   },
@@ -62,6 +66,10 @@
   {
     "id": "app.push_notification.inviting_message",
     "translation": "{{.SenderName}} is inviting you to a call"
+  },
+  {
+    "id": "app.push_notification.phone_call_message",
+    "translation": "{{.SenderName}} called you"
   },
   {
     "id": "app.save_config.error",

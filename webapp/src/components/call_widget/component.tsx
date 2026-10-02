@@ -145,6 +145,8 @@ interface Props {
     connectedDMUser: UserProfile | undefined,
     isAdmin: boolean,
     isDMCalling: boolean,
+    isPhoneCall: boolean,
+    isPhoneCallRinging: boolean,
 }
 
 interface DraggingState {
@@ -351,7 +353,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.onRaiseHandToggle();
             break;
         case SHARE_UNSHARE_SCREEN:
-            this.onShareScreenToggle();
+            if (!this.props.isPhoneCall) {
+                this.onShareScreenToggle();
+            }
             break;
         case PARTICIPANTS_LIST_TOGGLE:
             if (!isDMChannel(this.props.channel)) {
@@ -1512,6 +1516,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return null;
         }
 
+        // A phone call's thread lives in the DM with the Calls bot; the card there is the place to go.
+        if (this.props.isPhoneCall) {
+            return null;
+        }
+
         const showChatThreadLabel = formatMessage({defaultMessage: 'Show chat thread'});
 
         return (
@@ -1560,8 +1569,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const recordingActionLabel = this.props.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'});
 
         // There's nothing to record until the callee picks up, so the action stays
-        // disabled while a DM call is still ringing.
-        const disabled = this.props.isDMCalling;
+        // disabled while a DM or phone call is still ringing.
+        const disabled = this.props.isDMCalling || this.props.isPhoneCallRinging;
 
         return (
             <React.Fragment>
@@ -1689,7 +1698,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             <li className='MenuGroup menu-divider'/>
         );
 
-        const showScreenShareItem = this.props.allowScreenSharing && !this.props.wider;
+        const showScreenShareItem = this.props.allowScreenSharing && !this.props.wider && !this.props.isPhoneCall;
 
         return (
             <div
@@ -1791,10 +1800,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             if (this.props.transcriptionsEnabled) {
                 header = formatMessage({defaultMessage: 'Recording and transcription has stopped. Processing…'});
-                body = formatMessage({defaultMessage: 'You can find the recording and transcription in this call\'s chat thread once it has finished processing.'});
+                body = this.props.isPhoneCall ? formatMessage({defaultMessage: 'You can find the recording and transcription in your direct message with the Calls bot once it has finished processing.'}) : formatMessage({defaultMessage: 'You can find the recording and transcription in this call\'s chat thread once it has finished processing.'});
             } else {
                 header = formatMessage({defaultMessage: 'Recording has stopped. Processing…'});
-                body = formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it has finished processing.'});
+                body = this.props.isPhoneCall ? formatMessage({defaultMessage: 'You can find the recording in your direct message with the Calls bot once it has finished processing.'}) : formatMessage({defaultMessage: 'You can find the recording in this call\'s chat thread once it has finished processing.'});
             }
         }
 
@@ -2402,7 +2411,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const settingsButtonLabel = formatMessage({defaultMessage: 'More options'});
 
         // A ringing DM call hasn't been answered yet, so hanging up cancels it rather than leaving it.
-        const leaveMenuLabel = this.props.isDMCalling ? formatMessage({defaultMessage: 'Cancel call'}) : formatMessage({defaultMessage: 'Leave call'});
+        let leaveMenuLabel = this.props.isDMCalling ? formatMessage({defaultMessage: 'Cancel call'}) : formatMessage({defaultMessage: 'Leave call'});
+        if (this.props.isPhoneCall) {
+            leaveMenuLabel = formatMessage({defaultMessage: 'Hang up'});
+        }
 
         const showLeaveMenu = !isDMChannel(this.props.channel) &&
             (isHost || this.props.isAdmin) &&
@@ -2439,7 +2451,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             onCancel={this.onRemoveCancel}
                         />
                     }
-                    {this.props.allowScreenSharing && this.renderScreenSharingPanel()}
+                    {this.props.allowScreenSharing && !this.props.isPhoneCall && this.renderScreenSharingPanel()}
                     {this.state.showParticipantsList &&
                         <ParticipantsList
                             sessions={this.props.sessions}
@@ -2480,6 +2492,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             </div>
                         </div>
 
+                        {/* The expanded view has nothing to add to a phone call: no video, no screen share. */}
+                        {!this.props.isPhoneCall &&
                         <WidgetButton
                             id='calls-widget-expand-button'
                             ariaLabel={openPopOutLabel}
@@ -2494,6 +2508,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                 />
                             }
                         />
+                        }
                     </div>
 
                     <div
@@ -2571,7 +2586,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             />
                         }
 
-                        {this.props.allowScreenSharing && (this.props.wider || isDMChannel(this.props.channel)) && this.renderScreenShareButton()}
+                        {this.props.allowScreenSharing && !this.props.isPhoneCall && (this.props.wider || isDMChannel(this.props.channel)) && this.renderScreenShareButton()}
 
                         <WidgetButton
                             id='calls-widget-toggle-menu-button'

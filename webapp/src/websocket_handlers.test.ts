@@ -9,7 +9,7 @@ import {HostRemovedYouFromCallErr, userLeftChannelErr, userRemovedFromChannelErr
 
 import {channelIDForCurrentCall} from './selectors';
 import {getCallsClient, hasLiveCallClient} from './utils';
-import {handleConfigChanged, handleHostRemoved, handleUserJoined, handleUserLeft, handleUserRemovedFromChannel, setParticipantRemovedChannelID} from './websocket_handlers';
+import {handleCallStart, handleConfigChanged, handleHostRemoved, handleUserJoined, handleUserLeft, handleUserRemovedFromChannel, setParticipantRemovedChannelID} from './websocket_handlers';
 
 type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 
@@ -22,6 +22,7 @@ jest.mock('src/actions', () => ({
 jest.mock('./selectors', () => ({
     channelIDForCurrentCall: jest.fn(),
     profilesInCurrentCallMap: jest.fn(() => ({})),
+    ringingEnabled: jest.fn(() => false),
 }));
 jest.mock('./utils', () => ({
     getCallsClient: jest.fn(),
@@ -186,6 +187,56 @@ describe('websocket_handlers', () => {
 
             expect(mockedJoinUser).toHaveBeenCalledWith('call-channel', 'user-1', 'session-1', false);
             expect(store.dispatch).toHaveBeenCalledWith(mockedJoinUser.mock.results[0].value);
+        });
+
+        it('ignores the phone leg of a phone call', () => {
+            mockedHasLiveCallClient.mockReturnValue(false);
+            const store = makeStore();
+
+            handleUserJoined(store as never, {
+                data: {channelID: 'call-channel', user_id: 'sip_123', session_id: 'sip-session', is_sip_participant: true},
+                broadcast: {channel_id: ''},
+            } as unknown as WebSocketMessage<never>);
+
+            expect(mockedJoinUser).not.toHaveBeenCalled();
+            expect(store.dispatch).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('handleCallStart', () => {
+        const buildEvent = (data: Record<string, unknown>) => ({
+            data: {id: 'call-1', channelID: 'call-channel', start_at: 100, owner_id: 'user-1', host_id: 'user-1', thread_id: 'thread-1', ...data},
+            broadcast: {channel_id: ''},
+        }) as unknown as WebSocketMessage<never>;
+
+        const callStateAction = (store: ReturnType<typeof makeStore>) =>
+            store.dispatch.mock.calls.map(([action]) => action).find((action) => action.type.endsWith('_call_state'));
+
+        it('stores no phone props for a regular call', () => {
+            const store = makeStore();
+
+            handleCallStart(store as never, buildEvent({}));
+
+            expect(callStateAction(store).data.phone).toBeUndefined();
+        });
+
+        it('stores the phone props for a phone call', () => {
+            const store = makeStore();
+
+            handleCallStart(store as never, buildEvent({
+                type: 'phone',
+                phone_number: '+15551234567',
+                display_number: '(555) 123-4567',
+                display_label: 'Mobile',
+                target_user_id: 'user-2',
+            }));
+
+            expect(callStateAction(store).data.phone).toEqual({
+                number: '+15551234567',
+                displayNumber: '(555) 123-4567',
+                label: 'Mobile',
+                targetUserID: 'user-2',
+            });
         });
     });
 

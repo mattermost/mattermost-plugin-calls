@@ -25,7 +25,9 @@ import {
     hostChangeAtForCurrentCall,
     hostControlNoticesForCurrentCall,
     hostIDForCurrentCall,
+    isCurrentCallPhoneCall,
     isCurrentDMCallInCallingState,
+    isCurrentPhoneCallRinging,
     isRecordingInCurrentCall,
     profilesInCurrentCallMap,
     recentlyJoinedUsersInCurrentCall,
@@ -100,6 +102,8 @@ const mapStateToProps = (state: GlobalState) => {
         otherSessions: sessionsForOtherUsersInCall(state),
         isAdmin: isCurrentUserSystemAdmin(state),
         isDMCalling: isCurrentDMCallInCallingState(state),
+        isPhoneCall: isCurrentCallPhoneCall(state),
+        isPhoneCallRinging: isCurrentPhoneCallRinging(state),
     };
 };
 

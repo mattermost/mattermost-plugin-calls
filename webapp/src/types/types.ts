@@ -1,7 +1,15 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallPostProps, CallsConfig, LiveCaption, TranscribeAPI} from '@mattermost/calls-common/lib/types';
+import {
+    CallPostProps,
+    CallsConfig,
+    CallStartData,
+    CallState,
+    LiveCaption,
+    SessionState,
+    TranscribeAPI,
+} from '@mattermost/calls-common/lib/types';
 import {MessageDescriptor} from 'react-intl';
 import {RTCStats} from 'src/types/webrtc';
 
@@ -253,10 +261,66 @@ export enum CallPostStatus {
     NoAnswer = 'no_answer',
     Canceled = 'canceled_by_caller',
     Declined = 'declined',
+    Failed = 'failed',
+}
+
+// Phone calls
+
+// Matches callTypePhone in server/sip.go.
+export const CALL_TYPE_PHONE = 'phone';
+
+export type PhoneCallProps = {
+    number: string;
+    displayNumber: string;
+    label: string;
+    targetUserID: string;
+}
+
+// Phone fields the server adds to call_state and the call_start event
+// (see phoneCallFields in server/plugin.go). Typed here rather than in
+// calls-common since they are specific to this plugin.
+export type PhoneCallFields = {
+    type?: string;
+    phone_number?: string;
+    display_number?: string;
+    display_label?: string;
+    target_user_id?: string;
+}
+
+export type PhoneCallState = CallState & PhoneCallFields & {
+    sessions: PhoneSessionState[];
+};
+
+export type PhoneCallStartData = CallStartData & PhoneCallFields;
+
+export type PhoneSessionState = SessionState & {
+    is_sip_participant?: boolean;
+}
+
+// Values of the sip.callStatus LiveKit attribute, see CALL_ATTRIBUTES.SIP_CALL_STATUS.
+export type SIPCallStatus = 'dialing' | 'ringing' | 'automation' | 'active' | 'hangup';
+
+export const SIP_CALL_STATUSES: ReadonlyArray<SIPCallStatus> = ['dialing', 'ringing', 'automation', 'active', 'hangup'];
+
+export type SIPCallState = {
+    status: SIPCallStatus;
+
+    // When the leg first became active. Client-side only, so the call timer
+    // excludes the time spent dialing and ringing.
+    answeredAt: number;
 }
 
 export type CallsPostProps = CallPostProps & {
     call_status: CallPostStatus | '';
+
+    // Phone call fields, see phoneCallPostProps in server/plugin.go.
+    // The type lives under call_type since core treats props.type as the post type.
+    call_type?: string;
+    phone_number?: string;
+    display_number?: string;
+    display_label?: string;
+    target_user_id?: string;
+    cross_post_id?: string;
 }
 
 // Matching the type in server/public/stats.go

@@ -29,11 +29,23 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 		p.LogError("store.GetActiveCallByChannelID failed", "err", err.Error())
 	}
 
+	if notification.PostType != callEventPostType {
+		return nil, ""
+	}
+
+	// The card cross-posted into the caller<->callee DM once a phone call ends is
+	// the only call post created already ended. Unlike call-start posts it isn't
+	// replaced by our own ringing notification, so let it through as a plain
+	// "called you" message.
+	if notification.ChannelType == model.ChannelTypeDirect && p.isPhoneCallCardPost(notification.PostId) {
+		return p.phoneCallPushNotification(notification, userID), ""
+	}
+
 	// We will use our own notifications if:
 	// 1. This is a call start post
 	// 2. We have enabled ringing
 	// 3. The channel is a DM or GM
-	if notification.PostType != callEventPostType || !*p.getConfiguration().EnableRinging {
+	if !*p.getConfiguration().EnableRinging {
 		return nil, ""
 	}
 
@@ -64,6 +76,38 @@ func (p *Plugin) NotificationWillBePushed(notification *model.PushNotification, 
 	notification.Message = buildPushNotificationMessage(senderName, receiver.Locale)
 
 	return notification, ""
+}
+
+func (p *Plugin) isPhoneCallCardPost(postID string) bool {
+	if postID == "" {
+		return false
+	}
+	post, appErr := p.API.GetPost(postID)
+	if appErr != nil {
+		p.LogError("isPhoneCallCardPost: failed to get post", "postID", postID, "err", appErr.Error())
+		return false
+	}
+	return postPropString(post, phoneCallTypeProp) == callTypePhone
+}
+
+func (p *Plugin) phoneCallPushNotification(notification *model.PushNotification, userID string) *model.PushNotification {
+	if notification.IsIdLoaded {
+		return notification
+	}
+
+	receiver, appErr := p.API.GetUser(userID)
+	if appErr != nil {
+		p.LogError("failed to get receiver user", "error", appErr.Error())
+		return notification
+	}
+	sender, appErr := p.API.GetUser(notification.SenderId)
+	if appErr != nil {
+		p.LogError("failed to get sender user", "error", appErr.Error())
+		return notification
+	}
+	senderName := sender.GetDisplayName(p.getNotificationNameFormat(userID))
+	notification.Message = buildPhoneCallPushNotificationMessage(senderName, receiver.Locale)
+	return notification
 }
 
 func (p *Plugin) sendPushNotifications(channelID, createdPostID, threadID string, sender *model.User, config *model.Config) {
@@ -148,6 +192,11 @@ func (p *Plugin) checkLicenseForIDLoaded() bool {
 func buildPushNotificationMessage(senderName, locale string) string {
 	T := i18n.GetUserTranslations(locale)
 	return fmt.Sprintf("\u200b%s", T("app.push_notification.inviting_message", map[string]any{"SenderName": senderName}))
+}
+
+func buildPhoneCallPushNotificationMessage(senderName, locale string) string {
+	T := i18n.GetUserTranslations(locale)
+	return fmt.Sprintf("\u200b%s", T("app.push_notification.phone_call_message", map[string]any{"SenderName": senderName}))
 }
 
 func buildGenericPushNotificationMessage(locale string) string {
