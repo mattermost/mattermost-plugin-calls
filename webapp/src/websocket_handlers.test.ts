@@ -4,17 +4,18 @@
 import {HostControlRemoved, UserRemovedData} from '@mattermost/calls-common/lib/types';
 import {BaseWebSocketMessage} from '@mattermost/client';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {displayCallErrorModal, joinUser, leaveUser} from 'src/actions';
+import {displayCallErrorModal, getCallsConfig, joinUser, leaveUser} from 'src/actions';
 import {HostRemovedYouFromCallErr, userLeftChannelErr, userRemovedFromChannelErr} from 'src/components/error_modal/error_messages';
 
 import {channelIDForCurrentCall} from './selectors';
 import {getCallsClient, hasLiveCallClient} from './utils';
-import {handleHostRemoved, handleUserJoined, handleUserLeft, handleUserRemovedFromChannel, setParticipantRemovedChannelID} from './websocket_handlers';
+import {handleConfigChanged, handleHostRemoved, handleUserJoined, handleUserLeft, handleUserRemovedFromChannel, setParticipantRemovedChannelID} from './websocket_handlers';
 
 type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 
 jest.mock('src/actions', () => ({
     displayCallErrorModal: jest.fn((err, channelID) => ({type: 'mock/displayCallErrorModal', err, channelID})),
+    getCallsConfig: jest.fn(() => ({type: 'mock/getCallsConfig'})),
     joinUser: jest.fn((channelID, userID, sessionID, isFromInitialSync) => ({type: 'mock/joinUser', channelID, userID, sessionID, isFromInitialSync})),
     leaveUser: jest.fn((channelID, userID, sessionID) => ({type: 'mock/leaveUser', channelID, userID, sessionID})),
 }));
@@ -276,6 +277,31 @@ describe('websocket_handlers', () => {
 
             expect(mockedDisplayCallErrorModal).not.toHaveBeenCalled();
             expect(store.dispatch).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('handleConfigChanged', () => {
+        beforeEach(() => {
+            jest.useFakeTimers();
+        });
+
+        afterEach(() => {
+            jest.useRealTimers();
+        });
+
+        it('refetches the Calls config once, after a delay, for a burst of changes', () => {
+            const store = makeStore();
+
+            handleConfigChanged(store as never);
+            handleConfigChanged(store as never);
+
+            jest.advanceTimersByTime(999);
+            expect(store.dispatch).not.toHaveBeenCalled();
+
+            jest.advanceTimersByTime(4001);
+            expect(store.dispatch).toHaveBeenCalledTimes(1);
+            expect(getCallsConfig).toHaveBeenCalledTimes(1);
+            expect(store.dispatch).toHaveBeenCalledWith({type: 'mock/getCallsConfig'});
         });
     });
 });

@@ -5,8 +5,10 @@ import type {EmojiData} from '@mattermost/calls-common/lib/types';
 import {
     ConnectionQuality,
     ConnectionState,
+    DisconnectReason,
     LocalAudioTrack,
     LocalVideoTrack,
+    ParticipantKind,
     Room,
     RoomEvent,
     Track,
@@ -23,6 +25,7 @@ import {getPersistentStorage, getScreenStream} from 'src/utils';
 
 import CallClient from './call_client';
 import {CALL_EVENT, CALL_MESSAGE_TOPICS} from './constants';
+import type {LiveKitSessionResponse} from './types';
 
 jest.mock('livekit-client', () => {
     const actual = jest.requireActual('livekit-client');
@@ -234,6 +237,33 @@ describe('CallClient', () => {
             expect(listener).toHaveBeenCalledWith(sessionResponse.call_state);
         });
 
+        it('joins with a session the server already created instead of creating another', async () => {
+            const session: LiveKitSessionResponse = {
+                session_id: 'phone-session',
+                token: 'phone-token',
+                url: 'wss://phone.url',
+                call_state: {
+                    id: 'phone-call-id',
+                    start_at: 1,
+                    sessions: [],
+                    thread_id: '',
+                    post_id: '',
+                    screen_sharing_session_id: '',
+                    owner_id: 'me-id',
+                    host_id: 'me-id',
+                },
+            };
+            const listener = jest.fn();
+            client.on(CALL_EVENT.CALL_STATE, listener);
+
+            await client.connect({channelID: 'bot-dm', session});
+
+            expect(RestClient.fetch).not.toHaveBeenCalledWith(expect.stringContaining('livekit-token'), expect.anything());
+            expect(mockRoom.connect).toHaveBeenCalledWith('wss://phone.url', 'phone-token');
+            expect(client.getSessionID()).toBe('phone-session');
+            expect(listener).toHaveBeenCalledWith(session.call_state);
+        });
+
         it('throws if a room is already connected', async () => {
             await client.connect({channelID: 'test-channel'});
             await expect(client.connect({channelID: 'test-channel'})).rejects.toThrow('already connected');
@@ -289,6 +319,44 @@ describe('CallClient', () => {
             mockRoom.fire(RoomEvent.Disconnected);
             expect(client.isDisconnected).toBe(true);
             expect(disconnectedListener).toHaveBeenCalled();
+        });
+
+        it('emits DISCONNECTING as soon as a disconnect starts, before DISCONNECTED', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.state = ConnectionState.Connected;
+
+            const events: string[] = [];
+            client.on(CALL_EVENT.DISCONNECTING, () => events.push(CALL_EVENT.DISCONNECTING));
+            client.on(CALL_EVENT.DISCONNECTED, () => events.push(CALL_EVENT.DISCONNECTED));
+
+            client.disconnect();
+            expect(events).toEqual([CALL_EVENT.DISCONNECTING]);
+
+            mockRoom.fire(RoomEvent.Disconnected);
+            expect(events).toEqual([CALL_EVENT.DISCONNECTING, CALL_EVENT.DISCONNECTED]);
+        });
+
+        it('does not emit DISCONNECTING once already torn down', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Disconnected);
+
+            const disconnectingListener = jest.fn();
+            client.on(CALL_EVENT.DISCONNECTING, disconnectingListener);
+
+            await client.disconnect();
+
+            expect(disconnectingListener).not.toHaveBeenCalled();
+        });
+
+        it('does not emit DISCONNECTING on a remote teardown', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const disconnectingListener = jest.fn();
+            client.on(CALL_EVENT.DISCONNECTING, disconnectingListener);
+
+            mockRoom.fire(RoomEvent.Disconnected, DisconnectReason.ROOM_DELETED);
+
+            expect(disconnectingListener).not.toHaveBeenCalled();
         });
 
         // Builds a publication whose track returns the given stats report, and seeds
@@ -760,9 +828,42 @@ describe('CallClient', () => {
             const userLeftListener = jest.fn();
             client.on(CALL_EVENT.USER_LEFT, userLeftListener);
 
-            mockRoom.fire(RoomEvent.ParticipantDisconnected, {sid: 'p1-sid', identity: 'user1___p1-session'});
+            mockRoom.fire(RoomEvent.ParticipantDisconnected, {sid: 'p1-sid', identity: 'user1___p1-session', kind: ParticipantKind.STANDARD});
 
             expect(userLeftListener).toHaveBeenCalledWith('p1-session', 'user1');
+        });
+
+        it('logs the phone participant and its last call status when it leaves', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
+
+            mockRoom.fire(RoomEvent.ParticipantDisconnected, {
+                sid: 'sip-sid',
+                identity: 'sip:+15550100',
+                kind: ParticipantKind.SIP,
+                attributes: {'sip.callStatus': 'ringing'},
+            });
+
+            expect(debugSpy).toHaveBeenCalledWith(
+                expect.any(String),
+                'CallClient: participant disconnected',
+                {type: 'phone', identity: 'sip:+15550100', reason: 'ringing'},
+            );
+            debugSpy.mockRestore();
+        });
+    });
+
+    describe('hasSIPParticipant', () => {
+        it('is true only while a SIP participant is in the room', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.remoteParticipants.set('user1___p1-session', {identity: 'user1___p1-session', kind: ParticipantKind.STANDARD});
+            expect(client.hasSIPParticipant()).toBe(false);
+
+            mockRoom.remoteParticipants.set('sip:+15550100', {identity: 'sip:+15550100', kind: ParticipantKind.SIP});
+            expect(client.hasSIPParticipant()).toBe(true);
+
+            mockRoom.remoteParticipants.delete('sip:+15550100');
+            expect(client.hasSIPParticipant()).toBe(false);
         });
     });
 
@@ -1420,6 +1521,7 @@ describe('CallClient', () => {
         function makeRemoteParticipant(identity: string, video?: {mediaStreamTrack: MediaStreamTrack}, audio?: {mediaStreamTrack: MediaStreamTrack}) {
             return {
                 identity,
+                kind: ParticipantKind.STANDARD,
                 getTrackPublication: jest.fn((source: Track.Source) => {
                     if (source === Track.Source.ScreenShare && video) {
                         return {source, track: video};

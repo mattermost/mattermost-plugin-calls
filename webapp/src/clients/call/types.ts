@@ -76,6 +76,12 @@ export type ConnectPayload = {
      * jobID is set only for bot connections (recording / transcription).
      */
     jobID?: string;
+
+    /**
+     * session is set when the server has already created the session, as
+     * POST /phone-call does, so connect must not create a second one.
+     */
+    session?: LiveKitSessionResponse;
 }
 
 export type ReactionPayload = {

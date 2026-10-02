@@ -25,6 +25,7 @@ export const CallsConfigDefault: CallsConfig = {
     GroupCallsAllowed: false,
     EnableDCSignaling: false,
     EnableVideo: false,
+    EnableSIPOutbound: false,
 };
 
 export type ChannelState = {

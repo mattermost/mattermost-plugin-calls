@@ -17,6 +17,7 @@ import {
     getPlatformInfo,
     getWebappUtils,
     hasLiveCallClient,
+    isMobile,
     maxAttemptsReachedErr,
     runWithRetry,
     selfFirstSortSessions,
@@ -72,6 +73,37 @@ describe('utils', () => {
             };
             expect(shouldRenderDesktopWidget()).toEqual(testCase.expected);
             delete window.desktop;
+        }));
+    });
+
+    describe('isMobile', () => {
+        const testCases = [
+            {
+                description: 'iPhone',
+                userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+                expected: true,
+            },
+            {
+                description: 'Android',
+                userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+                expected: true,
+            },
+            {
+                description: 'desktop browser',
+                userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                expected: false,
+            },
+            {
+                description: 'Desktop app',
+                userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Mattermost/5.9.0 Chrome/124.0.0.0 Electron/30.0.0 Safari/537.36',
+                expected: false,
+            },
+        ];
+
+        testCases.forEach((testCase) => it(testCase.description, () => {
+            const userAgentSpy = jest.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(testCase.userAgent);
+            expect(isMobile()).toEqual(testCase.expected);
+            userAgentSpy.mockRestore();
         }));
     });
 
