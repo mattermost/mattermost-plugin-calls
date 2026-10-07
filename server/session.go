@@ -432,6 +432,10 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 			p.LogInfo("removeUserSession: last human left phone call, hanging up SIP",
 				"callID", state.Call.ID, "channelID", channelID)
 
+			// Ask LiveKit whether the callee had answered before the room goes away.
+			endReason := p.phoneCallerHangupReason(&state.Call, channelID)
+			state.endReasonOverride = &endReason
+
 			// livekitDeleteRoom is a network call; run it outside the call lock to
 			// avoid blocking concurrent webhook handlers for up to its 5s timeout.
 			go func() {
@@ -489,7 +493,7 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 
 		p.cancelDMNoAnswerTimer(channelID)
 
-		endReason := p.callEndReason(participants, channelID)
+		endReason := p.resolveCallEndReason(state, participants, channelID)
 
 		p.LogInfo("call ended",
 			"callID", state.Call.ID,
@@ -766,7 +770,7 @@ func (p *Plugin) announceCallStarted(state *callState, userID, channelID, title,
 		p.startDMNoAnswerTimer(channelID, state.Call.ID)
 	}
 
-	p.publishWebSocketEvent(wsEventCallStart, map[string]interface{}{
+	payload := map[string]interface{}{
 		"id":        state.Call.ID,
 		"channelID": channelID,
 		"start_at":  state.Call.StartAt,
@@ -774,7 +778,11 @@ func (p *Plugin) announceCallStarted(state *callState, userID, channelID, title,
 		"post_id":   postID,
 		"owner_id":  state.Call.OwnerID,
 		"host_id":   state.Call.GetHostID(),
-	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+	}
+	for k, v := range phoneCallFields(state.Call.Props) {
+		payload[k] = v
+	}
+	p.publishWebSocketEvent(wsEventCallStart, payload, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 }
 
 // cancelDMNoAnswerTimerIfAnswered clears the DM ringing deadline once a second

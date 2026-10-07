@@ -308,9 +308,13 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 		require.Equal(t, sipIdentity, sess.UserID)
 		require.True(t, sess.IsSIPParticipant)
 
-		// Verify user_joined WS event was published.
+		// Verify user_joined WS event was published, flagged as the phone leg.
 		mockAPI.AssertCalled(t, "PublishWebSocketEvent",
-			wsEventUserJoined, mock.Anything, mock.Anything)
+			wsEventUserJoined, map[string]interface{}{
+				"user_id":            sipIdentity,
+				"session_id":         sipSid,
+				"is_sip_participant": true,
+			}, mock.Anything)
 	})
 
 	t.Run("SIP participant_joined no active call is a no-op", func(t *testing.T) {
@@ -457,6 +461,55 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 		require.Greater(t, ended.EndAt, int64(0))
 
 		mockAPI.AssertCalled(t, "PublishWebSocketEvent", wsEventCallEnd, mock.Anything, mock.Anything)
+	})
+
+	t.Run("SIP leg rejected ends the phone call as declined", func(t *testing.T) {
+		p, mockAPI, mockMetrics := setupPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		botID := model.NewId()
+		p.botID = botID
+
+		channelID := model.NewId()
+		postID := model.NewId()
+		call := createActiveCall(t, p, channelID, postID)
+
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID: model.NewId(), CallID: call.ID, UserID: model.NewId(), JoinAt: time.Now().UnixMilli(),
+		}))
+		sipSid := model.NewId()
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID: sipSid, CallID: call.ID, UserID: "+14155551234", JoinAt: time.Now().UnixMilli(), IsSIPParticipant: true,
+		}))
+
+		setupLock(mockAPI, mockMetrics, channelID)
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{Id: channelID, Type: model.ChannelTypeDirect}, nil)
+		mockAPI.On("GetChannelMembers", channelID, 0, 10).Return(model.ChannelMembers{{ChannelId: channelID, UserId: botID}}, nil)
+		mockAPI.On("UpdatePost", mock.MatchedBy(func(post *model.Post) bool {
+			return post.Id == postID && post.GetProp("call_status") == callStatusDeclined
+		})).Return(&model.Post{Id: postID}, nil).Once()
+		mockAPI.On("GetConfig").Return(&model.Config{}, nil)
+
+		event := &livekit.WebhookEvent{
+			Event: "participant_left",
+			Room:  &livekit.Room{Name: channelID},
+			Participant: &livekit.ParticipantInfo{
+				Sid:              sipSid,
+				Identity:         "+14155551234",
+				Kind:             livekit.ParticipantInfo_SIP,
+				DisconnectReason: livekit.DisconnectReason_USER_REJECTED,
+			},
+		}
+
+		apiRouter := p.newAPIRouter()
+		r := newSignedWebhookRequest(t, testAPIKey, testAPISecret, event)
+		w := httptest.NewRecorder()
+		apiRouter.ServeHTTP(w, r)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		mockAPI.AssertCalled(t, "UpdatePost", mock.MatchedBy(func(post *model.Post) bool {
+			return post.GetProp("call_status") == callStatusDeclined
+		}))
 	})
 
 	t.Run("non-bot-DM channel does not end the call on SIP left", func(t *testing.T) {

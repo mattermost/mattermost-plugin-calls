@@ -10,6 +10,9 @@ export const JOINED_USER_NOTIFICATION_TIMEOUT = 5000;
 export const MAX_CHANNEL_LINK_TOOLTIP_NAMES = 8;
 export const RING_LENGTH = 30000;
 export const RINGBACK_TONE_TIMEOUT = 30_000;
+
+// Matches sipOutboundRingingTimeout server-side.
+export const PHONE_RINGBACK_TONE_TIMEOUT = 60_000;
 export const DEFAULT_RING_SOUND = 'Calm';
 export const CALL_EVENT_POST_TYPE = 'custom_calls';
 export const CALL_RECORDING_POST_TYPE = 'custom_calls_recording';

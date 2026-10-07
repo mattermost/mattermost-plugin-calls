@@ -7,6 +7,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	livekit "github.com/livekit/protocol/livekit"
 	"github.com/mattermost/mattermost/server/public/model"
 )
@@ -18,6 +20,7 @@ const (
 	callEndReasonCanceledByCaller callEndReason = iota
 	callEndReasonNoAnswer         callEndReason = iota
 	callEndReasonDeclined         callEndReason = iota
+	callEndReasonFailed           callEndReason = iota
 )
 
 const (
@@ -26,7 +29,23 @@ const (
 	callStatusNoAnswer         = "no_answer"
 	callStatusCanceledByCaller = "canceled_by_caller"
 	callStatusDeclined         = "declined"
+	callStatusFailed           = "failed"
 )
+
+func (r callEndReason) status() string {
+	switch r {
+	case callEndReasonNoAnswer:
+		return callStatusNoAnswer
+	case callEndReasonCanceledByCaller:
+		return callStatusCanceledByCaller
+	case callEndReasonDeclined:
+		return callStatusDeclined
+	case callEndReasonFailed:
+		return callStatusFailed
+	default:
+		return callStatusEnded
+	}
+}
 
 // A var rather than a const so tests can shorten it.
 var dmNoAnswerTimeout = 30 * time.Second
@@ -111,25 +130,76 @@ func (p *Plugin) cancelSIPNoAnswerTimer(channelID string) bool {
 	return true
 }
 
-// sipCalleeIsActive queries the LiveKit room to check whether the outbound SIP
-// participant's call status has reached "active" (i.e. the callee answered).
+// sipCalleeCallStatus queries the LiveKit room for the outbound SIP participant's
+// sip.callStatus attribute. found is false when no SIP participant is in the room.
 // participant_joined fires when the SIP bridge joins the room, not when the
-// callee picks up, so we can't rely on session state alone.
-func (p *Plugin) sipCalleeIsActive(channelID string) bool {
+// callee picks up, so session state alone can't tell whether the call was answered.
+func (p *Plugin) sipCalleeCallStatus(channelID string) (status string, found bool, err error) {
 	participants, err := p.livekitListParticipants(channelID)
 	if err != nil {
-		p.LogError("sipCalleeIsActive: failed to list participants", "channelID", channelID, "err", err.Error())
-		return false
+		return "", false, err
 	}
 	for _, participant := range participants {
 		if participant.Kind != livekit.ParticipantInfo_SIP {
 			continue
 		}
-		if participant.GetAttributes()[livekit.AttrSIPCallStatus] == "active" {
-			return true
-		}
+		return participant.GetAttributes()[livekit.AttrSIPCallStatus], true, nil
 	}
-	return false
+	return "", false, nil
+}
+
+// sipCalleeIsActive reports whether the outbound SIP callee has answered.
+func (p *Plugin) sipCalleeIsActive(channelID string) bool {
+	status, _, err := p.sipCalleeCallStatus(channelID)
+	if err != nil {
+		p.LogError("sipCalleeIsActive: failed to list participants", "channelID", channelID, "err", err.Error())
+		return false
+	}
+	return status == sipCallStatusActive
+}
+
+// phoneCallerHangupReason reports what the call post should say when the caller
+// hangs up a phone call: canceled if the callee had not answered yet, ended
+// otherwise. Non-phone calls and lookup failures fall back to ended.
+func (p *Plugin) phoneCallerHangupReason(call *public.Call, channelID string) callEndReason {
+	if call.Props.Type != callTypePhone {
+		return callEndReasonNormal
+	}
+	status, found, err := p.sipCalleeCallStatus(channelID)
+	if err != nil {
+		if !errors.Is(err, errLiveKitNotConfigured) {
+			p.LogError("phoneCallerHangupReason: failed to get SIP call status", "channelID", channelID, "err", err.Error())
+		}
+		return callEndReasonNormal
+	}
+	if !found || status == sipCallStatusActive {
+		return callEndReasonNormal
+	}
+	return callEndReasonCanceledByCaller
+}
+
+// phoneLegEndReason maps why the SIP leg left the room onto what the call post
+// should say. Busy (486) and rejected (603) both arrive as USER_REJECTED.
+func phoneLegEndReason(reason livekit.DisconnectReason) callEndReason {
+	switch reason {
+	case livekit.DisconnectReason_USER_REJECTED:
+		return callEndReasonDeclined
+	case livekit.DisconnectReason_USER_UNAVAILABLE:
+		return callEndReasonNoAnswer
+	case livekit.DisconnectReason_SIP_TRUNK_FAILURE:
+		return callEndReasonFailed
+	default:
+		return callEndReasonNormal
+	}
+}
+
+// resolveCallEndReason prefers a reason the phone teardown already worked out
+// over the generic last-participant heuristic.
+func (p *Plugin) resolveCallEndReason(state *callState, participants []string, channelID string) callEndReason {
+	if state.endReasonOverride != nil {
+		return *state.endReasonOverride
+	}
+	return p.callEndReason(participants, channelID)
 }
 
 func (p *Plugin) handleSIPNoAnswerTimer(channelID, callID string) {

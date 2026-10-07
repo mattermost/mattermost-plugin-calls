@@ -632,6 +632,11 @@ function getCallStatusFromPostProps(props: Post['props']) {
     return props.call_status as CallPostStatus;
 }
 
+function getStringProp(props: Post['props'], key: string): string | undefined {
+    const value = props?.[key];
+    return typeof value === 'string' && value ? value : undefined;
+}
+
 export function getCallPropsFromPost(post: Post): CallsPostProps {
     return {
         title: typeof post.props?.title === 'string' ? post.props.title : '',
@@ -641,6 +646,12 @@ export function getCallPropsFromPost(post: Post): CallsPostProps {
         transcriptions: isValidObject(post.props?.transcriptions) ? getJobMetadataMap(post.props?.transcriptions) : {},
         participants: Array.isArray(post.props?.participants) ? post.props.participants : [],
         call_status: getCallStatusFromPostProps(post.props),
+        call_type: getStringProp(post.props, 'call_type'),
+        phone_number: getStringProp(post.props, 'phone_number'),
+        display_number: getStringProp(post.props, 'display_number'),
+        display_label: getStringProp(post.props, 'display_label'),
+        target_user_id: getStringProp(post.props, 'target_user_id'),
+        cross_post_id: getStringProp(post.props, 'cross_post_id'),
     };
 }
 

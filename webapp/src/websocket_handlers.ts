@@ -6,7 +6,6 @@ import {
     CallHostChangedData,
     CallJobState,
     CallJobStateData,
-    CallStartData,
     EmptyData,
     HostControlLowerHand,
     HostControlMsg,
@@ -50,11 +49,13 @@ import {
     LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
+import {getPhoneCallProps} from 'src/phone_utils';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/session/actions';
 import {
     HostControlNotice,
     HostControlNoticeType,
+    PhoneCallStartData,
 } from 'src/types/types';
 
 import {
@@ -118,7 +119,7 @@ export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
-export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData>) {
+export function handleCallStart(store: Store, ev: WebSocketMessage<PhoneCallStartData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
 
     // Clear the old recording and live captions state (if any).
@@ -146,6 +147,7 @@ export function handleCallStart(store: Store, ev: WebSocketMessage<CallStartData
             ownerID: ev.data.owner_id,
             hostID: ev.data.host_id,
             threadID: ev.data.thread_id,
+            phone: getPhoneCallProps(ev.data),
         },
     });
     store.dispatch({
@@ -184,7 +186,7 @@ export function handleUserLeft(store: Store, ev: WebSocketMessage<UserLeftData>)
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
-export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedData>) {
+export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedData & {is_sip_participant?: boolean}>) {
     const userID = ev.data.user_id;
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     const sessionID = ev.data.session_id;
@@ -193,6 +195,11 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
     // observers. Where this renderer owns the live LiveKit client, that state arrives via LiveKit
     // events instead, so skip the broadcast to avoid racing it.
     if (hasLiveCallClient(channelID)) {
+        return;
+    }
+
+    // The phone leg is tracked through sipCallStates, not as a participant.
+    if (ev.data.is_sip_participant) {
         return;
     }
     store.dispatch(joinUser(channelID, userID, sessionID, false));

@@ -36,11 +36,33 @@ export type TelParams = {
 
 type ConnectPhoneCall = (channelID: string, session: PhoneCallResponse) => void;
 
+// Who a number belongs to, when the call was started from a user's profile or
+// a phone-number field. Shown on the widget and the call card.
+export type PhoneCallTarget = {
+    targetUserID?: string;
+    label?: string;
+};
+
+export type DialPhoneNumberOptions = {
+
+    // Replaces the error shown when outbound dialing turns out to be off, so a
+    // tel: click can fall back to the OS dialer.
+    onOutboundUnavailable?: () => void;
+    target?: PhoneCallTarget;
+};
+
+type PhoneDialer = (number: string, target?: PhoneCallTarget) => Promise<void>;
+
+let phoneDialer: PhoneDialer | undefined;
+
 const allowedTelParams: ReadonlyArray<keyof TelParams> = ['trunk', 'phone-context', 'field'];
 
 const dialErrorTitle = defineMessage({defaultMessage: 'Unable to place phone call'});
 const dialFailedMessage = defineMessage({defaultMessage: 'The call couldn\'t be placed. Please try again.'});
+const networkErrorMessage = defineMessage({defaultMessage: 'Couldn\'t reach the server. Check your connection and try again.'});
 const outboundUnavailableMessage = defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'});
+
+const invalidTargetMessage = defineMessage({defaultMessage: 'The person you\'re trying to call couldn\'t be found.'});
 
 const serverErrorMessages = new Map<string, MessageDescriptor>([
     ['invalid_number', defineMessage({defaultMessage: 'That doesn\'t look like a valid phone number.'})],
@@ -49,22 +71,41 @@ const serverErrorMessages = new Map<string, MessageDescriptor>([
     ['outbound_disabled', outboundUnavailableMessage],
     ['outbound_not_configured', outboundUnavailableMessage],
     ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
+    ['invalid_target', invalidTargetMessage],
 ]);
 
 // LiveKit adds the phone leg to the room before /phone-call returns; the grace
 // period only covers a late room update.
 const PHONE_LEG_GRACE_MS = 5_000;
 
-export function placePhoneCall(number: string) {
+export function placePhoneCall(number: string, target?: PhoneCallTarget) {
+    const body: Record<string, string> = {number};
+    if (target?.targetUserID) {
+        body.target_user_id = target.targetUserID;
+    }
+    if (target?.label) {
+        body.display_label = target.label;
+    }
+
     return RestClient.fetch<PhoneCallResponse>(
         `${getPluginPath()}/phone-call`,
-        {method: 'post', body: JSON.stringify({number})},
+        {method: 'post', body: JSON.stringify(body)},
     );
 }
 
 export function phoneCallErrorMessage(err: unknown): MessageDescriptor {
-    const id = (err as Partial<ClientError> | undefined)?.server_error_id;
-    return (id && serverErrorMessages.get(id)) || dialFailedMessage;
+    const clientErr = err as Partial<ClientError> | undefined;
+    const id = clientErr?.server_error_id;
+    if (id && serverErrorMessages.has(id)) {
+        return serverErrorMessages.get(id)!;
+    }
+
+    // Without a status code the request never got an answer from the server.
+    if (err && !clientErr?.status_code) {
+        return networkErrorMessage;
+    }
+
+    return dialFailedMessage;
 }
 
 function safeDecodeURIComponent(value: string) {
@@ -126,17 +167,40 @@ function joinsInDesktopWidget() {
     return Boolean(window.desktopAPI?.joinCall) || shouldRenderDesktopWidget();
 }
 
-export function telLinkInterceptionSupported() {
-    return !joinsInDesktopWidget() && !isCallsPopOut() && !isMobile();
+// Whether this window can place a phone call itself. Mobile is left out of
+// telLinkInterceptionSupported only so tel: links reach the phone's own dialer.
+export function phoneDialingSupported() {
+    return !joinsInDesktopWidget() && !isCallsPopOut();
 }
 
-// onOutboundUnavailable replaces the error shown when outbound dialing turns out
-// to be off, so a tel: click can fall back to the OS dialer.
+export function telLinkInterceptionSupported() {
+    return phoneDialingSupported() && !isMobile();
+}
+
+// Lets UI code that has no store or connect function in hand (the call card,
+// core's call menus) dial through the plugin. Returns a cleanup function.
+export function registerPhoneDialer(dialer: PhoneDialer) {
+    phoneDialer = dialer;
+    return () => {
+        if (phoneDialer === dialer) {
+            phoneDialer = undefined;
+        }
+    };
+}
+
+export function dialFromUI(number: string, target?: PhoneCallTarget) {
+    if (!phoneDialer) {
+        logErr('dialFromUI: no phone dialer registered');
+        return Promise.resolve();
+    }
+    return phoneDialer(number, target);
+}
+
 export async function dialPhoneNumber(
     store: Store,
     number: string,
     connect: ConnectPhoneCall,
-    onOutboundUnavailable?: () => void,
+    {onOutboundUnavailable, target}: DialPhoneNumberOptions = {},
 ) {
     const state = store.getState();
     const showError = (message: MessageDescriptor) => store.dispatch(displayGenericErrorModal(dialErrorTitle, message));
@@ -176,7 +240,7 @@ export async function dialPhoneNumber(
 
     let session: PhoneCallResponse;
     try {
-        session = await placePhoneCall(number);
+        session = await placePhoneCall(number, target);
     } catch (err) {
         logErr('failed to place phone call', err);
         store.dispatch(setClientConnecting(false));
@@ -202,7 +266,7 @@ export async function dialPhoneNumber(
 // dialer. Returns a cleanup function.
 export function registerTelLinkDialing(store: Store, connect: ConnectPhoneCall) {
     const supported = telLinkInterceptionSupported();
-    const dialTelLink = (number: string, _params: TelParams, href: string) => dialPhoneNumber(store, number, connect, () => openInOSDialer(href));
+    const dialTelLink = (number: string, _params: TelParams, href: string) => dialPhoneNumber(store, number, connect, {onOutboundUnavailable: () => openInOSDialer(href)});
 
     let uninstall: (() => void) | undefined;
     const unsubscribe = store.subscribe(() => {
@@ -256,7 +320,8 @@ export function watchPhoneCall(store: Store, client: CallClient, channelID: stri
         }, PHONE_LEG_GRACE_MS);
     });
 
-    client.on(CALL_EVENT.USER_LEFT, () => {
+    // The phone leg leaving means the call is over, whatever the reason.
+    client.on(CALL_EVENT.SIP_LEFT, () => {
         if (!client.hasSIPParticipant()) {
             client.disconnect();
         }

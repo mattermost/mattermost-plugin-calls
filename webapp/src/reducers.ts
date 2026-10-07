@@ -16,6 +16,7 @@ import {
     USER_REACTED_TIMEOUT,
 } from 'src/state/session/action_types';
 import {reducer as sessions} from 'src/state/session/reducer';
+import {reducer as sipCallStates} from 'src/state/sip_call_state/reducer';
 import {
     CallsConfigDefault,
     CallsUserPreferences,
@@ -26,6 +27,7 @@ import {
     HostControlNoticeTimeout,
     IncomingCallNotification,
     LiveCaptions,
+    PhoneCallProps,
 } from 'src/types/types';
 
 import {
@@ -380,6 +382,9 @@ export type callState = {
     channelID: string;
     threadID: string;
     ownerID: string;
+
+    // Set for phone calls only.
+    phone?: PhoneCallProps;
 }
 
 type callStateAction = {
@@ -800,6 +805,7 @@ const rootReducer = combineReducers({
     calls,
     hosts,
     dmCalleeAnsweredAt,
+    sipCallStates,
     screenSharingIDs,
     expandedView,
     switchCallModal,
