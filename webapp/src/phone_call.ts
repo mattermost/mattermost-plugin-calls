@@ -55,23 +55,23 @@ type PhoneDialer = (number: string, target?: PhoneCallTarget) => Promise<void>;
 
 let phoneDialer: PhoneDialer | undefined;
 
-const allowedTelParams: ReadonlyArray<keyof TelParams> = ['trunk', 'phone-context', 'field'];
+const ALLOWED_TEL_PARAMS: ReadonlyArray<keyof TelParams> = ['trunk', 'phone-context', 'field'];
 
-const dialErrorTitle = defineMessage({defaultMessage: 'Unable to place phone call'});
-const dialFailedMessage = defineMessage({defaultMessage: 'The call couldn\'t be placed. Please try again.'});
-const networkErrorMessage = defineMessage({defaultMessage: 'Couldn\'t reach the server. Check your connection and try again.'});
-const outboundUnavailableMessage = defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'});
+const DIAL_ERROR_TITLE = defineMessage({defaultMessage: 'Unable to place phone call'});
+const DIAL_FAILED_MESSAGE = defineMessage({defaultMessage: 'The call couldn\'t be placed. Please try again.'});
+const NETWORK_ERROR_MESSAGE = defineMessage({defaultMessage: 'Couldn\'t reach the server. Check your connection and try again.'});
+const OUTBOUND_UNAVAILABLE_MESSAGE = defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'});
 
-const invalidTargetMessage = defineMessage({defaultMessage: 'The person you\'re trying to call couldn\'t be found.'});
+const INVALID_TARGET_MESSAGE = defineMessage({defaultMessage: 'The person you\'re trying to call couldn\'t be found.'});
 
-const serverErrorMessages = new Map<string, MessageDescriptor>([
+const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
     ['invalid_number', defineMessage({defaultMessage: 'That doesn\'t look like a valid phone number.'})],
     ['sip_number_not_allowed', defineMessage({defaultMessage: 'Calling this number isn\'t permitted.'})],
     ['sip_team_not_allowed', defineMessage({defaultMessage: 'You don\'t have permission to place phone calls.'})],
-    ['outbound_disabled', outboundUnavailableMessage],
-    ['outbound_not_configured', outboundUnavailableMessage],
+    ['outbound_disabled', OUTBOUND_UNAVAILABLE_MESSAGE],
+    ['outbound_not_configured', OUTBOUND_UNAVAILABLE_MESSAGE],
     ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
-    ['invalid_target', invalidTargetMessage],
+    ['invalid_target', INVALID_TARGET_MESSAGE],
 ]);
 
 // LiveKit adds the phone leg to the room before /phone-call returns; the grace
@@ -96,16 +96,16 @@ export function placePhoneCall(number: string, target?: PhoneCallTarget) {
 export function phoneCallErrorMessage(err: unknown): MessageDescriptor {
     const clientErr = err as Partial<ClientError> | undefined;
     const id = clientErr?.server_error_id;
-    if (id && serverErrorMessages.has(id)) {
-        return serverErrorMessages.get(id)!;
+    if (id && SERVER_ERROR_MESSAGES.has(id)) {
+        return SERVER_ERROR_MESSAGES.get(id)!;
     }
 
     // Without a status code the request never got an answer from the server.
     if (err && !clientErr?.status_code) {
-        return networkErrorMessage;
+        return NETWORK_ERROR_MESSAGE;
     }
 
-    return dialFailedMessage;
+    return DIAL_FAILED_MESSAGE;
 }
 
 function safeDecodeURIComponent(value: string) {
@@ -124,7 +124,7 @@ export function parseTelHref(href: string): {number: string; params: TelParams} 
     const params: TelParams = {};
     for (const rawParam of rawParams) {
         const [key, value = ''] = rawParam.split('=');
-        if (allowedTelParams.includes(key as keyof TelParams)) {
+        if (ALLOWED_TEL_PARAMS.includes(key as keyof TelParams)) {
             params[key as keyof TelParams] = safeDecodeURIComponent(value);
         }
     }
@@ -203,12 +203,12 @@ export async function dialPhoneNumber(
     {onOutboundUnavailable, target}: DialPhoneNumberOptions = {},
 ) {
     const state = store.getState();
-    const showError = (message: MessageDescriptor) => store.dispatch(displayGenericErrorModal(dialErrorTitle, message));
+    const showError = (message: MessageDescriptor) => store.dispatch(displayGenericErrorModal(DIAL_ERROR_TITLE, message));
     const handleOutboundUnavailable = () => {
         if (onOutboundUnavailable) {
             onOutboundUnavailable();
         } else {
-            showError(outboundUnavailableMessage);
+            showError(OUTBOUND_UNAVAILABLE_MESSAGE);
         }
     };
 
@@ -314,7 +314,7 @@ export function watchPhoneCall(store: Store, client: CallClient, channelID: stri
         // TODO: Move this temporary fix to server-side MM-71035
         phoneLegTimer = setTimeout(() => {
             if (!client.hasSIPParticipant()) {
-                store.dispatch(displayGenericErrorModal(dialErrorTitle, dialFailedMessage));
+                store.dispatch(displayGenericErrorModal(DIAL_ERROR_TITLE, DIAL_FAILED_MESSAGE));
                 client.disconnect();
             }
         }, PHONE_LEG_GRACE_MS);

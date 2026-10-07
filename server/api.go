@@ -44,6 +44,8 @@ const (
 	errIDInvalidTarget         = "invalid_target"
 )
 
+var errInvalidPhoneCallTarget = errors.New("invalid target user")
+
 // livekitTokenTTL only has to cover the gap between minting a token and the
 // client connecting: once connected, LiveKit refreshes the token itself over
 // signaling and the plugin is not involved. Keeping it short bounds how long a
@@ -789,15 +791,6 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	displayLabel := truncateRunes(strings.TrimSpace(req.DisplayLabel), phoneDisplayLabelMaxLen)
 
-	if req.TargetUserID != "" {
-		if err := p.validatePhoneCallTarget(userID, req.TargetUserID); err != nil {
-			res.Err = err.Error()
-			res.ErrID = errIDInvalidTarget
-			res.Code = http.StatusBadRequest
-			return
-		}
-	}
-
 	cfg := p.getConfiguration()
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
 		res.Err = "outbound dialing is disabled. Enable it in the admin console."
@@ -826,6 +819,23 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		res.ErrID = errIDSIPTeamNotAllowed
 		res.Code = http.StatusForbidden
 		return
+	}
+
+	if req.TargetUserID != "" {
+		err := p.validatePhoneCallTarget(userID, req.TargetUserID)
+		switch {
+		case errors.Is(err, errInvalidPhoneCallTarget):
+			p.LogDebug("handlePhoneCall: rejected target", "err", err.Error(), "userID", userID)
+			res.Err = errInvalidPhoneCallTarget.Error()
+			res.ErrID = errIDInvalidTarget
+			res.Code = http.StatusBadRequest
+			return
+		case err != nil:
+			p.LogError("handlePhoneCall: failed to validate target", "err", err.Error(), "userID", userID)
+			res.Err = "Internal server error"
+			res.Code = http.StatusInternalServerError
+			return
+		}
 	}
 
 	if cfg.getLiveKitURL() == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
@@ -1251,21 +1261,22 @@ func truncateRunes(s string, maxLen int) string {
 // validatePhoneCallTarget checks that the user a phone call is attributed to is
 // someone the caller could legitimately be calling: a real, active, non-bot
 // user other than the caller who shares a team with them. The dialed number is
-// deliberately not matched against the target's profile.
+// deliberately not matched against the target's profile. Rejections wrap
+// errInvalidPhoneCallTarget; any other error is a failed lookup.
 func (p *Plugin) validatePhoneCallTarget(callerID, targetID string) error {
 	if !model.IsValidId(targetID) {
-		return fmt.Errorf("invalid target user id")
+		return fmt.Errorf("%w: malformed id", errInvalidPhoneCallTarget)
 	}
 	if targetID == callerID {
-		return fmt.Errorf("target user cannot be the caller")
+		return fmt.Errorf("%w: target is the caller", errInvalidPhoneCallTarget)
 	}
 
 	target, appErr := p.API.GetUser(targetID)
 	if appErr != nil {
-		return fmt.Errorf("target user not found")
+		return fmt.Errorf("%w: not found", errInvalidPhoneCallTarget)
 	}
 	if target.IsBot || target.DeleteAt > 0 {
-		return fmt.Errorf("target user is not available")
+		return fmt.Errorf("%w: bot or deactivated", errInvalidPhoneCallTarget)
 	}
 
 	callerTeams, appErr := p.API.GetTeamsForUser(callerID)
@@ -1285,7 +1296,7 @@ func (p *Plugin) validatePhoneCallTarget(callerID, targetID string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("target user does not share a team with the caller")
+	return fmt.Errorf("%w: no shared team", errInvalidPhoneCallTarget)
 }
 
 // isPhoneCallChannel reports whether the channel is a DM with the Calls bot,

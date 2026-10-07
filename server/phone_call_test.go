@@ -459,6 +459,27 @@ func TestHandlePhoneCallTarget(t *testing.T) {
 		resp, res := doRequest(t, p, callerID, map[string]string{"number": "+14155551234", "target_user_id": targetID})
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		require.Equal(t, errIDInvalidTarget, res.ErrID)
+		require.Equal(t, errInvalidPhoneCallTarget.Error(), res.Msg)
+	})
+
+	t.Run("outbound disabled is reported before the target is checked", func(t *testing.T) {
+		p, mockAPI := setupPlugin(t)
+		p.configuration.EnableSIPOutbound = model.NewPointer(false)
+		resp, res := doRequest(t, p, model.NewId(), map[string]string{"number": "+14155551234", "target_user_id": model.NewId()})
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		require.Equal(t, errIDOutboundDisabled, res.ErrID)
+		mockAPI.AssertNotCalled(t, "GetUser", mock.Anything)
+	})
+
+	t.Run("team lookup failure is a server error", func(t *testing.T) {
+		p, mockAPI := setupPlugin(t)
+		callerID := model.NewId()
+		targetID := model.NewId()
+		mockAPI.On("GetUser", targetID).Return(&model.User{Id: targetID}, nil).Once()
+		mockAPI.On("GetTeamsForUser", callerID).Return(nil, &model.AppError{Message: "db error"}).Once()
+		resp, res := doRequest(t, p, callerID, map[string]string{"number": "+14155551234", "target_user_id": targetID})
+		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+		require.Empty(t, res.ErrID)
 	})
 
 	t.Run("valid target passes validation", func(t *testing.T) {
