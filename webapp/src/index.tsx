@@ -57,9 +57,9 @@ import EnableSIPOutbound from 'src/components/admin_console_settings/livekit_ser
 import EnableSIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound_allowlist';
 import LiveKitAPIKey from 'src/components/admin_console_settings/livekit_service/livekit_api_key';
 import LiveKitAPISecret from 'src/components/admin_console_settings/livekit_service/livekit_api_secret';
+import LiveKitPrivateURL from 'src/components/admin_console_settings/livekit_service/livekit_private_url';
 import LiveKitSIPOutboundAllowedTeams from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_allowed_teams';
 import LiveKitSIPOutboundTrunkID from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_trunk_id';
-import LiveKitPrivateURL from 'src/components/admin_console_settings/livekit_service/livekit_private_url';
 import LiveKitURL from 'src/components/admin_console_settings/livekit_service/livekit_url';
 import SIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/sip_outbound_allowlist';
 import MaxCallParticipants from 'src/components/admin_console_settings/max_call_participants';
