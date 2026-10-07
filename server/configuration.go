@@ -50,8 +50,11 @@ type configuration struct {
 	TranscribeAPIAzureSpeechRegion string
 	// The number of threads to use to transcriber calls.
 	TranscriberNumThreads *int
-	// The URL of the LiveKit server (e.g. wss://livekit.example.com).
+	// The public URL of the LiveKit server handed to clients (e.g. wss://livekit.example.com).
 	LiveKitURL string
+	// The private URL the plugin server uses to reach LiveKit (e.g. ws://livekit-server.livekit.svc.cluster.local).
+	// Falls back to LiveKitURL when empty.
+	LiveKitPrivateURL string
 	// The API key used to authenticate with the LiveKit server.
 	LiveKitAPIKey string
 	// The API secret used to authenticate with the LiveKit server.
@@ -260,6 +263,7 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveCaptionsModelSize = c.LiveCaptionsModelSize
 	cfg.LiveCaptionsLanguage = c.LiveCaptionsLanguage
 	cfg.LiveKitURL = c.LiveKitURL
+	cfg.LiveKitPrivateURL = c.LiveKitPrivateURL
 	cfg.LiveKitAPIKey = c.LiveKitAPIKey
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
 	cfg.LiveKitSIPOutboundTrunkID = c.LiveKitSIPOutboundTrunkID
@@ -345,6 +349,20 @@ func (c *configuration) getLiveKitURL() string {
 		return url
 	}
 	return c.LiveKitURL
+}
+
+// getLiveKitPrivateURL returns the URL the plugin server uses for its own
+// LiveKit API calls (room administration, SIP). In Kubernetes this is
+// typically an in-cluster service address that clients cannot reach. Falls
+// back to the public URL when unset.
+func (c *configuration) getLiveKitPrivateURL() string {
+	if url := os.Getenv("MM_CALLS_LIVEKIT_PRIVATE_URL"); url != "" {
+		return url
+	}
+	if c.LiveKitPrivateURL != "" {
+		return c.LiveKitPrivateURL
+	}
+	return c.getLiveKitURL()
 }
 
 // getLiveKitURLForBot returns the LiveKit signaling URL handed to bot
@@ -596,6 +614,7 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 
 	cfg.JobServiceURL = strings.TrimSpace(cfg.JobServiceURL)
 	cfg.LiveKitURL = strings.TrimSpace(cfg.LiveKitURL)
+	cfg.LiveKitPrivateURL = strings.TrimSpace(cfg.LiveKitPrivateURL)
 	cfg.LiveKitSIPOutboundTrunkID = strings.TrimSpace(cfg.LiveKitSIPOutboundTrunkID)
 	cfg.LiveKitSIPOutboundAllowedTeams = strings.TrimSpace(cfg.LiveKitSIPOutboundAllowedTeams)
 }

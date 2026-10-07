@@ -98,8 +98,17 @@
             "key": "LiveKitURL",
             "display_name": "LiveKit server URL",
             "type": "text",
-            "help_text": "(Optional) The URL of a LiveKit server instance to use for call media routing (e.g. wss://livekit.example.com).",
+            "help_text": "(Optional) The public URL of a LiveKit server instance that clients connect to for call media routing (e.g. wss://livekit.example.com).",
             "placeholder": "wss://livekit.example.com",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "LiveKitPrivateURL",
+            "display_name": "LiveKit private server URL",
+            "type": "text",
+            "help_text": "(Optional) The URL the Mattermost server uses to reach LiveKit for room administration and SIP, such as an in-cluster service address (e.g. ws://livekit-server.livekit.svc.cluster.local). Defaults to the LiveKit server URL when empty.",
+            "placeholder": "ws://livekit-server.livekit.svc.cluster.local",
             "default": "",
             "hosting": "on-prem"
           },

@@ -9,12 +9,12 @@ import manifest from 'src/manifest';
 import {callsConfigEnvOverrides} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-export default function LiveKitURL(props: CustomComponentProps) {
+export default function LiveKitPrivateURL(props: CustomComponentProps) {
     const {formatMessage} = useIntl();
     const overrides = useSelector(callsConfigEnvOverrides);
-    const overridden = 'LiveKitURL' in overrides;
+    const overridden = 'LiveKitPrivateURL' in overrides;
 
-    const placeholder = manifest.settings_schema?.sections?.flatMap((s) => s.settings ?? []).find((e) => e.key === 'LiveKitURL')?.placeholder ?? '';
+    const placeholder = manifest.settings_schema?.sections?.flatMap((s) => s.settings ?? []).find((e) => e.key === 'LiveKitPrivateURL')?.placeholder ?? '';
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
@@ -33,7 +33,7 @@ export default function LiveKitURL(props: CustomComponentProps) {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {formatMessage({defaultMessage: 'LiveKit server URL'})}
+                        {formatMessage({defaultMessage: 'LiveKit private server URL'})}
                     </label>
                 </LabelRow>
             </div>
@@ -52,7 +52,7 @@ export default function LiveKitURL(props: CustomComponentProps) {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: '(Optional) The public URL of a LiveKit server instance that clients connect to for call media routing (e.g. wss://livekit.example.com).'})}
+                    {formatMessage({defaultMessage: '(Optional) The URL the Mattermost server uses to reach LiveKit for room administration and SIP, such as an in-cluster service address (e.g. ws://livekit-server.livekit.svc.cluster.local). Defaults to the LiveKit server URL when empty.'})}
                 </div>
                 {overridden &&
                     <div className='alert alert-warning'>
