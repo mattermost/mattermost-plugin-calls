@@ -30,6 +30,15 @@ export type DesktopNotificationArgs = {
     notify: boolean;
 };
 
+// Matches PhoneCallRequest in core's types/store/plugins.ts: a phone number
+// picked from a user's profile, with the label and ID of the field it came from.
+export type PhoneCallRequest = {
+    number: string;
+    userId: string;
+    label: string;
+    fieldId: string;
+};
+
 export interface PluginRegistry {
     registerPostTypeComponent(typeName: string, component: React.ElementType);
 
@@ -67,6 +76,10 @@ export interface PluginRegistry {
         fn: (channel: Channel) => void,
         icon: React.ElementType,
         dropdownText: React.ElementType,
+
+        // Optional, needs a core build with phone call menus. When given, the call button
+        // in a DM and the profile popover offer a phone call to each of the user's numbers.
+        phoneAction?: (call: PhoneCallRequest) => void,
     );
 
     unregisterComponent(componentID: string);

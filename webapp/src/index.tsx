@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
-import {CallChannelState, CallJobState, CallState, EmojiData} from '@mattermost/calls-common/lib/types';
+import {CallChannelState, CallJobState, EmojiData} from '@mattermost/calls-common/lib/types';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
@@ -41,7 +41,7 @@ import {
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import CallClient, {CALL_EVENT, DisconnectReason} from 'src/clients/call';
-import type {ScreenSharingSession} from 'src/clients/call/types';
+import type {LiveKitSessionResponse, ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
@@ -110,10 +110,20 @@ import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sh
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
+import {
+    dialPhoneNumber,
+    PhoneCallTarget,
+    phoneDialingSupported,
+    registerPhoneDialer,
+    registerTelLinkDialing,
+    watchPhoneCall,
+} from 'src/phone_call';
+import {getPhoneCallProps, toSIPCallStatus, withoutSIPSessions} from 'src/phone_utils';
 import slashCommandsHandler from 'src/slash_commands';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
-import {CurrentCallDataDefault} from 'src/types/types';
+import {sipCallStatusChanged} from 'src/state/sip_call_state/actions';
+import {CurrentCallDataDefault, PhoneCallState} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
 
 import {
@@ -159,7 +169,7 @@ import {
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {convertStatsToPanels} from './stats';
-import {PluginRegistry, Store} from './types/mattermost-webapp';
+import {PhoneCallRequest, PluginRegistry, Store} from './types/mattermost-webapp';
 import {
     followThread,
     getCallsClient,
@@ -182,6 +192,7 @@ import {
     handleCallJobState,
     handleCallStart,
     handleCaption,
+    handleConfigChanged,
     handleHostLowerHand,
     handleHostRemoved,
     handleHostScreenOff,
@@ -277,10 +288,6 @@ export default class Plugin {
             handleUserDismissedNotification(store, ev);
         });
 
-        registry.registerWebSocketEventHandler('user_removed', (ev) => {
-            handleUserRemovedFromChannel(store, ev);
-        });
-
         registry.registerWebSocketEventHandler(`custom_${pluginId}_caption`, (ev) => {
             handleCaption(store, ev);
         });
@@ -303,6 +310,16 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_video_off`, (ev) => {
             handleUserVideoOff(store, ev);
+        });
+
+        // Following are the core Mattermost Websocket event handlers which plugin reacts to.
+
+        registry.registerWebSocketEventHandler('user_removed', (ev) => {
+            handleUserRemovedFromChannel(store, ev);
+        });
+
+        registry.registerWebSocketEventHandler('config_changed', () => {
+            handleConfigChanged(store);
         });
     }
 
@@ -377,7 +394,7 @@ export default class Plugin {
         });
 
         registry.registerSlashCommandWillBePostedHook(async (message, args) => {
-            return slashCommandsHandler(store, joinCall, message, args);
+            return slashCommandsHandler(store, joinCall, dialNumber, message, args);
         });
 
         registry.registerDesktopNotificationHook?.(async (post, msgProps, channel, teamId, args) => {
@@ -445,6 +462,11 @@ export default class Plugin {
             }
         };
 
+        const connectPhoneCall = (channelID: string, phoneSession: LiveKitSessionResponse) => connectCall(channelID, '', '', phoneSession);
+        const dialNumber = (number: string, target?: PhoneCallTarget) => dialPhoneNumber(store, number, connectPhoneCall, {target});
+        this.unsubscribers.push(registerTelLinkDialing(store, connectPhoneCall));
+        this.unsubscribers.push(registerPhoneDialer(dialNumber));
+
         let channelHeaderMenuButtonID: string;
         const unregisterChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
@@ -460,6 +482,12 @@ export default class Plugin {
             />
         );
         const ChannelHeaderDropdownText = () => (<FormattedMessage defaultMessage='Start call'/>);
+
+        // Older core builds ignore the extra argument, so the button behaves as before there.
+        const phoneAction = phoneDialingSupported() ? ({number, userId, label}: PhoneCallRequest) => {
+            dialNumber(number, {targetUserID: userId, label});
+        } : undefined;
+
         const registerChannelHeaderMenuButton = () => {
             if (channelHeaderMenuButtonID) {
                 return;
@@ -473,6 +501,7 @@ export default class Plugin {
                 },
                 ChannelHeaderIcon,
                 ChannelHeaderDropdownText,
+                phoneAction,
             );
         };
 
@@ -618,7 +647,7 @@ export default class Plugin {
             }));
         }
 
-        const connectCall = async (channelID: string, title?: string, rootId?: string) => {
+        const connectCall = async (channelID: string, title?: string, rootId?: string, phoneSession?: LiveKitSessionResponse) => {
             const channel = getChannel(store.getState(), channelID);
 
             // Flush any pending logs from previous call
@@ -784,7 +813,7 @@ export default class Plugin {
 
                 // The snapshot returned by the join request, which replaces the
                 // call_state the Calls WebSocket used to push on join.
-                window.callsClient.on(CALL_EVENT.CALL_STATE, (callState: CallState) => {
+                window.callsClient.on(CALL_EVENT.CALL_STATE, (callState: PhoneCallState) => {
                     store.dispatch(loadCallState(window.callsClient?.channelID ?? '', callState));
                 });
 
@@ -802,6 +831,20 @@ export default class Plugin {
                     applyCallJobState(store, window.callsClient?.channelID ?? '', jobState);
                 });
 
+                window.callsClient.on(CALL_EVENT.SIP_STATUS_CHANGED, (status: string) => {
+                    const sipStatus = toSIPCallStatus(status);
+                    if (sipStatus) {
+                        store.dispatch(sipCallStatusChanged(window.callsClient?.channelID ?? '', sipStatus));
+                    }
+                });
+
+                window.callsClient.on(CALL_EVENT.SIP_LEFT, (status: string) => {
+                    const sipStatus = toSIPCallStatus(status);
+                    if (sipStatus) {
+                        store.dispatch(sipCallStatusChanged(window.callsClient?.channelID ?? '', sipStatus));
+                    }
+                });
+
                 window.callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
                     const callChannelID = window.callsClient?.channelID ?? '';
                     if (session) {
@@ -815,7 +858,11 @@ export default class Plugin {
                 store.dispatch(setClientConnecting(true));
 
                 const connectingClient = window.callsClient;
-                connectingClient.connect({channelID, title, threadID: rootId}).catch((err: Error) => {
+                const connecting = connectingClient.connect({channelID, title, threadID: rootId, session: phoneSession});
+                if (phoneSession) {
+                    watchPhoneCall(store, connectingClient, channelID, connecting);
+                }
+                connecting.catch((err: Error) => {
                     // If a concurrent DISCONNECTED teardown already cleaned up (it deletes
                     // window.callsClient) or a new call has since replaced this client, this
                     // is a stale error — skip the error flow to avoid a spurious modal.
@@ -858,7 +905,7 @@ export default class Plugin {
                 store.dispatch(setClientConnecting(false));
                 store.dispatch(displayCallErrorModal(new Error(ev.data.message.errMsg), ev.data.message.callID));
             } else if (ev.data?.type === 'calls-run-slash-command') {
-                slashCommandsHandler(store, joinCall, ev.data.message, ev.data.args);
+                slashCommandsHandler(store, joinCall, dialNumber, ev.data.message, ev.data.args);
             } else if (ev.data?.type === 'calls-link-click' && !window.desktopAPI?.openLinkFromCalls) {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 navigateToURL(ev.data.message.link);
@@ -913,13 +960,14 @@ export default class Plugin {
                         },
                     });
 
-                    const call = data[i].call;
+                    const call = data[i].call as PhoneCallState | undefined;
 
                     if (!call || !call.sessions?.length) {
                         continue;
                     }
 
-                    store.dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(call.sessions)));
+                    const sessions = withoutSIPSessions(call.sessions);
+                    store.dispatch(loadProfilesByIdsIfMissing(getUserIDsForSessions(sessions)));
 
                     if (!callStartAtForCallInChannel(store.getState(), data[i].channel_id)) {
                         actions.push({
@@ -930,10 +978,11 @@ export default class Plugin {
                                 startAt: call.start_at,
                                 ownerID: call.owner_id,
                                 threadID: call.thread_id,
+                                phone: getPhoneCallProps(call),
                             },
                         });
 
-                        actions.push(sessionsReceived(data[i].channel_id, getSessionsMapFromSessions(call.sessions)));
+                        actions.push(sessionsReceived(data[i].channel_id, getSessionsMapFromSessions(sessions)));
 
                         if (ringingEnabled(store.getState()) && data[i].call) {
                             // dismissedNotification is populated after the actions array has been batched, so manually check:

@@ -17,6 +17,7 @@ import {
     getPlatformInfo,
     getWebappUtils,
     hasLiveCallClient,
+    isMobile,
     maxAttemptsReachedErr,
     runWithRetry,
     selfFirstSortSessions,
@@ -72,6 +73,37 @@ describe('utils', () => {
             };
             expect(shouldRenderDesktopWidget()).toEqual(testCase.expected);
             delete window.desktop;
+        }));
+    });
+
+    describe('isMobile', () => {
+        const testCases = [
+            {
+                description: 'iPhone',
+                userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+                expected: true,
+            },
+            {
+                description: 'Android',
+                userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+                expected: true,
+            },
+            {
+                description: 'desktop browser',
+                userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                expected: false,
+            },
+            {
+                description: 'Desktop app',
+                userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Mattermost/5.9.0 Chrome/124.0.0.0 Electron/30.0.0 Safari/537.36',
+                expected: false,
+            },
+        ];
+
+        testCases.forEach((testCase) => it(testCase.description, () => {
+            const userAgentSpy = jest.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(testCase.userAgent);
+            expect(isMobile()).toEqual(testCase.expected);
+            userAgentSpy.mockRestore();
         }));
     });
 
@@ -384,6 +416,48 @@ describe('utils', () => {
             expect(props.recordings).toStrictEqual(post.props.recordings);
             expect(props.transcriptions).toStrictEqual(post.props.transcriptions);
             expect(props.participants).toBe(post.props.participants);
+            expect(props.call_type).toBeUndefined();
+            expect(props.phone_number).toBeUndefined();
+        });
+
+        test('phone call props', () => {
+            const post = {
+                props: {
+                    call_type: 'phone',
+                    phone_number: '+15551234567',
+                    display_number: '(555) 123-4567',
+                    display_label: 'Mobile',
+                    target_user_id: 'userB',
+                    cross_post_id: 'postB',
+                    call_status: 'ended',
+                },
+            } as unknown as Post;
+
+            const props = getCallPropsFromPost(post);
+
+            expect(props.call_type).toBe('phone');
+            expect(props.phone_number).toBe('+15551234567');
+            expect(props.display_number).toBe('(555) 123-4567');
+            expect(props.display_label).toBe('Mobile');
+            expect(props.target_user_id).toBe('userB');
+            expect(props.cross_post_id).toBe('postB');
+            expect(props.call_status).toBe('ended');
+        });
+
+        test('invalid phone call props', () => {
+            const post = {
+                props: {
+                    call_type: 42,
+                    phone_number: '',
+                    display_label: null,
+                },
+            } as unknown as Post;
+
+            const props = getCallPropsFromPost(post);
+
+            expect(props.call_type).toBeUndefined();
+            expect(props.phone_number).toBeUndefined();
+            expect(props.display_label).toBeUndefined();
         });
     });
 

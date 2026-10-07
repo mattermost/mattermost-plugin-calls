@@ -18,6 +18,10 @@ type callState struct {
 	Recording     *public.CallJob
 	Transcription *public.CallJob
 	LiveCaptions  *public.CallJob
+
+	// endReasonOverride is set by the phone-call teardown paths once they know whether the callee
+	// had answered, so the final call post can say canceled rather than ended. Zero means no override.
+	endReasonOverride *callEndReason
 }
 
 // Clone performs a deep copy of the call state.
@@ -76,15 +80,21 @@ func (cs *callState) Clone() *callState {
 		*csCopy.LiveCaptions = *cs.LiveCaptions
 	}
 
+	if cs.endReasonOverride != nil {
+		reason := *cs.endReasonOverride
+		csCopy.endReasonOverride = &reason
+	}
+
 	return csCopy
 }
 
 type UserStateClient struct {
-	SessionID  string `json:"session_id"`
-	UserID     string `json:"user_id"`
-	Unmuted    bool   `json:"unmuted"`
-	RaisedHand int64  `json:"raised_hand"`
-	Video      bool   `json:"video"`
+	SessionID        string `json:"session_id"`
+	UserID           string `json:"user_id"`
+	Unmuted          bool   `json:"unmuted"`
+	RaisedHand       int64  `json:"raised_hand"`
+	Video            bool   `json:"video"`
+	IsSIPParticipant bool   `json:"is_sip_participant,omitempty"`
 }
 
 type CallStateClient struct {
@@ -107,6 +117,8 @@ type CallStateClient struct {
 	Type          string `json:"type,omitempty"`
 	PhoneNumber   string `json:"phone_number,omitempty"`
 	DisplayNumber string `json:"display_number,omitempty"`
+	DisplayLabel  string `json:"display_label,omitempty"`
+	TargetUserID  string `json:"target_user_id,omitempty"`
 }
 
 type JobStateClient struct {
@@ -250,6 +262,8 @@ func (cs *callState) getClientState(botID, userID string) *CallStateClient {
 		Type:                   cs.Props.Type,
 		PhoneNumber:            cs.Props.PhoneNumber,
 		DisplayNumber:          cs.Props.DisplayNumber,
+		DisplayLabel:           cs.Props.DisplayLabel,
+		TargetUserID:           cs.Props.TargetUserID,
 	}
 }
 
@@ -261,11 +275,12 @@ func (cs *callState) getStates(botID string) []UserStateClient {
 			continue
 		}
 		states = append(states, UserStateClient{
-			SessionID:  session.ID,
-			UserID:     session.UserID,
-			Unmuted:    session.Unmuted,
-			RaisedHand: session.RaisedHand,
-			Video:      session.Video,
+			SessionID:        session.ID,
+			UserID:           session.UserID,
+			Unmuted:          session.Unmuted,
+			RaisedHand:       session.RaisedHand,
+			Video:            session.Video,
+			IsSIPParticipant: session.IsSIPParticipant,
 		})
 	}
 	return states

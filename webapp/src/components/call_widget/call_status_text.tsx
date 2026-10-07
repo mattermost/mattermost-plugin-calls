@@ -8,6 +8,7 @@ import {isDirectChannel} from 'mattermost-redux/utils/channel_utils';
 import React from 'react';
 import {useSelector} from 'react-redux';
 import {useDMCallingState} from 'src/components/use_dm_calling_state';
+import {usePhoneCallInfo} from 'src/components/use_phone_call_info';
 import {channelForCurrentCall} from 'src/selectors';
 
 import {ParticipantName, SpeakerName} from './speaker_name';
@@ -21,9 +22,21 @@ interface Props {
 export function CallStatusText(props: Props) {
     const channel = useSelector(channelForCurrentCall);
     const {isDMCalling, dmCallee} = useDMCallingState();
+    const phoneCall = usePhoneCallInfo();
 
     if (!channel) {
         return null;
+    }
+
+    if (phoneCall.isPhoneCall) {
+        return (
+            <div
+                className='participantNameContainer'
+                data-testid='calls-widget-phone-call-title'
+            >
+                <span>{phoneCall.title}</span>
+            </div>
+        );
     }
 
     if (isDirectChannel(channel) && (isDMCalling || props.clientConnecting)) {

@@ -45,6 +45,8 @@ import {
     HostControlNotice,
     IncomingCallNotification,
     LiveCaptions,
+    PhoneCallProps,
+    SIPCallState,
 } from 'src/types/types';
 import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL, getUserIdFromDM} from 'src/utils';
 
@@ -244,6 +246,45 @@ export const dmCalleeAnsweredAtForCurrentCall: (state: GlobalState) => number =
         (callID, answeredAt) => (callID && answeredAt[callID]) || 0,
     );
 
+// Phone calls
+
+export const phoneCallPropsForCallInChannel = (state: GlobalState, channelID: string): PhoneCallProps | undefined =>
+    callsStateInPluginReduxStore(state)[channelID]?.phone;
+
+export const isPhoneCallInChannel = (state: GlobalState, channelID: string): boolean =>
+    Boolean(phoneCallPropsForCallInChannel(state, channelID));
+
+export const phoneCallPropsForCurrentCall: (state: GlobalState) => PhoneCallProps | undefined =
+    createSelector(
+        callsStateInPluginReduxStore,
+        channelIDForCurrentCall,
+        (callsStates, channelID) => callsStates[channelID]?.phone,
+    );
+
+export const isCurrentCallPhoneCall = (state: GlobalState): boolean =>
+    Boolean(phoneCallPropsForCurrentCall(state));
+
+const sipCallStatesInPluginReduxStore = (state: GlobalState): RootState['sipCallStates'] =>
+    pluginReduxStore(state).sipCallStates;
+
+export const sipCallStateForCallInChannel = (state: GlobalState, channelID: string): SIPCallState | undefined =>
+    sipCallStatesInPluginReduxStore(state)[channelID];
+
+export const sipCallStateForCurrentCall: (state: GlobalState) => SIPCallState | undefined =
+    createSelector(
+        sipCallStatesInPluginReduxStore,
+        channelIDForCurrentCall,
+        (sipCallStates, channelID) => sipCallStates[channelID],
+    );
+
+// True while the phone leg of the current phone call has not been answered yet.
+export const isCurrentPhoneCallRinging: (state: GlobalState) => boolean =
+    createSelector(
+        phoneCallPropsForCurrentCall,
+        sipCallStateForCurrentCall,
+        (phone, sipState) => Boolean(phone) && !sipState?.answeredAt,
+    );
+
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
     createSelector(
         callsStateInPluginReduxStore,
@@ -285,6 +326,8 @@ export const isCurrentUserInSessionForCurrentCall: (state: GlobalState) => boole
 
 // True while the caller of a DM call is waiting for the other party to answer: they own the call,
 // they have joined it, nobody else has, and nothing has recorded an answer yet.
+// Phone calls live in the caller's DM with the Calls bot but ring through the phone leg instead,
+// see isCurrentPhoneCallRinging.
 export const isCurrentDMCallInCallingState: (state: GlobalState) => boolean =
     createSelector(
         isCurrentUserOwnerOfCurrentCall,
@@ -292,8 +335,9 @@ export const isCurrentDMCallInCallingState: (state: GlobalState) => boolean =
         channelForCurrentCall,
         sessionsForOtherUsersInCall,
         dmCalleeAnsweredAtForCurrentCall,
-        (isOwner, inSession, channel, otherSessions, answeredAt) =>
-            isOwner && inSession && !answeredAt && Boolean(channel && isDirectChannel(channel)) && otherSessions.length === 0,
+        isCurrentCallPhoneCall,
+        (isOwner, inSession, channel, otherSessions, answeredAt, isPhoneCall) =>
+            isOwner && inSession && !answeredAt && !isPhoneCall && Boolean(channel && isDirectChannel(channel)) && otherSessions.length === 0,
     );
 
 // The other party in the current DM call. Comes from the channel rather than the call sessions,
@@ -495,6 +539,12 @@ export const liveCaptionsEnabled = (state: GlobalState) =>
 
 export const recordingMaxDuration = (state: GlobalState) =>
     callsConfig(state).MaxRecordingDuration;
+
+export const sipOutboundEnabled = (state: GlobalState) =>
+    callsConfig(state).EnableSIPOutbound;
+
+export const sipOutboundAllowlistEnabled = (state: GlobalState): boolean =>
+    callsConfig(state).EnableSIPOutboundAllowlist || false;
 
 export const rtcdEnabled = (state: GlobalState) =>
     pluginReduxStore(state).rtcdEnabled;

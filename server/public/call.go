@@ -73,10 +73,14 @@ type CallProps struct {
 
 	// Phone-call fields. Type is "phone" for calls placed via /phone-call.
 	// PhoneNumber is the normalized E.164 number; DisplayNumber is the
-	// user-supplied form (may include formatting characters).
+	// user-supplied form (may include formatting characters). DisplayLabel
+	// names the number (e.g. the profile attribute it came from) and
+	// TargetUserID is the Mattermost user the number belongs to, when known.
 	Type          string `json:"type,omitempty"`
 	PhoneNumber   string `json:"phone_number,omitempty"`
 	DisplayNumber string `json:"display_number,omitempty"`
+	DisplayLabel  string `json:"display_label,omitempty"`
+	TargetUserID  string `json:"target_user_id,omitempty"`
 }
 
 type CallStats struct {

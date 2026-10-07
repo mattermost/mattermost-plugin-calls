@@ -70,6 +70,46 @@ func TestCallStateGetClientState(t *testing.T) {
 		require.Equal(t, &ccs, cs.getClientState("botID", "userID"))
 	})
 
+	t.Run("phone call", func(t *testing.T) {
+		cs := &callState{
+			Call: public.Call{
+				ID:      "test",
+				StartAt: 100,
+				Props: public.CallProps{
+					Type:          callTypePhone,
+					PhoneNumber:   "+14155551234",
+					DisplayNumber: "415-555-1234",
+					DisplayLabel:  "DSN",
+					TargetUserID:  "targetID",
+				},
+			},
+			sessions: map[string]*public.CallSession{
+				"sessionA": {
+					ID:     "sessionA",
+					UserID: "userA",
+					JoinAt: 1000,
+				},
+				"sipSID": {
+					ID:               "sipSID",
+					UserID:           "sip:+14155551234",
+					JoinAt:           1100,
+					IsSIPParticipant: true,
+				},
+			},
+		}
+
+		actual := cs.getClientState("botID", "userA")
+		require.Equal(t, callTypePhone, actual.Type)
+		require.Equal(t, "+14155551234", actual.PhoneNumber)
+		require.Equal(t, "415-555-1234", actual.DisplayNumber)
+		require.Equal(t, "DSN", actual.DisplayLabel)
+		require.Equal(t, "targetID", actual.TargetUserID)
+		require.ElementsMatch(t, []UserStateClient{
+			{SessionID: "sessionA", UserID: "userA"},
+			{SessionID: "sipSID", UserID: "sip:+14155551234", IsSIPParticipant: true},
+		}, actual.Sessions)
+	})
+
 	t.Run("ignore botID", func(t *testing.T) {
 		cs := &callState{
 			Call: public.Call{

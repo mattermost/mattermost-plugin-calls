@@ -8,6 +8,7 @@ import {AudioCaptureOptions, AudioPresets, ConnectionQuality, TrackPublishDefaul
  */
 export const CALL_EVENT = {
     CONNECTED: 'connect',
+    DISCONNECTING: 'disconnecting',
     DISCONNECTED: 'close',
     RECONNECTING: 'reconnecting',
     RECONNECTED: 'reconnected',
@@ -41,15 +42,35 @@ export const CALL_EVENT = {
     // screen event rather than assigned per event, so it is order-independent
     // and self-healing.
     SCREEN_SHARING_CHANGED: 'screenSharingChanged',
+
+    // Phone legs bridged in over SIP are not call participants (no USER_JOINED/
+    // USER_LEFT). Their progress is reported through these two events instead,
+    // carrying the SIP_CALL_STATUS attribute value.
+    SIP_STATUS_CHANGED: 'sipStatusChanged',
+    SIP_LEFT: 'sipLeft',
 } as const;
 
 export const CALL_ATTRIBUTES = {
     RAISED_HAND: 'raised_hand',
 
-    // BOT marks the recording/transcribing bot. Server-set on the bot's LiveKit
-    // token grant (see livekitAttributeBot server-side); used to filter the bot
-    // out of the participant list regardless of how participants are discovered.
+    /** BOT marks the recording/transcribing bot. Server-set on the bot's LiveKit
+     * token grant (see livekitAttributeBot server-side); used to filter the bot
+     * out of the participant list regardless of how participants are discovered.
+     */
     BOT: 'bot',
+
+    /** SIP_CALL_STATUS is set by the LiveKit SIP bridge on the phone participant's attributes:
+     * - dialing: outbound call placed, no ringing or answer from the callee's phone yet.
+     * - ringing: the phone is ringing. Outbound: the provider reported ringing (SIP 180/183).
+     *   Inbound: the caller hears ringing until someone in the room can take the call.
+     * - automation: outbound call answered but still sending DTMF digits; becomes active when done.
+     * - active: call answered and in progress. Outbound: the callee picked up. Inbound: the bridge
+     *   answered once someone in the room could hear it; with a PIN, joins as active after the PIN.
+     * - hangup: the phone side hung up or cancelled, or LiveKit ended the call (e.g. max duration).
+     *   Not set when the call is rejected, unanswered or fails, or when the participant is removed
+     *   from the room (how the plugin ends calls); the status keeps its last value in those cases.
+     */
+    SIP_CALL_STATUS: 'sip.callStatus',
 } as const;
 
 export const CALL_MESSAGE_TOPICS = {

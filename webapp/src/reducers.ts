@@ -16,6 +16,7 @@ import {
     USER_REACTED_TIMEOUT,
 } from 'src/state/session/action_types';
 import {reducer as sessions} from 'src/state/session/reducer';
+import {reducer as sipCallStates} from 'src/state/sip_call_state/reducer';
 import {
     CallsConfigDefault,
     CallsUserPreferences,
@@ -26,6 +27,7 @@ import {
     HostControlNoticeTimeout,
     IncomingCallNotification,
     LiveCaptions,
+    PhoneCallProps,
 } from 'src/types/types';
 
 import {
@@ -62,6 +64,7 @@ import {
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
+    SIP_OUTBOUND_ALLOWLIST_ENABLED,
     TRANSCRIBE_API,
     TRANSCRIPTIONS_ENABLED,
     USER_JOINED_TIMEOUT,
@@ -379,6 +382,9 @@ export type callState = {
     channelID: string;
     threadID: string;
     ownerID: string;
+
+    // Set for phone calls only.
+    phone?: PhoneCallProps;
 }
 
 type callStateAction = {
@@ -510,6 +516,8 @@ const callsConfig = (state = CallsConfigDefault, action: { type: string, data: a
         return {...state, EnableLiveCaptions: action.data};
     case TRANSCRIBE_API:
         return {...state, TranscribeAPI: action.data};
+    case SIP_OUTBOUND_ALLOWLIST_ENABLED:
+        return {...state, EnableSIPOutboundAllowlist: action.data};
     default:
         return state;
     }
@@ -797,6 +805,7 @@ const rootReducer = combineReducers({
     calls,
     hosts,
     dmCalleeAnsweredAt,
+    sipCallStates,
     screenSharingIDs,
     expandedView,
     switchCallModal,

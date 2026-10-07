@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"golang.org/x/time/rate"
 
@@ -40,7 +41,10 @@ const (
 	errIDSIPTeamNotAllowed     = "sip_team_not_allowed"
 	errIDCallInProgress        = "call_in_progress"
 	errIDDialFailed            = "dial_failed"
+	errIDInvalidTarget         = "invalid_target"
 )
+
+var errInvalidPhoneCallTarget = errors.New("invalid target user")
 
 // livekitTokenTTL only has to cover the gap between minting a token and the
 // client connecting: once connected, LiveKit refreshes the token itself over
@@ -765,6 +769,11 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	var req struct {
 		Number string `json:"number"`
+		// TargetUserID names the Mattermost user whose number is being dialed, when the
+		// call was placed from their DM header or profile popover. DisplayLabel is the
+		// name of the number (e.g. the profile attribute it came from).
+		TargetUserID string `json:"target_user_id"`
+		DisplayLabel string `json:"display_label"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&req); err != nil {
 		res.Err = "invalid request body"
@@ -779,6 +788,8 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		res.Code = http.StatusBadRequest
 		return
 	}
+
+	displayLabel := truncateRunes(strings.TrimSpace(req.DisplayLabel), phoneDisplayLabelMaxLen)
 
 	cfg := p.getConfiguration()
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
@@ -808,6 +819,23 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		res.ErrID = errIDSIPTeamNotAllowed
 		res.Code = http.StatusForbidden
 		return
+	}
+
+	if req.TargetUserID != "" {
+		err := p.validatePhoneCallTarget(userID, req.TargetUserID)
+		switch {
+		case errors.Is(err, errInvalidPhoneCallTarget):
+			p.LogDebug("handlePhoneCall: rejected target", "err", err.Error(), "userID", userID)
+			res.Err = errInvalidPhoneCallTarget.Error()
+			res.ErrID = errIDInvalidTarget
+			res.Code = http.StatusBadRequest
+			return
+		case err != nil:
+			p.LogError("handlePhoneCall: failed to validate target", "err", err.Error(), "userID", userID)
+			res.Err = "Internal server error"
+			res.Code = http.StatusInternalServerError
+			return
+		}
 	}
 
 	if cfg.getLiveKitURL() == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
@@ -895,9 +923,11 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	// future isPhoneCallChannel checks can key on props.type rather than
 	// "DM with the Calls bot".
 	if createdCall {
-		state.Call.Props.Type = "phone"
+		state.Call.Props.Type = callTypePhone
 		state.Call.Props.PhoneNumber = number
 		state.Call.Props.DisplayNumber = req.Number
+		state.Call.Props.DisplayLabel = displayLabel
+		state.Call.Props.TargetUserID = req.TargetUserID
 		if err := p.store.UpdateCall(&state.Call); err != nil {
 			p.LogError("handlePhoneCall: failed to set phone call props", "err", err.Error(), "callID", callID)
 			p.rollbackSession(sessionID, callID, createdCall)
@@ -1221,6 +1251,54 @@ func normalizePhoneNumber(raw string) string {
 	return num
 }
 
+func truncateRunes(s string, maxLen int) string {
+	if utf8.RuneCountInString(s) <= maxLen {
+		return s
+	}
+	return string([]rune(s)[:maxLen])
+}
+
+// validatePhoneCallTarget checks that the user a phone call is attributed to is
+// someone the caller could legitimately be calling: a real, active, non-bot
+// user other than the caller who shares a team with them. The dialed number is
+// deliberately not matched against the target's profile. Rejections wrap
+// errInvalidPhoneCallTarget; any other error is a failed lookup.
+func (p *Plugin) validatePhoneCallTarget(callerID, targetID string) error {
+	if !model.IsValidId(targetID) {
+		return fmt.Errorf("%w: malformed id", errInvalidPhoneCallTarget)
+	}
+	if targetID == callerID {
+		return fmt.Errorf("%w: target is the caller", errInvalidPhoneCallTarget)
+	}
+
+	target, appErr := p.API.GetUser(targetID)
+	if appErr != nil {
+		return fmt.Errorf("%w: not found", errInvalidPhoneCallTarget)
+	}
+	if target.IsBot || target.DeleteAt > 0 {
+		return fmt.Errorf("%w: bot or deactivated", errInvalidPhoneCallTarget)
+	}
+
+	callerTeams, appErr := p.API.GetTeamsForUser(callerID)
+	if appErr != nil {
+		return fmt.Errorf("failed to get caller teams: %w", appErr)
+	}
+	targetTeams, appErr := p.API.GetTeamsForUser(targetID)
+	if appErr != nil {
+		return fmt.Errorf("failed to get target teams: %w", appErr)
+	}
+	callerTeamIDs := make(map[string]struct{}, len(callerTeams))
+	for _, team := range callerTeams {
+		callerTeamIDs[team.Id] = struct{}{}
+	}
+	for _, team := range targetTeams {
+		if _, ok := callerTeamIDs[team.Id]; ok {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: no shared team", errInvalidPhoneCallTarget)
+}
+
 // isPhoneCallChannel reports whether the channel is a DM with the Calls bot,
 // i.e. an outbound phone-call container rather than a regular channel (where a
 // SIP participant would be an inbound dial-in guest).
@@ -1400,8 +1478,9 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 	}
 
 	p.publishWebSocketEvent(wsEventUserJoined, map[string]interface{}{
-		"user_id":    identity,
-		"session_id": sid,
+		"user_id":            identity,
+		"session_id":         sid,
+		"is_sip_participant": true,
 	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
 }
 
@@ -1471,7 +1550,8 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 			ReliableClusterSend: true,
 		})
 
-		if err := p.cleanCallState(&state.Call, "sip_hangup", callEndReasonNormal); err != nil {
+		endReason := phoneLegEndReason(participant.GetDisconnectReason())
+		if err := p.cleanCallState(&state.Call, "sip_hangup", endReason); err != nil {
 			p.LogError("handleLiveKitSIPParticipantLeft: failed to clean call state",
 				"channelID", channelID, "err", err.Error())
 		}

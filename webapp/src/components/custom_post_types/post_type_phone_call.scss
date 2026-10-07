@@ -1,0 +1,147 @@
+// The phone call card. Mirrors the look of the channel call card in
+// post_type_event.tsx, kept on one row at any width since it has little to show.
+.PhoneCallCard {
+    display: flex;
+    align-items: center;
+    width: min(600px, 100%);
+    margin: 4px 0;
+    padding: 16px;
+    background: var(--center-channel-bg);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    box-shadow: var(--elevation-1);
+    color: var(--center-channel-color);
+    border-radius: 4px;
+
+    &:hover {
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    }
+
+    .PhoneCallCard__left {
+        display: flex;
+        flex-grow: 10;
+        overflow: hidden;
+        white-space: nowrap;
+        align-items: center;
+    }
+
+    .PhoneCallCard__right {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 12px;
+
+        // The left side gives, ellipsing its text, so the buttons keep their size.
+        flex-shrink: 0;
+
+        &:empty {
+            display: none;
+        }
+    }
+
+    .PhoneCallCard__indicator {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: var(--online-indicator);
+        border-radius: 24px;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        color: var(--center-channel-bg);
+        font-size: 20px;
+        line-height: 20px;
+
+        &.ended {
+            background: rgba(var(--center-channel-color-rgb), 0.08);
+            color: rgba(var(--center-channel-color-rgb), 0.72);
+        }
+    }
+
+    .PhoneCallCard__text {
+        display: flex;
+        flex-direction: column;
+        margin: 0 12px;
+        overflow: hidden;
+    }
+
+    .PhoneCallCard__title {
+        font-weight: 600;
+        font-family: Metropolis;
+        font-size: 16px;
+        line-height: 24px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--center-channel-color);
+    }
+
+    .PhoneCallCard__subtitle {
+        font-size: 12px;
+        line-height: 16px;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+    }
+
+    .PhoneCallCard__divider {
+        margin: 0 4px;
+    }
+
+    .PhoneCallCard__profiles {
+        display: flex;
+        align-items: center;
+    }
+
+    .PhoneCallCard__button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 4px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 20px;
+
+        span {
+            font-weight: 600;
+            margin: 0 8px;
+        }
+
+        &.hangUp {
+            color: var(--button-color);
+            background: var(--error-text);
+
+            &:hover {
+                background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+                    linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
+                background-blend-mode: multiply;
+            }
+
+            &:active {
+                background: linear-gradient(0deg, var(--error-text), var(--error-text)),
+                    linear-gradient(0deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16));
+                background-blend-mode: multiply;
+            }
+        }
+
+        &.callAgain {
+            color: var(--button-bg);
+            background: rgba(var(--button-bg-rgb), 0.08);
+
+            &:hover {
+                background: rgba(var(--button-bg-rgb), 0.12);
+            }
+
+            &:active {
+                background: rgba(var(--button-bg-rgb), 0.16);
+            }
+        }
+    }
+
+    .PhoneCallCard__artifacts {
+        display: flex;
+        align-items: center;
+        font-size: 12px;
+        line-height: 16px;
+        white-space: nowrap;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+    }
+}

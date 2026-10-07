@@ -15,6 +15,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {useIntl} from 'react-intl';
 import {shallowEqual, useSelector} from 'react-redux';
 import ConnectedProfiles from 'src/components/connected_profiles';
+import {PostTypePhoneCall} from 'src/components/custom_post_types/post_type_phone_call';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
 import ActiveCallIcon from 'src/components/icons/active_call_icon';
 import CallIcon from 'src/components/icons/call_icon';
@@ -34,7 +35,7 @@ import {
     numUsersInCallInChannel,
     profilesInCallInChannel,
 } from 'src/selectors';
-import {CallPostStatus, CallsPostProps} from 'src/types/types';
+import {CALL_TYPE_PHONE, CallPostStatus, CallsPostProps} from 'src/types/types';
 import {
     callStartedTimestampFn,
     getCallPropsFromPost,
@@ -82,7 +83,15 @@ interface Props {
     isRHS: boolean,
 }
 
-export const PostTypeEvent = ({post, isRHS}: Props) => {
+// A phone call has its own card: one side of it is a phone, not a channel member.
+export const PostTypeEvent = (props: Props) => {
+    if (getCallPropsFromPost(props.post).call_type === CALL_TYPE_PHONE) {
+        return <PostTypePhoneCall {...props}/>;
+    }
+    return <PostTypeChannelCall {...props}/>;
+};
+
+const PostTypeChannelCall = ({post, isRHS}: Props) => {
     const intl = useIntl();
     const {formatMessage} = intl;
 
