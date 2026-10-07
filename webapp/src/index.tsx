@@ -59,6 +59,7 @@ import LiveKitAPIKey from 'src/components/admin_console_settings/livekit_service
 import LiveKitAPISecret from 'src/components/admin_console_settings/livekit_service/livekit_api_secret';
 import LiveKitSIPOutboundAllowedTeams from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_allowed_teams';
 import LiveKitSIPOutboundTrunkID from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_trunk_id';
+import LiveKitPrivateURL from 'src/components/admin_console_settings/livekit_service/livekit_private_url';
 import LiveKitURL from 'src/components/admin_console_settings/livekit_service/livekit_url';
 import SIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/sip_outbound_allowlist';
 import MaxCallParticipants from 'src/components/admin_console_settings/max_call_participants';
@@ -500,6 +501,7 @@ export default class Plugin {
         // LiveKit Service
         registry.registerAdminConsoleCustomSection('LiveKitService', LiveKitServiceSection);
         registry.registerAdminConsoleCustomSetting('LiveKitURL', LiveKitURL);
+        registry.registerAdminConsoleCustomSetting('LiveKitPrivateURL', LiveKitPrivateURL);
         registry.registerAdminConsoleCustomSetting('LiveKitAPIKey', LiveKitAPIKey);
         registry.registerAdminConsoleCustomSetting('LiveKitAPISecret', LiveKitAPISecret);
         registry.registerAdminConsoleCustomSetting('EnableSIPOutbound', EnableSIPOutbound);

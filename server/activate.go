@@ -151,7 +151,7 @@ func (p *Plugin) OnActivate() (retErr error) {
 
 	// Validate LiveKit configuration
 	if lkURL := cfg.getLiveKitURL(); lkURL != "" {
-		p.LogDebug("LiveKit URL configured", "url", lkURL)
+		p.LogDebug("LiveKit URL configured", "url", lkURL, "privateURL", cfg.getLiveKitPrivateURL())
 	}
 
 	p.nodeID = status.ClusterId
