@@ -18,6 +18,13 @@ const (
 	reconcilerInterval       = 60 * time.Second
 	reconcilerLockKey        = "calls_reconcile"
 	reconcilerSuspicionLimit = 2
+
+	// reconcilerPendingGrace is how long a session minted by the token endpoint
+	// may stay unconfirmed before its absence from LiveKit counts against it.
+	// Clients connect within seconds of minting, so a row still pending after
+	// this is a join that never reached LiveKit, or one whose participant_joined
+	// was never delivered and whose client has since left.
+	reconcilerPendingGrace = time.Minute
 )
 
 // reconciler is a long-running goroutine that periodically cross-checks DB call
@@ -50,7 +57,7 @@ func (p *Plugin) reconciler() {
 }
 
 // reconcileActiveCalls runs one sweep: for each active call it fetches LiveKit
-// participants, compares against confirmed DB sessions, increments suspicion
+// participants, compares against DB sessions, increments suspicion
 // counters for absentees, and reaps those that have been absent for two
 // consecutive ticks.
 func (p *Plugin) reconcileActiveCalls(mutex *cluster.Mutex) {
@@ -71,7 +78,7 @@ func (p *Plugin) reconcileActiveCalls(mutex *cluster.Mutex) {
 
 	p.LogDebug("reconciler: tick", "activeCalls", len(calls))
 
-	// seenSessionIDs is the universe of confirmed sessions this tick. Suspicion
+	// seenSessionIDs is the universe of reconciled sessions this tick. Suspicion
 	// entries for sessions that are no longer active (call ended between ticks)
 	// are pruned at the end to keep the map bounded.
 	seenSessionIDs := map[string]struct{}{}
@@ -110,17 +117,22 @@ func (p *Plugin) reconcileActiveCalls(mutex *cluster.Mutex) {
 // reconcileCallSessions applies one tick of the suspicion/reap logic for a
 // single call. sessions is the DB snapshot for the call; lkSessionIDs is the
 // set of session IDs currently present in the LiveKit room (keyed by sessionID,
-// not SID). seenSessionIDs is populated with every confirmed session visited so
+// not SID). seenSessionIDs is populated with every session reconciled so
 // the caller can prune stale suspicion entries after iterating all calls.
 func (p *Plugin) reconcileCallSessions(channelID string, sessions map[string]*public.CallSession, lkSessionIDs map[string]struct{}, seenSessionIDs map[string]struct{}) {
 	for _, session := range sessions {
-		// Only reconcile confirmed sessions: an unconfirmed (pending) session
-		// has not yet sent participant_joined, so its absence from LK is expected.
-		if session.ConfirmedAt == 0 || session.SID == "" {
-			continue
-		}
 		// SIP participant lifecycle is managed by the SIP gateway, not here.
 		if session.IsSIPParticipant {
+			continue
+		}
+		// A pending session's absence from LK is expected while its client is
+		// still connecting. Once past the grace period nothing else would ever
+		// remove it, and it would hold the call open indefinitely.
+		if session.ConfirmedAt == 0 {
+			if time.Since(time.UnixMilli(session.JoinAt)) < reconcilerPendingGrace {
+				continue
+			}
+		} else if session.SID == "" {
 			continue
 		}
 
@@ -152,15 +164,16 @@ func (p *Plugin) reconcileCallSessions(channelID string, sessions map[string]*pu
 			continue
 		}
 
-		// Two consecutive misses: the webhook was lost. Reap via the same path
-		// as participant_left so all downstream effects (host election, call-end,
-		// screen-share clear) are consistent.
+		// Two consecutive misses: the webhook was lost, or the join never
+		// happened. Reap via the same path as participant_left so all downstream
+		// effects (host election, call-end, screen-share clear) are consistent.
 		p.LogInfo("reconciler: reaping orphaned session",
 			"channelID", channelID,
 			"callID", session.CallID,
 			"sessionID", session.ID,
 			"userID", session.UserID,
-			"sid", session.SID)
+			"sid", session.SID,
+			"confirmed", session.ConfirmedAt > 0)
 
 		// Clear suspicion before removing so a concurrent re-entry doesn't
 		// double-reap if the DB write is slow.

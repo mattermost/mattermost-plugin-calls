@@ -109,7 +109,7 @@ func TestReconcileCallSessions(t *testing.T) {
 		return sessions
 	}
 
-	t.Run("unconfirmed session is skipped", func(t *testing.T) {
+	t.Run("unconfirmed session within the grace period is skipped", func(t *testing.T) {
 		p, tearDown := setupPlugin(t)
 		defer tearDown()
 
@@ -152,6 +152,137 @@ func TestReconcileCallSessions(t *testing.T) {
 		require.Zero(t, count, "unconfirmed session must not accumulate suspicion")
 
 		// Session still in DB.
+		_, err := p.store.GetCallSession(sessionID, db.GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+	})
+
+	t.Run("unconfirmed session past the grace period is reaped after two ticks", func(t *testing.T) {
+		p, tearDown := setupPlugin(t)
+		defer tearDown()
+
+		channelID := model.NewId()
+		userID := model.NewId()
+		otherUserID := model.NewId()
+		pendingID := model.NewId()
+		confirmedID := model.NewId()
+
+		postID := model.NewId()
+		createPost(t, p.store, postID, userID, channelID)
+		call := &public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			StartAt:   time.Now().UnixMilli(),
+			ChannelID: channelID,
+			PostID:    postID,
+			ThreadID:  model.NewId(),
+			OwnerID:   userID,
+			Props:     public.CallProps{NodeID: "test-node"},
+		}
+		require.NoError(t, p.store.CreateCall(call))
+
+		// A token minted long ago whose client never reached LiveKit.
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID:     pendingID,
+			CallID: call.ID,
+			UserID: userID,
+			JoinAt: time.Now().Add(-2 * reconcilerPendingGrace).UnixMilli(),
+		}))
+		createConfirmedSession(t, p, call, otherUserID, confirmedID, "PA_other")
+		lk := map[string]struct{}{confirmedID: {}}
+
+		tick(p, channelID, sessionsFromDB(t, p, call.ID), lk)
+		_, err := p.store.GetCallSession(pendingID, db.GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err, "pending session must survive the first absent tick")
+
+		tick(p, channelID, sessionsFromDB(t, p, call.ID), lk)
+		_, err = p.store.GetCallSession(pendingID, db.GetCallSessionOpts{FromWriter: true})
+		require.ErrorIs(t, err, db.ErrNotFound, "pending session must be deleted after two absent ticks")
+
+		// The confirmed participant is untouched and keeps the call alive.
+		_, err = p.store.GetCallSession(confirmedID, db.GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		active, err := p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Zero(t, active.EndAt)
+	})
+
+	t.Run("last unconfirmed session past the grace period ends the call when reaped", func(t *testing.T) {
+		p, tearDown := setupPlugin(t)
+		defer tearDown()
+
+		channelID := model.NewId()
+		userID := model.NewId()
+		sessionID := model.NewId()
+
+		postID := model.NewId()
+		createPost(t, p.store, postID, userID, channelID)
+		call := &public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			StartAt:   time.Now().UnixMilli(),
+			ChannelID: channelID,
+			PostID:    postID,
+			ThreadID:  model.NewId(),
+			OwnerID:   userID,
+			Props:     public.CallProps{NodeID: "test-node"},
+		}
+		require.NoError(t, p.store.CreateCall(call))
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID:     sessionID,
+			CallID: call.ID,
+			UserID: userID,
+			JoinAt: time.Now().Add(-2 * reconcilerPendingGrace).UnixMilli(),
+		}))
+
+		for i := 0; i < reconcilerSuspicionLimit; i++ {
+			tick(p, channelID, sessionsFromDB(t, p, call.ID), map[string]struct{}{})
+		}
+
+		_, err := p.store.GetCallSession(sessionID, db.GetCallSessionOpts{FromWriter: true})
+		require.ErrorIs(t, err, db.ErrNotFound)
+		_, err = p.store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
+		require.ErrorIs(t, err, db.ErrNotFound, "call must end when its last session is reaped")
+	})
+
+	t.Run("unconfirmed session past the grace period is kept while present in LK", func(t *testing.T) {
+		p, tearDown := setupPlugin(t)
+		defer tearDown()
+
+		channelID := model.NewId()
+		userID := model.NewId()
+		sessionID := model.NewId()
+
+		postID := model.NewId()
+		createPost(t, p.store, postID, userID, channelID)
+		call := &public.Call{
+			ID:        model.NewId(),
+			CreateAt:  time.Now().UnixMilli(),
+			StartAt:   time.Now().UnixMilli(),
+			ChannelID: channelID,
+			PostID:    postID,
+			ThreadID:  model.NewId(),
+			OwnerID:   userID,
+			Props:     public.CallProps{NodeID: "test-node"},
+		}
+		require.NoError(t, p.store.CreateCall(call))
+
+		// Connected, but its participant_joined was never delivered.
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID:     sessionID,
+			CallID: call.ID,
+			UserID: userID,
+			JoinAt: time.Now().Add(-2 * reconcilerPendingGrace).UnixMilli(),
+		}))
+
+		for i := 0; i < reconcilerSuspicionLimit; i++ {
+			tick(p, channelID, sessionsFromDB(t, p, call.ID), map[string]struct{}{sessionID: {}})
+		}
+
+		p.reconcilerSuspicionsMut.Lock()
+		count := p.reconcilerSuspicions[sessionID]
+		p.reconcilerSuspicionsMut.Unlock()
+		require.Zero(t, count)
+
 		_, err := p.store.GetCallSession(sessionID, db.GetCallSessionOpts{FromWriter: true})
 		require.NoError(t, err)
 	})
