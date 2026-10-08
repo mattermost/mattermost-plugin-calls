@@ -8,10 +8,10 @@ import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings
 import {callsConfigEnvOverrides} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
+export default function LiveKitSIPOutboundTrunkAddress(props: CustomComponentProps) {
     const {formatMessage} = useIntl();
     const overrides = useSelector(callsConfigEnvOverrides);
-    const overridden = 'LiveKitSIPOutboundTrunkID' in overrides;
+    const overridden = 'LiveKitSIPOutboundTrunkAddress' in overrides;
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
@@ -30,7 +30,7 @@ export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {formatMessage({defaultMessage: 'SIP Outbound Trunk ID'})}
+                        {formatMessage({defaultMessage: 'SIP Outbound Trunk Address'})}
                     </label>
                 </LabelRow>
             </div>
@@ -48,7 +48,7 @@ export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: 'ID of an outbound SIP trunk created outside Mattermost (e.g., ST_xxx, via the LiveKit CLI or Cloud dashboard). Leave empty to have Mattermost create and manage the trunk from the settings below.'})}
+                    {formatMessage({defaultMessage: 'Host name, with an optional port, of the SIP provider that receives outbound calls (e.g., example.pstn.twilio.com). It must be reachable from the LiveKit SIP service. Setting it makes Mattermost create and maintain the outbound trunk in LiveKit.'})}
                 </div>
                 {overridden &&
                     <div className='alert alert-warning'>

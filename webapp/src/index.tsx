@@ -58,7 +58,13 @@ import EnableSIPOutboundAllowlist from 'src/components/admin_console_settings/li
 import LiveKitAPIKey from 'src/components/admin_console_settings/livekit_service/livekit_api_key';
 import LiveKitAPISecret from 'src/components/admin_console_settings/livekit_service/livekit_api_secret';
 import LiveKitSIPOutboundAllowedTeams from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_allowed_teams';
+import LiveKitSIPOutboundTrunkAddress from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_trunk_address';
+import LiveKitSIPOutboundTrunkAuthPassword from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_trunk_auth_password';
+import LiveKitSIPOutboundTrunkAuthUsername from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_trunk_auth_username';
 import LiveKitSIPOutboundTrunkID from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_trunk_id';
+import LiveKitSIPOutboundTrunkName from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_trunk_name';
+import LiveKitSIPOutboundTrunkNumbers from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_trunk_numbers';
+import LiveKitSIPOutboundTrunkTransport from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_trunk_transport';
 import LiveKitURL from 'src/components/admin_console_settings/livekit_service/livekit_url';
 import SIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/sip_outbound_allowlist';
 import MaxCallParticipants from 'src/components/admin_console_settings/max_call_participants';
@@ -533,6 +539,12 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('LiveKitAPISecret', LiveKitAPISecret);
         registry.registerAdminConsoleCustomSetting('EnableSIPOutbound', EnableSIPOutbound);
         registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundTrunkID', LiveKitSIPOutboundTrunkID);
+        registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundTrunkName', LiveKitSIPOutboundTrunkName);
+        registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundTrunkAddress', LiveKitSIPOutboundTrunkAddress);
+        registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundTrunkTransport', LiveKitSIPOutboundTrunkTransport);
+        registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundTrunkNumbers', LiveKitSIPOutboundTrunkNumbers);
+        registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundTrunkAuthUsername', LiveKitSIPOutboundTrunkAuthUsername);
+        registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundTrunkAuthPassword', LiveKitSIPOutboundTrunkAuthPassword);
         registry.registerAdminConsoleCustomSetting('EnableSIPOutboundAllowlist', EnableSIPOutboundAllowlist);
         registry.registerAdminConsoleCustomSetting('SIPOutboundAllowlist', SIPOutboundAllowlist);
         registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundAllowedTeams', LiveKitSIPOutboundAllowedTeams);
