@@ -8,12 +8,12 @@ import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings
 import {callsConfigEnvOverrides} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
+export default function LiveKitSIPOutboundTrunkNumbers(props: CustomComponentProps) {
     const {formatMessage} = useIntl();
     const overrides = useSelector(callsConfigEnvOverrides);
-    const overridden = 'LiveKitSIPOutboundTrunkID' in overrides;
+    const overridden = 'LiveKitSIPOutboundTrunkNumbers' in overrides;
 
-    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
         props.onChange(props.id, e.target.value);
     };
 
@@ -30,16 +30,16 @@ export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {formatMessage({defaultMessage: 'SIP Outbound Trunk ID'})}
+                        {formatMessage({defaultMessage: 'SIP Outbound Trunk Numbers'})}
                     </label>
                 </LabelRow>
             </div>
             <div className={rightCol}>
-                <input
+                <textarea
                     data-testid={props.id + 'input'}
                     id={props.id}
                     className={disabled ? 'form-control disabled' : 'form-control'}
-                    type='text'
+                    rows={3}
                     value={props.value}
                     onChange={handleChange}
                     disabled={disabled}
@@ -48,7 +48,7 @@ export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: 'ID of an outbound SIP trunk created outside Mattermost (e.g., ST_xxx, via the LiveKit CLI or Cloud dashboard). Leave empty to have Mattermost create and manage the trunk from the settings below.'})}
+                    {formatMessage({defaultMessage: 'Caller ID phone numbers for outbound calls, one per line. Each number must also be assigned to the trunk at the SIP provider.'})}
                 </div>
                 {overridden &&
                     <div className='alert alert-warning'>

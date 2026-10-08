@@ -133,7 +133,74 @@
             "display_name": "SIP Outbound Trunk ID",
             "type": "text",
             "default": "",
-            "help_text": "LiveKit outbound SIP trunk ID (e.g., ST_xxx). The trunk is created in LiveKit (via CLI or Cloud dashboard) with the SIP provider address and credentials. Leave empty to disable outbound dialing.",
+            "help_text": "ID of an outbound SIP trunk created outside Mattermost (e.g., ST_xxx, via the LiveKit CLI or Cloud dashboard). Leave empty to have Mattermost create and manage the trunk from the settings below.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "LiveKitSIPOutboundTrunkName",
+            "display_name": "SIP Outbound Trunk Name",
+            "type": "text",
+            "default": "",
+            "help_text": "Name of the outbound SIP trunk Mattermost creates in LiveKit. Defaults to mattermost-calls.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "LiveKitSIPOutboundTrunkAddress",
+            "display_name": "SIP Outbound Trunk Address",
+            "type": "text",
+            "default": "",
+            "help_text": "Host name, with an optional port, of the SIP provider that receives outbound calls (e.g., example.pstn.twilio.com). It must be reachable from the LiveKit SIP service. Setting it makes Mattermost create and maintain the outbound trunk in LiveKit.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "LiveKitSIPOutboundTrunkTransport",
+            "display_name": "SIP Outbound Trunk Transport",
+            "type": "dropdown",
+            "default": "auto",
+            "help_text": "Transport used to reach the SIP provider.",
+            "options": [
+              {
+                "display_name": "Auto",
+                "value": "auto"
+              },
+              {
+                "display_name": "UDP",
+                "value": "udp"
+              },
+              {
+                "display_name": "TCP",
+                "value": "tcp"
+              },
+              {
+                "display_name": "TLS",
+                "value": "tls"
+              }
+            ],
+            "hosting": "on-prem"
+          },
+          {
+            "key": "LiveKitSIPOutboundTrunkNumbers",
+            "display_name": "SIP Outbound Trunk Numbers",
+            "type": "longtext",
+            "default": "",
+            "help_text": "Caller ID phone numbers for outbound calls, one per line. Each number must also be assigned to the trunk at the SIP provider.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "LiveKitSIPOutboundTrunkAuthUsername",
+            "display_name": "SIP Outbound Trunk Username",
+            "type": "text",
+            "default": "",
+            "help_text": "Username used to authenticate with the SIP provider.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "LiveKitSIPOutboundTrunkAuthPassword",
+            "display_name": "SIP Outbound Trunk Password",
+            "type": "text",
+            "secret": true,
+            "default": "",
+            "help_text": "Password used to authenticate with the SIP provider.",
             "hosting": "on-prem"
           },
           {

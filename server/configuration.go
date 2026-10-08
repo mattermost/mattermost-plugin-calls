@@ -56,8 +56,19 @@ type configuration struct {
 	LiveKitAPIKey string
 	// The API secret used to authenticate with the LiveKit server.
 	LiveKitAPISecret string
-	// SIP outbound trunk ID for outbound phone calls (e.g., ST_xxx). Empty disables outbound dialing.
+	// ID of an existing SIP outbound trunk (e.g., ST_xxx) for outbound phone calls. When empty, the
+	// managed trunk below is used if configured; otherwise outbound dialing is disabled.
 	LiveKitSIPOutboundTrunkID string
+	// Settings for an outbound trunk the plugin creates and keeps in sync in LiveKit.
+	// Setting the address enables it; it is mutually exclusive with LiveKitSIPOutboundTrunkID.
+	LiveKitSIPOutboundTrunkName    string
+	LiveKitSIPOutboundTrunkAddress string
+	// One of auto, udp, tcp or tls.
+	LiveKitSIPOutboundTrunkTransport string
+	// Caller ID numbers, one per line.
+	LiveKitSIPOutboundTrunkNumbers      string
+	LiveKitSIPOutboundTrunkAuthUsername string
+	LiveKitSIPOutboundTrunkAuthPassword string
 	// When set to true, only numbers in SIPOutboundAllowlist may be dialed. Intended for dev/test environments.
 	EnableSIPOutboundAllowlist *bool
 	// Newline-separated list of E.164 phone numbers permitted for outbound dialing when the allowlist is enabled.
@@ -168,6 +179,9 @@ func (c *configuration) SetDefaults() {
 	if c.EnableSIPOutboundAllowlist == nil {
 		c.EnableSIPOutboundAllowlist = model.NewPointer(false)
 	}
+	if c.LiveKitSIPOutboundTrunkTransport == "" {
+		c.LiveKitSIPOutboundTrunkTransport = "auto"
+	}
 	if c.TranscriberModelSize == "" {
 		c.TranscriberModelSize = transcriber.ModelSizeDefault
 	}
@@ -244,7 +258,8 @@ func (c *configuration) IsValid() error {
 			return fmt.Errorf("LiveCaptionsLanguage is not valid: should be a 2-letter ISO 639 set 1 language code, or blank for default")
 		}
 	}
-	return nil
+
+	return c.validateSIPOutboundTrunk()
 }
 
 // Clone copies the configuration.
@@ -263,6 +278,12 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveKitAPIKey = c.LiveKitAPIKey
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
 	cfg.LiveKitSIPOutboundTrunkID = c.LiveKitSIPOutboundTrunkID
+	cfg.LiveKitSIPOutboundTrunkName = c.LiveKitSIPOutboundTrunkName
+	cfg.LiveKitSIPOutboundTrunkAddress = c.LiveKitSIPOutboundTrunkAddress
+	cfg.LiveKitSIPOutboundTrunkTransport = c.LiveKitSIPOutboundTrunkTransport
+	cfg.LiveKitSIPOutboundTrunkNumbers = c.LiveKitSIPOutboundTrunkNumbers
+	cfg.LiveKitSIPOutboundTrunkAuthUsername = c.LiveKitSIPOutboundTrunkAuthUsername
+	cfg.LiveKitSIPOutboundTrunkAuthPassword = c.LiveKitSIPOutboundTrunkAuthPassword
 	cfg.SIPOutboundAllowlist = c.SIPOutboundAllowlist
 	cfg.LiveKitSIPOutboundAllowedTeams = c.LiveKitSIPOutboundAllowedTeams
 
@@ -490,6 +511,8 @@ func (p *Plugin) OnConfigurationChange() error {
 		return fmt.Errorf("OnConfigurationChange: failed to load config: %w", err)
 	}
 
+	p.syncSIPOutboundTrunkInBackground()
+
 	return nil
 }
 
@@ -597,6 +620,9 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.JobServiceURL = strings.TrimSpace(cfg.JobServiceURL)
 	cfg.LiveKitURL = strings.TrimSpace(cfg.LiveKitURL)
 	cfg.LiveKitSIPOutboundTrunkID = strings.TrimSpace(cfg.LiveKitSIPOutboundTrunkID)
+	cfg.LiveKitSIPOutboundTrunkName = strings.TrimSpace(cfg.LiveKitSIPOutboundTrunkName)
+	cfg.LiveKitSIPOutboundTrunkAddress = strings.TrimSpace(cfg.LiveKitSIPOutboundTrunkAddress)
+	cfg.LiveKitSIPOutboundTrunkAuthUsername = strings.TrimSpace(cfg.LiveKitSIPOutboundTrunkAuthUsername)
 	cfg.LiveKitSIPOutboundAllowedTeams = strings.TrimSpace(cfg.LiveKitSIPOutboundAllowedTeams)
 }
 

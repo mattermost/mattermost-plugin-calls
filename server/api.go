@@ -799,9 +799,16 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	trunkID := cfg.LiveKitSIPOutboundTrunkID
+	trunkID, err := p.getSIPOutboundTrunkID()
+	if err != nil {
+		p.LogError("failed to get SIP outbound trunk", "err", err.Error())
+		res.Err = "failed to set up the SIP outbound trunk"
+		res.ErrID = errIDDialFailed
+		res.Code = http.StatusBadGateway
+		return
+	}
 	if trunkID == "" {
-		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console."
+		res.Err = "outbound dialing is not configured. Set a SIP Outbound Trunk ID or trunk address in the admin console."
 		res.ErrID = errIDOutboundNotConfigured
 		res.Code = http.StatusBadRequest
 		return
@@ -1043,9 +1050,16 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	trunkID := cfg.LiveKitSIPOutboundTrunkID
+	trunkID, err := p.getSIPOutboundTrunkID()
+	if err != nil {
+		p.LogError("failed to get SIP outbound trunk", "err", err.Error())
+		res.Err = "failed to set up the SIP outbound trunk"
+		res.ErrID = errIDDialFailed
+		res.Code = http.StatusBadGateway
+		return
+	}
 	if trunkID == "" {
-		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console."
+		res.Err = "outbound dialing is not configured. Set a SIP Outbound Trunk ID or trunk address in the admin console."
 		res.ErrID = errIDOutboundNotConfigured
 		res.Code = http.StatusBadRequest
 		return

@@ -506,7 +506,7 @@ func TestHandlePhoneCall(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		var res httpResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
-		require.Equal(t, "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console.", res.Msg)
+		require.Equal(t, "outbound dialing is not configured. Set a SIP Outbound Trunk ID or trunk address in the admin console.", res.Msg)
 		require.Equal(t, errIDOutboundNotConfigured, res.ErrID)
 	})
 

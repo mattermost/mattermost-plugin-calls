@@ -8,14 +8,16 @@ import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings
 import {callsConfigEnvOverrides} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
+export default function LiveKitSIPOutboundTrunkTransport(props: CustomComponentProps) {
     const {formatMessage} = useIntl();
     const overrides = useSelector(callsConfigEnvOverrides);
-    const overridden = 'LiveKitSIPOutboundTrunkID' in overrides;
+    const overridden = 'LiveKitSIPOutboundTrunkTransport' in overrides;
 
-    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: ChangeEvent<HTMLSelectElement>) => {
         props.onChange(props.id, e.target.value);
     };
+
+    const value = props.value || 'auto';
 
     const disabled = props.disabled || overridden;
 
@@ -30,25 +32,29 @@ export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {formatMessage({defaultMessage: 'SIP Outbound Trunk ID'})}
+                        {formatMessage({defaultMessage: 'SIP Outbound Trunk Transport'})}
                     </label>
                 </LabelRow>
             </div>
             <div className={rightCol}>
-                <input
-                    data-testid={props.id + 'input'}
-                    id={props.id}
+                <select
+                    data-testid={props.id + 'dropdown'}
                     className={disabled ? 'form-control disabled' : 'form-control'}
-                    type='text'
-                    value={props.value}
+                    id={props.id}
+                    value={value}
                     onChange={handleChange}
                     disabled={disabled}
-                />
+                >
+                    <option value='auto'>{formatMessage({defaultMessage: 'Auto'})}</option>
+                    <option value='udp'>{formatMessage({defaultMessage: 'UDP'})}</option>
+                    <option value='tcp'>{formatMessage({defaultMessage: 'TCP'})}</option>
+                    <option value='tls'>{formatMessage({defaultMessage: 'TLS'})}</option>
+                </select>
                 <div
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: 'ID of an outbound SIP trunk created outside Mattermost (e.g., ST_xxx, via the LiveKit CLI or Cloud dashboard). Leave empty to have Mattermost create and manage the trunk from the settings below.'})}
+                    {formatMessage({defaultMessage: 'Transport used to reach the SIP provider.'})}
                 </div>
                 {overridden &&
                     <div className='alert alert-warning'>
