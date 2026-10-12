@@ -119,21 +119,71 @@
             "help_text": "The API secret used to authenticate with the LiveKit server.",
             "default": "",
             "hosting": "on-prem"
-          },
+          }
+        ]
+      },
+      {
+        "key": "SIPOutbound",
+        "title": "Outbound phone calls",
+        "subtitle": "Dial external phone numbers through a LiveKit SIP bridge",
+        "custom": true,
+        "fallback": true,
+        "settings": [
           {
             "key": "EnableSIPOutbound",
             "display_name": "Enable outbound phone dialing",
             "type": "bool",
             "default": false,
-            "help_text": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a configured SIP Outbound Trunk ID.",
+            "help_text": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a SIP outbound trunk.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkMode",
+            "display_name": "SIP outbound trunk",
+            "type": "custom",
+            "default": "existing",
             "hosting": "on-prem"
           },
           {
             "key": "LiveKitSIPOutboundTrunkID",
-            "display_name": "SIP Outbound Trunk ID",
-            "type": "text",
+            "display_name": "SIP outbound trunk ID",
+            "type": "custom",
             "default": "",
-            "help_text": "LiveKit outbound SIP trunk ID (e.g., ST_xxx). The trunk is created in LiveKit (via CLI or Cloud dashboard) with the SIP provider address and credentials. Leave empty to disable outbound dialing.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkAddress",
+            "display_name": "Trunk address",
+            "type": "custom",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkNumber",
+            "display_name": "Caller ID number",
+            "type": "custom",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkAuthUsername",
+            "display_name": "Auth username",
+            "type": "custom",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkAuthPassword",
+            "display_name": "Auth password",
+            "type": "custom",
+            "default": "",
+            "secret": true,
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkStatus",
+            "display_name": "SIP outbound trunk status",
+            "type": "custom",
             "hosting": "on-prem"
           },
           {
@@ -154,7 +204,7 @@
           },
           {
             "key": "LiveKitSIPOutboundAllowedTeams",
-            "display_name": "SIP Outbound Allowed Teams",
+            "display_name": "SIP outbound allowed teams",
             "type": "text",
             "default": "",
             "help_text": "Team URL-names (from the team's web address) whose members are permitted to place outbound phone calls, separated by semicolons or commas. Leave empty to allow all authenticated users to dial.",

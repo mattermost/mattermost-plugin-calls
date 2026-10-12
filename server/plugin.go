@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -90,6 +91,15 @@ type Plugin struct {
 	dirtyCallsMut sync.Mutex
 	dirtyCallsCh  chan struct{}
 	publisherWg   sync.WaitGroup
+
+	// Managed SIP outbound trunk (MM-71127). sipTrunkActive gates reconciles until
+	// the plugin has finished activating.
+	sipTrunkActive      atomic.Bool
+	sipTrunkMut         sync.Mutex
+	sipTrunkID          string
+	sipTrunkErr         string
+	sipTrunkLastAttempt time.Time
+	sipTrunkLastOK      time.Time
 
 	// Database
 	store *db.Store

@@ -161,6 +161,9 @@ func (p *Plugin) OnActivate() (retErr error) {
 
 	go p.reconciler()
 
+	p.sipTrunkActive.Store(true)
+	p.reconcileSIPTrunkAsync()
+
 	p.LogDebug("activated", "ClusterID", status.ClusterId)
 
 	return nil
@@ -168,6 +171,7 @@ func (p *Plugin) OnActivate() (retErr error) {
 
 func (p *Plugin) OnDeactivate() error {
 	p.LogDebug("deactivate")
+	p.sipTrunkActive.Store(false)
 	close(p.stopCh)
 
 	// Pending no-answer timers have no call left to cancel once we're down.

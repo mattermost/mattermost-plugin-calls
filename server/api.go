@@ -799,9 +799,9 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	trunkID := cfg.LiveKitSIPOutboundTrunkID
+	trunkID := p.resolveSIPTrunkID(cfg)
 	if trunkID == "" {
-		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console."
+		res.Err = "outbound dialing is not configured. Check the SIP outbound settings in the admin console."
 		res.ErrID = errIDOutboundNotConfigured
 		res.Code = http.StatusBadRequest
 		return
@@ -1043,9 +1043,9 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	trunkID := cfg.LiveKitSIPOutboundTrunkID
+	trunkID := p.resolveSIPTrunkID(cfg)
 	if trunkID == "" {
-		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console."
+		res.Err = "outbound dialing is not configured. Check the SIP outbound settings in the admin console."
 		res.ErrID = errIDOutboundNotConfigured
 		res.Code = http.StatusBadRequest
 		return
