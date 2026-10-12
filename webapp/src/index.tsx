@@ -89,6 +89,16 @@ import LiveKitServiceSection from 'src/components/admin_console_settings/section
 import RTCServerSection from 'src/components/admin_console_settings/sections/rtc_server';
 import RTCDServiceSection from 'src/components/admin_console_settings/sections/rtcd_service';
 import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
+import {
+    SIPTrunkAddress,
+    SIPTrunkMode,
+    SIPTrunkNumbers,
+    SIPTrunkPassword,
+    SIPTrunkSpikeID,
+    SIPTrunkSpikeSection,
+    SIPTrunkStatus,
+    SIPTrunkUsername,
+} from 'src/components/admin_console_settings/sip_trunk_spike';
 import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
 import TCPServerPort from 'src/components/admin_console_settings/tcp_server_port';
 import TestMode from 'src/components/admin_console_settings/test_mode';
@@ -534,6 +544,16 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('EnableSIPOutbound', EnableSIPOutbound);
         registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundTrunkID', LiveKitSIPOutboundTrunkID);
         registry.registerAdminConsoleCustomSetting('EnableSIPOutboundAllowlist', EnableSIPOutboundAllowlist);
+
+        // MM-71127 spike: conditional SIP trunk settings
+        registry.registerAdminConsoleCustomSection('SIPTrunkSpike', SIPTrunkSpikeSection);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkMode', SIPTrunkMode);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkSpikeID', SIPTrunkSpikeID);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkAddress', SIPTrunkAddress);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkNumbers', SIPTrunkNumbers);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkUsername', SIPTrunkUsername);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkPassword', SIPTrunkPassword);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkStatus', SIPTrunkStatus);
         registry.registerAdminConsoleCustomSetting('SIPOutboundAllowlist', SIPOutboundAllowlist);
         registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundAllowedTeams', LiveKitSIPOutboundAllowedTeams);
 

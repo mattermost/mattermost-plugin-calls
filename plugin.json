@@ -163,6 +163,63 @@
         ]
       },
       {
+        "key": "SIPTrunkSpike",
+        "title": "SIP Trunk (spike)",
+        "subtitle": "MM-71127 console prototype",
+        "custom": true,
+        "fallback": true,
+        "settings": [
+          {
+            "key": "SIPTrunkMode",
+            "display_name": "SIP trunk mode",
+            "type": "custom",
+            "default": "existing",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkSpikeID",
+            "display_name": "SIP Outbound Trunk ID",
+            "type": "custom",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkAddress",
+            "display_name": "Trunk address",
+            "type": "custom",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkNumbers",
+            "display_name": "Caller ID numbers",
+            "type": "custom",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkUsername",
+            "display_name": "Auth username",
+            "type": "custom",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkPassword",
+            "display_name": "Auth password",
+            "type": "custom",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkStatus",
+            "display_name": "Trunk status",
+            "type": "custom",
+            "hosting": "on-prem"
+          }
+        ]
+      },
+      {
         "key": "CallRecordings",
         "title": "Call recordings",
         "subtitle": "Recordings include the entire call window view along with participants’ audio track and any shared screen video. Recordings are stored in Mattermost",
