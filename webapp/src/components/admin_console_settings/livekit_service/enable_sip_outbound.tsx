@@ -60,7 +60,7 @@ export default function EnableSIPOutbound(props: CustomComponentProps) {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: 'When set to true, users can dial external phone numbers via LiveKit SIP. Requires a configured SIP Outbound Trunk ID.'})}
+                    {formatMessage({defaultMessage: 'When set to true, users can dial external phone numbers via LiveKit SIP. Requires a configured SIP outbound trunk ID.'})}
                 </div>
                 {overridden &&
                     <div className='alert alert-warning'>
