@@ -66,7 +66,7 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
         },
         body: {
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
             overflow: 'auto',
             padding: '28px 32px',
         },
@@ -88,7 +88,9 @@ export default class ScreenSourceModal extends React.PureComponent<Props, State>
             whiteSpace: 'nowrap',
             textOverflow: 'ellipsis',
             overflow: 'hidden',
+            display: 'block',
             width: '224px',
+            maxWidth: '100%',
         },
         divider: {
             border: '1px solid rgba(var(--center-channel-color-rgb), 0.08)',
