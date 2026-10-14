@@ -27,6 +27,9 @@ export const CALL_EVENT = {
     LOWER_HAND: 'lowerHand',
     REACTION: 'reaction',
 
+    // CAPTION carries a live caption (sessionID, userID, text) from the bot.
+    CAPTION: 'caption',
+
     // CALL_STATE is the full snapshot returned by the join request. It arrives
     // before the room connects, so consumers can seed their store knowing no
     // LiveKit-sourced state has been emitted yet.
@@ -75,6 +78,9 @@ export const CALL_ATTRIBUTES = {
 
 export const CALL_MESSAGE_TOPICS = {
     REACTION: 'reaction',
+
+    // CAPTION carries a live caption published by the transcriber bot. Lossy.
+    CAPTION: 'caption',
 
     // HOST_CONTROL carries host commands the server cannot enforce through the
     // LiveKit admin API. Sent by the server, so these messages have no sending

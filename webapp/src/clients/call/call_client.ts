@@ -51,6 +51,7 @@ import {
 } from './constants';
 import {
     CallRoomMetadata,
+    CaptionPayload,
     ConnectPayload,
     HostControlPayload,
     LiveKitSessionResponse,
@@ -113,6 +114,11 @@ export default class CallClient extends EventEmitter {
     // Server-minted session id from the join request. Held here rather than read
     // back off the LiveKit identity so it is available before the room connects.
     private sessionID = '';
+
+    // The transcriber bot's user id, from the join response. Caption data
+    // messages are only trusted from this sender.
+    private botUserID = '';
+    private loggedUnknownCaptionSession = false;
 
     // The screen sharer last emitted, so a recompute that changes nothing stays
     // silent instead of handing consumers a fresh MediaStream to re-attach.
@@ -260,6 +266,7 @@ export default class CallClient extends EventEmitter {
             token = response.token;
             url = response.url;
             this.sessionID = response.session_id;
+            this.botUserID = response.bot_user_id ?? '';
 
             if (!token || !url || !this.sessionID) {
                 throw new Error('CallClient: incomplete session response from join API');
@@ -1412,6 +1419,11 @@ export default class CallClient extends EventEmitter {
             return;
         }
 
+        if (topic === CALL_MESSAGE_TOPICS.CAPTION) {
+            this.handleCaption(payload, participant);
+            return;
+        }
+
         if (topic === CALL_MESSAGE_TOPICS.REACTION) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             try {
@@ -1424,6 +1436,51 @@ export default class CallClient extends EventEmitter {
                 logErr(`CallClient: reactions received from user ${userID} failed to parse`, err);
             }
         }
+    }
+
+    /**
+     * Handles a live caption published by the transcriber bot. The server stamps
+     * the real sender identity on data packets, so it is checked against the bot
+     * user id from the join response. The bot participant attribute is not
+     * trusted: participants can overwrite their own attributes.
+     */
+    private handleCaption(payload: Uint8Array, participant: RemoteParticipant) {
+        const {userID: senderUserID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+        if (!this.botUserID || senderUserID !== this.botUserID) {
+            return;
+        }
+
+        let sessionID: string;
+        let text: string;
+        try {
+            ({session_id: sessionID, text} = JSON.parse(new TextDecoder().decode(payload)) as CaptionPayload);
+        } catch (err) {
+            logErr('CallClient: caption failed to parse', err);
+            return;
+        }
+
+        if (typeof sessionID !== 'string' || typeof text !== 'string' || !text) {
+            return;
+        }
+
+        const speaker = this.participantForSession(sessionID);
+        if (!speaker) {
+            if (!this.loggedUnknownCaptionSession) {
+                this.loggedUnknownCaptionSession = true;
+                logDebug('CallClient: caption for unknown session ignored', sessionID);
+            }
+            return;
+        }
+
+        this.emit(CALL_EVENT.CAPTION, sessionID, this.parseUserIdAndSessionIdFromIdentity(speaker).userID, text);
+    }
+
+    private participantForSession(sessionID: string): Participant | undefined {
+        if (!this.room) {
+            return undefined;
+        }
+        return [this.room.localParticipant, ...this.room.remoteParticipants.values()]
+            .find((p) => !this.isBotParticipant(p) && !this.isSipParticipant(p) && this.parseUserIdAndSessionIdFromIdentity(p).sessionID === sessionID);
     }
 
     /**
