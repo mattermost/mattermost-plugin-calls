@@ -20,6 +20,7 @@ import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
+import * as log from 'src/log';
 import {flushLogsToAccumulated} from 'src/log';
 import {getPersistentStorage, getScreenStream} from 'src/utils';
 
@@ -1188,6 +1189,48 @@ describe('CallClient', () => {
             mockRoom.fire(RoomEvent.DataReceived, encode(body), bot, undefined, 'caption');
 
             expect(listener).not.toHaveBeenCalled();
+        });
+
+        describe('logging', () => {
+            let warnSpy: jest.SpyInstance;
+            let debugSpy: jest.SpyInstance;
+
+            beforeEach(() => {
+                warnSpy = jest.spyOn(log, 'logWarn').mockImplementation(() => {});
+                debugSpy = jest.spyOn(log, 'logDebug').mockImplementation(() => {});
+            });
+
+            afterEach(() => {
+                warnSpy.mockRestore();
+                debugSpy.mockRestore();
+            });
+
+            it('logs every rejection, not just the first', () => {
+                const impostor = {sid: 'x-sid', identity: 'user1___p1-session', attributes: {}};
+                mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'a'}), impostor, undefined, 'caption');
+                mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'b'}), impostor, undefined, 'caption');
+
+                expect(warnSpy).toHaveBeenCalledTimes(2);
+                expect(warnSpy).toHaveBeenCalledWith('CallClient: caption ignored, sender is not the bot', expect.objectContaining({senderUserID: 'user1', botUserID: botID}));
+            });
+
+            it.each([
+                ['no sender', encode({session_id: 'p1-session', text: 'x'}), undefined, 'no sender participant'],
+                ['invalid payload', encode({text: 'x'}), bot, 'invalid payload'],
+                ['unknown session', encode({session_id: 'nope', text: 'x'}), bot, 'unknown session'],
+            ])('logs a warning for %s', (_name, payload, sender, expected) => {
+                mockRoom.fire(RoomEvent.DataReceived, payload, sender, undefined, 'caption');
+
+                expect(warnSpy).toHaveBeenCalledTimes(1);
+                expect(warnSpy.mock.calls[0][0]).toContain(expected);
+            });
+
+            it('logs accepted captions without the text', () => {
+                mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'secret words'}), bot, undefined, 'caption');
+
+                expect(debugSpy).toHaveBeenCalledWith('CallClient: caption received', {sessionID: 'p1-session', userID: 'user1', textLength: 12});
+                expect(JSON.stringify(debugSpy.mock.calls)).not.toContain('secret words');
+            });
         });
 
         it('ignores everything when the join response carried no bot_user_id', async () => {

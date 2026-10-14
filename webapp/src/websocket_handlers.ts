@@ -48,6 +48,7 @@ import {
     JOB_TYPE_RECORDING,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
+import {logWarn} from 'src/log';
 import {getPhoneCallProps} from 'src/phone_utils';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, userUnmuted} from 'src/state/session/actions';
@@ -384,7 +385,9 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
 }
 
 export function dispatchCaption(store: Store, channelID: string, userID: string, sessionID: string, text: string) {
-    if (channelIDForCurrentCall(store.getState()) !== channelID) {
+    const currentChannelID = channelIDForCurrentCall(store.getState());
+    if (currentChannelID !== channelID) {
+        logWarn('dispatchCaption: caption ignored, not for the current call', {channelID, currentChannelID});
         return;
     }
 

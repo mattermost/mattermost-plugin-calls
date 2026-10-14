@@ -118,7 +118,6 @@ export default class CallClient extends EventEmitter {
     // The transcriber bot's user id, from the join response. Caption data
     // messages are only trusted from this sender.
     private botUserID = '';
-    private loggedUnknownCaptionSession = false;
 
     // The screen sharer last emitted, so a recompute that changes nothing stays
     // silent instead of handing consumers a fresh MediaStream to re-attach.
@@ -1416,6 +1415,9 @@ export default class CallClient extends EventEmitter {
 
         // Everything below is participant-to-participant.
         if (!participant) {
+            if (topic === CALL_MESSAGE_TOPICS.CAPTION) {
+                logWarn('CallClient: caption ignored, no sender participant');
+            }
             return;
         }
 
@@ -1447,6 +1449,11 @@ export default class CallClient extends EventEmitter {
     private handleCaption(payload: Uint8Array, participant: RemoteParticipant) {
         const {userID: senderUserID} = this.parseUserIdAndSessionIdFromIdentity(participant);
         if (!this.botUserID || senderUserID !== this.botUserID) {
+            logWarn('CallClient: caption ignored, sender is not the bot', {
+                senderIdentity: participant.identity,
+                senderUserID,
+                botUserID: this.botUserID,
+            });
             return;
         }
 
@@ -1460,19 +1467,25 @@ export default class CallClient extends EventEmitter {
         }
 
         if (typeof sessionID !== 'string' || typeof text !== 'string' || !text) {
+            logWarn('CallClient: caption ignored, invalid payload', {
+                sessionIDType: typeof sessionID,
+                textType: typeof text,
+                textLength: typeof text === 'string' ? text.length : 0,
+            });
             return;
         }
 
         const speaker = this.participantForSession(sessionID);
         if (!speaker) {
-            if (!this.loggedUnknownCaptionSession) {
-                this.loggedUnknownCaptionSession = true;
-                logDebug('CallClient: caption for unknown session ignored', sessionID);
-            }
+            logWarn('CallClient: caption ignored, unknown session', sessionID);
             return;
         }
 
-        this.emit(CALL_EVENT.CAPTION, sessionID, this.parseUserIdAndSessionIdFromIdentity(speaker).userID, text);
+        // The text is deliberately not logged: it is call content.
+        const speakerUserID = this.parseUserIdAndSessionIdFromIdentity(speaker).userID;
+        logDebug('CallClient: caption received', {sessionID, userID: speakerUserID, textLength: text.length});
+
+        this.emit(CALL_EVENT.CAPTION, sessionID, speakerUserID, text);
     }
 
     private participantForSession(sessionID: string): Participant | undefined {
