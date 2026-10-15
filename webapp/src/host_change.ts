@@ -7,7 +7,7 @@ import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/use
 import {generateId} from 'mattermost-redux/utils/helpers';
 import {CALL_HOST, HOST_CONTROL_NOTICE, HOST_CONTROL_NOTICE_TIMEOUT_EVENT} from 'src/action_types';
 import {HOST_CONTROL_NOTICE_TIMEOUT} from 'src/constants';
-import {channelHasCall, profilesInCurrentCallMap} from 'src/selectors';
+import {channelHasCall, hostIDForCallInChannel, profilesInCurrentCallMap} from 'src/selectors';
 import {HostControlNotice, HostControlNoticeType} from 'src/types/types';
 import {getUserDisplayName, isDMChannel} from 'src/utils';
 
@@ -18,6 +18,11 @@ type StoreAPI = {
 }
 
 export function applyCallHostChanged(store: StoreAPI, channelID: string, hostID: string, callID: string) {
+    // Room metadata republishes the host on every job state change, so ignore no-op updates.
+    if (hostIDForCallInChannel(store.getState(), channelID) === hostID) {
+        return;
+    }
+
     store.dispatch({
         type: CALL_HOST,
         data: {
