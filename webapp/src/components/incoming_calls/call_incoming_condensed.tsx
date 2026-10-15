@@ -80,21 +80,23 @@ export const CallIncomingCondensed = ({call, onWidget = false, joinButtonBorder 
                     size={20}
                     border={false}
                 />
-                <OverlayTrigger
-                    placement={onWidget && window.desktop ? 'bottom' : 'top'}
-                    overlay={
-                        <Tooltip id='tooltip-invite-message'>
-                            {tooltip}
-                        </Tooltip>
-                    }
-                    trigger={showTooltip ? ['hover', 'focus'] : []}
-                >
-                    <Message
-                        ref={messageRef}
+                <MessageContainer>
+                    <OverlayTrigger
+                        placement={onWidget && window.desktop ? 'bottom' : 'top'}
+                        overlay={
+                            <Tooltip id='tooltip-invite-message'>
+                                {tooltip}
+                            </Tooltip>
+                        }
+                        trigger={showTooltip ? ['hover', 'focus'] : []}
                     >
-                        {message}
-                    </Message>
-                </OverlayTrigger>
+                        <Message
+                            ref={messageRef}
+                        >
+                            {message}
+                        </Message>
+                    </OverlayTrigger>
+                </MessageContainer>
                 <SmallJoinButton
                     data-testid={'call-incoming-condensed-join'}
                     $border={joinButtonBorder}
@@ -134,12 +136,23 @@ const Inner = styled.div`
     gap: 6px;
 `;
 
+// Sizing lives here, not on Message: OverlayTrigger may wrap its child in a div (React 19 host).
+const MessageContainer = styled.div`
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+
+    // Lets the trigger's wrapper div shrink so Message can truncate.
+    > div {
+        max-width: 100%;
+    }
+`;
+
 const Message = styled.div`
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--button-color);
-    margin-right: auto;
 `;
 
 const SmallJoinButton = styled(Button)<{ $border: boolean }>`
