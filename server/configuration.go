@@ -68,6 +68,11 @@ type configuration struct {
 	// Managed trunk: SIP auth credentials. May be empty for an unauthenticated provider.
 	SIPTrunkAuthUsername string
 	SIPTrunkAuthPassword string
+	// Managed trunk: SIP signaling transport (auto, udp, tcp, tls).
+	SIPTrunkTransport string
+	// Managed trunk: SRTP media encryption (disable, allow, require). Carriers requiring
+	// TLS signaling generally require encrypted media too.
+	SIPTrunkMediaEncryption string
 	// When set to true, only numbers in SIPOutboundAllowlist may be dialed. Intended for dev/test environments.
 	EnableSIPOutboundAllowlist *bool
 	// Newline-separated list of E.164 phone numbers permitted for outbound dialing when the allowlist is enabled.
@@ -181,6 +186,12 @@ func (c *configuration) SetDefaults() {
 	if c.SIPTrunkMode == "" {
 		c.SIPTrunkMode = sipTrunkModeExisting
 	}
+	if c.SIPTrunkTransport == "" {
+		c.SIPTrunkTransport = sipTrunkTransportDefault
+	}
+	if c.SIPTrunkMediaEncryption == "" {
+		c.SIPTrunkMediaEncryption = sipTrunkMediaEncryptionDefault
+	}
 	if c.TranscriberModelSize == "" {
 		c.TranscriberModelSize = transcriber.ModelSizeDefault
 	}
@@ -288,6 +299,8 @@ func (c *configuration) Clone() *configuration {
 	cfg.SIPTrunkNumber = c.SIPTrunkNumber
 	cfg.SIPTrunkAuthUsername = c.SIPTrunkAuthUsername
 	cfg.SIPTrunkAuthPassword = c.SIPTrunkAuthPassword
+	cfg.SIPTrunkTransport = c.SIPTrunkTransport
+	cfg.SIPTrunkMediaEncryption = c.SIPTrunkMediaEncryption
 	cfg.SIPOutboundAllowlist = c.SIPOutboundAllowlist
 	cfg.LiveKitSIPOutboundAllowedTeams = c.LiveKitSIPOutboundAllowedTeams
 
@@ -631,6 +644,8 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.SIPTrunkAddress = strings.TrimSpace(cfg.SIPTrunkAddress)
 	cfg.SIPTrunkNumber = strings.TrimSpace(cfg.SIPTrunkNumber)
 	cfg.SIPTrunkAuthUsername = strings.TrimSpace(cfg.SIPTrunkAuthUsername)
+	cfg.SIPTrunkTransport = strings.ToLower(strings.TrimSpace(cfg.SIPTrunkTransport))
+	cfg.SIPTrunkMediaEncryption = strings.ToLower(strings.TrimSpace(cfg.SIPTrunkMediaEncryption))
 	cfg.LiveKitSIPOutboundAllowedTeams = strings.TrimSpace(cfg.LiveKitSIPOutboundAllowedTeams)
 }
 

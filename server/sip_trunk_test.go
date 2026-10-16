@@ -71,6 +71,7 @@ func managedCfg(url string) *configuration {
 		SIPTrunkAuthUsername: "user",
 		SIPTrunkAuthPassword: "pass",
 	}
+	cfg.SetDefaults()
 	return cfg
 }
 
@@ -165,6 +166,50 @@ func TestSIPTrunkDrift(t *testing.T) {
 	for _, f := range sipTrunkDrift(a, b) {
 		require.NotContains(t, f, "other", "drift reports field names, never values")
 	}
+
+	c := &livekit.SIPOutboundTrunkInfo{Address: "a", Numbers: []string{"+1"}, Metadata: "m"}
+	d := &livekit.SIPOutboundTrunkInfo{Address: "a", Numbers: []string{"+1"}, Metadata: "m"}
+	require.Empty(t, sipTrunkDrift(c, d))
+	d.Transport = livekit.SIPTransport_SIP_TRANSPORT_TLS
+	d.MediaEncryption = livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_REQUIRE
+	require.Equal(t, []string{"transport", "mediaEncryption"}, sipTrunkDrift(c, d))
+}
+
+func TestDesiredSIPTrunkEnums(t *testing.T) {
+	md := sipTrunkMetadata{ManagedBy: sipTrunkManagedBy, Server: "server1"}
+
+	t.Run("defaults map to LiveKit zero values", func(t *testing.T) {
+		trunk, err := desiredSIPTrunk(managedCfg(""), md)
+		require.NoError(t, err)
+		require.Equal(t, livekit.SIPTransport_SIP_TRANSPORT_AUTO, trunk.Transport)
+		require.Equal(t, livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_DISABLE, trunk.MediaEncryption)
+	})
+
+	t.Run("configured values are passed through", func(t *testing.T) {
+		cfg := managedCfg("")
+		cfg.SIPTrunkTransport = "tls"
+		cfg.SIPTrunkMediaEncryption = "require"
+		trunk, err := desiredSIPTrunk(cfg, md)
+		require.NoError(t, err)
+		require.Equal(t, livekit.SIPTransport_SIP_TRANSPORT_TLS, trunk.Transport)
+		require.Equal(t, livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_REQUIRE, trunk.MediaEncryption)
+	})
+
+	// An unknown value must not fall back to the zero value: for media encryption
+	// that would silently send unencrypted.
+	t.Run("unknown transport errors", func(t *testing.T) {
+		cfg := managedCfg("")
+		cfg.SIPTrunkTransport = "sctp"
+		_, err := desiredSIPTrunk(cfg, md)
+		require.ErrorContains(t, err, "SIPTrunkTransport")
+	})
+
+	t.Run("unknown media encryption errors", func(t *testing.T) {
+		cfg := managedCfg("")
+		cfg.SIPTrunkMediaEncryption = "maybe"
+		_, err := desiredSIPTrunk(cfg, md)
+		require.ErrorContains(t, err, "SIPTrunkMediaEncryption")
+	})
 }
 
 func TestValidateManagedSIPTrunk(t *testing.T) {
@@ -206,6 +251,26 @@ func TestValidateManagedSIPTrunk(t *testing.T) {
 		cfg := managedCfg("")
 		cfg.SIPTrunkNumber = "  +15551234567 "
 		require.NoError(t, cfg.validateManagedSIPTrunk())
+	})
+	t.Run("unknown transport", func(t *testing.T) {
+		cfg := managedCfg("")
+		cfg.SIPTrunkTransport = "sctp"
+		require.Error(t, cfg.validateManagedSIPTrunk())
+	})
+	t.Run("unknown media encryption", func(t *testing.T) {
+		cfg := managedCfg("")
+		cfg.SIPTrunkMediaEncryption = "maybe"
+		require.Error(t, cfg.validateManagedSIPTrunk())
+	})
+	t.Run("every offered value is accepted", func(t *testing.T) {
+		for _, tr := range []string{"auto", "udp", "tcp", "tls"} {
+			for _, enc := range []string{"disable", "allow", "require"} {
+				cfg := managedCfg("")
+				cfg.SIPTrunkTransport = tr
+				cfg.SIPTrunkMediaEncryption = enc
+				require.NoError(t, cfg.validateManagedSIPTrunk(), "%s/%s", tr, enc)
+			}
+		}
 	})
 }
 

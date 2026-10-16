@@ -94,9 +94,11 @@ import {
     SIPTrunkAuthPassword,
     SIPTrunkAuthUsername,
     SIPTrunkID,
+    SIPTrunkMediaEncryption,
     SIPTrunkModeSetting,
     SIPTrunkNumber,
     SIPTrunkStatusSetting,
+    SIPTrunkTransport,
 } from 'src/components/admin_console_settings/sip_outbound';
 import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
 import TCPServerPort from 'src/components/admin_console_settings/tcp_server_port';
@@ -550,6 +552,8 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('SIPTrunkNumber', SIPTrunkNumber);
         registry.registerAdminConsoleCustomSetting('SIPTrunkAuthUsername', SIPTrunkAuthUsername);
         registry.registerAdminConsoleCustomSetting('SIPTrunkAuthPassword', SIPTrunkAuthPassword);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkTransport', SIPTrunkTransport);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkMediaEncryption', SIPTrunkMediaEncryption);
         registry.registerAdminConsoleCustomSetting('SIPTrunkStatus', SIPTrunkStatusSetting);
         registry.registerAdminConsoleCustomSetting('SIPOutboundAllowlist', SIPOutboundAllowlist);
         registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundAllowedTeams', LiveKitSIPOutboundAllowedTeams);

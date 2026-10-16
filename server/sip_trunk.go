@@ -49,6 +49,26 @@ const (
 
 var e164Regexp = regexp.MustCompile(`^\+[1-9][0-9]{6,14}$`)
 
+const (
+	sipTrunkTransportDefault       = "auto"
+	sipTrunkMediaEncryptionDefault = "disable"
+)
+
+// Short config values for the LiveKit SIP enums. They keep config.json and env
+// overrides readable; the UI offers the same set.
+var sipTrunkTransports = map[string]livekit.SIPTransport{
+	"auto": livekit.SIPTransport_SIP_TRANSPORT_AUTO,
+	"udp":  livekit.SIPTransport_SIP_TRANSPORT_UDP,
+	"tcp":  livekit.SIPTransport_SIP_TRANSPORT_TCP,
+	"tls":  livekit.SIPTransport_SIP_TRANSPORT_TLS,
+}
+
+var sipTrunkMediaEncryptions = map[string]livekit.SIPMediaEncryption{
+	"disable": livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_DISABLE,
+	"allow":   livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_ALLOW,
+	"require": livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_REQUIRE,
+}
+
 // sipTrunkMetadata is the ownership marker stored in the trunk's metadata.
 type sipTrunkMetadata struct {
 	ManagedBy string `json:"managed-by"`
@@ -89,6 +109,12 @@ func (c *configuration) validateManagedSIPTrunk() error {
 	if !e164Regexp.MatchString(number) {
 		return fmt.Errorf("SIPTrunkNumber is not valid: %q is not an E.164 number", number)
 	}
+	if _, ok := sipTrunkTransports[c.SIPTrunkTransport]; !ok {
+		return fmt.Errorf("SIPTrunkTransport is not valid: %q is not one of auto, udp, tcp, tls", c.SIPTrunkTransport)
+	}
+	if _, ok := sipTrunkMediaEncryptions[c.SIPTrunkMediaEncryption]; !ok {
+		return fmt.Errorf("SIPTrunkMediaEncryption is not valid: %q is not one of disable, allow, require", c.SIPTrunkMediaEncryption)
+	}
 	return nil
 }
 
@@ -108,13 +134,25 @@ func desiredSIPTrunk(cfg *configuration, md sipTrunkMetadata) (*livekit.SIPOutbo
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal trunk metadata: %w", err)
 	}
+	// Fail rather than fall back to the zero value: for media encryption that would
+	// silently mean unencrypted.
+	transport, ok := sipTrunkTransports[cfg.SIPTrunkTransport]
+	if !ok {
+		return nil, fmt.Errorf("invalid SIPTrunkTransport %q", cfg.SIPTrunkTransport)
+	}
+	mediaEncryption, ok := sipTrunkMediaEncryptions[cfg.SIPTrunkMediaEncryption]
+	if !ok {
+		return nil, fmt.Errorf("invalid SIPTrunkMediaEncryption %q", cfg.SIPTrunkMediaEncryption)
+	}
 	return &livekit.SIPOutboundTrunkInfo{
-		Name:         sipTrunkName,
-		Metadata:     string(mdJSON),
-		Address:      cfg.SIPTrunkAddress,
-		Numbers:      []string{strings.TrimSpace(cfg.SIPTrunkNumber)},
-		AuthUsername: cfg.SIPTrunkAuthUsername,
-		AuthPassword: cfg.SIPTrunkAuthPassword,
+		Name:            sipTrunkName,
+		Metadata:        string(mdJSON),
+		Address:         cfg.SIPTrunkAddress,
+		Numbers:         []string{strings.TrimSpace(cfg.SIPTrunkNumber)},
+		AuthUsername:    cfg.SIPTrunkAuthUsername,
+		AuthPassword:    cfg.SIPTrunkAuthPassword,
+		Transport:       transport,
+		MediaEncryption: mediaEncryption,
 	}, nil
 }
 
@@ -139,6 +177,12 @@ func sipTrunkDrift(existing, desired *livekit.SIPOutboundTrunkInfo) []string {
 	}
 	if existing.AuthPassword != desired.AuthPassword {
 		fields = append(fields, "authPassword")
+	}
+	if existing.Transport != desired.Transport {
+		fields = append(fields, "transport")
+	}
+	if existing.MediaEncryption != desired.MediaEncryption {
+		fields = append(fields, "mediaEncryption")
 	}
 	if existing.Metadata != desired.Metadata {
 		fields = append(fields, "metadata")

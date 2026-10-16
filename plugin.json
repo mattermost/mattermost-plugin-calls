@@ -181,6 +181,20 @@
             "hosting": "on-prem"
           },
           {
+            "key": "SIPTrunkTransport",
+            "display_name": "SIP transport",
+            "type": "custom",
+            "default": "auto",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkMediaEncryption",
+            "display_name": "Media encryption",
+            "type": "custom",
+            "default": "disable",
+            "hosting": "on-prem"
+          },
+          {
             "key": "SIPTrunkStatus",
             "display_name": "SIP outbound trunk status",
             "type": "custom",

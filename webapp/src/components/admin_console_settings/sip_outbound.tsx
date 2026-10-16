@@ -268,6 +268,117 @@ export function SIPTrunkAuthPassword(props: CustomComponentProps) {
     );
 }
 
+type TrunkSelectProps = CustomComponentProps & {
+    settingKey: string;
+    label: string;
+    help: string;
+    options: Array<{value: string; label: string}>;
+    defaultValue: string;
+};
+
+function TrunkSelect(props: TrunkSelectProps) {
+    const {formatMessage} = useIntl();
+    const {mode} = useContext(SIPTrunkModeContext);
+    const overrides = useSelector(callsConfigEnvOverrides);
+
+    if (mode !== 'managed') {
+        return null;
+    }
+
+    const overridden = props.settingKey in overrides;
+    const disabled = props.disabled || overridden;
+    const value = props.value || props.defaultValue;
+
+    const handleChange = (e: ChangeEvent<HTMLSelectElement>) => {
+        props.onChange(props.id, e.target.value);
+    };
+
+    return (
+        <div
+            data-testid={props.id}
+            className='form-group'
+        >
+            <div className={'control-label ' + leftCol}>
+                <LabelRow>
+                    <label
+                        data-testid={props.id + 'label'}
+                        htmlFor={props.id}
+                    >
+                        {props.label}
+                    </label>
+                </LabelRow>
+            </div>
+            <div className={rightCol}>
+                <select
+                    data-testid={props.id + 'dropdown'}
+                    className={disabled ? 'form-control disabled' : 'form-control'}
+                    id={props.id}
+                    value={value}
+                    onChange={handleChange}
+                    disabled={disabled}
+                >
+                    {props.options.map((o) => (
+                        <option
+                            key={o.value}
+                            value={o.value}
+                        >
+                            {o.label}
+                        </option>
+                    ))}
+                </select>
+                <div
+                    data-testid={props.id + 'help-text'}
+                    className='help-text'
+                >
+                    {props.help}
+                </div>
+                {overridden &&
+                    <div className='alert alert-warning'>
+                        {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
+                    </div>
+                }
+            </div>
+        </div>
+    );
+}
+
+export function SIPTrunkTransport(props: CustomComponentProps) {
+    const {formatMessage} = useIntl();
+    return (
+        <TrunkSelect
+            {...props}
+            settingKey='SIPTrunkTransport'
+            defaultValue='auto'
+            label={formatMessage({defaultMessage: 'SIP transport'})}
+            help={formatMessage({defaultMessage: 'Transport used for SIP signaling to the provider. Auto lets LiveKit choose. Select TLS if your provider requires encrypted signaling, and TCP if large SIP messages are being dropped over UDP.'})}
+            options={[
+                {value: 'auto', label: formatMessage({defaultMessage: 'Auto'})},
+                {value: 'udp', label: formatMessage({defaultMessage: 'UDP'})},
+                {value: 'tcp', label: formatMessage({defaultMessage: 'TCP'})},
+                {value: 'tls', label: formatMessage({defaultMessage: 'TLS'})},
+            ]}
+        />
+    );
+}
+
+export function SIPTrunkMediaEncryption(props: CustomComponentProps) {
+    const {formatMessage} = useIntl();
+    return (
+        <TrunkSelect
+            {...props}
+            settingKey='SIPTrunkMediaEncryption'
+            defaultValue='disable'
+            label={formatMessage({defaultMessage: 'Media encryption'})}
+            help={formatMessage({defaultMessage: 'SRTP encryption for call media. Allow negotiates encryption when the provider offers it and sends media unencrypted otherwise; Require fails the call instead. Providers that require TLS signaling usually require encrypted media too.'})}
+            options={[
+                {value: 'disable', label: formatMessage({defaultMessage: 'Disabled'})},
+                {value: 'allow', label: formatMessage({defaultMessage: 'Allow'})},
+                {value: 'require', label: formatMessage({defaultMessage: 'Require'})},
+            ]}
+        />
+    );
+}
+
 // The trunk ID is only edited in "existing" mode. It keeps its config key so
 // current configurations and env overrides keep working.
 export function SIPTrunkID(props: CustomComponentProps) {
