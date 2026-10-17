@@ -187,6 +187,7 @@ import {
 import {
     applyCallHostChanged,
     applyCallJobState,
+    dispatchCaption,
     dispatchReaction,
     handleCallEnd,
     handleCallHostChanged,
@@ -811,6 +812,10 @@ export default class Plugin {
                         emoji,
                         timestamp,
                     });
+                });
+
+                window.callsClient.on(CALL_EVENT.CAPTION, (session_id: string, userID: string, text: string) => {
+                    dispatchCaption(store, window.callsClient?.channelID ?? '', userID, session_id, text);
                 });
 
                 // The snapshot returned by the join request, which replaces the
