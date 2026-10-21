@@ -313,12 +313,11 @@ func sipTrunkReconcileWanted(cfg *configuration) bool {
 // reconcileSIPTrunk reconciles the managed trunk under a cluster mutex and records
 // the result.
 func (p *Plugin) reconcileSIPTrunk() error {
-	cfg := p.getConfiguration()
-	if !sipTrunkReconcileWanted(cfg) {
+	if !sipTrunkReconcileWanted(p.getConfiguration()) {
 		return nil
 	}
 
-	err := p.doReconcileSIPTrunk(cfg)
+	err := p.doReconcileSIPTrunk()
 
 	p.sipTrunkMut.Lock()
 	defer p.sipTrunkMut.Unlock()
@@ -332,7 +331,7 @@ func (p *Plugin) reconcileSIPTrunk() error {
 	return nil
 }
 
-func (p *Plugin) doReconcileSIPTrunk(cfg *configuration) error {
+func (p *Plugin) doReconcileSIPTrunk() error {
 	m, err := cluster.NewMutex(p.API, p.metrics, "sip_trunk_reconcile", cluster.MutexConfig{})
 	if err != nil {
 		return fmt.Errorf("failed to create cluster mutex: %w", err)
@@ -343,6 +342,13 @@ func (p *Plugin) doReconcileSIPTrunk(cfg *configuration) error {
 		return fmt.Errorf("failed to lock cluster mutex: %w", err)
 	}
 	defer m.Unlock()
+
+	// Read the config under the lock so a reconcile queued by an earlier save
+	// can't overwrite the trunk with stale values.
+	cfg := p.getConfiguration()
+	if !sipTrunkReconcileWanted(cfg) {
+		return nil
+	}
 
 	ctx, cancelAPI := context.WithTimeout(context.Background(), 3*sipTrunkAPITimeout)
 	defer cancelAPI()

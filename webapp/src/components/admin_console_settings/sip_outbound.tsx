@@ -491,6 +491,9 @@ function describeStatus(s: TrunkStatus, formatMessage: ReturnType<typeof useIntl
     case 'not_configured':
         return s.error || formatMessage({defaultMessage: 'No trunk configured.'});
     default:
-        return formatMessage({defaultMessage: 'Reconcile failed: {error}'}, {error: s.error || 'unknown error'});
+        return formatMessage(
+            {defaultMessage: 'Reconcile failed: {error}'},
+            {error: s.error || formatMessage({defaultMessage: 'unknown error'})},
+        );
     }
 }
