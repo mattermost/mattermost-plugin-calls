@@ -82,7 +82,7 @@ func parseLivekitIdentity(identity string) (userID, sessionID string, ok bool) {
 
 func (p *Plugin) getLiveKitRoomClient() (*lksdk.RoomServiceClient, error) {
 	cfg := p.getConfiguration()
-	lkURL := cfg.getLiveKitURL()
+	lkURL := cfg.getLiveKitPrivateURL()
 	if lkURL == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
 		return nil, errLiveKitNotConfigured
 	}

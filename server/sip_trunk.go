@@ -203,7 +203,7 @@ func isOwnSIPTrunk(t *livekit.SIPOutboundTrunkInfo, serverID string) bool {
 }
 
 func newSIPClient(cfg *configuration) livekit.SIP {
-	return livekit.NewSIPProtobufClient(livekitHTTPURL(cfg.getLiveKitURL()), &http.Client{})
+	return livekit.NewSIPProtobufClient(livekitHTTPURL(cfg.getLiveKitPrivateURL()), &http.Client{})
 }
 
 func listSIPOutboundTrunks(ctx context.Context, client livekit.SIP, cfg *configuration) ([]*livekit.SIPOutboundTrunkInfo, error) {

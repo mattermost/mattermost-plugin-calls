@@ -92,9 +92,7 @@ func isSIPTrunkNotFound(err error) bool {
 }
 
 func (p *Plugin) dialSIPParticipant(cfg *configuration, trunkID, phoneNumber, roomName, displayName string) (*livekit.SIPParticipantInfo, error) {
-	// getLiveKitURL (not the raw setting) to match every other server-side
-	// LiveKit call, so a MM_CALLS_LIVEKIT_URL override applies here too.
-	sipClient := livekit.NewSIPProtobufClient(livekitHTTPURL(cfg.getLiveKitURL()), &http.Client{})
+	sipClient := livekit.NewSIPProtobufClient(livekitHTTPURL(cfg.getLiveKitPrivateURL()), &http.Client{})
 
 	// CreateSIPParticipant requires both SIP and video admin grants; the video
 	// grant also lets LiveKit auto-create the room when it doesn't exist yet.
