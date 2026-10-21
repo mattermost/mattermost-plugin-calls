@@ -1681,7 +1681,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 }
 
 const isActiveElementInteractable = () => {
-    return document.activeElement && ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName);
+    const el = document.activeElement;
+    if (!el) {
+        return false;
+    }
+
+    // contenteditable covers the rich text (WYSIWYG) composer, which isn't a textarea.
+    return ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(el.tagName) || (el instanceof HTMLElement && el.isContentEditable);
 };
 
 const UnreadIndicator = ({mentions}: { mentions?: number }) => {
