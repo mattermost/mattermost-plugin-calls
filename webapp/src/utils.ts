@@ -26,7 +26,7 @@ import RestClient from 'src/rest_client';
 import {CallPostStatus, CallsPostProps} from 'src/types/types';
 import {notificationSounds} from 'src/webapp_globals';
 
-import {logDebug, logErr, logWarn} from './log';
+import {logDebug, logErr, logInfo, logWarn} from './log';
 import {pluginId} from './manifest';
 import {threadIDForCallInChannel} from './selectors';
 import JoinSelfSound from './sounds/join_self.mp3';
@@ -701,4 +701,49 @@ export function getPlatformInfo() {
     }
 
     return platformName;
+}
+
+type HighEntropyHints = {
+    platformVersion?: string;
+    architecture?: string;
+    bitness?: string;
+};
+
+type NavigatorWithUAData = Navigator & {
+    userAgentData?: {
+        getHighEntropyValues: (hints: string[]) => Promise<HighEntropyHints>;
+    };
+};
+
+async function getMicPermissionState() {
+    try {
+        const status = await window.navigator.permissions.query({name: 'microphone' as PermissionName});
+        return status.state;
+    } catch {
+        // Not all browsers (e.g. Firefox) support querying the microphone permission.
+        return 'unknown';
+    }
+}
+
+export async function logClientEnvironment() {
+    const nav = window.navigator as NavigatorWithUAData;
+
+    const fields = [
+        `ua="${nav.userAgent}"`,
+        `platform=${getPlatformInfo()}`,
+        `desktopApp=${isDesktopApp()}`,
+        `desktopVersion=${window.desktop?.version || 'n/a'}`,
+        `language=${nav.languages?.[0] || nav.language}`,
+        `cores=${nav.hardwareConcurrency}`,
+        `micPermission=${await getMicPermissionState()}`,
+    ];
+    logInfo(`client environment: ${fields.join(' ')}`);
+
+    // The UA string freezes the macOS version and CPU architecture (notably in Electron),
+    // so high-entropy hints are the only way to get the real values on Chromium.
+    nav.userAgentData?.getHighEntropyValues(['platformVersion', 'architecture', 'bitness']).then((hints) => {
+        logInfo(`client platform hints: platformVersion=${hints.platformVersion} architecture=${hints.architecture} bitness=${hints.bitness}`);
+    }).catch(() => {
+        // Best-effort only.
+    });
 }
