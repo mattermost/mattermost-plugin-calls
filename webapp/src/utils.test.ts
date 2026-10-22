@@ -789,6 +789,7 @@ describe('utils', () => {
             jest.spyOn(console, 'info').mockImplementation();
             flushLogsToAccumulated();
             window.sessionStorage.clear();
+            window.localStorage.clear();
         });
 
         afterEach(() => {
