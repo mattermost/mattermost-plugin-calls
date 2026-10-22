@@ -43,6 +43,15 @@ timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE
 # Check that calls-offloader is up and ready.
 timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_callsoffloader --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://calls-offloader:4545/version; do echo Waiting for calls-offloader; sleep 2; done; echo calls-offloader is up"
 
+# Pre-pull the recorder/transcriber images pinned in the plugin manifest. The offloader
+# uses this host's Docker daemon, so the first job finds them locally instead of
+# pulling a large image mid-test (which can outlast the test's own timing).
+RECORDER_IMAGE="mattermost/calls-recorder:$(jq -r '.props.calls_recorder_version' plugin.json)"
+TRANSCRIBER_IMAGE="mattermost/calls-transcriber:$(jq -r '.props.calls_transcriber_version' plugin.json)"
+echo "Pulling ${RECORDER_IMAGE} and ${TRANSCRIBER_IMAGE} ... "
+docker pull --quiet ${RECORDER_IMAGE}
+docker pull --quiet ${TRANSCRIBER_IMAGE}
+
 ## Print images info
 docker images
 
