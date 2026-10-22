@@ -4,7 +4,7 @@
 import type {UserSessionState} from '@mattermost/calls-common/lib/types';
 import type {Channel} from '@mattermost/types/channels';
 import type {UserProfile} from '@mattermost/types/users';
-import {render, screen, within} from '@testing-library/react';
+import {fireEvent, render, screen, within} from '@testing-library/react';
 import React from 'react';
 import {createIntl, RawIntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
@@ -15,8 +15,10 @@ import {CallsConfigDefault} from 'src/types/types';
 
 // The component reads window.ProductApi at module scope for its contextType, so the global has
 // to exist before it is required.
+type WebSocketClient = React.ContextType<typeof window.ProductApi.WebSocketProvider>;
+const WebSocketProvider = React.createContext<WebSocketClient>(null as unknown as WebSocketClient);
 window.ProductApi = {
-    WebSocketProvider: React.createContext(null),
+    WebSocketProvider,
 } as unknown as typeof window.ProductApi;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -122,17 +124,22 @@ const props = {
     intl,
 } as unknown as Props;
 
-const renderExpandedView = (sessions: UserSessionState[], overrides: Partial<Props> = {}) => render(
+// componentDidMount bails (and skips the keyboard listeners) without a websocket context.
+const wsContext = {addFirstConnectListener: jest.fn(), removeFirstConnectListener: jest.fn()};
+
+const renderExpandedView = (sessions: UserSessionState[], overrides: Partial<Props> = {}, withWsContext = false) => render(
     <Provider store={mockStore(dmState(sessions))}>
         <RawIntlProvider value={intl}>
-            <ExpandedView
-                {...props}
-                sessions={sessions}
-                currentSession={sessions.find((s) => s.user_id === 'user-id')}
-                otherSessions={sessions.filter((s) => s.user_id !== 'user-id')}
-                isDMCalling={sessions.every((s) => s.user_id === 'user-id')}
-                {...overrides}
-            />
+            <WebSocketProvider.Provider value={(withWsContext ? wsContext : null) as unknown as WebSocketClient}>
+                <ExpandedView
+                    {...props}
+                    sessions={sessions}
+                    currentSession={sessions.find((s) => s.user_id === 'user-id')}
+                    otherSessions={sessions.filter((s) => s.user_id !== 'user-id')}
+                    isDMCalling={sessions.every((s) => s.user_id === 'user-id')}
+                    {...overrides}
+                />
+            </WebSocketProvider.Provider>
         </RawIntlProvider>
     </Provider>,
 );
@@ -183,6 +190,28 @@ describe('ExpandedView', () => {
         renderExpandedView([stubSession('session-1', 'user-id', true)]);
 
         expect(screen.getByTestId('calls-popout-video-profile-self')).toBeInTheDocument();
+    });
+
+    test('releasing push-to-talk after focus moves into an editor still mutes', () => {
+        const unmute = jest.fn();
+        const mute = jest.fn();
+        Object.assign(window.callsClient as object, {unmute, mute, getAudioDevices: () => ({inputs: [], outputs: []}), getVideoDevices: () => [], getRemoteVideoStream: () => null});
+        renderExpandedView([stubSession('session-1', 'user-id')], {}, true);
+
+        const space = {key: ' ', code: 'Space', bubbles: true};
+        fireEvent.keyDown(window, space);
+        expect(unmute).toHaveBeenCalledTimes(1);
+
+        const editor = document.createElement('div');
+        editor.tabIndex = 0;
+        Object.defineProperty(editor, 'isContentEditable', {value: true});
+        document.body.appendChild(editor);
+        editor.focus();
+
+        fireEvent.keyUp(window, space);
+        expect(mute).toHaveBeenCalledTimes(1);
+
+        editor.remove();
     });
 
     test('an answered DM call with the camera on drops the callee placeholder', () => {

@@ -371,14 +371,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     handleKeyUp = (ev: KeyboardEvent) => {
-        if (isActiveElementInteractable() && !this.expandedRootRef.current?.contains(document.activeElement)) {
-            return;
-        }
-
-        if (keyToAction('popout', ev) === PUSH_TO_TALK && this.pushToTalk) {
+        // Release first so focus moving into an editor mid-hold can't leave the mic open.
+        if (this.pushToTalk && keyToAction('popout', ev) === PUSH_TO_TALK) {
             getCallsClient()?.mute();
             this.pushToTalk = false;
             this.forceUpdate();
+            return;
+        }
+
+        if (isActiveElementInteractable() && !this.expandedRootRef.current?.contains(document.activeElement)) {
             return;
         }
 
