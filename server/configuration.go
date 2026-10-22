@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/license"
 
@@ -623,12 +624,28 @@ func (c *configuration) sipOutboundAllowlistEnabled() bool {
 	return c.EnableSIPOutboundAllowlist != nil && *c.EnableSIPOutboundAllowlist
 }
 
+// parseAllowlistEntry splits an allowlist line into its phone number and
+// optional owner name. The name starts at the first letter or '#'.
+func parseAllowlistEntry(line string) (number, name string) {
+	idx := strings.IndexFunc(line, func(r rune) bool {
+		return r == '#' || unicode.IsLetter(r)
+	})
+	if idx < 0 {
+		return strings.TrimSpace(line), ""
+	}
+	return strings.TrimSpace(line[:idx]), strings.TrimSpace(strings.TrimPrefix(line[idx:], "#"))
+}
+
 // isNumberInAllowlist reports whether number (already normalized to E.164) is
-// permitted by the outbound allowlist. Entries are split on newline and
-// normalized before comparison. An empty allowlist blocks all numbers
-// (fail-closed).
+// permitted by the outbound allowlist. Entries are split on newline, may carry
+// an optional owner name (see parseAllowlistEntry), and are normalized before
+// comparison. An empty allowlist blocks all numbers (fail-closed).
 func (c *configuration) isNumberInAllowlist(number string) bool {
-	for _, entry := range strings.Split(c.SIPOutboundAllowlist, "\n") {
+	for _, line := range strings.Split(c.SIPOutboundAllowlist, "\n") {
+		entry, _ := parseAllowlistEntry(line)
+		if entry == "" {
+			continue
+		}
 		if normalizePhoneNumber(entry) == number {
 			return true
 		}
