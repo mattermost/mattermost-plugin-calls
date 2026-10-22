@@ -165,6 +165,7 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 	t.Run("creates pending session and call", func(t *testing.T) {
 		p, mockAPI, _ := setupPlugin(t)
 		defer ResetTestStore(t, p.store)
+		p.botID = model.NewId()
 
 		userID := model.NewId()
 		channelID := model.NewId()
@@ -189,6 +190,7 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 		require.NotEmpty(t, res.Token)
 		require.Equal(t, "wss://lk.example.com", res.URL)
 		require.NotNil(t, res.CallState)
+		require.Equal(t, p.getBotID(), res.BotUserID)
 
 		// The token identity ties the user to the freshly minted session id.
 		verifier, err := auth.ParseAPIToken(res.Token)
