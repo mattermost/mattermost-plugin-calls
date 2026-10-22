@@ -1680,7 +1680,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     }
 }
 
-const isActiveElementInteractable = () => {
+export const isActiveElementInteractable = () => {
     const el = document.activeElement;
     if (!el) {
         return false;

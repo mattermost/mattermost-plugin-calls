@@ -20,7 +20,7 @@ window.ProductApi = {
 } as unknown as typeof window.ProductApi;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const ExpandedView = require('./component').default;
+const {default: ExpandedView, isActiveElementInteractable} = require('./component');
 
 type Props = React.ComponentProps<typeof ExpandedView>;
 
@@ -189,5 +189,47 @@ describe('ExpandedView', () => {
         renderExpandedView([stubSession('session-1', 'user-id', true), stubSession('session-2', calleeID)]);
 
         expect(screen.queryByTestId('calls-popout-video-profile-ringing')).not.toBeInTheDocument();
+    });
+});
+
+describe('isActiveElementInteractable', () => {
+    afterEach(() => {
+        document.body.innerHTML = '';
+        (document.activeElement as HTMLElement | null)?.blur();
+    });
+
+    test('returns false when nothing is focused', () => {
+        jest.spyOn(document, 'activeElement', 'get').mockReturnValueOnce(null);
+
+        expect(isActiveElementInteractable()).toBe(false);
+    });
+
+    test.each(['input', 'select', 'button', 'textarea'])('returns true for a focused %s', (tag) => {
+        const el = document.createElement(tag);
+        document.body.appendChild(el);
+        el.focus();
+
+        expect(isActiveElementInteractable()).toBe(true);
+    });
+
+    // jsdom doesn't implement isContentEditable, so it's defined explicitly.
+    test('returns true for a focused contenteditable element', () => {
+        const el = document.createElement('div');
+        el.tabIndex = 0;
+        Object.defineProperty(el, 'isContentEditable', {value: true});
+        document.body.appendChild(el);
+        el.focus();
+
+        expect(isActiveElementInteractable()).toBe(true);
+    });
+
+    test('returns false for a focused non-editable element', () => {
+        const el = document.createElement('div');
+        el.tabIndex = 0;
+        Object.defineProperty(el, 'isContentEditable', {value: false});
+        document.body.appendChild(el);
+        el.focus();
+
+        expect(isActiveElementInteractable()).toBe(false);
     });
 });
