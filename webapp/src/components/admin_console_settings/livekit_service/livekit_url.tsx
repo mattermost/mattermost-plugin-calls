@@ -52,7 +52,7 @@ export default function LiveKitURL(props: CustomComponentProps) {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: '(Optional) The URL of a LiveKit server instance to use for call media routing (e.g. wss://livekit.example.com).'})}
+                    {formatMessage({defaultMessage: '(Optional) The public URL of a LiveKit server instance that clients connect to for call media routing (e.g. wss://livekit.example.com).'})}
                 </div>
                 {overridden &&
                     <div className='alert alert-warning'>

@@ -48,6 +48,14 @@ func TestIsNumberInAllowlist(t *testing.T) {
 		{"multiple newlines", "+17813078753\n+14155551234\n+12125550100", "+12125550100", true},
 		{"not in list", "+17813078753\n+14155551234", "+19995550000", false},
 		{"whitespace around entries", "  +17813078753 \n +14155551234 ", "+14155551234", true},
+		{"name after number", "+14155551234 Alice Smith", "+14155551234", true},
+		{"formatted number with name", "+1 415-555-1234 John Doe", "+14155551234", true},
+		{"hash marker", "+14155551234 # Bob Jones", "+14155551234", true},
+		{"digit-leading name needs hash", "+14155551234 # 3rd floor lobby", "+14155551234", true},
+		{"digits in name ignored", "+14155551234 Room 12", "+14155551234", true},
+		{"digit-leading name without hash alters number", "+14155551234 3rd floor", "+14155551234", false},
+		{"name-only line ignored", "Alice Smith\n# note", "+14155551234", false},
+		{"names with multiple lines", "+17813078753 Alice\n+14155551234 Bob", "+14155551234", true},
 	}
 
 	for _, tc := range tests {
@@ -63,4 +71,25 @@ func TestLivekitHTTPURL(t *testing.T) {
 	require.Equal(t, "http://localhost:7880", livekitHTTPURL("ws://localhost:7880"))
 	require.Equal(t, "https://livekit.example.com", livekitHTTPURL("  wss://livekit.example.com  "))
 	require.Equal(t, "https://livekit.example.com", livekitHTTPURL("https://livekit.example.com"))
+}
+
+func TestParseAllowlistEntry(t *testing.T) {
+	tests := []struct {
+		line, number, name string
+	}{
+		{"+14155551234", "+14155551234", ""},
+		{"+1 415-555-1234 John Doe", "+1 415-555-1234", "John Doe"},
+		{"+14155551234 # Bob Jones", "+14155551234", "Bob Jones"},
+		{"+14155551234 # 3rd floor", "+14155551234", "3rd floor"},
+		{"Alice", "", "Alice"},
+		{"", "", ""},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.line, func(t *testing.T) {
+			number, name := parseAllowlistEntry(tc.line)
+			require.Equal(t, tc.number, number)
+			require.Equal(t, tc.name, name)
+		})
+	}
 }
