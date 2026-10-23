@@ -11,7 +11,6 @@ import '@mattermost/compass-icons/css/compass-icons.css';
 
 import {
     CallJobState,
-    CallState,
     EmojiData,
 } from '@mattermost/calls-common/lib/types';
 import {Client4} from 'mattermost-redux/client';
@@ -22,16 +21,20 @@ import {getCallActive, getCallsConfig, getCallsVersionInfo, joinUser, leaveUser,
 import CallClient, {CALL_EVENT, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
 import type {ScreenSharingSession} from 'plugin/clients/call/types';
 import RestClient from 'plugin/clients/rest';
+import {phoneDialFailedErr} from 'plugin/components/error_modal/error_messages';
 import {
     logDebug,
     logErr,
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
+import {trackSIPCallStatus, watchPhoneCall} from 'plugin/phone_call';
+import {getPhoneCallProps} from 'plugin/phone_utils';
 import reducer from 'plugin/reducers';
 import {getCallIDForChannel} from 'plugin/selectors';
 import {userScreenShared, userScreenUnshared} from 'plugin/state/screen_sharing_ids/actions';
 import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/session/actions';
 import {Store} from 'plugin/types/mattermost-webapp';
+import type {PhoneCallState} from 'plugin/types/types';
 import {
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
@@ -64,6 +67,7 @@ function connectCall(
     store: Store,
     closeCb?: (err?: Error) => void,
     callEventHandler?: (store: Store, callClient: CallClient) => void,
+    watchPhoneCalls?: boolean,
 ) {
     try {
         if (window.callsClient) {
@@ -77,6 +81,8 @@ function connectCall(
         window.callsClient = callClient;
         window.currentCallData = {...CurrentCallDataDefault};
 
+        let lastError: Error | undefined;
+
         // Standalone has no main Mattermost WebSocket, so everything it knows about
         // the call comes from the join response and from LiveKit: participants,
         // mute, speaking, hands and reactions from the room itself, and the
@@ -85,8 +91,15 @@ function connectCall(
         // The full call state snapshot arrives before the room connects, which is
         // what lets the LiveKit-sourced state below layer on top of a populated
         // session list without any ordering dance.
-        callClient.on(CALL_EVENT.CALL_STATE, (callState: CallState) => {
+        callClient.on(CALL_EVENT.CALL_STATE, (callState: PhoneCallState) => {
             store.dispatch(loadCallState(callClient.channelID, callState));
+
+            // CALL_STATE is emitted from within connect(), after it has returned its promise.
+            if (watchPhoneCalls && getPhoneCallProps(callState)) {
+                watchPhoneCall(store, callClient, callClient.channelID, connecting, () => {
+                    lastError = phoneDialFailedErr;
+                });
+            }
         });
 
         callClient.on(CALL_EVENT.HOST_CHANGED, (hostID: string) => {
@@ -135,7 +148,7 @@ function connectCall(
             });
         });
 
-        let lastError: Error | undefined;
+        trackSIPCallStatus(store, callClient);
 
         callClient.on(CALL_EVENT.ERROR, (e: unknown) => {
             if (e instanceof Error) {
@@ -183,7 +196,8 @@ function connectCall(
 
         store.dispatch(setClientConnecting(true));
 
-        callClient.connect(connectPayload).catch((err: unknown) => {
+        const connecting = callClient.connect(connectPayload);
+        connecting.catch((err: unknown) => {
             store.dispatch(setClientConnecting(false));
             logErr(err);
             closeCb?.(err instanceof Error ? err : new Error(String(err)));
@@ -208,6 +222,9 @@ type InitConfig = {
     reducer?: Reducer,
     callEventHandler?: (store: Store, callClient: CallClient) => void,
     initStore?: (store: Store, channelID: string) => Promise<void>,
+
+    // Only the caller's own window may end a phone call when it leaves, so not the recorder.
+    watchPhoneCalls?: boolean,
 };
 
 export default async function initialiseEmbedApp(cfg: InitConfig) {
@@ -270,6 +287,7 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
         store,
         cfg.closeCb,
         cfg.callEventHandler,
+        cfg.watchPhoneCalls,
     );
 
     const theme = getTheme(store.getState());
