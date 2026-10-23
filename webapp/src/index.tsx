@@ -14,7 +14,7 @@ import {getCurrentTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entit
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import React, {useEffect} from 'react';
 import {createRoot, Root} from 'react-dom/client';
-import {FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
+import {defineMessage, FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {AnyAction} from 'redux';
 import {batchActions} from 'redux-batched-actions';
@@ -22,6 +22,7 @@ import {
     displayCallErrorModal,
     displayCallsTestModeUser,
     displayFreeTrial,
+    displayGenericErrorModal,
     fetchCallState,
     getCallsConfig,
     getCallsConfigEnvOverrides,
@@ -477,6 +478,20 @@ export default class Plugin {
                 store.dispatch(displayCallsTestModeUser());
             }
         };
+
+        // Link-triggered joins have no caller to surface errors, so show the
+        // same modal as /call join.
+        const joinCallFromLink = (channelId: string) => joinCall(channelId).catch((err) => {
+            logErr('failed to join call from link', err);
+            let msg = defineMessage({defaultMessage: 'An internal error occurred and prevented you from joining the call. Please try again.'});
+            if (err === DisabledCallsErr) {
+                msg = defineMessage({defaultMessage: 'Calls are disabled in this channel.'});
+            }
+            store.dispatch(displayGenericErrorModal(
+                defineMessage({defaultMessage: 'Unable to start or join call'}),
+                msg,
+            ));
+        });
 
         const connectPhoneCall = (channelID: string, phoneSession: LiveKitSessionResponse) => connectCall(channelID, '', '', phoneSession);
         const dialNumber = (number: string, target?: PhoneCallTarget) => dialPhoneNumber(store, number, connectPhoneCall, {target});
@@ -1135,7 +1150,7 @@ export default class Plugin {
         // so URL-driven joins go through the same enabled/disabled, limit,
         // and test-mode gating as the regular UI buttons.
         registry.registerRootComponent(() => (
-            <JoinCallWatcher onJoinCall={joinCall}/>
+            <JoinCallWatcher onJoinCall={joinCallFromLink}/>
         ));
 
         // A dummy React component so we can access webapp's
@@ -1173,7 +1188,7 @@ export default class Plugin {
             () => getCurrentTeam(store.getState())?.name,
             () => getCurrentChannelId(store.getState()),
             () => getCurrentChannel(store.getState())?.name,
-            joinCall,
+            joinCallFromLink,
         );
         document.addEventListener('click', handleSameChannelLinkClick, true);
         this.unsubscribers.push(() => document.removeEventListener('click', handleSameChannelLinkClick, true));
