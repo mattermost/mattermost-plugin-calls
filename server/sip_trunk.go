@@ -47,6 +47,8 @@ const (
 	sipTrunkStateNone    = "not_configured"
 )
 
+// e164Regexp matches an E.164 phone number, the international format carriers
+// expect: "+", a non-zero country code digit, up to 15 digits in total.
 var e164Regexp = regexp.MustCompile(`^\+[1-9][0-9]{6,14}$`)
 
 const (
