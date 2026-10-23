@@ -92,8 +92,9 @@ type Plugin struct {
 	dirtyCallsCh  chan struct{}
 	publisherWg   sync.WaitGroup
 
-	// Managed SIP outbound trunk (MM-71127). sipTrunkActive gates reconciles until
-	// the plugin has finished activating.
+	// Managed SIP outbound trunk (MM-71127). sipTrunkActive is set once OnActivate
+	// succeeds, so the OnConfigurationChange that runs before it doesn't modify
+	// the LiveKit trunk for a plugin that may still fail to activate.
 	sipTrunkActive      atomic.Bool
 	sipTrunkMut         sync.Mutex
 	sipTrunkID          string
