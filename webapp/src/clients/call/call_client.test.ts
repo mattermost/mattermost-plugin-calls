@@ -945,14 +945,20 @@ describe('CallClient', () => {
             warnSpy.mockRestore();
         });
 
-        it('emits AUDIO_PLAYBACK_STATUS when the room playback status changes', async () => {
+        it('emits REMOTE_AUDIO_PLAYBACK_BLOCKED and REMOTE_AUDIO_PLAYBACK_UNBLOCKED as the room playback status changes', async () => {
             await client.connect({channelID: 'test-channel'});
-            const listener = jest.fn();
-            client.on(CALL_EVENT.AUDIO_PLAYBACK_STATUS, listener);
+            const blockedListener = jest.fn();
+            const unblockedListener = jest.fn();
+            client.on(CALL_EVENT.REMOTE_AUDIO_PLAYBACK_BLOCKED, blockedListener);
+            client.on(CALL_EVENT.REMOTE_AUDIO_PLAYBACK_UNBLOCKED, unblockedListener);
 
             mockRoom.fire(RoomEvent.AudioPlaybackStatusChanged, false);
+            expect(blockedListener).toHaveBeenCalledTimes(1);
+            expect(unblockedListener).not.toHaveBeenCalled();
 
-            expect(listener).toHaveBeenCalledWith(false);
+            mockRoom.fire(RoomEvent.AudioPlaybackStatusChanged, true);
+            expect(unblockedListener).toHaveBeenCalledTimes(1);
+            expect(blockedListener).toHaveBeenCalledTimes(1);
         });
 
         it('reads canPlaybackAudio from the room', async () => {
@@ -1773,7 +1779,7 @@ describe('CallClient', () => {
             client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
             mockRoom.switchActiveDevice.mockClear();
 
-            client.setAudioOutputDevice(outputDevice);
+            await client.setAudioOutputDevice(outputDevice);
 
             expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('audiooutput', 'spk-1');
             expect(client.currentAudioOutputDevice).toBe(outputDevice);
@@ -1787,8 +1793,7 @@ describe('CallClient', () => {
             mockRoom.switchActiveDevice.mockRejectedValueOnce(new Error('cannot switch audio output, the current browser does not support it'));
             const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-            client.setAudioOutputDevice(outputDevice);
-            await new Promise((resolve) => setTimeout(resolve, 0));
+            await expect(client.setAudioOutputDevice(outputDevice)).resolves.toBeUndefined();
 
             const logged = warnSpy.mock.calls.map((args) => args.join(' '));
             expect(logged).toEqual(expect.arrayContaining([expect.stringContaining('switching audio output device failed')]));

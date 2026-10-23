@@ -215,7 +215,7 @@ describe('CallWidget', () => {
     });
 });
 
-describe('audio playback blocked banner', () => {
+describe('remote audio playback blocked banner', () => {
     let originalCallsClient: typeof window.callsClient;
     let handlers: Map<string, (...args: unknown[]) => void>;
     let startAudio: jest.Mock;
@@ -245,7 +245,7 @@ describe('audio playback blocked banner', () => {
 
     const firePlaybackStatus = (canPlayback: boolean) => {
         act(() => {
-            handlers.get(CALL_EVENT.AUDIO_PLAYBACK_STATUS)?.(canPlayback);
+            handlers.get(canPlayback ? CALL_EVENT.REMOTE_AUDIO_PLAYBACK_UNBLOCKED : CALL_EVENT.REMOTE_AUDIO_PLAYBACK_BLOCKED)?.();
         });
     };
 

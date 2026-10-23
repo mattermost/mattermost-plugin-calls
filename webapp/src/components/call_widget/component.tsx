@@ -387,11 +387,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
-    private setAudioPlaybackBlocked = (blocked: boolean) => {
+    private setRemoteAudioPlaybackBlocked = (blocked: boolean) => {
         this.setState((prevState) => ({
             alerts: {
                 ...prevState.alerts,
-                audioPlaybackBlocked: {
+                remoteAudioPlaybackBlocked: {
                     active: blocked,
                     show: blocked,
                 },
@@ -399,14 +399,19 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }));
     };
 
-    private syncAudioPlaybackBlocked = () => {
-        this.setAudioPlaybackBlocked(window.callsClient?.canPlaybackAudio === false);
+    private syncRemoteAudioPlaybackBlocked = () => {
+        this.setRemoteAudioPlaybackBlocked(window.callsClient?.canPlaybackAudio === false);
     };
 
     // Called straight from the click so the browser counts it as the user
     // gesture that allows playback.
     private onEnableAudioClick = () => {
         void window.callsClient?.startAudio();
+    };
+
+    // Action buttons for alerts whose config has actionText, keyed by alert ID.
+    private alertActions: {[alertID: string]: (() => void) | undefined} = {
+        remoteAudioPlaybackBlocked: this.onEnableAudioClick,
     };
 
     private onViewportResize = () => {
@@ -509,9 +514,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.setState({screenStream: session?.stream ?? null});
         });
 
-        this.syncAudioPlaybackBlocked();
-        window.callsClient.on(CALL_EVENT.AUDIO_PLAYBACK_STATUS, (canPlayback: boolean) => {
-            this.setAudioPlaybackBlocked(!canPlayback);
+        this.syncRemoteAudioPlaybackBlocked();
+        window.callsClient.on(CALL_EVENT.REMOTE_AUDIO_PLAYBACK_BLOCKED, () => {
+            this.setRemoteAudioPlaybackBlocked(true);
+        });
+        window.callsClient.on(CALL_EVENT.REMOTE_AUDIO_PLAYBACK_UNBLOCKED, () => {
+            this.setRemoteAudioPlaybackBlocked(false);
         });
 
         window.callsClient.on('localVideoStream', (stream: MediaStream) => {
@@ -1875,26 +1883,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 };
             }
 
-            if (alertID === 'audioPlaybackBlocked') {
-                return (
-                    <div
-                        key={`widget_banner_${alertID}`}
-                        className='cursor--pointer'
-                        onClick={this.onEnableAudioClick}
-                    >
-                        <WidgetBanner
-                            id={'calls-widget-banner-audio-blocked'}
-                            {...alertConfig}
-                            header={formatMessage(alertConfig.bannerText)}
-                            leftText={formatMessage({defaultMessage: 'Enable audio'})}
-
-                            // The wrapper's onClick starts audio. This runs after the button's
-                            // fade-out animation and puts the banner back if audio is still blocked.
-                            onLeftButtonClick={this.syncAudioPlaybackBlocked}
-                        />
-                    </div>
-                );
-            }
+            const onAction = this.alertActions[alertID];
 
             return (
                 <WidgetBanner
@@ -1902,6 +1891,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     {...alertConfig}
                     key={`widget_banner_${alertID}`}
                     header={formatMessage(alertConfig.bannerText, alertState.args)}
+                    leftText={alertConfig.actionText && onAction ? formatMessage(alertConfig.actionText) : undefined}
+                    onLeftButtonPress={onAction}
                     onLeftButtonClick={onClose}
                     onCloseButtonClick={onClose}
                 />

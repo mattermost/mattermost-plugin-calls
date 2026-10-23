@@ -57,6 +57,7 @@ import {
     HostControlPayload,
     LiveKitSessionResponse,
     ReactionPayload,
+    RemoteAudioPlayback,
     ScreenSharingSession,
 } from './types';
 
@@ -99,19 +100,6 @@ function mergeStatsReports(reports: RTCStatsReport[]): RTCStatsReport {
 // is available to log if the call is torn down remotely. Matches the v1 client's
 // RTCMonitor cadence.
 const STATS_POLL_INTERVAL_MS = 10_000;
-
-// A remote audio track we play through an element created by LiveKit's attach().
-type RemoteAudioPlayback = {
-    element: HTMLMediaElement;
-    userID: string;
-    onPlaybackStarted: () => void;
-    onPlaybackFailed: (err?: Error) => void;
-
-    // Watchdog state: the element's currentTime at the previous check, and
-    // whether we already reported it as stuck.
-    lastCurrentTime: number;
-    stuck: boolean;
-};
 
 export default class CallClient extends EventEmitter {
     public channelID = '';
@@ -200,7 +188,7 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.ConnectionQualityChanged, this.handleConnectionQualityChanged.bind(this));
         room.on(RoomEvent.TrackSubscriptionFailed, this.handleTrackSubscriptionFailed.bind(this));
         room.on(RoomEvent.EncryptionError, this.handleEncryptionError.bind(this));
-        room.on(RoomEvent.AudioPlaybackStatusChanged, this.handleAudioPlaybackStatusChanged.bind(this));
+        room.on(RoomEvent.AudioPlaybackStatusChanged, this.handleRemoteAudioPlaybackStatusChanged.bind(this));
     }
 
     // trackPubSummary returns a compact, log-friendly view of a track publication.
@@ -734,7 +722,7 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    public setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): void {
+    public async setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
         if (store) {
             window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({
                 deviceId: device.deviceId,
@@ -745,15 +733,17 @@ export default class CallClient extends EventEmitter {
 
         logDebug('CallClient: audio output device change requested', {deviceId: device.deviceId, label: device.label});
 
+        // Emitted before switching so the picker updates even if the switch is slow or fails.
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+
         // Applies to every attached remote audio element, and LiveKit keeps the
         // device for elements attached later.
-        this.room?.switchActiveDevice('audiooutput', device.deviceId).then((switched) => {
-            logDebug('CallClient: audio output device switched', {deviceId: device.deviceId, switched});
-        }).catch((err) => {
-            logWarn('CallClient: switching audio output device failed', {deviceId: device.deviceId, error: err?.message});
-        });
-
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+        try {
+            const activeDeviceSwitched = await this.room?.switchActiveDevice('audiooutput', device.deviceId);
+            logDebug('CallClient: audio output device switched', {deviceId: device.deviceId, activeDeviceSwitched});
+        } catch (err) {
+            logWarn('CallClient: switching audio output device failed', {deviceId: device.deviceId, error: (err as Error)?.message});
+        }
     }
 
     public async sendReaction(emojiData: EmojiData) {
@@ -1089,7 +1079,7 @@ export default class CallClient extends EventEmitter {
             const storedOutput = this.getStoredAudioDevice('output');
             logDebug('CallClient: storedOutput resolved to', storedOutput ? {deviceId: storedOutput.deviceId, label: storedOutput.label} : null);
             if (storedOutput) {
-                this.setAudioOutputDevice(storedOutput, false);
+                await this.setAudioOutputDevice(storedOutput, false);
             }
 
             this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
@@ -1427,9 +1417,9 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    private handleAudioPlaybackStatusChanged(canPlayback: boolean) {
+    private handleRemoteAudioPlaybackStatusChanged(canPlayback: boolean) {
         logInfo(`CallClient: audio playback status changed, canPlaybackAudio: ${canPlayback}`);
-        this.emit(CALL_EVENT.AUDIO_PLAYBACK_STATUS, canPlayback);
+        this.emit(canPlayback ? CALL_EVENT.REMOTE_AUDIO_PLAYBACK_UNBLOCKED : CALL_EVENT.REMOTE_AUDIO_PLAYBACK_BLOCKED);
     }
 
     public get canPlaybackAudio(): boolean {
@@ -1790,7 +1780,7 @@ export default class CallClient extends EventEmitter {
                 logWarn('CallClient: active audio output device removed, falling back to system default',
                     {removed: {deviceId: unplugged.deviceId, label: unplugged.label}, fallback: fallback ? {deviceId: fallback.deviceId, label: fallback.label} : null});
                 if (fallback) {
-                    this.setAudioOutputDevice(fallback, false);
+                    await this.setAudioOutputDevice(fallback, false);
                 } else {
                     this.currentAudioOutputDevice = null;
                 }
