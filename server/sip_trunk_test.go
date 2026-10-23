@@ -171,8 +171,14 @@ func TestSIPTrunkDrift(t *testing.T) {
 	d := &livekit.SIPOutboundTrunkInfo{Address: "a", Numbers: []string{"+1"}, Metadata: "m"}
 	require.Empty(t, sipTrunkDrift(c, d))
 	d.Transport = livekit.SIPTransport_SIP_TRANSPORT_TLS
-	d.MediaEncryption = livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_REQUIRE
+	setSIPTrunkMediaEncryption(d, livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_REQUIRE)
 	require.Equal(t, []string{"transport", "mediaEncryption"}, sipTrunkDrift(c, d))
+
+	// A trunk that only has the legacy field set is not drift against the same value.
+	legacy := &livekit.SIPOutboundTrunkInfo{Address: "a", Numbers: []string{"+1"}, Metadata: "m"}
+	legacy.MediaEncryption = livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_REQUIRE //nolint:staticcheck // simulating an older trunk
+	d.Transport = c.Transport
+	require.Empty(t, sipTrunkDrift(legacy, d))
 }
 
 func TestDesiredSIPTrunkEnums(t *testing.T) {
@@ -182,7 +188,7 @@ func TestDesiredSIPTrunkEnums(t *testing.T) {
 		trunk, err := desiredSIPTrunk(managedCfg(""), md)
 		require.NoError(t, err)
 		require.Equal(t, livekit.SIPTransport_SIP_TRANSPORT_AUTO, trunk.Transport)
-		require.Equal(t, livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_DISABLE, trunk.MediaEncryption)
+		require.Equal(t, livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_DISABLE, sipTrunkMediaEncryption(trunk))
 	})
 
 	t.Run("configured values are passed through", func(t *testing.T) {
@@ -192,7 +198,7 @@ func TestDesiredSIPTrunkEnums(t *testing.T) {
 		trunk, err := desiredSIPTrunk(cfg, md)
 		require.NoError(t, err)
 		require.Equal(t, livekit.SIPTransport_SIP_TRANSPORT_TLS, trunk.Transport)
-		require.Equal(t, livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_REQUIRE, trunk.MediaEncryption)
+		require.Equal(t, livekit.SIPMediaEncryption_SIP_MEDIA_ENCRYPT_REQUIRE, sipTrunkMediaEncryption(trunk))
 	})
 
 	// An unknown value must not fall back to the zero value: for media encryption

@@ -146,16 +146,34 @@ func desiredSIPTrunk(cfg *configuration, md sipTrunkMetadata) (*livekit.SIPOutbo
 	if !ok {
 		return nil, fmt.Errorf("invalid SIPTrunkMediaEncryption %q", cfg.SIPTrunkMediaEncryption)
 	}
-	return &livekit.SIPOutboundTrunkInfo{
-		Name:            sipTrunkName,
-		Metadata:        string(mdJSON),
-		Address:         cfg.SIPTrunkAddress,
-		Numbers:         []string{strings.TrimSpace(cfg.SIPTrunkNumber)},
-		AuthUsername:    cfg.SIPTrunkAuthUsername,
-		AuthPassword:    cfg.SIPTrunkAuthPassword,
-		Transport:       transport,
-		MediaEncryption: mediaEncryption,
-	}, nil
+	trunk := &livekit.SIPOutboundTrunkInfo{
+		Name:         sipTrunkName,
+		Metadata:     string(mdJSON),
+		Address:      cfg.SIPTrunkAddress,
+		Numbers:      []string{strings.TrimSpace(cfg.SIPTrunkNumber)},
+		AuthUsername: cfg.SIPTrunkAuthUsername,
+		AuthPassword: cfg.SIPTrunkAuthPassword,
+		Transport:    transport,
+	}
+	setSIPTrunkMediaEncryption(trunk, mediaEncryption)
+	return trunk, nil
+}
+
+// setSIPTrunkMediaEncryption sets Media.Encryption and also the legacy field, so a
+// LiveKit server that predates Media still enforces the requested encryption
+// instead of silently ignoring it.
+func setSIPTrunkMediaEncryption(t *livekit.SIPOutboundTrunkInfo, enc livekit.SIPMediaEncryption) {
+	t.Media = &livekit.SIPMediaConfig{Encryption: &enc}
+	t.MediaEncryption = enc //nolint:staticcheck // legacy field, see above
+}
+
+// sipTrunkMediaEncryption returns the trunk's effective encryption, preferring
+// Media.Encryption and falling back to the legacy field for older trunks.
+func sipTrunkMediaEncryption(t *livekit.SIPOutboundTrunkInfo) livekit.SIPMediaEncryption {
+	if m := t.GetMedia(); m != nil && m.Encryption != nil {
+		return *m.Encryption
+	}
+	return t.MediaEncryption //nolint:staticcheck // legacy field, see above
 }
 
 // sipTrunkDrift returns the names of the fields on which the existing trunk
@@ -183,7 +201,7 @@ func sipTrunkDrift(existing, desired *livekit.SIPOutboundTrunkInfo) []string {
 	if existing.Transport != desired.Transport {
 		fields = append(fields, "transport")
 	}
-	if existing.MediaEncryption != desired.MediaEncryption {
+	if sipTrunkMediaEncryption(existing) != sipTrunkMediaEncryption(desired) {
 		fields = append(fields, "mediaEncryption")
 	}
 	if existing.Metadata != desired.Metadata {
