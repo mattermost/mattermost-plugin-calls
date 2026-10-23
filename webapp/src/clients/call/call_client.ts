@@ -376,7 +376,7 @@ export default class CallClient extends EventEmitter {
         void this.pollStats();
 
         this.statsPollTimer = setInterval(() => {
-            this.checkRemoteAudioPlayback();
+            this.pollRemoteAudioPlayback();
             void this.pollStats();
         }, STATS_POLL_INTERVAL_MS);
     }
@@ -1374,10 +1374,10 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    // checkRemoteAudioPlayback catches elements that stopped playing without an
+    // pollRemoteAudioPlayback catches elements that stopped playing without an
     // error. LiveKit only logs an AbortError at debug level, so a play() interrupted
     // by fast leave/re-join would otherwise leave the element paused and silent.
-    private checkRemoteAudioPlayback() {
+    private pollRemoteAudioPlayback() {
         for (const [remoteTrack, playback] of this.remoteAudioPlaybacks) {
             const {element} = playback;
             if (remoteTrack.mediaStreamTrack.readyState !== 'live' || remoteTrack.isMuted || remoteTrack.mediaStreamTrack.muted) {

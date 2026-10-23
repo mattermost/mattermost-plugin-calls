@@ -984,7 +984,7 @@ describe('CallClient', () => {
 
         describe('playback watchdog', () => {
             function check() {
-                (client as unknown as {checkRemoteAudioPlayback(): void}).checkRemoteAudioPlayback();
+                (client as unknown as {pollRemoteAudioPlayback(): void}).pollRemoteAudioPlayback();
             }
 
             it('warns once and retries play() when an element is paused', async () => {
