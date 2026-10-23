@@ -5,12 +5,13 @@ import type {UserSessionState} from '@mattermost/calls-common/lib/types';
 import type {Channel} from '@mattermost/types/channels';
 import type {Team} from '@mattermost/types/teams';
 import type {UserProfile} from '@mattermost/types/users';
-import {render, screen} from '@testing-library/react';
+import {act, render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import {createIntl, RawIntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import type CallClient from 'src/clients/call';
+import {CALL_EVENT} from 'src/clients/call/constants';
 import {mockStore} from 'src/testUtils';
 
 import CallWidget from './component';
@@ -133,7 +134,7 @@ describe('CallWidget', () => {
         window.callsClient = {
             disconnect,
             channelID: 'channel-id',
-            getRemoteVoiceTracks: () => [],
+            canPlaybackAudio: true,
             getRemoteScreenStream: () => null,
             getLocalScreenStream: () => null,
             on: jest.fn(),
@@ -214,6 +215,82 @@ describe('CallWidget', () => {
     });
 });
 
+describe('audio playback blocked banner', () => {
+    let originalCallsClient: typeof window.callsClient;
+    let handlers: Map<string, (...args: unknown[]) => void>;
+    let startAudio: jest.Mock;
+
+    const renderWidget = (canPlaybackAudio: boolean) => {
+        window.callsClient = {
+            disconnect: jest.fn(),
+            channelID: 'channel-id',
+            canPlaybackAudio,
+            startAudio,
+            getRemoteScreenStream: () => null,
+            getLocalScreenStream: () => null,
+            on: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
+                handlers.set(event, handler);
+            }),
+            off: jest.fn(),
+        } as unknown as CallClient;
+
+        render(
+            <Provider store={mockStore(stubState(stubChannel))}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget {...props}/>
+                </RawIntlProvider>
+            </Provider>,
+        );
+    };
+
+    const firePlaybackStatus = (canPlayback: boolean) => {
+        act(() => {
+            handlers.get(CALL_EVENT.AUDIO_PLAYBACK_STATUS)?.(canPlayback);
+        });
+    };
+
+    beforeEach(() => {
+        originalCallsClient = window.callsClient;
+        handlers = new Map();
+        startAudio = jest.fn().mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+        window.callsClient = originalCallsClient;
+    });
+
+    test('is hidden while the browser allows playback', () => {
+        renderWidget(true);
+
+        expect(screen.queryByText(/your browser blocked call audio/i)).not.toBeInTheDocument();
+    });
+
+    test('shows on mount when playback is already blocked', () => {
+        renderWidget(false);
+
+        expect(screen.getByText(/your browser blocked call audio/i)).toBeInTheDocument();
+    });
+
+    test('shows when playback becomes blocked and hides once it is allowed again', () => {
+        renderWidget(true);
+
+        firePlaybackStatus(false);
+        expect(screen.getByText(/your browser blocked call audio/i)).toBeInTheDocument();
+
+        firePlaybackStatus(true);
+        expect(screen.queryByText(/your browser blocked call audio/i)).not.toBeInTheDocument();
+    });
+
+    test('clicking the button starts audio straight from the click', async () => {
+        const user = userEvent.setup();
+        renderWidget(false);
+
+        await user.click(screen.getByRole('button', {name: /enable audio/i}));
+
+        expect(startAudio).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe('leave button behavior', () => {
     let disconnect: jest.Mock;
 
@@ -235,7 +312,7 @@ describe('leave button behavior', () => {
         window.callsClient = {
             disconnect,
             channelID: 'channel-id',
-            getRemoteVoiceTracks: () => [],
+            canPlaybackAudio: true,
             getRemoteScreenStream: () => null,
             getLocalScreenStream: () => null,
             on: jest.fn(),
@@ -440,7 +517,7 @@ describe('phone call', () => {
         window.callsClient = {
             disconnect: jest.fn(),
             channelID: 'channel-id',
-            getRemoteVoiceTracks: () => [],
+            canPlaybackAudio: true,
             getRemoteScreenStream: () => null,
             getLocalScreenStream: () => null,
             on: jest.fn(),

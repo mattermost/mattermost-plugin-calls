@@ -147,6 +147,10 @@ export const CallAlertStatesDefault = {
         active: false,
         show: false,
     },
+    audioPlaybackBlocked: {
+        active: false,
+        show: false,
+    },
 };
 
 export type CallJobReduxState = {

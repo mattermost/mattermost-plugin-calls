@@ -102,6 +102,12 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
         bannerText: defineMessage({defaultMessage: 'The audio output device has changed to <i>{deviceLabel}</i>.'}),
         dismissable: true,
     },
+    audioPlaybackBlocked: {
+        type: CallAlertType.Warning,
+        icon: 'speaker',
+        bannerText: defineMessage({defaultMessage: 'Your browser blocked call audio. Click to enable it.'}),
+        dismissable: false,
+    },
 };
 
 export const CallRecordingDisclaimerStrings: {[key: string]: {[key: string]: MessageDescriptor}} = {

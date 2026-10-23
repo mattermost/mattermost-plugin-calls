@@ -172,7 +172,6 @@ interface State {
     showAudioInputDevicesMenu?: boolean,
     showAudioOutputDevicesMenu?: boolean,
     dragging: DraggingState,
-    audioEls: HTMLAudioElement[],
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
     leaveMenuOpen: boolean,
@@ -319,7 +318,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offX: 0,
                 offY: 0,
             },
-            audioEls: [],
             alerts: CallAlertStatesDefault,
             screenStream: null,
             removeConfirmation: null,
@@ -389,6 +387,28 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
+    private setAudioPlaybackBlocked = (blocked: boolean) => {
+        this.setState((prevState) => ({
+            alerts: {
+                ...prevState.alerts,
+                audioPlaybackBlocked: {
+                    active: blocked,
+                    show: blocked,
+                },
+            },
+        }));
+    };
+
+    private syncAudioPlaybackBlocked = () => {
+        this.setAudioPlaybackBlocked(window.callsClient?.canPlaybackAudio === false);
+    };
+
+    // Called straight from the click so the browser counts it as the user
+    // gesture that allows playback.
+    private onEnableAudioClick = () => {
+        void window.callsClient?.startAudio();
+    };
+
     private onViewportResize = () => {
         if (window.devicePixelRatio === this.prevDevicePixelRatio) {
             return;
@@ -410,37 +430,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             this.shareScreen(ev.data.message.sourceID, ev.data.message.withAudio);
         }
     };
-
-    private attachVoiceTracks(tracks: MediaStreamTrack[]) {
-        const audioEls = [];
-        for (const track of tracks) {
-            const audioEl = document.createElement('audio');
-            audioEl.srcObject = new MediaStream([track]);
-            audioEl.controls = false;
-            audioEl.autoplay = true;
-            audioEl.style.display = 'none';
-            audioEl.onerror = (err) => logErr(err);
-            audioEl.setAttribute('data-testid', track.id);
-
-            const deviceID = window.callsClient?.currentAudioOutputDevice?.deviceId;
-            if (deviceID) {
-                // @ts-ignore - setSinkId is an experimental feature
-                audioEl.setSinkId(deviceID);
-            }
-
-            document.body.appendChild(audioEl);
-            track.onended = () => {
-                audioEl.srcObject = null;
-                audioEl.remove();
-            };
-
-            audioEls.push(audioEl);
-        }
-
-        this.setState({
-            audioEls: [...this.state.audioEls, ...audioEls],
-        });
-    }
 
     public componentDidMount() {
         if (!window.callsClient) {
@@ -510,11 +499,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             setMissingScreenPermissions: this.setMissingScreenPermissions,
         };
 
-        this.attachVoiceTracks(window.callsClient.getRemoteVoiceTracks());
-        window.callsClient.on(CALL_EVENT.REMOTE_VOICE_STREAM, (stream: MediaStream) => {
-            this.attachVoiceTracks(stream.getAudioTracks());
-        });
-
         this.setState({
             screenStream: window.callsClient.getRemoteScreenStream(),
         });
@@ -523,6 +507,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         // nobody is sharing — the widget previously only handled the ON events.
         window.callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
             this.setState({screenStream: session?.stream ?? null});
+        });
+
+        this.syncAudioPlaybackBlocked();
+        window.callsClient.on(CALL_EVENT.AUDIO_PLAYBACK_STATUS, (canPlayback: boolean) => {
+            this.setAudioPlaybackBlocked(!canPlayback);
         });
 
         window.callsClient.on('localVideoStream', (stream: MediaStream) => {
@@ -547,18 +536,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
                 if (window.callsClient.currentAudioOutputDevice !== this.state.currentAudioOutputDevice) {
                     state.currentAudioOutputDevice = window.callsClient.currentAudioOutputDevice;
-
-                    const outputDeviceId = window.callsClient.currentAudioOutputDevice?.deviceId;
-                    if (outputDeviceId) {
-                        const ps = [];
-                        for (const audioEl of this.state.audioEls) {
-                            // @ts-ignore - setSinkId is an experimental feature
-                            ps.push(audioEl.setSinkId(outputDeviceId));
-                        }
-                        Promise.all(ps).then().catch((err) => {
-                            logErr(err);
-                        });
-                    }
                 }
             }
 
@@ -1025,14 +1002,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (device.deviceId !== this.state.currentAudioOutputDevice?.deviceId) {
             logDebug(`CallWidget.onAudioOutputDeviceClick: switching audio output to '${device.label}'`);
             window.callsClient?.setAudioOutputDevice(device);
-            const ps = [];
-            for (const audioEl of this.state.audioEls) {
-                // @ts-ignore - setSinkId is an experimental feature
-                ps.push(audioEl.setSinkId(device.deviceId));
-            }
-            Promise.all(ps).then().catch((err) => {
-                logErr(err);
-            });
         }
         this.setState({showAudioOutputDevicesMenu: false, currentAudioOutputDevice: device});
     };
@@ -1904,6 +1873,27 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         }, DEGRADED_CALL_QUALITY_ALERT_WAIT);
                     }
                 };
+            }
+
+            if (alertID === 'audioPlaybackBlocked') {
+                return (
+                    <div
+                        key={`widget_banner_${alertID}`}
+                        className='cursor--pointer'
+                        onClick={this.onEnableAudioClick}
+                    >
+                        <WidgetBanner
+                            id={'calls-widget-banner-audio-blocked'}
+                            {...alertConfig}
+                            header={formatMessage(alertConfig.bannerText)}
+                            leftText={formatMessage({defaultMessage: 'Enable audio'})}
+
+                            // The wrapper's onClick starts audio. This runs after the button's
+                            // fade-out animation and puts the banner back if audio is still blocked.
+                            onLeftButtonClick={this.syncAudioPlaybackBlocked}
+                        />
+                    </div>
+                );
             }
 
             return (

@@ -18,6 +18,10 @@ export const CALL_EVENT = {
     UNMUTE: 'unmute',
     USERS_VOICE_ACTIVITY_CHANGED: 'usersVoiceActivityChanged',
     REMOTE_VOICE_STREAM: 'remoteVoiceStream',
+
+    // Carries whether the browser lets us play remote audio. False means
+    // autoplay was blocked and startAudio() must be called from a user gesture.
+    AUDIO_PLAYBACK_STATUS: 'audioPlaybackStatus',
     USER_JOINED: 'userJoined',
     USER_LEFT: 'userLeft',
     DEVICE_CHANGE: 'devicechange',

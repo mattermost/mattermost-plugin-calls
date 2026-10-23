@@ -38,21 +38,6 @@ const RecordingView = () => {
 
     const hostID = useSelector((state: GlobalState) => hostIDForCurrentCall(state));
 
-    const attachVoiceTracks = (tracks: MediaStreamTrack[]) => {
-        for (const track of tracks) {
-            const audioEl = document.createElement('audio');
-            audioEl.srcObject = new MediaStream([track]);
-            audioEl.controls = false;
-            audioEl.autoplay = true;
-            audioEl.style.display = 'none';
-            audioEl.onerror = (err) => logErr(err);
-            document.body.appendChild(audioEl);
-            track.onended = () => {
-                audioEl.remove();
-            };
-        }
-    };
-
     useEffect(() => {
         if (!callsClient) {
             logErr('callsClient should be defined');
@@ -65,11 +50,6 @@ const RecordingView = () => {
         // previously only handled the ON event and never cleared.
         callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
             setScreenStream(session?.stream ?? null);
-        });
-
-        attachVoiceTracks(callsClient.getRemoteVoiceTracks());
-        callsClient.on(CALL_EVENT.REMOTE_VOICE_STREAM, (stream: MediaStream) => {
-            attachVoiceTracks(stream.getAudioTracks());
         });
     }, [callsClient]);
 
