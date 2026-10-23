@@ -20,6 +20,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
+import {VideoInputPermissionsError} from 'src/client';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
@@ -727,6 +728,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 },
             });
         });
+        callsClient.on('error', (err: Error) => {
+            if (err === VideoInputPermissionsError) {
+                this.setState({
+                    alerts: {
+                        ...this.state.alerts,
+                        missingVideoInputPermissions: {
+                            active: true,
+                            show: true,
+                        },
+                    },
+                });
+            }
+        });
         callsClient.on('initvideo', () => {
             this.setState({
                 alerts: {
@@ -757,8 +771,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 },
                 missingVideoInputPermissions: {
                     ...this.state.alerts.missingVideoInputPermissions,
-                    active: this.props.enableVideo && !this.state.alerts.missingVideoInput.active && !callsClient.localVideoStream,
-                    show: this.props.enableVideo && !this.state.alerts.missingVideoInput.active && !callsClient.localVideoStream,
+                    active: this.props.enableVideo && callsClient.videoPermissionsMissing,
+                    show: this.props.enableVideo && callsClient.videoPermissionsMissing,
                 },
             },
             screenStream,

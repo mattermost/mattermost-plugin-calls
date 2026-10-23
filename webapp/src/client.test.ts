@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import CallsClient from './client';
+import CallsClient, {VideoInputPermissionsError} from './client';
 
 describe('CallsClient', () => {
     let client: CallsClient;
@@ -562,6 +562,17 @@ describe('CallsClient', () => {
             // The detach now targets the current sender track, not the stale one.
             expect(peer.replaceTrack).toHaveBeenLastCalledWith('cam-2', null);
             expect(newTrack.stop).toHaveBeenCalledTimes(1);
+        });
+
+        it('emits an error and still rejects when switching device without a stream fails on permissions', async () => {
+            setupPeer();
+
+            // @ts-ignore - accessing private method for testing
+            client.initVideo = jest.fn().mockRejectedValue(VideoInputPermissionsError);
+
+            await expect(client.setVideoInputDevice({deviceId: 'cam-2-device', label: 'Camera 2'} as MediaDeviceInfo)).rejects.toBe(VideoInputPermissionsError);
+
+            expect(client.emit).toHaveBeenCalledWith('error', VideoInputPermissionsError);
         });
     });
 });
