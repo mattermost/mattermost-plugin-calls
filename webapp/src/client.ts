@@ -62,6 +62,10 @@ export default class CallsClient extends EventEmitter {
     public currentAudioInputDevice: MediaDeviceInfo | null = null;
     public currentAudioOutputDevice: MediaDeviceInfo | null = null;
     public currentVideoInputDevice: MediaDeviceInfo | null = null;
+
+    // Set only when a video init attempt actually failed for missing permissions, so late-mounting
+    // views (e.g. the expanded view) can show the alert without having seen the 'error' event.
+    public videoPermissionsMissing = false;
     private voiceTrackAdded: boolean;
     private videoTrackAdded: boolean;
 
@@ -309,10 +313,12 @@ export default class CallsClient extends EventEmitter {
                 stream.getVideoTracks()[0].dispatchEvent(new Event('ended'));
             }
 
+            this.videoPermissionsMissing = false;
             this.emit('initvideo');
         } catch (err) {
             logErr(err);
             if (this.videoDevices.length > 0) {
+                this.videoPermissionsMissing = true;
                 throw VideoInputPermissionsError;
             }
             throw VideoInputMissingError;

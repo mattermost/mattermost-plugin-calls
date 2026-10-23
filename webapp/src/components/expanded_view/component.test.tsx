@@ -4,11 +4,12 @@
 import type {UserSessionState} from '@mattermost/calls-common/lib/types';
 import type {Channel} from '@mattermost/types/channels';
 import type {UserProfile} from '@mattermost/types/users';
-import {render, screen, within} from '@testing-library/react';
+import {act, render, screen, within} from '@testing-library/react';
 import React from 'react';
 import {createIntl, RawIntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import type {AnyAction} from 'redux';
+import {VideoInputPermissionsError} from 'src/client';
 import pluginReducer from 'src/reducers';
 import {mockStore} from 'src/testUtils';
 import {CallsConfigDefault} from 'src/types/types';
@@ -18,6 +19,8 @@ import {CallsConfigDefault} from 'src/types/types';
 window.ProductApi = {
     WebSocketProvider: React.createContext(null),
 } as unknown as typeof window.ProductApi;
+
+const {WebSocketProvider} = window.ProductApi;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ExpandedView = require('./component').default;
@@ -122,17 +125,26 @@ const props = {
     intl,
 } as unknown as Props;
 
-const renderExpandedView = (sessions: UserSessionState[], overrides: Partial<Props> = {}) => render(
+// componentDidMount bails out early without a websocket context, so only the tests that exercise it pass one.
+const wsContext = {
+    sendMessage: jest.fn(),
+    addFirstConnectListener: jest.fn(),
+    removeFirstConnectListener: jest.fn(),
+};
+
+const renderExpandedView = (sessions: UserSessionState[], overrides: Partial<Props> = {}, withContext = false) => render(
     <Provider store={mockStore(dmState(sessions))}>
         <RawIntlProvider value={intl}>
-            <ExpandedView
-                {...props}
-                sessions={sessions}
-                currentSession={sessions.find((s) => s.user_id === 'user-id')}
-                otherSessions={sessions.filter((s) => s.user_id !== 'user-id')}
-                isDMCalling={sessions.every((s) => s.user_id === 'user-id')}
-                {...overrides}
-            />
+            <WebSocketProvider.Provider value={withContext ? wsContext as never : null as never}>
+                <ExpandedView
+                    {...props}
+                    sessions={sessions}
+                    currentSession={sessions.find((s) => s.user_id === 'user-id')}
+                    otherSessions={sessions.filter((s) => s.user_id !== 'user-id')}
+                    isDMCalling={sessions.every((s) => s.user_id === 'user-id')}
+                    {...overrides}
+                />
+            </WebSocketProvider.Provider>
         </RawIntlProvider>
     </Provider>,
 );
@@ -146,6 +158,13 @@ describe('ExpandedView', () => {
             getRemoteVoiceTracks: () => [],
             getRemoteScreenStream: () => null,
             getLocalScreenStream: () => null,
+            getAudioDevices: () => ({inputs: [], outputs: []}),
+            getVideoDevices: () => [],
+            getRemoteVideoStream: () => null,
+            localVideoStream: null,
+
+            // A joined client has its audio track; without it the audio permissions banner takes priority.
+            audioTrack: {},
             on: jest.fn(),
             off: jest.fn(),
         } as unknown as (typeof window)['callsClient'];
@@ -189,5 +208,34 @@ describe('ExpandedView', () => {
         renderExpandedView([stubSession('session-1', 'user-id', true), stubSession('session-2', calleeID)]);
 
         expect(screen.queryByTestId('calls-popout-video-profile-ringing')).not.toBeInTheDocument();
+    });
+
+    // Video is off until the user starts it, so not having a local video stream is not a sign that
+    // camera permissions are missing.
+    describe('camera permissions banner', () => {
+        const bannerText = 'Allow camera access to Mattermost.';
+
+        test('is not shown on mount when video simply has not been started', () => {
+            renderExpandedView([stubSession('session-1', 'user-id')], {}, true);
+
+            expect(screen.queryByText(bannerText)).not.toBeInTheDocument();
+        });
+
+        test('is shown on mount when the client failed to get camera permissions', () => {
+            (window.callsClient as unknown as {videoPermissionsMissing: boolean}).videoPermissionsMissing = true;
+            renderExpandedView([stubSession('session-1', 'user-id')], {}, true);
+
+            expect(screen.getByText(bannerText)).toBeInTheDocument();
+        });
+
+        test('is shown when the client later emits a video permissions error', () => {
+            renderExpandedView([stubSession('session-1', 'user-id')], {}, true);
+
+            const onMock = window.callsClient!.on as unknown as jest.Mock;
+            const errorHandler = onMock.mock.calls.find(([ev]) => ev === 'error')![1];
+            act(() => errorHandler(VideoInputPermissionsError));
+
+            expect(screen.getByText(bannerText)).toBeInTheDocument();
+        });
     });
 });
