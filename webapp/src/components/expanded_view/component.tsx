@@ -909,13 +909,13 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.callClientUnsubscribers = [];
     }
 
-    dismissRecordingPrompt = () => {
+    dismissRecordingPrompt = (minDismissedAt = 0) => {
         if (!this.props.channel) {
             logErr('channel should be defined');
             return;
         }
 
-        const dismissedAt = serverDismissedAt(this.props.callRecording, this.props.callHostChangeAt);
+        const dismissedAt = Math.max(serverDismissedAt(this.props.callRecording, this.props.callHostChangeAt), minDismissedAt);
 
         // Dismiss our prompt.
         this.props.recordingPromptDismissedAt(this.props.channel.id, dismissedAt);
