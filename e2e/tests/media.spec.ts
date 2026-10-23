@@ -489,7 +489,75 @@ test.describe('sending voice', {tag: '@livekit'}, () => {
 
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
+
+    // MM-69653: every join is a new LiveKit identity with a new mic track. The
+    // listener must play the new one and drop the <audio> of sessions that left.
+    test('remote audio plays after speaker rapidly leaves and re-joins', async ({page, browser}) => {
+        let speaker = new PlaywrightDevPage(page);
+        const [listener, _] = await Promise.all([
+            startCall(userStorages[1]),
+            speaker.joinCall(),
+        ]);
+
+        await speaker.unmute();
+        const firstTrack = await getRemoteVoiceTrackOf(listener.page, speaker.page);
+        await expectAudioPlaying(listener.page, firstTrack.id);
+
+        // Re-joins use pages loaded up front, so each leave is followed straight
+        // away by a join, and each on a fresh CallClient (see MM-68570 above).
+        const rejoinPages = await Promise.all([1, 2, 3].map(async () => {
+            const context = await browser.newContext({storageState: userStorages[0]});
+            const rejoinPage = new PlaywrightDevPage(await context.newPage());
+            await rejoinPage.goto();
+            return rejoinPage;
+        }));
+        /* eslint-disable no-await-in-loop */
+        for (const next of rejoinPages) {
+            await speaker.leaveCall();
+            if (speaker.page !== page) {
+                await speaker.page.context().close();
+            }
+            await next.joinCall();
+            await next.unmute();
+            speaker = next;
+        }
+
+        const muteButton = speaker.page.locator('#voice-mute-unmute');
+        await expect(muteButton).toHaveAttribute('aria-label', 'Mute');
+        for (const label of ['Unmute', 'Mute', 'Unmute', 'Mute']) {
+            await muteButton.click();
+            await expect(muteButton).toHaveAttribute('aria-label', label);
+        }
+        /* eslint-enable no-await-in-loop */
+
+        const track = await getRemoteVoiceTrackOf(listener.page, speaker.page);
+        expect(track.sid).not.toBe(firstTrack.sid);
+        await expectAudioPlaying(listener.page, track.id);
+
+        // No <audio> left behind by the sessions that left.
+        await expect(listener.page.getByTestId(track.id)).toHaveCount(1);
+
+        await Promise.all([speaker.leaveCall(), listener.leaveCall()]);
+        await speaker.page.context().close();
+    });
 });
+
+// The subscriber recycles transceivers, so a re-joined speaker's track arrives
+// on the same MediaStreamTrack (same id) as the one before. Match the speaker's
+// current LiveKit identity (userID___sessionID) and return the track SID too.
+async function getRemoteVoiceTrackOf(listenerPage: Page, speakerPage: Page) {
+    const sessionID = await speakerPage.evaluate(() => window.callsClient.getSessionID());
+    const handle = await listenerPage.waitForFunction((sid) => {
+        const participants = Array.from(window.callsClient.room?.remoteParticipants.values() ?? []) as any[];
+        const speaker = participants.find((p) => p.identity.endsWith(`___${sid}`));
+        const pub = Array.from(speaker?.audioTrackPublications.values() ?? []).find((p: any) => p.source === 'microphone') as any;
+        if (!pub?.isSubscribed || pub.isMuted || pub.track?.mediaStreamTrack.readyState !== 'live') {
+            return null;
+        }
+        return {id: pub.track.mediaStreamTrack.id, sid: pub.trackSid};
+    }, sessionID);
+    return await handle.jsonValue() as {id: string, sid: string};
+}
 
 test.describe('video calls', {tag: '@livekit'}, () => {
     test.use({storageState: userStorages[0]});
