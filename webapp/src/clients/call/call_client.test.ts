@@ -20,6 +20,7 @@ import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
+import * as log from 'src/log';
 import {flushLogsToAccumulated} from 'src/log';
 import {getPersistentStorage, getScreenStream} from 'src/utils';
 
@@ -1121,6 +1122,127 @@ describe('CallClient', () => {
             );
 
             expect(reactionListener).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('captions (data messages)', () => {
+        const botID = 'bot-id';
+        const bot = {sid: 'bot-sid', identity: `${botID}___bot-session`, attributes: {bot: 'true'}};
+        const speaker = {sid: 'p1-sid', identity: 'user1___p1-session', attributes: {}};
+
+        const encode = (body: unknown) => new TextEncoder().encode(typeof body === 'string' ? body : JSON.stringify(body));
+
+        let listener: jest.Mock;
+
+        beforeEach(async () => {
+            (RestClient.fetch as jest.Mock).mockResolvedValue({...sessionResponse, bot_user_id: botID});
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.remoteParticipants.set(speaker.sid, speaker);
+            listener = jest.fn();
+            client.on(CALL_EVENT.CAPTION, listener);
+        });
+
+        it('emits CAPTION for a message from the bot about a known session', () => {
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'hello'}), bot, undefined, 'caption');
+
+            expect(listener).toHaveBeenCalledWith('p1-session', 'user1', 'hello');
+        });
+
+        it('emits CAPTION for the local participant session', () => {
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'me-session', text: 'hi'}), bot, undefined, 'caption');
+
+            expect(listener).toHaveBeenCalledWith('me-session', 'me-id', 'hi');
+        });
+
+        it('ignores a sender that is not the bot, even if it sets the bot attribute', () => {
+            const impostor = {sid: 'x-sid', identity: 'user1___p1-session', attributes: {bot: 'true'}};
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'fake'}), impostor, undefined, 'caption');
+
+            expect(listener).not.toHaveBeenCalled();
+        });
+
+        it('ignores messages without a sender participant', () => {
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'x'}), undefined, undefined, 'caption');
+
+            expect(listener).not.toHaveBeenCalled();
+        });
+
+        it('ignores unknown session ids', () => {
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'nope', text: 'x'}), bot, undefined, 'caption');
+
+            expect(listener).not.toHaveBeenCalled();
+        });
+
+        it('ignores the bot\'s own session id', () => {
+            mockRoom.remoteParticipants.set(bot.sid, bot);
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'bot-session', text: 'x'}), bot, undefined, 'caption');
+
+            expect(listener).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['malformed JSON', '{not json'],
+            ['empty text', {session_id: 'p1-session', text: ''}],
+            ['non-string text', {session_id: 'p1-session', text: 5}],
+            ['missing session_id', {text: 'x'}],
+        ])('ignores %s', (_name, body) => {
+            mockRoom.fire(RoomEvent.DataReceived, encode(body), bot, undefined, 'caption');
+
+            expect(listener).not.toHaveBeenCalled();
+        });
+
+        describe('logging', () => {
+            let warnSpy: jest.SpyInstance;
+            let debugSpy: jest.SpyInstance;
+
+            beforeEach(() => {
+                warnSpy = jest.spyOn(log, 'logWarn').mockImplementation(() => {});
+                debugSpy = jest.spyOn(log, 'logDebug').mockImplementation(() => {});
+            });
+
+            afterEach(() => {
+                warnSpy.mockRestore();
+                debugSpy.mockRestore();
+            });
+
+            it('logs every rejection, not just the first', () => {
+                const impostor = {sid: 'x-sid', identity: 'user1___p1-session', attributes: {}};
+                mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'a'}), impostor, undefined, 'caption');
+                mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'b'}), impostor, undefined, 'caption');
+
+                expect(warnSpy).toHaveBeenCalledTimes(2);
+                expect(warnSpy).toHaveBeenCalledWith('CallClient: caption ignored, sender is not the bot', expect.objectContaining({senderUserID: 'user1', botUserID: botID}));
+            });
+
+            it.each([
+                ['no sender', encode({session_id: 'p1-session', text: 'x'}), undefined, 'no sender participant'],
+                ['invalid payload', encode({text: 'x'}), bot, 'invalid payload'],
+                ['unknown session', encode({session_id: 'nope', text: 'x'}), bot, 'unknown session'],
+            ])('logs a warning for %s', (_name, payload, sender, expected) => {
+                mockRoom.fire(RoomEvent.DataReceived, payload, sender, undefined, 'caption');
+
+                expect(warnSpy).toHaveBeenCalledTimes(1);
+                expect(warnSpy.mock.calls[0][0]).toContain(expected);
+            });
+
+            it('logs accepted captions without the text', () => {
+                mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'secret words'}), bot, undefined, 'caption');
+
+                expect(debugSpy).toHaveBeenCalledWith('CallClient: caption received', {sessionID: 'p1-session', userID: 'user1', textLength: 12});
+                expect(JSON.stringify(debugSpy.mock.calls)).not.toContain('secret words');
+            });
+        });
+
+        it('ignores everything when the join response carried no bot_user_id', async () => {
+            const other = new CallClient();
+            (RestClient.fetch as jest.Mock).mockResolvedValue({...sessionResponse});
+            await other.connect({channelID: 'test-channel'});
+            const otherListener = jest.fn();
+            other.on(CALL_EVENT.CAPTION, otherListener);
+
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'x'}), {identity: '___bot-session'}, undefined, 'caption');
+
+            expect(otherListener).not.toHaveBeenCalled();
         });
     });
 
