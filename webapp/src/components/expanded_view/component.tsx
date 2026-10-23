@@ -145,6 +145,7 @@ interface Props extends RouteComponentProps {
     userReactedTimeout: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
     userScreenShared: (channelID: string, sessionID: string, userID: string) => void;
     userScreenUnshared: (channelID: string, sessionID: string, userID: string) => void;
+    liveCaptionReceived: (channelID: string, userID: string, sessionID: string, displayName: string, text: string) => void;
     fetchCallState: (channelID: string) => void;
 }
 
@@ -730,6 +731,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
             onClient(CALL_EVENT.LOWER_HAND, (sessionID: string, userID: string) => {
                 this.props.userLoweredHand(callsClient.channelID, sessionID, userID);
+            });
+            onClient(CALL_EVENT.CAPTION, (sessionID: string, userID: string, text: string) => {
+                this.props.liveCaptionReceived(callsClient.channelID, userID, sessionID, getUserDisplayName(this.props.profiles[userID]), text);
             });
             onClient(CALL_EVENT.REACTION, (sessionID: string, userID: string, emoji: EmojiData, timestamp: number) => {
                 // Mirrors dispatchReaction() (the main-window path): store the reaction with

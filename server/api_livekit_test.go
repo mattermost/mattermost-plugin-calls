@@ -425,6 +425,62 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 	})
 }
 
+func TestMintLiveKitTokenBotDataGrant(t *testing.T) {
+	botID := model.NewId()
+
+	mint := func(t *testing.T, liveCaptions bool) *auth.ClaimGrants {
+		t.Helper()
+
+		mockAPI := &pluginMocks.MockAPI{}
+		mockAPI.On("GetUser", botID).Return(&model.User{Id: botID}, nil)
+
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.LiveKitURL = "wss://lk.example.com"
+		cfg.LiveKitAPIKey = "testkey"
+		cfg.LiveKitAPISecret = "testsecret"
+		if liveCaptions {
+			cfg.EnableLiveCaptions = model.NewPointer(true)
+			cfg.EnableRecordings = model.NewPointer(true)
+			cfg.EnableTranscriptions = model.NewPointer(true)
+		}
+
+		p := &Plugin{
+			MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
+			botID:            botID,
+			configuration:    cfg,
+		}
+		require.Equal(t, liveCaptions, cfg.liveCaptionsEnabled())
+
+		token, _, err := p.mintLiveKitToken(botID, model.NewId(), model.NewId())
+		require.NoError(t, err)
+
+		verifier, err := auth.ParseAPIToken(token)
+		require.NoError(t, err)
+		_, claims, err := verifier.Verify("testsecret")
+		require.NoError(t, err)
+		require.NotNil(t, claims.Video)
+		return claims
+	}
+
+	t.Run("live captions off", func(t *testing.T) {
+		claims := mint(t, false)
+		require.False(t, claims.Video.GetCanPublishData())
+		require.False(t, claims.Video.GetCanPublish())
+		require.True(t, claims.Video.GetCanSubscribe())
+		require.False(t, claims.Video.GetCanUpdateOwnMetadata())
+	})
+
+	t.Run("live captions on", func(t *testing.T) {
+		claims := mint(t, true)
+		require.True(t, claims.Video.GetCanPublishData())
+		// Data only: media publishing and metadata updates stay off.
+		require.False(t, claims.Video.GetCanPublish())
+		require.True(t, claims.Video.GetCanSubscribe())
+		require.False(t, claims.Video.GetCanUpdateOwnMetadata())
+	})
+}
+
 func TestHandlePhoneCall(t *testing.T) {
 	setupPlugin := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI) {
 		t.Helper()

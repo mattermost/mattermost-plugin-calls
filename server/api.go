@@ -717,11 +717,13 @@ func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, 
 	}
 	if userID == p.getBotID() {
 		// The recording/transcribing bot only consumes media — it never publishes
-		// tracks or data, and never updates its own metadata (no raised hand).
-		// Restrict its grant to subscribe-only so the bot token can't be used to
-		// inject audio, video, or data into the call.
+		// tracks and never updates its own metadata (no raised hand). The one
+		// exception is data: live captions are published as data messages, and
+		// LiveKit silently drops them without CanPublishData. Grant it only when
+		// live captions are on so the bot token can't otherwise inject data into
+		// the call.
 		grant.SetCanPublish(false)
-		grant.SetCanPublishData(false)
+		grant.SetCanPublishData(cfg.liveCaptionsEnabled())
 		grant.SetCanSubscribe(true)
 
 		// Flag the bot on the LiveKit side so clients can filter it out of the
@@ -752,6 +754,7 @@ type phoneCallResponse struct {
 	SessionID string           `json:"session_id"`
 	Token     string           `json:"token"`
 	URL       string           `json:"url"`
+	BotUserID string           `json:"bot_user_id"`
 	CallID    string           `json:"call_id"`
 	ChannelID string           `json:"channel_id"`
 	SIPCallID string           `json:"sip_call_id"`
@@ -999,6 +1002,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		SessionID: sessionID,
 		Token:     token,
 		URL:       lkURL,
+		BotUserID: p.getBotID(),
 		CallID:    callID,
 		ChannelID: channelID,
 		SIPCallID: info.GetSipCallId(),
@@ -1692,9 +1696,13 @@ func (p *Plugin) handleUploadLogsToBot(w http.ResponseWriter, r *http.Request) {
 // everything a client needs to join in a single round trip, so no follow-up
 // fetch is required (and no read-replica lag can hide the just-written session).
 type livekitSessionResponse struct {
-	SessionID string           `json:"session_id"`
-	Token     string           `json:"token"`
-	URL       string           `json:"url"`
+	SessionID string `json:"session_id"`
+	Token     string `json:"token"`
+	URL       string `json:"url"`
+	// BotUserID is the recorder/transcriber bot's user ID. It is global,
+	// immutable state that clients use to verify the sender of caption data
+	// messages.
+	BotUserID string           `json:"bot_user_id"`
 	CallState *CallStateClient `json:"call_state"`
 }
 
@@ -1800,6 +1808,7 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 					SessionID: existing.ID,
 					Token:     token,
 					URL:       lkURL,
+					BotUserID: p.getBotID(),
 					CallState: state.getClientState(p.getBotID(), userID),
 				}); err != nil {
 					p.LogError("failed to encode LiveKit session response", "err", err.Error())
@@ -1858,6 +1867,7 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 		SessionID: sessionID,
 		Token:     token,
 		URL:       lkURL,
+		BotUserID: p.getBotID(),
 		CallState: state.getClientState(p.getBotID(), userID),
 	}); err != nil {
 		p.LogError("failed to encode LiveKit session response", "err", err.Error())
