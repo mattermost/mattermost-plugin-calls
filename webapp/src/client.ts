@@ -766,7 +766,15 @@ export default class CallsClient extends EventEmitter {
         // This edge case can happen if the default input device failed
         // but there are potentially more valid ones to choose (MM-48822).
         if (!this.localVideoStream) {
-            await this.initVideo(false, device.deviceId);
+            try {
+                await this.initVideo(false, device.deviceId);
+            } catch (err) {
+                // Callers don't await this, so surface the permission failure to the UI.
+                if (err === VideoInputPermissionsError) {
+                    this.emit('error', err);
+                }
+                throw err;
+            }
             return;
         }
 
