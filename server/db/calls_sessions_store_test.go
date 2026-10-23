@@ -416,7 +416,7 @@ func testCallSessionLiveKitColumns(t *testing.T, store *Store) {
 			JoinAt: time.Now().UnixMilli(),
 		}
 
-		qb := getQueryBuilder(store.driverName).
+		qb := getQueryBuilder().
 			Insert("calls_sessions").
 			Columns("ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "Video", "IsSIPParticipant").
 			Values(session.ID, session.CallID, session.UserID, session.JoinAt, false, 0, false, false)

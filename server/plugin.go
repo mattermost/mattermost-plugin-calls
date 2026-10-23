@@ -121,14 +121,14 @@ func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, titl
 		postMsg = T("app.call.started_message", map[string]any{"Username": user.Username})
 	}
 
-	slackAttachment := model.SlackAttachment{
+	msgAttachment := model.MessageAttachment{
 		Fallback: postMsg,
 		Title:    postMsg,
 		Text:     postMsg,
 	}
 
 	props := map[string]interface{}{
-		"attachments": []*model.SlackAttachment{&slackAttachment},
+		"attachments": []*model.MessageAttachment{&msgAttachment},
 		"start_at":    state.Call.StartAt,
 		"title":       title,
 	}
@@ -192,7 +192,7 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string, reaso
 	}
 	callStatus := reason.status()
 
-	slackAttachment := model.SlackAttachment{
+	msgAttachment := model.MessageAttachment{
 		Fallback: postMsg,
 		Title:    postMsg,
 		Text:     postMsg,
@@ -200,7 +200,7 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string, reaso
 
 	post.Message = postMsg
 	post.DelProp("attachments")
-	post.AddProp("attachments", []*model.SlackAttachment{&slackAttachment})
+	post.AddProp("attachments", []*model.MessageAttachment{&msgAttachment})
 	post.AddProp("end_at", time.Now().UnixMilli())
 	post.AddProp("call_status", callStatus)
 	post.AddProp("participants", participants)
