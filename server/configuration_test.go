@@ -301,6 +301,38 @@ func TestOutboundAllowedTeams(t *testing.T) {
 	}
 }
 
+func TestGetLiveKitPrivateURL(t *testing.T) {
+	t.Run("falls back to public URL", func(t *testing.T) {
+		cfg := &configuration{LiveKitURL: "wss://lk.example.com"}
+		require.Equal(t, "wss://lk.example.com", cfg.getLiveKitPrivateURL())
+	})
+
+	t.Run("falls back to public URL env override", func(t *testing.T) {
+		t.Setenv("MM_CALLS_LIVEKIT_URL", "wss://env.example.com")
+		cfg := &configuration{LiveKitURL: "wss://lk.example.com"}
+		require.Equal(t, "wss://env.example.com", cfg.getLiveKitPrivateURL())
+	})
+
+	t.Run("private URL setting takes precedence", func(t *testing.T) {
+		t.Setenv("MM_CALLS_LIVEKIT_URL", "wss://env.example.com")
+		cfg := &configuration{
+			LiveKitURL:        "wss://lk.example.com",
+			LiveKitPrivateURL: "ws://livekit-server.livekit.svc.cluster.local",
+		}
+		require.Equal(t, "ws://livekit-server.livekit.svc.cluster.local", cfg.getLiveKitPrivateURL())
+		require.Equal(t, "wss://env.example.com", cfg.getLiveKitURL())
+	})
+
+	t.Run("private URL env override takes precedence", func(t *testing.T) {
+		t.Setenv("MM_CALLS_LIVEKIT_PRIVATE_URL", "ws://env-private:7880")
+		cfg := &configuration{
+			LiveKitURL:        "wss://lk.example.com",
+			LiveKitPrivateURL: "ws://livekit-server.livekit.svc.cluster.local",
+		}
+		require.Equal(t, "ws://env-private:7880", cfg.getLiveKitPrivateURL())
+	})
+}
+
 func TestIsUserInAllowedTeams(t *testing.T) {
 	setup := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI) {
 		t.Helper()
