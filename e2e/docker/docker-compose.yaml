@@ -35,7 +35,7 @@ services:
       - "8065:8065"
 
   livekit:
-    image: livekit/livekit-server:v1.13.1
+    image: livekit/livekit-server:v1.13.10
     restart: on-failure
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml
@@ -69,7 +69,7 @@ services:
   # LiveKit SIP bridge. Shares the dev compose's config (../../sip.yaml) so the
   # two paths can't drift; the smoke test drives it via the LiveKit SIP API.
   livekit-sip:
-    image: livekit/sip:v1.5.0
+    image: livekit/sip:v1.20.0
     restart: on-failure
     volumes:
       - ../../sip.yaml:/etc/sip.yaml
