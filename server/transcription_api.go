@@ -125,9 +125,10 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	}
 
 	liveCaptionsOn := false
+	var lcState *public.CallJob
 	if cfg := p.getConfiguration(); cfg != nil && cfg.liveCaptionsEnabled() {
 		liveCaptionsOn = true
-		lcState := new(public.CallJob)
+		lcState = new(public.CallJob)
 		lcState.ID = model.NewId()
 		lcState.CallID = state.Call.ID
 		lcState.Type = public.JobTypeCaptioning
@@ -171,6 +172,18 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 
 	jobSession, err := p.createJobSession()
 	if err != nil {
+		trState.EndAt = time.Now().UnixMilli()
+		trState.Props.Err = err.Error()
+		if err := p.updateCallJob(callID, trState); err != nil {
+			p.LogError("failed to update call job", "err", err.Error(), "callID", callID)
+		}
+		if lcState != nil {
+			lcState.EndAt = time.Now().UnixMilli()
+			if err := p.updateCallJob(callID, lcState); err != nil {
+				p.LogError("failed to update call job", "err", err.Error(), "callID", callID)
+			}
+		}
+
 		return fmt.Errorf("failed to create job session: %w", err)
 	}
 
@@ -187,7 +200,6 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	if err != nil {
 		return fmt.Errorf("failed to get transcription state: %w", err)
 	}
-	var lcState *public.CallJob
 	if liveCaptionsOn {
 		lcState, err = state.getLiveCaptions()
 		if err != nil {

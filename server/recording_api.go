@@ -119,6 +119,12 @@ func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst
 
 	jobSession, err := p.createJobSession()
 	if err != nil {
+		recState.EndAt = time.Now().UnixMilli()
+		recState.Props.Err = err.Error()
+		if err := p.updateCallJob(callID, recState); err != nil {
+			p.LogError("failed to update call job", "err", err.Error(), "callID", callID)
+		}
+
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create job session: %w", err)
 	}
 
