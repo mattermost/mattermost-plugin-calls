@@ -53,7 +53,10 @@ export default function RecordingInfoPrompt(props: Props) {
         }
 
         if (getMinutesLeftBeforeEnd() <= minutesLeftThreshold) {
-            updateRecordingWillEndSoon(Date.now());
+            // Use a server-derived timestamp so the comparison against
+            // disclaimerDismissedAt (also server-based) is consistent
+            // regardless of client/server clock skew.
+            updateRecordingWillEndSoon((props.recording?.start_at ?? 0) + 1);
         }
     }, [props.isHost, props.recording, recordingWillEndSoon, getMinutesLeftBeforeEnd]);
 
