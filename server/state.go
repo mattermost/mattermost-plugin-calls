@@ -274,6 +274,11 @@ func (cs *callState) getStates(botID string) []UserStateClient {
 		if session.UserID == botID {
 			continue
 		}
+		// An unconfirmed session was never announced to clients and may never
+		// connect (MM-71298), so it must not appear in the snapshot either.
+		if session.ConfirmedAt == 0 {
+			continue
+		}
 		states = append(states, UserStateClient{
 			SessionID:        session.ID,
 			UserID:           session.UserID,

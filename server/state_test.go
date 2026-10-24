@@ -44,10 +44,11 @@ func TestCallStateGetClientState(t *testing.T) {
 			},
 			sessions: map[string]*public.CallSession{
 				"sessionA": {
-					ID:         "sessionA",
-					UserID:     "userA",
-					JoinAt:     1000,
-					RaisedHand: 1100,
+					ID:          "sessionA",
+					UserID:      "userA",
+					JoinAt:      1000,
+					ConfirmedAt: 1,
+					RaisedHand:  1100,
 				},
 			},
 		}
@@ -85,14 +86,16 @@ func TestCallStateGetClientState(t *testing.T) {
 			},
 			sessions: map[string]*public.CallSession{
 				"sessionA": {
-					ID:     "sessionA",
-					UserID: "userA",
-					JoinAt: 1000,
+					ID:          "sessionA",
+					UserID:      "userA",
+					JoinAt:      1000,
+					ConfirmedAt: 1,
 				},
 				"sipSID": {
 					ID:               "sipSID",
 					UserID:           "sip:+14155551234",
 					JoinAt:           1100,
+					ConfirmedAt:      1,
 					IsSIPParticipant: true,
 				},
 			},
@@ -118,15 +121,17 @@ func TestCallStateGetClientState(t *testing.T) {
 			},
 			sessions: map[string]*public.CallSession{
 				"sessionA": {
-					ID:         "sessionA",
-					UserID:     "userA",
-					JoinAt:     1000,
-					RaisedHand: 1100,
+					ID:          "sessionA",
+					UserID:      "userA",
+					JoinAt:      1000,
+					ConfirmedAt: 1,
+					RaisedHand:  1100,
 				},
 				"botSessionID": {
-					ID:     "botSessionID",
-					UserID: "botID",
-					JoinAt: 1200,
+					ID:          "botSessionID",
+					UserID:      "botID",
+					JoinAt:      1200,
+					ConfirmedAt: 1,
 				},
 			},
 		}
@@ -154,19 +159,22 @@ func TestCallStateGetClientState(t *testing.T) {
 			},
 			sessions: map[string]*public.CallSession{
 				"sessionA": {
-					ID:     "sessionA",
-					UserID: "userA",
-					JoinAt: 1000,
+					ID:          "sessionA",
+					UserID:      "userA",
+					JoinAt:      1000,
+					ConfirmedAt: 1,
 				},
 				"sessionB": {
-					ID:     "sessionB",
-					UserID: "userA",
-					JoinAt: 1100,
+					ID:          "sessionB",
+					UserID:      "userA",
+					JoinAt:      1100,
+					ConfirmedAt: 1,
 				},
 				"sessionC": {
-					ID:     "sessionC",
-					UserID: "userB",
-					JoinAt: 1200,
+					ID:          "sessionC",
+					UserID:      "userB",
+					JoinAt:      1200,
+					ConfirmedAt: 1,
 				},
 			},
 		}
@@ -194,6 +202,19 @@ func TestCallStateGetClientState(t *testing.T) {
 		actualCS := cs.getClientState("botID", "")
 
 		require.ElementsMatch(t, ccs.Sessions, actualCS.Sessions)
+	})
+
+	t.Run("excludes unconfirmed sessions", func(t *testing.T) {
+		cs := &callState{
+			Call: public.Call{ID: "test"},
+			sessions: map[string]*public.CallSession{
+				"confirmed": {ID: "confirmed", UserID: "userA", JoinAt: 1000, ConfirmedAt: 1010},
+				"pending":   {ID: "pending", UserID: "userA", JoinAt: 1100},
+			},
+		}
+
+		actual := cs.getClientState("botID", "userA")
+		require.Equal(t, []UserStateClient{{SessionID: "confirmed", UserID: "userA"}}, actual.Sessions)
 	})
 }
 
