@@ -18,9 +18,11 @@ import {CALL_EVENT} from 'src/clients/call/constants';
 import type {LiveKitSessionResponse} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import {logErr} from 'src/log';
+import {toSIPCallStatus} from 'src/phone_utils';
 import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
+import {sipCallStatusChanged} from 'src/state/sip_call_state/actions';
 import type {Store} from 'src/types/mattermost-webapp';
-import {getPluginPath, isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
+import {getPluginPath, isCallsPopOut, isMobile} from 'src/utils';
 
 export type PhoneCallResponse = LiveKitSessionResponse & {
     call_id: string;
@@ -161,16 +163,10 @@ export function openInOSDialer(href: string) {
     window.open(href, '_blank', 'noreferrer');
 }
 
-// The Desktop app joins calls from a separate widget window that creates its
-// own session, so it can't use the session /phone-call returns.
-function joinsInDesktopWidget() {
-    return Boolean(window.desktopAPI?.joinCall) || shouldRenderDesktopWidget();
-}
-
-// Whether this window can place a phone call itself. Mobile is left out of
+// Whether this window can place a phone call. Mobile is left out of
 // telLinkInterceptionSupported only so tel: links reach the phone's own dialer.
 export function phoneDialingSupported() {
-    return !joinsInDesktopWidget() && !isCallsPopOut();
+    return !isCallsPopOut();
 }
 
 export function telLinkInterceptionSupported() {
@@ -227,11 +223,6 @@ export async function dialPhoneNumber(
         return;
     }
 
-    if (joinsInDesktopWidget()) {
-        showError(defineMessage({defaultMessage: 'Phone calls aren\'t supported in the desktop app yet.'}));
-        return;
-    }
-
     if (clientConnecting(state)) {
         return;
     }
@@ -285,11 +276,31 @@ export function registerTelLinkDialing(store: Store, connect: ConnectPhoneCall) 
     };
 }
 
+export function trackSIPCallStatus(store: Store, client: CallClient) {
+    const onStatus = (status: string) => {
+        const sipStatus = toSIPCallStatus(status);
+        if (sipStatus) {
+            store.dispatch(sipCallStatusChanged(client.channelID, sipStatus));
+        }
+    };
+    client.on(CALL_EVENT.SIP_STATUS_CHANGED, onStatus);
+    client.on(CALL_EVENT.SIP_LEFT, onStatus);
+}
+
 // Ends the phone call once the caller's client leaves it, never joins it, or the
 // phone leg is gone. The server otherwise learns of these only from LiveKit
 // webhooks, which not every deployment receives, so the phone could keep ringing
 // and a redial would be refused as already in progress.
-export function watchPhoneCall(store: Store, client: CallClient, channelID: string, connecting: Promise<void>) {
+//
+// onDialFailed runs before hanging up on a dial that never reached the phone.
+// The Desktop widget has no modals, so it reports the failure to the main window instead.
+export function watchPhoneCall(
+    store: Store,
+    client: CallClient,
+    channelID: string,
+    connecting: Promise<void>,
+    onDialFailed: () => void = () => store.dispatch(displayGenericErrorModal(DIAL_ERROR_TITLE, DIAL_FAILED_MESSAGE)),
+) {
     let ended = false;
     let phoneLegTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -314,7 +325,7 @@ export function watchPhoneCall(store: Store, client: CallClient, channelID: stri
         // TODO: Move this temporary fix to server-side MM-71035
         phoneLegTimer = setTimeout(() => {
             if (!client.hasSIPParticipant()) {
-                store.dispatch(displayGenericErrorModal(DIAL_ERROR_TITLE, DIAL_FAILED_MESSAGE));
+                onDialFailed();
                 client.disconnect();
             }
         }, PHONE_LEG_GRACE_MS);

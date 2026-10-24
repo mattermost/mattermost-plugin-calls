@@ -14,6 +14,8 @@ export const VideoInputPermissionsError = new Error('missing video input permiss
 export const userRemovedFromChannelErr = new Error('user was removed from channel');
 export const userLeftChannelErr = new Error('user has left channel');
 
+export const phoneDialFailedErr = new Error('phone call dial failed');
+
 // Inherited from the pre-LiveKit client, which is where these were raised. The
 // modal still maps them to messages; nothing produces them any more.
 export const rtcPeerErr = new Error('rtc peer error');
