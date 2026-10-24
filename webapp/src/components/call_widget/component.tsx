@@ -23,6 +23,7 @@ import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
 import {ParticipantsList} from 'src/components/call_widget/participants_list';
 import {RemoveConfirmation} from 'src/components/call_widget/remove_confirmation';
+import {DialPadPanel} from 'src/components/dial_pad/dial_pad_panel';
 import DotMenu, {DotMenuButton} from 'src/components/dot_menu/dot_menu';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
@@ -32,6 +33,7 @@ import {
 import {HostNotices} from 'src/components/host_notices';
 import ChatThreadIcon from 'src/components/icons/chat_thread';
 import CompassIcon from 'src/components/icons/compassIcon';
+import DialpadIcon from 'src/components/icons/dialpad';
 import ExpandIcon from 'src/components/icons/expand';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
@@ -59,6 +61,7 @@ import {
     CallTranscribingDisclaimerStrings,
     DEGRADED_CALL_QUALITY_ALERT_WAIT,
 } from 'src/constants';
+import {DTMFDigit} from 'src/dtmf';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -147,6 +150,7 @@ interface Props {
     isDMCalling: boolean,
     isPhoneCall: boolean,
     isPhoneCallRinging: boolean,
+    isPhoneCallActive: boolean,
 }
 
 interface DraggingState {
@@ -162,6 +166,11 @@ interface DraggingState {
 interface State {
     showMenu: boolean,
     showParticipantsList: boolean,
+    showDialPad: boolean,
+
+    // Kept here rather than in the panel so they survive closing and reopening it.
+    dialPadDigits: string,
+    dialPadError: boolean,
     screenStream: MediaStream | null,
     currentAudioInputDevice?: MediaDeviceInfo | null,
     currentAudioOutputDevice?: MediaDeviceInfo | null,
@@ -300,6 +309,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.state = {
             showMenu: false,
             showParticipantsList: false,
+            showDialPad: false,
+            dialPadDigits: '',
+            dialPadError: false,
             dragging: {
                 dragging: false,
                 x: 0,
@@ -943,7 +955,32 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({
             showMenu: !this.state.showMenu,
             showParticipantsList: false,
+            showDialPad: false,
         });
+    };
+
+    onDialPadButtonClick = () => {
+        this.setState({
+            showDialPad: !this.state.showDialPad,
+            dialPadError: false,
+            showMenu: false,
+        });
+    };
+
+    onDialPadClose = () => {
+        this.setState({showDialPad: false, dialPadError: false});
+    };
+
+    onDialPadPress = async (digit: DTMFDigit) => {
+        try {
+            if (!window.callsClient) {
+                throw new Error('no call client');
+            }
+            await window.callsClient.sendDTMF(digit);
+            this.setState((state) => ({dialPadDigits: state.dialPadDigits + digit, dialPadError: false}));
+        } catch {
+            this.setState({dialPadError: true});
+        }
     };
 
     onParticipantsButtonClick = () => {
@@ -2299,6 +2336,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         const openPopOutLabel = formatMessage({defaultMessage: 'Open in new window'});
         const showParticipantsListLabel = this.state.showParticipantsList ? formatMessage({defaultMessage: 'Hide participants'}) : formatMessage({defaultMessage: 'Show participants'});
         const settingsButtonLabel = formatMessage({defaultMessage: 'More options'});
+        const dialPadLabel = formatMessage({defaultMessage: 'Dial pad'});
+        const showDialPad = this.state.showDialPad && this.props.isPhoneCallActive;
 
         // A ringing DM call hasn't been answered yet, so hanging up cancels it rather than leaving it.
         let leaveMenuLabel = this.props.isDMCalling ? formatMessage({defaultMessage: 'Cancel call'}) : formatMessage({defaultMessage: 'Leave call'});
@@ -2349,6 +2388,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             screenSharingSession={this.props.screenSharingSession}
                             callID={this.props.channel.id}
                             onRemove={this.onRemove}
+                        />
+                    }
+                    {showDialPad &&
+                        <DialPadPanel
+                            digits={this.state.dialPadDigits}
+                            hasError={this.state.dialPadError}
+                            onPress={this.onDialPadPress}
+                            onClose={this.onDialPadClose}
                         />
                     }
                     {this.renderMenu()}
@@ -2403,6 +2450,25 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         className='calls-widget-bottom-bar'
                         style={this.style.bottomBar}
                     >
+
+                        {this.props.isPhoneCall && (
+                            <WidgetButton
+                                id='calls-widget-dial-pad-button'
+                                ariaLabel={dialPadLabel}
+                                ariaControls='calls-widget-dial-pad'
+                                ariaExpanded={showDialPad}
+                                onToggle={this.onDialPadButtonClick}
+                                bgColor={showDialPad ? 'rgba(var(--button-bg-rgb), 0.08)' : ''}
+                                tooltipText={dialPadLabel}
+                                disabled={!this.props.isPhoneCallActive || this.props.clientConnecting}
+                                icon={
+                                    <DialpadIcon
+                                        style={{fill: showDialPad ? 'var(--button-bg)' : ''}}
+                                    />
+                                }
+                                style={{marginRight: 'auto'}}
+                            />
+                        )}
 
                         {!isDMChannel(this.props.channel) && (
                             <WidgetButton

@@ -35,6 +35,7 @@ import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
+import {dtmfCode, DTMFDigit} from 'src/dtmf';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from 'src/log';
 import {parseRTCStats} from 'src/rtc_stats';
 import {CallsClientStats, MediaDevices, ShareScreenError, ShareScreenResult, TrackMetadata} from 'src/types/types';
@@ -136,6 +137,10 @@ export default class CallClient extends EventEmitter {
     // Mutex for ensureMicrophoneTrack — set synchronously before the first await so
     // concurrent callers are blocked immediately.
     private micTrackEnsureInProgress = false;
+
+    // Tail of the DTMF send chain. publishDtmf doesn't promise that concurrent
+    // calls leave in call order, so each digit waits for the one before it.
+    private dtmfQueue: Promise<void> = Promise.resolve();
 
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
@@ -765,6 +770,26 @@ export default class CallClient extends EventEmitter {
         } catch (err) {
             logErr('CallClient: reactions failed to send', err);
         }
+    }
+
+    // Unlike the other senders this rejects on failure, so the dial pad can tell
+    // the user a digit didn't go out. The digit itself isn't logged since it may
+    // be part of a PIN.
+    public sendDTMF(digit: DTMFDigit): Promise<void> {
+        const send = this.dtmfQueue.then(async () => {
+            if (!this.room || !this.roomConnected) {
+                throw new Error('CallClient: cannot send DTMF, not connected');
+            }
+
+            try {
+                await this.room.localParticipant.publishDtmf(dtmfCode(digit), digit);
+            } catch (err) {
+                logErr('CallClient: sending DTMF failed', err);
+                throw err;
+            }
+        });
+        this.dtmfQueue = send.catch(() => undefined);
+        return send;
     }
 
     // Getters return safe defaults rather than throwing — they're called from
