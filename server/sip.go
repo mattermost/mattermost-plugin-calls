@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -43,30 +44,64 @@ func livekitHTTPURL(wsURL string) string {
 	return u
 }
 
-// createSIPParticipant dials an outbound phone number and adds the SIP participant to a LiveKit room.
-func (p *Plugin) createSIPParticipant(trunkID, phoneNumber, roomName, displayName string) (*livekit.SIPParticipantInfo, error) {
-	cfg := p.getConfiguration()
-	sipClient := livekit.NewSIPProtobufClient(livekitHTTPURL(cfg.getLiveKitPrivateURL()), &http.Client{})
-
-	// CreateSIPParticipant requires both SIP and video admin grants; the video
-	// grant also lets LiveKit auto-create the room when it doesn't exist yet.
+// sipRequestContext returns ctx carrying a short-lived LiveKit access token with
+// the given grants, for use with the SIP twirp client.
+func sipRequestContext(ctx context.Context, cfg *configuration, sipGrant *auth.SIPGrant, videoGrant *auth.VideoGrant) (context.Context, error) {
 	at := auth.NewAccessToken(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
-	at.SetSIPGrant(&auth.SIPGrant{Admin: true, Call: true}).
-		SetVideoGrant(&auth.VideoGrant{RoomAdmin: true, RoomCreate: true}).
-		SetValidFor(30 * time.Second)
+	at.SetSIPGrant(sipGrant).SetValidFor(30 * time.Second)
+	if videoGrant != nil {
+		at.SetVideoGrant(videoGrant)
+	}
 	token, err := at.ToJWT()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SIP token: %w", err)
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), sipOutboundDialTimeout)
-	defer cancel()
-
 	header := http.Header{}
 	header.Set("Authorization", "Bearer "+token)
-	ctx, err := twirp.WithHTTPRequestHeaders(timeoutCtx, header)
+	ctx, err = twirp.WithHTTPRequestHeaders(ctx, header)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set twirp headers: %w", err)
+	}
+	return ctx, nil
+}
+
+// createSIPParticipant dials an outbound phone number and adds the SIP participant to a LiveKit room.
+// If LiveKit no longer knows a managed trunk (deleted out from under us), it
+// reconciles once and retries with the recreated trunk.
+func (p *Plugin) createSIPParticipant(trunkID, phoneNumber, roomName, displayName string) (*livekit.SIPParticipantInfo, error) {
+	cfg := p.getConfiguration()
+
+	resp, err := p.dialSIPParticipant(cfg, trunkID, phoneNumber, roomName, displayName)
+	if err == nil || !isSIPTrunkNotFound(err) || !cfg.sipTrunkManaged() {
+		return resp, err
+	}
+
+	p.invalidateSIPTrunk(trunkID)
+	newID := p.resolveSIPTrunkID(cfg)
+	if newID == "" || newID == trunkID {
+		return nil, err
+	}
+	p.LogInfo("SIP trunk was missing; retrying dial with reconciled trunk", "oldTrunkID", trunkID, "trunkID", newID)
+	return p.dialSIPParticipant(cfg, newID, phoneNumber, roomName, displayName)
+}
+
+func isSIPTrunkNotFound(err error) bool {
+	var twerr twirp.Error
+	return errors.As(err, &twerr) && twerr.Code() == twirp.NotFound
+}
+
+func (p *Plugin) dialSIPParticipant(cfg *configuration, trunkID, phoneNumber, roomName, displayName string) (*livekit.SIPParticipantInfo, error) {
+	sipClient := livekit.NewSIPProtobufClient(livekitHTTPURL(cfg.getLiveKitPrivateURL()), &http.Client{})
+
+	// CreateSIPParticipant requires both SIP and video admin grants; the video
+	// grant also lets LiveKit auto-create the room when it doesn't exist yet.
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), sipOutboundDialTimeout)
+	defer cancel()
+	ctx, err := sipRequestContext(timeoutCtx, cfg, &auth.SIPGrant{Admin: true, Call: true},
+		&auth.VideoGrant{RoomAdmin: true, RoomCreate: true})
+	if err != nil {
+		return nil, err
 	}
 
 	resp, err := sipClient.CreateSIPParticipant(ctx, &livekit.CreateSIPParticipantRequest{
