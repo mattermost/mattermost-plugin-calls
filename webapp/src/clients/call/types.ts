@@ -52,6 +52,21 @@ export type ScreenSharingSession = {
     stream: MediaStream | null;
 };
 
+/**
+ * A remote audio track we play through an element created by LiveKit's attach().
+ */
+export type RemoteAudioPlayback = {
+    element: HTMLMediaElement;
+    userID: string;
+    onPlaybackStarted: () => void;
+    onPlaybackFailed: (err?: Error) => void;
+
+    // Watchdog state: the element's currentTime at the previous check, and
+    // whether we already reported it as stuck.
+    lastCurrentTime: number;
+    stuck: boolean;
+};
+
 export type TrackMetadata = {
     id: string;
     streamID: string;
