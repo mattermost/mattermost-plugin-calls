@@ -14,7 +14,14 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
-var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "IsSIPParticipant", "ConfirmedAt", "SID", "AuthSessionID"}
+// NOTE: the calls_sessions table still has the legacy unmuted/raisedhand/video
+// columns. Transient per-participant state lives in LiveKit, so we never read
+// them. Phase 2 drops unmuted/raisedhand; video stays until camera video is
+// designed for v2. Until then inserts write inert defaults: the columns are
+// nullable, and older plugin versions (rolling upgrade, rollback) scan them
+// into non-pointer fields, so a NULL would break loading a call's sessions.
+var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "IsSIPParticipant", "ConfirmedAt", "SID", "AuthSessionID"}
+var callsSessionsLegacyColumns = []string{"Unmuted", "RaisedHand", "Video"}
 
 func (s *Store) CreateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("CreateCallSession")
@@ -28,39 +35,8 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 
 	qb := getQueryBuilder().
 		Insert("calls_sessions").
-		Columns(callsSessionsColumns...).
-		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.Unmuted, session.RaisedHand, session.IsSIPParticipant, session.ConfirmedAt, session.SID, session.AuthSessionID)
-
-	q, args, err := qb.ToSql()
-	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
-	defer cancel()
-	_, err = s.wDB.ExecContext(ctx, q, args...)
-	if err != nil {
-		return fmt.Errorf("failed to run query: %w", err)
-	}
-
-	return nil
-}
-
-func (s *Store) UpdateCallSession(session *public.CallSession) error {
-	s.metrics.IncStoreOp("UpdateCallSession")
-	defer func(start time.Time) {
-		s.metrics.ObserveStoreMethodsTime("UpdateCallSession", time.Since(start).Seconds())
-	}(time.Now())
-
-	if err := session.IsValid(); err != nil {
-		return fmt.Errorf("invalid call session: %w", err)
-	}
-
-	qb := getQueryBuilder().
-		Update("calls_sessions").
-		Set("Unmuted", session.Unmuted).
-		Set("RaisedHand", session.RaisedHand).
-		Where(sq.Eq{"ID": session.ID})
+		Columns(append(append([]string{}, callsSessionsColumns...), callsSessionsLegacyColumns...)...).
+		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.IsSIPParticipant, session.ConfirmedAt, session.SID, session.AuthSessionID, false, 0, false)
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -155,7 +131,7 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 
 	for rows.Next() {
 		var session public.CallSession
-		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.Unmuted, &session.RaisedHand, &session.IsSIPParticipant, &session.ConfirmedAt, &session.SID, &session.AuthSessionID); err != nil {
+		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.IsSIPParticipant, &session.ConfirmedAt, &session.SID, &session.AuthSessionID); err != nil {
 			return nil, fmt.Errorf("failed to scan rows: %w", err)
 		}
 		sessionsMap[session.ID] = &session

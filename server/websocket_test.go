@@ -459,9 +459,11 @@ func TestWebSocketMessageHasBeenPostedUTF8Validation(t *testing.T) {
 			}
 		}
 
-		// Test that invalid types are rejected
+		// Test that invalid types are rejected. This includes the v1 transient-state
+		// messages removed in MM-69116 (mute/video/raise-hand now live in LiveKit).
 		invalidTypes := []string{
 			"invalid", "unknown", "hack", "exploit", "",
+			"mute", "unmute", "video_on", "video_off", "raise_hand", "unraise_hand",
 		}
 
 		for _, msgType := range invalidTypes {

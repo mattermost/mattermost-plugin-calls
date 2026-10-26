@@ -199,12 +199,10 @@ import {
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
-    handleUserRaisedHand,
     handleUserReaction,
     handleUserRemovedFromChannel,
     handleUserScreenOff,
     handleUserScreenOn,
-    handleUserUnraisedHand,
     setParticipantRemovedChannelID,
 } from './websocket_handlers';
 
@@ -260,14 +258,6 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_off`, (ev) => {
             handleUserScreenOff(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_raise_hand`, (ev) => {
-            handleUserRaisedHand(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unraise_hand`, (ev) => {
-            handleUserUnraisedHand(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_reacted`, (ev) => {
