@@ -44,10 +44,9 @@ func TestCallStateGetClientState(t *testing.T) {
 			},
 			sessions: map[string]*public.CallSession{
 				"sessionA": {
-					ID:         "sessionA",
-					UserID:     "userA",
-					JoinAt:     1000,
-					RaisedHand: 1100,
+					ID:     "sessionA",
+					UserID: "userA",
+					JoinAt: 1000,
 				},
 			},
 		}
@@ -56,9 +55,8 @@ func TestCallStateGetClientState(t *testing.T) {
 			StartAt: cs.StartAt,
 			Sessions: []UserStateClient{
 				{
-					SessionID:  "sessionA",
-					UserID:     "userA",
-					RaisedHand: 1100,
+					SessionID: "sessionA",
+					UserID:    "userA",
 				},
 			},
 			ThreadID:               cs.ThreadID,
@@ -118,10 +116,9 @@ func TestCallStateGetClientState(t *testing.T) {
 			},
 			sessions: map[string]*public.CallSession{
 				"sessionA": {
-					ID:         "sessionA",
-					UserID:     "userA",
-					JoinAt:     1000,
-					RaisedHand: 1100,
+					ID:     "sessionA",
+					UserID: "userA",
+					JoinAt: 1000,
 				},
 				"botSessionID": {
 					ID:     "botSessionID",
@@ -136,9 +133,8 @@ func TestCallStateGetClientState(t *testing.T) {
 			StartAt: 100,
 			Sessions: []UserStateClient{
 				{
-					SessionID:  "sessionA",
-					UserID:     "userA",
-					RaisedHand: 1100,
+					SessionID: "sessionA",
+					UserID:    "userA",
 				},
 			},
 		}
@@ -174,19 +170,16 @@ func TestCallStateGetClientState(t *testing.T) {
 		ccs := CallStateClient{
 			Sessions: []UserStateClient{
 				{
-					SessionID:  "sessionA",
-					UserID:     "userA",
-					RaisedHand: 0,
+					SessionID: "sessionA",
+					UserID:    "userA",
 				},
 				{
-					SessionID:  "sessionB",
-					UserID:     "userA",
-					RaisedHand: 0,
+					SessionID: "sessionB",
+					UserID:    "userA",
 				},
 				{
-					SessionID:  "sessionC",
-					UserID:     "userB",
-					RaisedHand: 0,
+					SessionID: "sessionC",
+					UserID:    "userB",
 				},
 			},
 		}
@@ -211,10 +204,9 @@ func TestCallStateGetHostID(t *testing.T) {
 			},
 			sessions: map[string]*public.CallSession{
 				"sessionA": {
-					ID:         "sessionA",
-					UserID:     "userA",
-					JoinAt:     1000,
-					RaisedHand: 1100,
+					ID:     "sessionA",
+					UserID: "userA",
+					JoinAt: 1000,
 				},
 			},
 		}
@@ -230,22 +222,19 @@ func TestCallStateGetHostID(t *testing.T) {
 			},
 			sessions: map[string]*public.CallSession{
 				"sessionA": {
-					ID:         "sessionA",
-					UserID:     "userA",
-					JoinAt:     1000,
-					RaisedHand: 1100,
+					ID:     "sessionA",
+					UserID: "userA",
+					JoinAt: 1000,
 				},
 				"sessionB": {
-					ID:      "sessionB",
-					UserID:  "userB",
-					JoinAt:  800,
-					Unmuted: true,
+					ID:     "sessionB",
+					UserID: "userB",
+					JoinAt: 800,
 				},
 				"sessionC": {
-					ID:      "sessionC",
-					UserID:  "userC",
-					JoinAt:  1100,
-					Unmuted: true,
+					ID:     "sessionC",
+					UserID: "userC",
+					JoinAt: 1100,
 				},
 			},
 		}
@@ -266,22 +255,19 @@ func TestCallStateGetHostID(t *testing.T) {
 					JoinAt: 800,
 				},
 				"sessionA": {
-					ID:         "sessionA",
-					UserID:     "userA",
-					JoinAt:     1000,
-					RaisedHand: 1100,
+					ID:     "sessionA",
+					UserID: "userA",
+					JoinAt: 1000,
 				},
 				"sessionB": {
-					ID:      "sessionB",
-					UserID:  "userB",
-					JoinAt:  1100,
-					Unmuted: true,
+					ID:     "sessionB",
+					UserID: "userB",
+					JoinAt: 1100,
 				},
 				"sessionC": {
-					ID:      "sessionC",
-					UserID:  "userC",
-					JoinAt:  1200,
-					Unmuted: true,
+					ID:     "sessionC",
+					UserID: "userC",
+					JoinAt: 1200,
 				},
 			},
 		}
@@ -399,18 +385,16 @@ func TestCallStateClone(t *testing.T) {
 			},
 			sessions: map[string]*public.CallSession{
 				model.NewId(): {
-					ID:         model.NewId(),
-					CallID:     model.NewId(),
-					UserID:     model.NewId(),
-					JoinAt:     time.Now().UnixMilli(),
-					RaisedHand: time.Now().UnixMilli(),
+					ID:     model.NewId(),
+					CallID: model.NewId(),
+					UserID: model.NewId(),
+					JoinAt: time.Now().UnixMilli(),
 				},
 				model.NewId(): {
-					ID:      model.NewId(),
-					CallID:  model.NewId(),
-					UserID:  model.NewId(),
-					JoinAt:  time.Now().UnixMilli(),
-					Unmuted: true,
+					ID:     model.NewId(),
+					CallID: model.NewId(),
+					UserID: model.NewId(),
+					JoinAt: time.Now().UnixMilli(),
 				},
 				model.NewId(): {
 					ID:     model.NewId(),
