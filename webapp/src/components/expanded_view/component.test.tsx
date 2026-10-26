@@ -237,6 +237,14 @@ describe('ExpandedView', () => {
     describe('camera permissions banner', () => {
         const bannerText = 'Allow camera access to Mattermost.';
 
+        // With no devices the missing-device banners take priority and would mask the one under test.
+        beforeEach(() => {
+            Object.assign(window.callsClient as object, {
+                getAudioDevices: () => ({inputs: [{deviceId: 'mic'}], outputs: []}),
+                getVideoDevices: () => [{deviceId: 'cam'}],
+            });
+        });
+
         test('is not shown on mount when video simply has not been started', () => {
             renderExpandedView([stubSession('session-1', 'user-id')], {}, true);
 
