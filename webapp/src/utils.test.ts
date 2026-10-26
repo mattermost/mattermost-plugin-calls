@@ -7,6 +7,7 @@ import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
 
 import CallsClient from './client';
+import {flushLogsToAccumulated, getClientLogs} from './log';
 import {pluginId} from './manifest';
 import {
     callStartedTimestampFn,
@@ -17,6 +18,7 @@ import {
     getPlatformInfo,
     getWebappUtils,
     getWSConnectionURL,
+    logClientEnvironment,
     maxAttemptsReachedErr,
     runWithRetry,
     selfFirstSortSessions,
@@ -756,6 +758,117 @@ describe('utils', () => {
                 expect(getPlatformInfo()).toBe(expectedPlatform);
             },
         );
+    });
+
+    describe('logClientEnvironment', () => {
+        const originalNavigator = window.navigator;
+        const desktopUA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Mattermost/5.13.0 Chrome/138.0.0.0 Electron/37.2.0 Safari/537.36';
+        const firefoxUA = 'Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0';
+
+        const setNavigator = (nav: Record<string, unknown>) => {
+            Object.defineProperty(window, 'navigator', {
+                value: {
+                    platform: '',
+                    languages: ['en-US'],
+                    language: 'en-US',
+                    hardwareConcurrency: 8,
+                    ...nav,
+                },
+                writable: true,
+            });
+        };
+
+        const logEnvironment = async () => {
+            await logClientEnvironment();
+            await sleep(0);
+            flushLogsToAccumulated();
+            return getClientLogs();
+        };
+
+        beforeEach(() => {
+            jest.spyOn(console, 'info').mockImplementation();
+            flushLogsToAccumulated();
+            window.sessionStorage.clear();
+            window.localStorage.clear();
+        });
+
+        afterEach(() => {
+            jest.restoreAllMocks();
+            delete window.desktop;
+            Object.defineProperty(window, 'navigator', {
+                value: originalNavigator,
+                writable: true,
+            });
+        });
+
+        test('logs desktop app environment, mic permission and high-entropy platform hints', async () => {
+            window.desktop = {version: '5.13.0'};
+            setNavigator({
+                userAgent: desktopUA,
+                platform: 'MacIntel',
+                hardwareConcurrency: 10,
+                languages: ['de-DE', 'en-US'],
+                permissions: {query: jest.fn().mockResolvedValue({state: 'denied'})},
+                userAgentData: {
+                    getHighEntropyValues: jest.fn().mockResolvedValue({platformVersion: '15.5.0', architecture: 'arm', bitness: '64'}),
+                },
+            });
+
+            const logs = await logEnvironment();
+
+            expect(logs).toContain(`client environment: ua="${desktopUA}" platform=MacOS desktopApp=true desktopVersion=5.13.0 language=de-DE cores=10 micPermission=denied\n`);
+            expect(logs).toContain('client platform hints: platformVersion=15.5.0 architecture=arm bitness=64\n');
+            expect(logs.indexOf('client environment:')).toBeLessThan(logs.indexOf('client platform hints:'));
+        });
+
+        test('logs browser environment with unknown mic permission when the query is unsupported', async () => {
+            setNavigator({
+                userAgent: firefoxUA,
+                platform: 'Linux x86_64',
+                permissions: {query: jest.fn().mockRejectedValue(new TypeError("'microphone' is not a valid value for name"))},
+            });
+
+            const logs = await logEnvironment();
+
+            expect(logs).toContain(`client environment: ua="${firefoxUA}" platform=Linux desktopApp=false desktopVersion=n/a language=en-US cores=8 micPermission=unknown\n`);
+            expect(logs).not.toContain('client platform hints');
+            expect(logs).not.toMatch(/^error/m);
+        });
+
+        test('logs unknown mic permission and falls back to navigator.language when APIs are missing', async () => {
+            setNavigator({userAgent: firefoxUA, languages: undefined, language: 'fr-FR'});
+
+            const logs = await logEnvironment();
+
+            expect(logs).toContain('language=fr-FR cores=8 micPermission=unknown\n');
+        });
+
+        test('does not wait for platform hints before returning', async () => {
+            setNavigator({
+                userAgent: desktopUA,
+                permissions: {query: jest.fn().mockResolvedValue({state: 'prompt'})},
+                userAgentData: {getHighEntropyValues: jest.fn().mockReturnValue(new Promise(() => {}))},
+            });
+
+            const logs = await logEnvironment();
+
+            expect(logs).toContain('micPermission=prompt\n');
+            expect(logs).not.toContain('client platform hints');
+        });
+
+        test('omits platform hints without logging an error when they cannot be retrieved', async () => {
+            setNavigator({
+                userAgent: desktopUA,
+                permissions: {query: jest.fn().mockResolvedValue({state: 'granted'})},
+                userAgentData: {getHighEntropyValues: jest.fn().mockRejectedValue(new Error('NotAllowedError'))},
+            });
+
+            const logs = await logEnvironment();
+
+            expect(logs).toContain('micPermission=granted\n');
+            expect(logs).not.toContain('client platform hints');
+            expect(logs).not.toMatch(/^error/m);
+        });
     });
 });
 
