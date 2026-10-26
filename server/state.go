@@ -185,7 +185,18 @@ func (cs *callState) getLiveCaptions() (*public.CallJob, error) {
 }
 
 func (cs *callState) getHostID(botID string) string {
-	if cs.Call.Props.HostLockedUserID != "" && cs.isUserIDInCall(cs.Call.Props.HostLockedUserID) {
+	// Unconfirmed sessions (token issued, LiveKit not yet connected) must not hold
+	// the host role over a confirmed participant. If nobody is confirmed yet, the
+	// first joiner still gets host at token time.
+	anyConfirmed := false
+	for _, session := range cs.sessions {
+		if session.UserID != botID && session.ConfirmedAt > 0 {
+			anyConfirmed = true
+			break
+		}
+	}
+
+	if cs.Call.Props.HostLockedUserID != "" && cs.isUserConfirmedInCall(cs.Call.Props.HostLockedUserID) {
 		return cs.Call.Props.HostLockedUserID
 	}
 
@@ -194,39 +205,46 @@ func (cs *callState) getHostID(botID string) string {
 	// If the current host is a non-SIP, non-bot participant still in the call, keep them.
 	if currentHostID != "" && currentHostID != botID {
 		for _, session := range cs.sessions {
-			if session.UserID == currentHostID && !session.IsSIPParticipant {
+			if session.UserID == currentHostID && !session.IsSIPParticipant && (session.ConfirmedAt > 0 || !anyConfirmed) {
 				return currentHostID
 			}
 		}
 	}
 
-	// Current host has left, is a SIP participant, or is the bot.
-	// Find the best candidate: prefer non-SIP over SIP, earliest joiner wins within each tier.
-	var bestNonSIP, bestSIP public.CallSession
+	// Current host has left, is unconfirmed, is a SIP participant, or is the bot.
+	// Find the best candidate: prefer confirmed over unconfirmed, then non-SIP
+	// over SIP, then earliest joiner.
+	var best *public.CallSession
 	for _, session := range cs.sessions {
 		if session.UserID == botID {
 			continue
 		}
-		if !session.IsSIPParticipant {
-			if bestNonSIP.UserID == "" || session.JoinAt < bestNonSIP.JoinAt {
-				bestNonSIP = *session
-			}
-		} else {
-			if bestSIP.UserID == "" || session.JoinAt < bestSIP.JoinAt {
-				bestSIP = *session
-			}
+		if best == nil || isBetterHostCandidate(session, best) {
+			best = session
 		}
 	}
 
-	if bestNonSIP.UserID != "" {
-		return bestNonSIP.UserID
+	if best == nil {
+		return ""
 	}
-	return bestSIP.UserID
+	return best.UserID
 }
 
-func (cs *callState) isUserIDInCall(userID string) bool {
+func isBetterHostCandidate(a, b *public.CallSession) bool {
+	if (a.ConfirmedAt > 0) != (b.ConfirmedAt > 0) {
+		return a.ConfirmedAt > 0
+	}
+	if a.IsSIPParticipant != b.IsSIPParticipant {
+		return !a.IsSIPParticipant
+	}
+	return a.JoinAt < b.JoinAt
+}
+
+// isUserConfirmedInCall reports whether the user has a session LiveKit has
+// confirmed as connected.
+func (cs *callState) isUserConfirmedInCall(userID string) bool {
 	for _, session := range cs.sessions {
-		if session.UserID == userID {
+		if session.UserID == userID && session.ConfirmedAt > 0 {
 			return true
 		}
 	}
