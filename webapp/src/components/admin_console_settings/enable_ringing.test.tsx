@@ -58,7 +58,7 @@ describe('EnableRinging', () => {
         expect(screen.getByText('Enable call ringing')).toBeInTheDocument();
         expect(screen.getByText('True')).toBeInTheDocument();
         expect(screen.getByText('False')).toBeInTheDocument();
-        expect(screen.getByText('When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart.')).toBeInTheDocument();
+        expect(screen.getByText('When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started.')).toBeInTheDocument();
 
         // True should be checked
         expect(screen.getByTestId('EnableRingingtrue')).toBeChecked();
