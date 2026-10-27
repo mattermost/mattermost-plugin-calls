@@ -33,10 +33,6 @@ import JoinUserSound from './sounds/join_user.mp3';
 import LeaveSelfSound from './sounds/leave_self.mp3';
 import {Store} from './types/mattermost-webapp';
 
-export function getPluginStaticPath() {
-    return `${window.basename || ''}/static/plugins/${pluginId}`;
-}
-
 export function getPluginPath() {
     return `${window.basename || ''}/plugins/${pluginId}`;
 }
@@ -367,20 +363,6 @@ export function getUserIdFromDM(dmName: string, currentUserId: string) {
 
 export function isFirefox() {
     return navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
-}
-
-export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
-    let modifier = 'AS';
-    if (isFirefox()) {
-        bandwidth = (bandwidth >>> 0) * 1000;
-        modifier = 'TIAS';
-    }
-    if (sdp.indexOf('b=' + modifier + ':') === -1) {
-        sdp = sdp.replaceAll(/m=video (.*)\r\n/gm, 'm=video $1\r\nb=' + modifier + ':' + bandwidth + '\r\n');
-    } else {
-        sdp = sdp.replace(new RegExp('b=' + modifier + ':.*\r\n'), 'b=' + modifier + ':' + bandwidth + '\r\n');
-    }
-    return sdp;
 }
 
 export function split<T>(list: T[], i: number, pad = false): [list: T[], overflowed?: T[]] {

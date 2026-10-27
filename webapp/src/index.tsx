@@ -49,7 +49,6 @@ import EnableDCSignaling from 'src/components/admin_console_settings/enable_dc_s
 import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
 import EnableSimulcast from 'src/components/admin_console_settings/enable_simulcast';
-import EnableVideo from 'src/components/admin_console_settings/enable_video';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
 import ICEServersConfigs from 'src/components/admin_console_settings/ice_servers_configs';
@@ -119,7 +118,6 @@ import {IncomingCallContainer} from 'src/components/incoming_calls/call_containe
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
-import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import {
@@ -162,7 +160,6 @@ import {flushLogsToAccumulated, logDebug, logErr, logInfo} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
-    callsConfig,
     callsExplicitlyDisabled,
     callsExplicitlyEnabled,
     callStartAtForCallInChannel,
@@ -218,8 +215,6 @@ import {
     handleUserScreenOff,
     handleUserScreenOn,
     handleUserUnraisedHand,
-    handleUserVideoOff,
-    handleUserVideoOn,
     setParticipantRemovedChannelID,
 } from './websocket_handlers';
 
@@ -315,14 +310,6 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_host_removed`, (ev) => {
             handleHostRemoved(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_video_on`, (ev) => {
-            handleUserVideoOn(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_video_off`, (ev) => {
-            handleUserVideoOff(store, ev);
         });
 
         // Following are the core Mattermost Websocket event handlers which plugin reacts to.
@@ -533,7 +520,6 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('EnableAV1', EnableAV1);
         registry.registerAdminConsoleCustomSetting('EnableRinging', EnableRinging);
         registry.registerAdminConsoleCustomSetting('EnableDCSignaling', EnableDCSignaling);
-        registry.registerAdminConsoleCustomSetting('EnableVideo', EnableVideo);
 
         // RTCD Service
         registry.registerAdminConsoleCustomSection('RTCDService', RTCDServiceSection);
@@ -1083,12 +1069,6 @@ export default class Plugin {
                 },
             ];
 
-            if (callsConfig(store.getState()).EnableVideo) {
-                sections.push({
-                    title: 'Video devices settings',
-                    component: VideoDevicesSettingsSection,
-                });
-            }
             registry.registerUserSettings({
                 id: pluginId,
                 uiName: 'Calls',

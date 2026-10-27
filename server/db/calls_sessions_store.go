@@ -14,7 +14,7 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
-var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "Video", "IsSIPParticipant", "ConfirmedAt", "SID", "AuthSessionID"}
+var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "IsSIPParticipant", "ConfirmedAt", "SID", "AuthSessionID"}
 
 func (s *Store) CreateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("CreateCallSession")
@@ -29,7 +29,7 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 	qb := getQueryBuilder(s.driverName).
 		Insert("calls_sessions").
 		Columns(callsSessionsColumns...).
-		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.Unmuted, session.RaisedHand, session.Video, session.IsSIPParticipant, session.ConfirmedAt, session.SID, session.AuthSessionID)
+		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.Unmuted, session.RaisedHand, session.IsSIPParticipant, session.ConfirmedAt, session.SID, session.AuthSessionID)
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -60,7 +60,6 @@ func (s *Store) UpdateCallSession(session *public.CallSession) error {
 		Update("calls_sessions").
 		Set("Unmuted", session.Unmuted).
 		Set("RaisedHand", session.RaisedHand).
-		Set("Video", session.Video).
 		Where(sq.Eq{"ID": session.ID})
 
 	q, args, err := qb.ToSql()
@@ -156,7 +155,7 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 
 	for rows.Next() {
 		var session public.CallSession
-		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.Unmuted, &session.RaisedHand, &session.Video, &session.IsSIPParticipant, &session.ConfirmedAt, &session.SID, &session.AuthSessionID); err != nil {
+		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.Unmuted, &session.RaisedHand, &session.IsSIPParticipant, &session.ConfirmedAt, &session.SID, &session.AuthSessionID); err != nil {
 			return nil, fmt.Errorf("failed to scan rows: %w", err)
 		}
 		sessionsMap[session.ID] = &session

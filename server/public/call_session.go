@@ -14,7 +14,6 @@ type CallSession struct {
 	JoinAt           int64  `json:"join_at"`
 	Unmuted          bool   `json:"unmuted"`
 	RaisedHand       int64  `json:"raised_hand"`
-	Video            bool   `json:"video"`
 	IsSIPParticipant bool   `json:"is_sip_participant,omitempty"`
 
 	// ConfirmedAt is set when LiveKit reports the participant as connected. Zero

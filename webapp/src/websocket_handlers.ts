@@ -20,7 +20,6 @@ import {
     UserReactionData,
     UserRemovedData,
     UserScreenOnOffData,
-    UserVideoOnOffData,
     UserVoiceOnOffData,
 } from '@mattermost/calls-common/lib/types';
 import {BaseWebSocketMessage} from '@mattermost/client';
@@ -509,26 +508,3 @@ export function handleHostRemoved(store: Store, ev: WebSocketMessage<HostControl
     }, HOST_CONTROL_NOTICE_TIMEOUT);
 }
 
-export function handleUserVideoOn(store: Store, ev: WebSocketMessage<UserVideoOnOffData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch({
-        type: 'USER_VIDEO_ON',
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            session_id: ev.data.session_id,
-        },
-    });
-}
-
-export function handleUserVideoOff(store: Store, ev: WebSocketMessage<UserVideoOnOffData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch({
-        type: 'USER_VIDEO_OFF',
-        data: {
-            channelID,
-            userID: ev.data.userID,
-            session_id: ev.data.session_id,
-        },
-    });
-}

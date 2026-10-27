@@ -27,8 +27,6 @@ const (
 	wsEventUserUnmuted               = "user_unmuted"
 	wsEventUserScreenOn              = "user_screen_on"
 	wsEventUserScreenOff             = "user_screen_off"
-	wsEventUserVideoOn               = "user_video_on"
-	wsEventUserVideoOff              = "user_video_off"
 	wsEventCallStart                 = "call_start"
 	wsEventCallState                 = "call_state"
 	wsEventCallEnd                   = "call_end"
