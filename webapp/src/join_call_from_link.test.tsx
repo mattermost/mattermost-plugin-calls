@@ -67,4 +67,51 @@ describe('makeJoinCallFromLink', () => {
 
         expect(onError).toHaveBeenCalledWith(err);
     });
+
+    describe('timeout', () => {
+        beforeEach(() => jest.useFakeTimers());
+        afterEach(() => jest.useRealTimers());
+
+        it('reports an error and does not join when the state never loads', async () => {
+            const joinCall = jest.fn().mockResolvedValue(undefined);
+            const onError = jest.fn();
+            const joinCallFromLink = makeJoinCallFromLink(new Promise<void>(() => {}), joinCall, onError, 1000);
+
+            const joining = joinCallFromLink('channel-id');
+            await jest.advanceTimersByTimeAsync(1000);
+            await joining;
+
+            expect(onError).toHaveBeenCalledTimes(1);
+            expect(joinCall).not.toHaveBeenCalled();
+        });
+
+        it('does not join if the state loads after the timeout', async () => {
+            let resolveLoaded: () => void = () => {};
+            const initialStateLoaded = new Promise<void>((resolve) => {
+                resolveLoaded = resolve;
+            });
+            const joinCall = jest.fn().mockResolvedValue(undefined);
+            const joinCallFromLink = makeJoinCallFromLink(initialStateLoaded, joinCall, jest.fn(), 1000);
+
+            const joining = joinCallFromLink('channel-id');
+            await jest.advanceTimersByTimeAsync(1000);
+            await joining;
+            resolveLoaded();
+            await jest.advanceTimersByTimeAsync(0);
+
+            expect(joinCall).not.toHaveBeenCalled();
+        });
+
+        it('joins without error when the state loads before the timeout', async () => {
+            const joinCall = jest.fn().mockResolvedValue(undefined);
+            const onError = jest.fn();
+            const joinCallFromLink = makeJoinCallFromLink(Promise.resolve(), joinCall, onError, 1000);
+
+            await joinCallFromLink('channel-id');
+            await jest.advanceTimersByTimeAsync(1000);
+
+            expect(joinCall).toHaveBeenCalledWith('channel-id');
+            expect(onError).not.toHaveBeenCalled();
+        });
+    });
 });

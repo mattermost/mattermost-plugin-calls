@@ -1106,7 +1106,7 @@ export default class Plugin {
                 requests.push(store.dispatch(getCallsConfigEnvOverrides()));
             }
 
-            await Promise.all(requests);
+            const [configResult] = await Promise.all(requests);
 
             const sections = [
                 {
@@ -1150,7 +1150,12 @@ export default class Plugin {
             // fetchChannels since it would be racy.
             const actions = await fetchChannels(currentCallChannelID);
             store.dispatch(batchActions(actions));
-            resolveInitialStateLoaded();
+
+            // A failed config fetch leaves defaults in place, which would make
+            // link joins gate on wrong values. Link joins time out instead.
+            if (!configResult.error) {
+                resolveInitialStateLoaded();
+            }
 
             // If indeed we are in a call, fetch up-to-date state via HTTP.
             if (currentCallChannelID) {
