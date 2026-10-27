@@ -52,17 +52,6 @@ var (
 			{Type: "nack", Parameter: "pli"},
 		},
 	}
-	rtpVideoCodecAV1 = webrtc.RTPCodecCapability{
-		MimeType:    webrtc.MimeTypeAV1,
-		ClockRate:   90000,
-		SDPFmtpLine: "",
-		RTCPFeedback: []webrtc.RTCPFeedback{
-			{Type: "goog-remb", Parameter: ""},
-			{Type: "ccm", Parameter: "fir"},
-			{Type: "nack", Parameter: ""},
-			{Type: "nack", Parameter: "pli"},
-		},
-	}
 	rtpVideoExtensions = []string{
 		"urn:ietf:params:rtp-hdrext:sdes:mid",
 		"urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id",
@@ -164,16 +153,10 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 		return 0
 	}
 
-	var payloader rtp.Payloader
-	payloader = &codecs.VP8Payloader{
+	payloader := &codecs.VP8Payloader{
 		EnablePictureID: true,
 	}
 	filename := fmt.Sprintf("./samples/%s_%s.ivf", videoType, track.RID())
-	if track.Codec().MimeType == webrtc.MimeTypeAV1 {
-		u.log.Info("sending AV1 screen track")
-		payloader = &codecs.AV1Payloader{}
-		filename = fmt.Sprintf("./samples/%s_av1_%s.ivf", videoType, track.RID())
-	}
 
 	packetizer := rtp.NewPacketizer(
 		sendMTU,
@@ -252,14 +235,8 @@ func (u *User) transmitVideo(videoType string) {
 	streamID := model.NewId()
 
 	enableSimulcast, _ := u.callsConfig["EnableSimulcast"].(bool)
-	enableAV1, _ := u.callsConfig["EnableAV1"].(bool)
 
-	rtpVideoCodec := rtpVideoCodecVP8
-	if enableAV1 && !enableSimulcast {
-		rtpVideoCodec = rtpVideoCodecAV1
-	}
-
-	trackHigh, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodec, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelHigh))
+	trackHigh, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelHigh))
 	if err != nil {
 		u.log.Error(err.Error())
 		os.Exit(1)
@@ -290,25 +267,6 @@ func (u *User) transmitVideo(videoType string) {
 
 	if enableSimulcast {
 		go u.sendVideoFile(trackLow, trx, videoType)
-	} else if enableAV1 {
-		// Fallback VP8 track
-		fallbackTrack, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelHigh))
-		if err != nil {
-			u.log.Error(err.Error())
-			os.Exit(1)
-		}
-
-		var trx2 *webrtc.RTPTransceiver
-		if videoType == "screen" {
-			trx2, err = u.callsClient.StartScreenShare([]webrtc.TrackLocal{fallbackTrack})
-		} else {
-			trx2, err = u.callsClient.StartVideo([]webrtc.TrackLocal{fallbackTrack})
-		}
-		if err != nil {
-			u.log.Error(err.Error())
-			os.Exit(1)
-		}
-		go u.sendVideoFile(fallbackTrack, trx2, videoType)
 	}
 
 	u.sendVideoFile(trackHigh, trx, videoType)
@@ -646,14 +604,12 @@ func (u *User) Connect(stopCh chan struct{}) error {
 	}
 	u.callsConfig = callsConfig
 
-	enableAV1, _ := u.callsConfig["EnableAV1"].(bool)
 	enableDCSignaling, _ := u.callsConfig["EnableDCSignaling"].(bool)
 
 	callsClient, err := client.New(client.Config{
 		SiteURL:           u.cfg.SiteURL,
 		AuthToken:         apiClient.AuthToken,
 		ChannelID:         u.cfg.ChannelID,
-		EnableAV1:         enableAV1,
 		EnableDCSignaling: enableDCSignaling,
 		EnableRTCMonitor:  true,
 	}, client.WithLogger(u.log))

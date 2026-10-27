@@ -132,8 +132,6 @@ type ClientConfig struct {
 	SkuShortName string `json:"sku_short_name"`
 	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
 	HostControlsAllowed bool
-	// When set to true it enables using the AV1 codec to encode screen sharing tracks.
-	EnableAV1 *bool
 	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
 	GroupCallsAllowed bool
 	// When set to true it enables experimental support for using the data channel for signaling.
@@ -216,9 +214,6 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.LiveCaptionsLanguage == "" {
 		c.LiveCaptionsLanguage = transcriber.LiveCaptionsLanguageDefault
-	}
-	if c.EnableAV1 == nil {
-		c.EnableAV1 = model.NewPointer(false)
 	}
 	if c.EnableDCSignaling == nil {
 		c.EnableDCSignaling = model.NewPointer(false)
@@ -368,10 +363,6 @@ func (c *configuration) Clone() *configuration {
 		cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewPointer(*c.LiveCaptionsNumThreadsPerTranscriber)
 	}
 
-	if c.EnableAV1 != nil {
-		cfg.EnableAV1 = model.NewPointer(*c.EnableAV1)
-	}
-
 	if c.EnableDCSignaling != nil {
 		cfg.EnableDCSignaling = model.NewPointer(*c.EnableDCSignaling)
 	}
@@ -467,7 +458,6 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		EnableSIPOutbound:    c.EnableSIPOutbound,
 		SkuShortName:         skuShortName,
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
-		EnableAV1:            c.EnableAV1,
 		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
 		EnableDCSignaling:    c.EnableDCSignaling,
 		EnableVideo:          c.EnableVideo,
