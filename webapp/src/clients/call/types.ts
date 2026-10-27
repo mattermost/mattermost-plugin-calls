@@ -2,7 +2,6 @@
 // See LICENSE.txt for license information.
 
 import type {CallJobState, CallState, EmojiData} from '@mattermost/calls-common/lib/types';
-import type {RTCStats} from 'src/types/webrtc';
 
 /**
  * Response from POST /livekit-token, which mints the call session and returns
@@ -50,22 +49,6 @@ export type ScreenSharingSession = {
     isLocal: boolean;
     stream: MediaStream | null;
 };
-
-export type TrackMetadata = {
-    id: string;
-    streamID: string;
-    kind: string;
-    label: string;
-    enabled: boolean;
-    readyState: MediaStreamTrackState;
-}
-
-export type CallClientStats = {
-    initTime: number;
-    callID: string;
-    tracksInfo: TrackMetadata[];
-    rtcStats: RTCStats | null;
-}
 
 export type ConnectPayload = {
     channelID: string;

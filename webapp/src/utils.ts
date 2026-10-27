@@ -170,33 +170,6 @@ export function getUserDisplayName(user: UserProfile | undefined, shortForm?: bo
     return user.username;
 }
 
-export function getPixelRatio(): number {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    if (!ctx) {
-        canvas.remove();
-        return dpr;
-    }
-    const bsr = ctx.webkitBackingStorePixelRatio ||
-        ctx.mozBackingStorePixelRatio ||
-        ctx.msBackingStorePixelRatio ||
-        ctx.oBackingStorePixelRatio ||
-        ctx.backingStorePixelRatio || 1;
-    canvas.remove();
-    return dpr / bsr;
-}
-
-export function getScreenResolution() {
-    const pixelRatio = getPixelRatio();
-    const width = Math.ceil((pixelRatio * window.screen.width) / 8.0) * 8;
-    const height = Math.ceil((pixelRatio * window.screen.height) / 8.0) * 8;
-    return {
-        width,
-        height,
-    };
-}
-
 export function getExpandedChannelID() {
     const pattern = `${pluginId}/expanded/`;
     const idx = window.location.pathname.indexOf(pattern);
@@ -367,20 +340,6 @@ export function getUserIdFromDM(dmName: string, currentUserId: string) {
 
 export function isFirefox() {
     return navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
-}
-
-export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
-    let modifier = 'AS';
-    if (isFirefox()) {
-        bandwidth = (bandwidth >>> 0) * 1000;
-        modifier = 'TIAS';
-    }
-    if (sdp.indexOf('b=' + modifier + ':') === -1) {
-        sdp = sdp.replaceAll(/m=video (.*)\r\n/gm, 'm=video $1\r\nb=' + modifier + ':' + bandwidth + '\r\n');
-    } else {
-        sdp = sdp.replace(new RegExp('b=' + modifier + ':.*\r\n'), 'b=' + modifier + ':' + bandwidth + '\r\n');
-    }
-    return sdp;
 }
 
 export function split<T>(list: T[], i: number, pad = false): [list: T[], overflowed?: T[]] {

@@ -516,9 +516,6 @@ export const defaultEnabled = (state: GlobalState) =>
 export const maxParticipants = (state: GlobalState) =>
     callsConfig(state).MaxCallParticipants;
 
-export const needsTURNCredentials = (state: GlobalState) =>
-    callsConfig(state).NeedsTURNCredentials;
-
 export const isLimitRestricted = (state: GlobalState): boolean => {
     const numCurrentUsers = profilesInCallInCurrentChannel(state).length;
     const max = maxParticipants(state);
