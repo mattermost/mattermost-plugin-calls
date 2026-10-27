@@ -46,14 +46,27 @@ jobs:
         run: |
           DATETIME="$(date '+%Y_%m_%d__%H_%M_%S')"
 
-          echo "Generating the e2e report ... "
-          cp ${{ github.workspace }}/e2e/scripts/merge-reports.js .
-          rm -vf package.json
-          npm install --include=dev @playwright/test playwright-merge-html-reports fs
-          node merge-reports.js
+          echo "Installing pinned Playwright (for merge-reports) ... "
+          # Use the exact Playwright version the e2e suite ran with, so the
+          # blob reports are merged by a matching release. Merging never launches
+          # a browser, so skip the browser download to keep this step fast.
+          ( cd "${{ github.workspace }}/e2e" && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci )
+          PLAYWRIGHT="${{ github.workspace }}/e2e/node_modules/.bin/playwright"
+
+          echo "Collecting per-shard blob reports ... "
+          mkdir -p all-blob-reports
+          n=0
+          for f in $(find . -path '*blob-report*' -name '*.zip' | sort); do
+            cp "$f" "all-blob-reports/report-${n}.zip"
+            n=$((n + 1))
+          done
+          echo "Found ${n} blob report(s) to merge."
+
+          echo "Merging into a single HTML report ... "
+          "${PLAYWRIGHT}" merge-reports --reporter html ./all-blob-reports
 
           echo "Upload playwright report to S3 ... "
-          aws s3 sync merged-html-report/ s3://${AWS_S3_BUCKET}/calls-pw/${DATETIME} --no-progress --cache-control no-cache
+          aws s3 sync playwright-report/ s3://${AWS_S3_BUCKET}/calls-pw/${DATETIME} --no-progress --cache-control no-cache
 
           NUM_FAILURES=0
           NUM_SUCCESSES=0

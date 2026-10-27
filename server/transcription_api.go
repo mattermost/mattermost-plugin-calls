@@ -125,9 +125,10 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	}
 
 	liveCaptionsOn := false
+	var lcState *public.CallJob
 	if cfg := p.getConfiguration(); cfg != nil && cfg.liveCaptionsEnabled() {
 		liveCaptionsOn = true
-		lcState := new(public.CallJob)
+		lcState = new(public.CallJob)
 		lcState.ID = model.NewId()
 		lcState.CallID = state.Call.ID
 		lcState.Type = public.JobTypeCaptioning
@@ -169,11 +170,28 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	// Note: We don't need to send the live captions event until we get the StartAt in the
 	// bot_api handleBotPostJobsStatus
 
+	jobSession, err := p.createJobSession()
+	if err != nil {
+		trState.EndAt = time.Now().UnixMilli()
+		trState.Props.Err = err.Error()
+		if err := p.updateCallJob(callID, trState); err != nil {
+			p.LogError("failed to update call job", "err", err.Error(), "callID", callID)
+		}
+		if lcState != nil {
+			lcState.EndAt = time.Now().UnixMilli()
+			if err := p.updateCallJob(callID, lcState); err != nil {
+				p.LogError("failed to update call job", "err", err.Error(), "callID", callID)
+			}
+		}
+
+		return fmt.Errorf("failed to create job session: %w", err)
+	}
+
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return. We lock again as soon as this returns.
 	p.unlockCall(callID)
-	trJobID, jobErr := p.getJobService().RunJob(job.TypeTranscribing, callID, state.Call.PostID, trState.ID, p.botSession.Token)
-	state, err := p.lockCallReturnState(callID)
+	trJobID, jobErr := p.getJobService().RunJob(job.TypeTranscribing, callID, state.Call.PostID, trState.ID, jobSession.Token)
+	state, err = p.lockCallReturnState(callID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
 	}
@@ -182,7 +200,6 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	if err != nil {
 		return fmt.Errorf("failed to get transcription state: %w", err)
 	}
-	var lcState *public.CallJob
 	if liveCaptionsOn {
 		lcState, err = state.getLiveCaptions()
 		if err != nil {

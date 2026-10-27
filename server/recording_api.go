@@ -117,11 +117,22 @@ func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst
 		UserIDs:             getUserIDsFromSessions(state.sessions),
 	})
 
+	jobSession, err := p.createJobSession()
+	if err != nil {
+		recState.EndAt = time.Now().UnixMilli()
+		recState.Props.Err = err.Error()
+		if err := p.updateCallJob(callID, recState); err != nil {
+			p.LogError("failed to update call job", "err", err.Error(), "callID", callID)
+		}
+
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create job session: %w", err)
+	}
+
 	// We don't want to keep the lock while making the API call to the service since it
 	// could take a while to return. We lock again as soon as this returns.
 	p.unlockCall(callID)
-	recJobID, jobErr := p.getJobService().RunJob(job.TypeRecording, callID, state.Call.PostID, recState.ID, p.botSession.Token)
-	state, err := p.lockCallReturnState(callID)
+	recJobID, jobErr := p.getJobService().RunJob(job.TypeRecording, callID, state.Call.PostID, recState.ID, jobSession.Token)
+	state, err = p.lockCallReturnState(callID)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to lock call: %w", err)
 	}
@@ -157,6 +168,13 @@ func (p *Plugin) startRecordingJob(state *callState, callID, userID string) (rst
 		p.LogDebug("transcriptions enabled, starting job", "callID", callID)
 		if err := p.startTranscribingJob(state, callID, userID, trID); err != nil {
 			p.LogError("failed to start transcribing job", "callID", callID, "err", err.Error())
+
+			// Jobs are coupled: stop the recorder so it isn't left running
+			// with a persisted in-progress state.
+			if _, _, stopErr := p.stopRecordingJob(state, callID); stopErr != nil {
+				p.LogError("failed to stop recording job", "callID", callID, "err", stopErr.Error())
+			}
+
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to start transcribing job: %w", err)
 		}
 	}

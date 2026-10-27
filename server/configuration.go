@@ -132,7 +132,7 @@ type ClientConfig struct {
 	HostControlsAllowed bool
 	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
 	GroupCallsAllowed bool
-	// When set to try it enables video calls in direct message channels.
+	// When set to true it enables video calls in direct message channels.
 	EnableVideo *bool
 }
 
