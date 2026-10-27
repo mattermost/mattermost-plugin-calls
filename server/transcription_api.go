@@ -191,6 +191,16 @@ func (p *Plugin) startTranscribingJob(state *callState, callID, userID, trID str
 	// could take a while to return. We lock again as soon as this returns.
 	p.unlockCall(callID)
 	trJobID, jobErr := p.getJobService().RunJob(job.TypeTranscribing, callID, state.Call.PostID, trState.ID, jobSession.Token)
+	if jobErr == nil {
+		// The transcriber is running, so any later error must stop it.
+		defer func() {
+			if rerr != nil {
+				if err := p.getJobService().StopJob(callID, trID, p.getBotID(), ""); err != nil {
+					p.LogError("failed to stop transcribing job", "callID", callID, "jobID", trJobID, "err", err.Error())
+				}
+			}
+		}()
+	}
 	state, err = p.lockCallReturnState(callID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
