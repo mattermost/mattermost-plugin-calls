@@ -5,13 +5,16 @@ import React, {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings/common';
+import manifest from 'src/manifest';
 import {callsConfigEnvOverrides} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
-export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
+export default function LiveKitPrivateURL(props: CustomComponentProps) {
     const {formatMessage} = useIntl();
     const overrides = useSelector(callsConfigEnvOverrides);
-    const overridden = 'LiveKitSIPOutboundTrunkID' in overrides;
+    const overridden = 'LiveKitPrivateURL' in overrides;
+
+    const placeholder = manifest.settings_schema?.sections?.flatMap((s) => s.settings ?? []).find((e) => e.key === 'LiveKitPrivateURL')?.placeholder ?? '';
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
@@ -30,7 +33,7 @@ export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {formatMessage({defaultMessage: 'SIP Outbound Trunk ID'})}
+                        {formatMessage({defaultMessage: 'LiveKit private server URL'})}
                     </label>
                 </LabelRow>
             </div>
@@ -40,6 +43,7 @@ export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
                     id={props.id}
                     className={disabled ? 'form-control disabled' : 'form-control'}
                     type='text'
+                    placeholder={placeholder}
                     value={props.value}
                     onChange={handleChange}
                     disabled={disabled}
@@ -48,7 +52,7 @@ export default function LiveKitSIPOutboundTrunkID(props: CustomComponentProps) {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: 'LiveKit outbound SIP trunk ID (e.g., ST_xxx). The trunk is created in LiveKit (via CLI or Cloud dashboard) with the SIP provider address and credentials. Leave empty to disable outbound dialing.'})}
+                    {formatMessage({defaultMessage: '(Optional) The URL the Mattermost server uses to reach LiveKit for room administration and SIP, such as an in-cluster service address (e.g. ws://livekit-server.livekit.svc.cluster.local). Defaults to the LiveKit server URL when empty.'})}
                 </div>
                 {overridden &&
                     <div className='alert alert-warning'>

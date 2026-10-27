@@ -1,6 +1,6 @@
 services:
   livekit-dev:
-    image: livekit/livekit-server:v1.13.1
+    image: livekit/livekit-server:v1.13.10
     restart: unless-stopped
     ports:
       - "7880:7880"       # Signaling (HTTP/WebSocket)
@@ -58,7 +58,7 @@ services:
   # runtime via the LiveKit API (outbound trunk + dispatch rule) — either the
   # bundled Asterisk sink (`sink` profile) or an external provider.
   livekit-sip:
-    image: livekit/sip:v1.5.0
+    image: livekit/sip:v1.20.0
     profiles: ["sip"]
     restart: unless-stopped
     volumes:

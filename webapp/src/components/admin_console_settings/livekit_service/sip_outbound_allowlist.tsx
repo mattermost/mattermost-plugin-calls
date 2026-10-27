@@ -49,7 +49,7 @@ export default function SIPOutboundAllowlist(props: CustomComponentProps) {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: 'Phone numbers permitted for outbound dialing when the allowlist is enabled. Enter one number per line. Numbers are matched after normalization to E.164 format, so formatting variations like +1 555-123-4567 and 15551234567 are equivalent.'})}
+                    {formatMessage({defaultMessage: 'Phone numbers permitted for outbound dialing when the allowlist is enabled. Enter one number per line, optionally followed by the owner\'s name (e.g. +1 555-123-4567 John Doe). A name starting with a digit must be preceded by # (e.g. +1 555-123-4567 # 3rd floor lobby). Numbers are matched after normalization to E.164 format, so formatting variations like +1 555-123-4567 and 15551234567 are equivalent.'})}
                 </div>
                 {overridden &&
                     <div className='alert alert-warning'>

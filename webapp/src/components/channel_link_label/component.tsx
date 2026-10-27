@@ -31,40 +31,52 @@ const ChannelLinkLabel = (props: Props) => {
     }
 
     return (
-        <OverlayTrigger
-            placement='top'
-            overlay={
-                <Tooltip
-                    id='call-profiles'
-                >
-                    {formatMessage({defaultMessage: '{list} {count, plural, =1 {is} other {are}} on the call'}, {
-                        count: props.profiles.length,
-                        list: formatList(userList),
-                    })}
-                </Tooltip>
+
+        // OverlayTrigger may wrap its child in a div (React 19 host), which breaks margin auto on the
+        // icon, so the right alignment lives on this outer span.
+        <span
+            style={
+                {
+                    display: 'flex',
+                    alignItems: 'center',
+                    marginLeft: 'auto',
+                    marginRight: '4px',
+                }
             }
         >
-
-            <span
-                data-testid={'calls-sidebar-active-call-icon'}
-                style={
-                    {
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: 'auto',
-                        minWidth: '20px',
-                        marginLeft: 'auto',
-                        marginRight: '4px',
-                    }
+            <OverlayTrigger
+                placement='top'
+                overlay={
+                    <Tooltip
+                        id='call-profiles'
+                    >
+                        {formatMessage({defaultMessage: '{list} {count, plural, =1 {is} other {are}} on the call'}, {
+                            count: props.profiles.length,
+                            list: formatList(userList),
+                        })}
+                    </Tooltip>
                 }
             >
-                <ActiveCallIcon
-                    fill={props.theme.sidebarText}
-                    style={{minWidth: '12px', maxWidth: '12px', minHeight: '12px', maxHeight: '12px'}}
-                />
-            </span>
-        </OverlayTrigger>
+
+                <span
+                    data-testid={'calls-sidebar-active-call-icon'}
+                    style={
+                        {
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: 'auto',
+                            minWidth: '20px',
+                        }
+                    }
+                >
+                    <ActiveCallIcon
+                        fill={props.theme.sidebarText}
+                        style={{minWidth: '12px', maxWidth: '12px', minHeight: '12px', maxHeight: '12px'}}
+                    />
+                </span>
+            </OverlayTrigger>
+        </span>
     );
 };
 

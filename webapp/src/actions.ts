@@ -15,6 +15,7 @@ import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getThread} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {ActionFunc, ActionFuncAsync, DispatchFunc, GetStateFunc} from 'mattermost-redux/types/actions';
+import {generateId} from 'mattermost-redux/utils/helpers';
 import {MessageDescriptor} from 'react-intl';
 import {AnyAction, Dispatch} from 'redux';
 import {batchActions} from 'redux-batched-actions';
@@ -23,7 +24,7 @@ import {CloudFreeTrialModalAdmin, CloudFreeTrialModalUser, IDAdmin, IDUser} from
 import {ErrorModal, IdForErrorModel} from 'src/components/error_modal';
 import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_error_modal';
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
-import {JOINED_USER_NOTIFICATION_TIMEOUT, RING_LENGTH} from 'src/constants';
+import {JOINED_USER_NOTIFICATION_TIMEOUT, LIVE_CAPTION_TIMEOUT, RING_LENGTH} from 'src/constants';
 import {applyCallHostChanged} from 'src/host_change';
 import {logErr} from 'src/log';
 import {getPhoneCallProps, withoutSIPSessions} from 'src/phone_utils';
@@ -70,6 +71,8 @@ import {
     HIDE_EXPANDED_VIEW,
     HIDE_SCREEN_SOURCE_MODAL,
     HIDE_SWITCH_CALL_MODAL,
+    LIVE_CAPTION,
+    LIVE_CAPTION_TIMEOUT_EVENT,
     LIVE_CAPTIONS_ENABLED,
     LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
@@ -86,6 +89,25 @@ import {
     TRANSCRIPTIONS_ENABLED,
     USER_JOINED_TIMEOUT,
 } from './action_types';
+
+// liveCaptionReceived shows a caption and clears it after LIVE_CAPTION_TIMEOUT.
+export const liveCaptionReceived = (channelID: string, userID: string, sessionID: string, displayName: string, text: string) => (dispatch: Dispatch) => {
+    const caption = {
+        channel_id: channelID,
+        user_id: userID,
+        session_id: sessionID,
+        text,
+        display_name: displayName,
+        caption_id: generateId(),
+    };
+    dispatch({type: LIVE_CAPTION, data: caption});
+    setTimeout(() => {
+        dispatch({
+            type: LIVE_CAPTION_TIMEOUT_EVENT,
+            data: {channel_id: channelID, session_id: sessionID, caption_id: caption.caption_id},
+        });
+    }, LIVE_CAPTION_TIMEOUT);
+};
 
 export const showExpandedView = () => (dispatch: Dispatch) => {
     dispatch({
