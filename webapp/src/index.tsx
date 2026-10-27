@@ -150,6 +150,7 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
+import {makeJoinCallFromLink} from './join_call_from_link';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
@@ -479,9 +480,15 @@ export default class Plugin {
             }
         };
 
+        // Resolved once onActivate has loaded config and channel state.
+        let resolveInitialStateLoaded: () => void;
+        const initialStateLoaded = new Promise<void>((resolve) => {
+            resolveInitialStateLoaded = resolve;
+        });
+
         // Link-triggered joins have no caller to surface errors, so show the
         // same modal as /call join.
-        const joinCallFromLink = (channelId: string) => joinCall(channelId).catch((err) => {
+        const joinCallFromLink = makeJoinCallFromLink(initialStateLoaded, joinCall, (err) => {
             logErr('failed to join call from link', err);
             let msg = defineMessage({defaultMessage: 'An internal error occurred and prevented you from joining the call. Please try again.'});
             if (err === DisabledCallsErr) {
@@ -1122,6 +1129,7 @@ export default class Plugin {
             // fetchChannels since it would be racy.
             const actions = await fetchChannels(currentCallChannelID);
             store.dispatch(batchActions(actions));
+            resolveInitialStateLoaded();
 
             // If indeed we are in a call, fetch up-to-date state via HTTP.
             if (currentCallChannelID) {
