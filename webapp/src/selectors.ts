@@ -596,7 +596,7 @@ export const hasPermissionsToEnableCalls = (state: GlobalState, channelId: strin
     return (isDirectChannel(channel) || isGroupChannel(channel)) ||
         cm?.scheme_admin === true ||
         channelRoles[channel.id]?.has('channel_admin') ||
-        teamRoles.has('team_admin');
+        teamRoles?.has('team_admin') === true;
 };
 
 //
@@ -668,6 +668,9 @@ export const isAtLeastProfessional = (state: GlobalState): boolean => {
 export const areHostControlsAllowed = (state: GlobalState): boolean => callsConfig(state).HostControlsAllowed;
 
 export const areGroupCallsAllowed = (state: GlobalState): boolean => callsConfig(state).GroupCallsAllowed;
+
+export const callsAllowedInChannel = (state: GlobalState, channel?: Channel): boolean =>
+    areGroupCallsAllowed(state) || Boolean(channel && isDirectChannel(channel));
 
 export const adminStats = (state: GlobalState) => state.entities.admin.analytics;
 

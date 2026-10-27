@@ -4,6 +4,7 @@
 /* eslint-disable max-lines */
 import {CallChannelState, CallJobState, EmojiData} from '@mattermost/calls-common/lib/types';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
+import {GlobalState} from '@mattermost/types/store';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel, getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
@@ -146,6 +147,7 @@ import {flushLogsToAccumulated, logDebug, logErr, logInfo} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
+    callsAllowedInChannel,
     callsExplicitlyDisabled,
     callsExplicitlyEnabled,
     callStartAtForCallInChannel,
@@ -924,27 +926,32 @@ export default class Plugin {
             window.removeEventListener('message', windowEventHandler);
         });
 
-        let channelHeaderMenuID: string;
-        const registerChannelHeaderMenuAction = () => {
-            channelHeaderMenuID = registry.registerChannelHeaderMenuAction(
-                ChannelHeaderMenuButton,
-                async () => {
-                    try {
-                        const data = await RestClient.fetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
-                            method: 'post',
-                            body: JSON.stringify({enabled: callsExplicitlyDisabled(store.getState(), currChannelId)}),
-                        });
+        const channelHeaderMenuID = registry.registerChannelHeaderMenuAction(
+            ChannelHeaderMenuButton,
+            async () => {
+                try {
+                    const data = await RestClient.fetch<{ enabled: boolean }>(`${getPluginPath()}/${currChannelId}`, {
+                        method: 'post',
+                        body: JSON.stringify({enabled: callsExplicitlyDisabled(store.getState(), currChannelId)}),
+                    });
 
-                        store.dispatch({
-                            type: RECEIVED_CHANNEL_STATE,
-                            data: {id: currChannelId, enabled: data.enabled},
-                        });
-                    } catch (err) {
-                        logErr(err);
-                    }
-                },
-            );
-        };
+                    store.dispatch({
+                        type: RECEIVED_CHANNEL_STATE,
+                        data: {id: currChannelId, enabled: data.enabled},
+                    });
+                } catch (err) {
+                    logErr(err);
+                }
+            },
+            (state: GlobalState) => {
+                const channel = getCurrentChannel(state);
+                if (!channel) {
+                    return false;
+                }
+                return callsAllowedInChannel(state, channel) && hasPermissionsToEnableCalls(state, channel.id);
+            },
+        );
+        this.unsubscribers.push(() => registry.unregisterComponent(channelHeaderMenuID));
 
         // Returns null if the channels request fails.
         const fetchChannels = async (skipChannelID?: string): Promise<AnyAction[] | null> => {
@@ -1026,18 +1033,6 @@ export default class Plugin {
             return actions;
         };
 
-        const registerHeaderMenuComponentIfNeeded = async (channelID: string) => {
-            try {
-                registry.unregisterComponent(channelHeaderMenuID);
-                if (hasPermissionsToEnableCalls(store.getState(), channelID)) {
-                    registerChannelHeaderMenuAction();
-                }
-            } catch (err) {
-                registry.unregisterComponent(channelHeaderMenuID);
-                logErr(err);
-            }
-        };
-
         // Run onActivate once we're logged in.
         const unsubscribeActivateListener = store.subscribe(() => {
             if (getCurrentUserId(store.getState())) {
@@ -1111,11 +1106,6 @@ export default class Plugin {
                 logDebug('fetching call state via HTTP');
                 store.dispatch(fetchCallState(currentCallChannelID));
             }
-
-            const currChannelId = getCurrentChannelId(store.getState());
-            if (currChannelId) {
-                await registerHeaderMenuComponentIfNeeded(currChannelId);
-            }
         };
 
         this.unsubscribers.push(() => {
@@ -1178,15 +1168,8 @@ export default class Plugin {
 
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
-
-            // We only want to register the header menu component on first load
-            // and not on every channel switch.
             if (currChannelId !== currentChannelId) {
-                const firstLoad = !currChannelId;
                 currChannelId = currentChannelId;
-                if (firstLoad) {
-                    registerHeaderMenuComponentIfNeeded(currentChannelId);
-                }
             }
         }));
 
