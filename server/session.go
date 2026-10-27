@@ -816,19 +816,6 @@ func (p *Plugin) rollbackSession(sessionID, callID string, createdCall bool) {
 	}
 }
 
-// maybeSendConcurrentSessionsWarning notifies admins when the deployment is
-// running more concurrent sessions than the configured threshold.
-func (p *Plugin) maybeSendConcurrentSessionsWarning() {
-	if ok, err := p.shouldSendConcurrentSessionsWarning(getConcurrentSessionsThreshold(),
-		getConcurrentSessionsWarningBackoffTime()); err != nil {
-		p.LogError("shouldSendConcurrentSessionsWarning failed", "err", err.Error())
-	} else if ok {
-		if err := p.sendConcurrentSessionsWarning(); err != nil {
-			p.LogError("sendConcurrentSessionsWarning failed", "err", err.Error())
-		}
-	}
-}
-
 // callEndReason reports what the call post should say happened when the last
 // participant leaves. A DM call that only ever had the caller in it was never
 // answered, so hanging up cancelled it rather than ended it.

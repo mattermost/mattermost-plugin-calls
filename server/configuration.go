@@ -121,8 +121,6 @@ type ClientConfig struct {
 	EnableLiveCaptions *bool
 	// The maximum duration (in minutes) for call recordings.
 	MaxRecordingDuration *int
-	// When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.
-	EnableSimulcast *bool
 	// When set to true it enables ringing for DM/GM channels.
 	EnableRinging *bool
 	// When set to true it enables outbound SIP phone dialing. Requires a configured
@@ -132,12 +130,8 @@ type ClientConfig struct {
 	SkuShortName string `json:"sku_short_name"`
 	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
 	HostControlsAllowed bool
-	// When set to true it enables using the AV1 codec to encode screen sharing tracks.
-	EnableAV1 *bool
 	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
 	GroupCallsAllowed bool
-	// When set to true it enables experimental support for using the data channel for signaling.
-	EnableDCSignaling *bool
 	// When set to try it enables video calls in direct message channels.
 	EnableVideo *bool
 }
@@ -174,9 +168,6 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.RecordingQuality == "" {
 		c.RecordingQuality = "medium"
-	}
-	if c.EnableSimulcast == nil {
-		c.EnableSimulcast = model.NewPointer(false)
 	}
 	if c.EnableRinging == nil {
 		c.EnableRinging = model.NewPointer(false)
@@ -216,12 +207,6 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.LiveCaptionsLanguage == "" {
 		c.LiveCaptionsLanguage = transcriber.LiveCaptionsLanguageDefault
-	}
-	if c.EnableAV1 == nil {
-		c.EnableAV1 = model.NewPointer(false)
-	}
-	if c.EnableDCSignaling == nil {
-		c.EnableDCSignaling = model.NewPointer(false)
 	}
 	if c.EnableVideo == nil {
 		c.EnableVideo = model.NewPointer(false)
@@ -344,10 +329,6 @@ func (c *configuration) Clone() *configuration {
 		cfg.MaxRecordingDuration = model.NewPointer(*c.MaxRecordingDuration)
 	}
 
-	if c.EnableSimulcast != nil {
-		cfg.EnableSimulcast = model.NewPointer(*c.EnableSimulcast)
-	}
-
 	if c.EnableRinging != nil {
 		cfg.EnableRinging = model.NewPointer(*c.EnableRinging)
 	}
@@ -366,14 +347,6 @@ func (c *configuration) Clone() *configuration {
 
 	if c.LiveCaptionsNumThreadsPerTranscriber != nil {
 		cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewPointer(*c.LiveCaptionsNumThreadsPerTranscriber)
-	}
-
-	if c.EnableAV1 != nil {
-		cfg.EnableAV1 = model.NewPointer(*c.EnableAV1)
-	}
-
-	if c.EnableDCSignaling != nil {
-		cfg.EnableDCSignaling = model.NewPointer(*c.EnableDCSignaling)
 	}
 
 	if c.EnableVideo != nil {
@@ -462,14 +435,11 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		EnableTranscriptions: c.EnableTranscriptions,
 		EnableLiveCaptions:   c.EnableLiveCaptions,
 		MaxRecordingDuration: c.MaxRecordingDuration,
-		EnableSimulcast:      c.EnableSimulcast,
 		EnableRinging:        c.EnableRinging,
 		EnableSIPOutbound:    c.EnableSIPOutbound,
 		SkuShortName:         skuShortName,
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
-		EnableAV1:            c.EnableAV1,
 		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
-		EnableDCSignaling:    c.EnableDCSignaling,
 		EnableVideo:          c.EnableVideo,
 	}
 }

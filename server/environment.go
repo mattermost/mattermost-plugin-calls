@@ -120,7 +120,7 @@ var (
 
 	// Add underscore before uppercase letters that are followed by lowercase letters
 	// and not preceded by an underscore
-	// e.g., "RTCDService" -> "RTCD_Service"
+	// e.g., "SIPOutbound" -> "SIP_Outbound"
 	reFieldUpperToUpperLower = regexp.MustCompile(`([A-Z])([A-Z][a-z])`)
 )
 

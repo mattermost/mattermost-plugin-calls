@@ -988,8 +988,6 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	// and is cancelled in participant_joined once both sides are live.
 	p.startSIPNoAnswerTimer(channelID, callID)
 
-	p.maybeSendConcurrentSessionsWarning()
-
 	p.LogInfo("phone call session created",
 		"callID", callID,
 		"channelID", channelID,
@@ -1852,8 +1850,6 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 	}
 
 	p.cancelDMNoAnswerTimerIfAnswered(state, userID, req.ChannelID, channel.Type)
-
-	p.maybeSendConcurrentSessionsWarning()
 
 	p.LogInfo("livekit session created",
 		"callID", state.Call.ID,
