@@ -147,7 +147,7 @@ import {flushLogsToAccumulated, logDebug, logErr, logInfo} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
-    callsAllowedInChannel,
+    areGroupCallsAllowed,
     callsExplicitlyDisabled,
     callsExplicitlyEnabled,
     callStartAtForCallInChannel,
@@ -175,6 +175,7 @@ import {
     getTranslations,
     getUserIDsForSessions,
     isCallsPopOut,
+    isDMChannel,
     playSound,
     sendDesktopEvent,
     setCallsGlobalCSSVars,
@@ -948,7 +949,7 @@ export default class Plugin {
                 if (!channel) {
                     return false;
                 }
-                return callsAllowedInChannel(state, channel) && hasPermissionsToEnableCalls(state, channel.id);
+                return (areGroupCallsAllowed(state) || isDMChannel(channel)) && hasPermissionsToEnableCalls(state, channel.id);
             },
         );
         this.unsubscribers.push(() => registry.unregisterComponent(channelHeaderMenuID));

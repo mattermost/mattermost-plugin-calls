@@ -6,7 +6,7 @@ import {getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import {connect} from 'react-redux';
 import {
-    callsAllowedInChannel,
+    areGroupCallsAllowed,
     callsShowButton,
     channelIDForCurrentCall,
     currentChannelHasCall,
@@ -15,6 +15,7 @@ import {
     isLimitRestricted,
     maxParticipants,
 } from 'src/selectors';
+import {isDMChannel} from 'src/utils';
 
 import ChannelHeaderDropdownButton from './component';
 
@@ -22,7 +23,7 @@ const mapStateToProps = (state: GlobalState) => {
     const channel = getCurrentChannel(state);
 
     return {
-        show: callsShowButton(state, channel?.id) && callsAllowedInChannel(state, channel),
+        show: callsShowButton(state, channel?.id) && (areGroupCallsAllowed(state) || isDMChannel(channel)),
         inCall: Boolean(channelIDForCurrentCall(state) && channelIDForCurrentCall(state) === channel?.id),
         hasCall: currentChannelHasCall(state),
         isAdmin: isCurrentUserSystemAdmin(state),

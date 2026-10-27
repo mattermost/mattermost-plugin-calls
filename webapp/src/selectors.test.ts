@@ -5,7 +5,7 @@ import {Channel, ChannelType} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 
 import {pluginId} from './manifest';
-import {callsAllowedInChannel, hasPermissionsToEnableCalls} from './selectors';
+import {hasPermissionsToEnableCalls} from './selectors';
 
 const CHANNEL_ID = 'channel-id';
 const TEAM_ID = 'team-id';
@@ -18,11 +18,9 @@ const makeChannel = (type: ChannelType) => ({
 } as Channel);
 
 const makeState = ({
-    groupCallsAllowed = false,
     channel = makeChannel('O'),
     teamRoles,
 }: {
-    groupCallsAllowed?: boolean;
     channel?: Channel;
     teamRoles?: string;
 } = {}) => ({
@@ -41,28 +39,9 @@ const makeState = ({
         },
     },
     [`plugins-${pluginId}`]: {
-        callsConfig: {GroupCallsAllowed: groupCallsAllowed, DefaultEnabled: true},
+        callsConfig: {DefaultEnabled: true},
     },
 } as unknown as GlobalState);
-
-describe('callsAllowedInChannel', () => {
-    it.each<[ChannelType, boolean]>([
-        ['D', true],
-        ['G', false],
-        ['O', false],
-        ['P', false],
-    ])('without group calls, channel type %p is allowed: %p', (type, expected) => {
-        expect(callsAllowedInChannel(makeState(), makeChannel(type))).toBe(expected);
-    });
-
-    it.each<ChannelType>(['D', 'G', 'O', 'P'])('with group calls, channel type %p is allowed', (type) => {
-        expect(callsAllowedInChannel(makeState({groupCallsAllowed: true}), makeChannel(type))).toBe(true);
-    });
-
-    it('is not allowed without a channel when group calls are off', () => {
-        expect(callsAllowedInChannel(makeState(), undefined)).toBe(false);
-    });
-});
 
 describe('hasPermissionsToEnableCalls', () => {
     it('returns false without throwing when team roles are not loaded', () => {
