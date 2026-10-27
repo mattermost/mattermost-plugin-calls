@@ -52,7 +52,7 @@
           },
           {
             "key": "EnableRinging",
-            "display_name": "Enable call ringing",
+            "display_name": "Enable call ringing for direct and group messages",
             "type": "bool",
             "default": false,
             "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started."

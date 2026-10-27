@@ -35,7 +35,7 @@ export default function EnableRinging(props: CustomComponentProps) {
             className='form-group'
         >
             <label className={'control-label ' + leftCol}>
-                {formatMessage({defaultMessage: 'Enable call ringing'})}
+                {formatMessage({defaultMessage: 'Enable call ringing for direct and group messages'})}
             </label>
             <div className={rightCol}>
                 <RadioInputLabel $disabled={disabled}>
