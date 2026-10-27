@@ -47,24 +47,26 @@ export default function GlobalBanner(props: Props) {
             </Icon>
             <Body>{props.body}</Body>
             {props.onClose &&
-                <OverlayTrigger
-                    placement='left'
-                    key={'dismiss-banner'}
-                    overlay={
-                        <Tooltip id='dismiss-banner'>
-                            {dismissLabel}
-                        </Tooltip>
-                    }
-                >
-                    <CloseButton
-                        $bgHover={hoverMap[props.type]}
-                        className='style--none'
-                        onClick={props.onClose}
-                        aria-label={dismissLabel}
+                <CloseButtonContainer>
+                    <OverlayTrigger
+                        placement='left'
+                        key={'dismiss-banner'}
+                        overlay={
+                            <Tooltip id='dismiss-banner'>
+                                {dismissLabel}
+                            </Tooltip>
+                        }
                     >
-                        <CompassIcon icon='close'/>
-                    </CloseButton>
-                </OverlayTrigger>
+                        <CloseButton
+                            $bgHover={hoverMap[props.type]}
+                            className='style--none'
+                            onClick={props.onClose}
+                            aria-label={dismissLabel}
+                        >
+                            <CompassIcon icon='close'/>
+                        </CloseButton>
+                    </OverlayTrigger>
+                </CloseButtonContainer>
             }
             {!props.onClose &&
                 <RightFiller/>
@@ -94,9 +96,15 @@ const Body = styled.span`
     line-height: 20px;
 `;
 
+// The auto margin lives here, not on CloseButton: OverlayTrigger may wrap its child in a div (React 19 host).
+const CloseButtonContainer = styled.span`
+    display: flex;
+    align-items: center;
+    margin: 0 4px 0 auto;
+`;
+
 const CloseButton = styled.button<{ $bgHover: string }>`
     cursor: pointer;
-    margin: 0 4px 0 auto;
     opacity: 0.56;
     padding: 3px;
     border-radius: 4px;

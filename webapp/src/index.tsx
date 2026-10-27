@@ -57,8 +57,8 @@ import EnableSIPOutbound from 'src/components/admin_console_settings/livekit_ser
 import EnableSIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound_allowlist';
 import LiveKitAPIKey from 'src/components/admin_console_settings/livekit_service/livekit_api_key';
 import LiveKitAPISecret from 'src/components/admin_console_settings/livekit_service/livekit_api_secret';
+import LiveKitPrivateURL from 'src/components/admin_console_settings/livekit_service/livekit_private_url';
 import LiveKitSIPOutboundAllowedTeams from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_allowed_teams';
-import LiveKitSIPOutboundTrunkID from 'src/components/admin_console_settings/livekit_service/livekit_sip_outbound_trunk_id';
 import LiveKitURL from 'src/components/admin_console_settings/livekit_service/livekit_url';
 import SIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/sip_outbound_allowlist';
 import MaxCallParticipants from 'src/components/admin_console_settings/max_call_participants';
@@ -89,6 +89,18 @@ import LiveKitServiceSection from 'src/components/admin_console_settings/section
 import RTCServerSection from 'src/components/admin_console_settings/sections/rtc_server';
 import RTCDServiceSection from 'src/components/admin_console_settings/sections/rtcd_service';
 import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
+import {
+    SIPOutboundSection,
+    SIPTrunkAddress,
+    SIPTrunkAuthPassword,
+    SIPTrunkAuthUsername,
+    SIPTrunkID,
+    SIPTrunkMediaEncryption,
+    SIPTrunkModeSetting,
+    SIPTrunkNumber,
+    SIPTrunkStatusSetting,
+    SIPTrunkTransport,
+} from 'src/components/admin_console_settings/sip_outbound';
 import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
 import TCPServerPort from 'src/components/admin_console_settings/tcp_server_port';
 import TestMode from 'src/components/admin_console_settings/test_mode';
@@ -186,6 +198,7 @@ import {
 import {
     applyCallHostChanged,
     applyCallJobState,
+    dispatchCaption,
     dispatchReaction,
     handleCallEnd,
     handleCallHostChanged,
@@ -529,11 +542,22 @@ export default class Plugin {
         // LiveKit Service
         registry.registerAdminConsoleCustomSection('LiveKitService', LiveKitServiceSection);
         registry.registerAdminConsoleCustomSetting('LiveKitURL', LiveKitURL);
+        registry.registerAdminConsoleCustomSetting('LiveKitPrivateURL', LiveKitPrivateURL);
         registry.registerAdminConsoleCustomSetting('LiveKitAPIKey', LiveKitAPIKey);
         registry.registerAdminConsoleCustomSetting('LiveKitAPISecret', LiveKitAPISecret);
         registry.registerAdminConsoleCustomSetting('EnableSIPOutbound', EnableSIPOutbound);
-        registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundTrunkID', LiveKitSIPOutboundTrunkID);
         registry.registerAdminConsoleCustomSetting('EnableSIPOutboundAllowlist', EnableSIPOutboundAllowlist);
+
+        registry.registerAdminConsoleCustomSection('SIPOutbound', SIPOutboundSection);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkMode', SIPTrunkModeSetting);
+        registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundTrunkID', SIPTrunkID);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkAddress', SIPTrunkAddress);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkNumber', SIPTrunkNumber);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkAuthUsername', SIPTrunkAuthUsername);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkAuthPassword', SIPTrunkAuthPassword);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkTransport', SIPTrunkTransport);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkMediaEncryption', SIPTrunkMediaEncryption);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkStatus', SIPTrunkStatusSetting);
         registry.registerAdminConsoleCustomSetting('SIPOutboundAllowlist', SIPOutboundAllowlist);
         registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundAllowedTeams', LiveKitSIPOutboundAllowedTeams);
 
@@ -809,6 +833,10 @@ export default class Plugin {
                         emoji,
                         timestamp,
                     });
+                });
+
+                window.callsClient.on(CALL_EVENT.CAPTION, (session_id: string, userID: string, text: string) => {
+                    dispatchCaption(store, window.callsClient?.channelID ?? '', userID, session_id, text);
                 });
 
                 // The snapshot returned by the join request, which replaces the

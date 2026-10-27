@@ -30,7 +30,7 @@ export default function LiveKitSIPOutboundAllowedTeams(props: CustomComponentPro
                         data-testid={props.id + 'label'}
                         htmlFor={props.id}
                     >
-                        {formatMessage({defaultMessage: 'SIP Outbound Allowed Teams'})}
+                        {formatMessage({defaultMessage: 'SIP outbound allowed teams'})}
                     </label>
                 </LabelRow>
             </div>

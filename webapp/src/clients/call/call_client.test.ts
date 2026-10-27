@@ -12,6 +12,7 @@ import {
     Room,
     RoomEvent,
     Track,
+    TrackEvent,
 } from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {
@@ -20,6 +21,7 @@ import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
+import * as log from 'src/log';
 import {flushLogsToAccumulated} from 'src/log';
 import {getPersistentStorage, getScreenStream} from 'src/utils';
 
@@ -86,6 +88,8 @@ type MockRoom = {
     disconnect: jest.Mock;
     removeAllListeners: jest.Mock;
     switchActiveDevice: jest.Mock;
+    startAudio: jest.Mock;
+    canPlaybackAudio: boolean;
     localParticipant: any;
     remoteParticipants: Map<string, any>;
     metadata?: string;
@@ -104,6 +108,8 @@ function createMockRoom(): MockRoom {
         disconnect: jest.fn().mockResolvedValue(null),
         removeAllListeners: jest.fn().mockReturnValue(null),
         switchActiveDevice: jest.fn().mockResolvedValue(null),
+        startAudio: jest.fn().mockResolvedValue(undefined),
+        canPlaybackAudio: true,
         localParticipant: {
             sid: 'me-sid',
             identity: 'me-id___me-session',
@@ -129,6 +135,33 @@ function createMockRoom(): MockRoom {
         },
     };
     return room;
+}
+
+// A remote audio track whose attach() hands back a real <audio> element, as
+// LiveKit's does. fire() replays a TrackEvent through the registered handler.
+type TrackEventHandler = (...args: any[]) => void;
+
+function makeRemoteAudioTrack(source: Track.Source, id = 'remote-audio') {
+    const element = document.createElement('audio');
+    const handlers = new Map<string, TrackEventHandler>();
+    return {
+        sid: `${id}-sid`,
+        kind: Track.Kind.Audio,
+        source,
+        isMuted: false,
+        streamState: 'active',
+        mediaStreamTrack: {id, readyState: 'live', muted: false} as unknown as MediaStreamTrack,
+        element,
+        attach: jest.fn(() => element),
+        detach: jest.fn(() => element),
+        on: jest.fn((event: string, handler: TrackEventHandler) => {
+            handlers.set(event, handler);
+        }),
+        off: jest.fn((event: string) => {
+            handlers.delete(event);
+        }),
+        fire: (event: string, ...args: any[]) => handlers.get(event)?.(...args),
+    };
 }
 
 // The shape POST /livekit-token returns: session id, LiveKit credentials and the
@@ -788,7 +821,7 @@ describe('CallClient', () => {
 
             mockRoom.fire(
                 RoomEvent.TrackSubscribed,
-                {source: Track.Source.Microphone, mediaStreamTrack: {}},
+                makeRemoteAudioTrack(Track.Source.Microphone),
                 {},
                 {sid: 'p1-sid', identity: 'user1___p1-session'},
             );
@@ -809,6 +842,225 @@ describe('CallClient', () => {
             );
 
             expect(remoteVoiceListener).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('remote audio playback', () => {
+        const participant = {sid: 'p1-sid', identity: 'user1___p1-session', getTrackPublication: () => null};
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+        });
+
+        function setPlaybackState(element: HTMLMediaElement, state: {paused: boolean; currentTime: number}) {
+            Object.defineProperty(element, 'paused', {get: () => state.paused, configurable: true});
+            Object.defineProperty(element, 'currentTime', {get: () => state.currentTime, configurable: true});
+        }
+
+        it.each([
+            Track.Source.Microphone,
+            Track.Source.ScreenShareAudio,
+        ])('attaches %s tracks through LiveKit and adds a hidden element to the page', async (source) => {
+            await client.connect({channelID: 'test-channel'});
+            const track = makeRemoteAudioTrack(source, 'track-1');
+
+            mockRoom.fire(RoomEvent.TrackSubscribed, track, {}, participant);
+
+            expect(track.attach).toHaveBeenCalledTimes(1);
+            expect(document.body.contains(track.element)).toBe(true);
+            expect(track.element.getAttribute('data-testid')).toBe('track-1');
+            expect(track.element.style.display).toBe('none');
+        });
+
+        it('does not emit REMOTE_VOICE_STREAM for screen-share audio', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const remoteVoiceListener = jest.fn();
+            client.on(CALL_EVENT.REMOTE_VOICE_STREAM, remoteVoiceListener);
+
+            mockRoom.fire(RoomEvent.TrackSubscribed, makeRemoteAudioTrack(Track.Source.ScreenShareAudio), {}, participant);
+
+            expect(remoteVoiceListener).not.toHaveBeenCalled();
+        });
+
+        it('does not attach video tracks', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const attach = jest.fn();
+
+            mockRoom.fire(RoomEvent.TrackSubscribed, {source: Track.Source.ScreenShare, mediaStreamTrack: {}, attach}, {}, participant);
+
+            expect(attach).not.toHaveBeenCalled();
+        });
+
+        it('attaches a track only once if it is subscribed twice', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const track = makeRemoteAudioTrack(Track.Source.Microphone);
+
+            mockRoom.fire(RoomEvent.TrackSubscribed, track, {}, participant);
+            mockRoom.fire(RoomEvent.TrackSubscribed, track, {}, participant);
+
+            expect(track.attach).toHaveBeenCalledTimes(1);
+        });
+
+        it('detaches and removes the element when the track is unsubscribed', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const track = makeRemoteAudioTrack(Track.Source.ScreenShareAudio);
+            mockRoom.fire(RoomEvent.TrackSubscribed, track, {}, participant);
+
+            mockRoom.fire(RoomEvent.TrackUnsubscribed, track, {}, participant);
+
+            expect(track.detach).toHaveBeenCalledWith(track.element);
+            expect(track.off).toHaveBeenCalledTimes(2);
+            expect(document.body.contains(track.element)).toBe(false);
+        });
+
+        it('removes every element when the room disconnects', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const mic = makeRemoteAudioTrack(Track.Source.Microphone, 'mic');
+            const screenAudio = makeRemoteAudioTrack(Track.Source.ScreenShareAudio, 'screen-audio');
+            mockRoom.fire(RoomEvent.TrackSubscribed, mic, {}, participant);
+            mockRoom.fire(RoomEvent.TrackSubscribed, screenAudio, {}, participant);
+
+            mockRoom.fire(RoomEvent.Disconnected, DisconnectReason.CLIENT_INITIATED);
+
+            expect(document.body.contains(mic.element)).toBe(false);
+            expect(document.body.contains(screenAudio.element)).toBe(false);
+        });
+
+        it('logs the error name when LiveKit reports a playback failure', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const track = makeRemoteAudioTrack(Track.Source.ScreenShareAudio);
+            mockRoom.fire(RoomEvent.TrackSubscribed, track, {}, participant);
+            const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+            const err = new Error('play() failed');
+            err.name = 'NotAllowedError';
+            track.fire(TrackEvent.AudioPlaybackFailed, err);
+
+            expect(warnSpy).toHaveBeenCalledWith(
+                expect.any(String),
+                'CallClient: remote audio playback failed',
+                expect.objectContaining({error: 'NotAllowedError', source: Track.Source.ScreenShareAudio}),
+            );
+
+            warnSpy.mockRestore();
+        });
+
+        it('emits REMOTE_AUDIO_PLAYBACK_BLOCKED and REMOTE_AUDIO_PLAYBACK_UNBLOCKED as the room playback status changes', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const blockedListener = jest.fn();
+            const unblockedListener = jest.fn();
+            client.on(CALL_EVENT.REMOTE_AUDIO_PLAYBACK_BLOCKED, blockedListener);
+            client.on(CALL_EVENT.REMOTE_AUDIO_PLAYBACK_UNBLOCKED, unblockedListener);
+
+            mockRoom.fire(RoomEvent.AudioPlaybackStatusChanged, false);
+            expect(blockedListener).toHaveBeenCalledTimes(1);
+            expect(unblockedListener).not.toHaveBeenCalled();
+
+            mockRoom.fire(RoomEvent.AudioPlaybackStatusChanged, true);
+            expect(unblockedListener).toHaveBeenCalledTimes(1);
+            expect(blockedListener).toHaveBeenCalledTimes(1);
+        });
+
+        it('reads canPlaybackAudio from the room', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.canPlaybackAudio = false;
+
+            expect(client.canPlaybackAudio).toBe(false);
+        });
+
+        it('startAudio calls room.startAudio and logs a failure instead of throwing', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+            await client.startAudio();
+            expect(mockRoom.startAudio).toHaveBeenCalledTimes(1);
+
+            mockRoom.startAudio.mockRejectedValueOnce(new Error('still blocked'));
+            await expect(client.startAudio()).resolves.toBeUndefined();
+            expect(errorSpy).toHaveBeenCalledWith(expect.any(String), 'CallClient: starting audio playback failed', expect.any(Error));
+
+            errorSpy.mockRestore();
+        });
+
+        describe('playback watchdog', () => {
+            function check() {
+                (client as unknown as {pollRemoteAudioPlayback(): void}).pollRemoteAudioPlayback();
+            }
+
+            it('warns once and retries play() when an element is paused', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const track = makeRemoteAudioTrack(Track.Source.ScreenShareAudio);
+                mockRoom.fire(RoomEvent.TrackSubscribed, track, {}, participant);
+                setPlaybackState(track.element, {paused: true, currentTime: 0});
+                const play = jest.fn().mockResolvedValue(undefined);
+                track.element.play = play;
+                const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+                check();
+                check();
+
+                expect(play).toHaveBeenCalledTimes(1);
+                const stuckWarnings = warnSpy.mock.calls.filter((args) => args[1] === 'CallClient: remote audio element is not playing, retrying play()');
+                expect(stuckWarnings).toHaveLength(1);
+                expect(stuckWarnings[0][2]).toEqual(expect.objectContaining({paused: true, source: Track.Source.ScreenShareAudio}));
+
+                warnSpy.mockRestore();
+            });
+
+            it('warns when currentTime stops moving even though the element is not paused', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const track = makeRemoteAudioTrack(Track.Source.Microphone);
+                mockRoom.fire(RoomEvent.TrackSubscribed, track, {}, participant);
+                const state = {paused: false, currentTime: 5};
+                setPlaybackState(track.element, state);
+                const play = jest.fn().mockResolvedValue(undefined);
+                track.element.play = play;
+
+                check();
+                expect(play).not.toHaveBeenCalled();
+
+                check();
+                expect(play).toHaveBeenCalledTimes(1);
+            });
+
+            it('logs recovery and can warn again after the element plays', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const track = makeRemoteAudioTrack(Track.Source.Microphone);
+                mockRoom.fire(RoomEvent.TrackSubscribed, track, {}, participant);
+                const state = {paused: true, currentTime: 0};
+                setPlaybackState(track.element, state);
+                const play = jest.fn().mockResolvedValue(undefined);
+                track.element.play = play;
+                const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+                const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+                check();
+                state.paused = false;
+                state.currentTime = 10;
+                check();
+                state.paused = true;
+                check();
+
+                expect(infoSpy).toHaveBeenCalledWith(expect.any(String), 'CallClient: remote audio playback recovered', expect.anything());
+                expect(play).toHaveBeenCalledTimes(2);
+
+                infoSpy.mockRestore();
+                warnSpy.mockRestore();
+            });
+
+            it('skips tracks the remote participant has muted', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const track = makeRemoteAudioTrack(Track.Source.Microphone);
+                track.isMuted = true;
+                mockRoom.fire(RoomEvent.TrackSubscribed, track, {}, participant);
+                setPlaybackState(track.element, {paused: true, currentTime: 0});
+                const play = jest.fn().mockResolvedValue(undefined);
+                track.element.play = play;
+
+                check();
+
+                expect(play).not.toHaveBeenCalled();
+            });
         });
     });
 
@@ -1124,6 +1376,127 @@ describe('CallClient', () => {
         });
     });
 
+    describe('captions (data messages)', () => {
+        const botID = 'bot-id';
+        const bot = {sid: 'bot-sid', identity: `${botID}___bot-session`, attributes: {bot: 'true'}};
+        const speaker = {sid: 'p1-sid', identity: 'user1___p1-session', attributes: {}};
+
+        const encode = (body: unknown) => new TextEncoder().encode(typeof body === 'string' ? body : JSON.stringify(body));
+
+        let listener: jest.Mock;
+
+        beforeEach(async () => {
+            (RestClient.fetch as jest.Mock).mockResolvedValue({...sessionResponse, bot_user_id: botID});
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.remoteParticipants.set(speaker.sid, speaker);
+            listener = jest.fn();
+            client.on(CALL_EVENT.CAPTION, listener);
+        });
+
+        it('emits CAPTION for a message from the bot about a known session', () => {
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'hello'}), bot, undefined, 'caption');
+
+            expect(listener).toHaveBeenCalledWith('p1-session', 'user1', 'hello');
+        });
+
+        it('emits CAPTION for the local participant session', () => {
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'me-session', text: 'hi'}), bot, undefined, 'caption');
+
+            expect(listener).toHaveBeenCalledWith('me-session', 'me-id', 'hi');
+        });
+
+        it('ignores a sender that is not the bot, even if it sets the bot attribute', () => {
+            const impostor = {sid: 'x-sid', identity: 'user1___p1-session', attributes: {bot: 'true'}};
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'fake'}), impostor, undefined, 'caption');
+
+            expect(listener).not.toHaveBeenCalled();
+        });
+
+        it('ignores messages without a sender participant', () => {
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'x'}), undefined, undefined, 'caption');
+
+            expect(listener).not.toHaveBeenCalled();
+        });
+
+        it('ignores unknown session ids', () => {
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'nope', text: 'x'}), bot, undefined, 'caption');
+
+            expect(listener).not.toHaveBeenCalled();
+        });
+
+        it('ignores the bot\'s own session id', () => {
+            mockRoom.remoteParticipants.set(bot.sid, bot);
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'bot-session', text: 'x'}), bot, undefined, 'caption');
+
+            expect(listener).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['malformed JSON', '{not json'],
+            ['empty text', {session_id: 'p1-session', text: ''}],
+            ['non-string text', {session_id: 'p1-session', text: 5}],
+            ['missing session_id', {text: 'x'}],
+        ])('ignores %s', (_name, body) => {
+            mockRoom.fire(RoomEvent.DataReceived, encode(body), bot, undefined, 'caption');
+
+            expect(listener).not.toHaveBeenCalled();
+        });
+
+        describe('logging', () => {
+            let warnSpy: jest.SpyInstance;
+            let debugSpy: jest.SpyInstance;
+
+            beforeEach(() => {
+                warnSpy = jest.spyOn(log, 'logWarn').mockImplementation(() => {});
+                debugSpy = jest.spyOn(log, 'logDebug').mockImplementation(() => {});
+            });
+
+            afterEach(() => {
+                warnSpy.mockRestore();
+                debugSpy.mockRestore();
+            });
+
+            it('logs every rejection, not just the first', () => {
+                const impostor = {sid: 'x-sid', identity: 'user1___p1-session', attributes: {}};
+                mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'a'}), impostor, undefined, 'caption');
+                mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'b'}), impostor, undefined, 'caption');
+
+                expect(warnSpy).toHaveBeenCalledTimes(2);
+                expect(warnSpy).toHaveBeenCalledWith('CallClient: caption ignored, sender is not the bot', expect.objectContaining({senderUserID: 'user1', botUserID: botID}));
+            });
+
+            it.each([
+                ['no sender', encode({session_id: 'p1-session', text: 'x'}), undefined, 'no sender participant'],
+                ['invalid payload', encode({text: 'x'}), bot, 'invalid payload'],
+                ['unknown session', encode({session_id: 'nope', text: 'x'}), bot, 'unknown session'],
+            ])('logs a warning for %s', (_name, payload, sender, expected) => {
+                mockRoom.fire(RoomEvent.DataReceived, payload, sender, undefined, 'caption');
+
+                expect(warnSpy).toHaveBeenCalledTimes(1);
+                expect(warnSpy.mock.calls[0][0]).toContain(expected);
+            });
+
+            it('logs accepted captions without the text', () => {
+                mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'secret words'}), bot, undefined, 'caption');
+
+                expect(debugSpy).toHaveBeenCalledWith('CallClient: caption received', {sessionID: 'p1-session', userID: 'user1', textLength: 12});
+                expect(JSON.stringify(debugSpy.mock.calls)).not.toContain('secret words');
+            });
+        });
+
+        it('ignores everything when the join response carried no bot_user_id', async () => {
+            const other = new CallClient();
+            (RestClient.fetch as jest.Mock).mockResolvedValue({...sessionResponse});
+            await other.connect({channelID: 'test-channel'});
+            const otherListener = jest.fn();
+            other.on(CALL_EVENT.CAPTION, otherListener);
+
+            mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'x'}), {identity: '___bot-session'}, undefined, 'caption');
+
+            expect(otherListener).not.toHaveBeenCalled();
+        });
+    });
+
     describe('reSyncMuteAndHandState (popout overlay)', () => {
         it('re-emits mute + raised-hand for all participants WITHOUT USER_JOINED', async () => {
             mockRoom.localParticipant.getTrackPublication.mockReturnValue({isMuted: false});
@@ -1400,7 +1773,7 @@ describe('CallClient', () => {
             expect(client.currentAudioInputDevice).toBe(inputDevice);
         });
 
-        it('setAudioOutputDevice does NOT call switchActiveDevice (sinkId stays in widget)', async () => {
+        it('setAudioOutputDevice persists, switches the LiveKit audio output, and emits DEVICE_CHANGE', async () => {
             await client.connect({channelID: 'test-channel'});
             const deviceChangeListener = jest.fn();
             client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
@@ -1408,11 +1781,25 @@ describe('CallClient', () => {
 
             await client.setAudioOutputDevice(outputDevice);
 
-            expect(mockRoom.switchActiveDevice).not.toHaveBeenCalled();
+            expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('audiooutput', 'spk-1');
             expect(client.currentAudioOutputDevice).toBe(outputDevice);
             expect(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY))
                 .toBe(JSON.stringify({deviceId: 'spk-1', label: 'Built-in Speakers'}));
             expect(deviceChangeListener).toHaveBeenCalled();
+        });
+
+        it('setAudioOutputDevice logs, rather than throws, when the browser cannot switch output', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.switchActiveDevice.mockRejectedValueOnce(new Error('cannot switch audio output, the current browser does not support it'));
+            const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+            await expect(client.setAudioOutputDevice(outputDevice)).resolves.toBeUndefined();
+
+            const logged = warnSpy.mock.calls.map((args) => args.join(' '));
+            expect(logged).toEqual(expect.arrayContaining([expect.stringContaining('switching audio output device failed')]));
+            expect(client.currentAudioOutputDevice).toBe(outputDevice);
+
+            warnSpy.mockRestore();
         });
 
         it('restores stored input/output devices on connect when present in the enumerated list', async () => {
@@ -1900,7 +2287,7 @@ describe('CallClient', () => {
             });
             mockRoom.fire(
                 RoomEvent.TrackSubscribed,
-                {source: Track.Source.ScreenShareAudio, mediaStreamTrack: audioTrack},
+                {...makeRemoteAudioTrack(Track.Source.ScreenShareAudio), mediaStreamTrack: audioTrack},
                 {},
                 remoteParticipant,
             );

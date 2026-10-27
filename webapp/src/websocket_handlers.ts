@@ -10,7 +10,6 @@ import {
     HostControlLowerHand,
     HostControlMsg,
     HostControlRemoved,
-    LiveCaption,
     LiveCaptionData,
     Reaction,
     UserDismissedNotification,
@@ -33,6 +32,7 @@ import {
     incomingCallOnChannel,
     joinUser,
     leaveUser,
+    liveCaptionReceived,
     removeIncomingCallNotification,
 } from 'src/actions';
 import {
@@ -44,9 +44,9 @@ import {
     HOST_CONTROL_NOTICE_TIMEOUT,
     JOB_TYPE_CAPTIONING,
     JOB_TYPE_RECORDING,
-    LIVE_CAPTION_TIMEOUT,
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
+import {logWarn} from 'src/log';
 import {getPhoneCallProps} from 'src/phone_utils';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userLoweredHand, userRaisedHand, userReacted, userReactedTimeout} from 'src/state/session/actions';
@@ -64,8 +64,6 @@ import {
     DISMISS_CALL,
     HOST_CONTROL_NOTICE,
     HOST_CONTROL_NOTICE_TIMEOUT_EVENT,
-    LIVE_CAPTION,
-    LIVE_CAPTION_TIMEOUT_EVENT,
 } from './action_types';
 import {applyCallHostChanged} from './host_change';
 import {
@@ -346,35 +344,19 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
     }
 }
 
-export function handleCaption(store: Store, ev: WebSocketMessage<LiveCaptionData>) {
-    const channel_id = ev.data.channel_id;
-
-    if (channelIDForCurrentCall(store.getState()) !== channel_id) {
+export function dispatchCaption(store: Store, channelID: string, userID: string, sessionID: string, text: string) {
+    const currentChannelID = channelIDForCurrentCall(store.getState());
+    if (currentChannelID !== channelID) {
+        logWarn('dispatchCaption: caption ignored, not for the current call', {channelID, currentChannelID});
         return;
     }
 
     const profiles = profilesInCurrentCallMap(store.getState());
-    const display_name = getUserDisplayName(profiles[ev.data.user_id]);
-    const caption: LiveCaption = {
-        ...ev.data,
-        channel_id,
-        display_name,
-        caption_id: generateId(),
-    };
-    store.dispatch({
-        type: LIVE_CAPTION,
-        data: caption,
-    });
-    setTimeout(() => {
-        store.dispatch({
-            type: LIVE_CAPTION_TIMEOUT_EVENT,
-            data: {
-                channel_id,
-                session_id: caption.session_id,
-                caption_id: caption.caption_id,
-            },
-        });
-    }, LIVE_CAPTION_TIMEOUT);
+    store.dispatch(liveCaptionReceived(channelID, userID, sessionID, getUserDisplayName(profiles[userID]), text));
+}
+
+export function handleCaption(store: Store, ev: WebSocketMessage<LiveCaptionData>) {
+    dispatchCaption(store, ev.data.channel_id, ev.data.user_id, ev.data.session_id, ev.data.text);
 }
 
 export function handleHostScreenOff(store: Store, ev: WebSocketMessage<HostControlMsg>) {
