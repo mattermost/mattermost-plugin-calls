@@ -91,6 +91,7 @@ import {
     shareAudioWithScreen,
     untranslatable,
 } from 'src/utils';
+import {serverDismissedAt} from 'src/utils/clock_skew';
 import styled, {css} from 'styled-components';
 
 import {CallParticipantAvatar} from './call_participant_avatar';
@@ -833,11 +834,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
+        const dismissedAt = serverDismissedAt(this.props.callRecording, this.props.callHostChangeAt);
+
         // Dismiss our prompt.
-        this.props.recordingPromptDismissedAt(this.props.channel.id, Date.now());
+        this.props.recordingPromptDismissedAt(this.props.channel.id, dismissedAt);
 
         // Dismiss the expanded window's prompt.
-        this.expandedViewWindowRef.current?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
+        this.expandedViewWindowRef.current?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, dismissedAt);
     };
 
     onRecordToggle = async () => {

@@ -31,7 +31,7 @@ func (s *Store) KVGet(pluginID, key string, fromWriter bool) ([]byte, error) {
 		db = s.rDB
 	}
 
-	qb := getQueryBuilder(s.driverName).Select("PValue").
+	qb := getQueryBuilder().Select("PValue").
 		From("PluginKeyValueStore").
 		Where(sq.Eq{"PluginId": pluginID}).
 		Where(sq.Eq{"PKey": key}).
@@ -63,7 +63,7 @@ func (s *Store) GetPost(postID string) (*model.Post, error) {
 		s.metrics.ObserveStoreMethodsTime("GetPost", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Select(postColumns...).
 		From("Posts").
 		Where(sq.Eq{"Id": postID})
@@ -90,7 +90,7 @@ func (s *Store) UpdateFileInfoPostID(fileID, channelID, postID string) error {
 		s.metrics.ObserveStoreMethodsTime("UpdateFileInfoPostID", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Update("FileInfo").
+	qb := getQueryBuilder().Update("FileInfo").
 		Set("ChannelId", channelID).
 		Set("PostId", postID).
 		Where(sq.Eq{"Id": fileID})
