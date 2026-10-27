@@ -3,7 +3,7 @@
 
 /* eslint-disable max-lines */
 
-import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallJobState, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
@@ -18,9 +18,11 @@ import {
 import {reducer as sessions} from 'src/state/session/reducer';
 import {reducer as sipCallStates} from 'src/state/sip_call_state/reducer';
 import {
+    CallsConfig,
     CallsConfigDefault,
     CallsUserPreferences,
     CallsUserPreferencesDefault,
+    CallsVersionInfo,
     ChannelState,
     ChannelType,
     HostControlNotice,

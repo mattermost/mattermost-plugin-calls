@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
-import {CallsConfig, CallState, CallsVersionInfo} from '@mattermost/calls-common/lib/types';
+import {CallState} from '@mattermost/calls-common/lib/types';
 import {ClientError} from '@mattermost/client';
 import {Channel} from '@mattermost/types/channels';
 import {UserTypes} from 'mattermost-redux/action_types';
@@ -44,7 +44,7 @@ import {
 } from 'src/selectors';
 import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {callEnded, getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/session/actions';
-import {CallsStats, ChannelType, PhoneCallState} from 'src/types/types';
+import {CallsConfig, CallsStats, CallsVersionInfo, ChannelType, PhoneCallState} from 'src/types/types';
 import {
     getCallsClientSessionID,
     getCallsWindow,

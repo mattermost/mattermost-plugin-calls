@@ -3,9 +3,10 @@
 
 import {
     CallPostProps,
-    CallsConfig,
+    CallsConfig as CommonCallsConfig,
     CallStartData,
     CallState,
+    CallsVersionInfo as CommonCallsVersionInfo,
     LiveCaption,
     SessionState,
     TranscribeAPI,
@@ -13,25 +14,43 @@ import {
 import {MessageDescriptor} from 'react-intl';
 import {RTCStats} from 'src/types/webrtc';
 
+// calls-common still carries these for v1 (RTCD); the v2 server never sends them.
+type V1CallsConfigKeys =
+    | 'ICEServers'
+    | 'ICEServersConfigs'
+    | 'NeedsTURNCredentials'
+    | 'EnableSimulcast'
+    | 'EnableAV1'
+    | 'EnableDCSignaling'
+    | 'ICEHostOverride'
+    | 'ICEHostPortOverride'
+    | 'UDPServerAddress'
+    | 'TCPServerAddress'
+    | 'UDPServerPort'
+    | 'TCPServerPort'
+    | 'EnableIPv6'
+    | 'RTCDServiceURL'
+    | 'TURNStaticAuthSecret'
+    | 'TURNCredentialsExpirationMinutes'
+    | 'ServerSideTURN';
+
+export type CallsConfig = Omit<CommonCallsConfig, V1CallsConfigKeys>;
+
+export type CallsVersionInfo = Omit<CommonCallsVersionInfo, 'rtcd_version' | 'rtcd_build'>;
+
 export const CallsConfigDefault: CallsConfig = {
-    ICEServers: [],
-    ICEServersConfigs: [],
     DefaultEnabled: false,
     MaxCallParticipants: 0,
-    NeedsTURNCredentials: false,
     AllowScreenSharing: true,
     EnableRecordings: false,
     MaxRecordingDuration: 60,
     sku_short_name: '',
-    EnableSimulcast: false,
     EnableRinging: true,
     EnableTranscriptions: false,
     EnableLiveCaptions: false,
     HostControlsAllowed: false,
-    EnableAV1: false,
     TranscribeAPI: TranscribeAPI.WhisperCPP,
     GroupCallsAllowed: false,
-    EnableDCSignaling: false,
     EnableVideo: false,
     EnableSIPOutbound: false,
 };
