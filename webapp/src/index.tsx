@@ -44,9 +44,7 @@ import CallClient, {CALL_EVENT, DisconnectReason} from 'src/clients/call';
 import type {LiveKitSessionResponse, ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
-import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
-import EnableSimulcast from 'src/components/admin_console_settings/enable_simulcast';
 import EnableVideo from 'src/components/admin_console_settings/enable_video';
 import EnableSIPOutbound from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound';
 import EnableSIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound_allowlist';
@@ -513,8 +511,6 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
         registry.registerAdminConsoleCustomSetting('MaxCallParticipants', MaxCallParticipants);
         registry.registerAdminConsoleCustomSetting('AllowScreenSharing', AllowScreenSharing);
-        registry.registerAdminConsoleCustomSetting('EnableSimulcast', EnableSimulcast);
-        registry.registerAdminConsoleCustomSetting('EnableAV1', EnableAV1);
         registry.registerAdminConsoleCustomSetting('EnableRinging', EnableRinging);
         registry.registerAdminConsoleCustomSetting('EnableVideo', EnableVideo);
 
