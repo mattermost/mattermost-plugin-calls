@@ -637,7 +637,8 @@ export function getPersistentStorage() {
 }
 
 export function shareAudioWithScreen() {
-    return window.localStorage.getItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN) === 'on';
+    // Defaults to on when unset, so the browser surfaces its share-audio option.
+    return window.localStorage.getItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN) !== 'off';
 }
 
 // Ported from mattermost-redux/src/utils/browser_info.ts

@@ -622,6 +622,8 @@ type IncomingCallAction = {
 
 const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingCallAction) => {
     switch (action.type) {
+    case UN_INITIALIZED:
+        return [];
     case ADD_INCOMING_CALL:
         return [...state, {...action.data}];
     case REMOVE_INCOMING_CALL:

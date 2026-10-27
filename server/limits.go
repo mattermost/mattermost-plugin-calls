@@ -88,7 +88,7 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 	text := fmt.Sprintf("Start a call in a channel. You can include up to %d participants per call.%s[Upgrade now](https://customers.mattermost.com).",
 		maxParticipants, separator)
 
-	attachments := []*model.SlackAttachment{
+	attachments := []*model.MessageAttachment{
 		{
 			Title: title,
 			Text:  separator + text,
@@ -113,7 +113,7 @@ func (p *Plugin) handleCloudNotifyAdmins(w http.ResponseWriter, r *http.Request)
 			ChannelId: channel.Id,
 			Type:      postType,
 		}
-		model.ParseSlackAttachment(post, attachments)
+		model.ParseMessageAttachment(post, attachments)
 		if _, err := p.API.CreatePost(post); err != nil {
 			p.LogWarn("failed to send a DM to user", "user ID", admin.Id, "error", err)
 		}

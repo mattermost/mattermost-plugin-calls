@@ -42,7 +42,7 @@ func NewStore(settings model.SqlSettings, rConnector driver.Connector, log mlog.
 		return nil, fmt.Errorf("invalid nil DataSource")
 	}
 
-	if *settings.DriverName != model.DatabaseDriverMysql && *settings.DriverName != model.DatabaseDriverPostgres {
+	if *settings.DriverName != model.DatabaseDriverPostgres {
 		return nil, fmt.Errorf("invalid db driver %q", *settings.DriverName)
 	}
 
@@ -80,9 +80,6 @@ func NewStore(settings model.SqlSettings, rConnector driver.Connector, log mlog.
 
 	st.wDB = db
 	st.wDBx = sqlx.NewDb(st.wDB, st.driverName)
-	if st.driverName == model.DatabaseDriverMysql {
-		st.wDBx.MapperFunc(func(s string) string { return s })
-	}
 
 	if rConnector == nil {
 		log.Info("store: no reader connector passed, using writer")
@@ -95,9 +92,6 @@ func NewStore(settings model.SqlSettings, rConnector driver.Connector, log mlog.
 	}
 
 	st.rDBx = sqlx.NewDb(st.rDB, st.driverName)
-	if st.driverName == model.DatabaseDriverMysql {
-		st.rDBx.MapperFunc(func(s string) string { return s })
-	}
 
 	return st, nil
 }

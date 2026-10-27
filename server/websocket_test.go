@@ -1026,8 +1026,6 @@ func TestHandleJoin(t *testing.T) {
 			MemberCount: 1,
 		}, nil).Once()
 
-		mockAPI.On("GetUsersInChannel", channelID, "username", 0, 8).Return(nil, nil)
-
 		// Call lock
 		mockAPI.On("KVSetWithOptions", "mutex_call_"+channelID, []byte{0x1}, mock.Anything).Return(true, nil)
 
