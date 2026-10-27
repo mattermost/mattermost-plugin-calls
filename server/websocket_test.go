@@ -265,22 +265,22 @@ func TestPublishWebSocketEvent(t *testing.T) {
 				ChannelID: callChannelID,
 			}
 
-			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserMuted).Twice()
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserScreenOn).Twice()
 
-			mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, map[string]any{
+			mockAPI.On("PublishWebSocketEvent", wsEventUserScreenOn, map[string]any{
 				"channelID": callChannelID,
 			}, &model.WebsocketBroadcast{
 				UserId: botUserID,
 			}).Once()
 
-			mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, map[string]any{
+			mockAPI.On("PublishWebSocketEvent", wsEventUserScreenOn, map[string]any{
 				"channelID": callChannelID,
 			}, &model.WebsocketBroadcast{
 				ChannelId: callChannelID,
 				OmitUsers: map[string]bool{botUserID: true},
 			}).Once()
 
-			p.publishWebSocketEvent(wsEventUserMuted, data, bc)
+			p.publishWebSocketEvent(wsEventUserScreenOn, data, bc)
 		})
 
 		t.Run("specified users, including bot", func(_ *testing.T) {
@@ -337,14 +337,14 @@ func TestPublishWebSocketEvent(t *testing.T) {
 			ConnectionID: "userConnID",
 		}
 
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserMuted).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, map[string]any{
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserScreenOn).Once()
+		mockAPI.On("PublishWebSocketEvent", wsEventUserScreenOn, map[string]any{
 			"session_id": "userSessionID",
 		}, &model.WebsocketBroadcast{
 			ConnectionId: "userConnID",
 		}).Once()
 
-		p.publishWebSocketEvent(wsEventUserMuted, data, bc)
+		p.publishWebSocketEvent(wsEventUserScreenOn, data, bc)
 	})
 
 	t.Run("specified users", func(_ *testing.T) {
@@ -360,22 +360,22 @@ func TestPublishWebSocketEvent(t *testing.T) {
 				"userD",
 			},
 		}
-		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserMuted).Once()
+		mockMetrics.On("IncWebSocketEvent", "out", wsEventUserScreenOn).Once()
 
-		mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, data, &model.WebsocketBroadcast{
+		mockAPI.On("PublishWebSocketEvent", wsEventUserScreenOn, data, &model.WebsocketBroadcast{
 			ChannelId: callChannelID,
 			UserId:    "userA",
 		}).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, data, &model.WebsocketBroadcast{
+		mockAPI.On("PublishWebSocketEvent", wsEventUserScreenOn, data, &model.WebsocketBroadcast{
 			ChannelId: callChannelID,
 			UserId:    "userC",
 		}).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventUserMuted, data, &model.WebsocketBroadcast{
+		mockAPI.On("PublishWebSocketEvent", wsEventUserScreenOn, data, &model.WebsocketBroadcast{
 			ChannelId: callChannelID,
 			UserId:    "userD",
 		}).Once()
 
-		p.publishWebSocketEvent(wsEventUserMuted, data, bc)
+		p.publishWebSocketEvent(wsEventUserScreenOn, data, bc)
 	})
 }
 

@@ -23,8 +23,6 @@ import (
 const (
 	wsEventUserJoined                = "user_joined"
 	wsEventUserLeft                  = "user_left"
-	wsEventUserMuted                 = "user_muted"
-	wsEventUserUnmuted               = "user_unmuted"
 	wsEventUserScreenOn              = "user_screen_on"
 	wsEventUserScreenOff             = "user_screen_off"
 	wsEventUserVideoOn               = "user_video_on"
