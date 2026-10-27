@@ -1002,11 +1002,19 @@ export default class Plugin {
             );
         };
 
-        const fetchChannels = async (skipChannelID?: string): Promise<AnyAction[]> => {
+        // Returns null if the channels request fails.
+        const fetchChannels = async (skipChannelID?: string): Promise<AnyAction[] | null> => {
             const actions = [];
-            try {
-                const data = await RestClient.fetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
 
+            let data: CallChannelState[];
+            try {
+                data = await RestClient.fetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
+            } catch (err) {
+                logErr(err);
+                return null;
+            }
+
+            try {
                 for (let i = 0; i < data.length; i++) {
                     // Skipping the channel for the current call here is important
                     // as it can avoid an inconsistent state for the current call due to a race.
@@ -1149,11 +1157,14 @@ export default class Plugin {
             // can skip loading its state as a result of the HTTP calls in
             // fetchChannels since it would be racy.
             const actions = await fetchChannels(currentCallChannelID);
-            store.dispatch(batchActions(actions));
+            if (actions) {
+                store.dispatch(batchActions(actions));
+            }
 
-            // A failed config fetch leaves defaults in place, which would make
-            // link joins gate on wrong values. Link joins time out instead.
-            if (!configResult.error) {
+            // Failed config or channels fetches leave defaults or missing state
+            // in place, which would make link joins gate on wrong values. Link
+            // joins time out instead.
+            if (!configResult.error && actions) {
                 resolveInitialStateLoaded();
             }
 
