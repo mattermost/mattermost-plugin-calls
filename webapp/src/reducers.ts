@@ -60,7 +60,6 @@ import {
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
     RINGING_FOR_CALL,
-    RTCD_ENABLED,
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
@@ -541,15 +540,6 @@ const callsVersionInfo = (state = {}, action: { type: string, data: CallsVersion
     }
 };
 
-const rtcdEnabled = (state = false, action: {type: string, data: boolean}) => {
-    switch (action.type) {
-    case RTCD_ENABLED:
-        return action.data;
-    default:
-        return state;
-    }
-};
-
 const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { type: string, data: CallsUserPreferences }) => {
     switch (action.type) {
     case RECEIVED_CALLS_USER_PREFERENCES:
@@ -813,7 +803,6 @@ const rootReducer = combineReducers({
     callsConfig,
     callsConfigEnvOverrides,
     callsVersionInfo,
-    rtcdEnabled,
     callsUserPreferences,
     recordings,
     callLiveCaptionsState,

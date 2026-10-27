@@ -41,17 +41,6 @@ export type ChannelState = {
     enabled?: boolean;
 }
 
-export type CallsClientConfig = {
-    wsURL: string;
-    authToken?: string;
-    iceServers: RTCIceServer[];
-    simulcast?: boolean;
-    enableAV1: boolean;
-    dcSignaling: boolean;
-    dcLocking: boolean;
-    enableVideo: boolean;
-}
-
 export type MediaDevices = {
     inputs: MediaDeviceInfo[];
     outputs: MediaDeviceInfo[];

@@ -507,17 +507,11 @@ export const didNotifyForCall = (state: GlobalState, callID: string): boolean =>
 export const callsConfig = (state: GlobalState): CallsConfig =>
     pluginReduxStore(state).callsConfig;
 
-export const iceServers = (state: GlobalState): RTCIceServer[] =>
-    callsConfig(state).ICEServersConfigs || [];
-
 export const defaultEnabled = (state: GlobalState) =>
     callsConfig(state).DefaultEnabled;
 
 export const maxParticipants = (state: GlobalState) =>
     callsConfig(state).MaxCallParticipants;
-
-export const needsTURNCredentials = (state: GlobalState) =>
-    callsConfig(state).NeedsTURNCredentials;
 
 export const isLimitRestricted = (state: GlobalState): boolean => {
     const numCurrentUsers = profilesInCallInCurrentChannel(state).length;
@@ -545,9 +539,6 @@ export const sipOutboundEnabled = (state: GlobalState) =>
 
 export const sipOutboundAllowlistEnabled = (state: GlobalState): boolean =>
     callsConfig(state).EnableSIPOutboundAllowlist || false;
-
-export const rtcdEnabled = (state: GlobalState) =>
-    pluginReduxStore(state).rtcdEnabled;
 
 export const ringingEnabled = (state: GlobalState) =>
     callsConfig(state).EnableRinging;

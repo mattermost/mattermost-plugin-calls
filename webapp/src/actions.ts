@@ -78,7 +78,6 @@ import {
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
     RINGING_FOR_CALL,
-    RTCD_ENABLED,
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
@@ -172,13 +171,6 @@ export const getCallActive = async (channelID: string) => {
 export const setRecordingsEnabled = (enabled: boolean) => (dispatch: Dispatch) => {
     dispatch({
         type: RECORDINGS_ENABLED,
-        data: enabled,
-    });
-};
-
-export const setRTCDEnabled = (enabled: boolean) => (dispatch: Dispatch) => {
-    dispatch({
-        type: RTCD_ENABLED,
         data: enabled,
     });
 };
