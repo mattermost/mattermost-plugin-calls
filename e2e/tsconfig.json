@@ -13,13 +13,15 @@
     "strict": true,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "experimentalDecorators": true,
-    "baseUrl": "./",
+    "types": [
+      "node"
+    ],
   },
   "include": [
     "./**/*"
