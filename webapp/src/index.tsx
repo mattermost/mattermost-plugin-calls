@@ -45,7 +45,6 @@ import type {LiveKitSessionResponse, ScreenSharingSession} from 'src/clients/cal
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
-import EnableDCSignaling from 'src/components/admin_console_settings/enable_dc_signaling';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
 import EnableSimulcast from 'src/components/admin_console_settings/enable_simulcast';
 import EnableVideo from 'src/components/admin_console_settings/enable_video';
@@ -517,7 +516,6 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('EnableSimulcast', EnableSimulcast);
         registry.registerAdminConsoleCustomSetting('EnableAV1', EnableAV1);
         registry.registerAdminConsoleCustomSetting('EnableRinging', EnableRinging);
-        registry.registerAdminConsoleCustomSetting('EnableDCSignaling', EnableDCSignaling);
         registry.registerAdminConsoleCustomSetting('EnableVideo', EnableVideo);
 
         // LiveKit Service
