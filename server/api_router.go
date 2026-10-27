@@ -189,6 +189,18 @@ func (p *Plugin) newAPIRouter() *mux.Router {
 		}
 	}).Methods("GET")
 
+	// SIP outbound trunk status (admin console)
+	router.HandleFunc("/sip/trunk-status", func(w http.ResponseWriter, r *http.Request) {
+		if userID := r.Header.Get("Mattermost-User-Id"); !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		if err := p.handleGetSIPTrunkStatus(w); err != nil {
+			p.handleError(w, err)
+		}
+	}).Methods("GET")
+
 	// Rate limiting middleware
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

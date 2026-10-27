@@ -25,6 +25,7 @@ import {
     ScreenShareCaptureOptions,
     SubscriptionError,
     Track,
+    TrackEvent,
     TrackPublication,
 } from 'livekit-client';
 import RestClient from 'src/clients/rest';
@@ -56,6 +57,7 @@ import {
     HostControlPayload,
     LiveKitSessionResponse,
     ReactionPayload,
+    RemoteAudioPlayback,
     ScreenSharingSession,
 } from './types';
 
@@ -138,6 +140,8 @@ export default class CallClient extends EventEmitter {
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
 
+    private remoteAudioPlaybacks = new Map<RemoteTrack, RemoteAudioPlayback>();
+
     constructor() {
         super();
 
@@ -184,6 +188,7 @@ export default class CallClient extends EventEmitter {
         room.on(RoomEvent.ConnectionQualityChanged, this.handleConnectionQualityChanged.bind(this));
         room.on(RoomEvent.TrackSubscriptionFailed, this.handleTrackSubscriptionFailed.bind(this));
         room.on(RoomEvent.EncryptionError, this.handleEncryptionError.bind(this));
+        room.on(RoomEvent.AudioPlaybackStatusChanged, this.handleRemoteAudioPlaybackStatusChanged.bind(this));
     }
 
     // trackPubSummary returns a compact, log-friendly view of a track publication.
@@ -370,7 +375,10 @@ export default class CallClient extends EventEmitter {
         // which are the key diagnostic for a connection that never stabilized.
         void this.pollStats();
 
-        this.statsPollTimer = setInterval(this.pollStats, STATS_POLL_INTERVAL_MS);
+        this.statsPollTimer = setInterval(() => {
+            this.pollRemoteAudioPlayback();
+            void this.pollStats();
+        }, STATS_POLL_INTERVAL_MS);
     }
 
     private stopStatsPolling(): void {
@@ -714,7 +722,7 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    public setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): void {
+    public async setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
         if (store) {
             window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({
                 deviceId: device.deviceId,
@@ -723,12 +731,19 @@ export default class CallClient extends EventEmitter {
         }
         this.currentAudioOutputDevice = device;
 
-        // Output sinkId routing is owned by call_widget — it applies setSinkId() on the
-        // audio elements it creates after this method resolves. Calling LiveKit's
-        // switchActiveDevice('audiooutput', …) here would create a second sinkId path.
-
         logDebug('CallClient: audio output device change requested', {deviceId: device.deviceId, label: device.label});
+
+        // Emitted before switching so the picker updates even if the switch is slow or fails.
         this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+
+        // Applies to every attached remote audio element, and LiveKit keeps the
+        // device for elements attached later.
+        try {
+            const activeDeviceSwitched = await this.room?.switchActiveDevice('audiooutput', device.deviceId);
+            logDebug('CallClient: audio output device switched', {deviceId: device.deviceId, activeDeviceSwitched});
+        } catch (err) {
+            logWarn('CallClient: switching audio output device failed', {deviceId: device.deviceId, error: (err as Error)?.message});
+        }
     }
 
     public async sendReaction(emojiData: EmojiData) {
@@ -1064,7 +1079,7 @@ export default class CallClient extends EventEmitter {
             const storedOutput = this.getStoredAudioDevice('output');
             logDebug('CallClient: storedOutput resolved to', storedOutput ? {deviceId: storedOutput.deviceId, label: storedOutput.label} : null);
             if (storedOutput) {
-                this.setAudioOutputDevice(storedOutput, false);
+                await this.setAudioOutputDevice(storedOutput, false);
             }
 
             this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
@@ -1123,6 +1138,7 @@ export default class CallClient extends EventEmitter {
         this.connectPayload = null;
 
         this.stopStatsPolling();
+        this.detachAllRemoteAudio();
 
         this.emit(CALL_EVENT.DISCONNECTED, reason);
 
@@ -1238,11 +1254,15 @@ export default class CallClient extends EventEmitter {
 
     /**
      * Fires when
-     * - a remote participant's audio bits start flowing to us. We wrap the track in a MediaStream and ship it to the widget for `<audio>` playback.
-     * - a remote participant's screen-share bits start flowing to us. We wrap the track in a MediaStream and ship it to the widget for `<video>` playback.
+     * - a remote participant's audio bits start flowing to us (mic or screen-share audio). We play it through LiveKit's attach().
+     * - a remote participant's screen-share video starts flowing to us. The composed stream goes to the widget for `<video>` playback.
      */
     private handleRemoteTrackSubscribed(remoteTrack: RemoteTrack, _remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
         const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
+
+        if (remoteTrack.source === Track.Source.Microphone || remoteTrack.source === Track.Source.ScreenShareAudio) {
+            this.attachRemoteAudio(remoteTrack, userID);
+        }
 
         if (remoteTrack.source === Track.Source.Microphone) {
             const stream = new MediaStream([remoteTrack.mediaStreamTrack]);
@@ -1262,6 +1282,8 @@ export default class CallClient extends EventEmitter {
      * sharer never outlives the media.
      */
     private handleRemoteTrackUnsubscribed(remoteTrack: RemoteTrack, _remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
+        this.detachRemoteAudio(remoteTrack);
+
         if (remoteTrack.source === Track.Source.ScreenShare || remoteTrack.source === Track.Source.ScreenShareAudio) {
             const {userID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
             logDebug(`CallClient: remote screen share stream unsubscribed for user ${userID}`, this.trackSummary(remoteTrack));
@@ -1282,9 +1304,140 @@ export default class CallClient extends EventEmitter {
             logDebug(`CallClient: remote voice stream unpublished for user ${userID}`, this.trackPubSummary(remoteTrackPublication));
         }
 
-        if (remoteTrackPublication.source === Track.Source.ScreenShare) {
+        if (remoteTrackPublication.source === Track.Source.ScreenShare || remoteTrackPublication.source === Track.Source.ScreenShareAudio) {
             logDebug(`CallClient: remote screen share stream unpublished for user ${userID}`, this.trackPubSummary(remoteTrackPublication));
             this.emitScreenSharingSession();
+        }
+    }
+
+    // attachRemoteAudio plays a remote audio track through an element created by
+    // LiveKit, which calls play() and reports blocked autoplay to the room.
+    private attachRemoteAudio(remoteTrack: RemoteTrack, userID: string) {
+        if (this.remoteAudioPlaybacks.has(remoteTrack)) {
+            return;
+        }
+
+        const element = remoteTrack.attach();
+        element.style.display = 'none';
+        element.setAttribute('data-testid', remoteTrack.mediaStreamTrack.id);
+        document.body.appendChild(element);
+
+        const logContext = {userID, ...this.trackSummary(remoteTrack)};
+        const onPlaybackStarted = () => {
+            logDebug('CallClient: remote audio playback started', logContext);
+        };
+        const onPlaybackFailed = (err?: Error) => {
+            logWarn('CallClient: remote audio playback failed', {...logContext, error: err?.name});
+        };
+        remoteTrack.on(TrackEvent.AudioPlaybackStarted, onPlaybackStarted);
+        remoteTrack.on(TrackEvent.AudioPlaybackFailed, onPlaybackFailed);
+
+        this.remoteAudioPlaybacks.set(remoteTrack, {
+            element,
+            userID,
+            onPlaybackStarted,
+            onPlaybackFailed,
+            lastCurrentTime: -1,
+            stuck: false,
+        });
+
+        logDebug('CallClient: remote audio attached', {
+            ...logContext,
+            trackID: remoteTrack.mediaStreamTrack.id,
+            sinkId: (element as HTMLMediaElement & {sinkId?: string}).sinkId,
+            attachedCount: this.remoteAudioPlaybacks.size,
+        });
+    }
+
+    private detachRemoteAudio(remoteTrack: RemoteTrack) {
+        const playback = this.remoteAudioPlaybacks.get(remoteTrack);
+        if (!playback) {
+            return;
+        }
+        this.remoteAudioPlaybacks.delete(remoteTrack);
+
+        remoteTrack.off(TrackEvent.AudioPlaybackStarted, playback.onPlaybackStarted);
+        remoteTrack.off(TrackEvent.AudioPlaybackFailed, playback.onPlaybackFailed);
+        remoteTrack.detach(playback.element);
+        playback.element.remove();
+
+        logDebug('CallClient: remote audio detached', {
+            userID: playback.userID,
+            ...this.trackSummary(remoteTrack),
+            attachedCount: this.remoteAudioPlaybacks.size,
+        });
+    }
+
+    private detachAllRemoteAudio() {
+        for (const remoteTrack of Array.from(this.remoteAudioPlaybacks.keys())) {
+            this.detachRemoteAudio(remoteTrack);
+        }
+    }
+
+    // pollRemoteAudioPlayback catches elements that stopped playing without an
+    // error. LiveKit only logs an AbortError at debug level, so a play() interrupted
+    // by fast leave/re-join would otherwise leave the element paused and silent.
+    private pollRemoteAudioPlayback() {
+        for (const [remoteTrack, playback] of this.remoteAudioPlaybacks) {
+            const {element} = playback;
+            if (remoteTrack.mediaStreamTrack.readyState !== 'live' || remoteTrack.isMuted || remoteTrack.mediaStreamTrack.muted) {
+                playback.lastCurrentTime = element.currentTime;
+                continue;
+            }
+
+            const stuck = element.paused || element.currentTime <= playback.lastCurrentTime;
+            playback.lastCurrentTime = element.currentTime;
+
+            if (!stuck) {
+                if (playback.stuck) {
+                    playback.stuck = false;
+                    logInfo('CallClient: remote audio playback recovered', {userID: playback.userID, ...this.trackSummary(remoteTrack)});
+                }
+                continue;
+            }
+
+            if (playback.stuck) {
+                continue;
+            }
+            playback.stuck = true;
+
+            const context = {
+                userID: playback.userID,
+                ...this.trackSummary(remoteTrack),
+                paused: element.paused,
+                muted: element.muted,
+                readyState: element.readyState,
+                sinkId: (element as HTMLMediaElement & {sinkId?: string}).sinkId,
+                userAgent: navigator.userAgent,
+            };
+            logWarn('CallClient: remote audio element is not playing, retrying play()', context);
+            element.play().catch((err: Error) => {
+                logWarn('CallClient: remote audio play() retry failed', {...context, error: err?.name});
+            });
+        }
+    }
+
+    private handleRemoteAudioPlaybackStatusChanged(canPlayback: boolean) {
+        logInfo(`CallClient: audio playback status changed, canPlaybackAudio: ${canPlayback}`);
+        this.emit(canPlayback ? CALL_EVENT.REMOTE_AUDIO_PLAYBACK_UNBLOCKED : CALL_EVENT.REMOTE_AUDIO_PLAYBACK_BLOCKED);
+    }
+
+    public get canPlaybackAudio(): boolean {
+        return this.room?.canPlaybackAudio ?? true;
+    }
+
+    // startAudio resumes remote audio after the browser blocked autoplay. It must
+    // be called from a user gesture handler.
+    public async startAudio(): Promise<void> {
+        if (!this.room) {
+            return;
+        }
+
+        try {
+            await this.room.startAudio();
+            logInfo('CallClient: audio playback started by user gesture');
+        } catch (err) {
+            logErr('CallClient: starting audio playback failed', err);
         }
     }
 
@@ -1627,7 +1780,7 @@ export default class CallClient extends EventEmitter {
                 logWarn('CallClient: active audio output device removed, falling back to system default',
                     {removed: {deviceId: unplugged.deviceId, label: unplugged.label}, fallback: fallback ? {deviceId: fallback.deviceId, label: fallback.label} : null});
                 if (fallback) {
-                    this.setAudioOutputDevice(fallback, false);
+                    await this.setAudioOutputDevice(fallback, false);
                 } else {
                     this.currentAudioOutputDevice = null;
                 }

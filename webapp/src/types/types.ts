@@ -93,6 +93,7 @@ export type CallAlertConfig = {
     bannerText: MessageDescriptor;
     tooltipText?: MessageDescriptor;
     tooltipSubtext?: MessageDescriptor;
+    actionText?: MessageDescriptor;
     dismissable: boolean;
 }
 
@@ -144,6 +145,10 @@ export const CallAlertStatesDefault = {
         show: false,
     },
     audioOutputDeviceFallback: {
+        active: false,
+        show: false,
+    },
+    remoteAudioPlaybackBlocked: {
         active: false,
         show: false,
     },

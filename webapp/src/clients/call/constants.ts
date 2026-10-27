@@ -18,6 +18,8 @@ export const CALL_EVENT = {
     UNMUTE: 'unmute',
     USERS_VOICE_ACTIVITY_CHANGED: 'usersVoiceActivityChanged',
     REMOTE_VOICE_STREAM: 'remoteVoiceStream',
+    REMOTE_AUDIO_PLAYBACK_BLOCKED: 'remoteAudioPlaybackBlocked',
+    REMOTE_AUDIO_PLAYBACK_UNBLOCKED: 'remoteAudioPlaybackUnblocked',
     USER_JOINED: 'userJoined',
     USER_LEFT: 'userLeft',
     DEVICE_CHANGE: 'devicechange',

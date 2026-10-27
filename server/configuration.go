@@ -62,6 +62,21 @@ type configuration struct {
 	LiveKitAPISecret string
 	// SIP outbound trunk ID for outbound phone calls (e.g., ST_xxx). Empty disables outbound dialing.
 	LiveKitSIPOutboundTrunkID string
+	// How the outbound SIP trunk is provided: sipTrunkModeExisting (use LiveKitSIPOutboundTrunkID as-is)
+	// or sipTrunkModeManaged (the plugin creates/updates the trunk from the fields below).
+	SIPTrunkMode string
+	// Managed trunk: host the SIP bridge sends the INVITE to (no "sip:" prefix).
+	SIPTrunkAddress string
+	// Managed trunk: the caller-ID number (E.164). It must be attached to the trunk at the SIP provider.
+	SIPTrunkNumber string
+	// Managed trunk: SIP auth credentials. May be empty for an unauthenticated provider.
+	SIPTrunkAuthUsername string
+	SIPTrunkAuthPassword string
+	// Managed trunk: SIP signaling transport (auto, udp, tcp, tls).
+	SIPTrunkTransport string
+	// Managed trunk: SRTP media encryption (disable, allow, require). Carriers requiring
+	// TLS signaling generally require encrypted media too.
+	SIPTrunkMediaEncryption string
 	// When set to true, only numbers in SIPOutboundAllowlist may be dialed. Intended for dev/test environments.
 	EnableSIPOutboundAllowlist *bool
 	// Newline-separated list of E.164 phone numbers permitted for outbound dialing when the allowlist is enabled.
@@ -172,6 +187,15 @@ func (c *configuration) SetDefaults() {
 	if c.EnableSIPOutboundAllowlist == nil {
 		c.EnableSIPOutboundAllowlist = model.NewPointer(false)
 	}
+	if c.SIPTrunkMode == "" {
+		c.SIPTrunkMode = sipTrunkModeExisting
+	}
+	if c.SIPTrunkTransport == "" {
+		c.SIPTrunkTransport = sipTrunkTransportDefault
+	}
+	if c.SIPTrunkMediaEncryption == "" {
+		c.SIPTrunkMediaEncryption = sipTrunkMediaEncryptionDefault
+	}
 	if c.TranscriberModelSize == "" {
 		c.TranscriberModelSize = transcriber.ModelSizeDefault
 	}
@@ -248,6 +272,13 @@ func (c *configuration) IsValid() error {
 			return fmt.Errorf("LiveCaptionsLanguage is not valid: should be a 2-letter ISO 639 set 1 language code, or blank for default")
 		}
 	}
+
+	if c.sipTrunkManaged() {
+		if err := c.validateManagedSIPTrunk(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -268,6 +299,13 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveKitAPIKey = c.LiveKitAPIKey
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
 	cfg.LiveKitSIPOutboundTrunkID = c.LiveKitSIPOutboundTrunkID
+	cfg.SIPTrunkMode = c.SIPTrunkMode
+	cfg.SIPTrunkAddress = c.SIPTrunkAddress
+	cfg.SIPTrunkNumber = c.SIPTrunkNumber
+	cfg.SIPTrunkAuthUsername = c.SIPTrunkAuthUsername
+	cfg.SIPTrunkAuthPassword = c.SIPTrunkAuthPassword
+	cfg.SIPTrunkTransport = c.SIPTrunkTransport
+	cfg.SIPTrunkMediaEncryption = c.SIPTrunkMediaEncryption
 	cfg.SIPOutboundAllowlist = c.SIPOutboundAllowlist
 	cfg.LiveKitSIPOutboundAllowedTeams = c.LiveKitSIPOutboundAllowedTeams
 
@@ -442,6 +480,9 @@ func (p *Plugin) getAdminClientConfig(c *configuration) configuration {
 
 	cfg := p.configuration.Clone()
 	cfg.ClientConfig = p.getClientConfig(c)
+	// The admin console reads settings through the server config API, not this
+	// endpoint, so there's no reason to hand the trunk password to the browser.
+	cfg.SIPTrunkAuthPassword = ""
 
 	return *cfg
 }
@@ -508,6 +549,8 @@ func (p *Plugin) OnConfigurationChange() error {
 	if err := p.loadConfig(); err != nil {
 		return fmt.Errorf("OnConfigurationChange: failed to load config: %w", err)
 	}
+
+	p.reconcileSIPTrunkAsync()
 
 	return nil
 }
@@ -617,6 +660,12 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.LiveKitURL = strings.TrimSpace(cfg.LiveKitURL)
 	cfg.LiveKitPrivateURL = strings.TrimSpace(cfg.LiveKitPrivateURL)
 	cfg.LiveKitSIPOutboundTrunkID = strings.TrimSpace(cfg.LiveKitSIPOutboundTrunkID)
+	cfg.SIPTrunkMode = strings.TrimSpace(cfg.SIPTrunkMode)
+	cfg.SIPTrunkAddress = strings.TrimSpace(cfg.SIPTrunkAddress)
+	cfg.SIPTrunkNumber = strings.TrimSpace(cfg.SIPTrunkNumber)
+	cfg.SIPTrunkAuthUsername = strings.TrimSpace(cfg.SIPTrunkAuthUsername)
+	cfg.SIPTrunkTransport = strings.ToLower(strings.TrimSpace(cfg.SIPTrunkTransport))
+	cfg.SIPTrunkMediaEncryption = strings.ToLower(strings.TrimSpace(cfg.SIPTrunkMediaEncryption))
 	cfg.LiveKitSIPOutboundAllowedTeams = strings.TrimSpace(cfg.LiveKitSIPOutboundAllowedTeams)
 }
 
