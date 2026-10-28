@@ -46,7 +46,6 @@ import type {LiveKitSessionResponse, ScreenSharingSession} from 'src/clients/cal
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
-import EnableVideo from 'src/components/admin_console_settings/enable_video';
 import EnableSIPOutbound from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound';
 import EnableSIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound_allowlist';
 import LiveKitAPIKey from 'src/components/admin_console_settings/livekit_service/livekit_api_key';
@@ -104,7 +103,6 @@ import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import {makeSameChannelLinkClickHandler} from 'src/components/same_channel_link_click_handler';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
-import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import {
@@ -148,7 +146,6 @@ import {flushLogsToAccumulated, logDebug, logErr, logInfo} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
 import {
-    callsConfig,
     callsExplicitlyDisabled,
     callsExplicitlyEnabled,
     callStartAtForCallInChannel,
@@ -204,8 +201,6 @@ import {
     handleUserScreenOff,
     handleUserScreenOn,
     handleUserUnraisedHand,
-    handleUserVideoOff,
-    handleUserVideoOn,
     setParticipantRemovedChannelID,
 } from './websocket_handlers';
 
@@ -301,14 +296,6 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_host_removed`, (ev) => {
             handleHostRemoved(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_video_on`, (ev) => {
-            handleUserVideoOn(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_video_off`, (ev) => {
-            handleUserVideoOff(store, ev);
         });
 
         // Following are the core Mattermost Websocket event handlers which plugin reacts to.
@@ -548,7 +535,6 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('MaxCallParticipants', MaxCallParticipants);
         registry.registerAdminConsoleCustomSetting('AllowScreenSharing', AllowScreenSharing);
         registry.registerAdminConsoleCustomSetting('EnableRinging', EnableRinging);
-        registry.registerAdminConsoleCustomSetting('EnableVideo', EnableVideo);
 
         // LiveKit Service
         registry.registerAdminConsoleCustomSection('LiveKitService', LiveKitServiceSection);
@@ -1085,12 +1071,6 @@ export default class Plugin {
                 },
             ];
 
-            if (callsConfig(store.getState()).EnableVideo) {
-                sections.push({
-                    title: 'Video devices settings',
-                    component: VideoDevicesSettingsSection,
-                });
-            }
             registry.registerUserSettings({
                 id: pluginId,
                 uiName: 'Calls',

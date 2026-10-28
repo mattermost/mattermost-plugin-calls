@@ -124,14 +124,6 @@ export const CallAlertStatesDefault = {
         active: false,
         show: false,
     },
-    missingVideoInput: {
-        active: false,
-        show: false,
-    },
-    missingVideoInputPermissions: {
-        active: false,
-        show: false,
-    },
     missingScreenPermissions: {
         active: false,
         show: false,
