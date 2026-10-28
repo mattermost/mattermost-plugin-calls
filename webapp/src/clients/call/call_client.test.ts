@@ -121,6 +121,7 @@ function createMockRoom(): MockRoom {
             unpublishTrack: jest.fn().mockResolvedValue(null),
             setAttributes: jest.fn().mockResolvedValue(undefined),
             publishData: jest.fn().mockResolvedValue(undefined),
+            publishDtmf: jest.fn().mockResolvedValue(undefined),
             audioTrackPublications: new Map(),
             trackPublications: new Map(),
             attributes: {},
@@ -1494,6 +1495,38 @@ describe('CallClient', () => {
             mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'x'}), {identity: '___bot-session'}, undefined, 'caption');
 
             expect(otherListener).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('sendDTMF', () => {
+        it('publishes the digit with its DTMF event code', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            await client.sendDTMF('5');
+            await client.sendDTMF('*');
+            await client.sendDTMF('#');
+
+            expect(mockRoom.localParticipant.publishDtmf.mock.calls).toEqual([
+                [5, '5'],
+                [10, '*'],
+                [11, '#'],
+            ]);
+        });
+
+        it('rejects when the room is not connected', async () => {
+            await expect(client.sendDTMF('1')).rejects.toThrow();
+
+            expect(mockRoom.localParticipant.publishDtmf).not.toHaveBeenCalled();
+        });
+
+        it('rejects when publishing fails, and still sends later digits', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.localParticipant.publishDtmf.mockRejectedValueOnce(new Error('data channel closed'));
+
+            await expect(client.sendDTMF('1')).rejects.toThrow('data channel closed');
+            await expect(client.sendDTMF('2')).resolves.toBeUndefined();
+
+            expect(mockRoom.localParticipant.publishDtmf).toHaveBeenLastCalledWith(2, '2');
         });
     });
 

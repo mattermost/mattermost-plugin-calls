@@ -35,6 +35,7 @@ import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
+import {dtmfCode, DTMFDigit} from 'src/dtmf';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from 'src/log';
 import {parseRTCStats} from 'src/rtc_stats';
 import {CallsClientStats, MediaDevices, ShareScreenError, ShareScreenResult, TrackMetadata} from 'src/types/types';
@@ -764,6 +765,22 @@ export default class CallClient extends EventEmitter {
             this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
         } catch (err) {
             logErr('CallClient: reactions failed to send', err);
+        }
+    }
+
+    // Unlike the other senders this rejects on failure, so the dial pad can tell
+    // the user a digit didn't go out. The digit itself isn't logged since it may
+    // be part of a PIN.
+    public async sendDTMF(digit: DTMFDigit): Promise<void> {
+        if (!this.room || !this.roomConnected) {
+            throw new Error('CallClient: cannot send DTMF, not connected');
+        }
+
+        try {
+            await this.room.localParticipant.publishDtmf(dtmfCode(digit), digit);
+        } catch (err) {
+            logErr('CallClient: sending DTMF failed', err);
+            throw err;
         }
     }
 
