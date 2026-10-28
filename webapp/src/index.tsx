@@ -27,7 +27,6 @@ import {
     getCallsConfig,
     getCallsConfigEnvOverrides,
     getCallsStats,
-    getCallsVersionInfo,
     incomingCallOnChannel,
     joinUser,
     leaveUser,
@@ -195,12 +194,9 @@ import {
     handleUserDismissedNotification,
     handleUserJoined,
     handleUserLeft,
-    handleUserRaisedHand,
-    handleUserReaction,
     handleUserRemovedFromChannel,
     handleUserScreenOff,
     handleUserScreenOn,
-    handleUserUnraisedHand,
     setParticipantRemovedChannelID,
 } from './websocket_handlers';
 
@@ -256,18 +252,6 @@ export default class Plugin {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_user_screen_off`, (ev) => {
             handleUserScreenOff(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_raise_hand`, (ev) => {
-            handleUserRaisedHand(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_unraise_hand`, (ev) => {
-            handleUserUnraisedHand(store, ev);
-        });
-
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_user_reacted`, (ev) => {
-            handleUserReaction(store, ev);
         });
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_call_host_changed`, (ev) => {
@@ -1053,35 +1037,15 @@ export default class Plugin {
 
             unsubscribeActivateListener();
 
-            const requests = [store.dispatch(getCallsConfig()), store.dispatch(getCallsVersionInfo())];
-            if (isCurrentUserSystemAdmin(store.getState())) {
-                requests.push(store.dispatch(getCallsConfigEnvOverrides()));
-            }
-
-            const [configResult] = await Promise.all(requests);
-
-            const sections = [
-                {
-                    title: 'Audio devices settings',
-                    component: AudioDevicesSettingsSection,
-                },
-                {
-                    title: 'Screen sharing settings',
-                    component: ScreenSharingSettingsSection,
-                },
-            ];
-
-            registry.registerUserSettings({
-                id: pluginId,
-                uiName: 'Calls',
-                icon: 'icon-phone-in-talk',
-                sections,
-            });
+            const [configResult] = await Promise.all([
+                store.dispatch(getCallsConfig()),
+                isCurrentUserSystemAdmin(store.getState()) ? store.dispatch(getCallsConfigEnvOverrides()) : Promise.resolve(),
+            ]);
 
             const currentCallChannelID = channelIDForCurrentCall(store.getState());
 
             // We don't care about fetching other calls states in pop out.
-            // Current call state will be requested over websocket
+            // Current call state will be requested over HTTP
             // from the ExpandedView component itself.
             if (isCallsPopOut()) {
                 await Promise.all([

@@ -11,7 +11,6 @@ import (
 type Context map[string]any
 
 const (
-	ContextBatchNumKey  = "batch_num"
 	ContextBatchSizeKey = "batch_size"
 )
 
@@ -81,7 +80,6 @@ func (b *Batcher) Start() {
 					b.batches++
 
 					ctx := Context{
-						ContextBatchNumKey:  b.batches,
 						ContextBatchSizeKey: batchSize,
 					}
 

@@ -10,8 +10,6 @@ export const CALL_EVENT = {
     CONNECTED: 'connect',
     DISCONNECTING: 'disconnecting',
     DISCONNECTED: 'close',
-    RECONNECTING: 'reconnecting',
-    RECONNECTED: 'reconnected',
     ERROR: 'error',
     INIT_AUDIO: 'initaudio',
     MUTE: 'mute',

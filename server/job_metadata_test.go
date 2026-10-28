@@ -34,6 +34,6 @@ func TestJobMetadata(t *testing.T) {
 
 		var jm2 jobMetadata
 		jm2.fromMap(m)
-		require.Equal(t, jm, jm)
+		require.Equal(t, jm, jm2)
 	})
 }

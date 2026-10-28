@@ -297,12 +297,12 @@ func TestPublishWebSocketEvent(t *testing.T) {
 			}
 
 			// Event to bot
-			mockAPI.On("PublishWebSocketEvent", wsEventUserReacted, data, &model.WebsocketBroadcast{
+			mockAPI.On("PublishWebSocketEvent", wsEventUserScreenOn, data, &model.WebsocketBroadcast{
 				UserId: botUserID,
 			}).Once()
 
 			// Event to userA
-			mockAPI.On("PublishWebSocketEvent", wsEventUserReacted, data, &model.WebsocketBroadcast{
+			mockAPI.On("PublishWebSocketEvent", wsEventUserScreenOn, data, &model.WebsocketBroadcast{
 				ChannelId: callChannelID,
 				UserId:    "userA",
 				OmitUsers: map[string]bool{
@@ -311,7 +311,7 @@ func TestPublishWebSocketEvent(t *testing.T) {
 			}).Once()
 
 			// Event to userB
-			mockAPI.On("PublishWebSocketEvent", wsEventUserReacted, data, &model.WebsocketBroadcast{
+			mockAPI.On("PublishWebSocketEvent", wsEventUserScreenOn, data, &model.WebsocketBroadcast{
 				ChannelId: callChannelID,
 				UserId:    "userB",
 				OmitUsers: map[string]bool{
@@ -319,9 +319,9 @@ func TestPublishWebSocketEvent(t *testing.T) {
 				},
 			}).Once()
 
-			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserReacted).Times(2)
+			mockMetrics.On("IncWebSocketEvent", "out", wsEventUserScreenOn).Times(2)
 
-			p.publishWebSocketEvent(wsEventUserReacted, data, bc)
+			p.publishWebSocketEvent(wsEventUserScreenOn, data, bc)
 		})
 	})
 

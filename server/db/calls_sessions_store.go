@@ -46,37 +46,6 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 	return nil
 }
 
-func (s *Store) UpdateCallSession(session *public.CallSession) error {
-	s.metrics.IncStoreOp("UpdateCallSession")
-	defer func(start time.Time) {
-		s.metrics.ObserveStoreMethodsTime("UpdateCallSession", time.Since(start).Seconds())
-	}(time.Now())
-
-	if err := session.IsValid(); err != nil {
-		return fmt.Errorf("invalid call session: %w", err)
-	}
-
-	qb := getQueryBuilder().
-		Update("calls_sessions").
-		Set("Unmuted", session.Unmuted).
-		Set("RaisedHand", session.RaisedHand).
-		Where(sq.Eq{"ID": session.ID})
-
-	q, args, err := qb.ToSql()
-	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
-	defer cancel()
-	_, err = s.wDB.ExecContext(ctx, q, args...)
-	if err != nil {
-		return fmt.Errorf("failed to run query: %w", err)
-	}
-
-	return nil
-}
-
 func (s *Store) DeleteCallSession(id string) error {
 	s.metrics.IncStoreOp("DeleteCallSession")
 	defer func(start time.Time) {

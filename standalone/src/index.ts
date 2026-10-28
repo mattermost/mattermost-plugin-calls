@@ -18,7 +18,7 @@ import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {getCallActive, getCallsConfig, getCallsVersionInfo, joinUser, leaveUser, loadCallState, localSessionClose, setClientConnecting} from 'plugin/actions';
+import {getCallActive, getCallsConfig, joinUser, leaveUser, loadCallState, localSessionClose, setClientConnecting} from 'plugin/actions';
 import CallClient, {CALL_EVENT, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
 import type {ScreenSharingSession} from 'plugin/clients/call/types';
 import RestClient from 'plugin/clients/rest';
@@ -253,7 +253,6 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
     try {
         [, active] = await Promise.all([
             store.dispatch(getCallsConfig()),
-            store.dispatch(getCallsVersionInfo()),
             getCallActive(channelID),
         ]);
     } catch (e) {

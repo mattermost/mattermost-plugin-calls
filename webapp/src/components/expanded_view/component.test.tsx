@@ -1,20 +1,12 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
-
 // media-chrome ships ESM that jest doesn't transform; the helper under test doesn't use it.
 jest.mock('media-chrome/dist/react', () => ({
     MediaControlBar: 'div',
     MediaController: 'div',
     MediaFullscreenButton: 'div',
 }));
-
-// The component reads window.ProductApi at module scope for its contextType, so the global has
-// to exist before it is required.
-window.ProductApi = {
-    WebSocketProvider: React.createContext(null),
-} as unknown as typeof window.ProductApi;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const {isActiveElementInteractable} = require('./component');

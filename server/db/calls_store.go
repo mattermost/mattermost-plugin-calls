@@ -124,32 +124,6 @@ func (s *Store) DeleteCall(callID string) error {
 	return nil
 }
 
-func (s *Store) DeleteCallByChannelID(channelID string) error {
-	s.metrics.IncStoreOp("DeleteCallByChannelID")
-	defer func(start time.Time) {
-		s.metrics.ObserveStoreMethodsTime("DeleteCallByChannelID", time.Since(start).Seconds())
-	}(time.Now())
-
-	qb := getQueryBuilder().
-		Update("calls").
-		Set("DeleteAt", time.Now().UnixMilli()).
-		Where(sq.Eq{"ChannelID": channelID})
-
-	q, args, err := qb.ToSql()
-	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
-	defer cancel()
-	_, err = s.wDB.ExecContext(ctx, q, args...)
-	if err != nil {
-		return fmt.Errorf("failed to run query: %w", err)
-	}
-
-	return nil
-}
-
 func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 	s.metrics.IncStoreOp("GetCall")
 	defer func(start time.Time) {

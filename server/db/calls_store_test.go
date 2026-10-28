@@ -18,7 +18,6 @@ func TestCallsStore(t *testing.T) {
 	testStore(t, map[string]func(t *testing.T, store *Store){
 		"TestCreateCall":               testCreateCall,
 		"TestDeleteCall":               testDeleteCall,
-		"TestDeleteCallByChannelID":    testDeleteCallByChannelID,
 		"TestUpdateCall":               testUpdateCall,
 		"TestGetCall":                  testGetCall,
 		"TestGetActiveCallByChannelID": testGetActiveCallByChannelID,
@@ -130,37 +129,6 @@ func testDeleteCall(t *testing.T, store *Store) {
 	now := time.Now().UnixMilli()
 
 	err = store.DeleteCall(call.ID)
-	require.NoError(t, err)
-
-	call, err = store.GetCall(call.ID, GetCallOpts{FromWriter: true})
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, call.DeleteAt, now)
-}
-
-func testDeleteCallByChannelID(t *testing.T, store *Store) {
-	call := &public.Call{
-		ID:           model.NewId(),
-		CreateAt:     time.Now().UnixMilli(),
-		ChannelID:    model.NewId(),
-		StartAt:      time.Now().UnixMilli(),
-		PostID:       model.NewId(),
-		ThreadID:     model.NewId(),
-		OwnerID:      model.NewId(),
-		Participants: []string{model.NewId(), model.NewId()},
-		Stats: public.CallStats{
-			ScreenDuration: 45,
-		},
-		Props: public.CallProps{
-			Hosts: []string{"userA", "userB"},
-		},
-	}
-
-	err := store.CreateCall(call)
-	require.NoError(t, err)
-
-	now := time.Now().UnixMilli()
-
-	err = store.DeleteCallByChannelID(call.ChannelID)
 	require.NoError(t, err)
 
 	call, err = store.GetCall(call.ID, GetCallOpts{FromWriter: true})

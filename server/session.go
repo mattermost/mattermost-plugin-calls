@@ -19,11 +19,10 @@ import (
 var errGroupCallsNotAllowed = fmt.Errorf("unlicensed servers only allow calls in DMs")
 
 type session struct {
-	userID         string
-	channelID      string
-	connID         string
-	originalConnID string
-	callID         string
+	userID    string
+	channelID string
+	connID    string
+	callID    string
 
 	// to notify of websocket disconnect.
 	wsCloseCh chan struct{}
@@ -39,13 +38,12 @@ type session struct {
 
 func newUserSession(userID, channelID, connID, callID string) *session {
 	return &session{
-		userID:         userID,
-		channelID:      channelID,
-		connID:         connID,
-		originalConnID: connID,
-		callID:         callID,
-		wsCloseCh:      make(chan struct{}),
-		leaveCh:        make(chan struct{}),
+		userID:    userID,
+		channelID: channelID,
+		connID:    connID,
+		callID:    callID,
+		wsCloseCh: make(chan struct{}),
+		leaveCh:   make(chan struct{}),
 	}
 }
 
@@ -530,7 +528,7 @@ func (p *Plugin) removeSession(us *session) error {
 	// - Any of the above events coming from a different app node in a HA cluster.
 	// Using an atomic helps to avoid logging errors for benign cases.
 	if !atomic.CompareAndSwapInt32(&us.removed, 0, 1) {
-		p.LogDebug("session was already removed", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
+		p.LogDebug("session was already removed", "userID", us.userID, "connID", us.connID)
 		return nil
 	}
 
@@ -540,7 +538,7 @@ func (p *Plugin) removeSession(us *session) error {
 	}
 
 	removeSessionFromCall := func(state *callState) {
-		p.LogDebug("removing session from state", "userID", us.userID, "connID", us.connID, "originalConnID", us.originalConnID)
+		p.LogDebug("removing session from state", "userID", us.userID, "connID", us.connID)
 
 		p.mut.Lock()
 		delete(p.sessions, us.connID)
@@ -576,8 +574,8 @@ func (p *Plugin) removeSession(us *session) error {
 		}
 		p.mut.Unlock()
 
-		if err := p.removeUserSession(state, us.userID, us.originalConnID, us.connID, us.channelID); err != nil {
-			p.LogError("failed to remove user session ", "originalConnID", us.originalConnID, "err", err.Error())
+		if err := p.removeUserSession(state, us.userID, us.connID, us.connID, us.channelID); err != nil {
+			p.LogError("failed to remove user session ", "connID", us.connID, "err", err.Error())
 		}
 	}
 
@@ -650,29 +648,12 @@ func (p *Plugin) removeSession(us *session) error {
 	return nil
 }
 
-// getSessionByOriginalID retrieves a session by its original connection ID
-// which is also the session ID matching the RTC connection.
+// getSessionByOriginalID retrieves a session by its connection ID.
 func (p *Plugin) getSessionByOriginalID(sessionID string) *session {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 
-	// We first try to see if the session is mapped by its original ID since
-	// it's more efficient and the most probable case.
-	us := p.sessions[sessionID]
-	if us != nil {
-		return us
-	}
-
-	// If we can't find one, we resort to looping through all the sessions to
-	// check against the originalConnID field. This would be necessary only if
-	// the session reconnected throughout the call with a new ws connection ID.
-	for _, s := range p.sessions {
-		if s.originalConnID == sessionID {
-			return s
-		}
-	}
-
-	return nil
+	return p.sessions[sessionID]
 }
 
 func (p *Plugin) hasSessionsForCall(callID string) bool {

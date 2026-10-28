@@ -44,7 +44,7 @@ import {
 } from 'src/selectors';
 import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {callEnded, getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/session/actions';
-import {CallsConfig, CallsStats, CallsVersionInfo, ChannelType, PhoneCallState} from 'src/types/types';
+import {CallsConfig, CallsStats, ChannelType, PhoneCallState} from 'src/types/types';
 import {
     getCallsClientSessionID,
     getCallsWindow,
@@ -77,7 +77,6 @@ import {
     LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
-    RECEIVED_CALLS_VERSION_INFO,
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
     RINGING_FOR_CALL,
@@ -165,16 +164,6 @@ export const getCallsConfigEnvOverrides = (): ActionFuncAsync<Record<string, str
             {method: 'get'},
         ),
         onSuccess: [RECEIVED_CALLS_CONFIG_ENV_OVERRIDES],
-    });
-};
-
-export const getCallsVersionInfo = (): ActionFuncAsync<CallsVersionInfo> => {
-    return bindClientFunc({
-        clientFunc: () => RestClient.fetch<CallsVersionInfo>(
-            `${getPluginPath()}/version`,
-            {method: 'get'},
-        ),
-        onSuccess: [RECEIVED_CALLS_VERSION_INFO],
     });
 };
 

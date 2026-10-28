@@ -1115,14 +1115,10 @@ export default class CallClient extends EventEmitter {
 
     private handleReconnecting() {
         logInfo('CallClient: reconnecting to room');
-
-        this.emit(CALL_EVENT.RECONNECTING);
     }
 
     private handleReconnected() {
         logDebug('CallClient: reconnected to room');
-
-        this.emit(CALL_EVENT.RECONNECTED);
     }
 
     private handleDisconnected(reason?: DisconnectReason) {

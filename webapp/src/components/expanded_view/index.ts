@@ -16,7 +16,6 @@ import {
     liveCaptionReceived,
     prefetchThread,
     recordingPromptDismissedAt,
-    showScreenSourceModal,
     startCallRecording,
 } from 'src/actions';
 import {
@@ -36,7 +35,6 @@ import {
     recordingsEnabled,
     screenSharingSessionForCurrentCall,
     sessionForCurrentCall,
-    sessionsForOtherUsersInCall,
     sessionsInCurrentCall,
     sessionsInCurrentCallMap,
     threadIDForCallInChannel,
@@ -101,7 +99,6 @@ const mapStateToProps = (state: GlobalState) => {
         transcriptionsEnabled: transcriptionsEnabled(state),
         isAdmin: isCurrentUserSystemAdmin(state),
         hostControlsAllowed: areHostControlsAllowed(state),
-        otherSessions: sessionsForOtherUsersInCall(state),
         isDMCalling: isCurrentDMCallInCallingState(state),
         clientConnecting: clientConnecting(state),
     };
@@ -112,7 +109,6 @@ const mapDispatchToProps = {
     fetchCallState,
     hideExpandedView,
     liveCaptionReceived,
-    showScreenSourceModal,
     closeRhs,
     selectRhsPost,
     prefetchThread,

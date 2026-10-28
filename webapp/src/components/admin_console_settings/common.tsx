@@ -46,16 +46,6 @@ const Enterprise = styled.div`
     }
 `;
 
-export const LeftBox = styled.div`
-    display: flex;
-    flex-direction: column;
-    padding: 24px;
-    max-width: 584px;
-    background: var(--center-channel-bg);
-    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.08);
-    border-radius: 4px;
-`;
-
 export const Title = styled.div`
     display: flex;
     align-items: center;

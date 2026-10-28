@@ -105,7 +105,6 @@ interface Props extends RouteComponentProps {
     callRecording?: CallJobReduxState,
     isRecording: boolean,
     hideExpandedView: () => void,
-    showScreenSourceModal: () => void,
     selectRhsPost?: (postID: string) => void,
     prefetchThread: (postId: string) => void,
     closeRhs?: () => void,
@@ -128,7 +127,6 @@ interface Props extends RouteComponentProps {
     isAdmin: boolean,
     hostControlsAllowed: boolean,
     openModal: <P>(modalData: ModalData<P>) => void;
-    otherSessions: UserSessionState[];
     isDMCalling: boolean;
     clientConnecting: boolean;
     callHostChanged: (channelID: string, hostID: string) => void;
@@ -195,9 +193,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private callQualityBannerLocked = false;
     private callClientUnsubscribers: Array<() => void> = [];
     private hasReSyncedLiveKitState = false;
-
-    static contextType = window.ProductApi.WebSocketProvider;
-    declare context: React.ContextType<typeof window.ProductApi.WebSocketProvider>;
 
     #unlockNavigation?: () => void;
 

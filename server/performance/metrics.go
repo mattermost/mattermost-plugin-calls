@@ -21,16 +21,11 @@ const (
 	metricsSubSystemJobs    = "jobs"
 )
 
-type DBStore interface {
-	WriterDB() *sql.DB
-}
-
 type Metrics struct {
 	registry *prometheus.Registry
 
 	WebSocketConnections             prometheus.Gauge
 	WebSocketEventCounters           *prometheus.CounterVec
-	ClusterEventCounters             *prometheus.CounterVec
 	ClusterMutexGrabTimeHistograms   *prometheus.HistogramVec
 	ClusterMutexLockedTimeHistograms *prometheus.HistogramVec
 	ClusterMutexLockRetriesCounters  *prometheus.CounterVec
@@ -73,17 +68,6 @@ func NewMetrics() *Metrics {
 		[]string{"direction", "type"},
 	)
 	m.registry.MustRegister(m.WebSocketEventCounters)
-
-	m.ClusterEventCounters = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: metricsNamespace,
-			Subsystem: metricsSubSystemCluster,
-			Name:      "events_total",
-			Help:      "Total number of intra cluster events sent",
-		},
-		[]string{"type"},
-	)
-	m.registry.MustRegister(m.ClusterEventCounters)
 
 	m.StoreOpCounters = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -210,10 +194,6 @@ func (m *Metrics) IncWebSocketConn() {
 
 func (m *Metrics) DecWebSocketConn() {
 	m.WebSocketConnections.Dec()
-}
-
-func (m *Metrics) IncClusterEvent(evType string) {
-	m.ClusterEventCounters.With(prometheus.Labels{"type": evType}).Inc()
 }
 
 func (m *Metrics) IncStoreOp(op string) {

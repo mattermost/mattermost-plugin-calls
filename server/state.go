@@ -323,11 +323,6 @@ func (p *Plugin) getCallStateFromCall(call *public.Call, fromWriter bool) (*call
 		Call: *call,
 	}
 
-	participants := make(map[string]struct{}, len(call.Participants))
-	for _, p := range call.Participants {
-		participants[p] = struct{}{}
-	}
-
 	sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{
 		FromWriter: fromWriter,
 	})

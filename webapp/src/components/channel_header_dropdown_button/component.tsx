@@ -14,7 +14,6 @@ interface Props {
     hasCall: boolean,
     isAdmin: boolean,
     isCloudStarter: boolean,
-    isCloudPaid: boolean,
     isLimitRestricted: boolean,
     maxParticipants: number,
     isChannelArchived: boolean,
