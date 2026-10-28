@@ -596,7 +596,7 @@ export const hasPermissionsToEnableCalls = (state: GlobalState, channelId: strin
     return (isDirectChannel(channel) || isGroupChannel(channel)) ||
         cm?.scheme_admin === true ||
         channelRoles[channel.id]?.has('channel_admin') ||
-        teamRoles.has('team_admin');
+        teamRoles?.has('team_admin') === true;
 };
 
 //
