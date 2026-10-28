@@ -93,14 +93,32 @@
     "sass": "1.66.1",
     "sass-loader": "13.2.0",
     "style-loader": "3.0.0",
-    "typescript": "5.3.3",
+    "typescript": "6.0.3",
     "webpack": "5.74.0",
     "webpack-cli": "4.10.0"
   },
   "overrides": {
-    "@mattermost/client": "11.8.0",
-    "@mattermost/types": "11.8.0",
+    "@formatjs/intl": {
+      "typescript": "$typescript"
+    },
+    "@mattermost/client": {
+      ".": "11.8.0",
+      "typescript": "$typescript"
+    },
+    "@mattermost/types": {
+      ".": "11.8.0",
+      "typescript": "$typescript"
+    },
     "@mattermost/desktop-api": {
+      "typescript": "$typescript"
+    },
+    "babel-plugin-typescript-to-proptypes": {
+      "typescript": "$typescript"
+    },
+    "mattermost-redux": {
+      "typescript": "$typescript"
+    },
+    "react-intl": {
       "typescript": "$typescript"
     },
     "react": "$react",

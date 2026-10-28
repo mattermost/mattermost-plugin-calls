@@ -111,7 +111,7 @@ export function isCallsPopOut(): boolean {
     } catch (err) {
         // This can happen if the MM window already has an opener on a different origin (e.g. user clicked a link on a calendar app to open MM).
         // In this case, we know we are not in the expanded view so we can directly return window.callsClient.
-        if (err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
+        if (err instanceof Error && err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
             // Avoid spamming the console with this error.
             return false;
         }
@@ -131,7 +131,7 @@ export function getCallsWindow(): Window {
     } catch (err) {
         // This can happen if the MM window already has an opener on a different origin (e.g. user clicked a link on a calendar app to open MM).
         // In this case, we know we are not in the expanded view so we can directly return window.callsClient.
-        if (err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
+        if (err instanceof Error && err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
             // Avoid spamming the console with this error.
             return window;
         }
