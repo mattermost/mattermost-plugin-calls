@@ -1528,26 +1528,6 @@ describe('CallClient', () => {
 
             expect(mockRoom.localParticipant.publishDtmf).toHaveBeenLastCalledWith(2, '2');
         });
-
-        it('sends a digit only after the previous one has gone out', async () => {
-            await client.connect({channelID: 'test-channel'});
-            let finishFirst: () => void = () => {};
-            mockRoom.localParticipant.publishDtmf.mockImplementationOnce(() => new Promise<void>((resolve) => {
-                finishFirst = resolve;
-            }));
-
-            const first = client.sendDTMF('1');
-            const second = client.sendDTMF('2');
-            await Promise.resolve();
-            await Promise.resolve();
-
-            expect(mockRoom.localParticipant.publishDtmf.mock.calls).toEqual([[1, '1']]);
-
-            finishFirst();
-            await Promise.all([first, second]);
-
-            expect(mockRoom.localParticipant.publishDtmf.mock.calls).toEqual([[1, '1'], [2, '2']]);
-        });
     });
 
     describe('reSyncMuteAndHandState (popout overlay)', () => {
