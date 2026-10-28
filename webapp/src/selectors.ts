@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {CallsConfig, CallsVersionInfo, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
@@ -40,7 +40,9 @@ import {
 } from 'src/reducers';
 import {
     CallJobReduxState,
+    CallsConfig,
     CallsUserPreferences,
+    CallsVersionInfo,
     ChannelState,
     HostControlNotice,
     IncomingCallNotification,
@@ -507,17 +509,11 @@ export const didNotifyForCall = (state: GlobalState, callID: string): boolean =>
 export const callsConfig = (state: GlobalState): CallsConfig =>
     pluginReduxStore(state).callsConfig;
 
-export const iceServers = (state: GlobalState): RTCIceServer[] =>
-    callsConfig(state).ICEServersConfigs || [];
-
 export const defaultEnabled = (state: GlobalState) =>
     callsConfig(state).DefaultEnabled;
 
 export const maxParticipants = (state: GlobalState) =>
     callsConfig(state).MaxCallParticipants;
-
-export const needsTURNCredentials = (state: GlobalState) =>
-    callsConfig(state).NeedsTURNCredentials;
 
 export const isLimitRestricted = (state: GlobalState): boolean => {
     const numCurrentUsers = profilesInCallInCurrentChannel(state).length;
@@ -545,9 +541,6 @@ export const sipOutboundEnabled = (state: GlobalState) =>
 
 export const sipOutboundAllowlistEnabled = (state: GlobalState): boolean =>
     callsConfig(state).EnableSIPOutboundAllowlist || false;
-
-export const rtcdEnabled = (state: GlobalState) =>
-    pluginReduxStore(state).rtcdEnabled;
 
 export const ringingEnabled = (state: GlobalState) =>
     callsConfig(state).EnableRinging;

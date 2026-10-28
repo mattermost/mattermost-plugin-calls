@@ -34,7 +34,6 @@ export const RECEIVED_CALLS_VERSION_INFO = pluginId + '_received_calls_version_i
 export const RECORDINGS_ENABLED = pluginId + '_recordings_enabled';
 export const TRANSCRIPTIONS_ENABLED = pluginId + '_transcriptions_enabled';
 export const LIVE_CAPTIONS_ENABLED = pluginId + '_live_captions_enabled';
-export const RTCD_ENABLED = pluginId + '_rtcd_enabled';
 export const SIP_OUTBOUND_ALLOWLIST_ENABLED = pluginId + '_sip_outbound_allowlist_enabled';
 export const TRANSCRIBE_API = pluginId + '_transcribe_api';
 export const RECEIVED_CHANNEL_STATE = pluginId + 'received_channel_state';

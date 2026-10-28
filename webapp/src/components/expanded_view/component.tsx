@@ -81,6 +81,7 @@ import {
     shareAudioWithScreen,
     untranslatable,
 } from 'src/utils';
+import {serverDismissedAt} from 'src/utils/clock_skew';
 import styled, {createGlobalStyle, css} from 'styled-components';
 
 import {CallSettingsButton} from './call_settings';
@@ -908,17 +909,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.callClientUnsubscribers = [];
     }
 
-    dismissRecordingPrompt = () => {
+    dismissRecordingPrompt = (minDismissedAt = 0) => {
         if (!this.props.channel) {
             logErr('channel should be defined');
             return;
         }
 
+        const dismissedAt = Math.max(serverDismissedAt(this.props.callRecording, this.props.callHostChangeAt), minDismissedAt);
+
         // Dismiss our prompt.
-        this.props.recordingPromptDismissedAt(this.props.channel.id, Date.now());
+        this.props.recordingPromptDismissedAt(this.props.channel.id, dismissedAt);
 
         // Dismiss the parent window's prompt.
-        window.opener?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, Date.now());
+        window.opener?.callActions?.setRecordingPromptDismissedAt(this.props.channel.id, dismissedAt);
     };
 
     onRemove = (sessionID: string, userID: string) => {
@@ -1273,7 +1276,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             />
         );
 
-        if (hasRecStarted) {
+        if (hasRecStarted && isHost) {
             const {formatMessage} = this.props.intl;
             return (
                 <OverlayTrigger
