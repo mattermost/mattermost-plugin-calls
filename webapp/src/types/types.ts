@@ -22,6 +22,7 @@ type V1CallsConfigKeys =
     | 'EnableSimulcast'
     | 'EnableAV1'
     | 'EnableDCSignaling'
+    | 'EnableVideo'
     | 'ICEHostOverride'
     | 'ICEHostPortOverride'
     | 'UDPServerAddress'
@@ -51,7 +52,6 @@ export const CallsConfigDefault: CallsConfig = {
     HostControlsAllowed: false,
     TranscribeAPI: TranscribeAPI.WhisperCPP,
     GroupCallsAllowed: false,
-    EnableVideo: false,
     EnableSIPOutbound: false,
 };
 
