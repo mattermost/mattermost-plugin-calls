@@ -51,25 +51,11 @@
             "help_text": "When set to true, call participants can share their screen."
           },
           {
-            "key": "EnableSimulcast",
-            "display_name": "Enable simulcast for screen sharing (Experimental)",
-            "type": "bool",
-            "default": false,
-            "help_text": "When set to true, simulcast for screen sharing is enabled. This can help to improve screen sharing quality."
-          },
-          {
             "key": "EnableRinging",
-            "display_name": "Enable call ringing",
+            "display_name": "Enable call ringing for direct and group messages",
             "type": "bool",
             "default": false,
-            "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart."
-          },
-          {
-            "key": "EnableDCSignaling",
-            "display_name": "Use data channels for signaling (Experimental)",
-            "type": "bool",
-            "default": false,
-            "help_text": "When set to true, clients will use WebRTC data channels for signaling of new media tracks. This can result in a more efficient and less race-prone process, especially in case of frequent WebSocket disconnections."
+            "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started."
           },
           {
             "key": "EnableVideo",

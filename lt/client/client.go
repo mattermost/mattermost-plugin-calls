@@ -7,12 +7,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -52,16 +50,10 @@ var (
 			{Type: "nack", Parameter: "pli"},
 		},
 	}
-	rtpVideoExtensions = []string{
-		"urn:ietf:params:rtp-hdrext:sdes:mid",
-		"urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id",
-		"urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id",
-	}
 )
 
 const (
-	simulcastLevelHigh = "h"
-	simulcastLevelLow  = "l"
+	videoTrackRID      = "h"
 	receiveMTU         = 1460
 	sendMTU            = 1200
 	HTTPRequestTimeout = 10 * time.Second
@@ -91,7 +83,6 @@ type User struct {
 	cfg         Config
 	apiClient   *model.Client4
 	callsClient *client.Client
-	callsConfig map[string]any
 	hostID      atomic.Value
 
 	pollySession   *polly.Polly
@@ -143,16 +134,7 @@ func NewUser(cfg Config, opts ...Option) *User {
 	return u
 }
 
-func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPTransceiver, videoType string) {
-	getExtensionID := func(URI string) uint8 {
-		for _, ext := range trx.Sender().GetParameters().RTPParameters.HeaderExtensions {
-			if ext.URI == URI {
-				return uint8(ext.ID)
-			}
-		}
-		return 0
-	}
-
+func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, videoType string) {
 	payloader := &codecs.VP8Payloader{
 		EnablePictureID: true,
 	}
@@ -213,16 +195,6 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 
 		packets := packetizer.Packetize(frame, track.Codec().ClockRate/header.TimebaseDenominator)
 		for _, p := range packets {
-			if u.callsConfig["EnableSimulcast"].(bool) {
-				if err := p.Header.SetExtension(getExtensionID(rtpVideoExtensions[0]), []byte(trx.Mid())); err != nil {
-					u.log.Error("failed to set header extension", slog.String("err", err.Error()))
-				}
-
-				if err := p.Header.SetExtension(getExtensionID(rtpVideoExtensions[1]), []byte(track.RID())); err != nil {
-					u.log.Error("failed to set header extension", slog.String("err", err.Error()))
-				}
-			}
-
 			if err := track.WriteRTP(p); err != nil {
 				u.log.Error("failed to write video sample", slog.String("err", err.Error()))
 				return
@@ -234,42 +206,24 @@ func (u *User) sendVideoFile(track *webrtc.TrackLocalStaticRTP, trx *webrtc.RTPT
 func (u *User) transmitVideo(videoType string) {
 	streamID := model.NewId()
 
-	enableSimulcast, _ := u.callsConfig["EnableSimulcast"].(bool)
-
-	trackHigh, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelHigh))
+	track, err := webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(videoTrackRID))
 	if err != nil {
 		u.log.Error(err.Error())
 		os.Exit(1)
 	}
 
-	tracks := []webrtc.TrackLocal{trackHigh}
-
-	var trackLow *webrtc.TrackLocalStaticRTP
-	if enableSimulcast {
-		trackLow, err = webrtc.NewTrackLocalStaticRTP(rtpVideoCodecVP8, "video", streamID, webrtc.WithRTPStreamID(simulcastLevelLow))
-		if err != nil {
-			u.log.Error(err.Error())
-			os.Exit(1)
-		}
-		tracks = []webrtc.TrackLocal{trackLow, trackHigh}
-	}
-
-	var trx *webrtc.RTPTransceiver
+	tracks := []webrtc.TrackLocal{track}
 	if videoType == "screen" {
-		trx, err = u.callsClient.StartScreenShare(tracks)
+		_, err = u.callsClient.StartScreenShare(tracks)
 	} else {
-		trx, err = u.callsClient.StartVideo(tracks)
+		_, err = u.callsClient.StartVideo(tracks)
 	}
 	if err != nil {
 		u.log.Error(err.Error())
 		os.Exit(1)
 	}
 
-	if enableSimulcast {
-		go u.sendVideoFile(trackLow, trx, videoType)
-	}
-
-	u.sendVideoFile(trackHigh, trx, videoType)
+	u.sendVideoFile(track, videoType)
 }
 
 func (u *User) transmitAudio() {
@@ -463,29 +417,6 @@ func (u *User) onConnect() {
 	}
 }
 
-func (u *User) getCallsConfig() (map[string]any, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	res, err := u.apiClient.DoAPIRequest(ctx, http.MethodGet,
-		fmt.Sprintf("%s/plugins/com.mattermost.calls/config", u.cfg.SiteURL), "", "")
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("unexpected response status code %d", res.StatusCode)
-	}
-
-	dec := json.NewDecoder(res.Body)
-	var config map[string]any
-	if err := dec.Decode(&config); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return config, nil
-}
-
 func (u *User) handleTrack(ctx any) error {
 	m, ok := ctx.(map[string]any)
 	if !ok || m == nil {
@@ -598,20 +529,11 @@ func (u *User) Connect(stopCh chan struct{}) error {
 
 	u.log.Debug("creating calls client")
 
-	callsConfig, err := u.getCallsConfig()
-	if err != nil {
-		return fmt.Errorf("failed to get calls config: %w", err)
-	}
-	u.callsConfig = callsConfig
-
-	enableDCSignaling, _ := u.callsConfig["EnableDCSignaling"].(bool)
-
 	callsClient, err := client.New(client.Config{
-		SiteURL:           u.cfg.SiteURL,
-		AuthToken:         apiClient.AuthToken,
-		ChannelID:         u.cfg.ChannelID,
-		EnableDCSignaling: enableDCSignaling,
-		EnableRTCMonitor:  true,
+		SiteURL:          u.cfg.SiteURL,
+		AuthToken:        apiClient.AuthToken,
+		ChannelID:        u.cfg.ChannelID,
+		EnableRTCMonitor: true,
 	}, client.WithLogger(u.log))
 	if err != nil {
 		return fmt.Errorf("failed to create calls client: %w", err)
