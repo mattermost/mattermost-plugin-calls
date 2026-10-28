@@ -6,15 +6,15 @@ import {CallChannelState, CallJobState, EmojiData} from '@mattermost/calls-commo
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
 import {Client4} from 'mattermost-redux/client';
-import {getChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+import {getChannel, getCurrentChannel, getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getServerVersion} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentUserLocale} from 'mattermost-redux/selectors/entities/i18n';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {getCurrentTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 import React, {useEffect} from 'react';
 import {createRoot, Root} from 'react-dom/client';
-import {FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
+import {defineMessage, FormattedMessage, injectIntl, IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import {AnyAction} from 'redux';
 import {batchActions} from 'redux-batched-actions';
@@ -22,6 +22,7 @@ import {
     displayCallErrorModal,
     displayCallsTestModeUser,
     displayFreeTrial,
+    displayGenericErrorModal,
     fetchCallState,
     getCallsConfig,
     getCallsConfigEnvOverrides,
@@ -44,15 +45,8 @@ import CallClient, {CALL_EVENT, DisconnectReason} from 'src/clients/call';
 import type {LiveKitSessionResponse, ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
-import EnableAV1 from 'src/components/admin_console_settings/enable_av1';
-import EnableDCSignaling from 'src/components/admin_console_settings/enable_dc_signaling';
-import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
-import EnableSimulcast from 'src/components/admin_console_settings/enable_simulcast';
 import EnableVideo from 'src/components/admin_console_settings/enable_video';
-import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
-import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
-import ICEServersConfigs from 'src/components/admin_console_settings/ice_servers_configs';
 import EnableSIPOutbound from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound';
 import EnableSIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound_allowlist';
 import LiveKitAPIKey from 'src/components/admin_console_settings/livekit_service/livekit_api_key';
@@ -79,16 +73,11 @@ import TranscribeAPIAzureSpeechKey from 'src/components/admin_console_settings/r
 import TranscribeAPIAzureSpeechRegion from 'src/components/admin_console_settings/recordings/transcriber_api_azure_speech_region';
 import TranscriberModelSize from 'src/components/admin_console_settings/recordings/transcriber_model_size';
 import TranscriberNumThreads from 'src/components/admin_console_settings/recordings/transcriber_num_threads';
-import RTCDServiceURL from 'src/components/admin_console_settings/rtcd_service_url';
 import CallLiveCaptionsSection from 'src/components/admin_console_settings/sections/call_live_captions';
 import CallRecordingsSection from 'src/components/admin_console_settings/sections/call_recordings';
 import CallTranscriptionsSection from 'src/components/admin_console_settings/sections/call_transcriptions';
 import GeneralSettingsSection from 'src/components/admin_console_settings/sections/general_settings';
-import ICEAndTURNSection from 'src/components/admin_console_settings/sections/ice_and_turn';
 import LiveKitServiceSection from 'src/components/admin_console_settings/sections/livekit_service';
-import RTCServerSection from 'src/components/admin_console_settings/sections/rtc_server';
-import RTCDServiceSection from 'src/components/admin_console_settings/sections/rtcd_service';
-import ServerSideTURN from 'src/components/admin_console_settings/server_side_turn';
 import {
     SIPOutboundSection,
     SIPTrunkAddress,
@@ -101,13 +90,7 @@ import {
     SIPTrunkStatusSetting,
     SIPTrunkTransport,
 } from 'src/components/admin_console_settings/sip_outbound';
-import TCPServerAddress from 'src/components/admin_console_settings/tcp_server_address';
-import TCPServerPort from 'src/components/admin_console_settings/tcp_server_port';
 import TestMode from 'src/components/admin_console_settings/test_mode';
-import TURNCredentialsExpirationMinutes from 'src/components/admin_console_settings/turn_credentials_expiration_minutes';
-import TURNStaticAuthSecret from 'src/components/admin_console_settings/turn_static_auth_secret';
-import UDPServerAddress from 'src/components/admin_console_settings/udp_server_address';
-import UDPServerPort from 'src/components/admin_console_settings/udp_server_port';
 import {PostTypeCloudTrialRequest} from 'src/components/custom_post_types/post_type_cloud_trial_request';
 import {PostTypeRecording} from 'src/components/custom_post_types/post_type_recording';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
@@ -116,7 +99,9 @@ import {
     StopRecordingConfirmation,
 } from 'src/components/expanded_view/stop_recording_confirmation';
 import {IncomingCallContainer} from 'src/components/incoming_calls/call_container';
+import JoinCallWatcher from 'src/components/join_call_watcher';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
+import {makeSameChannelLinkClickHandler} from 'src/components/same_channel_link_click_handler';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
@@ -158,6 +143,7 @@ import SwitchCallModal from './components/switch_call_modal';
 import {
     handleDesktopJoinedCall,
 } from './desktop';
+import {makeJoinCallFromLink} from './join_call_from_link';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo} from './log';
 import {pluginId} from './manifest';
 import reducer from './reducers';
@@ -418,7 +404,16 @@ export default class Plugin {
             if (clientConnecting(store.getState())) {
                 return;
             }
-            if (!channelIDForCurrentCall(store.getState())) {
+
+            // Prefer the live window.callsClient over Redux state: the client
+            // is the concrete "I am literally in a call right now" signal,
+            // while Redux can be transiently stale during reload reconnect.
+            // Falling back to Redux covers the case where the client hasn't
+            // attached yet on initial load.
+            const effectiveCurrentChannel = window.callsClient?.channelID || channelIDForCurrentCall(store.getState());
+
+            if (!effectiveCurrentChannel) {
+                // Not in any call - join the new one
                 store.dispatch(setClientConnecting(true));
                 connectCall(channelId, title, rootId);
 
@@ -427,9 +422,12 @@ export default class Plugin {
                 if (channelHasCall(store.getState(), channelId)) {
                     followThread(store, channelId, teamId);
                 }
-            } else if (channelIDForCurrentCall(store.getState()) !== channelId) {
+            } else if (effectiveCurrentChannel !== channelId) {
+                // In a different call - show switch modal
                 store.dispatch(showSwitchCallModal(channelId));
             }
+
+            // If already in this call, do nothing
         };
 
         const joinCall = async (channelId: string, teamId?: string, title?: string, rootId?: string) => {
@@ -474,6 +472,26 @@ export default class Plugin {
                 store.dispatch(displayCallsTestModeUser());
             }
         };
+
+        // Resolved once onActivate has loaded config and channel state.
+        let resolveInitialStateLoaded: () => void;
+        const initialStateLoaded = new Promise<void>((resolve) => {
+            resolveInitialStateLoaded = resolve;
+        });
+
+        // Link-triggered joins have no caller to surface errors, so show the
+        // same modal as /call join.
+        const joinCallFromLink = makeJoinCallFromLink(initialStateLoaded, joinCall, (err) => {
+            logErr('failed to join call from link', err);
+            let msg = defineMessage({defaultMessage: 'An internal error occurred and prevented you from joining the call. Please try again.'});
+            if (err === DisabledCallsErr) {
+                msg = defineMessage({defaultMessage: 'Calls are disabled in this channel.'});
+            }
+            store.dispatch(displayGenericErrorModal(
+                defineMessage({defaultMessage: 'Unable to start or join call'}),
+                msg,
+            ));
+        });
 
         const connectPhoneCall = (channelID: string, phoneSession: LiveKitSessionResponse) => connectCall(channelID, '', '', phoneSession);
         const dialNumber = (number: string, target?: PhoneCallTarget) => dialPhoneNumber(store, number, connectPhoneCall, {target});
@@ -529,15 +547,8 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
         registry.registerAdminConsoleCustomSetting('MaxCallParticipants', MaxCallParticipants);
         registry.registerAdminConsoleCustomSetting('AllowScreenSharing', AllowScreenSharing);
-        registry.registerAdminConsoleCustomSetting('EnableSimulcast', EnableSimulcast);
-        registry.registerAdminConsoleCustomSetting('EnableAV1', EnableAV1);
         registry.registerAdminConsoleCustomSetting('EnableRinging', EnableRinging);
-        registry.registerAdminConsoleCustomSetting('EnableDCSignaling', EnableDCSignaling);
         registry.registerAdminConsoleCustomSetting('EnableVideo', EnableVideo);
-
-        // RTCD Service
-        registry.registerAdminConsoleCustomSection('RTCDService', RTCDServiceSection);
-        registry.registerAdminConsoleCustomSetting('RTCDServiceURL', RTCDServiceURL);
 
         // LiveKit Service
         registry.registerAdminConsoleCustomSection('LiveKitService', LiveKitServiceSection);
@@ -560,23 +571,6 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('SIPTrunkStatus', SIPTrunkStatusSetting);
         registry.registerAdminConsoleCustomSetting('SIPOutboundAllowlist', SIPOutboundAllowlist);
         registry.registerAdminConsoleCustomSetting('LiveKitSIPOutboundAllowedTeams', LiveKitSIPOutboundAllowedTeams);
-
-        // RTC Server
-        registry.registerAdminConsoleCustomSection('RTCServer', RTCServerSection);
-        registry.registerAdminConsoleCustomSetting('UDPServerAddress', UDPServerAddress);
-        registry.registerAdminConsoleCustomSetting('UDPServerPort', UDPServerPort);
-        registry.registerAdminConsoleCustomSetting('TCPServerAddress', TCPServerAddress);
-        registry.registerAdminConsoleCustomSetting('TCPServerPort', TCPServerPort);
-        registry.registerAdminConsoleCustomSetting('EnableIPv6', EnableIPv6);
-
-        // ICE and TURN
-        registry.registerAdminConsoleCustomSection('ICEAndTURN', ICEAndTURNSection);
-        registry.registerAdminConsoleCustomSetting('ICEHostOverride', ICEHostOverride);
-        registry.registerAdminConsoleCustomSetting('ICEHostPortOverride', ICEHostPortOverride);
-        registry.registerAdminConsoleCustomSetting('ICEServersConfigs', ICEServersConfigs);
-        registry.registerAdminConsoleCustomSetting('TURNStaticAuthSecret', TURNStaticAuthSecret);
-        registry.registerAdminConsoleCustomSetting('TURNCredentialsExpirationMinutes', TURNCredentialsExpirationMinutes);
-        registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
 
         // Recordings
         registry.registerAdminConsoleCustomSection('CallRecordings', CallRecordingsSection);
@@ -966,11 +960,19 @@ export default class Plugin {
             );
         };
 
-        const fetchChannels = async (skipChannelID?: string): Promise<AnyAction[]> => {
+        // Returns null if the channels request fails.
+        const fetchChannels = async (skipChannelID?: string): Promise<AnyAction[] | null> => {
             const actions = [];
-            try {
-                const data = await RestClient.fetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
 
+            let data: CallChannelState[];
+            try {
+                data = await RestClient.fetch<CallChannelState[]>(`${getPluginPath()}/channels`, {method: 'get'});
+            } catch (err) {
+                logErr(err);
+                return null;
+            }
+
+            try {
                 for (let i = 0; i < data.length; i++) {
                     // Skipping the channel for the current call here is important
                     // as it can avoid an inconsistent state for the current call due to a race.
@@ -1070,7 +1072,7 @@ export default class Plugin {
                 requests.push(store.dispatch(getCallsConfigEnvOverrides()));
             }
 
-            await Promise.all(requests);
+            const [configResult] = await Promise.all(requests);
 
             const sections = [
                 {
@@ -1113,7 +1115,16 @@ export default class Plugin {
             // can skip loading its state as a result of the HTTP calls in
             // fetchChannels since it would be racy.
             const actions = await fetchChannels(currentCallChannelID);
-            store.dispatch(batchActions(actions));
+            if (actions) {
+                store.dispatch(batchActions(actions));
+            }
+
+            // Failed config or channels fetches leave defaults or missing state
+            // in place, which would make link joins gate on wrong values. Link
+            // joins time out instead.
+            if (!configResult.error && actions) {
+                resolveInitialStateLoaded();
+            }
 
             // If indeed we are in a call, fetch up-to-date state via HTTP.
             if (currentCallChannelID) {
@@ -1134,6 +1145,16 @@ export default class Plugin {
             logDebug('resetting state');
             store.dispatch(unInitialized());
         });
+
+        // Watch the URL for ?join_call=true and trigger a join when it appears.
+        // Handles cross-channel link clicks and pasted URLs. Same-channel
+        // clicks are handled by the click handler below since the URL never
+        // changes in that case. Routes through joinCall (not connectToCall)
+        // so URL-driven joins go through the same enabled/disabled, limit,
+        // and test-mode gating as the regular UI buttons.
+        registry.registerRootComponent(() => (
+            <JoinCallWatcher onJoinCall={joinCallFromLink}/>
+        ));
 
         // A dummy React component so we can access webapp's
         // WebSocket client through the provided hook. Just lovely.
@@ -1160,23 +1181,32 @@ export default class Plugin {
         this.registerWebSocketEvents(registry, store);
 
         let currChannelId = getCurrentChannelId(store.getState());
-        let joinCallParam = new URLSearchParams(window.location.search).get('join_call');
+
+        // Same-channel join_call links: when the link target is the channel
+        // we're already viewing, the webapp short-circuits navigation entirely
+        // and the URL never updates — so JoinCallWatcher can't see it. Catch
+        // those clicks here. Cross-channel clicks fall through to React Router
+        // and are handled by JoinCallWatcher after navigation.
+        const handleSameChannelLinkClick = makeSameChannelLinkClickHandler(
+            () => getCurrentTeam(store.getState())?.name,
+            () => getCurrentChannelId(store.getState()),
+            () => getCurrentChannel(store.getState())?.name,
+            joinCallFromLink,
+        );
+        document.addEventListener('click', handleSameChannelLinkClick, true);
+        this.unsubscribers.push(() => document.removeEventListener('click', handleSameChannelLinkClick, true));
+
         this.unsubscribers.push(store.subscribe(() => {
             const currentChannelId = getCurrentChannelId(store.getState());
+
+            // We only want to register the header menu component on first load
+            // and not on every channel switch.
             if (currChannelId !== currentChannelId) {
                 const firstLoad = !currChannelId;
                 currChannelId = currentChannelId;
-
-                // We only want to register the header menu component on first load and not
-                // on every channel switch.
                 if (firstLoad) {
                     registerHeaderMenuComponentIfNeeded(currentChannelId);
                 }
-
-                if (currChannelId && Boolean(joinCallParam) && !channelIDForCurrentCall(store.getState())) {
-                    connectCall(currChannelId);
-                }
-                joinCallParam = '';
             }
         }));
 

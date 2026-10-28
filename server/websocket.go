@@ -72,9 +72,6 @@ type CallsClientJoinData struct {
 	Title     string
 	ThreadID  string
 
-	AV1Support  bool
-	DCSignaling bool
-
 	// JobID is the id of the job tight to the bot connection to
 	// a call (e.g. recording, transcription). It's a parameter reserved to the
 	// Calls bot only.
@@ -339,8 +336,6 @@ func (p *Plugin) handleJoin(userID, connID, authSessionID string, joinData calls
 		p.sessions[connID] = us
 		p.mut.Unlock()
 
-		p.maybeSendConcurrentSessionsWarning()
-
 		// send successful join response
 		p.publishWebSocketEvent(wsEventJoin, map[string]interface{}{
 			"connID": connID,
@@ -504,19 +499,15 @@ func (p *Plugin) WebSocketMessageHasBeenPosted(connID, userID string, req *model
 		title, _ := req.Data["title"].(string)
 		threadID, _ := req.Data["threadID"].(string)
 		jobID, _ := req.Data["jobID"].(string)
-		av1Support, _ := req.Data["av1Support"].(bool)
-		dcSignaling, _ := req.Data["dcSignaling"].(bool)
 		remoteAddr, _ := req.Data[model.WebSocketRemoteAddr].(string)
 		xff, _ := req.Data[model.WebSocketXForwardedFor].(string)
 
 		joinData := callsJoinData{
 			CallsClientJoinData{
-				ChannelID:   channelID,
-				Title:       title,
-				ThreadID:    threadID,
-				AV1Support:  av1Support,
-				DCSignaling: dcSignaling,
-				JobID:       jobID,
+				ChannelID: channelID,
+				Title:     title,
+				ThreadID:  threadID,
+				JobID:     jobID,
 			},
 			remoteAddr,
 			xff,
