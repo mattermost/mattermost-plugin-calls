@@ -28,7 +28,6 @@ export const MESSAGE_DISPLAY_DEFAULT = 'clean';
 
 // The JobTypes from server/public/job.go
 export const JOB_TYPE_RECORDING = 'recording';
-export const JOB_TYPE_TRANSCRIBING = 'transcribing';
 export const JOB_TYPE_CAPTIONING = 'captioning';
 
 export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
@@ -118,8 +117,6 @@ export const CallTranscribingDisclaimerStrings: {[key: string]: {[key: string]: 
 };
 
 export const DisabledCallsErr = new Error('Cannot start or join call: calls are disabled in this channel.');
-
-export const supportedLocales = [];
 
 // Local/Session storage keys
 export const STORAGE_CALLS_CLIENT_STATS_KEY = 'calls_client_stats';

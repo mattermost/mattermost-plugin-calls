@@ -16,11 +16,6 @@ export type Translations = {
     [key: string]: string;
 };
 
-export type NewPostMessageProps = {
-    mentions: string[];
-    team_id: string;
-}
-
 export type DesktopNotificationArgs = {
     title: string;
     body: string;
@@ -52,13 +47,9 @@ export interface PluginRegistry {
 
     registerChannelToastComponent(component: React.ElementType);
 
-    registerChannelHeaderButtonAction(component: React.ElementType, fn: (channel: Channel) => void);
-
     registerChannelHeaderMenuAction(component: React.ElementType, fn: (channelID: string) => void);
 
     registerWebSocketEventHandler(evType: string, fn: (event: WebSocketEvent) => void);
-
-    registerCustomRoute(route: string, component: React.ElementType);
 
     registerNeedsTeamRoute(route: string, component: React.ElementType);
 
@@ -84,8 +75,6 @@ export interface PluginRegistry {
 
     unregisterComponent(componentID: string);
 
-    unregisterPostTypeComponent(componentID: string);
-
     registerReconnectHandler(handler: () => void);
 
     unregisterReconnectHandler(handler: () => void);
@@ -103,7 +92,7 @@ export interface PluginRegistry {
     registerUserSettings(settings: PluginConfiguration);
 }
 
-export type SlashCommandWillBePostedReturn = { error: string } | { message: string, args: CommandArgs } | unknown;
+type SlashCommandWillBePostedReturn = { error: string } | { message: string, args: CommandArgs } | unknown;
 
 export interface CustomComponentProps {
     id: string;
@@ -129,7 +118,7 @@ export interface CustomComponentProps {
 export type Store = BaseStore<GlobalState> & { dispatch: Dispatch }
 
 // eslint-disable-next-line
-export type Dispatch = ThunkDispatch<GlobalState, any, any>
+type Dispatch = ThunkDispatch<GlobalState, any, any>
 
 export type ModalData<ModalProps> = {
     modalId: string;
@@ -140,7 +129,7 @@ export type ModalData<ModalProps> = {
 export type WebAppUtils = {
 
     // @ts-ignore
-    modals: { openModal, ModalIdentifiers },
+    modals: { openModal },
     notificationSounds: { ring: (sound: string) => void, stopRing: () => void },
     sendDesktopNotificationToMe: (title: string, body: string, channel: Channel, teamId: string, silent: boolean, soundName: string, url: string) => (dispatch: DispatchFunc) => void,
     openUserSettings: (dialogProps: {activeTab: string, isContentProductSettings: boolean}) => ActionFuncAsync;

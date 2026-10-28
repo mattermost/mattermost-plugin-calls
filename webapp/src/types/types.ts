@@ -6,7 +6,6 @@ import {
     CallsConfig as CommonCallsConfig,
     CallStartData,
     CallState,
-    CallsVersionInfo as CommonCallsVersionInfo,
     LiveCaption,
     SessionState,
     TranscribeAPI,
@@ -32,11 +31,10 @@ type V1CallsConfigKeys =
     | 'RTCDServiceURL'
     | 'TURNStaticAuthSecret'
     | 'TURNCredentialsExpirationMinutes'
-    | 'ServerSideTURN';
+    | 'ServerSideTURN'
+    | 'EnableVideo';
 
 export type CallsConfig = Omit<CommonCallsConfig, V1CallsConfigKeys>;
-
-export type CallsVersionInfo = Omit<CommonCallsVersionInfo, 'rtcd_version' | 'rtcd_build'>;
 
 export const CallsConfigDefault: CallsConfig = {
     DefaultEnabled: false,
@@ -51,7 +49,6 @@ export const CallsConfigDefault: CallsConfig = {
     HostControlsAllowed: false,
     TranscribeAPI: TranscribeAPI.WhisperCPP,
     GroupCallsAllowed: false,
-    EnableVideo: false,
     EnableSIPOutbound: false,
 };
 

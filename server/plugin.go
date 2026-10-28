@@ -253,17 +253,17 @@ func phoneCallFields(props public.CallProps) map[string]interface{} {
 		return nil
 	}
 	fields := map[string]interface{}{
-		"type":         props.Type,
-		"phone_number": props.PhoneNumber,
+		"type":          props.Type,
+		phoneNumberProp: props.PhoneNumber,
 	}
 	if props.DisplayNumber != "" {
-		fields["display_number"] = props.DisplayNumber
+		fields[phoneDisplayNumProp] = props.DisplayNumber
 	}
 	if props.DisplayLabel != "" {
-		fields["display_label"] = props.DisplayLabel
+		fields[phoneDisplayLabelProp] = props.DisplayLabel
 	}
 	if props.TargetUserID != "" {
-		fields["target_user_id"] = props.TargetUserID
+		fields[phoneTargetUserIDProp] = props.TargetUserID
 	}
 	return fields
 }

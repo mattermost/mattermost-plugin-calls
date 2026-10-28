@@ -29,7 +29,6 @@ export const GenericErrorModal = (modalProps: Props) => {
             handleConfirm={() => null}
             showCancel={false}
             onHide={() => null}
-            contentPadding={'4px 32px 24px 32px'}
             components={{
                 Header: Header as never,
                 FooterContainer,

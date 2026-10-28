@@ -8,7 +8,7 @@
 
 import {ICEStats, RTCCandidatePairStats, RTCStats, SSRCStats} from 'src/types/webrtc';
 
-export function newRTCLocalInboundStats(report: any) {
+function newRTCLocalInboundStats(report: any) {
     return {
         timestamp: report.timestamp,
 
@@ -27,7 +27,7 @@ export function newRTCLocalInboundStats(report: any) {
     };
 }
 
-export function newRTCLocalOutboundStats(report: any) {
+function newRTCLocalOutboundStats(report: any) {
     return {
         timestamp: report.timestamp,
 
@@ -44,7 +44,7 @@ export function newRTCLocalOutboundStats(report: any) {
     };
 }
 
-export function newRTCRemoteInboundStats(report: any) {
+function newRTCRemoteInboundStats(report: any) {
     return {
         timestamp: report.timestamp,
         kind: report.kind,
@@ -55,7 +55,7 @@ export function newRTCRemoteInboundStats(report: any) {
     };
 }
 
-export function newRTCRemoteOutboundStats(report: any) {
+function newRTCRemoteOutboundStats(report: any) {
     return {
         timestamp: report.timestamp,
         kind: report.kind,
@@ -64,7 +64,7 @@ export function newRTCRemoteOutboundStats(report: any) {
     };
 }
 
-export function newRTCCandidatePairStats(report: any, reports: RTCStatsReport): RTCCandidatePairStats {
+function newRTCCandidatePairStats(report: any, reports: RTCStatsReport): RTCCandidatePairStats {
     let local;
     let remote;
     reports.forEach((r) => {
@@ -90,7 +90,7 @@ export function newRTCCandidatePairStats(report: any, reports: RTCStatsReport): 
     };
 }
 
-export function parseSSRCStats(reports: RTCStatsReport): SSRCStats {
+function parseSSRCStats(reports: RTCStatsReport): SSRCStats {
     const stats: SSRCStats = {};
     reports.forEach((report) => {
         if (!report.ssrc) {
@@ -122,7 +122,7 @@ export function parseSSRCStats(reports: RTCStatsReport): SSRCStats {
     return stats;
 }
 
-export function parseICEStats(reports: RTCStatsReport): ICEStats {
+function parseICEStats(reports: RTCStatsReport): ICEStats {
     const stats: ICEStats = {};
     reports.forEach((report: RTCIceCandidatePairStats) => {
         if (report.type !== 'candidate-pair') {

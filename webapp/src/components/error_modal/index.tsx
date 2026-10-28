@@ -5,10 +5,6 @@ import React, {ComponentProps} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {
     HostRemovedYouFromCallErr,
-    insecureContextErr,
-    rtcPeerCloseErr,
-    rtcPeerErr,
-    rtcPeerTimeoutErr,
     userLeftChannelErr,
     userRemovedFromChannelErr,
 } from 'src/components/error_modal/error_messages';
@@ -19,9 +15,7 @@ import {
     StyledGenericModal,
 } from 'src/components/generic_error_modal';
 import GenericModal from 'src/components/generic_modal';
-import LaptopAlertSVG from 'src/components/icons/laptop_alert_svg';
 import {untranslatable} from 'src/utils';
-import styled from 'styled-components';
 
 type CustomProps = {
     channelID?: string,
@@ -41,21 +35,6 @@ export const ErrorModal = (props: Props) => {
 
     const modalProps = {
         ...props,
-    };
-
-    const onRejoinClick = (ev: React.MouseEvent) => {
-        ev.preventDefault();
-        window.postMessage({type: 'connectCall', channelID: props.channelID}, window.origin);
-        if (props.onHide) {
-            props.onHide();
-        }
-    };
-
-    const onConfirm = () => {
-        if (props.err.message === insecureContextErr.message) {
-            window.open('https://mattermost.com/pl/calls-deployment?utm_source=mattermost&utm_medium=in-product&utm_content=calls_error_modal', '_blank');
-        }
-        return null;
     };
 
     const onTroubleShootingClick = (ev: React.MouseEvent) => {
@@ -98,66 +77,6 @@ export const ErrorModal = (props: Props) => {
     let confirmMsg = formatMessage({defaultMessage: 'Okay'});
 
     switch (props.err.message) {
-    case rtcPeerTimeoutErr.message:
-        headerMsg = (
-            <span>{formatMessage({defaultMessage: 'Call connection failed'})}</span>
-        );
-        msg = (
-            <span>
-                {formatMessage({defaultMessage: 'We couldn\'t join the call because the connection timed out. Please check your network connection and try again.'}, {
-                    joinLink: (text: React.ReactNode) => (
-                        <a
-                            href=''
-                            onClick={onRejoinClick}
-                        >{text}</a>
-                    ),
-                })}
-                {untranslatable(' ')}
-                {troubleShootingMsg}
-            </span>
-        );
-        break;
-    case rtcPeerErr.message:
-    case rtcPeerCloseErr.message:
-        headerMsg = (
-            <span>{formatMessage({defaultMessage: 'Call connection failed'})}</span>
-        );
-        msg = (
-            <span>
-                {formatMessage({defaultMessage: 'There was an error with the connection to the call. Try to <joinLink>re-join</joinLink> the call.'}, {
-                    joinLink: (text: React.ReactNode) => (
-                        <a
-                            href=''
-                            onClick={onRejoinClick}
-                        >{text}</a>
-                    ),
-                })}
-                {untranslatable(' ')}
-                {troubleShootingMsg}
-            </span>
-        );
-        break;
-    case insecureContextErr.message:
-        headerMsg = (
-            <ColumnContainer>
-                <LaptopAlertSVGContainer>
-                    <LaptopAlertSVG
-                        width={150}
-                        height={150}
-                    />
-                </LaptopAlertSVGContainer>
-                <span>{formatMessage({defaultMessage: 'Calls can\'t be initiated in an insecure context'})}</span>
-            </ColumnContainer>
-        );
-        msg = (
-            <span>
-                {formatMessage({defaultMessage: 'You need to be using an HTTPS connection to make calls. Visit the documentation for more information.'})}
-            </span>
-        );
-        modalProps.showCancel = true;
-        modalProps.cancelButtonText = formatMessage({defaultMessage: 'Cancel'});
-        confirmMsg = formatMessage({defaultMessage: 'Learn more'});
-        break;
     case userRemovedFromChannelErr.message:
         headerMsg = (
             <span>{formatMessage({defaultMessage: 'You were removed from the channel'})}</span>
@@ -196,8 +115,7 @@ export const ErrorModal = (props: Props) => {
             modalHeaderText={headerMsg}
             confirmButtonText={confirmMsg}
             onHide={() => null}
-            handleConfirm={onConfirm}
-            contentPadding={'4px 32px 24px 32px'}
+            handleConfirm={() => null}
             components={{
                 Header: Header as never,
                 FooterContainer,
@@ -210,6 +128,3 @@ export const ErrorModal = (props: Props) => {
     );
 };
 
-const LaptopAlertSVGContainer = styled.div`
-    align-self: center;
-`;

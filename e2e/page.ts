@@ -98,26 +98,6 @@ export default class PlaywrightDevPage {
         await expect(this.page.locator('#calls-widget')).toBeVisible();
     }
 
-    async openPopout() {
-        const [popOut, _] = await Promise.all([
-            this.page.context().waitForEvent('page'),
-            this.page.click('#calls-widget-expand-button'),
-        ]);
-        return new PlaywrightDevPage(popOut);
-    }
-
-    async enableCalls() {
-        const channelHeaderButton = this.page.locator('#channelHeaderDropdownButton');
-        await expect(channelHeaderButton).toBeVisible();
-        await channelHeaderButton.click();
-        await this.page.getByText('More actions').hover();
-        const enableCallsButton = this.page.getByText('Enable calls');
-        await expect(enableCallsButton).toBeVisible();
-        await enableCallsButton.click();
-        const startCallButton = this.page.locator('#calls-join-button');
-        await expect(startCallButton).toBeVisible();
-    }
-
     async disableCalls() {
         // Use the REST API directly (same pattern as afterEach cleanup) so the POST
         // is guaranteed to complete with proper CSRF auth before we verify Redux state.
@@ -425,18 +405,14 @@ export default class PlaywrightDevPage {
     async expectScreenShared() {
         await expect(this.page.locator('#screen-player')).toBeVisible();
 
-        const screenStreamID = await (await this.page.waitForFunction(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
-        })).evaluate(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        await this.page.waitForFunction(() => {
+            return Boolean(window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]);
         });
-        expect(screenStreamID).toContain('screen_');
     }
 
     async expectScreenSharedOnPopout() {
         await expect(this.page.locator('#screen-player')).toBeVisible();
 
-        // Track ID format differs between v1 (screen_ prefix) and v2 (LiveKit); just verify the stream exists.
         await this.page.waitForFunction(() => {
             const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
             return Boolean(callsClient.getRemoteScreenStream()?.getVideoTracks()[0]);
@@ -448,13 +424,6 @@ export default class PlaywrightDevPage {
             await this.page.locator('#calls-popout-participants-button').click();
         }
         await expect(this.page.getByTestId('rhs-participant-list')).toBeVisible();
-    }
-
-    async closeRHSOnPopout() {
-        if (await this.page.getByTestId('rhs-participant-list').isVisible()) {
-            await this.page.locator('#calls-popout-participants-button').click();
-        }
-        await expect(this.page.getByTestId('rhs-participant-list')).toBeHidden();
     }
 
     async confirmLeaveFromMenuIfPresent() {

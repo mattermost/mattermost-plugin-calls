@@ -32,7 +32,6 @@ type Props = {
         FooterContainer: typeof DefaultFooterContainer;
     }>;
     children?: React.ReactNode;
-    contentPadding?: string,
 };
 
 type State = {
@@ -130,7 +129,6 @@ export default class GenericModal extends React.PureComponent<Props, State> {
                 role='dialog'
                 aria-labelledby={`${this.props.id}_heading`}
                 id={this.props.id}
-                $contentPadding={this.props.contentPadding || '0px'}
             >
                 <Header
                     className='GenericModal__header'
@@ -160,7 +158,7 @@ export default class GenericModal extends React.PureComponent<Props, State> {
     }
 }
 
-export const StyledModal = styled(Modal)<{ $contentPadding: string}>`
+const StyledModal = styled(Modal)`
     &&& {
         .modal-body {
             overflow: visible;
@@ -188,15 +186,9 @@ export const StyledModal = styled(Modal)<{ $contentPadding: string}>`
     }
 `;
 
-export const DefaultFooterContainer = styled.div`
+const DefaultFooterContainer = styled.div`
     display: flex;
     justify-content: flex-end;
     gap: 20px;
 `;
 
-export const ModalHeading = styled.h1`
-    font-size: 22px;
-    line-height: 28px;
-    color: var(--center-channel-color);
-    width: 100%;
-`;

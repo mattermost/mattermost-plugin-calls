@@ -15,7 +15,6 @@ import {
     UserDismissedNotification,
     UserJoinedData,
     UserLeftData,
-    UserRaiseUnraiseHandData,
     UserReactionData,
     UserRemovedData,
     UserScreenOnOffData,
@@ -48,7 +47,7 @@ import {
 import {logWarn} from 'src/log';
 import {getPhoneCallProps} from 'src/phone_utils';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
-import {userLoweredHand, userRaisedHand, userReacted, userReactedTimeout} from 'src/state/session/actions';
+import {userReacted, userReactedTimeout} from 'src/state/session/actions';
 import {
     HostControlNotice,
     HostControlNoticeType,
@@ -225,24 +224,8 @@ export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScree
     store.dispatch(userScreenUnshared(channelID, ev.data.session_id, ev.data.userID));
 }
 
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch(userRaisedHand(channelID, ev.data.session_id, ev.data.userID, ev.data.raised_hand));
-}
-
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch(userLoweredHand(channelID, ev.data.session_id, ev.data.userID));
-}
-
 // dispatchReaction stores a reaction (with the sender's display name resolved from the
 // current call's profiles) in Redux and schedules its removal after the standard timeout.
-// Shared by the plugin-WS handler and the LiveKit data-message bridge so both transports
-// produce identical state.
 export function dispatchReaction(store: Store, channelID: string, data: UserReactionData) {
     if (channelIDForCurrentCall(store.getState()) !== channelID) {
         return;
@@ -258,11 +241,6 @@ export function dispatchReaction(store: Store, channelID: string, data: UserReac
     setTimeout(() => {
         store.dispatch(userReactedTimeout(channelID, data.user_id, data.session_id, reaction));
     }, REACTION_TIMEOUT_IN_REACTION_STREAM);
-}
-
-export function handleUserReaction(store: Store, ev: WebSocketMessage<UserReactionData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    dispatchReaction(store, channelID, ev.data);
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of

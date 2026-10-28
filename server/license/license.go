@@ -13,17 +13,6 @@ const (
 	enterpriseAdvanced = "advanced"
 )
 
-// IsEnterpriseLicensedOrDevelopment returns true when the server is licensed with any Mattermost
-// Enterprise License, or has `EnableDeveloper` and `EnableTesting` configuration settings
-// enabled signaling a non-production, developer mode.
-func IsEnterpriseLicensedOrDevelopment(config *model.Config, license *model.License) bool {
-	if license != nil {
-		return true
-	}
-
-	return IsConfiguredForDevelopment(config)
-}
-
 // isValidSkuShortName returns whether the SKU short name is one of the known strings;
 // namely: professional, enterprise or enterprise advanced.
 func isValidSkuShortName(license *model.License) bool {

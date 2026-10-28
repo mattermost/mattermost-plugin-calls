@@ -20,9 +20,7 @@ import {reducer as sipCallStates} from 'src/state/sip_call_state/reducer';
 import {
     CallsConfig,
     CallsConfigDefault,
-    CallsUserPreferences,
     CallsUserPreferencesDefault,
-    CallsVersionInfo,
     ChannelState,
     ChannelType,
     HostControlNotice,
@@ -56,8 +54,6 @@ import {
     LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
-    RECEIVED_CALLS_USER_PREFERENCES,
-    RECEIVED_CALLS_VERSION_INFO,
     RECEIVED_CHANNEL_STATE,
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
@@ -145,12 +141,6 @@ const clientStateReducer = (state: clientState = null, action: clientStateAction
         return state;
     }
 };
-
-export type sessionsState = {
-    [channelID: string]: {
-        [sessionID: string]: UserSessionState;
-    };
-}
 
 type reactionsAction = {
     type: string;
@@ -533,22 +523,8 @@ const callsConfigEnvOverrides = (state = {}, action: { type: string, data: Recor
     }
 };
 
-const callsVersionInfo = (state = {}, action: { type: string, data: CallsVersionInfo }) => {
-    switch (action.type) {
-    case RECEIVED_CALLS_VERSION_INFO:
-        return action.data;
-    default:
-        return state;
-    }
-};
-
-const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { type: string, data: CallsUserPreferences }) => {
-    switch (action.type) {
-    case RECEIVED_CALLS_USER_PREFERENCES:
-        return action.data;
-    default:
-        return state;
-    }
+const callsUserPreferences = (state = CallsUserPreferencesDefault) => {
+    return state;
 };
 
 export type recentlyJoinedUsersState = {
@@ -806,7 +782,6 @@ const rootReducer = combineReducers({
     screenSourceModal,
     callsConfig,
     callsConfigEnvOverrides,
-    callsVersionInfo,
     callsUserPreferences,
     recordings,
     callLiveCaptionsState,

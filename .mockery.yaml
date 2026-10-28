@@ -6,7 +6,6 @@ packages:
         config:
         interfaces:
             Metrics:
-            Store:
     github.com/mattermost/mattermost/server/public/plugin:
         config:
         interfaces:

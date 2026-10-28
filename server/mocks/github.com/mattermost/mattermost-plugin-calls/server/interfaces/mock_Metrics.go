@@ -102,39 +102,6 @@ func (_c *MockMetrics_Handler_Call) RunAndReturn(run func() http.Handler) *MockM
 	return _c
 }
 
-// IncClusterEvent provides a mock function with given fields: evType
-func (_m *MockMetrics) IncClusterEvent(evType string) {
-	_m.Called(evType)
-}
-
-// MockMetrics_IncClusterEvent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncClusterEvent'
-type MockMetrics_IncClusterEvent_Call struct {
-	*mock.Call
-}
-
-// IncClusterEvent is a helper method to define mock.On call
-//   - evType string
-func (_e *MockMetrics_Expecter) IncClusterEvent(evType interface{}) *MockMetrics_IncClusterEvent_Call {
-	return &MockMetrics_IncClusterEvent_Call{Call: _e.mock.On("IncClusterEvent", evType)}
-}
-
-func (_c *MockMetrics_IncClusterEvent_Call) Run(run func(evType string)) *MockMetrics_IncClusterEvent_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *MockMetrics_IncClusterEvent_Call) Return() *MockMetrics_IncClusterEvent_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockMetrics_IncClusterEvent_Call) RunAndReturn(run func(string)) *MockMetrics_IncClusterEvent_Call {
-	_c.Run(run)
-	return _c
-}
-
 // IncClusterMutexLockRetries provides a mock function with given fields: group
 func (_m *MockMetrics) IncClusterMutexLockRetries(group string) {
 	_m.Called(group)

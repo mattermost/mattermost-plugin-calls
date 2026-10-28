@@ -20,7 +20,6 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 import type CallClient from 'src/clients/call';
-import RestClient from 'src/clients/rest';
 import {STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
 import {CallPostStatus, CallsPostProps} from 'src/types/types';
 import {notificationSounds} from 'src/webapp_globals';
@@ -74,8 +73,7 @@ export function getChannelURL(state: GlobalState, channel?: Channel, teamId?: st
 export function getCallsClient(): CallClient | undefined {
     let callsClient;
     try {
-        // TODO: Remove this once CallsClient is removed.
-        callsClient = getCallsWindow().callsClient as unknown as CallClient | undefined;
+        callsClient = getCallsWindow().callsClient;
     } catch (err) {
         logErr(err);
     }
@@ -164,15 +162,6 @@ export function getUserDisplayName(user: UserProfile | undefined, shortForm?: bo
     }
 
     return user.username;
-}
-
-export function getExpandedChannelID() {
-    const pattern = `${pluginId}/expanded/`;
-    const idx = window.location.pathname.indexOf(pattern);
-    if (idx < 0) {
-        return '';
-    }
-    return window.location.pathname.substr(idx + pattern.length);
 }
 
 export function alphaSortSessions(profiles: IDMappedObjects<UserProfile>) {
@@ -296,23 +285,6 @@ export function isPublicChannel(channel?: Channel) {
 
 export function isPrivateChannel(channel?: Channel) {
     return channel?.type === 'P';
-}
-
-export async function getProfilesByIds(state: GlobalState, ids: string[]): Promise<UserProfile[]> {
-    const profiles = [];
-    const missingIds = [];
-    for (const id of ids) {
-        const profile = state.entities.users.profiles[id];
-        if (profile) {
-            profiles.push(profile);
-        } else {
-            missingIds.push(id);
-        }
-    }
-    if (missingIds.length > 0) {
-        profiles.push(...(await RestClient.getProfilesByIds(missingIds)));
-    }
-    return profiles;
 }
 
 export function getUserIDsForSessions(sessions: SessionState[]) {

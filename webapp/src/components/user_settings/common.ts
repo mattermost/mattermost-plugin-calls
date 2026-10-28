@@ -11,7 +11,6 @@ export type SelectOption = {
 export type DevicesSelectionProps = {
     deviceType: string;
     devices: MediaDeviceInfo[];
-    onSelectionChange?: (opt: SelectOption) => void;
 };
 
 export type DevicesSelectionHandle = {

@@ -6,15 +6,6 @@ import {APIRequestContext, expect} from '@playwright/test';
 import {baseURL, defaultTeam} from './constants';
 import {getHTTPHeaders} from './utils';
 
-export const apiCreateGroupChannel = async (request: APIRequestContext, userIDs: string[]) => {
-    const resp = await request.post(`${baseURL}/api/v4/channels/group`, {
-        headers: await getHTTPHeaders(request),
-        data: userIDs,
-    });
-    expect(resp.status()).toEqual(201);
-    return resp.json();
-};
-
 // Return first one found (that's all we need for now)
 export const apiGetGroupChannel = async (request: APIRequestContext, userName: string) => {
     const resp = await request.post(`${baseURL}/api/v4/channels/group/search`, {

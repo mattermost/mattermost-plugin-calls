@@ -31,7 +31,7 @@ const popoutMappings = {
     [isMac() ? 'meta+alt+r' : 'ctrl+alt+r']: RECORDING_TOGGLE,
 };
 
-export const keyMappings: {[key: string]: {[key: string]: string}} = {
+const keyMappings: {[key: string]: {[key: string]: string}} = {
     global: globalMappings,
     widget: widgetMappings,
     popout: popoutMappings,

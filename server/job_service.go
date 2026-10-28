@@ -388,10 +388,6 @@ func applyEnvOverrides(inputData job.InputData, prefix string) {
 	}
 }
 
-func (s *jobService) Close() error {
-	return s.client.Close()
-}
-
 func (p *Plugin) jobServiceVersionCheck(client *offloader.Client) error {
 	// Version compatibility check.
 	info, err := client.GetVersionInfo()

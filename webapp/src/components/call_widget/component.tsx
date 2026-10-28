@@ -108,7 +108,6 @@ interface Props {
     channelURL: string,
     channelDisplayName: string,
     sessions: UserSessionState[],
-    otherSessions: UserSessionState[];
     sessionsMap: { [sessionID: string]: UserSessionState },
     currentSession?: UserSessionState,
     profiles: IDMappedObjects<UserProfile>,
@@ -141,8 +140,6 @@ interface Props {
     recordingsEnabled: boolean,
     openModal: <P>(modalData: ModalData<P>) => void;
     openCallsUserSettings: () => void;
-    currentUserProfile: UserProfile | undefined,
-    connectedDMUser: UserProfile | undefined,
     isAdmin: boolean,
     isDMCalling: boolean,
     isPhoneCall: boolean,
@@ -209,13 +206,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 alignItems: 'center',
                 cursor: 'move',
             },
-            topBarNew: {
-                display: 'flex',
-                padding: '8px 8px 0px 12px',
-                width: '100%',
-                alignItems: 'center',
-                cursor: 'move',
-            },
             bottomBar: {
                 padding: '8px',
                 display: 'flex',
@@ -236,15 +226,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 fontSize: '11px',
                 lineHeight: '16px',
                 color: 'rgba(var(--center-channel-color-rgb), 0.64)',
-            },
-            menuButton: {
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                color: 'rgba(var(--center-channel-color-rgb), 0.8)',
-                fontSize: '14px',
-                width: 'auto',
-                padding: '0 6px',
             },
             menu: {
                 position: 'absolute',
@@ -2108,152 +2089,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
-    renderTopBar = () => {
-        const {formatMessage} = this.props.intl;
-        const openPopOutLabel = formatMessage({defaultMessage: 'Open in new window'});
-        const ShowIcon = window.desktop && !this.props.global ? ExpandIcon : PopOutIcon;
-
-        const channelLink = (
-            <React.Fragment>
-                <a
-                    href={this.props.channelURL}
-                    onClick={this.onChannelLinkClick}
-                    className='calls-channel-link'
-                    style={{appRegion: 'no-drag', padding: '0', minWidth: 0, fontSize: '16px'} as CSSProperties}
-                >
-                    {isPublicChannel(this.props.channel) && <CompassIcon icon='globe'/>}
-                    {isPrivateChannel(this.props.channel) && <CompassIcon icon='lock'/>}
-                    {isDMChannel(this.props.channel) && <CompassIcon icon='account-outline'/>}
-                    {isGMChannel(this.props.channel) && <CompassIcon icon='account-multiple-outline'/>}
-                    <span
-                        style={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            fontWeight: 600,
-                            letterSpacing: '0.02em',
-                            fontSize: '12px',
-                        }}
-                    >
-                        {this.props.channelDisplayName}
-                    </span>
-                </a>
-            </React.Fragment>
-        );
-
-        return (
-            <div
-                style={this.style.topBarNew}
-                // eslint-disable-next-line no-undefined
-                onMouseDown={this.props.global ? undefined : this.onMouseDown}
-            >
-                {/* TODO: add recording badge */}
-                <div
-                    style={{
-                        marginRight: 'auto',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        lineHeight: '16px',
-                    }}
-                >
-                    {channelLink}
-                    <div style={{fontSize: '10px', color: 'var(--center-channel-color-64, rgba(63, 67, 80, 0.64))'}}>{untranslatable('•')}</div>
-                    <CallStatusTimer
-                        clientConnecting={this.props.clientConnecting}
-                    />
-                </div>
-
-                <WidgetButton
-                    id='calls-widget-expand-button'
-                    ariaLabel={openPopOutLabel}
-                    onToggle={this.onExpandClick}
-                    tooltipText={openPopOutLabel}
-                    tooltipPosition='left'
-                    bgColor=''
-                    disabled={this.props.clientConnecting}
-                    icon={
-                        <ShowIcon
-                            fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
-                        />
-                    }
-                />
-            </div>
-        );
-    };
-
-    renderProfiles = () => {
-        // Here we are assuming this only renders in a DM which is the case
-        // right now.
-        // While connecting or ringing there's no session for us in the store yet, so fall back to
-        // the current user's profile rather than rendering nothing.
-        const selfProfile = this.props.profiles[this.props.currentUserID] || this.props.currentUserProfile;
-        const otherProfile = this.props.connectedDMUser;
-        const otherSession = this.props.otherSessions[0];
-        const selfSession = this.props.currentSession;
-
-        // The callee is expected but not here yet, so their tile is shown pulsing.
-        const calleePending = (this.props.clientConnecting || this.props.isDMCalling) && Boolean(otherProfile);
-
-        return (
-            <div
-                className='calls-widget-profiles'
-                style={{
-                    display: 'flex',
-                    gap: '8px',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '100%',
-                }}
-            >
-
-                { calleePending && otherProfile &&
-                <CallsWidgetProfile
-                    profile={otherProfile}
-                    isSpeaking={false}
-                    isMuted={false}
-                    ringing={true}
-                    testID='calls-widget-profile-ringing'
-                />
-                }
-
-                { !calleePending && otherProfile && otherSession &&
-                <CallsWidgetProfile
-                    profile={otherProfile}
-                    isSpeaking={Boolean(otherSession.voice)}
-                    isMuted={!otherSession.unmuted}
-                    testID='calls-widget-profile-other'
-                />
-                }
-
-                { selfProfile && (selfSession || this.props.clientConnecting) &&
-                <CallsWidgetProfile
-                    profile={selfProfile}
-                    isSpeaking={Boolean(selfSession?.voice)}
-                    isMuted={!calleePending && Boolean(selfSession) && !selfSession?.unmuted}
-                    testID='calls-widget-profile-self'
-                />
-                }
-            </div>
-        );
-    };
-
-    renderMiddleBar = () => {
-        return (
-            <div
-                style={{
-                    display: 'flex',
-                    padding: '8px',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}
-                data-testid={'calls-widget-middle-bar'}
-            >
-                {this.renderProfiles()}
-            </div>
-        );
-    };
-
     render() {
         if (!this.props.channel || !window.callsClient || !this.props.show) {
             return null;
@@ -2551,66 +2386,3 @@ const LeaveCallButton = styled(DotMenuButton)<{ $isActive: boolean }>`
     }
 `;
 
-const WidgetProfileContainer = styled.div`
-  display: flex;
-  position: relative;
-  justify-content: center;
-  align-items: center;
-  background: #E4EBFA;
-  border-radius: 4px;
-  flex: 1;
-  height: 75px;
-`;
-
-const MuteState = styled.div<{ $isMuted: boolean }>`
-  position: absolute;
-  bottom: 4px;
-  left: 4px;
-  border-radius: 20px;
-  background: #14213E;
-  width: 20px;
-  height: 20px;
-  border-radius: 20px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-`;
-
-type CallsWidgetProfileProps = {
-    profile: UserProfile;
-    isSpeaking: boolean;
-    isMuted: boolean;
-    ringing?: boolean;
-    testID?: string;
-}
-
-const CallsWidgetProfile = (props: CallsWidgetProfileProps) => {
-    const MuteIcon = props.isMuted ? MutedIcon : UnmutedIcon;
-
-    return (
-        <WidgetProfileContainer data-testid={props.testID}>
-            <Avatar
-                size={40}
-                border={false}
-                url={Client4.getProfilePictureUrl(props.profile.id, props.profile.last_picture_update)}
-                borderGlowWidth={props.isSpeaking ? 3 : 0}
-                className={props.ringing ? 'pulsingAnimation' : ''}
-                borderGlowColor='white'
-            />
-
-            {props.isMuted &&
-            <MuteState
-                $isMuted={props.isMuted}
-                data-testid='calls-widget-profile-mute-state'
-            >
-                <MuteIcon
-                    style={{
-                        fill: props.isMuted ? 'white' : 'rgba(61, 184, 135, 1)',
-                        height: '12px',
-                    }}
-                />
-            </MuteState>
-            }
-        </WidgetProfileContainer>
-    );
-};

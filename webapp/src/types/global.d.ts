@@ -1,7 +1,6 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {WebSocketClient} from '@mattermost/client';
 import type {DesktopAPI} from '@mattermost/desktop-api';
 import type {ActionFuncAsync} from 'mattermost-redux/types/actions';
 import type CallClient from 'src/clients/call';
@@ -21,7 +20,6 @@ declare global {
         // accumulated log string. Exposed so a popout can delegate /call logs
         // flush+read to the opener's realm in one call. See src/log.ts.
         callsClientFlushAndGetLogs?: () => string,
-        webkitAudioContext: AudioContext,
         basename: string,
         desktop?: {
             version?: string | null;
@@ -32,8 +30,6 @@ declare global {
         callActions?: CallActions,
         WebappUtils: WebAppUtils,
         ProductApi: {
-            useWebSocketClient: () => WebSocketClient,
-            WebSocketProvider: React.Context<WebSocketClient>,
             selectRhsPost: (postId: string) => ActionFuncAsync,
         };
 
@@ -46,10 +42,5 @@ declare global {
 
         registerPlugin(id: string, plugin: unknown): void,
     }
-
-    interface HTMLVideoElement {
-        webkitRequestFullscreen: () => void,
-        msRequestFullscreen: () => void,
-        mozRequestFullscreen: () => void,
-    }
 }
+

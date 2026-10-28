@@ -15,13 +15,11 @@ import (
 )
 
 const (
-	DBName         = "mattermost_test"
-	DBUser         = "mmuser"
-	DBPass         = "mostest"
-	DBNetworkAlias = "db"
+	DBName = "mattermost_test"
+	DBUser = "mmuser"
+	DBPass = "mostest"
 
 	PostgresImage = "postgres:14"
-	PostgrePort   = 5432
 )
 
 // RunPostgresContainerLocal creates and run a postgres container accessible

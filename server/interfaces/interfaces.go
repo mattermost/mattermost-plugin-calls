@@ -6,10 +6,6 @@ package interfaces
 import (
 	"database/sql"
 	"net/http"
-
-	"github.com/mattermost/mattermost/server/public/model"
-
-	"github.com/mattermost/morph/models"
 )
 
 type Metrics interface {
@@ -17,7 +13,6 @@ type Metrics interface {
 	IncWebSocketEvent(direction, evType string)
 	IncWebSocketConn()
 	DecWebSocketConn()
-	IncClusterEvent(evType string)
 	IncStoreOp(op string)
 	ObserveClusterMutexGrabTime(group string, elapsed float64)
 	ObserveClusterMutexLockedTime(group string, elapsed float64)
@@ -34,12 +29,4 @@ type Metrics interface {
 type StoreMetrics interface {
 	IncStoreOp(op string)
 	ObserveStoreMethodsTime(method string, elapsed float64)
-}
-
-type Store interface {
-	Migrate(direction models.Direction, dryRun bool) error
-	Close() error
-	GetPost(postID string) (*model.Post, error)
-	UpdateFileInfoPostID(fileID, channelID, postID string) error
-	KVGet(pluginID, key string, fromWriter bool) ([]byte, error)
 }

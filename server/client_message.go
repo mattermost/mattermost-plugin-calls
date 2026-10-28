@@ -3,13 +3,8 @@
 
 package main
 
-import (
-	"encoding/json"
-)
-
 type clientMessage struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data,omitempty"`
+	Type string `json:"type"`
 }
 
 const (
@@ -18,14 +13,6 @@ const (
 	clientMessageTypeCaption = "caption"
 	clientMessageTypeMetric  = "metric"
 )
-
-func (m *clientMessage) ToJSON() ([]byte, error) {
-	return json.Marshal(m)
-}
-
-func (m *clientMessage) FromJSON(data []byte) error {
-	return json.Unmarshal(data, &m)
-}
 
 var validClientMessageTypes = map[string]bool{
 	clientMessageTypeJoin:    true,

@@ -1,12 +1,9 @@
 GO ?= $(shell command -v go 2> /dev/null)
 NPM ?= $(shell command -v npm 2> /dev/null)
-CURL ?= $(shell command -v curl 2> /dev/null)
 MM_DEBUG ?=
 MANIFEST_FILE ?= plugin.json
-GOPATH ?= $(shell go env GOPATH)
 GO_TEST_FLAGS ?= -race
 GO_BUILD_FLAGS ?=
-MM_UTILITIES_DIR ?= ../mattermost-utilities
 DLV_DEBUG_PORT := 2346
 DEFAULT_GOOS := $(shell go env GOOS)
 DEFAULT_GOARCH := $(shell go env GOARCH)
@@ -303,9 +300,6 @@ ifneq ($(wildcard $(ASSETS_DIR)/.),)
 	cp -r server/i18n $(ASSETS_DIR)/
 	cp -r $(ASSETS_DIR) dist/$(PLUGIN_ID)/
 endif
-ifneq ($(HAS_PUBLIC),)
-	cp -r public dist/$(PLUGIN_ID)/
-endif
 ifneq ($(HAS_SERVER),)
 	mkdir -p dist/$(PLUGIN_ID)/server
 	cp -r server/dist dist/$(PLUGIN_ID)/server/
@@ -528,7 +522,7 @@ ifneq ($(HAS_WEBAPP),)
 	rm -fr e2e/.eslintcache
 endif
 	rm -fr build/bin/
-	rm -fr e2e/tests-results/
+	rm -fr e2e/test-results/
 
 ## Sync directory with a starter template
 sync:

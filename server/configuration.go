@@ -706,10 +706,7 @@ func (p *Plugin) isUserInAllowedTeams(userID string, allowedNames []string) bool
 }
 
 func (p *Plugin) isSingleHandler() bool {
-	cfg := p.API.GetConfig()
-	pluginCfg := p.getConfiguration()
-
-	if cfg == nil || pluginCfg == nil || p.licenseChecker == nil {
+	if p.API.GetConfig() == nil {
 		return false
 	}
 

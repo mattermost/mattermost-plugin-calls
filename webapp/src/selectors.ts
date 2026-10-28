@@ -42,7 +42,6 @@ import {
     CallJobReduxState,
     CallsConfig,
     CallsUserPreferences,
-    CallsVersionInfo,
     ChannelState,
     HostControlNotice,
     IncomingCallNotification,
@@ -151,16 +150,12 @@ export const profilesInCallInChannel = (state: GlobalState, channelID: string): 
     return Object.values(getProfilesMapFromSessions(sessionsInCalls(state)[channelID], userProfiles(state)));
 };
 
-export const numProfilesInCallInChannel = (state: GlobalState, channelID: string): number => {
-    return profilesInCallInChannel(state, channelID).length;
-};
-
 export const numSessionsInCallInChannel = (state: GlobalState, channelID: string): number => {
     return Object.keys(sessionsInCalls(state)[channelID] || {}).length;
 };
 
 // numUsersInCallInChannel counts the distinct users in the call rather than their sessions,
-// since a single user can be connected from multiple clients. Unlike numProfilesInCallInChannel
+// since a single user can be connected from multiple clients. Unlike profilesInCallInChannel
 // it doesn't need the profiles to have been fetched, so it never undercounts.
 export const numUsersInCallInChannel = (state: GlobalState, channelID: string): number => {
     const sessions = sessionsInCalls(state)[channelID] || {};
@@ -641,9 +636,6 @@ export const isCloudTrialCompleted = (state: GlobalState): boolean => {
     return subscription?.is_free_trial === 'false' && subscription?.trial_end_at > 0;
 };
 
-export const isCloudTrialNeverStarted = (state: GlobalState): boolean =>
-    getSubscription(state)?.trial_end_at === 0;
-
 export const callsUserPreferences = (state: GlobalState): CallsUserPreferences =>
     pluginReduxStore(state).callsUserPreferences;
 
@@ -654,15 +646,6 @@ export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
     const license = getLicense(state);
     const enterprise = license.SkuShortName === LicenseSkus.Enterprise || license.SkuShortName === LicenseSkus.EntepriseAdvanced;
     return !isCloud(state) && !enterprise;
-};
-
-export const isAtLeastProfessional = (state: GlobalState): boolean => {
-    const sku = callsConfig(state).sku_short_name;
-    const enterprise = sku === LicenseSkus.Enterprise;
-    const professional = sku === LicenseSkus.Professional;
-    const enterpriseAdvanced = sku === LicenseSkus.EntepriseAdvanced;
-
-    return enterpriseAdvanced || enterprise || professional || isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial(state);
 };
 
 export const areHostControlsAllowed = (state: GlobalState): boolean => callsConfig(state).HostControlsAllowed;
@@ -720,5 +703,3 @@ export const clientConnecting = (state: GlobalState) => {
     return pluginReduxStore(state).clientConnecting;
 };
 
-export const callsVersionInfo = (state: GlobalState): CallsVersionInfo =>
-    pluginReduxStore(state).callsVersionInfo;
