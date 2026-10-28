@@ -3,23 +3,14 @@
     "target": "esnext",
     "lib": [
       "dom",
-      "dom.iterable",
       "esnext"
     ],
-    "allowJs": true,
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "strict": true,
-    "strictNullChecks": true,
-    "forceConsistentCasingInFileNames": true,
     "module": "es2020",
     "moduleResolution": "bundler",
-    "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "useUnknownInCatchVariables": false,
-    "experimentalDecorators": true,
     "jsx": "react",
     "types": [
       "node",
@@ -33,16 +24,15 @@
       "plugin/*": [
         "../webapp/src/*"
       ]
-    },
+    }
   },
   "include": [
     "./**/*",
     "../webapp/src/types/global.d.ts",
     "../webapp/src/types/semver-parser/*",
-    "../webapp/src/types/static/*",
+    "../webapp/src/types/static/*"
   ],
   "exclude": [
-    "dist",
-    "!node_modules/@types",
-  ],
+    "dist"
+  ]
 }
