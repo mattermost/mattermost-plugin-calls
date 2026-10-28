@@ -124,14 +124,6 @@ export const CallAlertStatesDefault = {
         active: false,
         show: false,
     },
-    missingVideoInput: {
-        active: false,
-        show: false,
-    },
-    missingVideoInputPermissions: {
-        active: false,
-        show: false,
-    },
     missingScreenPermissions: {
         active: false,
         show: false,
@@ -173,13 +165,6 @@ export type CallJobReduxState = {
 
 export type ShareScreenError = 'not-connected' | 'already-sharing' | 'permission-denied' | 'capture-error';
 export type ShareScreenResult = [stream: MediaStream | null, error: ShareScreenError | null];
-
-export type CapturerSource = {
-    id: string;
-    name: string;
-    thumbnailURL: string;
-    display_id: string;
-}
 
 // currentCallData (of type CurrentCallData) is attached to the widget's window to keep persistent data across
 // the various call windows. As a simple rule, if a child window (eg, ExpandedViewWindow) sets data,

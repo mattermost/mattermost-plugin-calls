@@ -9,8 +9,6 @@ export const HostRemovedYouFromCallErr = new Error(HostRemovedYouFromCallMsg);
 const AudioInputPermissionsMsg = 'missing audio input permissions';
 export const AudioInputPermissionsErr = new Error(AudioInputPermissionsMsg);
 
-export const VideoInputPermissionsError = new Error('missing video input permissions');
-
 export const userRemovedFromChannelErr = new Error('user was removed from channel');
 export const userLeftChannelErr = new Error('user has left channel');
 
