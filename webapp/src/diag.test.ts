@@ -62,7 +62,15 @@ describe('toClientCheck', () => {
         ]));
         expect(res.detail).toBe('Jitter: 1.81 ms');
 
-        expect(toClientCheck('a', info(CheckStatus.SUCCESS, [{level: 'info', message: 'RTT: 18.91 ms'}])).detail).toBe('RTT: 18.91 ms');
+        expect(toClientCheck('a', info(CheckStatus.SUCCESS, [{level: 'info', message: 'RTT: 18.91 ms'}])).detail).toBe('RTT (RTCP): 18.91 ms');
+    });
+
+    it('does not leave a period before the separator', () => {
+        const res = toClientCheck('a', info(CheckStatus.SUCCESS, [
+            {level: 'info', message: 'connected to server, version 1.13.10.'},
+            {level: 'info', message: 'LiveKit Cloud: Canada B'},
+        ]));
+        expect(res.detail).toBe('Connected to server, version 1.13.10; LiveKit Cloud: Canada B');
     });
 
     it('downgrades a success with warnings', () => {
@@ -71,10 +79,31 @@ describe('toClientCheck', () => {
         expect(res.detail).toContain('Packets lost');
     });
 
-    it('reports a missing TURN server as informational, not a failure', () => {
-        const res = toClientCheck('TURN', info(CheckStatus.FAILED, [{level: 'error', message: 'no TURN'}]), {informational: true});
-        expect(res.status).toBe('info');
-        expect(res.detail).toContain('not required');
+    describe('TURN', () => {
+        const region = {level: 'info' as const, message: 'Using region specific url'};
+
+        it('reports a working relay and drops the region note', () => {
+            const res = toClientCheck('TURN', info(CheckStatus.SUCCESS, [region]), {turn: true});
+            expect(res).toEqual({name: 'TURN', status: 'ok', detail: 'Connected through a TURN relay.'});
+        });
+
+        it('warns when TURN is configured without TLS', () => {
+            const res = toClientCheck('TURN', info(CheckStatus.SUCCESS, [region, {level: 'warning', message: 'TURN is configured server side, but TURN/TLS is unavailable.'}]), {turn: true});
+            expect(res.status).toBe('warn');
+            expect(res.detail).toBe('TURN is configured server side, but TURN/TLS is unavailable; Connected through a TURN relay.');
+        });
+
+        it('fails when TURN is configured but a relay connection cannot be made', () => {
+            const res = toClientCheck('TURN', info(CheckStatus.FAILED, [region, {level: 'error', message: 'could not connect'}]), {turn: true});
+            expect(res.status).toBe('fail');
+            expect(res.detail).toBe('Could not connect; A relay connection could not be made.');
+        });
+
+        it('reports a server with no TURN as informational', () => {
+            const res = toClientCheck('TURN', info(CheckStatus.SKIPPED, [{level: 'warning', message: 'No TURN servers configured.'}]), {turn: true});
+            expect(res.status).toBe('info');
+            expect(res.detail).toBe('No TURN servers configured; TURN is not required for most deployments.');
+        });
     });
 });
 
@@ -85,7 +114,7 @@ describe('runClientChecks', () => {
             fake: {
                 checkWebsocket: ok,
                 checkWebRTC: ok,
-                checkTURN: jest.fn(async () => info(CheckStatus.FAILED)),
+                checkTURN: jest.fn(async () => info(CheckStatus.SKIPPED)),
                 checkReconnect: ok,
                 checkConnectionProtocol: ok,
                 checkPublishAudio: ok,
