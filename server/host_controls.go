@@ -370,10 +370,7 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 	// Notify the whole channel that the call has ended so bystander UI
 	// (toast, sidebar icon) clears immediately. In-call clients also receive
 	// this event, but their widget teardown is driven by LiveKit.
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
-		ChannelID:           channelID,
-		ReliableClusterSend: true,
-	})
+	p.publishCallEnd(channelID, state.Call.ID, endReason)
 
 	if err := p.cleanCallState(&state.Call, "host_end", endReason); err != nil {
 		return fmt.Errorf("failed to clean call state: %w", err)
