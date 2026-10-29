@@ -42,10 +42,11 @@ import (
 type fakeLiveKit struct {
 	srv *httptest.Server
 
-	mut          sync.Mutex
-	participants []*livekit.ParticipantInfo
-	listFailures int
-	removed      []string
+	mut             sync.Mutex
+	participants    []*livekit.ParticipantInfo
+	listFailures    int
+	removalFailures int
+	removed         []string
 	// dial stands in for CreateSIPParticipant. The handler has released the
 	// call lock by then, so dial can change the call the way a webhook would.
 	dial func() (*livekit.SIPParticipantInfo, error)
@@ -90,8 +91,17 @@ func (lk *fakeLiveKit) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		lk.mut.Lock()
-		lk.removed = append(lk.removed, req.Identity)
+		fail := lk.removalFailures > 0
+		if fail {
+			lk.removalFailures--
+		} else {
+			lk.removed = append(lk.removed, req.Identity)
+		}
 		lk.mut.Unlock()
+		if fail {
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
+			return
+		}
 		resp = &livekit.RemoveParticipantResponse{}
 	case strings.HasSuffix(r.URL.Path, "/livekit.SIP/CreateSIPParticipant"):
 		lk.mut.Lock()
@@ -131,6 +141,12 @@ func (lk *fakeLiveKit) failLists(n int) {
 	lk.mut.Lock()
 	defer lk.mut.Unlock()
 	lk.listFailures = n
+}
+
+func (lk *fakeLiveKit) failRemovals(n int) {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	lk.removalFailures = n
 }
 
 func (lk *fakeLiveKit) setDial(dial func() (*livekit.SIPParticipantInfo, error)) {
@@ -927,6 +943,27 @@ func TestHangUpSIPLeg(t *testing.T) {
 
 	t.Run("does nothing once the leg is gone", func(t *testing.T) {
 		lk := newFakeLiveKit(t)
+		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
+		require.Empty(t, lk.removedIdentities())
+	})
+
+	t.Run("retries a failed participant list", func(t *testing.T) {
+		lk := newFakeLiveKit(t, leg)
+		lk.failLists(sipHangUpAttempts - 1)
+		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
+		require.Equal(t, []string{leg.Identity}, lk.removedIdentities())
+	})
+
+	t.Run("retries a failed removal", func(t *testing.T) {
+		lk := newFakeLiveKit(t, leg)
+		lk.failRemovals(sipHangUpAttempts - 1)
+		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
+		require.Equal(t, []string{leg.Identity}, lk.removedIdentities())
+	})
+
+	t.Run("gives up after the last attempt", func(t *testing.T) {
+		lk := newFakeLiveKit(t, leg)
+		lk.failRemovals(sipHangUpAttempts)
 		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
 		require.Empty(t, lk.removedIdentities())
 	})

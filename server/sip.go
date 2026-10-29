@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -34,6 +35,12 @@ const sipOutboundRingingTimeout = 60 * time.Second
 // WaitUntilAnswered, so LiveKit returns as soon as the SIP leg is created; this
 // only guards against an unresponsive LiveKit SIP service.
 const sipOutboundDialTimeout = 5 * time.Second
+
+// sipHangUpAttempts and sipHangUpRetryDelay bound how hard hangUpSIPLeg tries.
+const (
+	sipHangUpAttempts   = 3
+	sipHangUpRetryDelay = 500 * time.Millisecond
+)
 
 // livekitHTTPURL converts the configured LiveKit WebSocket URL to an HTTP URL
 // suitable for Twirp API calls.
@@ -128,24 +135,31 @@ func (p *Plugin) dialSIPParticipant(cfg *configuration, trunkID, phoneNumber, ro
 // hangUpSIPLeg removes a SIP leg that the request which dialed it can no longer
 // use. A redial of the same number reuses the participant identity, so the leg
 // is only removed while LiveKit still lists it under the SID this dial got.
+// Nothing else hangs up a leg its call has lost track of, so LiveKit errors are
+// retried a few times.
 func (p *Plugin) hangUpSIPLeg(room string, info *livekit.SIPParticipantInfo) {
 	identity := info.GetParticipantIdentity()
 
-	participants, err := p.livekitListParticipants(room)
-	if err != nil {
-		p.LogError("hangUpSIPLeg: failed to list participants", "room", room, "identity", identity, "err", err.Error())
-		return
-	}
+	var err error
+	for attempt := range sipHangUpAttempts {
+		if attempt > 0 {
+			time.Sleep(sipHangUpRetryDelay)
+		}
 
-	for _, participant := range participants {
-		if participant.Identity != identity || participant.Sid != info.GetParticipantId() {
+		var participants []*livekit.ParticipantInfo
+		if participants, err = p.livekitListParticipants(room); err != nil {
 			continue
 		}
-		if err := p.livekitRemoveParticipant(room, identity); err != nil {
-			p.LogError("hangUpSIPLeg: failed to remove SIP participant", "room", room, "identity", identity, "err", err.Error())
+		if !slices.ContainsFunc(participants, func(participant *livekit.ParticipantInfo) bool {
+			return participant.Identity == identity && participant.Sid == info.GetParticipantId()
+		}) {
+			p.LogDebug("hangUpSIPLeg: SIP leg already gone", "room", room, "identity", identity)
+			return
 		}
-		return
+		if err = p.livekitRemoveParticipant(room, identity); err == nil {
+			return
+		}
 	}
 
-	p.LogDebug("hangUpSIPLeg: SIP leg already gone", "room", room, "identity", identity)
+	p.LogError("hangUpSIPLeg: failed to hang up SIP leg", "room", room, "identity", identity, "err", err.Error())
 }
