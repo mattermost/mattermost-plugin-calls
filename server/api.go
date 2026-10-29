@@ -40,6 +40,8 @@ const (
 	errIDSIPNumberNotAllowed   = "sip_number_not_allowed"
 	errIDSIPTeamNotAllowed     = "sip_team_not_allowed"
 	errIDCallInProgress        = "call_in_progress"
+	errIDCallEnded             = "call_ended"
+	errIDNoActiveCall          = "no_active_call"
 	errIDDialFailed            = "dial_failed"
 	errIDInvalidTarget         = "invalid_target"
 )
@@ -950,13 +952,20 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	// don't set WaitUntilAnswered, so LiveKit returns once the SIP leg is created
 	// (INVITE dispatched) rather than once the callee picks up.
 	info, dialErr := p.createSIPParticipant(trunkID, number, channelID, req.Number)
+	if dialErr != nil {
+		p.LogError("handlePhoneCall: failed to create SIP participant",
+			"err", dialErr.Error(), "number", number, "channelID", channelID)
+	}
 
 	// Re-acquire the lock to announce the new call or roll back.
 	state, err = p.lockCallReturnState(channelID)
 	if err != nil {
 		p.LogError("handlePhoneCall: failed to re-lock call after SIP dial", "err", err.Error(), "channelID", channelID)
+		// The session must go either way, or every redial is refused as
+		// call_in_progress. Nothing will announce this call, so its SIP leg goes too.
+		p.rollbackSession(sessionID, callID, createdCall)
 		if dialErr == nil {
-			p.rollbackSession(sessionID, callID, createdCall)
+			p.hangUpSIPLeg(channelID, info)
 		}
 		res.Err = "Internal server error"
 		res.Code = http.StatusInternalServerError
@@ -965,12 +974,24 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	unlocked = false
 
 	if dialErr != nil {
-		p.LogError("handlePhoneCall: failed to create SIP participant",
-			"err", dialErr.Error(), "number", number, "channelID", channelID)
 		p.rollbackSession(sessionID, callID, createdCall)
 		res.Err = "failed to dial number"
 		res.ErrID = errIDDialFailed
 		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	// The call can end during the dial, e.g. when the carrier rejects it at once.
+	// Whatever ended it has already removed this request's session.
+	if state == nil || state.Call.ID != callID {
+		p.LogInfo("handlePhoneCall: call ended during SIP dial, hanging up",
+			"callID", callID, "channelID", channelID, "sipCallID", info.GetSipCallId())
+		unlocked = true
+		p.unlockCall(channelID)
+		p.hangUpSIPLeg(channelID, info)
+		res.Err = "the call ended while the number was being dialed"
+		res.ErrID = errIDCallEnded
+		res.Code = http.StatusConflict
 		return
 	}
 
@@ -983,9 +1004,8 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	}
 	p.cancelDMNoAnswerTimerIfAnswered(state, userID, channelID, dmChannel.Type)
 
-	// Start the SIP no-answer timer. It fires if either the human caller's
-	// client or the SIP callee has not confirmed within sipNoAnswerTimeout,
-	// and is cancelled in participant_joined once both sides are live.
+	// Hangs the call up unless, by sipNoAnswerTimeout, the callee has answered
+	// and the caller's client has connected. Cancelled when the call ends.
 	p.startSIPNoAnswerTimer(channelID, callID)
 
 	p.LogInfo("phone call session created",
@@ -1008,6 +1028,20 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	}); err != nil {
 		p.LogError("failed to encode phone-call response", "err", err.Error())
 	}
+}
+
+// callerConfirmedCallID returns the ID of the active call when userID has a
+// confirmed session in it, and "" otherwise.
+func callerConfirmedCallID(state *callState, userID string) string {
+	if state == nil {
+		return ""
+	}
+	for _, s := range state.sessions {
+		if s.UserID == userID && s.ConfirmedAt > 0 {
+			return state.Call.ID
+		}
+	}
+	return ""
 }
 
 // handleAddPhoneCall dials an external phone number into an existing call. The
@@ -1091,19 +1125,12 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		res.Code = http.StatusInternalServerError
 		return
 	}
-	var callID string
-	if state != nil {
-		for _, s := range state.sessions {
-			if s.UserID == userID && s.ConfirmedAt > 0 {
-				callID = state.Call.ID
-				break
-			}
-		}
-	}
+	callID := callerConfirmedCallID(state, userID)
 	p.unlockCall(channelID)
 
 	if callID == "" {
 		res.Err = "no active call or caller is not in the call"
+		res.ErrID = errIDNoActiveCall
 		res.Code = http.StatusBadRequest
 		return
 	}
@@ -1115,6 +1142,29 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		res.Err = "failed to dial number"
 		res.ErrID = errIDDialFailed
 		res.Code = http.StatusInternalServerError
+		return
+	}
+
+	// The lock was released for the dial, so the caller may have left or the
+	// call may have ended since.
+	state, err = p.lockCallReturnState(channelID)
+	if err != nil {
+		p.LogError("handleAddPhoneCall: failed to re-lock call after SIP dial", "channelID", channelID, "err", err.Error())
+		p.hangUpSIPLeg(channelID, info)
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	stillInCall := callerConfirmedCallID(state, userID) == callID
+	p.unlockCall(channelID)
+
+	if !stillInCall {
+		p.LogInfo("handleAddPhoneCall: caller left or call ended during SIP dial, hanging up",
+			"callID", callID, "channelID", channelID, "sipCallID", info.GetSipCallId())
+		p.hangUpSIPLeg(channelID, info)
+		res.Err = "no active call or caller is not in the call"
+		res.ErrID = errIDNoActiveCall
+		res.Code = http.StatusBadRequest
 		return
 	}
 

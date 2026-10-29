@@ -124,3 +124,28 @@ func (p *Plugin) dialSIPParticipant(cfg *configuration, trunkID, phoneNumber, ro
 
 	return resp, nil
 }
+
+// hangUpSIPLeg removes a SIP leg that the request which dialed it can no longer
+// use. A redial of the same number reuses the participant identity, so the leg
+// is only removed while LiveKit still lists it under the SID this dial got.
+func (p *Plugin) hangUpSIPLeg(room string, info *livekit.SIPParticipantInfo) {
+	identity := info.GetParticipantIdentity()
+
+	participants, err := p.livekitListParticipants(room)
+	if err != nil {
+		p.LogError("hangUpSIPLeg: failed to list participants", "room", room, "identity", identity, "err", err.Error())
+		return
+	}
+
+	for _, participant := range participants {
+		if participant.Identity != identity || participant.Sid != info.GetParticipantId() {
+			continue
+		}
+		if err := p.livekitRemoveParticipant(room, identity); err != nil {
+			p.LogError("hangUpSIPLeg: failed to remove SIP participant", "room", room, "identity", identity, "err", err.Error())
+		}
+		return
+	}
+
+	p.LogDebug("hangUpSIPLeg: SIP leg already gone", "room", room, "identity", identity)
+}

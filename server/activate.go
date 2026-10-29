@@ -198,8 +198,8 @@ func (p *Plugin) OnDeactivate() error {
 	p.dmNoAnswerTimersMut.Unlock()
 
 	p.sipNoAnswerTimersMut.Lock()
-	for _, t := range p.sipNoAnswerTimers {
-		t.Stop()
+	for _, entry := range p.sipNoAnswerTimers {
+		entry.timer.Stop()
 	}
 	p.sipNoAnswerTimers = nil
 	p.sipNoAnswerTimersMut.Unlock()
