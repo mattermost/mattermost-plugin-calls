@@ -50,10 +50,21 @@ func (r callEndReason) status() string {
 // A var rather than a const so tests can shorten it.
 var dmNoAnswerTimeout = 30 * time.Second
 
-// sipNoAnswerTimeout is the deadline for both the human caller to connect to
-// the LiveKit room and the SIP callee to answer. If either side hasn't
-// connected when the timer fires, the outbound call is hung up.
+// sipNoAnswerTimeout is how long an outbound phone call has for the callee to
+// answer and the caller's client to connect. When it fires, the call is hung
+// up unless both have happened.
 var sipNoAnswerTimeout = 60 * time.Second
+
+// sipNoAnswerRetryInterval is how soon the no-answer check runs again after it
+// failed to read the call.
+var sipNoAnswerRetryInterval = 10 * time.Second
+
+// sipNoAnswerTimer is kept by pointer so a callback that has already fired can
+// tell whether the map entry is still its own.
+type sipNoAnswerTimer struct {
+	callID string
+	timer  *time.Timer
+}
 
 // endDMCallRoom destroys the LiveKit room backing a DM call. That forcibly disconnects every
 // connected participant, and each client's LiveKit SDK fires RoomEvent.Disconnected
@@ -106,28 +117,60 @@ func (p *Plugin) startSIPNoAnswerTimer(channelID, callID string) {
 	p.sipNoAnswerTimersMut.Lock()
 	defer p.sipNoAnswerTimersMut.Unlock()
 
-	if _, ok := p.sipNoAnswerTimers[channelID]; ok {
-		return
+	if existing, ok := p.sipNoAnswerTimers[channelID]; ok {
+		if existing.callID == callID {
+			return
+		}
+		// Left over from an earlier call in this bot DM. Keeping it would leave
+		// this call without a deadline.
+		existing.timer.Stop()
 	}
 
-	p.sipNoAnswerTimers[channelID] = time.AfterFunc(sipNoAnswerTimeout, func() {
-		p.handleSIPNoAnswerTimer(channelID, callID)
+	entry := &sipNoAnswerTimer{callID: callID}
+	entry.timer = time.AfterFunc(sipNoAnswerTimeout, func() {
+		p.handleSIPNoAnswerTimer(channelID, entry)
 	})
+	p.sipNoAnswerTimers[channelID] = entry
 }
 
 func (p *Plugin) cancelSIPNoAnswerTimer(channelID string) bool {
 	p.sipNoAnswerTimersMut.Lock()
 	defer p.sipNoAnswerTimersMut.Unlock()
 
-	t, ok := p.sipNoAnswerTimers[channelID]
+	entry, ok := p.sipNoAnswerTimers[channelID]
 	if !ok {
 		return false
 	}
 
-	t.Stop()
+	entry.timer.Stop()
 	delete(p.sipNoAnswerTimers, channelID)
 
 	return true
+}
+
+// clearSIPNoAnswerTimer removes entry unless a newer timer has replaced it.
+func (p *Plugin) clearSIPNoAnswerTimer(channelID string, entry *sipNoAnswerTimer) {
+	p.sipNoAnswerTimersMut.Lock()
+	defer p.sipNoAnswerTimersMut.Unlock()
+
+	if p.sipNoAnswerTimers[channelID] == entry {
+		delete(p.sipNoAnswerTimers, channelID)
+	}
+}
+
+// retrySIPNoAnswerTimer runs the check again later, unless the timer has been
+// cancelled or replaced in the meantime.
+func (p *Plugin) retrySIPNoAnswerTimer(channelID string, entry *sipNoAnswerTimer) {
+	p.sipNoAnswerTimersMut.Lock()
+	defer p.sipNoAnswerTimersMut.Unlock()
+
+	if p.sipNoAnswerTimers[channelID] != entry {
+		return
+	}
+
+	entry.timer = time.AfterFunc(sipNoAnswerRetryInterval, func() {
+		p.handleSIPNoAnswerTimer(channelID, entry)
+	})
 }
 
 // sipCalleeCallStatus queries the LiveKit room for the outbound SIP participant's
@@ -148,14 +191,34 @@ func (p *Plugin) sipCalleeCallStatus(channelID string) (status string, found boo
 	return "", false, nil
 }
 
-// sipCalleeIsActive reports whether the outbound SIP callee has answered.
-func (p *Plugin) sipCalleeIsActive(channelID string) bool {
-	status, _, err := p.sipCalleeCallStatus(channelID)
-	if err != nil {
-		p.LogError("sipCalleeIsActive: failed to list participants", "channelID", channelID, "err", err.Error())
-		return false
+// sipCalleeAnswered reports whether any SIP leg in the room has been answered.
+func sipCalleeAnswered(participants []*livekit.ParticipantInfo) bool {
+	for _, participant := range participants {
+		if participant.Kind == livekit.ParticipantInfo_SIP &&
+			participant.GetAttributes()[livekit.AttrSIPCallStatus] == sipCallStatusActive {
+			return true
+		}
 	}
-	return status == sipCallStatusActive
+	return false
+}
+
+// phoneCallerConnected reports whether a Mattermost user is connected to the
+// phone call. A confirmed session counts as much as a LiveKit participant, so
+// neither a late participant_joined webhook nor a reconnect at the deadline
+// hangs up a live call.
+func (p *Plugin) phoneCallerConnected(state *callState, participants []*livekit.ParticipantInfo) bool {
+	botID := p.getBotID()
+	for _, participant := range participants {
+		if userID, _, ok := parseLivekitIdentity(participant.Identity); ok && userID != botID {
+			return true
+		}
+	}
+	for _, session := range state.sessions {
+		if !session.IsSIPParticipant && session.ConfirmedAt > 0 && session.UserID != botID {
+			return true
+		}
+	}
+	return false
 }
 
 // phoneCallerHangupReason reports what the call post should say when the caller
@@ -202,29 +265,21 @@ func (p *Plugin) resolveCallEndReason(state *callState, participants []string, c
 	return p.callEndReason(participants, channelID)
 }
 
-func (p *Plugin) handleSIPNoAnswerTimer(channelID, callID string) {
-	p.sipNoAnswerTimersMut.Lock()
-	delete(p.sipNoAnswerTimers, channelID)
-	p.sipNoAnswerTimersMut.Unlock()
+// handleSIPNoAnswerTimer hangs up a phone call that, at the deadline, has no
+// answered SIP leg or no connected caller. A call it can't check is left up and
+// checked again later.
+func (p *Plugin) handleSIPNoAnswerTimer(channelID string, entry *sipNoAnswerTimer) {
+	callID := entry.callID
 
-	// The SIP bridge participant joins the room immediately when dialing starts,
-	// before the callee answers. Check the live participant attributes to avoid
-	// tearing down a call where the callee has already answered.
-	if p.sipCalleeIsActive(channelID) {
-		p.LogInfo("handleSIPNoAnswerTimer: SIP callee is active, not hanging up",
-			"channelID", channelID,
-			"callID", callID)
-		return
-	}
-
-	p.LogInfo("handleSIPNoAnswerTimer: SIP callee did not answer, hanging up",
-		"channelID", channelID,
-		"callID", callID,
-		"nodeID", p.nodeID)
+	// LiveKit doesn't webhook sip.callStatus, so listing the room is the only way
+	// to tell whether the callee answered. It's a network call, so it runs
+	// before the call lock is taken.
+	participants, listErr := p.livekitListParticipants(channelID)
 
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
-		p.LogError("handleSIPNoAnswerTimer: failed to lock call", "channelID", channelID, "err", err.Error())
+		p.LogError("handleSIPNoAnswerTimer: failed to lock call, will retry", "channelID", channelID, "err", err.Error())
+		p.retrySIPNoAnswerTimer(channelID, entry)
 		return
 	}
 	unlocked := false
@@ -235,10 +290,39 @@ func (p *Plugin) handleSIPNoAnswerTimer(channelID, callID string) {
 	}()
 
 	if state == nil || state.Call.ID != callID {
+		p.clearSIPNoAnswerTimer(channelID, entry)
 		return
 	}
 
-	if err := p.cleanCallState(&state.Call, "sip_no_answer", callEndReasonNoAnswer); err != nil {
+	if listErr != nil {
+		p.LogError("handleSIPNoAnswerTimer: failed to list participants, will retry",
+			"channelID", channelID, "callID", callID, "err", listErr.Error())
+		p.retrySIPNoAnswerTimer(channelID, entry)
+		return
+	}
+
+	p.clearSIPNoAnswerTimer(channelID, entry)
+
+	var reason string
+	var endReason callEndReason
+	switch {
+	case !sipCalleeAnswered(participants):
+		reason, endReason = "sip_no_answer", callEndReasonNoAnswer
+	case !p.phoneCallerConnected(state, participants):
+		reason, endReason = "sip_caller_not_connected", callEndReasonFailed
+	default:
+		p.LogInfo("handleSIPNoAnswerTimer: phone call is connected, not hanging up",
+			"channelID", channelID, "callID", callID)
+		return
+	}
+
+	p.LogInfo("handleSIPNoAnswerTimer: hanging up phone call",
+		"channelID", channelID,
+		"callID", callID,
+		"reason", reason,
+		"nodeID", p.nodeID)
+
+	if err := p.cleanCallState(&state.Call, reason, endReason); err != nil {
 		p.LogError("handleSIPNoAnswerTimer: failed to clean call state", "channelID", channelID, "err", err.Error())
 	}
 
