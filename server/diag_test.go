@@ -5,11 +5,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -25,6 +27,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
+	"github.com/livekit/protocol/auth"
 	"github.com/livekit/protocol/livekit"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -106,7 +109,7 @@ func TestRenderDiagReport(t *testing.T) {
 	}}
 
 	t.Run("regular user sees no admin detail", func(t *testing.T) {
-		out := p.renderDiagReport(report, "user1", false, false)
+		out := p.renderDiagReport(report, nil, "user1", false, false)
 		require.Contains(t, out, "credentials")
 		require.Contains(t, out, "Ask a system admin to run `/call diag`")
 		require.NotContains(t, out, "lk.internal")
@@ -114,7 +117,7 @@ func TestRenderDiagReport(t *testing.T) {
 	})
 
 	t.Run("admin sees detail but never secrets", func(t *testing.T) {
-		out := p.renderDiagReport(report, "admin1", true, true)
+		out := p.renderDiagReport(report, nil, "admin1", true, true)
 		require.Contains(t, out, "lk.internal")
 		require.Contains(t, out, "ST_abc")
 		require.Contains(t, out, "/call diag force")
@@ -303,7 +306,7 @@ func newDiagProbePlugin(t *testing.T, lkURL string) *Plugin {
 	mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
 	mockAPI.On("KVDelete", mock.Anything).Return(nil).Maybe()
 	for _, level := range []string{"LogDebug", "LogInfo", "LogWarn", "LogError"} {
-		for n := 0; n <= 8; n += 2 {
+		for n := 0; n <= 24; n++ {
 			args := []any{mock.AnythingOfType("string")}
 			for i := 0; i < n; i++ {
 				args = append(args, mock.Anything)
@@ -398,22 +401,202 @@ func TestDiagReportCooldown(t *testing.T) {
 		p.recordDiagWebhook(&livekit.WebhookEvent{Event: "room_started", Room: &livekit.Room{Name: room}})
 	}
 
-	report, cached, err := p.getDiagReport(false)
+	report, cached, err := p.getDiagReport(false, 0)
 	require.NoError(t, err)
 	require.False(t, cached)
 	require.False(t, report.failed())
 	require.EqualValues(t, 1, lk.createCalls.Load())
 
 	// Within the cooldown the cached result is replayed and nothing is probed.
-	report2, cached, err := p.getDiagReport(false)
+	report2, cached, err := p.getDiagReport(false, 0)
 	require.NoError(t, err)
 	require.True(t, cached)
 	require.Equal(t, report.At, report2.At)
 	require.EqualValues(t, 1, lk.createCalls.Load())
 
 	// force bypasses the cooldown.
-	_, cached, err = p.getDiagReport(true)
+	_, cached, err = p.getDiagReport(true, 0)
 	require.NoError(t, err)
 	require.False(t, cached)
 	require.EqualValues(t, 2, lk.createCalls.Load())
+}
+
+func TestMintDiagToken(t *testing.T) {
+	p, _ := newDiagTestPlugin(t)
+
+	token, url, err := p.mintDiagToken("user1", "n0nce")
+	require.NoError(t, err)
+	require.Equal(t, p.configuration.LiveKitURL, url)
+
+	verifier, err := auth.ParseAPIToken(token)
+	require.NoError(t, err)
+	jwtClaims, claims, err := verifier.Verify(p.configuration.LiveKitAPISecret)
+	require.NoError(t, err)
+
+	require.Equal(t, "diag-user1", claims.Identity)
+	// Never parses as a call session identity.
+	_, _, ok := parseLivekitIdentity(claims.Identity)
+	require.False(t, ok)
+
+	v := claims.Video
+	require.True(t, v.RoomJoin)
+	require.Equal(t, newSelftestRoomName("n0nce"), v.Room)
+	require.True(t, v.GetCanPublish())
+	require.True(t, v.GetCanSubscribe())
+	require.False(t, v.GetCanPublishData())
+	require.False(t, v.RoomAdmin)
+	require.False(t, v.RoomCreate)
+	require.False(t, v.RoomList)
+
+	require.NotNil(t, jwtClaims.ExpiresAt)
+	require.LessOrEqual(t, time.Until(jwtClaims.ExpiresAt.Time), diagTokenTTL)
+
+	p.configuration.LiveKitAPISecret = ""
+	_, _, err = p.mintDiagToken("user1", "n0nce")
+	require.ErrorIs(t, err, errLiveKitNotConfigured)
+}
+
+func TestDiagClientReportSanitize(t *testing.T) {
+	var checks []diagClientCheck
+	for i := 0; i < diagMaxClientChecks+5; i++ {
+		checks = append(checks, diagClientCheck{Name: "check", Status: diagOK})
+	}
+	checks[0] = diagClientCheck{Name: strings.Repeat("n", 500), Status: "bogus", Detail: strings.Repeat("d", 5000)}
+
+	got := (&diagClientReport{Checks: checks, SkippedReason: strings.Repeat("r", 1000)}).sanitize()
+	require.Len(t, got.Checks, diagMaxClientChecks)
+	require.Len(t, got.Checks[0].Name, diagMaxNameLen)
+	require.Len(t, got.Checks[0].Detail, diagMaxDetailLen)
+	require.Equal(t, diagSkip, got.Checks[0].Status)
+	require.Len(t, got.SkippedReason, diagMaxReasonLen)
+}
+
+func TestRenderDiagReportClientHalf(t *testing.T) {
+	p, _ := newDiagTestPlugin(t)
+	report := &diagReport{At: time.Now().UnixMilli(), Results: []diagResult{{Name: diagCheckAPI, Status: diagOK}}}
+
+	t.Run("no client half", func(t *testing.T) {
+		out := p.renderDiagReport(report, nil, "u", false, false)
+		require.Contains(t, out, "this client does not support them")
+	})
+
+	t.Run("skipped with reason", func(t *testing.T) {
+		out := p.renderDiagReport(report, &diagClientReport{SkippedReason: "LiveKit is not configured."}, "u", false, false)
+		require.Contains(t, out, "skipped: LiveKit is not configured.")
+	})
+
+	t.Run("server details are hidden from a regular user but not an admin", func(t *testing.T) {
+		client := &diagClientReport{Checks: []diagClientCheck{
+			{Name: "Signaling", Status: diagWarn, Detail: "Server is insecure; Connected to server, version 1.13.1."},
+			{Name: "WebRTC", Status: diagWarn, Detail: "No public IPv4 UDP candidates were found; UDP 172.16.0.3:7882 host (private); TCP 172.16.0.3:7881 host (private); Reached 10.1.2.3:443"},
+		}}
+
+		user := p.renderDiagReport(report, client, "u", false, false)
+		require.Contains(t, user, "Server is insecure")
+		require.Contains(t, user, "Connected to server.")
+		require.Contains(t, user, "No public IPv4 UDP candidates were found")
+		require.NotContains(t, user, "1.13.1")
+		require.NotContains(t, user, "172.16.0.3")
+		require.NotContains(t, user, "10.1.2.3")
+		require.Contains(t, user, "[address]")
+
+		admin := p.renderDiagReport(report, client, "a", true, false)
+		require.Contains(t, admin, "version 1.13.1")
+		require.Contains(t, admin, "UDP 172.16.0.3:7882 host (private)")
+	})
+
+	t.Run("results are shown in full to a regular user", func(t *testing.T) {
+		out := p.renderDiagReport(report, &diagClientReport{Checks: []diagClientCheck{
+			{Name: "WebRTC", Status: diagOK, Detail: "Connected via UDP"},
+			{Name: "TURN", Status: diagInfo, Detail: "No TURN server | not required"},
+		}}, "u", false, false)
+		require.Contains(t, out, "Your connection")
+		require.Contains(t, out, "| Check | Notes |")
+		require.NotContains(t, out, "Result")
+		require.Contains(t, out, "Connected via UDP")
+		require.Contains(t, out, `No TURN server \| not required`)
+		require.Contains(t, out, "WebRTC: ok")
+		require.Contains(t, out, "TURN: info")
+
+		// The copyable summary carries the same notes, unescaped.
+		summary := out[strings.Index(out, "Summary for a support request"):]
+		require.Contains(t, summary, "WebRTC: ok - Connected via UDP")
+		require.Contains(t, summary, "TURN: info - No TURN server | not required")
+		require.Contains(t, summary, "Your connection")
+	})
+}
+
+func TestHandleDiagToken(t *testing.T) {
+	setup := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI, *fakeLiveKit) {
+		t.Helper()
+		lk := newFakeLiveKit(t)
+		p := newDiagProbePlugin(t, lk.URL)
+		mockAPI := p.API.(*pluginMocks.MockAPI)
+		mockAPI.On("HasPermissionTo", mock.Anything, model.PermissionManageSystem).Return(false).Maybe()
+		mockAPI.On("GetChannel", mock.Anything).Return(&model.Channel{Id: model.NewId(), Type: model.ChannelTypeOpen}, nil).Maybe()
+		mockAPI.On("SendEphemeralPost", mock.Anything, mock.Anything).Return(&model.Post{}).Maybe()
+		lk.onCreateRoom = func(room string) {
+			p.recordDiagWebhook(&livekit.WebhookEvent{Event: "room_started", Room: &livekit.Room{Name: room}})
+		}
+		return p, mockAPI, lk
+	}
+
+	post := func(p *Plugin, userID string, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodPost, "/diag/token", strings.NewReader(body))
+		r.Header.Set("Mattermost-User-Id", userID)
+		w := httptest.NewRecorder()
+		p.handleDiagToken(w, r)
+		return w
+	}
+
+	channelID := model.NewId()
+	body := fmt.Sprintf(`{"channel_id":%q}`, channelID)
+
+	t.Run("no channel permission", func(t *testing.T) {
+		p, mockAPI, _ := setup(t)
+		mockAPI.On("HasPermissionToChannel", "user1", channelID, model.PermissionCreatePost).Return(false)
+
+		w := post(p, "user1", body)
+		require.Equal(t, http.StatusForbidden, w.Code)
+		require.NotContains(t, w.Body.String(), `"token"`)
+	})
+
+	t.Run("invalid channel id", func(t *testing.T) {
+		p, _, _ := setup(t)
+		require.Equal(t, http.StatusBadRequest, post(p, "user1", `{"channel_id":"nope"}`).Code)
+	})
+
+	t.Run("mints a token, starts the server half and rate limits", func(t *testing.T) {
+		p, mockAPI, lk := setup(t)
+		mockAPI.On("HasPermissionToChannel", mock.Anything, channelID, model.PermissionCreatePost).Return(true)
+
+		w := post(p, "user1", body)
+		require.Equal(t, http.StatusOK, w.Code)
+
+		var resp diagTokenResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		require.NotEmpty(t, resp.Token)
+		require.Equal(t, lk.URL, resp.URL)
+		require.NotZero(t, resp.StartedAt)
+
+		// The server half runs in the background, in parallel with the client's.
+		require.Eventually(t, func() bool { return lk.createCalls.Load() == 1 }, 5*time.Second, 50*time.Millisecond)
+
+		// Burst of 3 is allowed, then the per-user limiter rejects.
+		require.Equal(t, http.StatusOK, post(p, "user1", body).Code)
+		require.Equal(t, http.StatusOK, post(p, "user1", body).Code)
+		require.Equal(t, http.StatusTooManyRequests, post(p, "user1", body).Code)
+		require.Equal(t, http.StatusOK, post(p, "user2", body).Code, "limit is per user")
+
+		// Let the background runs finish before the DB goes away.
+		time.Sleep(time.Second)
+	})
+
+	t.Run("LiveKit not configured", func(t *testing.T) {
+		p, mockAPI, _ := setup(t)
+		mockAPI.On("HasPermissionToChannel", "user1", channelID, model.PermissionCreatePost).Return(true)
+		p.configuration.LiveKitAPISecret = ""
+
+		require.Equal(t, http.StatusServiceUnavailable, post(p, "user1", body).Code)
+	})
 }
