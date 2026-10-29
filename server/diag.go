@@ -418,6 +418,10 @@ func (p *Plugin) checkSIP(_ context.Context, cfg *configuration) []diagResult {
 	switch status.State {
 	case sipTrunkStateReady, sipTrunkStateFound:
 		res.AdminDetail = fmt.Sprintf("Trunk %s (%s).", status.TrunkID, status.State)
+	case sipTrunkStateNone:
+		// Enabled but never set up: nothing is broken, so don't fail the report.
+		res.Status = diagInfo
+		res.Detail = "Outbound dialing is enabled but no SIP trunk is set up."
 	default:
 		res.Status = diagFail
 		res.Detail = "Outbound dialing is not working. Ask your system admin."
@@ -544,7 +548,11 @@ func (p *Plugin) renderDiagReport(report *diagReport, client *diagClientReport, 
 		if res.Name == diagCheckSIP && !isAdmin {
 			// Bare ok/not-ok for regular users.
 			detail = ""
-			if res.Status != diagOK {
+			switch res.Status {
+			case diagOK:
+			case diagInfo:
+				detail = "Not set up."
+			default:
 				detail = "Not working."
 			}
 		}

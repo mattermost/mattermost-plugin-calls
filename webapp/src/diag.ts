@@ -59,39 +59,65 @@ function isImplausibleRTT(message: string): boolean {
 // livekit-client's messages are lowercase fragments ("best connection quality
 // via udp"); tidy them up for display.
 function tidy(message: string): string {
-    const withProtocols = message.replace(/\b(udp|tcp|tls)\b/gi, (m) => m.toUpperCase());
+    // The RTT comes from RTCP receiver reports, not ICE; say so.
+    const withProtocols = message.replace(/\b(udp|tcp|tls)\b/gi, (m) => m.toUpperCase()).replace(/^RTT:/, 'RTT (RTCP):');
     return withProtocols.charAt(0).toUpperCase() + withProtocols.slice(1);
+}
+
+// Messages end in a period, which reads badly before the "; " separator.
+function joinDetail(parts: string[]): string {
+    return parts.map((part, i) => (i < parts.length - 1 ? part.replace(/\.$/, '') : part)).join('; ');
 }
 
 function summarize(info: CheckInfo): string {
     const logs = info.logs.filter((l) => !isImplausibleRTT(l.message));
     const errors = logs.filter((l) => l.level === 'error').map((l) => tidy(l.message));
     if (errors.length) {
-        return errors.join('; ');
+        return joinDetail(errors);
     }
 
     // Warnings first: they are what the reader needs to act on.
     const warnings = logs.filter((l) => l.level === 'warning').map((l) => tidy(l.message));
     const rest = logs.filter((l) => l.level !== 'warning').map((l) => tidy(l.message));
     const ordered = [...warnings, ...rest];
-    return ordered.length ? ordered.slice(0, 4).join('; ') : info.description;
+    return ordered.length ? joinDetail(ordered.slice(0, 4)) : info.description;
 }
 
-export function toClientCheck(name: string, info: CheckInfo, opts?: {informational?: boolean}): DiagClientCheck {
+export function toClientCheck(name: string, info: CheckInfo, opts?: {turn?: boolean}): DiagClientCheck {
+    if (opts?.turn) {
+        return toTurnCheck(name, info);
+    }
+
     let status = mapStatus(info.status);
-    let detail = summarize(info);
+    const detail = summarize(info);
 
     if (info.status === CheckStatus.SUCCESS && info.logs.some((l) => l.level === 'warning')) {
         status = 'warn';
     }
 
-    // TURN is unused in most deployments, so not having it is not a problem.
-    if (opts?.informational && status !== 'ok') {
-        status = 'info';
-        detail = `${detail} TURN is not required for most deployments.`.trim();
-    }
-
     return {name, status, detail};
+}
+
+// livekit-client logs this before the TURN check, but it only says which
+// signaling URL the check used; it says nothing about TURN.
+const TURN_REGION_NOTE = 'Using region specific url';
+
+// TURN is the fallback of last resort, so a configured TURN server that does not
+// work is a problem. A server with no TURN at all is fine: most deployments
+// don't use it.
+function toTurnCheck(name: string, info: CheckInfo): DiagClientCheck {
+    const logs = info.logs.filter((l) => l.message !== TURN_REGION_NOTE);
+    const base = toClientCheck(name, {...info, logs});
+    const withNote = (note: string) => (logs.length ? joinDetail([base.detail!, note]) : note);
+
+    switch (info.status) {
+    case CheckStatus.SUCCESS:
+        return {...base, detail: withNote('Connected through a TURN relay.')};
+    case CheckStatus.FAILED:
+        return {...base, status: 'fail', detail: withNote('A relay connection could not be made.')};
+    default:
+        return {...base, status: 'info', detail: withNote('TURN is not required for most deployments.')};
+    }
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
@@ -105,14 +131,14 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 type CheckDef = {
     name: string;
     run: (cc: ConnectionCheck) => Promise<CheckInfo>;
-    informational?: boolean;
+    turn?: boolean;
 };
 
 // Ordered cheapest first: the token is short lived.
 const defaultChecks: CheckDef[] = [
     {name: 'Signaling (WebSocket)', run: (cc) => cc.checkWebsocket()},
     {name: 'WebRTC', run: (cc) => cc.checkWebRTC()},
-    {name: 'TURN', run: (cc) => cc.checkTURN(), informational: true},
+    {name: 'TURN', run: (cc) => cc.checkTURN(), turn: true},
     {name: 'Reconnect', run: (cc) => cc.checkReconnect()},
     {name: 'UDP/TCP connection', run: (cc) => cc.checkConnectionProtocol()},
 ];
@@ -131,10 +157,10 @@ export async function runClientChecks(url: string, token: string, media: boolean
         try {
             // eslint-disable-next-line no-await-in-loop
             const info = await withTimeout(def.run(cc), CHECK_TIMEOUT_MS, def.name);
-            results.push(toClientCheck(def.name, info, {informational: def.informational}));
+            results.push(toClientCheck(def.name, info, {turn: def.turn}));
         } catch (err) {
             logErr('diag: check threw', def.name, err);
-            results.push({name: def.name, status: def.informational ? 'info' : 'fail', detail: (err as Error)?.message || 'Check failed.'});
+            results.push({name: def.name, status: 'fail', detail: (err as Error)?.message || 'Check failed.'});
         }
     }
 

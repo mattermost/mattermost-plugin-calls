@@ -600,3 +600,17 @@ func TestHandleDiagToken(t *testing.T) {
 		require.Equal(t, http.StatusServiceUnavailable, post(p, "user1", body).Code)
 	})
 }
+
+func TestDiagSIPNotConfiguredIsInfo(t *testing.T) {
+	p, _ := newDiagTestPlugin(t)
+	p.configuration.EnableSIPOutbound = model.NewPointer(true)
+	p.configuration.LiveKitSIPOutboundTrunkID = ""
+
+	res := p.checkSIP(context.Background(), p.getConfiguration())
+	require.Len(t, res, 1)
+	require.Equal(t, diagInfo, res[0].Status)
+	require.Contains(t, res[0].Detail, "no SIP trunk is set up")
+
+	report := &diagReport{At: time.Now().UnixMilli(), Results: res}
+	require.False(t, report.failed())
+}
