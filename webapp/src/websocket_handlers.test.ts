@@ -4,20 +4,26 @@
 import {HostControlRemoved, UserRemovedData} from '@mattermost/calls-common/lib/types';
 import {BaseWebSocketMessage} from '@mattermost/client';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-import {displayCallErrorModal, getCallsConfig, joinUser, leaveUser} from 'src/actions';
+import {callEnd, displayCallErrorModal, getCallsConfig, joinUser, leaveUser} from 'src/actions';
 import {HostRemovedYouFromCallErr, userLeftChannelErr, userRemovedFromChannelErr} from 'src/components/error_modal/error_messages';
+import {handlePhoneCallEnd} from 'src/phone_call';
+import {CallEndData, CallPostStatus} from 'src/types/types';
 
 import {channelIDForCurrentCall} from './selectors';
 import {getCallsClient, hasLiveCallClient} from './utils';
-import {handleCallStart, handleConfigChanged, handleHostRemoved, handleUserJoined, handleUserLeft, handleUserRemovedFromChannel, setParticipantRemovedChannelID} from './websocket_handlers';
+import {handleCallEnd, handleCallStart, handleConfigChanged, handleHostRemoved, handleUserJoined, handleUserLeft, handleUserRemovedFromChannel, setParticipantRemovedChannelID} from './websocket_handlers';
 
 type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 
 jest.mock('src/actions', () => ({
+    callEnd: jest.fn((channelID) => ({type: 'mock/callEnd', channelID})),
     displayCallErrorModal: jest.fn((err, channelID) => ({type: 'mock/displayCallErrorModal', err, channelID})),
     getCallsConfig: jest.fn(() => ({type: 'mock/getCallsConfig'})),
     joinUser: jest.fn((channelID, userID, sessionID, isFromInitialSync) => ({type: 'mock/joinUser', channelID, userID, sessionID, isFromInitialSync})),
     leaveUser: jest.fn((channelID, userID, sessionID) => ({type: 'mock/leaveUser', channelID, userID, sessionID})),
+}));
+jest.mock('src/phone_call', () => ({
+    handlePhoneCallEnd: jest.fn(),
 }));
 jest.mock('./selectors', () => ({
     channelIDForCurrentCall: jest.fn(),
@@ -42,6 +48,8 @@ const mockedDisplayCallErrorModal = displayCallErrorModal as unknown as jest.Moc
 const mockedJoinUser = joinUser as unknown as jest.Mock;
 const mockedLeaveUser = leaveUser as unknown as jest.Mock;
 const mockedHasLiveCallClient = hasLiveCallClient as jest.Mock;
+const mockedCallEnd = callEnd as unknown as jest.Mock;
+const mockedHandlePhoneCallEnd = handlePhoneCallEnd as jest.Mock;
 
 describe('websocket_handlers', () => {
     const makeStore = () => ({
@@ -51,6 +59,21 @@ describe('websocket_handlers', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+    });
+
+    describe('handleCallEnd', () => {
+        it('ends the call in the store and hands the outcome to the phone call', () => {
+            const store = makeStore();
+
+            handleCallEnd(store as never, {
+                data: {channelID: 'bot-dm', call_id: 'call-id', reason: CallPostStatus.Declined},
+                broadcast: {channel_id: ''},
+            } as unknown as WebSocketMessage<CallEndData>);
+
+            expect(mockedCallEnd).toHaveBeenCalledWith('bot-dm');
+            expect(store.dispatch).toHaveBeenCalledWith(mockedCallEnd.mock.results[0].value);
+            expect(mockedHandlePhoneCallEnd).toHaveBeenCalledWith(store, 'call-id', CallPostStatus.Declined);
+        });
     });
 
     describe('handleUserRemovedFromChannel', () => {

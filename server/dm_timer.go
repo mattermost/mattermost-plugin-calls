@@ -331,10 +331,7 @@ func (p *Plugin) handleSIPNoAnswerTimer(channelID string, entry *sipNoAnswerTime
 
 	p.endDMCallRoom("handleSIPNoAnswerTimer", channelID)
 
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
-		ChannelID:           channelID,
-		ReliableClusterSend: true,
-	})
+	p.publishCallEnd(channelID, callID, endReason)
 }
 
 func (p *Plugin) handleDMNoAnswer(channelID, callID string) {
@@ -378,8 +375,5 @@ func (p *Plugin) handleDMNoAnswer(channelID, callID string) {
 
 	// Notify the whole channel so bystander UI (call post, sidebar icon) clears immediately. The
 	// caller's own widget teardown is driven by LiveKit.
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
-		ChannelID:           channelID,
-		ReliableClusterSend: true,
-	})
+	p.publishCallEnd(channelID, callID, callEndReasonNoAnswer)
 }
