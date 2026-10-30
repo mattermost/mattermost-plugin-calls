@@ -212,6 +212,22 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 		return nil, fmt.Errorf("%w: failed to create call session: %w", errStoreFailure, err)
 	}
 
+	// Durable attendance record for audit reporting. This is the chokepoint every
+	// join path funnels through (WebSocket, REST token endpoint, phone), so it is
+	// where join is recorded rather than in the LiveKit webhook. The DB write is
+	// handed to a background worker so it never runs under the call lock; the
+	// store keeps the earliest join per user (idempotent).
+	if userID != p.getBotID() {
+		joinAt := state.sessions[connID].JoinAt
+		p.enqueueParticipantAuditEvent(auditEventJoin, state.Call.ID, userID, joinAt)
+		p.LogInfo("calls audit: participant joined",
+			"event", "participant_joined",
+			"callID", state.Call.ID,
+			"channelID", channelID,
+			"userID", userID,
+			"joinAt", time.UnixMilli(joinAt).UTC().Format(time.RFC3339))
+	}
+
 	p.LogInfo("call session joined",
 		"callID", state.Call.ID,
 		"channelID", channelID,
@@ -268,7 +284,8 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		return fmt.Errorf("call state is nil")
 	}
 
-	if _, ok := state.sessions[originalConnID]; !ok {
+	leavingSession, ok := state.sessions[originalConnID]
+	if !ok {
 		return fmt.Errorf("session not found in call state")
 	}
 
@@ -276,6 +293,24 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		return fmt.Errorf("failed to delete call session: %w", err)
 	}
 	delete(state.sessions, originalConnID)
+
+	// Durable attendance record for audit reporting. This is the WebSocket leave
+	// path; the LiveKit webhook leave path records in removeParticipantSession.
+	// The DB write is handed to a background worker so it never runs under the
+	// call lock; the store keeps the latest leave per user (idempotent). SIP
+	// participants are external phone numbers, not attendees, so they're excluded
+	// (matching removeParticipantSession).
+	if userID != p.getBotID() && !leavingSession.IsSIPParticipant {
+		leaveAt := nowMillis()
+		p.enqueueParticipantAuditEvent(auditEventLeave, state.Call.ID, userID, leaveAt)
+		p.LogInfo("calls audit: participant left",
+			"event", "participant_left",
+			"callID", state.Call.ID,
+			"channelID", channelID,
+			"userID", userID,
+			"leaveAt", time.UnixMilli(leaveAt).UTC().Format(time.RFC3339))
+	}
+
 	p.LogInfo("call session left",
 		"callID", state.Call.ID,
 		"channelID", channelID,

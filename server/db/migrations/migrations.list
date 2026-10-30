@@ -14,3 +14,7 @@ server/db/migrations/postgres/000006_calls_sessions_sip.down.sql
 server/db/migrations/postgres/000006_calls_sessions_sip.up.sql
 server/db/migrations/postgres/000007_calls_sessions_livekit.down.sql
 server/db/migrations/postgres/000007_calls_sessions_livekit.up.sql
+server/db/migrations/postgres/000008_create_calls_participants.down.sql
+server/db/migrations/postgres/000008_create_calls_participants.up.sql
+server/db/migrations/postgres/000009_calls_startat_index.down.sql
+server/db/migrations/postgres/000009_calls_startat_index.up.sql
