@@ -130,13 +130,15 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
             return window.callsClient.getCurrentScreenSharingSessionID?.() ?? null;
         });
 
-        const [sessionA, sessionB] = await Promise.all([
-            presentedSession(devPage),
-            presentedSession(userPage),
-        ]);
-
-        expect(sessionA).toBeTruthy();
-        expect(sessionA).toBe(sessionB);
+        // Each client shows its own share immediately; the other's publication
+        // arrives later, so convergence is eventual and must be polled.
+        await expect.poll(async () => {
+            const [sessionA, sessionB] = await Promise.all([
+                presentedSession(devPage),
+                presentedSession(userPage),
+            ]);
+            return sessionA && sessionA === sessionB;
+        }, {timeout: 15000}).toBeTruthy();
 
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
