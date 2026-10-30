@@ -13,23 +13,47 @@ func TestNormalizePhoneNumber(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
+		cc       string
+		extMax   int
 		expected string
+		wantErr  bool
 	}{
-		{"empty", "", ""},
-		{"plain digits short", "12345", "12345"},
-		{"dashes prepends plus", "1-781-307-8753", "+17813078753"},
-		{"parens and spaces", "+1 (555) 123-4567", "+15551234567"},
-		{"tel prefix", "tel:+17813078753", "+17813078753"},
-		{"tel prefix no plus", "tel:17813078753", "+17813078753"},
-		{"already e164", "+447911123456", "+447911123456"},
-		{"surrounding whitespace", "  +1 555 0000  ", "+15550000"},
-		{"plus only first position kept", "1+555", "1555"},
-		{"letters stripped", "1-800-FLOWERS", "1800"},
+		{name: "bare national gets country code", input: "555-123-4567", cc: "1", expected: "+15551234567"},
+		{name: "parenthesized national", input: "(555) 123-4567", cc: "1", expected: "+15551234567"},
+		{name: "country code not double-prefixed", input: "1-781-307-8753", cc: "1", expected: "+17813078753"},
+		{name: "tel prefix with country code", input: "tel:17813078753", cc: "1", expected: "+17813078753"},
+		{name: "already e164 unchanged", input: "+447911123456", cc: "1", expected: "+447911123456"},
+		{name: "e164 with formatting", input: "+1 (555) 123-4567", cc: "1", expected: "+15551234567"},
+		{name: "e164 unchanged with no country code", input: "tel:+17813078753", cc: "", expected: "+17813078753"},
+		{name: "empty country code passes digits through", input: "312-555-0174", cc: "", expected: "3125550174"},
+		{name: "extension at boundary", input: "5-1234", cc: "1", extMax: 5, expected: "51234"},
+		{name: "extension below boundary", input: "1234", cc: "1", extMax: 5, expected: "1234"},
+		{name: "above boundary is not an extension", input: "555-123-4567", cc: "1", extMax: 5, expected: "+15551234567"},
+		{name: "7 digits rejected", input: "123-4567", cc: "1", extMax: 5, wantErr: true},
+		{name: "9 digits rejected", input: "555123456", cc: "1", extMax: 5, wantErr: true},
+		{name: "11 digits not starting with country code rejected", input: "25551234567", cc: "1", wantErr: true},
+		{name: "too many digits rejected", input: "+1234567890123456", cc: "1", wantErr: true},
+		{name: "too many digits no plus rejected", input: "1234567890123456", cc: "", wantErr: true},
+		{name: "empty", input: "", cc: "1", wantErr: true},
+		{name: "letters only", input: "call me", cc: "1", wantErr: true},
+		{name: "plus only", input: "+", cc: "1", wantErr: true},
+		{name: "short digits with no extension config", input: "12345", cc: "", wantErr: true},
+		{name: "plus only first position kept", input: "1+5551234567", cc: "1", expected: "+15551234567"},
+		{name: "letters stripped", input: "1-800-FLOWERS", cc: "1", wantErr: true},
+		{name: "non-NANP country code prepended", input: "07911 123456", cc: "44", expected: "+4407911123456"},
+		{name: "non-NANP country code not double-prefixed", input: "44 7911 123456", cc: "44", expected: "+447911123456"},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.expected, normalizePhoneNumber(tc.input))
+			got, err := normalizePhoneNumber(tc.input, tc.cc, tc.extMax)
+			if tc.wantErr {
+				require.Error(t, err)
+				require.Empty(t, got)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, got)
 		})
 	}
 }
@@ -64,6 +88,12 @@ func TestIsNumberInAllowlist(t *testing.T) {
 			require.Equal(t, tc.expected, cfg.isNumberInAllowlist(tc.number))
 		})
 	}
+}
+
+func TestIsNumberInAllowlistCountryCode(t *testing.T) {
+	cfg := &configuration{SIPOutboundAllowlist: "555-123-4567\nnot a number", SIPTrunkDefaultCountryCode: "1"}
+	require.True(t, cfg.isNumberInAllowlist("+15551234567"))
+	require.False(t, cfg.isNumberInAllowlist("+5551234567"))
 }
 
 func TestLivekitHTTPURL(t *testing.T) {

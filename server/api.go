@@ -784,9 +784,14 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	number := normalizePhoneNumber(req.Number)
-	if number == "" {
-		res.Err = "number is required"
+	cfg := p.getConfiguration()
+
+	number, err := cfg.normalizePhoneNumber(req.Number)
+	if err != nil {
+		res.Err = "invalid phone number"
+		if strings.TrimSpace(req.Number) == "" {
+			res.Err = "number is required"
+		}
 		res.ErrID = errIDInvalidNumber
 		res.Code = http.StatusBadRequest
 		return
@@ -794,7 +799,6 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	displayLabel := truncateRunes(strings.TrimSpace(req.DisplayLabel), phoneDisplayLabelMaxLen)
 
-	cfg := p.getConfiguration()
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
 		res.Err = "outbound dialing is disabled. Enable it in the admin console."
 		res.ErrID = errIDOutboundDisabled
@@ -1029,15 +1033,18 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	number := normalizePhoneNumber(req.Number)
-	if number == "" {
-		res.Err = "number is required"
+	cfg := p.getConfiguration()
+
+	number, err := cfg.normalizePhoneNumber(req.Number)
+	if err != nil {
+		res.Err = "invalid phone number"
+		if strings.TrimSpace(req.Number) == "" {
+			res.Err = "number is required"
+		}
 		res.ErrID = errIDInvalidNumber
 		res.Code = http.StatusBadRequest
 		return
 	}
-
-	cfg := p.getConfiguration()
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
 		res.Err = "outbound dialing is disabled. Enable it in the admin console."
 		res.ErrID = errIDOutboundDisabled
@@ -1229,14 +1236,33 @@ func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 	return nil
 }
 
-// normalizePhoneNumber strips formatting from a phone number, keeping only
-// digits and a leading '+'. A number with no '+' prefix and >= 10 digits is
-// assumed to be E.164 and gets a '+' prepended. Examples:
+// maxE164Digits is the maximum number of digits in an E.164 number.
+const maxE164Digits = 15
+
+// minPhoneDigits is the minimum number of digits accepted for a dialed number that is not an extension.
+const minPhoneDigits = 7
+
+// nanpNationalDigits is the length of a North American national number.
+const nanpNationalDigits = 10
+
+// normalizePhoneNumber strips formatting from a phone number (and any "tel:"
+// prefix) and applies the trunk's dialing rules. It returns an error for input
+// that cannot be normalized rather than a best-effort guess. Rules, in order:
+//
+//   - "+"-prefixed numbers are taken as E.164 and returned unchanged.
+//   - At most extensionMaxDigits digits: dialed as-is (PBX extension).
+//   - Empty defaultCountryCode: digits pass through with no '+'.
+//   - Digits already starting with the country code and the length of a full
+//     number: only '+' is prepended.
+//   - Otherwise the country code is prepended.
+//
+// A defaultCountryCode of "1" requires exactly 10 national digits. Examples
+// with defaultCountryCode "1":
 //
 //	"1-781-307-8753"    -> "+17813078753"
-//	"+1 (555) 123-4567" -> "+15551234567"
+//	"(555) 123-4567"    -> "+15551234567"
 //	"tel:+17813078753"  -> "+17813078753"
-func normalizePhoneNumber(raw string) string {
+func normalizePhoneNumber(raw string, defaultCountryCode string, extensionMaxDigits int) (string, error) {
 	s := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), "tel:"))
 
 	var b strings.Builder
@@ -1247,10 +1273,55 @@ func normalizePhoneNumber(raw string) string {
 	}
 
 	num := b.String()
-	if len(num) >= 10 && num[0] != '+' {
-		num = "+" + num
+	digits := strings.TrimPrefix(num, "+")
+	if digits == "" {
+		return "", errors.New("no digits")
 	}
-	return num
+	if len(digits) > maxE164Digits {
+		return "", errors.New("too many digits")
+	}
+
+	if strings.HasPrefix(num, "+") {
+		if len(digits) < minPhoneDigits {
+			return "", errors.New("too few digits")
+		}
+		return num, nil
+	}
+
+	if extensionMaxDigits > 0 && len(digits) <= extensionMaxDigits {
+		return digits, nil
+	}
+
+	if len(digits) < minPhoneDigits {
+		return "", errors.New("too few digits")
+	}
+
+	if defaultCountryCode == "" {
+		return digits, nil
+	}
+
+	cc := defaultCountryCode
+	if cc == "1" {
+		switch {
+		case len(digits) == nanpNationalDigits:
+			return "+1" + digits, nil
+		case len(digits) == nanpNationalDigits+1 && digits[0] == '1':
+			return "+" + digits, nil
+		}
+		return "", errors.New("not a valid national number for country code 1")
+	}
+
+	// Other country codes have variable national number lengths, so a leading
+	// copy of the code only counts as already-prefixed when what follows is
+	// long enough to be a national number.
+	const minNationalDigits = 6
+	if strings.HasPrefix(digits, cc) && len(digits)-len(cc) >= minNationalDigits {
+		return "+" + digits, nil
+	}
+	if len(digits)+len(cc) > maxE164Digits || len(digits) < minNationalDigits {
+		return "", fmt.Errorf("not a valid national number for country code %s", cc)
+	}
+	return "+" + cc + digits, nil
 }
 
 func truncateRunes(s string, maxLen int) string {
