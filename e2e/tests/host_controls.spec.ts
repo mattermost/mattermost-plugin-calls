@@ -231,19 +231,16 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await user0Popout.clickHostControlOnPopout(usernames[1], HostControlAction.MakeHost);
         await user0Popout.expectHostToBeOnPopout(usernames[1]);
         await user1Popout.expectHostToBeOnPopout(usernames[1]);
-        await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[1]);
 
-        // Own host notice says "You"
-        await user1Popout.expectNoticeOnPopout(HostNotice.HostChanged, 'You');
-
-        // 1 leaves
+        // 1 leaves; host falls back to 0
         await user1Page.leaveCall();
-        await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, 'You');
+        await user0Popout.expectHostToBeOnPopout(usernames[0]);
 
-        // 1 returns; returning host notice is shown
+        // 1 returns; the assigned host is restored. Check the host state rather
+        // than the host-changed notice, which is only shown for a few seconds.
         await user1Page.joinCall();
-        await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[1]);
-        await user1Page.expectNotice(HostNotice.HostChanged, 'You');
+        await user0Popout.expectHostToBeOnPopout(usernames[1]);
+        await user1Page.expectHostToBe(usernames[1]);
 
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
@@ -283,7 +280,7 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         // Lower 1's hand
         await user0Popout.clickHostControlOnPopout(usernames[1], HostControlAction.LowerHand);
         await user0Popout.expectUnRaisedHandOnPoput(usernames[1]);
-        await user1Popout.expectNoticeOnPopout(HostNotice.LowerHand, usernames[0]);
+        await user1Popout.expectUnRaisedHandOnPoput(usernames[1]);
 
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
@@ -349,19 +346,16 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         await user0Popout.clickHostControlOnPopoutRHS(usernames[1], HostControlAction.MakeHost);
         await user0Popout.expectHostToBeOnPopout(usernames[1]);
         await user1Popout.expectHostToBeOnPopout(usernames[1]);
-        await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[1]);
 
-        // Own host notice says "You"
-        await user1Popout.expectNoticeOnPopout(HostNotice.HostChanged, 'You');
-
-        // 1 leaves
+        // 1 leaves; host falls back to 0
         await user1Page.leaveCall();
-        await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, 'You');
+        await user0Popout.expectHostToBeOnPopout(usernames[0]);
 
-        // 1 returns; returning host notice is shown
+        // 1 returns; the assigned host is restored. Check the host state rather
+        // than the host-changed notice, which is only shown for a few seconds.
         user1Page = await joinCall(userStorages[1]);
-        await user0Popout.expectNoticeOnPopout(HostNotice.HostChanged, usernames[1]);
-        await user1Page.expectNotice(HostNotice.HostChanged, 'You');
+        await user0Popout.expectHostToBeOnPopout(usernames[1]);
+        await user1Page.expectHostToBe(usernames[1]);
 
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
     });
@@ -411,7 +405,7 @@ test.describe('host controls', {tag: '@livekit'}, () => {
         // Lower 1's hand
         await user0Popout.clickHostControlOnPopoutRHS(usernames[1], HostControlAction.LowerHand);
         await user0Popout.expectUnRaisedHandOnPoput(usernames[1]);
-        await user1Popout.expectNoticeOnPopout(HostNotice.LowerHand, usernames[0]);
+        await user1Popout.expectUnRaisedHandOnPoput(usernames[1]);
 
         //
         // MUTE OTHERS
@@ -458,7 +452,7 @@ test.describe('host controls', {tag: '@livekit'}, () => {
 
         // 0 removes 1
         await user0Popout.clickHostControlOnPopoutRHS(usernames[1], HostControlAction.Remove);
-        await user0Popout.expectNoticeOnPopout(HostNotice.Removed, usernames[1]);
+        await user0Popout.expectParticipantGoneOnPopout(usernames[1]);
         await user1Page.expectRemovedModal();
 
         //
