@@ -140,7 +140,6 @@
   "Jgp5SL": "You can find the recording and transcription in your direct message with the Calls bot once it has finished processing.",
   "Jji6GY": "Displays spoken words as text captions during a call. To enable live captions, recordings and transcriptions must be enabled first",
   "JkRNKw": "<b>{name}</b> is now the host",
-  "Jok/2E": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a SIP outbound trunk.",
   "K35XPQ": "Call transcriber API",
   "KEzTF7": "<b>You're muted.</b> Select {muteIcon} to unmute.",
   "KGks4f": "When set to true, only phone numbers listed in the allowlist below can be dialed. Intended for development and testing environments to prevent accidental calls to real numbers.",
@@ -242,6 +241,7 @@
   "aC/wxa": "a few seconds ago",
   "aRDoeL": "Phone calls aren't available. Contact your system admin.",
   "aVENjO": "By selecting <b>Try free for 30 days</b>, I agree to the <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>Privacy Policy</linkPrivacy>, and receiving product emails.",
+  "ab8vHe": "Phone calls require an Enterprise Advanced license. Contact your system admin.",
   "aeJJMp": "Calls by Channel Type",
   "aoTqnG": "Enable outbound phone number allowlist",
   "axn5zT": "Here's the call recording. Transcription is processing and will be posted when ready.",
@@ -401,5 +401,6 @@
   "zUH89x": "The call recording will be processed and posted in the call thread. Are you sure you want to stop the recording?",
   "zVg++A": "TCP",
   "zbMDKu": "Call failed",
+  "zg+X3z": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a SIP outbound trunk and an Enterprise Advanced license.",
   "zx0myy": "Participants"
 }

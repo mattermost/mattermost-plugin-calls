@@ -139,6 +139,7 @@ describe('phone_call', () => {
             ['sip_number_not_allowed', defineMessage({defaultMessage: 'Calling this number isn\'t permitted.'})],
             ['sip_team_not_allowed', defineMessage({defaultMessage: 'You don\'t have permission to place phone calls.'})],
             ['outbound_disabled', defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'})],
+            ['sip_license_required', defineMessage({defaultMessage: 'Phone calls require an Enterprise Advanced license. Contact your system admin.'})],
             ['outbound_not_configured', defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'})],
             ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
             ['invalid_target', defineMessage({defaultMessage: 'The person you\'re trying to call couldn\'t be found.'})],

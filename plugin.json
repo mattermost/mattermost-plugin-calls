@@ -122,7 +122,7 @@
             "display_name": "Enable outbound phone dialing",
             "type": "bool",
             "default": false,
-            "help_text": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a SIP outbound trunk.",
+            "help_text": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a SIP outbound trunk and an Enterprise Advanced license.",
             "hosting": "on-prem"
           },
           {

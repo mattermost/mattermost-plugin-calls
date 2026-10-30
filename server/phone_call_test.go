@@ -397,6 +397,7 @@ func TestHandlePhoneCallTarget(t *testing.T) {
 		mockMetrics.On("Handler").Return(nil)
 		mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Maybe()
 		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Maybe()
+		mockAPI.On("GetLicense").Return(&model.License{SkuShortName: "advanced"}).Maybe()
 		mockAllLogs(mockAPI)
 		return p, mockAPI
 	}

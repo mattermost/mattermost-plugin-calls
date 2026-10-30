@@ -69,6 +69,7 @@ const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
     ['sip_number_not_allowed', defineMessage({defaultMessage: 'Calling this number isn\'t permitted.'})],
     ['sip_team_not_allowed', defineMessage({defaultMessage: 'You don\'t have permission to place phone calls.'})],
     ['outbound_disabled', OUTBOUND_UNAVAILABLE_MESSAGE],
+    ['sip_license_required', defineMessage({defaultMessage: 'Phone calls require an Enterprise Advanced license. Contact your system admin.'})],
     ['outbound_not_configured', OUTBOUND_UNAVAILABLE_MESSAGE],
     ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
     ['invalid_target', INVALID_TARGET_MESSAGE],
