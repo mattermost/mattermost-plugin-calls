@@ -6,6 +6,7 @@ import {FormattedMessage, useIntl} from 'react-intl';
 import {
     HostRemovedYouFromCallErr,
     insecureContextErr,
+    phoneDialFailedErr,
     rtcPeerCloseErr,
     rtcPeerErr,
     rtcPeerTimeoutErr,
@@ -186,6 +187,14 @@ export const ErrorModal = (props: Props) => {
             <FormattedMessage defaultMessage='The host removed you from the call.'/>
         );
         confirmMsg = formatMessage({defaultMessage: 'Dismiss'});
+        break;
+    case phoneDialFailedErr.message:
+        headerMsg = (
+            <FormattedMessage defaultMessage='Unable to place phone call'/>
+        );
+        msg = (
+            <FormattedMessage defaultMessage={'The call couldn\'t be placed. Please try again.'}/>
+        );
         break;
     }
 

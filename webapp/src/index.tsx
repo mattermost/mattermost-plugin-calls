@@ -112,13 +112,13 @@ import {
     phoneDialingSupported,
     registerPhoneDialer,
     registerTelLinkDialing,
+    trackSIPCallStatus,
     watchPhoneCall,
 } from 'src/phone_call';
-import {getPhoneCallProps, toSIPCallStatus, withoutSIPSessions} from 'src/phone_utils';
+import {getPhoneCallProps, withoutSIPSessions} from 'src/phone_utils';
 import slashCommandsHandler from 'src/slash_commands';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
-import {sipCallStatusChanged} from 'src/state/sip_call_state/actions';
 import {CurrentCallDataDefault, PhoneCallState} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
 
@@ -842,19 +842,7 @@ export default class Plugin {
                     applyCallJobState(store, window.callsClient?.channelID ?? '', jobState);
                 });
 
-                window.callsClient.on(CALL_EVENT.SIP_STATUS_CHANGED, (status: string) => {
-                    const sipStatus = toSIPCallStatus(status);
-                    if (sipStatus) {
-                        store.dispatch(sipCallStatusChanged(window.callsClient?.channelID ?? '', sipStatus));
-                    }
-                });
-
-                window.callsClient.on(CALL_EVENT.SIP_LEFT, (status: string) => {
-                    const sipStatus = toSIPCallStatus(status);
-                    if (sipStatus) {
-                        store.dispatch(sipCallStatusChanged(window.callsClient?.channelID ?? '', sipStatus));
-                    }
-                });
+                trackSIPCallStatus(store, window.callsClient);
 
                 window.callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
                     const callChannelID = window.callsClient?.channelID ?? '';

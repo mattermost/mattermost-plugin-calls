@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"golang.org/x/time/rate"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	serverMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost-plugin-calls/server/interfaces"
 	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
@@ -241,5 +243,58 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 
 		// A second session joining an existing call must not start it again.
 		require.Equal(t, 1, posts)
+	})
+
+	t.Run("reuses the pending phone call session", func(t *testing.T) {
+		p, mockAPI, _ := setupPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		userID := model.NewId()
+		channelID := model.NewId()
+		callID := model.NewId()
+		postID := model.NewId()
+		sessionID := model.NewId()
+
+		createPost(t, p.store, postID, userID, channelID)
+		require.NoError(t, p.store.CreateCall(&public.Call{
+			ID:        callID,
+			CreateAt:  time.Now().UnixMilli(),
+			StartAt:   time.Now().UnixMilli(),
+			ChannelID: channelID,
+			PostID:    postID,
+			OwnerID:   userID,
+			Props:     public.CallProps{NodeID: "test-node", Type: callTypePhone},
+		}))
+
+		// Created by /phone-call in the Desktop main window, which can't join it:
+		// the Desktop widget window joins instead.
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID:     sessionID,
+			CallID: callID,
+			UserID: userID,
+			JoinAt: time.Now().UnixMilli(),
+		}))
+
+		mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
+		mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+			Id: channelID, Type: model.ChannelTypeDirect,
+		}, nil).Once()
+		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
+
+		w := postSession(t, p, userID, model.NewId(), map[string]string{"channel_id": channelID})
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+		var res livekitSessionResponse
+		require.NoError(t, json.NewDecoder(w.Result().Body).Decode(&res))
+		require.Equal(t, sessionID, res.SessionID)
+		require.NotNil(t, res.CallState)
+
+		verifier, err := auth.ParseAPIToken(res.Token)
+		require.NoError(t, err)
+		require.Equal(t, userID+"___"+sessionID, verifier.Identity())
+
+		sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Len(t, sessions, 1)
 	})
 }

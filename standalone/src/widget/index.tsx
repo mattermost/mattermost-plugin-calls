@@ -29,6 +29,7 @@ initialiseEmbedApp({
     initCb: initWidget,
     initStore: initStoreWidget,
     closeCb: deinitWidget,
+    watchPhoneCalls: true,
 }).catch(deinitWidget);
 
 let widgetRoot: Root | null = null;
