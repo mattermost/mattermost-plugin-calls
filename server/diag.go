@@ -485,6 +485,9 @@ var diagStatusIcon = map[diagStatus]string{
 var (
 	// ICE candidate lines from livekit-client, e.g. "udp 172.16.0.3:7882 host (private)".
 	diagCandidateRe = regexp.MustCompile(`(?i)^(udp|tcp|tls)\s+\S+:\d+\b`)
+	// ICE candidate error lines from livekit-client, which end in the TURN/STUN URL,
+	// e.g. "error with ICE candidate: 701 ... turn:host:3478".
+	diagICEErrorRe = regexp.MustCompile(`(?i)^error with ICE candidate\b`)
 	// Any other IPv4 address, with or without a port.
 	diagIPv4Re = regexp.MustCompile(`\b\d{1,3}(\.\d{1,3}){3}(:\d+)?\b`)
 	// LiveKit server version, e.g. ", version 1.13.1".
@@ -494,11 +497,12 @@ var (
 // redactClientDetail removes server infrastructure details from a client check's
 // text before a non-admin sees it. The client checks run in the user's browser
 // but report on the server's side of the connection: its candidate addresses
-// and version.
+// version and TURN/STUN URLs.
 func redactClientDetail(detail string) string {
 	var kept []string
 	for _, part := range strings.Split(detail, "; ") {
-		if diagCandidateRe.MatchString(strings.TrimSpace(part)) {
+		trimmed := strings.TrimSpace(part)
+		if diagCandidateRe.MatchString(trimmed) || diagICEErrorRe.MatchString(trimmed) {
 			continue
 		}
 		part = diagVersionRe.ReplaceAllString(part, "")

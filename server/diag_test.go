@@ -614,3 +614,8 @@ func TestDiagSIPNotConfiguredIsInfo(t *testing.T) {
 	report := &diagReport{At: time.Now().UnixMilli(), Results: res}
 	require.False(t, report.failed())
 }
+
+func TestRedactClientDetail(t *testing.T) {
+	in := "udp 172.16.0.3:7882 host (private); error with ICE candidate: 701 STUN host lookup failed turn:turn.example.com:3478; connected to 10.0.0.5:7880, version 1.13.1"
+	require.Equal(t, "connected to [address]", redactClientDetail(in))
+}
