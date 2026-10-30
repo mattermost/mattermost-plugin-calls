@@ -315,6 +315,11 @@ export default class PlaywrightDevPage {
         await expect(this.page.getByTestId(notice).first()).toContainText(name);
     }
 
+    async expectParticipantGoneOnPopout(name: string) {
+        const list = this.page.locator('#calls-expanded-view-participants-grid');
+        await expect(list.getByText(name)).toBeHidden();
+    }
+
     async expectNoticeOnPopout(notice: HostNotice, name: string) {
         await expect(this.page.getByTestId(notice).last()).toContainText(name);
     }
