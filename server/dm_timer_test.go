@@ -92,3 +92,86 @@ func TestDMNoAnswerTimer(t *testing.T) {
 		require.Contains(t, p.dmNoAnswerTimers, "other-channel-id")
 	})
 }
+
+func TestSIPNoAnswerTimer(t *testing.T) {
+	// As in TestDMNoAnswerTimer, timers stay at their defaults and are stopped
+	// before they can fire against a nil API and store.
+	newPlugin := func(t *testing.T) *Plugin {
+		t.Helper()
+
+		p := &Plugin{
+			sipNoAnswerTimers: map[string]*sipNoAnswerTimer{},
+		}
+
+		t.Cleanup(func() {
+			p.sipNoAnswerTimersMut.Lock()
+			defer p.sipNoAnswerTimersMut.Unlock()
+			for _, entry := range p.sipNoAnswerTimers {
+				entry.timer.Stop()
+			}
+		})
+
+		return p
+	}
+
+	t.Run("start is a no-op for a call that already has a timer", func(t *testing.T) {
+		p := newPlugin(t)
+		p.startSIPNoAnswerTimer("channel-id", "call-id")
+		first := p.sipNoAnswerTimers["channel-id"]
+
+		p.startSIPNoAnswerTimer("channel-id", "call-id")
+
+		require.Same(t, first, p.sipNoAnswerTimers["channel-id"])
+	})
+
+	t.Run("start replaces a timer left over from an earlier call", func(t *testing.T) {
+		p := newPlugin(t)
+		p.startSIPNoAnswerTimer("channel-id", "call-id")
+		stale := p.sipNoAnswerTimers["channel-id"]
+
+		p.startSIPNoAnswerTimer("channel-id", "other-call-id")
+
+		require.NotSame(t, stale, p.sipNoAnswerTimers["channel-id"])
+		require.Equal(t, "other-call-id", p.sipNoAnswerTimers["channel-id"].callID)
+		require.False(t, stale.timer.Stop(), "the stale timer should already be stopped")
+	})
+
+	t.Run("a replaced timer can neither clear nor re-arm the current one", func(t *testing.T) {
+		p := newPlugin(t)
+		p.startSIPNoAnswerTimer("channel-id", "call-id")
+		stale := p.sipNoAnswerTimers["channel-id"]
+		p.startSIPNoAnswerTimer("channel-id", "other-call-id")
+		current := p.sipNoAnswerTimers["channel-id"]
+		staleTimer := stale.timer
+
+		p.clearSIPNoAnswerTimer("channel-id", stale)
+		p.retrySIPNoAnswerTimer("channel-id", stale)
+
+		require.Same(t, current, p.sipNoAnswerTimers["channel-id"])
+		require.Same(t, staleTimer, stale.timer)
+	})
+
+	t.Run("retry re-arms the current timer", func(t *testing.T) {
+		p := newPlugin(t)
+		p.startSIPNoAnswerTimer("channel-id", "call-id")
+		entry := p.sipNoAnswerTimers["channel-id"]
+		fired := entry.timer
+		fired.Stop()
+
+		p.retrySIPNoAnswerTimer("channel-id", entry)
+
+		require.Same(t, entry, p.sipNoAnswerTimers["channel-id"])
+		require.NotSame(t, fired, entry.timer)
+	})
+
+	t.Run("a cancelled timer is not re-armed", func(t *testing.T) {
+		p := newPlugin(t)
+		p.startSIPNoAnswerTimer("channel-id", "call-id")
+		entry := p.sipNoAnswerTimers["channel-id"]
+		require.True(t, p.cancelSIPNoAnswerTimer("channel-id"))
+
+		p.retrySIPNoAnswerTimer("channel-id", entry)
+
+		require.NotContains(t, p.sipNoAnswerTimers, "channel-id")
+	})
+}

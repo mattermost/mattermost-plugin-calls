@@ -75,7 +75,7 @@ type Plugin struct {
 	dmNoAnswerTimers    map[string]*time.Timer
 	dmNoAnswerTimersMut sync.Mutex
 
-	sipNoAnswerTimers    map[string]*time.Timer
+	sipNoAnswerTimers    map[string]*sipNoAnswerTimer
 	sipNoAnswerTimersMut sync.Mutex
 
 	// reconcilerSuspicions tracks how many consecutive ticks each confirmed
