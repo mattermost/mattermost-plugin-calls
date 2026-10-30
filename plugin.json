@@ -182,6 +182,22 @@
             "hosting": "on-prem"
           },
           {
+            "key": "SIPTrunkDefaultCountryCode",
+            "display_name": "Default country code",
+            "type": "text",
+            "default": "",
+            "help_text": "Country calling code (digits only, e.g. 1) added to numbers dialed without one. Leave empty to add no country code, e.g. for closed networks such as DSN. Numbers entered with a leading + are never modified.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkExtensionMaxDigits",
+            "display_name": "Extension max digits",
+            "type": "number",
+            "default": 0,
+            "help_text": "Numbers with this many digits or fewer are treated as PBX extensions and dialed as-is, with no country code. Set this to the length of your longest extension. Set to 0 to disable.",
+            "hosting": "on-prem"
+          },
+          {
             "key": "EnableSIPOutboundAllowlist",
             "display_name": "Enable outbound phone number allowlist",
             "type": "bool",
