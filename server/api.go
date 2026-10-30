@@ -39,6 +39,7 @@ const (
 	errIDOutboundNotConfigured = "outbound_not_configured"
 	errIDSIPNumberNotAllowed   = "sip_number_not_allowed"
 	errIDSIPTeamNotAllowed     = "sip_team_not_allowed"
+	errIDSIPLicenseRequired    = "sip_license_required"
 	errIDCallInProgress        = "call_in_progress"
 	errIDDialFailed            = "dial_failed"
 	errIDInvalidTarget         = "invalid_target"
@@ -795,6 +796,14 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	displayLabel := truncateRunes(strings.TrimSpace(req.DisplayLabel), phoneDisplayLabelMaxLen)
 
 	cfg := p.getConfiguration()
+	if !p.licenseChecker.SIPOutboundAllowed() {
+		p.LogWarn("outbound dialing requires an Enterprise Advanced license", "userID", userID)
+		res.Err = "outbound dialing requires an Enterprise Advanced license"
+		res.ErrID = errIDSIPLicenseRequired
+		res.Code = http.StatusForbidden
+		return
+	}
+
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
 		res.Err = "outbound dialing is disabled. Enable it in the admin console."
 		res.ErrID = errIDOutboundDisabled
@@ -1038,6 +1047,14 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg := p.getConfiguration()
+	if !p.licenseChecker.SIPOutboundAllowed() {
+		p.LogWarn("outbound dialing requires an Enterprise Advanced license", "userID", userID)
+		res.Err = "outbound dialing requires an Enterprise Advanced license"
+		res.ErrID = errIDSIPLicenseRequired
+		res.Code = http.StatusForbidden
+		return
+	}
+
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
 		res.Err = "outbound dialing is disabled. Enable it in the admin console."
 		res.ErrID = errIDOutboundDisabled

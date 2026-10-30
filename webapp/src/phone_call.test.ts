@@ -139,6 +139,7 @@ describe('phone_call', () => {
             ['sip_number_not_allowed', defineMessage({defaultMessage: 'Calling this number isn\'t permitted.'})],
             ['sip_team_not_allowed', defineMessage({defaultMessage: 'You don\'t have permission to place phone calls.'})],
             ['outbound_disabled', defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'})],
+            ['sip_license_required', defineMessage({defaultMessage: 'Phone calls require an Enterprise Advanced license. Contact your system admin.'})],
             ['outbound_not_configured', defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'})],
             ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
             ['invalid_target', defineMessage({defaultMessage: 'The person you\'re trying to call couldn\'t be found.'})],
@@ -509,6 +510,27 @@ describe('phone_call', () => {
                 expect(mockedSetClientConnecting).toHaveBeenLastCalledWith(false);
                 expect(openSpy).not.toHaveBeenCalled();
                 expect(mockedGetCallsConfig).not.toHaveBeenCalled();
+            });
+
+            it('refetches the config and opens a tel: link in the OS dialer when the license lapsed', async () => {
+                mockedFetch.mockRejectedValueOnce({server_error_id: 'sip_license_required', status_code: 403});
+                const store = makeStore();
+
+                await dialFromTelLink(store);
+
+                expect(store.dispatch).toHaveBeenCalledWith(mockedGetCallsConfig.mock.results[0].value);
+                expect(openSpy).toHaveBeenCalledWith(telHref, '_blank', 'noreferrer');
+                expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
+            });
+
+            it('keeps the license message for /call dial when the license lapsed', async () => {
+                mockedFetch.mockRejectedValueOnce({server_error_id: 'sip_license_required', status_code: 403});
+
+                await dialPhoneNumber(makeStore() as never, '+15550100', jest.fn());
+
+                expect(mockedGetCallsConfig).toHaveBeenCalled();
+                expect(mockedDisplayGenericErrorModal).toHaveBeenCalledWith(errorTitle, defineMessage({defaultMessage: 'Phone calls require an Enterprise Advanced license. Contact your system admin.'}));
+                expect(openSpy).not.toHaveBeenCalled();
             });
 
             it.each(['outbound_disabled', 'outbound_not_configured'])('shows the error for /call dial when the server says %s', async (id) => {

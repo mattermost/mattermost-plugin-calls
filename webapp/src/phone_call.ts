@@ -69,6 +69,7 @@ const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
     ['sip_number_not_allowed', defineMessage({defaultMessage: 'Calling this number isn\'t permitted.'})],
     ['sip_team_not_allowed', defineMessage({defaultMessage: 'You don\'t have permission to place phone calls.'})],
     ['outbound_disabled', OUTBOUND_UNAVAILABLE_MESSAGE],
+    ['sip_license_required', defineMessage({defaultMessage: 'Phone calls require an Enterprise Advanced license. Contact your system admin.'})],
     ['outbound_not_configured', OUTBOUND_UNAVAILABLE_MESSAGE],
     ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
     ['invalid_target', INVALID_TARGET_MESSAGE],
@@ -245,12 +246,23 @@ export async function dialPhoneNumber(
         logErr('failed to place phone call', err);
         store.dispatch(setClientConnecting(false));
 
-        // The config is only fetched on load, so an admin may have turned dialing off since.
-        // A missing trunk always shows the error, even for tel: links, so admins notice it.
-        if ((err as Partial<ClientError> | undefined)?.server_error_id === 'outbound_disabled') {
+        // The config is only fetched on load, so an admin may have turned dialing off, or the
+        // license may have lapsed, since. A missing trunk always shows the error, even for tel:
+        // links, so admins notice it.
+        const serverErrorID = (err as Partial<ClientError> | undefined)?.server_error_id;
+        if (serverErrorID === 'outbound_disabled') {
             store.dispatch(getCallsConfig());
             handleOutboundUnavailable();
             return;
+        }
+
+        // Direct dialing keeps the license-specific message; tel: links fall back to the OS dialer.
+        if (serverErrorID === 'sip_license_required') {
+            store.dispatch(getCallsConfig());
+            if (onOutboundUnavailable) {
+                onOutboundUnavailable();
+                return;
+            }
         }
 
         showError(phoneCallErrorMessage(err));

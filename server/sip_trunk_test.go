@@ -9,10 +9,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
+
 	"github.com/livekit/protocol/livekit"
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
 	"github.com/stretchr/testify/require"
 )
+
+// licensedChecker returns a LicenseChecker backed by a mocked server license.
+func licensedChecker(t *testing.T, license *model.License) *enterprise.LicenseChecker {
+	t.Helper()
+	api := &plugintest.API{}
+	api.On("GetConfig").Return(&model.Config{})
+	api.On("GetLicense").Return(license)
+	return enterprise.NewLicenseChecker(api)
+}
 
 // fakeSIPService is an in-memory LiveKit SIP trunk API. Unimplemented methods
 // panic via the nil embedded interface.
@@ -306,7 +318,7 @@ func TestResolveSIPTrunkID(t *testing.T) {
 
 func TestBuildSIPTrunkStatusManaged(t *testing.T) {
 	newPlugin := func(cfg *configuration) *Plugin {
-		p := &Plugin{}
+		p := &Plugin{licenseChecker: licensedChecker(t, &model.License{SkuShortName: "advanced"})}
 		p.configuration = cfg
 		return p
 	}
@@ -332,6 +344,12 @@ func TestBuildSIPTrunkStatusManaged(t *testing.T) {
 		st := p.buildSIPTrunkStatus()
 		require.Equal(t, sipTrunkStateError, st.State)
 		require.Equal(t, "boom", st.Error)
+	})
+	t.Run("not configured when unlicensed", func(t *testing.T) {
+		p := newPlugin(managedCfg("http://lk"))
+		p.licenseChecker = licensedChecker(t, &model.License{SkuShortName: "enterprise"})
+		require.Equal(t, sipTrunkStateNone, p.buildSIPTrunkStatus().State)
+		require.False(t, p.sipTrunkReconcileWanted(p.getConfiguration()))
 	})
 	t.Run("not configured when outbound disabled", func(t *testing.T) {
 		cfg := managedCfg("http://lk")

@@ -130,6 +130,8 @@ type ClientConfig struct {
 	SkuShortName string `json:"sku_short_name"`
 	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
 	HostControlsAllowed bool
+	// Let the server determine whether or not outbound SIP dialing is allowed (through license checks or otherwise)
+	SIPOutboundAllowed bool
 	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
 	GroupCallsAllowed bool
 }
@@ -429,6 +431,7 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		EnableRinging:        c.EnableRinging,
 		EnableSIPOutbound:    c.EnableSIPOutbound,
 		SkuShortName:         skuShortName,
+		SIPOutboundAllowed:   p.licenseChecker.SIPOutboundAllowed(),
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
 		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
 	}

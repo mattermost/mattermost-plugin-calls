@@ -83,6 +83,18 @@ func IsMinimumEnterpriseLicensedOrDevelopment(config *model.Config, license *mod
 	return IsConfiguredForDevelopment(config)
 }
 
+// IsMinimumEnterpriseAdvancedLicensedOrDevelopment returns true when the server is licensed with
+// a Mattermost Enterprise Advanced License, or has `EnableDeveloper` and
+// `EnableTesting` configuration settings enabled, signaling a non-production, developer mode.
+// Unlike the lower tiers there is no feature-based fallback for unknown SKUs.
+func IsMinimumEnterpriseAdvancedLicensedOrDevelopment(config *model.Config, license *model.License) bool {
+	if IsEnterpriseAdvanced(license) {
+		return true
+	}
+
+	return IsConfiguredForDevelopment(config)
+}
+
 // IsConfiguredForDevelopment returns true when the server has `EnableDeveloper` and `EnableTesting`
 // configuration settings enabled, signaling a non-production, developer mode.
 func IsConfiguredForDevelopment(config *model.Config) bool {
