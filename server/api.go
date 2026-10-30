@@ -402,10 +402,7 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 
 	// Tell the channel the call ended so bystander UI clears; the caller's widget teardown is
 	// driven by LiveKit.
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
-		ChannelID:           channelID,
-		ReliableClusterSend: true,
-	})
+	p.publishCallEnd(channelID, callID, callEndReasonDeclined)
 
 	// Declining is also a dismissal, so the callee's own incoming-call notification goes away
 	// without them having to dismiss it separately.
@@ -1597,12 +1594,9 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 
 		p.cancelSIPNoAnswerTimer(channelID)
 
-		p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
-			ChannelID:           channelID,
-			ReliableClusterSend: true,
-		})
-
 		endReason := phoneLegEndReason(participant.GetDisconnectReason())
+		p.publishCallEnd(channelID, state.Call.ID, endReason)
+
 		if err := p.cleanCallState(&state.Call, "sip_hangup", endReason); err != nil {
 			p.LogError("handleLiveKitSIPParticipantLeft: failed to clean call state",
 				"channelID", channelID, "err", err.Error())

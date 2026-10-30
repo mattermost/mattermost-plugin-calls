@@ -32,6 +32,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/livekit/protocol/livekit"
+	"github.com/livekit/protocol/webhook"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -777,6 +778,36 @@ func (tc *phoneCallTest) expectCallPostStatus(postID, status string) {
 	})).Return(&model.Post{Id: postID}, nil).Once()
 }
 
+func (tc *phoneCallTest) assertCallEndPublished(t *testing.T, callID, reason string) {
+	t.Helper()
+	tc.api.AssertCalled(t, "PublishWebSocketEvent", wsEventCallEnd, map[string]interface{}{
+		"call_id":   callID,
+		"reason":    reason,
+		"channelID": tc.channelID,
+	}, mock.Anything)
+}
+
+// callerParticipant is the caller's client as LiveKit lists it.
+func (tc *phoneCallTest) callerParticipant() *livekit.ParticipantInfo {
+	return &livekit.ParticipantInfo{
+		Sid:      "PA_" + model.NewId(),
+		Identity: composeLivekitIdentity(tc.callerID, model.NewId()),
+		Kind:     livekit.ParticipantInfo_STANDARD,
+	}
+}
+
+// sendWebhook delivers a signed LiveKit webhook about participant in room.
+func (tc *phoneCallTest) sendWebhook(t *testing.T, room, event string, participant *livekit.ParticipantInfo) {
+	t.Helper()
+	w := httptest.NewRecorder()
+	tc.p.apiRouter.ServeHTTP(w, newSignedWebhookRequest(t, "key", "secret", &livekit.WebhookEvent{
+		Event:       event,
+		Room:        &livekit.Room{Name: room},
+		Participant: participant,
+	}))
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
 // dial posts testPhoneNumber to a dialing route as the caller.
 func (tc *phoneCallTest) dial(t *testing.T, route string) *httptest.ResponseRecorder {
 	t.Helper()
@@ -805,11 +836,12 @@ func shortenLockTimeout(t *testing.T) {
 func TestHostEndPhoneCallReason(t *testing.T) {
 	t.Run("hanging up while ringing cancels the call", func(t *testing.T) {
 		tc := newPhoneCallTest(t, sipParticipantWithStatus("ringing"))
-		_, postID := tc.createCall(t, true)
+		callID, postID := tc.createCall(t, true)
 		tc.expectCallPostStatus(postID, callStatusCanceledByCaller)
 
 		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID))
 		tc.api.AssertExpectations(t)
+		tc.assertCallEndPublished(t, callID, callStatusCanceledByCaller)
 	})
 
 	t.Run("hanging up an answered call ends it", func(t *testing.T) {
@@ -831,16 +863,10 @@ func TestHandleSIPNoAnswerTimer(t *testing.T) {
 		tc.p.handleSIPNoAnswerTimer(tc.channelID, entry)
 		return entry
 	}
-	callerParticipant := func(tc *phoneCallTest) *livekit.ParticipantInfo {
-		return &livekit.ParticipantInfo{
-			Identity: composeLivekitIdentity(tc.callerID, model.NewId()),
-			Kind:     livekit.ParticipantInfo_STANDARD,
-		}
-	}
 
 	t.Run("a callee who never answered is hung up as no answer", func(t *testing.T) {
 		tc := newPhoneCallTest(t)
-		tc.lk.setParticipants(sipParticipantWithStatus("ringing"), callerParticipant(tc))
+		tc.lk.setParticipants(sipParticipantWithStatus("ringing"), tc.callerParticipant())
 		callID, postID := tc.createCall(t, true)
 		tc.expectCallPostStatus(postID, callStatusNoAnswer)
 
@@ -849,11 +875,12 @@ func TestHandleSIPNoAnswerTimer(t *testing.T) {
 		require.Empty(t, tc.activeCallID(t))
 		require.Nil(t, tc.sipTimer())
 		tc.api.AssertExpectations(t)
+		tc.assertCallEndPublished(t, callID, callStatusNoAnswer)
 	})
 
 	t.Run("an answered call with a connected caller stays up", func(t *testing.T) {
 		tc := newPhoneCallTest(t)
-		tc.lk.setParticipants(sipParticipantWithStatus(sipCallStatusActive), callerParticipant(tc))
+		tc.lk.setParticipants(sipParticipantWithStatus(sipCallStatusActive), tc.callerParticipant())
 		// LiveKit lists the caller before their participant_joined webhook lands.
 		callID, _ := tc.createCall(t, false)
 
@@ -1141,5 +1168,39 @@ func TestHandleAddPhoneCallAfterDial(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 		require.Equal(t, errIDNoActiveCall, errorID(t, w))
 		require.Equal(t, []string{leg.Identity}, tc.lk.removedIdentities())
+	})
+}
+
+func TestParticipantJoinedAfterPhoneCallEnded(t *testing.T) {
+	t.Run("a caller who joins after the carrier rejected the call is removed", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		callID, postID := tc.createCall(t, false)
+		tc.expectCallPostStatus(postID, callStatusDeclined)
+
+		_, leg := dialedSIPLeg("PA_dialed")
+		tc.sendWebhook(t, tc.channelID, webhook.EventParticipantJoined, leg)
+		leg.DisconnectReason = livekit.DisconnectReason_USER_REJECTED
+		tc.sendWebhook(t, tc.channelID, webhook.EventParticipantLeft, leg)
+
+		require.Empty(t, tc.activeCallID(t))
+		tc.assertCallEndPublished(t, callID, callStatusDeclined)
+
+		// The caller's client finishes connecting into a room LiveKit recreated for it.
+		caller := tc.callerParticipant()
+		tc.sendWebhook(t, tc.channelID, webhook.EventParticipantJoined, caller)
+
+		require.Equal(t, []string{caller.Identity}, tc.lk.removedIdentities())
+		require.Empty(t, tc.activeCallID(t))
+		tc.api.AssertExpectations(t)
+	})
+
+	t.Run("a participant joining a regular channel with no call is left alone", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		channelID := model.NewId()
+		tc.api.On("GetChannel", channelID).Return(&model.Channel{Id: channelID, Type: model.ChannelTypeOpen}, nil)
+
+		tc.sendWebhook(t, channelID, webhook.EventParticipantJoined, tc.callerParticipant())
+
+		require.Empty(t, tc.lk.removedIdentities())
 	})
 }

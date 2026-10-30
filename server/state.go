@@ -456,3 +456,16 @@ func setCallEnded(call *public.Call) {
 	call.Props.Hosts = nil
 	call.Props.Participants = nil
 }
+
+// publishCallEnd tells the channel the call is over. reason carries the same
+// value as the call post's call_status, so the client that placed a phone call
+// can say how it ended.
+func (p *Plugin) publishCallEnd(channelID, callID string, endReason callEndReason) {
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{
+		"call_id": callID,
+		"reason":  endReason.status(),
+	}, &WebSocketBroadcast{
+		ChannelID:           channelID,
+		ReliableClusterSend: true,
+	})
+}

@@ -54,13 +54,15 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 		p.LogError("handleLiveKitParticipantJoined: failed to lock call", "channelID", channelID, "err", err.Error())
 		return
 	}
-	defer p.unlockCall(channelID)
 
 	if state == nil || state.Call.EndAt > 0 {
+		p.unlockCall(channelID)
 		p.LogDebug("handleLiveKitParticipantJoined: no active call",
 			"channelID", channelID, "sessionID", sessionID)
+		p.removeFromEndedPhoneCall(channelID, participant.Identity)
 		return
 	}
+	defer p.unlockCall(channelID)
 
 	now := time.Now().UnixMilli()
 	session := state.sessions[sessionID]
@@ -157,6 +159,25 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 		"user_id":    userID,
 		"session_id": sessionID,
 	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
+}
+
+// removeFromEndedPhoneCall disconnects a caller whose client joined after their
+// phone call had ended, e.g. because the carrier rejected the number while the
+// client was still connecting. LiveKit recreated the room for them, so nothing
+// else would. Every phone call a user places shares the bot DM's room, so only
+// this connection is removed: deleting the room could drop a redial.
+func (p *Plugin) removeFromEndedPhoneCall(channelID, identity string) {
+	if !p.isPhoneCallChannel(channelID) {
+		return
+	}
+
+	p.LogInfo("handleLiveKitParticipantJoined: phone call already ended, removing participant",
+		"channelID", channelID, "identity", identity)
+
+	if err := p.livekitRemoveParticipant(channelID, identity); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
+		p.LogError("handleLiveKitParticipantJoined: failed to remove participant from ended phone call",
+			"channelID", channelID, "identity", identity, "err", err.Error())
+	}
 }
 
 // handleLiveKitParticipantLeft removes a human participant's session when
@@ -396,10 +417,7 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 		"reason", reason,
 		"sessionCount", 0)
 
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
-		ChannelID:           channelID,
-		ReliableClusterSend: true,
-	})
+	p.publishCallEnd(channelID, state.Call.ID, endReason)
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("endEmptyCall: failed to update call", "channelID", channelID, "err", err.Error())
