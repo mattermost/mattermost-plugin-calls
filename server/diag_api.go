@@ -26,7 +26,7 @@ const (
 	// follow the userID___sessionID format, so it can never resolve to a call
 	// session.
 	diagIdentityPrefix = "diag-"
-	diagTokenTTL       = 2 * time.Minute
+	diagTokenTTL       = 10 * time.Minute
 
 	diagRequestMaxBytes = 32 * 1024
 	diagMaxClientChecks = 12
