@@ -58,12 +58,6 @@ export const CALL_EVENT = {
 export const CALL_ATTRIBUTES = {
     RAISED_HAND: 'raised_hand',
 
-    /** BOT marks the recording/transcribing bot. Server-set on the bot's LiveKit
-     * token grant (see livekitAttributeBot server-side); used to filter the bot
-     * out of the participant list regardless of how participants are discovered.
-     */
-    BOT: 'bot',
-
     /** SIP_CALL_STATUS is set by the LiveKit SIP bridge on the phone participant's attributes:
      * - dialing: outbound call placed, no ringing or answer from the callee's phone yet.
      * - ringing: the phone is ringing. Outbound: the provider reported ringing (SIP 180/183).
