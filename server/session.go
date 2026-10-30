@@ -214,15 +214,12 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 
 	// Durable attendance record for audit reporting. This is the chokepoint every
 	// join path funnels through (WebSocket, REST token endpoint, phone), so it is
-	// where join is recorded rather than in the LiveKit webhook. Keeps the
-	// earliest join per user (idempotent). Non-fatal: a failure must not block the
-	// join.
+	// where join is recorded rather than in the LiveKit webhook. The DB write is
+	// handed to a background worker so it never runs under the call lock; the
+	// store keeps the earliest join per user (idempotent).
 	if userID != p.getBotID() {
 		joinAt := state.sessions[connID].JoinAt
-		if err := p.store.RecordParticipantJoin(state.Call.ID, userID, joinAt); err != nil {
-			p.LogError("addUserSession: failed to record participant join",
-				"callID", state.Call.ID, "userID", userID, "err", err.Error())
-		}
+		p.enqueueParticipantAuditEvent(auditEventJoin, state.Call.ID, userID, joinAt)
 		p.LogInfo("calls audit: participant joined",
 			"event", "participant_joined",
 			"callID", state.Call.ID,
@@ -287,7 +284,8 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		return fmt.Errorf("call state is nil")
 	}
 
-	if _, ok := state.sessions[originalConnID]; !ok {
+	leavingSession, ok := state.sessions[originalConnID]
+	if !ok {
 		return fmt.Errorf("session not found in call state")
 	}
 
@@ -298,13 +296,13 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 
 	// Durable attendance record for audit reporting. This is the WebSocket leave
 	// path; the LiveKit webhook leave path records in removeParticipantSession.
-	// Keeps the latest leave per user (idempotent). Non-fatal.
-	if userID != p.getBotID() {
-		leaveAt := time.Now().UnixMilli()
-		if err := p.store.RecordParticipantLeave(state.Call.ID, userID, leaveAt); err != nil {
-			p.LogError("removeUserSession: failed to record participant leave",
-				"callID", state.Call.ID, "userID", userID, "err", err.Error())
-		}
+	// The DB write is handed to a background worker so it never runs under the
+	// call lock; the store keeps the latest leave per user (idempotent). SIP
+	// participants are external phone numbers, not attendees, so they're excluded
+	// (matching removeParticipantSession).
+	if userID != p.getBotID() && !leavingSession.IsSIPParticipant {
+		leaveAt := nowMillis()
+		p.enqueueParticipantAuditEvent(auditEventLeave, state.Call.ID, userID, leaveAt)
 		p.LogInfo("calls audit: participant left",
 			"event", "participant_left",
 			"callID", state.Call.ID,

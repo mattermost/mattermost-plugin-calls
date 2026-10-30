@@ -92,6 +92,12 @@ type Plugin struct {
 	dirtyCallsCh  chan struct{}
 	publisherWg   sync.WaitGroup
 
+	// auditCh carries participant join/leave events to a single background writer
+	// so the durable attendance writes (RecordParticipantJoin/Leave) never happen
+	// inside the call lock on the join/leave hot path. See participant_audit.go.
+	auditCh chan participantAuditEvent
+	auditWg sync.WaitGroup
+
 	// Managed SIP outbound trunk (MM-71127). sipTrunkActive is set once OnActivate
 	// succeeds, so the OnConfigurationChange that runs before it doesn't modify
 	// the LiveKit trunk for a plugin that may still fail to activate.

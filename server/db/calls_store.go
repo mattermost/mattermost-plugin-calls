@@ -253,6 +253,8 @@ type GetCallsFilter struct {
 	FromStartAt int64
 	// ToStartAt is an inclusive upper bound on StartAt (ms since epoch). 0 disables it.
 	ToStartAt int64
+	// Limit caps the number of rows returned (newest first). 0 means no limit.
+	Limit int
 }
 
 // GetCalls returns calls matching the filter, most recent first. It includes
@@ -282,6 +284,10 @@ func (s *Store) GetCalls(filter GetCallsFilter, opts GetCallOpts) ([]*public.Cal
 		From("calls").
 		Where(conds).
 		OrderBy("StartAt DESC, ID")
+
+	if filter.Limit > 0 {
+		qb = qb.Limit(uint64(filter.Limit))
+	}
 
 	q, args, err := qb.ToSql()
 	if err != nil {

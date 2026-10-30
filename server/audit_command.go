@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"sort"
 	"strconv"
 	"time"
 
@@ -16,7 +17,18 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
-const auditDateLayout = "2006-01-02"
+const (
+	auditDateLayout = "2006-01-02"
+
+	// auditMaxCalls bounds a single report so an unqualified --scope all cannot
+	// scan and buffer the entire calls table. Results are ordered newest-first, so
+	// hitting this returns the most recent calls and asks the user to narrow the
+	// range. Also the primary guard on the generated file size.
+	auditMaxCalls = 10000
+
+	// auditUserBatchSize bounds each GetUsersByIds lookup when resolving usernames.
+	auditUserBatchSize = 100
+)
 
 // csvSafe guards against CSV formula injection: spreadsheet apps (Excel, Sheets)
 // execute a cell whose text begins with =, +, -, @, or a leading tab/CR as a
@@ -111,6 +123,7 @@ func (p *Plugin) handleAuditCommand(args *model.CommandArgs, fields []string) (*
 	filter := db.GetCallsFilter{
 		FromStartAt: opts.fromStartAt,
 		ToStartAt:   opts.toStartAt,
+		Limit:       auditMaxCalls,
 	}
 
 	switch opts.scope {
@@ -146,6 +159,14 @@ func (p *Plugin) handleAuditCommand(args *model.CommandArgs, fields []string) (*
 		}, nil
 	}
 
+	// Results are ordered newest-first; hitting the cap means older calls were
+	// omitted, so tell the user to narrow the range.
+	truncated := len(calls) >= auditMaxCalls
+	if truncated {
+		p.LogWarn("calls audit: report truncated at row cap",
+			"requestedBy", args.UserId, "cap", auditMaxCalls)
+	}
+
 	callIDs := make([]string, len(calls))
 	for i, c := range calls {
 		callIDs[i] = c.ID
@@ -155,9 +176,17 @@ func (p *Plugin) handleAuditCommand(args *model.CommandArgs, fields []string) (*
 		return nil, fmt.Errorf("failed to query participant times: %w", err)
 	}
 
-	csvData, err := p.buildAuditCSV(calls, participantTimes)
+	usernames := p.resolveUsernames(calls, participantTimes)
+
+	csvData, err := p.buildAuditCSV(calls, participantTimes, usernames)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build report: %w", err)
+	}
+
+	// Guard against producing a file the server will reject, so the user gets a
+	// clear message instead of a generic upload failure.
+	if maxFileSize := p.API.GetConfig().FileSettings.MaxFileSize; maxFileSize != nil && int64(len(csvData)) > *maxFileSize {
+		return nil, fmt.Errorf("the report is too large to deliver (%d bytes); narrow the date range or use --scope channel", len(csvData))
 	}
 
 	botID := p.getBotID()
@@ -176,19 +205,82 @@ func (p *Plugin) handleAuditCommand(args *model.CommandArgs, fields []string) (*
 		return nil, fmt.Errorf("failed to upload report: %s", appErr.Error())
 	}
 
+	message := fmt.Sprintf("Here is your call audit report (%d call(s)).", len(calls))
+	if truncated {
+		message += fmt.Sprintf(" Only the most recent %d calls are included — narrow the date range to see older ones.", auditMaxCalls)
+	}
 	if _, appErr := p.API.CreatePost(&model.Post{
 		UserId:    botID,
 		ChannelId: dmChannel.Id,
-		Message:   fmt.Sprintf("Here is your call audit report (%d call(s)).", len(calls)),
+		Message:   message,
 		FileIds:   []string{fileInfo.Id},
 	}); appErr != nil {
 		return nil, fmt.Errorf("failed to post report: %s", appErr.Error())
 	}
 
+	// Audit who generated the report (reading audit data is itself auditable).
+	p.LogInfo("calls audit: report generated",
+		"event", "report_generated",
+		"requestedBy", args.UserId,
+		"scope", opts.scope,
+		"fromStartAt", opts.fromStartAt,
+		"toStartAt", opts.toStartAt,
+		"callCount", len(calls),
+		"truncated", truncated)
+
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
 		Text:         fmt.Sprintf("Audit report for %d call(s) sent to your @calls direct message.", len(calls)),
 	}, nil
+}
+
+// resolveUsernames batch-resolves every participant userID that appears in the
+// report to a username, avoiding a per-user API call while building the CSV.
+// A userID that can't be resolved (e.g. a permanently deleted user) maps to
+// itself so the row still carries the ID.
+func (p *Plugin) resolveUsernames(calls []*public.Call, participantTimes map[string]map[string]*public.CallParticipant) map[string]string {
+	idSet := map[string]struct{}{}
+	for _, call := range calls {
+		for _, uid := range call.Participants {
+			idSet[uid] = struct{}{}
+		}
+		for uid := range call.Props.Participants {
+			idSet[uid] = struct{}{}
+		}
+	}
+	for _, perCall := range participantTimes {
+		for uid := range perCall {
+			idSet[uid] = struct{}{}
+		}
+	}
+
+	ids := make([]string, 0, len(idSet))
+	for id := range idSet {
+		ids = append(ids, id)
+	}
+
+	usernames := make(map[string]string, len(ids))
+	for start := 0; start < len(ids); start += auditUserBatchSize {
+		end := start + auditUserBatchSize
+		if end > len(ids) {
+			end = len(ids)
+		}
+		users, appErr := p.API.GetUsersByIds(ids[start:end])
+		if appErr != nil {
+			p.LogWarn("calls audit: failed to batch-resolve usernames", "err", appErr.Error())
+			continue
+		}
+		for _, u := range users {
+			usernames[u.Id] = u.Username
+		}
+	}
+	// Fall back to the raw ID for anything unresolved.
+	for _, id := range ids {
+		if _, ok := usernames[id]; !ok {
+			usernames[id] = id
+		}
+	}
+	return usernames
 }
 
 // getUserChannelIDs returns every channel the user is a member of, across teams.
@@ -213,9 +305,9 @@ func (p *Plugin) getUserChannelIDs(userID string) ([]string, error) {
 }
 
 // buildAuditCSV renders one row per participant per call: the attendance sheet.
-// Columns are append-only so future additions (e.g. per-participant join/leave
-// times) don't break consumers.
-func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string]map[string]*public.CallParticipant) ([]byte, error) {
+// Columns are append-only so future additions don't break consumers. usernames
+// maps participant userID -> display username (pre-resolved in batch).
+func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string]map[string]*public.CallParticipant, usernames map[string]string) ([]byte, error) {
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
 
@@ -245,7 +337,6 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 	}
 
 	channelCache := map[string]*model.Channel{}
-	usernameCache := map[string]string{}
 
 	for _, call := range calls {
 		channelName, channelDisplay := "", ""
@@ -271,16 +362,30 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 			durationSeconds = strconv.FormatInt((call.EndAt-call.StartAt)/1000, 10)
 		}
 
-		// Call.Participants is populated when the call ends. For a still-active
-		// call, fall back to the live set in Props.Participants.
-		participants := []string(call.Participants)
-		if len(participants) == 0 {
+		callParticipants := participantTimes[call.ID]
+
+		// The participant set is the union of two sources so no attendee is ever
+		// dropped from the audit:
+		//  - calls_participants (authoritative; the dedicated attendance table), and
+		//  - the call's participant list — Call.Participants once the call has ended,
+		//    or the live Props.Participants set while it is still active.
+		participantSet := map[string]struct{}{}
+		for uid := range callParticipants {
+			participantSet[uid] = struct{}{}
+		}
+		for _, uid := range call.Participants {
+			participantSet[uid] = struct{}{}
+		}
+		if call.EndAt == 0 {
 			for uid := range call.Props.Participants {
-				participants = append(participants, uid)
+				participantSet[uid] = struct{}{}
 			}
 		}
-
-		callParticipants := participantTimes[call.ID]
+		participants := make([]string, 0, len(participantSet))
+		for uid := range participantSet {
+			participants = append(participants, uid)
+		}
+		sort.Strings(participants)
 
 		writeRow := func(userID, username, firstJoinUTC, lastLeaveUTC string) error {
 			// User-controlled fields (channel name/display, call title, username)
@@ -311,14 +416,9 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 		}
 
 		for _, uid := range participants {
-			username, ok := usernameCache[uid]
-			if !ok {
-				if u, appErr := p.API.GetUser(uid); appErr == nil {
-					username = u.Username
-				} else {
-					username = uid
-				}
-				usernameCache[uid] = username
+			username := usernames[uid]
+			if username == "" {
+				username = uid
 			}
 
 			firstJoinUTC, lastLeaveUTC := "", ""

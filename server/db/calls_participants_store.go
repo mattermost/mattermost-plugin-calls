@@ -13,9 +13,10 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
-// RecordParticipantJoin records the first time a user joined a call. Repeated
-// joins (reconnects, or a user re-joining) are no-ops so FirstJoinAt always
-// reflects the earliest join, per the audit design.
+// RecordParticipantJoin records a user's join time for a call, keeping the
+// earliest across repeated joins/reconnects. LEAST (rather than a plain
+// DO NOTHING) makes FirstJoinAt the true minimum even if join events are applied
+// out of order, so the audit value can't be corrupted by event reordering.
 func (s *Store) RecordParticipantJoin(callID, userID string, joinAt int64) error {
 	s.metrics.IncStoreOp("RecordParticipantJoin")
 	defer func(start time.Time) {
@@ -26,7 +27,7 @@ func (s *Store) RecordParticipantJoin(callID, userID string, joinAt int64) error
 		Insert("calls_participants").
 		Columns("CallID", "UserID", "FirstJoinAt", "LastLeaveAt").
 		Values(callID, userID, joinAt, 0).
-		Suffix("ON CONFLICT (callid, userid) DO NOTHING")
+		Suffix("ON CONFLICT (callid, userid) DO UPDATE SET firstjoinat = LEAST(calls_participants.firstjoinat, EXCLUDED.firstjoinat)")
 
 	q, args, err := qb.ToSql()
 	if err != nil {

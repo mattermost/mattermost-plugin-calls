@@ -59,8 +59,8 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(logsCommandTrigger, "", "Show client logs."))
 
 	auditCmdData := model.NewAutocompleteData(auditCommandTrigger, "", "Generate a CSV attendance report of past calls, DM'd to you.")
-	auditCmdData.AddNamedTextArgument("from", "Only include calls on or after this date (YYYY-MM-DD)", "YYYY-MM-DD", "", false)
-	auditCmdData.AddNamedTextArgument("to", "Only include calls on or before this date (YYYY-MM-DD)", "YYYY-MM-DD", "", false)
+	auditCmdData.AddNamedTextArgument("from", "Include calls that started on or after this date, UTC (YYYY-MM-DD)", "YYYY-MM-DD", "", false)
+	auditCmdData.AddNamedTextArgument("to", "Include calls that started on or before this date, UTC (YYYY-MM-DD)", "YYYY-MM-DD", "", false)
 	auditCmdData.AddNamedStaticListArgument("scope", "channel = current channel (default), all = every channel you can see", false, []model.AutocompleteListItem{
 		{Item: "channel", HelpText: "Only the current channel"},
 		{Item: "all", HelpText: "Every channel you're a member of (all channels for admins)"},

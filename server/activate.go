@@ -174,6 +174,11 @@ func (p *Plugin) OnActivate() (retErr error) {
 	p.publisherWg.Add(1)
 	go p.roomMetadataPublisher()
 
+	// Background writer for durable participant attendance, kept off the call lock.
+	p.auditCh = make(chan participantAuditEvent, auditQueueSize)
+	p.auditWg.Add(1)
+	go p.participantAuditWorker()
+
 	go p.reconciler()
 
 	p.sipTrunkActive.Store(true)
@@ -211,6 +216,10 @@ func (p *Plugin) OnDeactivate() error {
 	// bounded, the first by handlers not holding the call lock across network
 	// calls and the second by the SQL settings' QueryTimeout.
 	p.publisherWg.Wait()
+
+	// Flush any queued attendance writes before the store closes; the worker
+	// returns once it has drained the queue after stopCh closed above.
+	p.auditWg.Wait()
 
 	if err := p.store.Close(); err != nil {
 		p.LogError(err.Error())

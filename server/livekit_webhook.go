@@ -235,14 +235,12 @@ func (p *Plugin) removeParticipantSession(channelID, userID, sessionID, sid stri
 	}
 	delete(state.sessions, sessionID)
 
-	// Durable attendance record for audit reporting. Keeps the latest leave per
-	// user. Non-fatal: a failure must not disrupt the live call.
+	// Durable attendance record for audit reporting. The DB write is handed to a
+	// background worker so it never runs under the call lock; the store keeps the
+	// latest leave per user (idempotent).
 	if !p.isBot(userID) && !session.IsSIPParticipant {
-		leaveAt := time.Now().UnixMilli()
-		if err := p.store.RecordParticipantLeave(state.Call.ID, userID, leaveAt); err != nil {
-			p.LogError("removeParticipantSession: failed to record participant leave",
-				"callID", state.Call.ID, "userID", userID, "err", err.Error())
-		}
+		leaveAt := nowMillis()
+		p.enqueueParticipantAuditEvent(auditEventLeave, state.Call.ID, userID, leaveAt)
 		p.LogInfo("calls audit: participant left",
 			"event", "participant_left",
 			"callID", state.Call.ID,
@@ -384,16 +382,14 @@ func (p *Plugin) handleLiveKitRoomFinished(event *livekit.WebhookEvent) {
 	p.stopOngoingJobs(state, channelID)
 
 	// Record a leave for anyone still in the room: their individual
-	// participant_left never arrived, which is why we're here. Non-fatal.
-	roomFinishedAt := time.Now().UnixMilli()
+	// participant_left never arrived, which is why we're here. Writes are handed
+	// to the background worker, off the call lock.
+	roomFinishedAt := nowMillis()
 	for _, sess := range state.sessions {
 		if p.isBot(sess.UserID) || sess.IsSIPParticipant {
 			continue
 		}
-		if err := p.store.RecordParticipantLeave(state.Call.ID, sess.UserID, roomFinishedAt); err != nil {
-			p.LogError("handleLiveKitRoomFinished: failed to record participant leave",
-				"callID", state.Call.ID, "userID", sess.UserID, "err", err.Error())
-		}
+		p.enqueueParticipantAuditEvent(auditEventLeave, state.Call.ID, sess.UserID, roomFinishedAt)
 		p.LogInfo("calls audit: participant left",
 			"event", "participant_left",
 			"callID", state.Call.ID,
