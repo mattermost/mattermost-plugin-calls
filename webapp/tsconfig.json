@@ -3,34 +3,22 @@
     "target": "esnext",
     "lib": [
       "dom",
-      "dom.iterable",
       "esnext"
     ],
-    "allowJs": true,
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "strict": true,
-    "strictNullChecks": true,
-    "forceConsistentCasingInFileNames": true,
     "module": "es2020",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
+    "moduleResolution": "bundler",
     "isolatedModules": true,
     "noEmit": true,
-    "useUnknownInCatchVariables": false,
-    "experimentalDecorators": true,
     "jsx": "react",
     "types": [
       "node",
-      "jest",
-      "react",
-      "react-dom"
+      "jest"
     ],
-    "baseUrl": ".",
     "paths": {
-      "src": [
-        "src"
+      "src/*": [
+        "./src/*"
       ]
     }
   },
@@ -39,7 +27,6 @@
   ],
   "exclude": [
     "dist",
-    "!node_modules/@types",
     "mattermost-webapp"
   ]
 }

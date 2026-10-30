@@ -287,6 +287,15 @@ export const isCurrentPhoneCallRinging: (state: GlobalState) => boolean =
         (phone, sipState) => Boolean(phone) && !sipState?.answeredAt,
     );
 
+// True while the phone leg of the current phone call is answered and connected.
+// Unlike !isCurrentPhoneCallRinging, this turns false again once the phone hangs up.
+export const isCurrentPhoneCallActive: (state: GlobalState) => boolean =
+    createSelector(
+        phoneCallPropsForCurrentCall,
+        sipCallStateForCurrentCall,
+        (phone, sipState) => Boolean(phone) && sipState?.status === 'active',
+    );
+
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
     createSelector(
         callsStateInPluginReduxStore,
@@ -599,7 +608,7 @@ export const hasPermissionsToEnableCalls = (state: GlobalState, channelId: strin
     return (isDirectChannel(channel) || isGroupChannel(channel)) ||
         cm?.scheme_admin === true ||
         channelRoles[channel.id]?.has('channel_admin') ||
-        teamRoles.has('team_admin');
+        teamRoles?.has('team_admin') === true;
 };
 
 //

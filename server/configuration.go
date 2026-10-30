@@ -134,8 +134,6 @@ type ClientConfig struct {
 	SIPOutboundAllowed bool
 	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
 	GroupCallsAllowed bool
-	// When set to true it enables video calls in direct message channels.
-	EnableVideo *bool
 }
 
 const (
@@ -209,9 +207,6 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.LiveCaptionsLanguage == "" {
 		c.LiveCaptionsLanguage = transcriber.LiveCaptionsLanguageDefault
-	}
-	if c.EnableVideo == nil {
-		c.EnableVideo = model.NewPointer(false)
 	}
 }
 
@@ -351,10 +346,6 @@ func (c *configuration) Clone() *configuration {
 		cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewPointer(*c.LiveCaptionsNumThreadsPerTranscriber)
 	}
 
-	if c.EnableVideo != nil {
-		cfg.EnableVideo = model.NewPointer(*c.EnableVideo)
-	}
-
 	return &cfg
 }
 
@@ -443,7 +434,6 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		SIPOutboundAllowed:   p.licenseChecker.SIPOutboundAllowed(),
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
 		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
-		EnableVideo:          c.EnableVideo,
 	}
 }
 

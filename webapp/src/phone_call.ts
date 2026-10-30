@@ -246,12 +246,23 @@ export async function dialPhoneNumber(
         logErr('failed to place phone call', err);
         store.dispatch(setClientConnecting(false));
 
-        // The config is only fetched on load, so an admin may have turned dialing off since.
-        // A missing trunk always shows the error, even for tel: links, so admins notice it.
-        if ((err as Partial<ClientError> | undefined)?.server_error_id === 'outbound_disabled') {
+        // The config is only fetched on load, so an admin may have turned dialing off, or the
+        // license may have lapsed, since. A missing trunk always shows the error, even for tel:
+        // links, so admins notice it.
+        const serverErrorID = (err as Partial<ClientError> | undefined)?.server_error_id;
+        if (serverErrorID === 'outbound_disabled') {
             store.dispatch(getCallsConfig());
             handleOutboundUnavailable();
             return;
+        }
+
+        // Direct dialing keeps the license-specific message; tel: links fall back to the OS dialer.
+        if (serverErrorID === 'sip_license_required') {
+            store.dispatch(getCallsConfig());
+            if (onOutboundUnavailable) {
+                onOutboundUnavailable();
+                return;
+            }
         }
 
         showError(phoneCallErrorMessage(err));

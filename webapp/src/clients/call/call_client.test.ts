@@ -121,6 +121,7 @@ function createMockRoom(): MockRoom {
             unpublishTrack: jest.fn().mockResolvedValue(null),
             setAttributes: jest.fn().mockResolvedValue(undefined),
             publishData: jest.fn().mockResolvedValue(undefined),
+            publishDtmf: jest.fn().mockResolvedValue(undefined),
             audioTrackPublications: new Map(),
             trackPublications: new Map(),
             attributes: {},
@@ -1118,6 +1119,63 @@ describe('CallClient', () => {
         });
     });
 
+    describe('bot participant filtering', () => {
+        const botID = 'bot-id';
+        const bot = {sid: 'bot-sid', identity: `${botID}___bot-session`, kind: ParticipantKind.STANDARD, getTrackPublication: jest.fn()};
+        const impostor = {sid: 'x-sid', identity: 'user1___x-session', kind: ParticipantKind.STANDARD, attributes: {bot: 'true'}, getTrackPublication: jest.fn()};
+
+        let userJoinedListener: jest.Mock;
+        let userLeftListener: jest.Mock;
+
+        beforeEach(() => {
+            (RestClient.fetch as jest.Mock).mockResolvedValue({...sessionResponse, bot_user_id: botID});
+            userJoinedListener = jest.fn();
+            userLeftListener = jest.fn();
+            client.on(CALL_EVENT.USER_JOINED, userJoinedListener);
+            client.on(CALL_EVENT.USER_LEFT, userLeftListener);
+        });
+
+        it('leaves the bot out of the initial roster but keeps a participant that sets the bot attribute', async () => {
+            mockRoom.remoteParticipants.set(bot.sid, bot);
+            mockRoom.remoteParticipants.set(impostor.sid, impostor);
+
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Connected);
+
+            expect(userJoinedListener).not.toHaveBeenCalledWith('bot-session', botID, true);
+            expect(userJoinedListener).toHaveBeenCalledWith('x-session', 'user1', true);
+        });
+
+        it('does not add the bot itself to its own roster', async () => {
+            (RestClient.fetch as jest.Mock).mockResolvedValue({...sessionResponse, bot_user_id: 'me-id'});
+
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Connected);
+
+            expect(userJoinedListener).not.toHaveBeenCalledWith('me-session', 'me-id', true);
+        });
+
+        it('ignores the bot joining and leaving', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.fire(RoomEvent.ParticipantConnected, bot);
+            mockRoom.fire(RoomEvent.ParticipantDisconnected, bot);
+
+            expect(userJoinedListener).not.toHaveBeenCalled();
+            expect(userLeftListener).not.toHaveBeenCalled();
+        });
+
+        it('reports a participant that sets the bot attribute joining and leaving', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.fire(RoomEvent.ParticipantConnected, impostor);
+            mockRoom.fire(RoomEvent.ParticipantDisconnected, impostor);
+
+            expect(userJoinedListener).toHaveBeenCalledWith('x-session', 'user1');
+            expect(userLeftListener).toHaveBeenCalledWith('x-session', 'user1');
+        });
+    });
+
     describe('phone participant status', () => {
         it('emits SIP_STATUS_CHANGED instead of USER_JOINED when the phone participant connects', async () => {
             await client.connect({channelID: 'test-channel'});
@@ -1494,6 +1552,38 @@ describe('CallClient', () => {
             mockRoom.fire(RoomEvent.DataReceived, encode({session_id: 'p1-session', text: 'x'}), {identity: '___bot-session'}, undefined, 'caption');
 
             expect(otherListener).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('sendDTMF', () => {
+        it('publishes the digit with its DTMF event code', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            await client.sendDTMF('5');
+            await client.sendDTMF('*');
+            await client.sendDTMF('#');
+
+            expect(mockRoom.localParticipant.publishDtmf.mock.calls).toEqual([
+                [5, '5'],
+                [10, '*'],
+                [11, '#'],
+            ]);
+        });
+
+        it('rejects when the room is not connected', async () => {
+            await expect(client.sendDTMF('1')).rejects.toThrow();
+
+            expect(mockRoom.localParticipant.publishDtmf).not.toHaveBeenCalled();
+        });
+
+        it('rejects when publishing fails, and still sends later digits', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.localParticipant.publishDtmf.mockRejectedValueOnce(new Error('data channel closed'));
+
+            await expect(client.sendDTMF('1')).rejects.toThrow('data channel closed');
+            await expect(client.sendDTMF('2')).resolves.toBeUndefined();
+
+            expect(mockRoom.localParticipant.publishDtmf).toHaveBeenLastCalledWith(2, '2');
         });
     });
 

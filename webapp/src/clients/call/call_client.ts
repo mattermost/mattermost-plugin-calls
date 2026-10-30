@@ -35,6 +35,7 @@ import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
+import {dtmfCode, DTMFDigit} from 'src/dtmf';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from 'src/log';
 import {parseRTCStats} from 'src/rtc_stats';
 import {CallsClientStats, MediaDevices, ShareScreenError, ShareScreenResult, TrackMetadata} from 'src/types/types';
@@ -764,6 +765,22 @@ export default class CallClient extends EventEmitter {
             this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
         } catch (err) {
             logErr('CallClient: reactions failed to send', err);
+        }
+    }
+
+    // Unlike the other senders this rejects on failure, so the dial pad can tell
+    // the user a digit didn't go out. The digit itself isn't logged since it may
+    // be part of a PIN.
+    public async sendDTMF(digit: DTMFDigit): Promise<void> {
+        if (!this.room || !this.roomConnected) {
+            throw new Error('CallClient: cannot send DTMF, not connected');
+        }
+
+        try {
+            await this.room.localParticipant.publishDtmf(dtmfCode(digit), digit);
+        } catch (err) {
+            logErr('CallClient: sending DTMF failed', err);
+            throw err;
         }
     }
 
@@ -1916,14 +1933,14 @@ export default class CallClient extends EventEmitter {
     }
 
     /**
-     * Whether a participant is the recording/transcribing bot. The bot is flagged
-     * server-side with a LiveKit attribute on its token grant (see
-     * livekitAttributeBot), so this works regardless of how the participant was
-     * discovered and is robust to multi-node. Used to keep the bot out of the
-     * participant list (no USER_JOINED/USER_LEFT, no join/leave sound or tile).
+     * Whether a participant is the recording/transcribing bot, by comparing the
+     * user id in its identity with the bot user id from the join response. Both
+     * are server-controlled; participant attributes are not, since participants
+     * can overwrite their own. Used to keep the bot out of the participant list
+     * (no USER_JOINED/USER_LEFT, no join/leave sound or tile).
      */
     private isBotParticipant(p: Participant): boolean {
-        return p.attributes?.[CALL_ATTRIBUTES.BOT] === 'true';
+        return Boolean(this.botUserID) && this.parseUserIdAndSessionIdFromIdentity(p).userID === this.botUserID;
     }
 
     private isSipParticipant(p: Participant): boolean {

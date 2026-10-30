@@ -226,7 +226,6 @@ async function globalSetup(config: FullConfig) {
             ...serverConfig.PluginSettings.Plugins[pluginID],
             defaultenabled: true,
             enableringing: true,
-            enablevideo: true,
         },
     };
     await adminContext.put('/api/v4/config', {

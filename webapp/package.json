@@ -23,12 +23,10 @@
     "@floating-ui/react": "0.26.12",
     "@mattermost/calls-common": "github:mattermost/calls-common#27f51ad83e0426d850bb4313a00c654f9c890f38",
     "@mattermost/client": "11.8.0",
-    "@mediapipe/tasks-vision": "0.10.22-rc.20250304",
     "@msgpack/msgpack": "2.7.1",
     "classnames": "2.5.1",
     "core-js": "3.26.1",
     "emoji-picker-react": "4.4.7",
-    "fflate": "0.8.2",
     "livekit-client": "2.23.0",
     "mattermost-redux": "11.8.0",
     "media-chrome": "0.16.0",
@@ -93,14 +91,32 @@
     "sass": "1.66.1",
     "sass-loader": "13.2.0",
     "style-loader": "3.0.0",
-    "typescript": "5.3.3",
+    "typescript": "6.0.3",
     "webpack": "5.74.0",
     "webpack-cli": "4.10.0"
   },
   "overrides": {
-    "@mattermost/client": "11.8.0",
-    "@mattermost/types": "11.8.0",
+    "@formatjs/intl": {
+      "typescript": "$typescript"
+    },
+    "@mattermost/client": {
+      ".": "11.8.0",
+      "typescript": "$typescript"
+    },
+    "@mattermost/types": {
+      ".": "11.8.0",
+      "typescript": "$typescript"
+    },
     "@mattermost/desktop-api": {
+      "typescript": "$typescript"
+    },
+    "babel-plugin-typescript-to-proptypes": {
+      "typescript": "$typescript"
+    },
+    "mattermost-redux": {
+      "typescript": "$typescript"
+    },
+    "react-intl": {
       "typescript": "$typescript"
     },
     "react": "$react",

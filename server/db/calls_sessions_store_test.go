@@ -64,7 +64,6 @@ func testCreateCallSession(t *testing.T, store *Store) {
 			JoinAt:     time.Now().UnixMilli(),
 			Unmuted:    true,
 			RaisedHand: time.Now().UnixMilli(),
-			Video:      true,
 		}
 
 		err := store.CreateCallSession(session)
@@ -92,7 +91,6 @@ func testUpdateCallSession(t *testing.T, store *Store) {
 			UserID:  model.NewId(),
 			JoinAt:  time.Now().UnixMilli(),
 			Unmuted: true,
-			Video:   true,
 		}
 
 		err := store.CreateCallSession(session)
@@ -100,7 +98,6 @@ func testUpdateCallSession(t *testing.T, store *Store) {
 
 		session.RaisedHand = time.Now().UnixMilli()
 		session.Unmuted = false
-		session.Video = false
 
 		err = store.UpdateCallSession(session)
 		require.NoError(t, err)
@@ -120,7 +117,6 @@ func testDeleteCallSession(t *testing.T, store *Store) {
 		UserID:  model.NewId(),
 		JoinAt:  time.Now().UnixMilli(),
 		Unmuted: true,
-		Video:   true,
 	}
 
 	err := store.CreateCallSession(session)
@@ -154,7 +150,6 @@ func testGetCallSession(t *testing.T, store *Store) {
 			UserID:  model.NewId(),
 			JoinAt:  time.Now().UnixMilli(),
 			Unmuted: true,
-			Video:   true,
 		}
 
 		err := store.CreateCallSession(session)
@@ -217,7 +212,6 @@ func testDeleteCallsSessions(t *testing.T, store *Store) {
 				UserID:  model.NewId(),
 				JoinAt:  time.Now().UnixMilli(),
 				Unmuted: true,
-				Video:   true,
 			}
 
 			err := store.CreateCallSession(session)

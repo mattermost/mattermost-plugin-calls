@@ -56,13 +56,6 @@
             "type": "bool",
             "default": false,
             "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started."
-          },
-          {
-            "key": "EnableVideo",
-            "display_name": "Enable video calls in DMs (Experimental)",
-            "type": "bool",
-            "default": false,
-            "help_text": "When set to true, video calls are enabled in direct message channels."
           }
         ]
       },

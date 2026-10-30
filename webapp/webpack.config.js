@@ -53,9 +53,6 @@ module.exports = {
     resolve: {
         alias: {
             src: path.resolve(__dirname, './src/'),
-
-            // Force CommonJS build to avoid ES module minification issues
-            '@mediapipe/tasks-vision': path.resolve(__dirname, './node_modules/@mediapipe/tasks-vision/vision_bundle.cjs'),
         },
         modules: [
             'src',

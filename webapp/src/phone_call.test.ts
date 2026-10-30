@@ -512,6 +512,27 @@ describe('phone_call', () => {
                 expect(mockedGetCallsConfig).not.toHaveBeenCalled();
             });
 
+            it('refetches the config and opens a tel: link in the OS dialer when the license lapsed', async () => {
+                mockedFetch.mockRejectedValueOnce({server_error_id: 'sip_license_required', status_code: 403});
+                const store = makeStore();
+
+                await dialFromTelLink(store);
+
+                expect(store.dispatch).toHaveBeenCalledWith(mockedGetCallsConfig.mock.results[0].value);
+                expect(openSpy).toHaveBeenCalledWith(telHref, '_blank', 'noreferrer');
+                expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
+            });
+
+            it('keeps the license message for /call dial when the license lapsed', async () => {
+                mockedFetch.mockRejectedValueOnce({server_error_id: 'sip_license_required', status_code: 403});
+
+                await dialPhoneNumber(makeStore() as never, '+15550100', jest.fn());
+
+                expect(mockedGetCallsConfig).toHaveBeenCalled();
+                expect(mockedDisplayGenericErrorModal).toHaveBeenCalledWith(errorTitle, defineMessage({defaultMessage: 'Phone calls require an Enterprise Advanced license. Contact your system admin.'}));
+                expect(openSpy).not.toHaveBeenCalled();
+            });
+
             it.each(['outbound_disabled', 'outbound_not_configured'])('shows the error for /call dial when the server says %s', async (id) => {
                 mockedFetch.mockRejectedValueOnce({server_error_id: id, status_code: 400});
 
