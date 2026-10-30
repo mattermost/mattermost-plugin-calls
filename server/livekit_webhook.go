@@ -429,9 +429,7 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 // and screen_sharing_session_id in CallStateClient both come out; the prop and
 // the duration accounting stay. See MM-69502 PR 7.
 //
-// Video is deliberately not handled here: MM-69116 is removing the server-side
-// video state that a handler would write, so mirroring camera tracks now would
-// build something being deleted.
+// Camera tracks are not mirrored: the server keeps no camera video state.
 
 // handleLiveKitTrackPublished records a participant's screen share.
 func (p *Plugin) handleLiveKitTrackPublished(event *livekit.WebhookEvent) {

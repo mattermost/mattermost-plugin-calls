@@ -2,7 +2,6 @@
 // See LICENSE.txt for license information.
 
 import type {CallJobState, CallState, EmojiData} from '@mattermost/calls-common/lib/types';
-import type {RTCStats} from 'src/types/webrtc';
 
 /**
  * Response from POST /livekit-token, which mints the call session and returns
@@ -52,21 +51,20 @@ export type ScreenSharingSession = {
     stream: MediaStream | null;
 };
 
-export type TrackMetadata = {
-    id: string;
-    streamID: string;
-    kind: string;
-    label: string;
-    enabled: boolean;
-    readyState: MediaStreamTrackState;
-}
+/**
+ * A remote audio track we play through an element created by LiveKit's attach().
+ */
+export type RemoteAudioPlayback = {
+    element: HTMLMediaElement;
+    userID: string;
+    onPlaybackStarted: () => void;
+    onPlaybackFailed: (err?: Error) => void;
 
-export type CallClientStats = {
-    initTime: number;
-    callID: string;
-    tracksInfo: TrackMetadata[];
-    rtcStats: RTCStats | null;
-}
+    // Watchdog state: the element's currentTime at the previous check, and
+    // whether we already reported it as stuck.
+    lastCurrentTime: number;
+    stuck: boolean;
+};
 
 export type ConnectPayload = {
     channelID: string;

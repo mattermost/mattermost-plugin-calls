@@ -79,8 +79,6 @@ cd ./lt && go run ./cmd/lt -url http://localhost:8065 \
     	The number of users screen-sharing
   -setup
     	Whether or not setup actions like creating users, channels, teams and/or members should be executed. (default true)
-  -simulcast
-    	Whether or not to enable simulcast for screen
   -speech-file string
     	The path to a speech OGG file to read to simulate real voice samples (default "./lt/samples/speech_0.ogg")
   -team string

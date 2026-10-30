@@ -54,7 +54,7 @@ export interface PluginRegistry {
 
     registerChannelHeaderButtonAction(component: React.ElementType, fn: (channel: Channel) => void);
 
-    registerChannelHeaderMenuAction(component: React.ElementType, fn: (channelID: string) => void);
+    registerChannelHeaderMenuAction(component: React.ElementType, fn: (channelID: string) => void, shouldRender?: (state: GlobalState) => boolean);
 
     registerWebSocketEventHandler(evType: string, fn: (event: WebSocketEvent) => void);
 

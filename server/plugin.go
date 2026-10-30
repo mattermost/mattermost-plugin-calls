@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -91,6 +92,16 @@ type Plugin struct {
 	dirtyCallsCh  chan struct{}
 	publisherWg   sync.WaitGroup
 
+	// Managed SIP outbound trunk (MM-71127). sipTrunkActive is set once OnActivate
+	// succeeds, so the OnConfigurationChange that runs before it doesn't modify
+	// the LiveKit trunk for a plugin that may still fail to activate.
+	sipTrunkActive      atomic.Bool
+	sipTrunkMut         sync.Mutex
+	sipTrunkID          string
+	sipTrunkErr         string
+	sipTrunkLastAttempt time.Time
+	sipTrunkLastOK      time.Time
+
 	// Database
 	store *db.Store
 
@@ -121,14 +132,14 @@ func (p *Plugin) createCallStartedPost(state *callState, userID, channelID, titl
 		postMsg = T("app.call.started_message", map[string]any{"Username": user.Username})
 	}
 
-	slackAttachment := model.SlackAttachment{
+	msgAttachment := model.MessageAttachment{
 		Fallback: postMsg,
 		Title:    postMsg,
 		Text:     postMsg,
 	}
 
 	props := map[string]interface{}{
-		"attachments": []*model.SlackAttachment{&slackAttachment},
+		"attachments": []*model.MessageAttachment{&msgAttachment},
 		"start_at":    state.Call.StartAt,
 		"title":       title,
 	}
@@ -192,7 +203,7 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string, reaso
 	}
 	callStatus := reason.status()
 
-	slackAttachment := model.SlackAttachment{
+	msgAttachment := model.MessageAttachment{
 		Fallback: postMsg,
 		Title:    postMsg,
 		Text:     postMsg,
@@ -200,7 +211,7 @@ func (p *Plugin) updateCallPostEnded(postID string, participants []string, reaso
 
 	post.Message = postMsg
 	post.DelProp("attachments")
-	post.AddProp("attachments", []*model.SlackAttachment{&slackAttachment})
+	post.AddProp("attachments", []*model.MessageAttachment{&msgAttachment})
 	post.AddProp("end_at", time.Now().UnixMilli())
 	post.AddProp("call_status", callStatus)
 	post.AddProp("participants", participants)

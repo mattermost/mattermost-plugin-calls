@@ -802,9 +802,9 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	trunkID := cfg.LiveKitSIPOutboundTrunkID
+	trunkID := p.resolveSIPTrunkID(cfg)
 	if trunkID == "" {
-		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console."
+		res.Err = "outbound dialing is not configured. Check the SIP outbound settings in the admin console."
 		res.ErrID = errIDOutboundNotConfigured
 		res.Code = http.StatusBadRequest
 		return
@@ -988,8 +988,6 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	// and is cancelled in participant_joined once both sides are live.
 	p.startSIPNoAnswerTimer(channelID, callID)
 
-	p.maybeSendConcurrentSessionsWarning()
-
 	p.LogInfo("phone call session created",
 		"callID", callID,
 		"channelID", channelID,
@@ -1047,9 +1045,9 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	trunkID := cfg.LiveKitSIPOutboundTrunkID
+	trunkID := p.resolveSIPTrunkID(cfg)
 	if trunkID == "" {
-		res.Err = "outbound dialing is not configured. Set the SIP Outbound Trunk ID in the admin console."
+		res.Err = "outbound dialing is not configured. Check the SIP outbound settings in the admin console."
 		res.ErrID = errIDOutboundNotConfigured
 		res.Code = http.StatusBadRequest
 		return
@@ -1852,8 +1850,6 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 	}
 
 	p.cancelDMNoAnswerTimerIfAnswered(state, userID, req.ChannelID, channel.Type)
-
-	p.maybeSendConcurrentSessionsWarning()
 
 	p.LogInfo("livekit session created",
 		"callID", state.Call.ID,

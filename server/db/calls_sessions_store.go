@@ -14,7 +14,7 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
-var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "Video", "IsSIPParticipant", "ConfirmedAt", "SID", "AuthSessionID"}
+var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "IsSIPParticipant", "ConfirmedAt", "SID", "AuthSessionID"}
 
 func (s *Store) CreateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("CreateCallSession")
@@ -26,10 +26,10 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 		return fmt.Errorf("invalid call session: %w", err)
 	}
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Insert("calls_sessions").
 		Columns(callsSessionsColumns...).
-		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.Unmuted, session.RaisedHand, session.Video, session.IsSIPParticipant, session.ConfirmedAt, session.SID, session.AuthSessionID)
+		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.Unmuted, session.RaisedHand, session.IsSIPParticipant, session.ConfirmedAt, session.SID, session.AuthSessionID)
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -56,11 +56,10 @@ func (s *Store) UpdateCallSession(session *public.CallSession) error {
 		return fmt.Errorf("invalid call session: %w", err)
 	}
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Update("calls_sessions").
 		Set("Unmuted", session.Unmuted).
 		Set("RaisedHand", session.RaisedHand).
-		Set("Video", session.Video).
 		Where(sq.Eq{"ID": session.ID})
 
 	q, args, err := qb.ToSql()
@@ -84,7 +83,7 @@ func (s *Store) DeleteCallSession(id string) error {
 		s.metrics.ObserveStoreMethodsTime("DeleteCallSession", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Delete("calls_sessions").
 		Where(sq.Eq{"ID": id})
 
@@ -109,7 +108,7 @@ func (s *Store) GetCallSession(id string, opts GetCallSessionOpts) (*public.Call
 		s.metrics.ObserveStoreMethodsTime("GetCallSession", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select(callsSessionsColumns...).
+	qb := getQueryBuilder().Select(callsSessionsColumns...).
 		From("calls_sessions").
 		Where(sq.Eq{"ID": id})
 
@@ -136,7 +135,7 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 		s.metrics.ObserveStoreMethodsTime("GetCallSessions", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select(callsSessionsColumns...).
+	qb := getQueryBuilder().Select(callsSessionsColumns...).
 		From("calls_sessions").
 		Where(sq.Eq{"CallID": callID})
 
@@ -156,7 +155,7 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 
 	for rows.Next() {
 		var session public.CallSession
-		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.Unmuted, &session.RaisedHand, &session.Video, &session.IsSIPParticipant, &session.ConfirmedAt, &session.SID, &session.AuthSessionID); err != nil {
+		if err := rows.Scan(&session.ID, &session.CallID, &session.UserID, &session.JoinAt, &session.Unmuted, &session.RaisedHand, &session.IsSIPParticipant, &session.ConfirmedAt, &session.SID, &session.AuthSessionID); err != nil {
 			return nil, fmt.Errorf("failed to scan rows: %w", err)
 		}
 		sessionsMap[session.ID] = &session
@@ -177,7 +176,7 @@ func (s *Store) DeleteCallsSessions(callID string) (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("DeleteCallsSessions", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Delete("calls_sessions").
 		Where(sq.Eq{"CallID": callID})
 
@@ -208,7 +207,7 @@ func (s *Store) GetCallSessionsCount(callID string, opts GetCallSessionOpts) (in
 		s.metrics.ObserveStoreMethodsTime("GetCallSessionsCount", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("COUNT(*)").
+	qb := getQueryBuilder().Select("COUNT(*)").
 		From("calls_sessions").
 		Where(sq.Eq{"CallID": callID})
 
@@ -233,7 +232,7 @@ func (s *Store) IsUserInCall(userID, callID string, opts GetCallSessionOpts) (bo
 		s.metrics.ObserveStoreMethodsTime("IsUserInCall", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).Select("1").
+	qb := getQueryBuilder().Select("1").
 		From("calls_sessions").
 		Where(
 			sq.And{
@@ -267,7 +266,7 @@ func (s *Store) ConfirmCallSession(id, sid string, confirmedAt int64) error {
 		s.metrics.ObserveStoreMethodsTime("ConfirmCallSession", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Update("calls_sessions").
 		Set("SID", sid).
 		Set("ConfirmedAt", confirmedAt).
@@ -296,7 +295,7 @@ func (s *Store) UpdateCallSessionSID(id, sid string) error {
 		s.metrics.ObserveStoreMethodsTime("UpdateCallSessionSID", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder(s.driverName).
+	qb := getQueryBuilder().
 		Update("calls_sessions").
 		Set("SID", sid).
 		Where(sq.Eq{"ID": id})

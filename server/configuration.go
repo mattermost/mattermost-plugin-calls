@@ -62,6 +62,21 @@ type configuration struct {
 	LiveKitAPISecret string
 	// SIP outbound trunk ID for outbound phone calls (e.g., ST_xxx). Empty disables outbound dialing.
 	LiveKitSIPOutboundTrunkID string
+	// How the outbound SIP trunk is provided: sipTrunkModeExisting (use LiveKitSIPOutboundTrunkID as-is)
+	// or sipTrunkModeManaged (the plugin creates/updates the trunk from the fields below).
+	SIPTrunkMode string
+	// Managed trunk: host the SIP bridge sends the INVITE to (no "sip:" prefix).
+	SIPTrunkAddress string
+	// Managed trunk: the caller-ID number (E.164). It must be attached to the trunk at the SIP provider.
+	SIPTrunkNumber string
+	// Managed trunk: SIP auth credentials. May be empty for an unauthenticated provider.
+	SIPTrunkAuthUsername string
+	SIPTrunkAuthPassword string
+	// Managed trunk: SIP signaling transport (auto, udp, tcp, tls).
+	SIPTrunkTransport string
+	// Managed trunk: SRTP media encryption (disable, allow, require). Carriers requiring
+	// TLS signaling generally require encrypted media too.
+	SIPTrunkMediaEncryption string
 	// When set to true, only numbers in SIPOutboundAllowlist may be dialed. Intended for dev/test environments.
 	EnableSIPOutboundAllowlist *bool
 	// Newline-separated list of E.164 phone numbers permitted for outbound dialing when the allowlist is enabled.
@@ -106,8 +121,6 @@ type ClientConfig struct {
 	EnableLiveCaptions *bool
 	// The maximum duration (in minutes) for call recordings.
 	MaxRecordingDuration *int
-	// When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.
-	EnableSimulcast *bool
 	// When set to true it enables ringing for DM/GM channels.
 	EnableRinging *bool
 	// When set to true it enables outbound SIP phone dialing. Requires a configured
@@ -117,14 +130,8 @@ type ClientConfig struct {
 	SkuShortName string `json:"sku_short_name"`
 	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
 	HostControlsAllowed bool
-	// When set to true it enables using the AV1 codec to encode screen sharing tracks.
-	EnableAV1 *bool
 	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
 	GroupCallsAllowed bool
-	// When set to true it enables experimental support for using the data channel for signaling.
-	EnableDCSignaling *bool
-	// When set to try it enables video calls in direct message channels.
-	EnableVideo *bool
 }
 
 const (
@@ -160,9 +167,6 @@ func (c *configuration) SetDefaults() {
 	if c.RecordingQuality == "" {
 		c.RecordingQuality = "medium"
 	}
-	if c.EnableSimulcast == nil {
-		c.EnableSimulcast = model.NewPointer(false)
-	}
 	if c.EnableRinging == nil {
 		c.EnableRinging = model.NewPointer(false)
 	}
@@ -171,6 +175,15 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.EnableSIPOutboundAllowlist == nil {
 		c.EnableSIPOutboundAllowlist = model.NewPointer(false)
+	}
+	if c.SIPTrunkMode == "" {
+		c.SIPTrunkMode = sipTrunkModeExisting
+	}
+	if c.SIPTrunkTransport == "" {
+		c.SIPTrunkTransport = sipTrunkTransportDefault
+	}
+	if c.SIPTrunkMediaEncryption == "" {
+		c.SIPTrunkMediaEncryption = sipTrunkMediaEncryptionDefault
 	}
 	if c.TranscriberModelSize == "" {
 		c.TranscriberModelSize = transcriber.ModelSizeDefault
@@ -192,15 +205,6 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.LiveCaptionsLanguage == "" {
 		c.LiveCaptionsLanguage = transcriber.LiveCaptionsLanguageDefault
-	}
-	if c.EnableAV1 == nil {
-		c.EnableAV1 = model.NewPointer(false)
-	}
-	if c.EnableDCSignaling == nil {
-		c.EnableDCSignaling = model.NewPointer(false)
-	}
-	if c.EnableVideo == nil {
-		c.EnableVideo = model.NewPointer(false)
 	}
 }
 
@@ -248,6 +252,13 @@ func (c *configuration) IsValid() error {
 			return fmt.Errorf("LiveCaptionsLanguage is not valid: should be a 2-letter ISO 639 set 1 language code, or blank for default")
 		}
 	}
+
+	if c.sipTrunkManaged() {
+		if err := c.validateManagedSIPTrunk(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -268,6 +279,13 @@ func (c *configuration) Clone() *configuration {
 	cfg.LiveKitAPIKey = c.LiveKitAPIKey
 	cfg.LiveKitAPISecret = c.LiveKitAPISecret
 	cfg.LiveKitSIPOutboundTrunkID = c.LiveKitSIPOutboundTrunkID
+	cfg.SIPTrunkMode = c.SIPTrunkMode
+	cfg.SIPTrunkAddress = c.SIPTrunkAddress
+	cfg.SIPTrunkNumber = c.SIPTrunkNumber
+	cfg.SIPTrunkAuthUsername = c.SIPTrunkAuthUsername
+	cfg.SIPTrunkAuthPassword = c.SIPTrunkAuthPassword
+	cfg.SIPTrunkTransport = c.SIPTrunkTransport
+	cfg.SIPTrunkMediaEncryption = c.SIPTrunkMediaEncryption
 	cfg.SIPOutboundAllowlist = c.SIPOutboundAllowlist
 	cfg.LiveKitSIPOutboundAllowedTeams = c.LiveKitSIPOutboundAllowedTeams
 
@@ -306,10 +324,6 @@ func (c *configuration) Clone() *configuration {
 		cfg.MaxRecordingDuration = model.NewPointer(*c.MaxRecordingDuration)
 	}
 
-	if c.EnableSimulcast != nil {
-		cfg.EnableSimulcast = model.NewPointer(*c.EnableSimulcast)
-	}
-
 	if c.EnableRinging != nil {
 		cfg.EnableRinging = model.NewPointer(*c.EnableRinging)
 	}
@@ -328,18 +342,6 @@ func (c *configuration) Clone() *configuration {
 
 	if c.LiveCaptionsNumThreadsPerTranscriber != nil {
 		cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewPointer(*c.LiveCaptionsNumThreadsPerTranscriber)
-	}
-
-	if c.EnableAV1 != nil {
-		cfg.EnableAV1 = model.NewPointer(*c.EnableAV1)
-	}
-
-	if c.EnableDCSignaling != nil {
-		cfg.EnableDCSignaling = model.NewPointer(*c.EnableDCSignaling)
-	}
-
-	if c.EnableVideo != nil {
-		cfg.EnableVideo = model.NewPointer(*c.EnableVideo)
 	}
 
 	return &cfg
@@ -424,15 +426,11 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		EnableTranscriptions: c.EnableTranscriptions,
 		EnableLiveCaptions:   c.EnableLiveCaptions,
 		MaxRecordingDuration: c.MaxRecordingDuration,
-		EnableSimulcast:      c.EnableSimulcast,
 		EnableRinging:        c.EnableRinging,
 		EnableSIPOutbound:    c.EnableSIPOutbound,
 		SkuShortName:         skuShortName,
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
-		EnableAV1:            c.EnableAV1,
 		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
-		EnableDCSignaling:    c.EnableDCSignaling,
-		EnableVideo:          c.EnableVideo,
 	}
 }
 
@@ -442,6 +440,9 @@ func (p *Plugin) getAdminClientConfig(c *configuration) configuration {
 
 	cfg := p.configuration.Clone()
 	cfg.ClientConfig = p.getClientConfig(c)
+	// The admin console reads settings through the server config API, not this
+	// endpoint, so there's no reason to hand the trunk password to the browser.
+	cfg.SIPTrunkAuthPassword = ""
 
 	return *cfg
 }
@@ -508,6 +509,8 @@ func (p *Plugin) OnConfigurationChange() error {
 	if err := p.loadConfig(); err != nil {
 		return fmt.Errorf("OnConfigurationChange: failed to load config: %w", err)
 	}
+
+	p.reconcileSIPTrunkAsync()
 
 	return nil
 }
@@ -617,6 +620,12 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.LiveKitURL = strings.TrimSpace(cfg.LiveKitURL)
 	cfg.LiveKitPrivateURL = strings.TrimSpace(cfg.LiveKitPrivateURL)
 	cfg.LiveKitSIPOutboundTrunkID = strings.TrimSpace(cfg.LiveKitSIPOutboundTrunkID)
+	cfg.SIPTrunkMode = strings.TrimSpace(cfg.SIPTrunkMode)
+	cfg.SIPTrunkAddress = strings.TrimSpace(cfg.SIPTrunkAddress)
+	cfg.SIPTrunkNumber = strings.TrimSpace(cfg.SIPTrunkNumber)
+	cfg.SIPTrunkAuthUsername = strings.TrimSpace(cfg.SIPTrunkAuthUsername)
+	cfg.SIPTrunkTransport = strings.ToLower(strings.TrimSpace(cfg.SIPTrunkTransport))
+	cfg.SIPTrunkMediaEncryption = strings.ToLower(strings.TrimSpace(cfg.SIPTrunkMediaEncryption))
 	cfg.LiveKitSIPOutboundAllowedTeams = strings.TrimSpace(cfg.LiveKitSIPOutboundAllowedTeams)
 }
 

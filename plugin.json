@@ -51,39 +51,11 @@
             "help_text": "When set to true, call participants can share their screen."
           },
           {
-            "key": "EnableSimulcast",
-            "display_name": "Enable simulcast for screen sharing (Experimental)",
-            "type": "bool",
-            "default": false,
-            "help_text": "When set to true, simulcast for screen sharing is enabled. This can help to improve screen sharing quality."
-          },
-          {
             "key": "EnableRinging",
-            "display_name": "Enable call ringing",
+            "display_name": "Enable call ringing for direct and group messages",
             "type": "bool",
             "default": false,
-            "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart."
-          },
-          {
-            "key": "EnableAV1",
-            "display_name": "Enable AV1 codec for screen sharing (Experimental)",
-            "type": "bool",
-            "default": false,
-            "help_text": "When set to true it enables using the AV1 codec to encode screen sharing tracks. This can result in improved screen sharing quality for clients that support it.\nNote: this setting won't apply when EnableSimulcast is true."
-          },
-          {
-            "key": "EnableDCSignaling",
-            "display_name": "Use data channels for signaling (Experimental)",
-            "type": "bool",
-            "default": false,
-            "help_text": "When set to true, clients will use WebRTC data channels for signaling of new media tracks. This can result in a more efficient and less race-prone process, especially in case of frequent WebSocket disconnections."
-          },
-          {
-            "key": "EnableVideo",
-            "display_name": "Enable video calls in DMs (Experimental)",
-            "type": "bool",
-            "default": false,
-            "help_text": "When set to true, video calls are enabled in direct message channels."
+            "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started."
           }
         ]
       },
@@ -128,21 +100,85 @@
             "help_text": "The API secret used to authenticate with the LiveKit server.",
             "default": "",
             "hosting": "on-prem"
-          },
+          }
+        ]
+      },
+      {
+        "key": "SIPOutbound",
+        "title": "Outbound phone calls",
+        "subtitle": "Dial external phone numbers through a LiveKit SIP bridge",
+        "custom": true,
+        "fallback": true,
+        "settings": [
           {
             "key": "EnableSIPOutbound",
             "display_name": "Enable outbound phone dialing",
             "type": "bool",
             "default": false,
-            "help_text": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a configured SIP Outbound Trunk ID.",
+            "help_text": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a SIP outbound trunk.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkMode",
+            "display_name": "SIP outbound trunk",
+            "type": "custom",
+            "default": "existing",
             "hosting": "on-prem"
           },
           {
             "key": "LiveKitSIPOutboundTrunkID",
-            "display_name": "SIP Outbound Trunk ID",
-            "type": "text",
+            "display_name": "SIP outbound trunk ID",
+            "type": "custom",
             "default": "",
-            "help_text": "LiveKit outbound SIP trunk ID (e.g., ST_xxx). The trunk is created in LiveKit (via CLI or Cloud dashboard) with the SIP provider address and credentials. Leave empty to disable outbound dialing.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkAddress",
+            "display_name": "Trunk address",
+            "type": "custom",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkNumber",
+            "display_name": "Caller ID number",
+            "type": "custom",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkAuthUsername",
+            "display_name": "Auth username",
+            "type": "custom",
+            "default": "",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkAuthPassword",
+            "display_name": "Auth password",
+            "type": "custom",
+            "default": "",
+            "secret": true,
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkTransport",
+            "display_name": "SIP transport",
+            "type": "custom",
+            "default": "auto",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkMediaEncryption",
+            "display_name": "Media encryption",
+            "type": "custom",
+            "default": "disable",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkStatus",
+            "display_name": "SIP outbound trunk status",
+            "type": "custom",
             "hosting": "on-prem"
           },
           {
@@ -163,7 +199,7 @@
           },
           {
             "key": "LiveKitSIPOutboundAllowedTeams",
-            "display_name": "SIP Outbound Allowed Teams",
+            "display_name": "SIP outbound allowed teams",
             "type": "text",
             "default": "",
             "help_text": "Team URL-names (from the team's web address) whose members are permitted to place outbound phone calls, separated by semicolons or commas. Leave empty to allow all authenticated users to dial.",
@@ -367,6 +403,6 @@
   "props": {
     "min_offloader_version": "v0.9.0",
     "calls_recorder_version": "v0.8.13",
-    "calls_transcriber_version": "v1.0.0-dev1"
+    "calls_transcriber_version": "v1.0.0"
   }
 }
