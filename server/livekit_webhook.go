@@ -122,6 +122,11 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 
 	// Participants feeds the call post's attendee list, so the bot is excluded
 	// even though it holds a session — matching addUserSession.
+	//
+	// Audit attendance (RecordParticipantJoin) is recorded in addUserSession, the
+	// chokepoint every join path funnels through (WebSocket, REST token endpoint,
+	// phone). Recording it here too would miss the WebSocket-only join path and
+	// double-write on the normal path, so it deliberately lives there, not here.
 	if !p.isBot(userID) {
 		if state.Call.Props.Participants == nil {
 			state.Call.Props.Participants = map[string]struct{}{}
@@ -229,6 +234,22 @@ func (p *Plugin) removeParticipantSession(channelID, userID, sessionID, sid stri
 		return
 	}
 	delete(state.sessions, sessionID)
+
+	// Durable attendance record for audit reporting. Keeps the latest leave per
+	// user. Non-fatal: a failure must not disrupt the live call.
+	if !p.isBot(userID) && !session.IsSIPParticipant {
+		leaveAt := time.Now().UnixMilli()
+		if err := p.store.RecordParticipantLeave(state.Call.ID, userID, leaveAt); err != nil {
+			p.LogError("removeParticipantSession: failed to record participant leave",
+				"callID", state.Call.ID, "userID", userID, "err", err.Error())
+		}
+		p.LogInfo("calls audit: participant left",
+			"event", "participant_left",
+			"callID", state.Call.ID,
+			"channelID", channelID,
+			"userID", userID,
+			"leaveAt", time.UnixMilli(leaveAt).UTC().Format(time.RFC3339))
+	}
 
 	// A session that never confirmed was never announced, so there is nothing to
 	// retract and nobody expecting a user_left for it.
@@ -361,6 +382,25 @@ func (p *Plugin) handleLiveKitRoomFinished(event *livekit.WebhookEvent) {
 	// is exactly the path where jobs have not been stopped yet. Do it before the
 	// sessions go, while the job's bot session is still visible in state.
 	p.stopOngoingJobs(state, channelID)
+
+	// Record a leave for anyone still in the room: their individual
+	// participant_left never arrived, which is why we're here. Non-fatal.
+	roomFinishedAt := time.Now().UnixMilli()
+	for _, sess := range state.sessions {
+		if p.isBot(sess.UserID) || sess.IsSIPParticipant {
+			continue
+		}
+		if err := p.store.RecordParticipantLeave(state.Call.ID, sess.UserID, roomFinishedAt); err != nil {
+			p.LogError("handleLiveKitRoomFinished: failed to record participant leave",
+				"callID", state.Call.ID, "userID", sess.UserID, "err", err.Error())
+		}
+		p.LogInfo("calls audit: participant left",
+			"event", "participant_left",
+			"callID", state.Call.ID,
+			"channelID", channelID,
+			"userID", sess.UserID,
+			"leaveAt", time.UnixMilli(roomFinishedAt).UTC().Format(time.RFC3339))
+	}
 
 	if _, err := p.store.DeleteCallsSessions(state.Call.ID); err != nil {
 		p.LogError("handleLiveKitRoomFinished: failed to delete calls sessions",

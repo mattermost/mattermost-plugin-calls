@@ -244,6 +244,60 @@ func (s *Store) GetActiveCallByChannelID(channelID string, opts GetCallOpts) (*p
 	return &call, nil
 }
 
+// GetCallsFilter narrows the set of calls returned by GetCalls. A zero value
+// matches every non-deleted call that has started.
+type GetCallsFilter struct {
+	// ChannelIDs limits results to these channels. Empty means all channels.
+	ChannelIDs []string
+	// FromStartAt is an inclusive lower bound on StartAt (ms since epoch). 0 disables it.
+	FromStartAt int64
+	// ToStartAt is an inclusive upper bound on StartAt (ms since epoch). 0 disables it.
+	ToStartAt int64
+}
+
+// GetCalls returns calls matching the filter, most recent first. It includes
+// both ended and still-active calls (callers can distinguish via EndAt). This
+// backs the /call audit attendance report.
+func (s *Store) GetCalls(filter GetCallsFilter, opts GetCallOpts) ([]*public.Call, error) {
+	s.metrics.IncStoreOp("GetCalls")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetCalls", time.Since(start).Seconds())
+	}(time.Now())
+
+	conds := sq.And{
+		sq.Eq{"DeleteAt": 0},
+		sq.Gt{"StartAt": 0},
+	}
+	if len(filter.ChannelIDs) > 0 {
+		conds = append(conds, sq.Eq{"ChannelID": filter.ChannelIDs})
+	}
+	if filter.FromStartAt > 0 {
+		conds = append(conds, sq.GtOrEq{"StartAt": filter.FromStartAt})
+	}
+	if filter.ToStartAt > 0 {
+		conds = append(conds, sq.LtOrEq{"StartAt": filter.ToStartAt})
+	}
+
+	qb := getQueryBuilder().Select(callsColumns...).
+		From("calls").
+		Where(conds).
+		OrderBy("StartAt DESC, ID")
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	calls := []*public.Call{}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.dbXFromGetOpts(opts).SelectContext(ctx, &calls, q, args...); err != nil {
+		return nil, fmt.Errorf("failed to get calls: %w", err)
+	}
+
+	return calls, nil
+}
+
 func (s *Store) GetAllActiveCalls(opts GetCallOpts) ([]*public.Call, error) {
 	s.metrics.IncStoreOp("GetAllActiveCalls")
 	defer func(start time.Time) {
