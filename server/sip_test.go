@@ -4,6 +4,7 @@
 package main
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -40,8 +41,10 @@ func TestNormalizePhoneNumber(t *testing.T) {
 		{name: "short digits with no extension config", input: "12345", cc: "", wantErr: true},
 		{name: "plus only first position kept", input: "1+5551234567", cc: "1", expected: "+15551234567"},
 		{name: "letters stripped", input: "1-800-FLOWERS", cc: "1", wantErr: true},
-		{name: "non-NANP country code prepended", input: "07911 123456", cc: "44", expected: "+4407911123456"},
-		{name: "non-NANP country code not double-prefixed", input: "44 7911 123456", cc: "44", expected: "+447911123456"},
+		{name: "non-NANP country code prepended", input: "7911 123456", cc: "44", expected: "+447911123456"},
+		{name: "non-NANP leading zero is ambiguous", input: "07911 123456", cc: "44", wantErr: true},
+		{name: "non-NANP leading country code is ambiguous", input: "44 7911 123456", cc: "44", wantErr: true},
+		{name: "non-NANP explicit plus unchanged", input: "+44 7911 123456", cc: "44", expected: "+447911123456"},
 	}
 
 	for _, tc := range tests {
@@ -86,6 +89,33 @@ func TestIsNumberInAllowlist(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := &configuration{SIPOutboundAllowlist: tc.list}
 			require.Equal(t, tc.expected, cfg.isNumberInAllowlist(tc.number))
+		})
+	}
+}
+
+func TestSetInvalidNumberResponse(t *testing.T) {
+	_, ambiguousErr := normalizePhoneNumber("44 7911 123456", "44", 0)
+	_, shortErr := normalizePhoneNumber("123-4567", "1", 0)
+
+	tests := []struct {
+		name  string
+		raw   string
+		err   error
+		errID string
+		msg   string
+	}{
+		{"empty", "  ", shortErr, errIDInvalidNumber, "number is required"},
+		{"invalid", "123-4567", shortErr, errIDInvalidNumber, "invalid phone number"},
+		{"ambiguous", "44 7911 123456", ambiguousErr, errIDAmbiguousNumber, ambiguousErr.Error()},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var res httpResponse
+			setInvalidNumberResponse(&res, tc.raw, tc.err)
+			require.Equal(t, http.StatusBadRequest, res.Code)
+			require.Equal(t, tc.errID, res.ErrID)
+			require.Equal(t, tc.msg, res.Err)
 		})
 	}
 }

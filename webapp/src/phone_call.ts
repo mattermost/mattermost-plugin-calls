@@ -66,6 +66,7 @@ const INVALID_TARGET_MESSAGE = defineMessage({defaultMessage: 'The person you\'r
 
 const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
     ['invalid_number', defineMessage({defaultMessage: 'That doesn\'t look like a valid phone number.'})],
+    ['ambiguous_number', defineMessage({defaultMessage: 'Start international numbers with + and the country code.'})],
     ['sip_number_not_allowed', defineMessage({defaultMessage: 'Calling this number isn\'t permitted.'})],
     ['sip_team_not_allowed', defineMessage({defaultMessage: 'You don\'t have permission to place phone calls.'})],
     ['outbound_disabled', OUTBOUND_UNAVAILABLE_MESSAGE],

@@ -35,6 +35,7 @@ const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 // these rather than on human-readable message strings.
 const (
 	errIDInvalidNumber         = "invalid_number"
+	errIDAmbiguousNumber       = "ambiguous_number"
 	errIDOutboundDisabled      = "outbound_disabled"
 	errIDOutboundNotConfigured = "outbound_not_configured"
 	errIDSIPNumberNotAllowed   = "sip_number_not_allowed"
@@ -788,12 +789,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	number, err := cfg.normalizePhoneNumber(req.Number)
 	if err != nil {
-		res.Err = "invalid phone number"
-		if strings.TrimSpace(req.Number) == "" {
-			res.Err = "number is required"
-		}
-		res.ErrID = errIDInvalidNumber
-		res.Code = http.StatusBadRequest
+		setInvalidNumberResponse(&res, req.Number, err)
 		return
 	}
 
@@ -1037,12 +1033,7 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	number, err := cfg.normalizePhoneNumber(req.Number)
 	if err != nil {
-		res.Err = "invalid phone number"
-		if strings.TrimSpace(req.Number) == "" {
-			res.Err = "number is required"
-		}
-		res.ErrID = errIDInvalidNumber
-		res.Code = http.StatusBadRequest
+		setInvalidNumberResponse(&res, req.Number, err)
 		return
 	}
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
@@ -1236,6 +1227,24 @@ func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 	return nil
 }
 
+// errAmbiguousNumber is returned when digits could be read as either a national
+// number or one that already carries the country code.
+var errAmbiguousNumber = errors.New("ambiguous number")
+
+// setInvalidNumberResponse fills res for a number that normalizePhoneNumber rejected.
+func setInvalidNumberResponse(res *httpResponse, raw string, err error) {
+	res.Err = "invalid phone number"
+	res.ErrID = errIDInvalidNumber
+	switch {
+	case strings.TrimSpace(raw) == "":
+		res.Err = "number is required"
+	case errors.Is(err, errAmbiguousNumber):
+		res.Err = err.Error()
+		res.ErrID = errIDAmbiguousNumber
+	}
+	res.Code = http.StatusBadRequest
+}
+
 // maxE164Digits is the maximum number of digits in an E.164 number.
 const maxE164Digits = 15
 
@@ -1252,11 +1261,13 @@ const nanpNationalDigits = 10
 //   - "+"-prefixed numbers are taken as E.164 and returned unchanged.
 //   - At most extensionMaxDigits digits: dialed as-is (PBX extension).
 //   - Empty defaultCountryCode: digits pass through with no '+'.
-//   - Digits already starting with the country code and the length of a full
-//     number: only '+' is prepended.
-//   - Otherwise the country code is prepended.
+//   - Code "1": 11 digits starting with 1 get only '+'; 10 digits get "+1".
+//   - Other codes: the code is prepended; digits beginning with the code or a
+//     0 (a possible trunk prefix) are rejected as ambiguous.
 //
-// A defaultCountryCode of "1" requires exactly 10 national digits. Examples
+// A defaultCountryCode of "1" requires exactly 10 national digits (or 11 with
+// the leading 1). For any other code, digits that begin with the code are
+// rejected as ambiguous; international numbers need an explicit '+'. Examples
 // with defaultCountryCode "1":
 //
 //	"1-781-307-8753"    -> "+17813078753"
@@ -1311,12 +1322,16 @@ func normalizePhoneNumber(raw string, defaultCountryCode string, extensionMaxDig
 		return "", errors.New("not a valid national number for country code 1")
 	}
 
-	// Other country codes have variable national number lengths, so a leading
-	// copy of the code only counts as already-prefixed when what follows is
-	// long enough to be a national number.
+	// Other country codes have variable national number lengths, so there is no
+	// reliable way to tell a leading copy of the code from a national number that
+	// happens to start with the same digits. Without a '+', input is national;
+	// ambiguous input is rejected rather than guessed.
 	const minNationalDigits = 6
-	if strings.HasPrefix(digits, cc) && len(digits)-len(cc) >= minNationalDigits {
-		return "+" + digits, nil
+	// A leading 0 is a trunk prefix to drop in many countries (UK) but part of the
+	// number in others (Italy). Without a per-country table we can't tell which, so
+	// reject it; valid numbers like Italian landlines must be entered with a '+'.
+	if strings.HasPrefix(digits, cc) || digits[0] == '0' {
+		return "", fmt.Errorf("%w for country code %s: use a leading + for international numbers", errAmbiguousNumber, cc)
 	}
 	if len(digits)+len(cc) > maxE164Digits || len(digits) < minNationalDigits {
 		return "", fmt.Errorf("not a valid national number for country code %s", cc)
