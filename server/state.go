@@ -411,6 +411,11 @@ func (p *Plugin) cleanCallState(call *public.Call, reason string, endReason call
 		setCallEnded(call)
 	}
 
+	// Completeness backstop: on a restart/forced cleanup the per-leave writes for
+	// anyone still in the call never fired, so stamp their leave at the call's end
+	// time. This is what makes attendance leave times durable across a crash.
+	p.recordLeaveBackstop(call)
+
 	deleted, err := p.store.DeleteCallsSessions(call.ID)
 	if err != nil {
 		p.LogError("failed to delete calls sessions", "err", err.Error())

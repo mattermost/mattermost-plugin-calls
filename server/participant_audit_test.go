@@ -5,99 +5,73 @@ package main
 
 import (
 	"testing"
-	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
 	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-// TestParticipantAuditWorker exercises the async path end to end against a real
-// store: enqueue join/leave, flush on shutdown, assert the durable rows.
-func TestParticipantAuditWorker(t *testing.T) {
+// TestRecordLeaveBackstop is the durability guarantee for leave times: when a call
+// ends, every attendee has a non-zero leave time even if their individual leave was
+// never recorded (server crash mid-call, a missed webhook, a failed write). The
+// backstop stamps the call's end time for anyone still at zero, while leaving a
+// precisely-recorded leave untouched.
+func TestRecordLeaveBackstop(t *testing.T) {
 	store, tearDown := NewTestStore(t)
 	defer tearDown()
 
-	botID := model.NewId()
-	mockAPI := &pluginMocks.MockAPI{}
 	p := &Plugin{
-		MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
+		MattermostPlugin: plugin.MattermostPlugin{API: &pluginMocks.MockAPI{}},
 		store:            store,
-		botID:            botID,
-		stopCh:           make(chan struct{}),
-		auditCh:          make(chan participantAuditEvent, 16),
 	}
 
-	p.auditWg.Add(1)
-	go p.participantAuditWorker()
-
 	callID := model.NewId()
-	u1 := model.NewId()
+	left := model.NewId()    // left normally, precise leave recorded
+	present := model.NewId() // still in the call when it ended (no leave recorded)
 
-	p.enqueueParticipantAuditEvent(auditEventJoin, callID, u1, 1000)
-	p.enqueueParticipantAuditEvent(auditEventLeave, callID, u1, 2000)
-	p.enqueueParticipantAuditEvent(auditEventJoin, callID, botID, 1500) // bot must be skipped
+	require.NoError(t, store.RecordParticipantJoin(callID, left, 1000))
+	require.NoError(t, store.RecordParticipantJoin(callID, present, 1500))
+	require.NoError(t, store.RecordParticipantLeave(callID, left, 4000))
 
-	// Shut the worker down; it drains the queue before returning.
-	close(p.stopCh)
-	p.auditWg.Wait()
+	const endAt = 9000
+	p.recordLeaveBackstop(&public.Call{ID: callID, EndAt: endAt})
 
 	got, err := store.GetParticipantsForCalls([]string{callID}, db.GetCallOpts{FromWriter: true})
 	require.NoError(t, err)
 
-	require.NotNil(t, got[callID][u1])
-	require.Equal(t, int64(1000), got[callID][u1].FirstJoinAt)
-	require.Equal(t, int64(2000), got[callID][u1].LastLeaveAt)
-	require.Nil(t, got[callID][botID], "bot must not be recorded as an attendee")
+	// Precise leave is preserved; it must not be overwritten by the backstop.
+	require.Equal(t, int64(4000), got[callID][left].LastLeaveAt)
+	// The still-present attendee gets the call's end time, not a zero/blank leave.
+	require.Equal(t, int64(endAt), got[callID][present].LastLeaveAt)
+	// First joins are untouched.
+	require.Equal(t, int64(1000), got[callID][left].FirstJoinAt)
+	require.Equal(t, int64(1500), got[callID][present].FirstJoinAt)
 }
 
-// TestEnqueueParticipantAuditEvent covers the two properties that protect the
-// call hot path: the bot is never enqueued, and a full queue drops the event
-// instead of blocking the caller (which would hold the call lock).
-func TestEnqueueParticipantAuditEvent(t *testing.T) {
-	botID := model.NewId()
-	mockAPI := &pluginMocks.MockAPI{}
-	// Allow (but don't require) the drop warning. The LogWarn wrapper prepends
-	// "origin", <origin> to the key/value pairs, so the API receives 9 args.
-	mockAPI.On("LogWarn",
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+// TestRecordLeaveBackstopNoEnd guards against stamping leaves on a call that has
+// not actually ended (EndAt == 0), which would corrupt live attendance.
+func TestRecordLeaveBackstopNoEnd(t *testing.T) {
+	store, tearDown := NewTestStore(t)
+	defer tearDown()
 
 	p := &Plugin{
-		MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
-		botID:            botID,
-		auditCh:          make(chan participantAuditEvent, 1),
+		MattermostPlugin: plugin.MattermostPlugin{API: &pluginMocks.MockAPI{}},
+		store:            store,
 	}
 
-	t.Run("bot is skipped", func(t *testing.T) {
-		p.enqueueParticipantAuditEvent(auditEventJoin, model.NewId(), botID, 1)
-		require.Len(t, p.auditCh, 0)
-	})
+	callID := model.NewId()
+	u1 := model.NewId()
+	require.NoError(t, store.RecordParticipantJoin(callID, u1, 1000))
 
-	t.Run("event is enqueued", func(t *testing.T) {
-		p.enqueueParticipantAuditEvent(auditEventJoin, model.NewId(), model.NewId(), 1)
-		require.Len(t, p.auditCh, 1)
-	})
+	p.recordLeaveBackstop(&public.Call{ID: callID, EndAt: 0})
 
-	t.Run("full queue drops without blocking", func(t *testing.T) {
-		// Queue (cap 1) is already full from the previous subtest.
-		done := make(chan struct{})
-		go func() {
-			p.enqueueParticipantAuditEvent(auditEventJoin, model.NewId(), model.NewId(), 1)
-			close(done)
-		}()
-		select {
-		case <-done:
-			// returned immediately — did not block
-		case <-time.After(2 * time.Second):
-			t.Fatal("enqueue blocked on a full queue")
-		}
-		require.Len(t, p.auditCh, 1) // unchanged; event was dropped
-	})
+	got, err := store.GetParticipantsForCalls([]string{callID}, db.GetCallOpts{FromWriter: true})
+	require.NoError(t, err)
+	require.Equal(t, int64(0), got[callID][u1].LastLeaveAt, "a live call must not have leaves backstopped")
 }

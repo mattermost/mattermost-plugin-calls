@@ -76,6 +76,40 @@ func (s *Store) RecordParticipantLeave(callID, userID string, leaveAt int64) err
 	return nil
 }
 
+// RecordLeaveForActiveParticipants stamps leaveAt on every participant of the
+// call that has no recorded leave yet (LastLeaveAt = 0). It is the completeness
+// backstop called when a call ends: a participant whose individual leave was
+// never recorded (server crash, missed webhook, a failed per-leave write) can't
+// have outlived the call, so their leave is set to the call's end time. This
+// guarantees every attendee of an ended call has a durable, non-zero leave time.
+func (s *Store) RecordLeaveForActiveParticipants(callID string, leaveAt int64) error {
+	s.metrics.IncStoreOp("RecordLeaveForActiveParticipants")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("RecordLeaveForActiveParticipants", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder().
+		Update("calls_participants").
+		Set("LastLeaveAt", leaveAt).
+		Where(sq.And{
+			sq.Eq{"CallID": callID},
+			sq.Eq{"LastLeaveAt": 0},
+		})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if _, err := s.wDB.ExecContext(ctx, q, args...); err != nil {
+		return fmt.Errorf("failed to run query: %w", err)
+	}
+
+	return nil
+}
+
 // GetParticipantsForCalls returns the attendance records for the given calls,
 // keyed by callID then userID, for building the audit report.
 func (s *Store) GetParticipantsForCalls(callIDs []string, opts GetCallOpts) (map[string]map[string]*public.CallParticipant, error) {

@@ -13,9 +13,10 @@ import (
 
 func TestCallsParticipantsStore(t *testing.T) {
 	testStore(t, map[string]func(t *testing.T, store *Store){
-		"TestRecordParticipantJoin":   testRecordParticipantJoin,
-		"TestRecordParticipantLeave":  testRecordParticipantLeave,
-		"TestGetParticipantsForCalls": testGetParticipantsForCalls,
+		"TestRecordParticipantJoin":            testRecordParticipantJoin,
+		"TestRecordParticipantLeave":           testRecordParticipantLeave,
+		"TestRecordLeaveForActiveParticipants": testRecordLeaveForActiveParticipants,
+		"TestGetParticipantsForCalls":          testGetParticipantsForCalls,
 	})
 }
 
@@ -78,6 +79,38 @@ func testRecordParticipantLeave(t *testing.T, store *Store) {
 		require.NoError(t, err)
 		require.Equal(t, int64(9000), got[callID][userID].LastLeaveAt)
 		require.Equal(t, int64(1000), got[callID][userID].FirstJoinAt) // unchanged
+	})
+}
+
+func testRecordLeaveForActiveParticipants(t *testing.T, store *Store) {
+	callID := model.NewId()
+	stillIn := model.NewId()  // joined, never left
+	alreadyLeft := model.NewId()
+	otherCall := model.NewId()
+	otherUser := model.NewId()
+
+	require.NoError(t, store.RecordParticipantJoin(callID, stillIn, 1000))
+	require.NoError(t, store.RecordParticipantJoin(callID, alreadyLeft, 1000))
+	require.NoError(t, store.RecordParticipantLeave(callID, alreadyLeft, 3000))
+	require.NoError(t, store.RecordParticipantJoin(otherCall, otherUser, 1000))
+
+	t.Run("stamps only zero-leave participants of the target call", func(t *testing.T) {
+		require.NoError(t, store.RecordLeaveForActiveParticipants(callID, 9000))
+
+		got, err := store.GetParticipantsForCalls([]string{callID, otherCall}, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+
+		require.Equal(t, int64(9000), got[callID][stillIn].LastLeaveAt, "never-left attendee gets the end time")
+		require.Equal(t, int64(3000), got[callID][alreadyLeft].LastLeaveAt, "precise leave preserved")
+		require.Equal(t, int64(0), got[otherCall][otherUser].LastLeaveAt, "other calls untouched")
+	})
+
+	t.Run("is a no-op when run again", func(t *testing.T) {
+		require.NoError(t, store.RecordLeaveForActiveParticipants(callID, 12000))
+
+		got, err := store.GetParticipantsForCalls([]string{callID}, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Equal(t, int64(9000), got[callID][stillIn].LastLeaveAt, "already-stamped leaves are not moved")
 	})
 }
 

@@ -235,12 +235,20 @@ func (p *Plugin) removeParticipantSession(channelID, userID, sessionID, sid stri
 	}
 	delete(state.sessions, sessionID)
 
-	// Durable attendance record for audit reporting. The DB write is handed to a
-	// background worker so it never runs under the call lock; the store keeps the
-	// latest leave per user (idempotent).
+	// Durable attendance timestamp for audit reporting. Synchronous and idempotent
+	// (keeps the latest leave per user). A failed write is logged, not fatal: the
+	// call-end backstop stamps a leave time for anyone still unrecorded.
+	//
+	// SIP (phone) participants are intentionally skipped here: their join is
+	// recorded at dial time and their leave comes from the call-end backstop
+	// (= call end time), since the server never observes the phone answering. See
+	// removeUserSession for the full rationale.
 	if !p.isBot(userID) && !session.IsSIPParticipant {
 		leaveAt := nowMillis()
-		p.enqueueParticipantAuditEvent(auditEventLeave, state.Call.ID, userID, leaveAt)
+		if err := p.store.RecordParticipantLeave(state.Call.ID, userID, leaveAt); err != nil {
+			p.LogError("calls audit: failed to record participant leave",
+				"callID", state.Call.ID, "userID", userID, "err", err.Error())
+		}
 		p.LogInfo("calls audit: participant left",
 			"event", "participant_left",
 			"callID", state.Call.ID,
@@ -382,14 +390,17 @@ func (p *Plugin) handleLiveKitRoomFinished(event *livekit.WebhookEvent) {
 	p.stopOngoingJobs(state, channelID)
 
 	// Record a leave for anyone still in the room: their individual
-	// participant_left never arrived, which is why we're here. Writes are handed
-	// to the background worker, off the call lock.
+	// participant_left never arrived, which is why we're here. Synchronous writes;
+	// endEmptyCall's backstop covers anyone this misses.
 	roomFinishedAt := nowMillis()
 	for _, sess := range state.sessions {
 		if p.isBot(sess.UserID) || sess.IsSIPParticipant {
 			continue
 		}
-		p.enqueueParticipantAuditEvent(auditEventLeave, state.Call.ID, sess.UserID, roomFinishedAt)
+		if err := p.store.RecordParticipantLeave(state.Call.ID, sess.UserID, roomFinishedAt); err != nil {
+			p.LogError("calls audit: failed to record participant leave",
+				"callID", state.Call.ID, "userID", sess.UserID, "err", err.Error())
+		}
 		p.LogInfo("calls audit: participant left",
 			"event", "participant_left",
 			"callID", state.Call.ID,
@@ -420,6 +431,9 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 	endReason := p.resolveCallEndReason(state, participants, channelID)
 
 	setCallEnded(&state.Call)
+
+	// Completeness backstop: guarantee every attendee has a durable leave time.
+	p.recordLeaveBackstop(&state.Call)
 
 	// A DM/phone call may still have no-answer timers pending against it.
 	p.cancelDMNoAnswerTimer(channelID)
