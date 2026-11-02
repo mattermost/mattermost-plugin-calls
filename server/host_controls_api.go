@@ -6,9 +6,11 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 func (p *Plugin) handleMakeHost(w http.ResponseWriter, r *http.Request) {
@@ -157,9 +159,25 @@ func (p *Plugin) handleEnd(w http.ResponseWriter, r *http.Request) {
 	defer p.httpAudit("handleEnd", &res, w, r)
 
 	userID := r.Header.Get("Mattermost-User-Id")
-	callID := mux.Vars(r)["call_id"]
+	// Despite the route variable's name, this is the channel ID.
+	channelID := mux.Vars(r)["call_id"]
 
-	if err := p.hostEnd(userID, callID); err != nil {
+	// The body is optional: call_id restricts the request to that call.
+	var payload struct {
+		CallID string `json:"call_id"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&payload); err != nil && !errors.Is(err, io.EOF) {
+		res.Err = err.Error()
+		res.Code = http.StatusBadRequest
+		return
+	}
+	if payload.CallID != "" && !model.IsValidId(payload.CallID) {
+		res.Err = "invalid call_id"
+		res.Code = http.StatusBadRequest
+		return
+	}
+
+	if err := p.hostEnd(userID, channelID, payload.CallID); err != nil {
 		p.handleHostControlsError(err, &res, "handleEnd")
 		return
 	}
@@ -175,7 +193,8 @@ func (p *Plugin) handleHostControlsError(err error, res *httpResponse, handlerNa
 	if errors.Is(err, ErrNoCallOngoing) ||
 		errors.Is(err, ErrNoPermissions) ||
 		errors.Is(err, ErrNotInCall) ||
-		errors.Is(err, ErrNotAllowed) {
+		errors.Is(err, ErrNotAllowed) ||
+		errors.Is(err, ErrCallMismatch) {
 		res.Code = http.StatusBadRequest
 	}
 

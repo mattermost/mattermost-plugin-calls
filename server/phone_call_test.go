@@ -849,7 +849,7 @@ func TestHostEndPhoneCallReason(t *testing.T) {
 		callID, postID := tc.createCall(t, true)
 		tc.expectCallPostStatus(postID, callStatusCanceledByCaller)
 
-		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID))
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, ""))
 		tc.api.AssertExpectations(t)
 		tc.assertCallEndPublished(t, callID, callStatusCanceledByCaller)
 	})
@@ -859,8 +859,49 @@ func TestHostEndPhoneCallReason(t *testing.T) {
 		_, postID := tc.createCall(t, true)
 		tc.expectCallPostStatus(postID, callStatusEnded)
 
-		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID))
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, ""))
 		tc.api.AssertExpectations(t)
+	})
+}
+
+func TestHostEndCallID(t *testing.T) {
+	t.Run("a stale request for an earlier call does not end the redialed call", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus("ringing"))
+		staleCallID, stalePostID := tc.createCall(t, true)
+		tc.expectCallPostStatus(stalePostID, callStatusEnded)
+		tc.endCall(t)
+		require.Empty(t, tc.activeCallID(t))
+
+		newCallID, _ := tc.createCall(t, true)
+
+		err := tc.p.hostEnd(tc.callerID, tc.channelID, staleCallID)
+
+		require.ErrorIs(t, err, ErrCallMismatch)
+		require.Equal(t, newCallID, tc.activeCallID(t))
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.MatchedBy(func(post *model.Post) bool {
+			return post.GetProp("call_status") != callStatusEnded
+		}))
+	})
+
+	t.Run("a request for the active call ends it", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus(sipCallStatusActive))
+		callID, postID := tc.createCall(t, true)
+		tc.expectCallPostStatus(postID, callStatusEnded)
+
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, callID))
+
+		require.Empty(t, tc.activeCallID(t))
+		tc.api.AssertExpectations(t)
+	})
+
+	t.Run("a request without a call id ends the active call", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus(sipCallStatusActive))
+		_, postID := tc.createCall(t, true)
+		tc.expectCallPostStatus(postID, callStatusEnded)
+
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, ""))
+
+		require.Empty(t, tc.activeCallID(t))
 	})
 }
 

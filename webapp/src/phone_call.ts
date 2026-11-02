@@ -341,7 +341,7 @@ export function registerTelLinkDialing(store: Store, connect: ConnectPhoneCall) 
 // Ends the phone call once the caller's client leaves it or never joins it. The
 // server dials only after the caller has joined and ends the call itself when the
 // phone leg fails or leaves, so there is nothing to watch for on the phone side.
-export function watchPhoneCall(client: CallClient, channelID: string, connecting: Promise<void>) {
+export function watchPhoneCall(client: CallClient, channelID: string, callID: string, connecting: Promise<void>) {
     let ended = false;
 
     const endPhoneCall = () => {
@@ -349,7 +349,7 @@ export function watchPhoneCall(client: CallClient, channelID: string, connecting
             return;
         }
         ended = true;
-        hostEndCallForEveryone(channelID).catch((err) => logErr('failed to end phone call', err));
+        hostEndCallForEveryone(channelID, callID).catch((err) => logErr('failed to end phone call', err));
     };
 
     // connect resolves without joining when the caller cancels mid-connect.
