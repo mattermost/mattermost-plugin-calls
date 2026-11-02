@@ -308,6 +308,17 @@ func (p *Plugin) handleSIPNoAnswerTimer(channelID string, entry *sipNoAnswerTime
 
 	p.clearSIPNoAnswerTimer(channelID, entry)
 
+	// The listing above predates the lock, and the callee or caller may have
+	// connected while this waited for it. Check again before hanging up.
+	if !sipCalleeAnswered(participants) || !p.phoneCallerConnected(state, participants) {
+		if fresh, err := p.livekitListParticipants(channelID); err != nil {
+			p.LogError("handleSIPNoAnswerTimer: failed to re-list participants, using earlier listing",
+				"channelID", channelID, "callID", callID, "err", err.Error())
+		} else {
+			participants = fresh
+		}
+	}
+
 	var reason string
 	var endReason callEndReason
 	switch {

@@ -43,9 +43,12 @@ import (
 type fakeLiveKit struct {
 	srv *httptest.Server
 
-	mut             sync.Mutex
-	participants    []*livekit.ParticipantInfo
-	listFailures    int
+	mut          sync.Mutex
+	participants []*livekit.ParticipantInfo
+	listFailures int
+	// listQueue is served one entry per ListParticipants call before falling
+	// back to participants, to model the room changing between two listings.
+	listQueue       [][]*livekit.ParticipantInfo
 	removalFailures int
 	removed         []string
 	// dial stands in for CreateSIPParticipant. The handler has released the
@@ -77,6 +80,9 @@ func (lk *fakeLiveKit) serve(w http.ResponseWriter, r *http.Request) {
 			lk.listFailures--
 		}
 		participants := lk.participants
+		if !fail && len(lk.listQueue) > 0 {
+			participants, lk.listQueue = lk.listQueue[0], lk.listQueue[1:]
+		}
 		lk.mut.Unlock()
 		if fail {
 			http.Error(w, "unavailable", http.StatusServiceUnavailable)
@@ -136,6 +142,12 @@ func (lk *fakeLiveKit) setParticipants(participants ...*livekit.ParticipantInfo)
 	lk.mut.Lock()
 	defer lk.mut.Unlock()
 	lk.participants = participants
+}
+
+func (lk *fakeLiveKit) queueLists(lists ...[]*livekit.ParticipantInfo) {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	lk.listQueue = lists
 }
 
 func (lk *fakeLiveKit) failLists(n int) {
@@ -874,6 +886,22 @@ func TestHandleSIPNoAnswerTimer(t *testing.T) {
 		require.Nil(t, tc.sipTimer())
 		tc.api.AssertExpectations(t)
 		tc.assertCallEndPublished(t, callID, callStatusNoAnswer)
+	})
+
+	t.Run("a callee who answers while the timer waits for the lock is not hung up", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		caller := tc.callerParticipant()
+		// The first listing predates the answer; the re-check under the lock sees it.
+		tc.lk.queueLists(
+			[]*livekit.ParticipantInfo{sipParticipantWithStatus("ringing"), caller},
+			[]*livekit.ParticipantInfo{sipParticipantWithStatus(sipCallStatusActive), caller},
+		)
+		callID, _ := tc.createCall(t, true)
+
+		fire(tc, callID)
+
+		require.Equal(t, callID, tc.activeCallID(t))
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
 	})
 
 	t.Run("an answered call with a connected caller stays up", func(t *testing.T) {
