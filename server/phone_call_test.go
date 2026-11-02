@@ -1045,7 +1045,7 @@ func TestPhoneCallDialAfterCallerJoins(t *testing.T) {
 		require.Equal(t, res.CallID, tc.activeCallID(t))
 		call, err := tc.p.store.GetCall(res.CallID, db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
-		require.True(t, call.Props.DialPending)
+		require.Equal(t, res.SessionID, call.Props.DialSessionID)
 		require.Equal(t, res.CallID, tc.sipTimer().callID)
 		require.Never(t, func() bool { return dials.Load() > 0 }, 200*time.Millisecond, 20*time.Millisecond)
 		tc.api.AssertNotCalled(t, "CreatePost", mock.Anything)
@@ -1066,7 +1066,7 @@ func TestPhoneCallDialAfterCallerJoins(t *testing.T) {
 		require.Equal(t, errIDCallInProgress, errorID(t, w))
 		call, err := tc.p.store.GetCall(callID, db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
-		require.False(t, call.Props.DialPending)
+		require.Empty(t, call.Props.DialSessionID)
 		require.Nil(t, tc.sipTimer())
 		require.Zero(t, dials.Load())
 	})
@@ -1098,7 +1098,7 @@ func TestPhoneCallDialAfterCallerJoins(t *testing.T) {
 		require.EqualValues(t, 1, dials.Load())
 		call, err := tc.p.store.GetCall(res.CallID, db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
-		require.False(t, call.Props.DialPending)
+		require.Empty(t, call.Props.DialSessionID)
 		require.Equal(t, res.CallID, tc.sipTimer().callID)
 
 		// A duplicate delivery and a reconnect (same session, new SID) must not dial again.
@@ -1106,6 +1106,29 @@ func TestPhoneCallDialAfterCallerJoins(t *testing.T) {
 		tc.callerJoined(t, res.SessionID, "PA_caller_reconnected")
 		require.Never(t, func() bool { return dials.Load() > 1 }, 300*time.Millisecond, 20*time.Millisecond)
 		require.Equal(t, res.CallID, tc.activeCallID(t))
+	})
+
+	t.Run("another session confirming first doesn't dial, the caller's session still does", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		dials := countDials(tc)
+		announced := expectAnnounce(tc)
+		res := tc.placeCall(t)
+
+		// E.g. a delayed webhook or a stale client from an earlier call.
+		tc.callerJoined(t, model.NewId(), "PA_other")
+		require.Never(t, func() bool { return dials.Load() > 0 }, 300*time.Millisecond, 20*time.Millisecond)
+		call, err := tc.p.store.GetCall(res.CallID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Equal(t, res.SessionID, call.Props.DialSessionID)
+
+		tc.callerJoined(t, res.SessionID, "PA_caller")
+
+		select {
+		case <-announced:
+		case <-time.After(5 * time.Second):
+			t.Fatal("call was not announced after the dial")
+		}
+		require.EqualValues(t, 1, dials.Load())
 	})
 
 	t.Run("a failed dial ends the call as failed without announcing it", func(t *testing.T) {

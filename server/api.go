@@ -921,7 +921,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	// Nothing is dialed here. The dial happens once the caller's session is
 	// confirmed (handleLiveKitParticipantJoined), so the phone leg can't exist,
 	// or end, before the caller is in the room.
-	state.Call.Props.DialPending = true
+	state.Call.Props.DialSessionID = sessionID
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("handlePhoneCall: failed to set phone call props", "err", err.Error(), "callID", callID)
 		p.rollbackSession(sessionID, callID, true)
