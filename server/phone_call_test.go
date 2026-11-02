@@ -827,12 +827,6 @@ func errorID(t *testing.T, w *httptest.ResponseRecorder) string {
 	return res.ErrID
 }
 
-func shortenLockTimeout(t *testing.T) {
-	prev := lockTimeout
-	lockTimeout = 200 * time.Millisecond
-	t.Cleanup(func() { lockTimeout = prev })
-}
-
 func TestHostEndPhoneCallReason(t *testing.T) {
 	t.Run("hanging up while ringing cancels the call", func(t *testing.T) {
 		tc := newPhoneCallTest(t, sipParticipantWithStatus("ringing"))
@@ -996,112 +990,146 @@ func TestHangUpSIPLeg(t *testing.T) {
 	})
 }
 
-func TestHandlePhoneCallAfterDial(t *testing.T) {
+// placeCall posts to /phone-call as the caller and returns the response.
+func (tc *phoneCallTest) placeCall(t *testing.T) phoneCallResponse {
+	t.Helper()
+	w := tc.dial(t, "/phone-call")
+	require.Equal(t, http.StatusOK, w.Code)
+	var res phoneCallResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&res))
+	return res
+}
+
+// callerJoined delivers the participant_joined webhook for the caller's session
+// under sid, as LiveKit sends it once their client has connected.
+func (tc *phoneCallTest) callerJoined(t *testing.T, sessionID, sid string) {
+	t.Helper()
+	tc.sendWebhook(t, tc.channelID, webhook.EventParticipantJoined, &livekit.ParticipantInfo{
+		Sid:      sid,
+		Identity: composeLivekitIdentity(tc.callerID, sessionID),
+		Kind:     livekit.ParticipantInfo_STANDARD,
+	})
+}
+
+func TestPhoneCallDialAfterCallerJoins(t *testing.T) {
 	failedDial := func() (*livekit.SIPParticipantInfo, error) {
 		return nil, errors.New("trunk unavailable")
 	}
 
-	t.Run("a successful dial announces the call and arms the no-answer timer", func(t *testing.T) {
-		tc := newPhoneCallTest(t)
+	// countDials makes every dial succeed, counting them.
+	countDials := func(tc *phoneCallTest) *atomic.Int32 {
+		var dials atomic.Int32
 		info, leg := dialedSIPLeg("PA_dialed")
 		tc.lk.setDial(func() (*livekit.SIPParticipantInfo, error) {
+			dials.Add(1)
 			tc.lk.setParticipants(leg)
 			return info, nil
 		})
-		tc.api.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: model.NewId()}, nil).Once()
+		return &dials
+	}
 
-		w := tc.dial(t, "/phone-call")
+	// expectAnnounce reports on the returned channel when the call post is created.
+	expectAnnounce := func(tc *phoneCallTest) <-chan struct{} {
+		announced := make(chan struct{}, 1)
+		tc.api.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: model.NewId()}, nil).
+			Run(func(mock.Arguments) { announced <- struct{}{} }).Once()
+		return announced
+	}
 
-		require.Equal(t, http.StatusOK, w.Code)
-		var res phoneCallResponse
-		require.NoError(t, json.NewDecoder(w.Body).Decode(&res))
-		require.Equal(t, info.SipCallId, res.SIPCallID)
+	t.Run("placing the call records the intent without dialing or announcing", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		dials := countDials(tc)
+
+		res := tc.placeCall(t)
+
 		require.Equal(t, res.CallID, tc.activeCallID(t))
+		call, err := tc.p.store.GetCall(res.CallID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.True(t, call.Props.DialPending)
 		require.Equal(t, res.CallID, tc.sipTimer().callID)
-		require.Empty(t, tc.lk.removedIdentities())
-		tc.api.AssertExpectations(t)
-	})
-
-	t.Run("a call that ends during the dial hangs up the SIP leg", func(t *testing.T) {
-		tc := newPhoneCallTest(t)
-		info, leg := dialedSIPLeg("PA_dialed")
-		tc.lk.setDial(func() (*livekit.SIPParticipantInfo, error) {
-			tc.lk.setParticipants(leg)
-			tc.endCall(t)
-			return info, nil
-		})
-
-		w := tc.dial(t, "/phone-call")
-
-		require.Equal(t, http.StatusConflict, w.Code)
-		require.Equal(t, errIDCallEnded, errorID(t, w))
-		require.Equal(t, []string{leg.Identity}, tc.lk.removedIdentities())
-		require.Nil(t, tc.sipTimer())
+		require.Never(t, func() bool { return dials.Load() > 0 }, 200*time.Millisecond, 20*time.Millisecond)
 		tc.api.AssertNotCalled(t, "CreatePost", mock.Anything)
 	})
 
-	t.Run("a call replaced during the dial hangs up the SIP leg", func(t *testing.T) {
+	t.Run("the caller's first confirmation dials once and announces the call", func(t *testing.T) {
 		tc := newPhoneCallTest(t)
-		info, leg := dialedSIPLeg("PA_dialed")
-		newCallID := model.NewId()
-		tc.lk.setDial(func() (*livekit.SIPParticipantInfo, error) {
-			tc.lk.setParticipants(leg)
-			tc.endCall(t)
-			now := time.Now().UnixMilli()
-			assert.NoError(t, tc.p.store.CreateCall(&public.Call{
-				ID: newCallID, CreateAt: now, StartAt: now, ChannelID: tc.channelID, OwnerID: tc.callerID,
-			}))
-			return info, nil
-		})
+		dials := countDials(tc)
+		announced := expectAnnounce(tc)
+		res := tc.placeCall(t)
 
-		w := tc.dial(t, "/phone-call")
+		tc.callerJoined(t, res.SessionID, "PA_caller")
 
-		require.Equal(t, http.StatusConflict, w.Code)
-		require.Equal(t, errIDCallEnded, errorID(t, w))
-		require.Equal(t, []string{leg.Identity}, tc.lk.removedIdentities())
-		require.Equal(t, newCallID, tc.activeCallID(t))
-		require.Nil(t, tc.sipTimer())
-		tc.api.AssertNotCalled(t, "CreatePost", mock.Anything)
+		select {
+		case <-announced:
+		case <-time.After(5 * time.Second):
+			t.Fatal("call was not announced after the dial")
+		}
+		require.EqualValues(t, 1, dials.Load())
+		call, err := tc.p.store.GetCall(res.CallID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.False(t, call.Props.DialPending)
+		require.Equal(t, res.CallID, tc.sipTimer().callID)
+
+		// A duplicate delivery and a reconnect (same session, new SID) must not dial again.
+		tc.callerJoined(t, res.SessionID, "PA_caller")
+		tc.callerJoined(t, res.SessionID, "PA_caller_reconnected")
+		require.Never(t, func() bool { return dials.Load() > 1 }, 300*time.Millisecond, 20*time.Millisecond)
+		require.Equal(t, res.CallID, tc.activeCallID(t))
 	})
 
-	t.Run("a failed dial is rolled back when the re-lock fails", func(t *testing.T) {
-		shortenLockTimeout(t)
+	t.Run("a failed dial ends the call as failed without announcing it", func(t *testing.T) {
 		tc := newPhoneCallTest(t)
-		tc.lk.setDial(func() (*livekit.SIPParticipantInfo, error) {
-			tc.lockFails.Store(true)
-			return failedDial()
-		})
-
-		w := tc.dial(t, "/phone-call")
-		require.Equal(t, http.StatusInternalServerError, w.Code)
-		tc.lockFails.Store(false)
-
-		require.Empty(t, tc.activeCallID(t))
-
-		// The redial gets as far as dialing rather than being refused as call_in_progress.
 		tc.lk.setDial(failedDial)
-		w = tc.dial(t, "/phone-call")
-		require.Equal(t, errIDDialFailed, errorID(t, w))
+		res := tc.placeCall(t)
+
+		tc.callerJoined(t, res.SessionID, "PA_caller")
+
+		require.Eventually(t, func() bool { return tc.activeCallID(t) == "" }, 5*time.Second, 20*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return tc.sipTimer() == nil
+		}, 5*time.Second, 20*time.Millisecond)
+		tc.assertCallEndPublished(t, res.CallID, callStatusFailed)
+		tc.api.AssertNotCalled(t, "CreatePost", mock.Anything)
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
 	})
 
-	t.Run("a successful dial is hung up and rolled back when the re-lock fails", func(t *testing.T) {
-		shortenLockTimeout(t)
+	t.Run("a caller who leaves during the dial gets the SIP leg hung up", func(t *testing.T) {
 		tc := newPhoneCallTest(t)
 		info, leg := dialedSIPLeg("PA_dialed")
 		tc.lk.setDial(func() (*livekit.SIPParticipantInfo, error) {
 			tc.lk.setParticipants(leg)
-			tc.lockFails.Store(true)
+			tc.endCall(t)
 			return info, nil
 		})
+		res := tc.placeCall(t)
 
-		w := tc.dial(t, "/phone-call")
-		require.Equal(t, http.StatusInternalServerError, w.Code)
-		tc.lockFails.Store(false)
+		tc.callerJoined(t, res.SessionID, "PA_caller")
 
-		require.Equal(t, []string{leg.Identity}, tc.lk.removedIdentities())
+		require.Eventually(t, func() bool {
+			return slices.Equal(tc.lk.removedIdentities(), []string{leg.Identity})
+		}, 5*time.Second, 20*time.Millisecond)
+		require.Empty(t, tc.activeCallID(t))
+		tc.api.AssertNotCalled(t, "CreatePost", mock.Anything)
+	})
+
+	t.Run("a caller who never connects leaves no call behind", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		dials := countDials(tc)
+		tc.lk.setParticipants()
+		res := tc.placeCall(t)
+
+		entry := tc.sipTimer()
+		entry.timer.Stop()
+		tc.p.handleSIPNoAnswerTimer(tc.channelID, entry)
+
 		require.Empty(t, tc.activeCallID(t))
 		require.Nil(t, tc.sipTimer())
-		tc.api.AssertNotCalled(t, "CreatePost", mock.Anything)
+		require.Zero(t, dials.Load())
+		tc.assertCallEndPublished(t, res.CallID, callStatusFailed)
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
+
+		// A redial is not refused as already in progress.
+		tc.placeCall(t)
 	})
 }
 
@@ -1130,7 +1158,7 @@ func TestHandleAddPhoneCallAfterDial(t *testing.T) {
 		var res map[string]string
 		require.NoError(t, json.NewDecoder(w.Body).Decode(&res))
 		require.Equal(t, callID, res["call_id"])
-		require.Equal(t, info.SipCallId, res["sip_call_id"])
+		require.NotContains(t, res, "sip_call_id")
 		require.Empty(t, tc.lk.removedIdentities())
 	})
 
@@ -1168,39 +1196,5 @@ func TestHandleAddPhoneCallAfterDial(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 		require.Equal(t, errIDNoActiveCall, errorID(t, w))
 		require.Equal(t, []string{leg.Identity}, tc.lk.removedIdentities())
-	})
-}
-
-func TestParticipantJoinedAfterPhoneCallEnded(t *testing.T) {
-	t.Run("a caller who joins after the carrier rejected the call is removed", func(t *testing.T) {
-		tc := newPhoneCallTest(t)
-		callID, postID := tc.createCall(t, false)
-		tc.expectCallPostStatus(postID, callStatusDeclined)
-
-		_, leg := dialedSIPLeg("PA_dialed")
-		tc.sendWebhook(t, tc.channelID, webhook.EventParticipantJoined, leg)
-		leg.DisconnectReason = livekit.DisconnectReason_USER_REJECTED
-		tc.sendWebhook(t, tc.channelID, webhook.EventParticipantLeft, leg)
-
-		require.Empty(t, tc.activeCallID(t))
-		tc.assertCallEndPublished(t, callID, callStatusDeclined)
-
-		// The caller's client finishes connecting into a room LiveKit recreated for it.
-		caller := tc.callerParticipant()
-		tc.sendWebhook(t, tc.channelID, webhook.EventParticipantJoined, caller)
-
-		require.Equal(t, []string{caller.Identity}, tc.lk.removedIdentities())
-		require.Empty(t, tc.activeCallID(t))
-		tc.api.AssertExpectations(t)
-	})
-
-	t.Run("a participant joining a regular channel with no call is left alone", func(t *testing.T) {
-		tc := newPhoneCallTest(t)
-		channelID := model.NewId()
-		tc.api.On("GetChannel", channelID).Return(&model.Channel{Id: channelID, Type: model.ChannelTypeOpen}, nil)
-
-		tc.sendWebhook(t, channelID, webhook.EventParticipantJoined, tc.callerParticipant())
-
-		require.Empty(t, tc.lk.removedIdentities())
 	})
 }

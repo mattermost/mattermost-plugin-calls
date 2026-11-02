@@ -403,8 +403,12 @@ func (p *Plugin) cleanCallState(call *public.Call, reason string, endReason call
 		return nil
 	}
 
-	if _, err := p.updateCallPostEnded(call.PostID, mapKeys(call.Props.Participants), endReason); err != nil {
-		p.LogError("failed to update call post", "err", err.Error())
+	// A call that ended before it was announced (e.g. a phone call whose dial
+	// failed) has no post to update.
+	if call.PostID != "" {
+		if _, err := p.updateCallPostEnded(call.PostID, mapKeys(call.Props.Participants), endReason); err != nil {
+			p.LogError("failed to update call post", "err", err.Error())
+		}
 	}
 
 	if call.EndAt == 0 {
