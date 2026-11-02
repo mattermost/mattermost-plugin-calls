@@ -41,7 +41,6 @@ const (
 	errIDSIPNumberNotAllowed   = "sip_number_not_allowed"
 	errIDSIPTeamNotAllowed     = "sip_team_not_allowed"
 	errIDCallInProgress        = "call_in_progress"
-	errIDCallEnded             = "call_ended"
 	errIDNoActiveCall          = "no_active_call"
 	errIDDialFailed            = "dial_failed"
 	errIDInvalidTarget         = "invalid_target"
@@ -748,8 +747,7 @@ func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, 
 }
 
 // phoneCallResponse is returned by handlePhoneCall. It extends the standard
-// LiveKit session response with the add-phone-call identifiers the client needs
-// to log and to correlate with the SIP leg.
+// LiveKit session response with the call and channel identifiers the client needs.
 type phoneCallResponse struct {
 	SessionID string           `json:"session_id"`
 	Token     string           `json:"token"`
@@ -757,13 +755,13 @@ type phoneCallResponse struct {
 	BotUserID string           `json:"bot_user_id"`
 	CallID    string           `json:"call_id"`
 	ChannelID string           `json:"channel_id"`
-	SIPCallID string           `json:"sip_call_id"`
 	CallState *CallStateClient `json:"call_state"`
 }
 
-// handlePhoneCall is a self-contained phone-call endpoint: it resolves the
-// bot DM channel, creates a LiveKit session, dials the SIP number, and returns
-// everything the client needs to connect in a single round trip.
+// handlePhoneCall is a self-contained phone-call endpoint: it validates the
+// request, resolves the bot DM channel, creates a LiveKit session and returns
+// everything the client needs to connect in a single round trip. It records the
+// intent to dial; the dial itself happens once the caller has joined the room.
 func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handlePhoneCall", &res, w, r)
@@ -872,12 +870,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		res.Code = http.StatusInternalServerError
 		return
 	}
-	unlocked := false
-	defer func() {
-		if !unlocked {
-			p.unlockCall(channelID)
-		}
-	}()
+	defer p.unlockCall(channelID)
 
 	createdCall := state == nil
 
@@ -930,87 +923,30 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		state.Call.Props.DisplayNumber = req.Number
 		state.Call.Props.DisplayLabel = displayLabel
 		state.Call.Props.TargetUserID = req.TargetUserID
-		if err := p.store.UpdateCall(&state.Call); err != nil {
-			p.LogError("handlePhoneCall: failed to set phone call props", "err", err.Error(), "callID", callID)
-			p.rollbackSession(sessionID, callID, createdCall)
-			res.Err = "Internal server error"
-			res.Code = http.StatusInternalServerError
-			return
-		}
 	}
 
-	// Release the lock before the SIP dial: it can take the full sipOutboundDialTimeout
-	// and holding it blocks every other operation on this call (including plugin shutdown).
-	// Same pattern as publishCallRoomMetadata.
-	unlocked = true
-	p.unlockCall(channelID)
-
-	// Dial synchronously so a failed dial reaches the caller as an error. We
-	// don't set WaitUntilAnswered, so LiveKit returns once the SIP leg is created
-	// (INVITE dispatched) rather than once the callee picks up.
-	info, dialErr := p.createSIPParticipant(trunkID, number, channelID, req.Number)
-	if dialErr != nil {
-		p.LogError("handlePhoneCall: failed to create SIP participant",
-			"err", dialErr.Error(), "number", number, "channelID", channelID)
-	}
-
-	// Re-acquire the lock to announce the new call or roll back.
-	state, err = p.lockCallReturnState(channelID)
-	if err != nil {
-		p.LogError("handlePhoneCall: failed to re-lock call after SIP dial", "err", err.Error(), "channelID", channelID)
-		// The session must go either way, or every redial is refused as
-		// call_in_progress. Nothing will announce this call, so its SIP leg goes too.
+	// Nothing is dialed here. The dial happens once the caller's session is
+	// confirmed (handleLiveKitParticipantJoined), so the phone leg can't exist,
+	// or end, before the caller is in the room.
+	state.Call.Props.DialPending = true
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		p.LogError("handlePhoneCall: failed to set phone call props", "err", err.Error(), "callID", callID)
 		p.rollbackSession(sessionID, callID, createdCall)
-		if dialErr == nil {
-			p.hangUpSIPLeg(channelID, info)
-		}
 		res.Err = "Internal server error"
 		res.Code = http.StatusInternalServerError
 		return
 	}
-	unlocked = false
 
-	if dialErr != nil {
-		p.rollbackSession(sessionID, callID, createdCall)
-		res.Err = "failed to dial number"
-		res.ErrID = errIDDialFailed
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
-	// The call can end during the dial, e.g. when the carrier rejects it at once.
-	// Whatever ended it has already removed this request's session.
-	if state == nil || state.Call.ID != callID {
-		p.LogInfo("handlePhoneCall: call ended during SIP dial, hanging up",
-			"callID", callID, "channelID", channelID, "sipCallID", info.GetSipCallId())
-		unlocked = true
-		p.unlockCall(channelID)
-		p.hangUpSIPLeg(channelID, info)
-		res.Err = "the call ended while the number was being dialed"
-		res.ErrID = errIDCallEnded
-		res.Code = http.StatusConflict
-		return
-	}
-
-	// Announce only after a successful dial: observers and the ring timer should
-	// not fire for a call that never connected. Use createdCall rather than
-	// len(state.sessions)==1 because the lock was released during the dial and
-	// the SIP participant_joined webhook may have already added a session.
-	if createdCall {
-		p.announceCallStarted(state, userID, channelID, "", "", dmChannel.Type)
-	}
-	p.cancelDMNoAnswerTimerIfAnswered(state, userID, channelID, dmChannel.Type)
-
-	// Hangs the call up unless, by sipNoAnswerTimeout, the callee has answered
-	// and the caller's client has connected. Cancelled when the call ends.
+	// Doubles as the deadline for the caller to connect: it hangs the call up
+	// unless, by sipNoAnswerTimeout, the caller has connected and the callee has
+	// answered. Cancelled when the call ends.
 	p.startSIPNoAnswerTimer(channelID, callID)
 
 	p.LogInfo("phone call session created",
 		"callID", callID,
 		"channelID", channelID,
 		"sessionID", sessionID,
-		"userID", userID,
-		"sipCallID", info.GetSipCallId())
+		"userID", userID)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(phoneCallResponse{
@@ -1020,7 +956,6 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		BotUserID: p.getBotID(),
 		CallID:    callID,
 		ChannelID: channelID,
-		SIPCallID: info.GetSipCallId(),
 		CallState: state.getClientState(p.getBotID(), userID),
 	}); err != nil {
 		p.LogError("failed to encode phone-call response", "err", err.Error())
@@ -1044,7 +979,7 @@ func callerConfirmedCallID(state *callState, userID string) string {
 // handleAddPhoneCall dials an external phone number into an existing call. The
 // client must already have a live session in the bot DM channel before calling
 // this endpoint. Useful for testing and future multi-party dial-in scenarios.
-// Returns {call_id, channel_id, sip_call_id} without a LiveKit token.
+// Returns {call_id, channel_id} without a LiveKit token.
 func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleAddPhoneCall", &res, w, r)
@@ -1131,6 +1066,9 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	info, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
+	if err == nil {
+		p.LogInfo("add phone call dialed", "callID", callID, "channelID", channelID, "sipCallID", info.GetSipCallId())
+	}
 	if err != nil {
 		p.LogError("handleAddPhoneCall: failed to create SIP participant",
 			"err", err.Error(), "number", number, "channelID", channelID)
@@ -1165,9 +1103,8 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
-		"call_id":     callID,
-		"channel_id":  channelID,
-		"sip_call_id": info.GetSipCallId(),
+		"call_id":    callID,
+		"channel_id": channelID,
 	}); err != nil {
 		p.LogError("handleAddPhoneCall: failed to encode response", "err", err.Error())
 	}

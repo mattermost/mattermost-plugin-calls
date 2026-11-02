@@ -81,6 +81,11 @@ type CallProps struct {
 	DisplayNumber string `json:"display_number,omitempty"`
 	DisplayLabel  string `json:"display_label,omitempty"`
 	TargetUserID  string `json:"target_user_id,omitempty"`
+
+	// DialPending is set by /phone-call and cleared, exactly once, when the
+	// caller's session is first confirmed. That confirmation is what triggers
+	// the dial, so the phone leg never exists before the caller is in the room.
+	DialPending bool `json:"dial_pending,omitempty"`
 }
 
 type CallStats struct {

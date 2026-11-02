@@ -26,7 +26,6 @@ import {getPluginPath, isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 
 export type PhoneCallResponse = LiveKitSessionResponse & {
     call_id: string;
     channel_id: string;
-    sip_call_id: string;
 };
 
 export type TelParams = {
@@ -79,12 +78,7 @@ const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
     ['outbound_not_configured', OUTBOUND_UNAVAILABLE_MESSAGE],
     ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
     ['invalid_target', INVALID_TARGET_MESSAGE],
-    ['call_ended', defineMessage({defaultMessage: 'The call ended before it connected. Please try again.'})],
 ]);
-
-// LiveKit adds the phone leg to the room before /phone-call returns; the grace
-// period only covers a late room update.
-const PHONE_LEG_GRACE_MS = 5_000;
 
 // The phone call this window placed whose outcome it hasn't shown yet. Only the
 // window that placed a call tells the caller how it ended, and only once.
@@ -345,16 +339,13 @@ export function registerTelLinkDialing(store: Store, connect: ConnectPhoneCall) 
     };
 }
 
-// Ends the phone call once the caller's client leaves it, never joins it, or the
-// phone leg is gone. The server otherwise learns of these only from LiveKit
-// webhooks, which not every deployment receives, so the phone could keep ringing
-// and a redial would be refused as already in progress.
-export function watchPhoneCall(store: Store, client: CallClient, channelID: string, callID: string, connecting: Promise<void>) {
+// Ends the phone call once the caller's client leaves it or never joins it. The
+// server dials only after the caller has joined and ends the call itself when the
+// phone leg fails or leaves, so there is nothing to watch for on the phone side.
+export function watchPhoneCall(client: CallClient, channelID: string, connecting: Promise<void>) {
     let ended = false;
-    let phoneLegTimer: ReturnType<typeof setTimeout> | undefined;
 
     const endPhoneCall = () => {
-        clearTimeout(phoneLegTimer);
         if (ended) {
             return;
         }
@@ -369,36 +360,12 @@ export function watchPhoneCall(store: Store, client: CallClient, channelID: stri
         }
     }, endPhoneCall);
 
-    // A dial the carrier rejects straight away can leave the room before we join
-    // it. The server removes us once a webhook tells it we joined; this covers
-    // deployments that don't receive webhooks.
-    client.on(CALL_EVENT.CONNECTED, () => {
-        phoneLegTimer = setTimeout(() => {
-            if (!client.hasSIPParticipant()) {
-                if (claimCallOutcome(callID)) {
-                    store.dispatch(displayGenericErrorModal(DIAL_ERROR_TITLE, DIAL_FAILED_MESSAGE));
-                }
-                client.disconnect();
-            }
-        }, PHONE_LEG_GRACE_MS);
-    });
-
-    // The phone leg leaving means the call is over, whatever the reason.
-    client.on(CALL_EVENT.SIP_LEFT, () => {
-        if (!client.hasSIPParticipant()) {
-            client.disconnect();
-        }
-    });
-
     // Ending the call deletes the room, which hangs up the phone, so don't wait
     // for the LiveKit leave to finish first.
     client.on(CALL_EVENT.DISCONNECTING, endPhoneCall);
 
     client.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
-        clearTimeout(phoneLegTimer);
-
-        // The server deletes the room when it ends the call, and removes a caller
-        // who joins after the call has already ended.
+        // A deleted room means the server has already ended the call.
         if (reason !== DisconnectReason.ROOM_DELETED && reason !== DisconnectReason.PARTICIPANT_REMOVED) {
             endPhoneCall();
         }

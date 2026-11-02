@@ -50,9 +50,9 @@ func (r callEndReason) status() string {
 // A var rather than a const so tests can shorten it.
 var dmNoAnswerTimeout = 30 * time.Second
 
-// sipNoAnswerTimeout is how long an outbound phone call has for the callee to
-// answer and the caller's client to connect. When it fires, the call is hung
-// up unless both have happened.
+// sipNoAnswerTimeout is how long an outbound phone call has for the caller's
+// client to connect and the callee to answer. It starts when the call is
+// created. When it fires, the call is hung up unless both have happened.
 var sipNoAnswerTimeout = 60 * time.Second
 
 // sipNoAnswerRetryInterval is how soon the no-answer check runs again after it
@@ -306,10 +306,11 @@ func (p *Plugin) handleSIPNoAnswerTimer(channelID string, entry *sipNoAnswerTime
 	var reason string
 	var endReason callEndReason
 	switch {
+	case !p.phoneCallerConnected(state, participants):
+		// The caller never connected, so nothing was dialed or announced.
+		reason, endReason = "sip_caller_not_connected", callEndReasonFailed
 	case !sipCalleeAnswered(participants):
 		reason, endReason = "sip_no_answer", callEndReasonNoAnswer
-	case !p.phoneCallerConnected(state, participants):
-		reason, endReason = "sip_caller_not_connected", callEndReasonFailed
 	default:
 		p.LogInfo("handleSIPNoAnswerTimer: phone call is connected, not hanging up",
 			"channelID", channelID, "callID", callID)
