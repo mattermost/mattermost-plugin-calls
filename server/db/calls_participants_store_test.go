@@ -84,7 +84,7 @@ func testRecordParticipantLeave(t *testing.T, store *Store) {
 
 func testRecordLeaveForActiveParticipants(t *testing.T, store *Store) {
 	callID := model.NewId()
-	stillIn := model.NewId()  // joined, never left
+	stillIn := model.NewId() // joined, never left
 	alreadyLeft := model.NewId()
 	otherCall := model.NewId()
 	otherUser := model.NewId()
