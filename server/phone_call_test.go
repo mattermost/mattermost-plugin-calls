@@ -1051,6 +1051,37 @@ func TestPhoneCallDialAfterCallerJoins(t *testing.T) {
 		tc.api.AssertNotCalled(t, "CreatePost", mock.Anything)
 	})
 
+	t.Run("an active call in the bot DM is never reused", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		dials := countDials(tc)
+		callID, _ := tc.createCall(t, true)
+		// A leftover call the caller has no session in must be refused too, or
+		// the dial would use that call's number rather than the one requested.
+		_, err := tc.p.store.DeleteCallsSessions(callID)
+		require.NoError(t, err)
+
+		w := tc.dial(t, "/phone-call")
+
+		require.Equal(t, http.StatusConflict, w.Code)
+		require.Equal(t, errIDCallInProgress, errorID(t, w))
+		call, err := tc.p.store.GetCall(callID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.False(t, call.Props.DialPending)
+		require.Nil(t, tc.sipTimer())
+		require.Zero(t, dials.Load())
+	})
+
+	t.Run("a second call while one is connecting is refused", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		res := tc.placeCall(t)
+
+		w := tc.dial(t, "/phone-call")
+
+		require.Equal(t, http.StatusConflict, w.Code)
+		require.Equal(t, errIDCallInProgress, errorID(t, w))
+		require.Equal(t, res.CallID, tc.activeCallID(t))
+	})
+
 	t.Run("the caller's first confirmation dials once and announces the call", func(t *testing.T) {
 		tc := newPhoneCallTest(t)
 		dials := countDials(tc)

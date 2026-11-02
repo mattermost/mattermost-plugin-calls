@@ -872,20 +872,15 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	}
 	defer p.unlockCall(channelID)
 
-	createdCall := state == nil
-
-	// Reject a second dial from the same user whether the session is still
-	// connecting (ConfirmedAt == 0) or already confirmed (user is in the call).
-	// Both cases would produce a redundant SIP leg.
-	if !createdCall {
-		for _, session := range state.sessions {
-			if session.UserID == userID {
-				res.Err = "a phone call is already in progress"
-				res.ErrID = errIDCallInProgress
-				res.Code = http.StatusConflict
-				return
-			}
-		}
+	// The bot DM only ever hosts the caller's own phone call, so any active call
+	// there, whether still connecting (ConfirmedAt == 0) or live, means a call is
+	// already in progress. Reusing it would dial the wrong number and leave a
+	// redundant SIP leg.
+	if state != nil {
+		res.Err = "a phone call is already in progress"
+		res.ErrID = errIDCallInProgress
+		res.Code = http.StatusConflict
+		return
 	}
 
 	// callsEnabled is intentionally nil: the bot DM channel has no per-channel
@@ -906,7 +901,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	token, lkURL, err := p.mintLiveKitToken(userID, channelID, sessionID)
 	if err != nil {
 		p.LogError("handlePhoneCall: failed to mint LiveKit token", "err", err.Error(), "channelID", channelID)
-		p.rollbackSession(sessionID, state.Call.ID, createdCall)
+		p.rollbackSession(sessionID, state.Call.ID, true)
 		res.Err = "Internal server error"
 		res.Code = http.StatusInternalServerError
 		return
@@ -914,16 +909,14 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	callID := state.Call.ID
 
-	// Stamp the call as a phone call on first creation so the client and any
-	// future isPhoneCallChannel checks can key on props.type rather than
-	// "DM with the Calls bot".
-	if createdCall {
-		state.Call.Props.Type = callTypePhone
-		state.Call.Props.PhoneNumber = number
-		state.Call.Props.DisplayNumber = req.Number
-		state.Call.Props.DisplayLabel = displayLabel
-		state.Call.Props.TargetUserID = req.TargetUserID
-	}
+	// Stamp the call as a phone call so the client and any future
+	// isPhoneCallChannel checks can key on props.type rather than "DM with the
+	// Calls bot". The dial reads the number back from these props.
+	state.Call.Props.Type = callTypePhone
+	state.Call.Props.PhoneNumber = number
+	state.Call.Props.DisplayNumber = req.Number
+	state.Call.Props.DisplayLabel = displayLabel
+	state.Call.Props.TargetUserID = req.TargetUserID
 
 	// Nothing is dialed here. The dial happens once the caller's session is
 	// confirmed (handleLiveKitParticipantJoined), so the phone leg can't exist,
@@ -931,7 +924,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	state.Call.Props.DialPending = true
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("handlePhoneCall: failed to set phone call props", "err", err.Error(), "callID", callID)
-		p.rollbackSession(sessionID, callID, createdCall)
+		p.rollbackSession(sessionID, callID, true)
 		res.Err = "Internal server error"
 		res.Code = http.StatusInternalServerError
 		return
