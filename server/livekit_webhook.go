@@ -129,9 +129,9 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 
 	// The flag is consumed under the call lock, so concurrent deliveries can't
 	// both dial.
-	dialPhone := firstConfirm && !p.isBot(userID) && state.Call.Props.DialPending
+	dialPhone := firstConfirm && state.Call.Props.DialSessionID == sessionID
 	if dialPhone {
-		state.Call.Props.DialPending = false
+		state.Call.Props.DialSessionID = ""
 	}
 
 	// Participants feeds the call post's attendee list, so the bot is excluded
