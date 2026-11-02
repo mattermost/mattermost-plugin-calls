@@ -202,6 +202,10 @@ func TestCallEndReasonStatus(t *testing.T) {
 }
 
 func TestPhoneLegEndReason(t *testing.T) {
+	t.Run("a trunk failure after the callee answered is a dropped call", func(t *testing.T) {
+		require.Equal(t, callEndReasonNormal, phoneLegEndReason(livekit.DisconnectReason_SIP_TRUNK_FAILURE, true))
+	})
+
 	for reason, want := range map[livekit.DisconnectReason]callEndReason{
 		livekit.DisconnectReason_CLIENT_INITIATED:    callEndReasonNormal,
 		livekit.DisconnectReason_USER_REJECTED:       callEndReasonDeclined,
@@ -211,7 +215,7 @@ func TestPhoneLegEndReason(t *testing.T) {
 		livekit.DisconnectReason_PARTICIPANT_REMOVED: callEndReasonNormal,
 		livekit.DisconnectReason_UNKNOWN_REASON:      callEndReasonNormal,
 	} {
-		require.Equal(t, want, phoneLegEndReason(reason), reason.String())
+		require.Equal(t, want, phoneLegEndReason(reason, false), reason.String())
 	}
 }
 

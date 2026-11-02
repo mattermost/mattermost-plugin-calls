@@ -242,14 +242,19 @@ func (p *Plugin) phoneCallerHangupReason(call *public.Call, channelID string) ca
 }
 
 // phoneLegEndReason maps why the SIP leg left the room onto what the call post
-// should say. Busy (486) and rejected (603) both arrive as USER_REJECTED.
-func phoneLegEndReason(reason livekit.DisconnectReason) callEndReason {
+// should say. Busy (486) and rejected (603) both arrive as USER_REJECTED. A
+// trunk failure after the callee answered is a dropped call, not one that
+// couldn't be placed.
+func phoneLegEndReason(reason livekit.DisconnectReason, answered bool) callEndReason {
 	switch reason {
 	case livekit.DisconnectReason_USER_REJECTED:
 		return callEndReasonDeclined
 	case livekit.DisconnectReason_USER_UNAVAILABLE:
 		return callEndReasonNoAnswer
 	case livekit.DisconnectReason_SIP_TRUNK_FAILURE:
+		if answered {
+			return callEndReasonNormal
+		}
 		return callEndReasonFailed
 	default:
 		return callEndReasonNormal
