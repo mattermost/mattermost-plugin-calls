@@ -432,8 +432,10 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 
 	setCallEnded(&state.Call)
 
-	// Completeness backstop: guarantee every attendee has a durable leave time.
+	// Completeness backstop: guarantee every attendee has a durable leave time and
+	// every screen share a durable stop time.
 	p.recordLeaveBackstop(&state.Call)
+	p.recordScreenShareBackstop(&state.Call)
 
 	// A DM/phone call may still have no-answer timers pending against it.
 	p.cancelDMNoAnswerTimer(channelID)
@@ -521,6 +523,23 @@ func (p *Plugin) handleLiveKitTrackPublished(event *livekit.WebhookEvent) {
 	state.Call.Props.ScreenSharingSessionID = sessionID
 	state.Call.Props.ScreenStartAt = time.Now().Unix()
 
+	// Durable screen-share segment for audit reporting. Synchronous and idempotent
+	// (one row per callID+sessionID+startAt). A failed write is logged, not fatal:
+	// the call-end backstop closes any segment left open. Bots never publish a
+	// screen-share track, so no bot guard is needed here.
+	screenStartAt := nowMillis()
+	if err := p.store.RecordScreenShareStart(state.Call.ID, userID, sessionID, screenStartAt); err != nil {
+		p.LogError("calls audit: failed to record screen share start",
+			"callID", state.Call.ID, "userID", userID, "err", err.Error())
+	}
+	p.LogInfo("calls audit: screen share started",
+		"event", "screen_share_started",
+		"callID", state.Call.ID,
+		"channelID", channelID,
+		"userID", userID,
+		"sessionID", sessionID,
+		"startAt", time.UnixMilli(screenStartAt).UTC().Format(time.RFC3339))
+
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("handleLiveKitTrackPublished: failed to update call", "channelID", channelID, "err", err.Error())
 		return
@@ -590,6 +609,24 @@ func (p *Plugin) clearScreenSharingState(state *callState, channelID, sessionID,
 	}
 	state.Call.Props.ScreenSharingSessionID = ""
 	state.Call.Props.ScreenStartAt = 0
+
+	// Close the durable screen-share segment for audit reporting. This is the single
+	// chokepoint for a share ending (track unpublished, or the sharer leaving), so
+	// it is where the stop is recorded. Synchronous and idempotent (only the open
+	// segment is touched); a failed write is logged, not fatal, since the call-end
+	// backstop closes any segment left open.
+	stopAt := nowMillis()
+	if err := p.store.RecordScreenShareStop(state.Call.ID, sessionID, stopAt); err != nil {
+		p.LogError("calls audit: failed to record screen share stop",
+			"callID", state.Call.ID, "sessionID", sessionID, "err", err.Error())
+	}
+	p.LogInfo("calls audit: screen share stopped",
+		"event", "screen_share_stopped",
+		"callID", state.Call.ID,
+		"channelID", channelID,
+		"userID", userID,
+		"sessionID", sessionID,
+		"stopAt", time.UnixMilli(stopAt).UTC().Format(time.RFC3339))
 
 	p.publishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{
 		"userID":     userID,

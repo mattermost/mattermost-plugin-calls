@@ -411,10 +411,12 @@ func (p *Plugin) cleanCallState(call *public.Call, reason string, endReason call
 		setCallEnded(call)
 	}
 
-	// Completeness backstop: on a restart/forced cleanup the per-leave writes for
-	// anyone still in the call never fired, so stamp their leave at the call's end
-	// time. This is what makes attendance leave times durable across a crash.
+	// Completeness backstop: on a restart/forced cleanup the per-leave and
+	// per-screen-share-stop writes for anyone still in the call never fired, so
+	// stamp them at the call's end time. This is what makes leave and screen-share
+	// stop times durable across a crash.
 	p.recordLeaveBackstop(call)
+	p.recordScreenShareBackstop(call)
 
 	deleted, err := p.store.DeleteCallsSessions(call.ID)
 	if err != nil {

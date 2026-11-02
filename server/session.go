@@ -531,8 +531,10 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 
 		setCallEnded(&state.Call)
 
-		// Completeness backstop: guarantee every attendee has a durable leave time.
+		// Completeness backstop: guarantee every attendee has a durable leave time
+		// and every screen share a durable stop time.
 		p.recordLeaveBackstop(&state.Call)
+		p.recordScreenShareBackstop(&state.Call)
 
 		p.cancelDMNoAnswerTimer(channelID)
 

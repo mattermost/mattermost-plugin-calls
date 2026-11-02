@@ -44,3 +44,18 @@ func (p *Plugin) recordLeaveBackstop(call *public.Call) {
 			"callID", call.ID, "err", err.Error())
 	}
 }
+
+// recordScreenShareBackstop closes any screen-share segment still open on the
+// (now ended) call, stamping the call's end time. Same rationale and contract as
+// recordLeaveBackstop: non-fatal, and the caller must have set call.EndAt first.
+// A sharer still sharing at call end, or a stop event never observed, would
+// otherwise leave StopAt = 0 forever.
+func (p *Plugin) recordScreenShareBackstop(call *public.Call) {
+	if call.EndAt == 0 {
+		return
+	}
+	if err := p.store.RecordStopForActiveScreenShares(call.ID, call.EndAt); err != nil {
+		p.LogError("calls audit: failed to backstop screen shares",
+			"callID", call.ID, "err", err.Error())
+	}
+}

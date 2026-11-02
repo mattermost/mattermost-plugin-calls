@@ -176,17 +176,29 @@ func (p *Plugin) handleAuditCommand(args *model.CommandArgs, fields []string) (*
 		return nil, fmt.Errorf("failed to query participant times: %w", err)
 	}
 
-	usernames := p.resolveUsernames(calls, participantTimes)
+	screenShares, err := p.store.GetScreenSharesForCalls(callIDs, db.GetCallOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query screen shares: %w", err)
+	}
+
+	usernames := p.resolveUsernames(calls, participantTimes, screenShares)
 
 	csvData, err := p.buildAuditCSV(calls, participantTimes, usernames)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build report: %w", err)
 	}
 
+	screenShareCSV, err := p.buildScreenShareCSV(calls, screenShares, usernames)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build screen share report: %w", err)
+	}
+
 	// Guard against producing a file the server will reject, so the user gets a
 	// clear message instead of a generic upload failure.
-	if maxFileSize := p.API.GetConfig().FileSettings.MaxFileSize; maxFileSize != nil && int64(len(csvData)) > *maxFileSize {
-		return nil, fmt.Errorf("the report is too large to deliver (%d bytes); narrow the date range or use --scope channel", len(csvData))
+	if maxFileSize := p.API.GetConfig().FileSettings.MaxFileSize; maxFileSize != nil {
+		if int64(len(csvData)) > *maxFileSize || int64(len(screenShareCSV)) > *maxFileSize {
+			return nil, fmt.Errorf("the report is too large to deliver; narrow the date range or use --scope channel")
+		}
 	}
 
 	botID := p.getBotID()
@@ -199,13 +211,18 @@ func (p *Plugin) handleAuditCommand(args *model.CommandArgs, fields []string) (*
 		return nil, fmt.Errorf("failed to open DM channel: %s", appErr.Error())
 	}
 
-	filename := fmt.Sprintf("call_audit_%s.csv", time.Now().UTC().Format("2006-01-02T15-04-05Z"))
-	fileInfo, appErr := p.API.UploadFile(csvData, dmChannel.Id, filename)
+	stamp := time.Now().UTC().Format("2006-01-02T15-04-05Z")
+
+	attendanceFile, appErr := p.API.UploadFile(csvData, dmChannel.Id, fmt.Sprintf("call_audit_%s.csv", stamp))
 	if appErr != nil {
 		return nil, fmt.Errorf("failed to upload report: %s", appErr.Error())
 	}
+	screenShareFile, appErr := p.API.UploadFile(screenShareCSV, dmChannel.Id, fmt.Sprintf("call_audit_screen_shares_%s.csv", stamp))
+	if appErr != nil {
+		return nil, fmt.Errorf("failed to upload screen share report: %s", appErr.Error())
+	}
 
-	message := fmt.Sprintf("Here is your call audit report (%d call(s)).", len(calls))
+	message := fmt.Sprintf("Here is your call audit report (%d call(s)). The attendance file lists who was in each call with join/leave times; the screen-share file logs who shared their screen and when.", len(calls))
 	if truncated {
 		message += fmt.Sprintf(" Only the most recent %d calls are included — narrow the date range to see older ones.", auditMaxCalls)
 	}
@@ -213,7 +230,7 @@ func (p *Plugin) handleAuditCommand(args *model.CommandArgs, fields []string) (*
 		UserId:    botID,
 		ChannelId: dmChannel.Id,
 		Message:   message,
-		FileIds:   []string{fileInfo.Id},
+		FileIds:   []string{attendanceFile.Id, screenShareFile.Id},
 	}); appErr != nil {
 		return nil, fmt.Errorf("failed to post report: %s", appErr.Error())
 	}
@@ -238,7 +255,7 @@ func (p *Plugin) handleAuditCommand(args *model.CommandArgs, fields []string) (*
 // report to a username, avoiding a per-user API call while building the CSV.
 // A userID that can't be resolved (e.g. a permanently deleted user) maps to
 // itself so the row still carries the ID.
-func (p *Plugin) resolveUsernames(calls []*public.Call, participantTimes map[string]map[string]*public.CallParticipant) map[string]string {
+func (p *Plugin) resolveUsernames(calls []*public.Call, participantTimes map[string]map[string]*public.CallParticipant, screenShares map[string][]*public.CallScreenShare) map[string]string {
 	idSet := map[string]struct{}{}
 	for _, call := range calls {
 		for _, uid := range call.Participants {
@@ -251,6 +268,11 @@ func (p *Plugin) resolveUsernames(calls []*public.Call, participantTimes map[str
 	for _, perCall := range participantTimes {
 		for uid := range perCall {
 			idSet[uid] = struct{}{}
+		}
+	}
+	for _, shares := range screenShares {
+		for _, ss := range shares {
+			idSet[ss.UserID] = struct{}{}
 		}
 	}
 
@@ -428,6 +450,97 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 			}
 
 			if err := writeRow(uid, username, firstJoinUTC, lastLeaveUTC); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+// buildScreenShareCSV renders one row per screen-share segment: who shared their
+// screen in which call, and the start/stop times. Calls with no screen shares are
+// omitted, so this file is purely the screen-share log. Columns are append-only.
+// usernames maps userID -> display username (pre-resolved in batch, shared with
+// the attendance report).
+func (p *Plugin) buildScreenShareCSV(calls []*public.Call, screenShares map[string][]*public.CallScreenShare, usernames map[string]string) ([]byte, error) {
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+
+	header := []string{
+		"call_id",
+		"channel_id",
+		"channel_name",
+		"channel_display_name",
+		"call_title",
+		"call_start_utc",
+		"screen_share_user_id",
+		"screen_share_username",
+		"screen_share_start_utc",
+		"screen_share_stop_utc",
+	}
+	if err := w.Write(header); err != nil {
+		return nil, err
+	}
+
+	utcOrEmpty := func(ms int64) string {
+		if ms <= 0 {
+			return ""
+		}
+		return time.UnixMilli(ms).UTC().Format(time.RFC3339)
+	}
+
+	channelCache := map[string]*model.Channel{}
+
+	for _, call := range calls {
+		shares := screenShares[call.ID]
+		if len(shares) == 0 {
+			continue
+		}
+
+		channelName, channelDisplay := "", ""
+		if ch, ok := channelCache[call.ChannelID]; ok {
+			if ch != nil {
+				channelName, channelDisplay = ch.Name, ch.DisplayName
+			}
+		} else {
+			ch, appErr := p.API.GetChannel(call.ChannelID)
+			if appErr == nil {
+				channelCache[call.ChannelID] = ch
+				channelName, channelDisplay = ch.Name, ch.DisplayName
+			} else {
+				channelCache[call.ChannelID] = nil
+			}
+		}
+
+		startUTC := time.UnixMilli(call.StartAt).UTC().Format(time.RFC3339)
+
+		for _, ss := range shares {
+			username := usernames[ss.UserID]
+			if username == "" {
+				username = ss.UserID
+			}
+
+			// User-controlled fields (channel name/display, call title, username)
+			// are sanitized against CSV formula injection; IDs and timestamps are
+			// machine-generated and safe.
+			if err := w.Write([]string{
+				call.ID,
+				call.ChannelID,
+				csvSafe(channelName),
+				csvSafe(channelDisplay),
+				csvSafe(call.Title),
+				startUTC,
+				ss.UserID,
+				csvSafe(username),
+				utcOrEmpty(ss.StartAt),
+				utcOrEmpty(ss.StopAt),
+			}); err != nil {
 				return nil, err
 			}
 		}

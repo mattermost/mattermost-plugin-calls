@@ -75,3 +75,61 @@ func TestRecordLeaveBackstopNoEnd(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(0), got[callID][u1].LastLeaveAt, "a live call must not have leaves backstopped")
 }
+
+// TestRecordScreenShareBackstop is the durability guarantee for screen-share stop
+// times: when a call ends, every share segment has a non-zero stop time even if
+// the stop was never recorded (crash mid-share, a missed webhook, or a sharer
+// still sharing at call end). A precisely-recorded stop is left untouched.
+func TestRecordScreenShareBackstop(t *testing.T) {
+	store, tearDown := NewTestStore(t)
+	defer tearDown()
+
+	p := &Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{API: &pluginMocks.MockAPI{}},
+		store:            store,
+	}
+
+	callID := model.NewId()
+	stopped := model.NewId() // stopped sharing normally, precise stop recorded
+	open := model.NewId()    // still sharing when the call ended
+
+	stoppedSession := model.NewId()
+	openSession := model.NewId()
+	require.NoError(t, store.RecordScreenShareStart(callID, stopped, stoppedSession, 1000))
+	require.NoError(t, store.RecordScreenShareStart(callID, open, openSession, 1500))
+	require.NoError(t, store.RecordScreenShareStop(callID, stoppedSession, 4000))
+
+	const endAt = 9000
+	p.recordScreenShareBackstop(&public.Call{ID: callID, EndAt: endAt})
+
+	got, err := store.GetScreenSharesForCalls([]string{callID}, db.GetCallOpts{FromWriter: true})
+	require.NoError(t, err)
+
+	byUser := map[string]*public.CallScreenShare{}
+	for _, ss := range got[callID] {
+		byUser[ss.UserID] = ss
+	}
+	require.Equal(t, int64(4000), byUser[stopped].StopAt, "precise stop preserved")
+	require.Equal(t, int64(endAt), byUser[open].StopAt, "open share gets the call end time")
+}
+
+// TestRecordScreenShareBackstopNoEnd guards against closing segments on a call
+// that has not actually ended (EndAt == 0).
+func TestRecordScreenShareBackstopNoEnd(t *testing.T) {
+	store, tearDown := NewTestStore(t)
+	defer tearDown()
+
+	p := &Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{API: &pluginMocks.MockAPI{}},
+		store:            store,
+	}
+
+	callID := model.NewId()
+	require.NoError(t, store.RecordScreenShareStart(callID, model.NewId(), model.NewId(), 1000))
+
+	p.recordScreenShareBackstop(&public.Call{ID: callID, EndAt: 0})
+
+	got, err := store.GetScreenSharesForCalls([]string{callID}, db.GetCallOpts{FromWriter: true})
+	require.NoError(t, err)
+	require.Equal(t, int64(0), got[callID][0].StopAt, "a live call must not have shares backstopped")
+}
