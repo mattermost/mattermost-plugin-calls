@@ -6,7 +6,6 @@ import {
     CallHostChangedData,
     CallJobState,
     CallJobStateData,
-    EmptyData,
     HostControlLowerHand,
     HostControlMsg,
     HostControlRemoved,
@@ -46,10 +45,12 @@ import {
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
 import {logWarn} from 'src/log';
+import {handlePhoneCallEnd} from 'src/phone_call';
 import {getPhoneCallProps} from 'src/phone_utils';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userLoweredHand, userRaisedHand, userReacted, userReactedTimeout} from 'src/state/session/actions';
 import {
+    CallEndData,
     HostControlNotice,
     HostControlNoticeType,
     PhoneCallStartData,
@@ -107,9 +108,10 @@ export function handleConfigChanged(store: Store) {
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
 // state mutating operations.
-export function handleCallEnd(store: Store, ev: WebSocketMessage<EmptyData>) {
+export function handleCallEnd(store: Store, ev: WebSocketMessage<CallEndData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
     store.dispatch(callEnd(channelID));
+    handlePhoneCallEnd(store, ev.data.call_id ?? '', ev.data.reason);
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
