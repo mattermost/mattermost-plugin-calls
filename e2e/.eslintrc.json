@@ -17,6 +17,10 @@
           {
             "selector": "CallExpression[callee.object.name='page'][callee.property.name=/^(click|dblclick|fill|hover|press|type|check|uncheck|selectOption|setInputFiles|focus|tap)$/]",
             "message": "No raw page interactions in specs. Use a page object method."
+          },
+          {
+            "selector": "MemberExpression[property.name=/^(keyboard|mouse)$/]",
+            "message": "No raw keyboard or mouse input in specs. Use a page object method."
           }
         ]
       }

@@ -13,3 +13,28 @@ export async function waitForCallsClientConnected(page: Page) {
 export async function waitForCallsClientClosed(page: Page) {
     await page.waitForFunction(() => !window.callsClient || window.callsClient.closed);
 }
+
+export async function isMuted(page: Page) {
+    return page.evaluate(() => {
+        return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
+    });
+}
+
+// Records raise/lower hand events on window.isHandRaised so isHandRaised can read them.
+export async function trackHandRaised(page: Page) {
+    await page.evaluate(() => {
+        window.callsClient.on('raise_hand', () => {
+            window.isHandRaised = true;
+        });
+
+        window.callsClient.on('lower_hand', () => {
+            window.isHandRaised = false;
+        });
+    });
+}
+
+export async function isHandRaised(page: Page) {
+    return page.evaluate(() => {
+        return window.isHandRaised;
+    });
+}
