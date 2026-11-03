@@ -18,6 +18,8 @@ export const CALL_EVENT = {
     UNMUTE: 'unmute',
     USERS_VOICE_ACTIVITY_CHANGED: 'usersVoiceActivityChanged',
     REMOTE_VOICE_STREAM: 'remoteVoiceStream',
+    REMOTE_AUDIO_PLAYBACK_BLOCKED: 'remoteAudioPlaybackBlocked',
+    REMOTE_AUDIO_PLAYBACK_UNBLOCKED: 'remoteAudioPlaybackUnblocked',
     USER_JOINED: 'userJoined',
     USER_LEFT: 'userLeft',
     DEVICE_CHANGE: 'devicechange',
@@ -55,12 +57,6 @@ export const CALL_EVENT = {
 
 export const CALL_ATTRIBUTES = {
     RAISED_HAND: 'raised_hand',
-
-    /** BOT marks the recording/transcribing bot. Server-set on the bot's LiveKit
-     * token grant (see livekitAttributeBot server-side); used to filter the bot
-     * out of the participant list regardless of how participants are discovered.
-     */
-    BOT: 'bot',
 
     /** SIP_CALL_STATUS is set by the LiveKit SIP bridge on the phone participant's attributes:
      * - dialing: outbound call placed, no ringing or answer from the callee's phone yet.

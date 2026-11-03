@@ -1,0 +1,54 @@
+.DialPadKeypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+
+    .DialPadKeypad__key {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 52px;
+        padding: 0;
+        border: none;
+        border-radius: 8px;
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+        color: var(--center-channel-color);
+        cursor: pointer;
+
+        &:hover {
+            background: rgba(var(--center-channel-color-rgb), 0.12);
+        }
+
+        &:active,
+        &.DialPadKeypad__key--pressed {
+            background: rgba(var(--button-bg-rgb), 0.16);
+            color: var(--button-bg);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--button-bg);
+            outline-offset: -2px;
+        }
+    }
+
+    .DialPadKeypad__digit {
+        font-family: Metropolis, sans-serif;
+        font-size: 22px;
+        font-weight: 600;
+        line-height: 24px;
+    }
+
+    .DialPadKeypad__letters {
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 12px;
+        letter-spacing: 0.04em;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+    }
+
+    .DialPadKeypad__key:active .DialPadKeypad__letters,
+    .DialPadKeypad__key--pressed .DialPadKeypad__letters {
+        color: var(--button-bg);
+    }
+}

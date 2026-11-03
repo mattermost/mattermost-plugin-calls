@@ -27,6 +27,7 @@ import {
     hostIDForCurrentCall,
     isCurrentCallPhoneCall,
     isCurrentDMCallInCallingState,
+    isCurrentPhoneCallActive,
     isCurrentPhoneCallRinging,
     isRecordingInCurrentCall,
     profilesInCurrentCallMap,
@@ -104,6 +105,7 @@ const mapStateToProps = (state: GlobalState) => {
         isDMCalling: isCurrentDMCallInCallingState(state),
         isPhoneCall: isCurrentCallPhoneCall(state),
         isPhoneCallRinging: isCurrentPhoneCallRinging(state),
+        isPhoneCallActive: isCurrentPhoneCallActive(state),
     };
 };
 

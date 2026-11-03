@@ -22,7 +22,7 @@ type Props = {
     recording?: CallJobReduxState;
     recordingMaxDuration: number;
     onDecline: () => void;
-    promptDismissed: () => void;
+    promptDismissed: (minDismissedAt?: number) => void;
     transcriptionsEnabled: boolean;
 }
 
@@ -45,17 +45,10 @@ export default function RecordingInfoPrompt(props: Props) {
         return Math.round(props.recordingMaxDuration - callDurationMinutes);
     }, [props.recording?.start_at, props.recordingMaxDuration]);
 
-    const [recordingWillEndSoon, updateRecordingWillEndSoon] = useState(0);
-
-    useEffect(() => {
-        if (!props.isHost || !props.recording || props.recording.start_at === 0 || props.recording.end_at !== 0 || recordingWillEndSoon !== 0) {
-            return;
-        }
-
-        if (getMinutesLeftBeforeEnd() <= minutesLeftThreshold) {
-            updateRecordingWillEndSoon(Date.now());
-        }
-    }, [props.isHost, props.recording, recordingWillEndSoon, getMinutesLeftBeforeEnd]);
+    // Server-time instant the end-soon threshold is reached, so it compares
+    // consistently against disclaimerDismissedAt (also server-based).
+    const willEndSoonAt = props.recording?.start_at ? props.recording.start_at + ((props.recordingMaxDuration - minutesLeftThreshold) * 60 * 1000) : 0;
+    const dismissWillEndSoon = () => props.promptDismissed(willEndSoonAt);
 
     const hasRecEnded = (props.recording?.end_at ?? 0) > (props.recording?.start_at ?? 0);
 
@@ -68,7 +61,7 @@ export default function RecordingInfoPrompt(props: Props) {
 
     const {formatMessage} = useIntl();
 
-    if (props.isHost && !hasRecEnded && recordingWillEndSoon > disclaimerDismissedAt) {
+    if (props.isHost && !hasRecEnded && willEndSoonAt > disclaimerDismissedAt && getMinutesLeftBeforeEnd() <= minutesLeftThreshold) {
         return (
             <InCallPrompt
                 testId={'recording-will-end-soon'}
@@ -89,8 +82,8 @@ export default function RecordingInfoPrompt(props: Props) {
                     defaultMessage: 'Your recording will end in {count, plural, =1 {# minute} other {# minutes}}.'}
                 , {count: getMinutesLeftBeforeEnd()})}
                 leftText={formatMessage({defaultMessage: 'Dismiss'})}
-                onLeftButtonClick={props.promptDismissed}
-                onCloseButtonClick={props.promptDismissed}
+                onLeftButtonClick={dismissWillEndSoon}
+                onCloseButtonClick={dismissWillEndSoon}
             />
         );
     }
@@ -197,9 +190,9 @@ export default function RecordingInfoPrompt(props: Props) {
             error={error}
             leftText={confirmText}
             rightText={declineText}
-            onLeftButtonClick={props.promptDismissed}
+            onLeftButtonClick={() => props.promptDismissed()}
             onRightButtonClick={props.onDecline}
-            onCloseButtonClick={props.promptDismissed}
+            onCloseButtonClick={() => props.promptDismissed()}
         />
     );
 }

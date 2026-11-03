@@ -1,10 +1,6 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-// MM-68570: recording, transcription, and live captions are stubbed on the
-// LiveKit v2 branch — the server returns 501 from server/recording_api.go.
-// Every test in this file is test.skip'd; revisit when those features ship.
-
 import {expect, test} from '@playwright/test';
 
 import {apiSetEnableLiveCaptions, apiSetEnableTranscriptions} from '../config';
@@ -17,12 +13,15 @@ test.beforeEach(async ({page}) => {
     await devPage.goto();
 });
 
+// Tests that mutate the plugin config and so must hold the config lock.
+const configLockTests = ['slash command, popout + buttons', 'live captions'];
+
 test.describe('call recordings, transcriptions, live-captions', {tag: '@livekit'}, () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
     test.beforeEach(async () => {
-        // Only the first test requires locking.
-        if (test.info().title === 'slash command, popout + buttons') {
+        // Only the config-mutating tests require locking.
+        if (configLockTests.includes(test.info().title)) {
             test.setTimeout(200000);
 
             // We acquire a file system lock so that we don't cause a conflict with other
@@ -32,15 +31,15 @@ test.describe('call recordings, transcriptions, live-captions', {tag: '@livekit'
     });
 
     test.afterEach(() => {
-        // Only the first test requires locking.
-        if (test.info().title === 'slash command, popout + buttons') {
+        // Only the config-mutating tests require locking.
+        if (configLockTests.includes(test.info().title)) {
             releaseLock('calls-config-lock');
         }
     });
 
-    test.skip('slash command, popout + buttons', {
+    test('slash command, popout + buttons', {
         tag: '@core',
-    }, async ({page, context, request}) => {
+    }, async ({page, request}) => {
         await apiSetEnableTranscriptions(false);
 
         // start call
@@ -142,12 +141,17 @@ test.describe('call recordings, transcriptions, live-captions', {tag: '@livekit'
 
         // leave call
         await devPage.leaveCall();
+    });
+
+    // TODO: enable once live captions are ported to LiveKit (MM-71171).
+    test.fixme('live captions', async ({page, context}) => {
+        const devPage = new PlaywrightDevPage(page);
+
+        await apiSetEnableTranscriptions(true);
 
         //
-        // Live captions tests.
         // First, verify [cc] is not available when live captions is off.
         //
-        await page.reload();
         await apiSetEnableLiveCaptions(false);
 
         // start call
@@ -193,7 +197,6 @@ test.describe('call recordings, transcriptions, live-captions', {tag: '@livekit'
         await devPage.leaveCall();
 
         //
-        // Lice captions tests.
         // Second, verify [cc] is available and gives us the right closed captions.
         //
         await page.reload();
@@ -251,7 +254,7 @@ test.describe('call recordings, transcriptions, live-captions', {tag: '@livekit'
         await devPage.leaveCall();
     });
 
-    test.skip('recording - no participants left', async ({page}) => {
+    test('recording - no participants left', async ({page}) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
 
@@ -277,7 +280,7 @@ test.describe('call recordings, transcriptions, live-captions', {tag: '@livekit'
         await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
     });
 
-    test.skip('recording - call end', async ({page}) => {
+    test('recording - call end', async ({page}) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
 
@@ -308,7 +311,7 @@ test.describe('call recordings, transcriptions, live-captions', {tag: '@livekit'
         await expect(page.locator('.ThreadViewer').locator('.post__body').last().filter({has: page.getByTestId('fileAttachmentList')})).toBeVisible();
     });
 
-    test.skip('recording - widget menu', async ({page}) => {
+    test('recording - widget menu', async ({page}) => {
         // start call
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();

@@ -17,12 +17,13 @@ import type CallClient from 'src/clients/call/call_client';
 import {CALL_EVENT} from 'src/clients/call/constants';
 import type {LiveKitSessionResponse} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
-import {logErr} from 'src/log';
+import {logErr, logWarn} from 'src/log';
 import {toSIPCallStatus} from 'src/phone_utils';
 import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
 import {sipCallStatusChanged} from 'src/state/sip_call_state/actions';
 import type {Store} from 'src/types/mattermost-webapp';
-import {getPluginPath, isCallsPopOut, isMobile} from 'src/utils';
+import {CallPostStatus} from 'src/types/types';
+import {getPluginPath, isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
 
 export type PhoneCallResponse = LiveKitSessionResponse & {
     call_id: string;
@@ -66,19 +67,76 @@ const OUTBOUND_UNAVAILABLE_MESSAGE = defineMessage({defaultMessage: 'Phone calls
 
 const INVALID_TARGET_MESSAGE = defineMessage({defaultMessage: 'The person you\'re trying to call couldn\'t be found.'});
 
+const NO_ANSWER_TITLE = defineMessage({defaultMessage: 'No answer'});
+const NO_ANSWER_MESSAGE = defineMessage({defaultMessage: 'Nobody answered the call.'});
+const DECLINED_TITLE = defineMessage({defaultMessage: 'Call declined'});
+const DECLINED_MESSAGE = defineMessage({defaultMessage: 'The number you called is busy or declined the call.'});
+
 const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
     ['invalid_number', defineMessage({defaultMessage: 'That doesn\'t look like a valid phone number.'})],
+    ['ambiguous_number', defineMessage({defaultMessage: 'Start international numbers with + and the country code.'})],
     ['sip_number_not_allowed', defineMessage({defaultMessage: 'Calling this number isn\'t permitted.'})],
     ['sip_team_not_allowed', defineMessage({defaultMessage: 'You don\'t have permission to place phone calls.'})],
     ['outbound_disabled', OUTBOUND_UNAVAILABLE_MESSAGE],
     ['outbound_not_configured', OUTBOUND_UNAVAILABLE_MESSAGE],
     ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
     ['invalid_target', INVALID_TARGET_MESSAGE],
+    ['call_ended', defineMessage({defaultMessage: 'The call ended before it connected. Please try again.'})],
 ]);
 
 // LiveKit adds the phone leg to the room before /phone-call returns; the grace
 // period only covers a late room update.
 const PHONE_LEG_GRACE_MS = 5_000;
+
+// The phone call this window placed whose outcome it hasn't shown yet. Only the
+// window that placed a call tells the caller how it ended, and only once.
+let unreportedCallID = '';
+
+function claimCallOutcome(callID: string) {
+    if (!callID || callID !== unreportedCallID) {
+        return false;
+    }
+    unreportedCallID = '';
+    return true;
+}
+
+type CallOutcomeMessage = {
+    title: MessageDescriptor;
+    message: MessageDescriptor;
+};
+
+function callOutcomeMessage(reason: CallPostStatus): CallOutcomeMessage | undefined {
+    switch (reason) {
+    case CallPostStatus.NoAnswer:
+        return {title: NO_ANSWER_TITLE, message: NO_ANSWER_MESSAGE};
+    case CallPostStatus.Declined:
+        return {title: DECLINED_TITLE, message: DECLINED_MESSAGE};
+    case CallPostStatus.Failed:
+        return {title: DIAL_ERROR_TITLE, message: DIAL_FAILED_MESSAGE};
+    case CallPostStatus.Calling:
+    case CallPostStatus.Ended:
+    case CallPostStatus.Canceled:
+        return undefined;
+    default: {
+        const exhaustive: never = reason;
+        logWarn(`unknown phone call end reason: ${exhaustive}`);
+        return undefined;
+    }
+    }
+}
+
+// Tells the caller why the phone call they placed from this window ended,
+// using the reason the server sent with call_end.
+export function handlePhoneCallEnd(store: Store, callID: string, reason?: CallPostStatus) {
+    if (!claimCallOutcome(callID) || !reason) {
+        return;
+    }
+
+    const outcome = callOutcomeMessage(reason);
+    if (outcome) {
+        store.dispatch(displayGenericErrorModal(outcome.title, outcome.message));
+    }
+}
 
 export function placePhoneCall(number: string, target?: PhoneCallTarget) {
     const body: Record<string, string> = {number};
@@ -166,7 +224,7 @@ export function openInOSDialer(href: string) {
 // Whether this window can place a phone call. Mobile is left out of
 // telLinkInterceptionSupported only so tel: links reach the phone's own dialer.
 export function phoneDialingSupported() {
-    return !isCallsPopOut();
+    return !joinsInDesktopWidget() && !isCallsPopOut();
 }
 
 export function telLinkInterceptionSupported() {
@@ -190,6 +248,12 @@ export function dialFromUI(number: string, target?: PhoneCallTarget) {
         return Promise.resolve();
     }
     return phoneDialer(number, target);
+}
+
+// The Desktop app joins calls from a separate widget window that creates its
+// own session, so it can't use the session /phone-call returns.
+function joinsInDesktopWidget() {
+    return Boolean(window.desktopAPI?.joinCall) || shouldRenderDesktopWidget();
 }
 
 export async function dialPhoneNumber(
@@ -223,6 +287,11 @@ export async function dialPhoneNumber(
         return;
     }
 
+    if (joinsInDesktopWidget()) {
+        showError(defineMessage({defaultMessage: 'Phone calls aren\'t supported in the desktop app yet.'}));
+        return;
+    }
+
     if (clientConnecting(state)) {
         return;
     }
@@ -247,6 +316,8 @@ export async function dialPhoneNumber(
         showError(phoneCallErrorMessage(err));
         return;
     }
+
+    unreportedCallID = session.call_id;
 
     await store.dispatch(getChannelAction(session.channel_id));
     connect(session.channel_id, session);
@@ -298,6 +369,7 @@ export function watchPhoneCall(
     store: Store,
     client: CallClient,
     channelID: string,
+    callID: string,
     connecting: Promise<void>,
     onDialFailed: () => void = () => store.dispatch(displayGenericErrorModal(DIAL_ERROR_TITLE, DIAL_FAILED_MESSAGE)),
 ) {
@@ -320,12 +392,15 @@ export function watchPhoneCall(
         }
     }, endPhoneCall);
 
-    // A dial the carrier rejects straight away can leave the room before we join it.
+    // A dial the carrier rejects straight away can leave the room before we join
+    // it. The server removes us once a webhook tells it we joined; this covers
+    // deployments that don't receive webhooks.
     client.on(CALL_EVENT.CONNECTED, () => {
-        // TODO: Move this temporary fix to server-side MM-71035
         phoneLegTimer = setTimeout(() => {
             if (!client.hasSIPParticipant()) {
-                onDialFailed();
+                if (claimCallOutcome(callID)) {
+                    onDialFailed();
+                }
                 client.disconnect();
             }
         }, PHONE_LEG_GRACE_MS);
@@ -345,8 +420,9 @@ export function watchPhoneCall(
     client.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
         clearTimeout(phoneLegTimer);
 
-        // A deleted room means the server has already ended the call.
-        if (reason !== DisconnectReason.ROOM_DELETED) {
+        // The server deletes the room when it ends the call, and removes a caller
+        // who joins after the call has already ended.
+        if (reason !== DisconnectReason.ROOM_DELETED && reason !== DisconnectReason.PARTICIPANT_REMOVED) {
             endPhoneCall();
         }
     });

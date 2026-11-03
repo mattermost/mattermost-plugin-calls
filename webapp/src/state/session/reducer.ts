@@ -52,7 +52,6 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
                     user_id: action.data.userID,
                     unmuted: false,
                     voice: false,
-                    video: false,
                     raised_hand: 0,
                 },
             },

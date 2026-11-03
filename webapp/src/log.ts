@@ -158,10 +158,6 @@ export function flushLogsToAccumulated(stats?: CallsClientStats | null) {
     }
 }
 
-export function persistClientLogs() {
-    flushLogsToAccumulated();
-}
-
 export function getClientLogs() {
     return getPersistentStorage().getItem(STORAGE_CALLS_CLIENT_LOGS_KEY) || '';
 }

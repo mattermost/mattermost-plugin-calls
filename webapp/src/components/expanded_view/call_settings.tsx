@@ -13,7 +13,7 @@ import ShowMoreIcon from 'src/components/icons/show_more';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
 import TickIcon from 'src/components/icons/tick';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
-import {areLiveCaptionsAvailableInCurrentCall, callsConfig} from 'src/selectors';
+import {areLiveCaptionsAvailableInCurrentCall} from 'src/selectors';
 import type {
     MediaDevices,
 } from 'src/types/types';
@@ -379,8 +379,6 @@ type CallSettingsProps = {
 export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSettingsProps) {
     const [showAudioInputs, setShowAudioInputs] = useState(false);
     const [showAudioOutputs, setShowAudioOutputs] = useState(false);
-    const [showVideoInputs, setShowVideoInputs] = useState(false);
-    const isVideoEnabled = useSelector(callsConfig).EnableVideo;
     const showCCButton = useSelector(areLiveCaptionsAvailableInCurrentCall);
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
@@ -389,15 +387,9 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
         if (deviceType === 'audioinput') {
             setShowAudioInputs(!showAudioInputs);
             setShowAudioOutputs(false);
-            setShowVideoInputs(false);
         } else if (deviceType === 'audiooutput') {
             setShowAudioOutputs(!showAudioOutputs);
             setShowAudioInputs(false);
-            setShowVideoInputs(false);
-        } else if (deviceType === 'videoinput') {
-            setShowVideoInputs(!showVideoInputs);
-            setShowAudioInputs(false);
-            setShowAudioOutputs(false);
         }
     };
 
@@ -427,13 +419,6 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
                     isActive={showAudioInputs}
                     onToggle={onToggle}
                 />
-                {isVideoEnabled &&
-                <Devices
-                    deviceType='videoinput'
-                    isActive={showVideoInputs}
-                    onToggle={onToggle}
-                />
-                }
 
                 { (showCCButton || showAdditionalSetttingsButton) && <li className='MenuGroup menu-divider'/>}
                 { showCCButton &&

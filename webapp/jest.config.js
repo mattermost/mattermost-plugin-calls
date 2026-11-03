@@ -11,7 +11,6 @@ const config = {
     collectCoverage: true,
     collectCoverageFrom: [
         './src/**/*.{js,jsx,ts,tsx}',
-        '!./src/segmenter/**',
     ],
     coverageReporters: [
         'text',
@@ -23,7 +22,6 @@ const config = {
         '^.+\\.(css|less|scss)$': 'identity-obj-proxy',
         '^.*i18n.*\\.(json)$': '<rootDir>/tests/i18n_mock.json',
         '^bundle-loader\\?lazy\\!(.*)$': '$1',
-        '^src/segmenter$': '<rootDir>/src/segmenter/__mocks__/index.ts',
     },
     moduleDirectories: [
         'node_modules',

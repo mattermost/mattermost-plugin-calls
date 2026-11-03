@@ -51,39 +51,11 @@
             "help_text": "When set to true, call participants can share their screen."
           },
           {
-            "key": "EnableSimulcast",
-            "display_name": "Enable simulcast for screen sharing (Experimental)",
-            "type": "bool",
-            "default": false,
-            "help_text": "When set to true, simulcast for screen sharing is enabled. This can help to improve screen sharing quality."
-          },
-          {
             "key": "EnableRinging",
-            "display_name": "Enable call ringing",
+            "display_name": "Enable call ringing for direct and group messages",
             "type": "bool",
             "default": false,
-            "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart."
-          },
-          {
-            "key": "EnableAV1",
-            "display_name": "Enable AV1 codec for screen sharing (Experimental)",
-            "type": "bool",
-            "default": false,
-            "help_text": "When set to true it enables using the AV1 codec to encode screen sharing tracks. This can result in improved screen sharing quality for clients that support it.\nNote: this setting won't apply when EnableSimulcast is true."
-          },
-          {
-            "key": "EnableDCSignaling",
-            "display_name": "Use data channels for signaling (Experimental)",
-            "type": "bool",
-            "default": false,
-            "help_text": "When set to true, clients will use WebRTC data channels for signaling of new media tracks. This can result in a more efficient and less race-prone process, especially in case of frequent WebSocket disconnections."
-          },
-          {
-            "key": "EnableVideo",
-            "display_name": "Enable video calls in DMs (Experimental)",
-            "type": "bool",
-            "default": false,
-            "help_text": "When set to true, video calls are enabled in direct message channels."
+            "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started."
           }
         ]
       },
@@ -210,6 +182,22 @@
             "hosting": "on-prem"
           },
           {
+            "key": "SIPTrunkDefaultCountryCode",
+            "display_name": "Default country code",
+            "type": "text",
+            "default": "",
+            "help_text": "Country calling code (digits only, e.g. 1) added to numbers dialed without one. Leave empty to add no country code, e.g. for closed networks such as DSN. Numbers entered with a leading + are never modified.",
+            "hosting": "on-prem"
+          },
+          {
+            "key": "SIPTrunkExtensionMaxDigits",
+            "display_name": "Extension max digits",
+            "type": "number",
+            "default": 0,
+            "help_text": "Numbers with this many digits or fewer are treated as PBX extensions and dialed as-is, with no country code. Set this to the length of your longest extension. Set to 0 to disable.",
+            "hosting": "on-prem"
+          },
+          {
             "key": "EnableSIPOutboundAllowlist",
             "display_name": "Enable outbound phone number allowlist",
             "type": "bool",
@@ -222,7 +210,7 @@
             "display_name": "Outbound phone number allowlist",
             "type": "longtext",
             "default": "",
-            "help_text": "Phone numbers permitted for outbound dialing when the allowlist is enabled. Enter one number per line, optionally followed by the owner's name (e.g. +1 555-123-4567 John Doe). A name starting with a digit must be preceded by # (e.g. +1 555-123-4567 # 3rd floor lobby). Numbers are matched after normalization to E.164 format, so formatting variations like +1 555-123-4567 and 15551234567 are equivalent.",
+            "help_text": "Phone numbers permitted for outbound dialing when the allowlist is enabled. Enter one number per line, optionally followed by the owner's name (e.g. +1 555-123-4567 John Doe). A name starting with a digit must be preceded by # (e.g. +1 555-123-4567 # 3rd floor lobby). Numbers are matched after normalization to E.164 format, so formatting variations like +1 555-123-4567 and +15551234567 are equivalent. Numbers without a leading + are normalized using the default country code; if that is empty, no country code is added.",
             "hosting": "on-prem"
           },
           {
@@ -431,6 +419,6 @@
   "props": {
     "min_offloader_version": "v0.9.0",
     "calls_recorder_version": "v0.8.13",
-    "calls_transcriber_version": "v1.0.0-dev1"
+    "calls_transcriber_version": "v1.0.0"
   }
 }

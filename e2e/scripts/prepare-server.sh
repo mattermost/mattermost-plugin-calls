@@ -7,6 +7,7 @@ function print_logs {
 	docker logs ${CONTAINER_SERVER}2
 	docker logs ${CONTAINER_PROXY}
 	docker logs ${CONTAINER_LIVEKIT}
+	docker logs ${CONTAINER_OFFLOADER}
 }
 
 trap print_logs EXIT
@@ -24,8 +25,8 @@ docker network create ${DOCKER_NETWORK}
 echo "Building SIP test sink image ... "
 docker compose -f ${DOCKER_COMPOSE_FILE} build sipp
 
-# Start server dependencies (postgres, haproxy, livekit, + the SIP harness:
-# redis, livekit-sip, sipp).
+# Start server dependencies (postgres, haproxy, livekit, calls-offloader, + the
+# SIP harness: redis, livekit-sip, sipp).
 echo "Starting server dependencies ... "
 DOCKER_NETWORK=${DOCKER_NETWORK} CONTAINER_PROXY=${CONTAINER_PROXY} docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
 timeout --foreground 90s bash -c "until docker compose -f ${DOCKER_COMPOSE_FILE} exec -T postgres pg_isready ; do sleep 5 ; done"
@@ -38,6 +39,18 @@ docker rename "${LIVEKIT_ID}" "${CONTAINER_LIVEKIT}"
 # response code for "/" varies across livekit-server versions; any HTTP response
 # (i.e. successful TCP connect + HTTP roundtrip) proves the service is listening.
 timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_livekit --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -s -o /dev/null --max-time 5 http://livekit:7880/; do echo Waiting for livekit; sleep 2; done; echo livekit is up"
+
+# Check that calls-offloader is up and ready.
+timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_callsoffloader --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://calls-offloader:4545/version; do echo Waiting for calls-offloader; sleep 2; done; echo calls-offloader is up"
+
+# Pre-pull the recorder/transcriber images pinned in the plugin manifest. The offloader
+# uses this host's Docker daemon, so the first job finds them locally instead of
+# pulling a large image mid-test (which can outlast the test's own timing).
+RECORDER_IMAGE="mattermost/calls-recorder:$(jq -r '.props.calls_recorder_version' plugin.json)"
+TRANSCRIBER_IMAGE="mattermost/calls-transcriber:$(jq -r '.props.calls_transcriber_version' plugin.json)"
+echo "Pulling ${RECORDER_IMAGE} and ${TRANSCRIBER_IMAGE} ... "
+docker pull --quiet ${RECORDER_IMAGE}
+docker pull --quiet ${TRANSCRIBER_IMAGE}
 
 ## Print images info
 docker images
@@ -72,6 +85,11 @@ echo "MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED=false" >>${WORKSPACE}/dotenv/a
 echo "MM_CALLS_LIVE_KIT_URL=${MM_CALLS_LIVE_KIT_URL}" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_CALLS_LIVE_KIT_API_KEY=${MM_CALLS_LIVE_KIT_API_KEY}" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_CALLS_LIVE_KIT_API_SECRET=${MM_CALLS_LIVE_KIT_API_SECRET}" >>${WORKSPACE}/dotenv/app.private.env
+
+# Recording/transcription job service. The recorder/transcriber image versions come from
+# the plugin manifest and are pulled by the offloader.
+echo "MM_CALLS_ENABLE_RECORDINGS=true" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CALLS_JOB_SERVICE_URL=http://calls-offloader:4545" >>${WORKSPACE}/dotenv/app.private.env
 
 sudo cp -r ${WORKSPACE}/logs ${WORKSPACE}/logs1
 sudo cp -r ${WORKSPACE}/config ${WORKSPACE}/config1

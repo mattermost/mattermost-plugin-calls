@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
@@ -16,6 +17,9 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/i18n"
 )
+
+// jobSessionTTL matches the transcriber's own MaxDurationSec ceiling (2 × maxRecDurationMinutes).
+const jobSessionTTL = time.Duration(maxRecDurationMinutes) * time.Minute * 2
 
 func (p *Plugin) createBotSession() (*model.Session, error) {
 	m, err := cluster.NewMutex(p.API, p.metrics, "ensure_bot", cluster.MutexConfig{})
@@ -52,6 +56,17 @@ func (p *Plugin) createBotSession() (*model.Session, error) {
 		return nil, appErr
 	}
 
+	return session, nil
+}
+
+func (p *Plugin) createJobSession() (*model.Session, error) {
+	session, appErr := p.API.CreateSession(&model.Session{
+		UserId:    p.botSession.UserId,
+		ExpiresAt: time.Now().Add(jobSessionTTL).UnixMilli(),
+	})
+	if appErr != nil {
+		return nil, appErr
+	}
 	return session, nil
 }
 
@@ -183,8 +198,8 @@ func (p *Plugin) OnDeactivate() error {
 	p.dmNoAnswerTimersMut.Unlock()
 
 	p.sipNoAnswerTimersMut.Lock()
-	for _, t := range p.sipNoAnswerTimers {
-		t.Stop()
+	for _, entry := range p.sipNoAnswerTimers {
+		entry.timer.Stop()
 	}
 	p.sipNoAnswerTimers = nil
 	p.sipNoAnswerTimersMut.Unlock()

@@ -16,7 +16,6 @@ import (
 )
 
 const pkgPath = "github.com/mattermost/mattermost-plugin-calls/server/"
-const rtcdPrefix = "/service/rtc"
 
 func (p *Plugin) logPanic(reason any) {
 	p.LogError(fmt.Sprintf("panic: %v", reason))
@@ -30,14 +29,7 @@ func getErrOrigin() string {
 	var origin string
 	if pc, file, line, ok := runtime.Caller(2); ok {
 		if f := runtime.FuncForPC(pc); f != nil {
-			if idx := strings.Index(f.Name(), rtcdPrefix); idx > 0 {
-				if idx2 := strings.Index(file, rtcdPrefix); idx2 > 0 {
-					file = file[idx2:]
-				}
-				origin = fmt.Sprintf("%s %s:%d", f.Name()[idx:], file, line)
-			} else {
-				origin = fmt.Sprintf("%s %s:%d", strings.TrimPrefix(f.Name(), pkgPath), strings.TrimPrefix(file, pkgPath), line)
-			}
+			origin = fmt.Sprintf("%s %s:%d", strings.TrimPrefix(f.Name(), pkgPath), strings.TrimPrefix(file, pkgPath), line)
 		}
 	}
 	return origin

@@ -30,18 +30,10 @@ func TestSetupConn(t *testing.T) {
 		log.Print(args.Get(0).(string))
 	})
 
-	for _, driverName := range []string{model.DatabaseDriverPostgres, model.DatabaseDriverMysql} {
+	for _, driverName := range []string{model.DatabaseDriverPostgres} {
 		t.Run(driverName, func(t *testing.T) {
-			var dsn string
-			var tearDown func()
-			var err error
-			if driverName == model.DatabaseDriverPostgres {
-				dsn, tearDown, err = testutils.RunPostgresContainerLocal(context.Background())
-				require.NoError(t, err)
-			} else {
-				dsn, tearDown, err = testutils.RunMySQLContainerLocal(context.Background())
-				require.NoError(t, err)
-			}
+			dsn, tearDown, err := testutils.RunPostgresContainerLocal(context.Background())
+			require.NoError(t, err)
 			t.Cleanup(tearDown)
 
 			t.Run("defaults", func(t *testing.T) {
@@ -60,7 +52,7 @@ func TestSetupConn(t *testing.T) {
 				db, err := s.setupDBConn(dsn)
 				require.NoError(t, err)
 				defer require.NoError(t, db.Close())
-				require.Equal(t, 30, db.Stats().MaxOpenConnections)
+				require.Equal(t, 10, db.Stats().MaxOpenConnections)
 			})
 
 			t.Run("overrides", func(t *testing.T) {

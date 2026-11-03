@@ -93,7 +93,6 @@ type UserStateClient struct {
 	UserID           string `json:"user_id"`
 	Unmuted          bool   `json:"unmuted"`
 	RaisedHand       int64  `json:"raised_hand"`
-	Video            bool   `json:"video"`
 	IsSIPParticipant bool   `json:"is_sip_participant,omitempty"`
 }
 
@@ -284,7 +283,6 @@ func (cs *callState) getStates(botID string) []UserStateClient {
 			UserID:           session.UserID,
 			Unmuted:          session.Unmuted,
 			RaisedHand:       session.RaisedHand,
-			Video:            session.Video,
 			IsSIPParticipant: session.IsSIPParticipant,
 		})
 	}
@@ -457,4 +455,17 @@ func setCallEnded(call *public.Call) {
 	call.Props.NodeID = ""
 	call.Props.Hosts = nil
 	call.Props.Participants = nil
+}
+
+// publishCallEnd tells the channel the call is over. reason carries the same
+// value as the call post's call_status, so the client that placed a phone call
+// can say how it ended.
+func (p *Plugin) publishCallEnd(channelID, callID string, endReason callEndReason) {
+	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{
+		"call_id": callID,
+		"reason":  endReason.status(),
+	}, &WebSocketBroadcast{
+		ChannelID:           channelID,
+		ReliableClusterSend: true,
+	})
 }

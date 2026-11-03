@@ -9,11 +9,9 @@ import (
 	"log"
 	"path"
 
-	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/mattermost/morph"
 	"github.com/mattermost/morph/drivers"
-	ms "github.com/mattermost/morph/drivers/mysql"
 	ps "github.com/mattermost/morph/drivers/postgres"
 	"github.com/mattermost/morph/models"
 	mbindata "github.com/mattermost/morph/sources/embedded"
@@ -57,32 +55,7 @@ func (s *Store) initMorph(dryRun bool, timeoutSecs int) (*morph.Morph, error) {
 	}
 
 	var driver drivers.Driver
-	switch s.driverName {
-	case model.DatabaseDriverMysql:
-		// MySQL requires the multiStatements flag to be on for migrations to
-		// work so we need to open a dedicated connection.
-
-		dsn, dsnErr := resetReadTimeout(*s.settings.DataSource)
-		if dsnErr != nil {
-			return nil, fmt.Errorf("failed to reset read timeout: %w", dsnErr)
-		}
-		dsn, dsnErr = appendMultipleStatementsFlag(dsn)
-		if dsnErr != nil {
-			return nil, fmt.Errorf("failed to append multiple statements flag: %w", dsnErr)
-		}
-
-		db, connErr := s.setupDBConn(dsn)
-		if connErr != nil {
-			return nil, fmt.Errorf("failed to setup db connection: %w", connErr)
-		}
-		defer db.Close()
-
-		driver, err = ms.WithInstance(db)
-	case model.DatabaseDriverPostgres:
-		driver, err = ps.WithInstance(s.wDB)
-	default:
-		err = fmt.Errorf("unsupported database type %s for migration", s.driverName)
-	}
+	driver, err = ps.WithInstance(s.wDB)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get driver for migration: %w", err)
 	}

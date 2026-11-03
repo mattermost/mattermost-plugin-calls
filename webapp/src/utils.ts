@@ -33,10 +33,6 @@ import JoinUserSound from './sounds/join_user.mp3';
 import LeaveSelfSound from './sounds/leave_self.mp3';
 import {Store} from './types/mattermost-webapp';
 
-export function getPluginStaticPath() {
-    return `${window.basename || ''}/static/plugins/${pluginId}`;
-}
-
 export function getPluginPath() {
     return `${window.basename || ''}/plugins/${pluginId}`;
 }
@@ -111,7 +107,7 @@ export function isCallsPopOut(): boolean {
     } catch (err) {
         // This can happen if the MM window already has an opener on a different origin (e.g. user clicked a link on a calendar app to open MM).
         // In this case, we know we are not in the expanded view so we can directly return window.callsClient.
-        if (err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
+        if (err instanceof Error && err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
             // Avoid spamming the console with this error.
             return false;
         }
@@ -131,7 +127,7 @@ export function getCallsWindow(): Window {
     } catch (err) {
         // This can happen if the MM window already has an opener on a different origin (e.g. user clicked a link on a calendar app to open MM).
         // In this case, we know we are not in the expanded view so we can directly return window.callsClient.
-        if (err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
+        if (err instanceof Error && err.name === 'SecurityError' && err.message.includes('Blocked a frame with origin')) {
             // Avoid spamming the console with this error.
             return window;
         }
@@ -168,33 +164,6 @@ export function getUserDisplayName(user: UserProfile | undefined, shortForm?: bo
     }
 
     return user.username;
-}
-
-export function getPixelRatio(): number {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    if (!ctx) {
-        canvas.remove();
-        return dpr;
-    }
-    const bsr = ctx.webkitBackingStorePixelRatio ||
-        ctx.mozBackingStorePixelRatio ||
-        ctx.msBackingStorePixelRatio ||
-        ctx.oBackingStorePixelRatio ||
-        ctx.backingStorePixelRatio || 1;
-    canvas.remove();
-    return dpr / bsr;
-}
-
-export function getScreenResolution() {
-    const pixelRatio = getPixelRatio();
-    const width = Math.ceil((pixelRatio * window.screen.width) / 8.0) * 8;
-    const height = Math.ceil((pixelRatio * window.screen.height) / 8.0) * 8;
-    return {
-        width,
-        height,
-    };
 }
 
 export function getExpandedChannelID() {
@@ -367,20 +336,6 @@ export function getUserIdFromDM(dmName: string, currentUserId: string) {
 
 export function isFirefox() {
     return navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
-}
-
-export function setSDPMaxVideoBW(sdp: string, bandwidth: number) {
-    let modifier = 'AS';
-    if (isFirefox()) {
-        bandwidth = (bandwidth >>> 0) * 1000;
-        modifier = 'TIAS';
-    }
-    if (sdp.indexOf('b=' + modifier + ':') === -1) {
-        sdp = sdp.replaceAll(/m=video (.*)\r\n/gm, 'm=video $1\r\nb=' + modifier + ':' + bandwidth + '\r\n');
-    } else {
-        sdp = sdp.replace(new RegExp('b=' + modifier + ':.*\r\n'), 'b=' + modifier + ':' + bandwidth + '\r\n');
-    }
-    return sdp;
 }
 
 export function split<T>(list: T[], i: number, pad = false): [list: T[], overflowed?: T[]] {
@@ -678,7 +633,8 @@ export function getPersistentStorage() {
 }
 
 export function shareAudioWithScreen() {
-    return window.localStorage.getItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN) === 'on';
+    // Defaults to on when unset, so the browser surfaces its share-audio option.
+    return window.localStorage.getItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN) !== 'off';
 }
 
 // Ported from mattermost-redux/src/utils/browser_info.ts

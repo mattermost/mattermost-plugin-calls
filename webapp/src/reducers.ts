@@ -3,7 +3,7 @@
 
 /* eslint-disable max-lines */
 
-import {CallJobState, CallsConfig, CallsVersionInfo, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {CallJobState, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
@@ -18,9 +18,11 @@ import {
 import {reducer as sessions} from 'src/state/session/reducer';
 import {reducer as sipCallStates} from 'src/state/sip_call_state/reducer';
 import {
+    CallsConfig,
     CallsConfigDefault,
     CallsUserPreferences,
     CallsUserPreferencesDefault,
+    CallsVersionInfo,
     ChannelState,
     ChannelType,
     HostControlNotice,
@@ -60,7 +62,6 @@ import {
     RECORDINGS_ENABLED,
     REMOVE_INCOMING_CALL,
     RINGING_FOR_CALL,
-    RTCD_ENABLED,
     SHOW_EXPANDED_VIEW,
     SHOW_SCREEN_SOURCE_MODAL,
     SHOW_SWITCH_CALL_MODAL,
@@ -541,15 +542,6 @@ const callsVersionInfo = (state = {}, action: { type: string, data: CallsVersion
     }
 };
 
-const rtcdEnabled = (state = false, action: {type: string, data: boolean}) => {
-    switch (action.type) {
-    case RTCD_ENABLED:
-        return action.data;
-    default:
-        return state;
-    }
-};
-
 const callsUserPreferences = (state = CallsUserPreferencesDefault, action: { type: string, data: CallsUserPreferences }) => {
     switch (action.type) {
     case RECEIVED_CALLS_USER_PREFERENCES:
@@ -622,6 +614,8 @@ type IncomingCallAction = {
 
 const incomingCalls = (state: IncomingCallNotification[] = [], action: IncomingCallAction) => {
     switch (action.type) {
+    case UN_INITIALIZED:
+        return [];
     case ADD_INCOMING_CALL:
         return [...state, {...action.data}];
     case REMOVE_INCOMING_CALL:
@@ -813,7 +807,6 @@ const rootReducer = combineReducers({
     callsConfig,
     callsConfigEnvOverrides,
     callsVersionInfo,
-    rtcdEnabled,
     callsUserPreferences,
     recordings,
     callLiveCaptionsState,

@@ -22,7 +22,6 @@ import {
 import {
     allowScreenSharing,
     areHostControlsAllowed,
-    callsConfig,
     channelForCurrentCall,
     clientConnecting,
     expandedView,
@@ -102,7 +101,6 @@ const mapStateToProps = (state: GlobalState) => {
         transcriptionsEnabled: transcriptionsEnabled(state),
         isAdmin: isCurrentUserSystemAdmin(state),
         hostControlsAllowed: areHostControlsAllowed(state),
-        enableVideo: callsConfig(state).EnableVideo && isDM,
         otherSessions: sessionsForOtherUsersInCall(state),
         isDMCalling: isCurrentDMCallInCallingState(state),
         clientConnecting: clientConnecting(state),

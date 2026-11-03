@@ -3,29 +3,21 @@
     "target": "esnext",
     "lib": [
       "dom",
-      "dom.iterable",
       "esnext"
     ],
-    "allowJs": true,
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "strict": true,
-    "strictNullChecks": true,
-    "forceConsistentCasingInFileNames": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
+    "module": "nodenext",
     "isolatedModules": true,
     "noEmit": true,
-    "experimentalDecorators": true,
-    "baseUrl": "./",
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "./**/*"
   ],
   "exclude": [
-    "dist",
-    "!node_modules/@types"
+    "dist"
   ]
 }

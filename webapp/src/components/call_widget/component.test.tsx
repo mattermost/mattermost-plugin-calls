@@ -5,12 +5,13 @@ import type {UserSessionState} from '@mattermost/calls-common/lib/types';
 import type {Channel} from '@mattermost/types/channels';
 import type {Team} from '@mattermost/types/teams';
 import type {UserProfile} from '@mattermost/types/users';
-import {render, screen} from '@testing-library/react';
+import {act, render, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import {createIntl, RawIntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
 import type CallClient from 'src/clients/call';
+import {CALL_EVENT} from 'src/clients/call/constants';
 import {mockStore} from 'src/testUtils';
 
 import CallWidget from './component';
@@ -120,6 +121,7 @@ const props: Props = {
     isDMCalling: false,
     isPhoneCall: false,
     isPhoneCallRinging: false,
+    isPhoneCallActive: false,
 };
 
 describe('CallWidget', () => {
@@ -133,7 +135,7 @@ describe('CallWidget', () => {
         window.callsClient = {
             disconnect,
             channelID: 'channel-id',
-            getRemoteVoiceTracks: () => [],
+            canPlaybackAudio: true,
             getRemoteScreenStream: () => null,
             getLocalScreenStream: () => null,
             on: jest.fn(),
@@ -214,6 +216,82 @@ describe('CallWidget', () => {
     });
 });
 
+describe('remote audio playback blocked banner', () => {
+    let originalCallsClient: typeof window.callsClient;
+    let handlers: Map<string, (...args: unknown[]) => void>;
+    let startAudio: jest.Mock;
+
+    const renderWidget = (canPlaybackAudio: boolean) => {
+        window.callsClient = {
+            disconnect: jest.fn(),
+            channelID: 'channel-id',
+            canPlaybackAudio,
+            startAudio,
+            getRemoteScreenStream: () => null,
+            getLocalScreenStream: () => null,
+            on: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
+                handlers.set(event, handler);
+            }),
+            off: jest.fn(),
+        } as unknown as CallClient;
+
+        render(
+            <Provider store={mockStore(stubState(stubChannel))}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget {...props}/>
+                </RawIntlProvider>
+            </Provider>,
+        );
+    };
+
+    const firePlaybackStatus = (canPlayback: boolean) => {
+        act(() => {
+            handlers.get(canPlayback ? CALL_EVENT.REMOTE_AUDIO_PLAYBACK_UNBLOCKED : CALL_EVENT.REMOTE_AUDIO_PLAYBACK_BLOCKED)?.();
+        });
+    };
+
+    beforeEach(() => {
+        originalCallsClient = window.callsClient;
+        handlers = new Map();
+        startAudio = jest.fn().mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+        window.callsClient = originalCallsClient;
+    });
+
+    test('is hidden while the browser allows playback', () => {
+        renderWidget(true);
+
+        expect(screen.queryByText(/your browser blocked call audio/i)).not.toBeInTheDocument();
+    });
+
+    test('shows on mount when playback is already blocked', () => {
+        renderWidget(false);
+
+        expect(screen.getByText(/your browser blocked call audio/i)).toBeInTheDocument();
+    });
+
+    test('shows when playback becomes blocked and hides once it is allowed again', () => {
+        renderWidget(true);
+
+        firePlaybackStatus(false);
+        expect(screen.getByText(/your browser blocked call audio/i)).toBeInTheDocument();
+
+        firePlaybackStatus(true);
+        expect(screen.queryByText(/your browser blocked call audio/i)).not.toBeInTheDocument();
+    });
+
+    test('clicking the button starts audio straight from the click', async () => {
+        const user = userEvent.setup();
+        renderWidget(false);
+
+        await user.click(screen.getByRole('button', {name: /enable audio/i}));
+
+        expect(startAudio).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe('leave button behavior', () => {
     let disconnect: jest.Mock;
 
@@ -235,7 +313,7 @@ describe('leave button behavior', () => {
         window.callsClient = {
             disconnect,
             channelID: 'channel-id',
-            getRemoteVoiceTracks: () => [],
+            canPlaybackAudio: true,
             getRemoteScreenStream: () => null,
             getLocalScreenStream: () => null,
             on: jest.fn(),
@@ -418,7 +496,7 @@ describe('phone call', () => {
         };
     };
 
-    const renderWidget = (state: ReturnType<typeof phoneState>, overrides: Partial<Props> = {}) => render(
+    const widget = (state: ReturnType<typeof phoneState>, overrides: Partial<Props> = {}) => (
         <Provider store={mockStore(state)}>
             <RawIntlProvider value={intl}>
                 <CallWidget
@@ -431,16 +509,21 @@ describe('phone call', () => {
                     {...overrides}
                 />
             </RawIntlProvider>
-        </Provider>,
+        </Provider>
     );
 
+    const renderWidget = (state: ReturnType<typeof phoneState>, overrides: Partial<Props> = {}) => render(widget(state, overrides));
+
     let originalWebappUtils: typeof window.WebappUtils;
+    let sendDTMF: jest.Mock;
 
     beforeEach(() => {
+        sendDTMF = jest.fn().mockResolvedValue(undefined);
         window.callsClient = {
             disconnect: jest.fn(),
+            sendDTMF,
             channelID: 'channel-id',
-            getRemoteVoiceTracks: () => [],
+            canPlaybackAudio: true,
             getRemoteScreenStream: () => null,
             getLocalScreenStream: () => null,
             on: jest.fn(),
@@ -499,5 +582,126 @@ describe('phone call', () => {
 
         await user.click(screen.getByRole('button', {name: /^hang up$/i}));
         expect(window.callsClient?.disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    describe('dial pad', () => {
+        const ringingState = () => phoneState({targetUserID: 'other-user'}, {status: 'ringing', answeredAt: 0});
+        const activeState = () => phoneState({targetUserID: 'other-user'}, {status: 'active', answeredAt: 1000});
+        const active: Partial<Props> = {isPhoneCallRinging: false, isPhoneCallActive: true};
+
+        const dialPadButton = () => screen.getByRole('button', {name: /^dial pad$/i});
+        const digitsDisplay = () => screen.getByTestId('calls-widget-dial-pad-digits');
+
+        test('is not offered on calls that are not phone calls', () => {
+            renderWidget(activeState(), {...active, isPhoneCall: false});
+
+            expect(screen.queryByRole('button', {name: /^dial pad$/i})).not.toBeInTheDocument();
+        });
+
+        test('is disabled until the phone answers', () => {
+            const {rerender} = renderWidget(ringingState());
+            expect(dialPadButton()).toBeDisabled();
+
+            rerender(widget(activeState(), active));
+            expect(dialPadButton()).toBeEnabled();
+        });
+
+        test('opens from its button, and closes from the button or the X', async () => {
+            const user = userEvent.setup();
+            renderWidget(activeState(), active);
+
+            await user.click(dialPadButton());
+            expect(screen.getByRole('group', {name: /^dial pad$/i})).toBeInTheDocument();
+            expect(dialPadButton()).toHaveAttribute('aria-expanded', 'true');
+
+            await user.click(dialPadButton());
+            expect(screen.queryByRole('group', {name: /^dial pad$/i})).not.toBeInTheDocument();
+
+            await user.click(dialPadButton());
+            await user.click(screen.getByRole('button', {name: /close dial pad/i}));
+            expect(screen.queryByRole('group', {name: /^dial pad$/i})).not.toBeInTheDocument();
+        });
+
+        test('sends each pressed digit and shows it', async () => {
+            const user = userEvent.setup();
+            renderWidget(activeState(), active);
+            await user.click(dialPadButton());
+
+            await user.click(screen.getByRole('button', {name: 'Dial pad 5'}));
+            await user.keyboard('#');
+
+            await waitFor(() => expect(digitsDisplay()).toHaveTextContent('5#'));
+            expect(sendDTMF.mock.calls).toEqual([['5'], ['#']]);
+        });
+
+        test('shows an error and leaves the digit out when sending fails', async () => {
+            const user = userEvent.setup();
+            sendDTMF.mockRejectedValueOnce(new Error('data channel closed'));
+            renderWidget(activeState(), active);
+            await user.click(dialPadButton());
+
+            await user.click(screen.getByRole('button', {name: 'Dial pad 1'}));
+
+            expect(await screen.findByRole('alert')).toHaveTextContent('Couldn\'t send that digit');
+            expect(digitsDisplay()).toHaveTextContent(/^$/);
+            expect(screen.getByRole('group', {name: /^dial pad$/i})).toBeInTheDocument();
+
+            await user.click(screen.getByRole('button', {name: 'Dial pad 2'}));
+
+            await waitFor(() => expect(digitsDisplay()).toHaveTextContent('2'));
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        });
+
+        test('clears a send error when closed and reopened', async () => {
+            const user = userEvent.setup();
+            sendDTMF.mockRejectedValueOnce(new Error('data channel closed'));
+            renderWidget(activeState(), active);
+            await user.click(dialPadButton());
+            await user.click(screen.getByRole('button', {name: 'Dial pad 1'}));
+            expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+            await user.click(screen.getByRole('button', {name: /close dial pad/i}));
+            await user.click(dialPadButton());
+
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        });
+
+        test('keeps the digits when closed and reopened', async () => {
+            const user = userEvent.setup();
+            renderWidget(activeState(), active);
+            await user.click(dialPadButton());
+            await user.click(screen.getByRole('button', {name: 'Dial pad 4'}));
+            await waitFor(() => expect(digitsDisplay()).toHaveTextContent('4'));
+
+            await user.click(screen.getByRole('button', {name: /close dial pad/i}));
+            await user.click(dialPadButton());
+
+            expect(digitsDisplay()).toHaveTextContent('4');
+        });
+
+        test('shows one of the dial pad and More options at a time', async () => {
+            const user = userEvent.setup();
+            renderWidget(activeState(), active);
+
+            await user.click(dialPadButton());
+            await user.click(screen.getByRole('button', {name: /more options/i}));
+            expect(screen.getByTestId('calls-widget-menu')).toBeInTheDocument();
+            expect(screen.queryByRole('group', {name: /^dial pad$/i})).not.toBeInTheDocument();
+
+            await user.click(dialPadButton());
+            expect(screen.getByRole('group', {name: /^dial pad$/i})).toBeInTheDocument();
+            expect(screen.queryByTestId('calls-widget-menu')).not.toBeInTheDocument();
+        });
+
+        test('closes when the phone hangs up', async () => {
+            const user = userEvent.setup();
+            const {rerender} = renderWidget(activeState(), active);
+            await user.click(dialPadButton());
+
+            rerender(widget(phoneState({targetUserID: 'other-user'}, {status: 'hangup', answeredAt: 1000}), {isPhoneCallRinging: false}));
+
+            expect(screen.queryByRole('group', {name: /^dial pad$/i})).not.toBeInTheDocument();
+            expect(dialPadButton()).toBeDisabled();
+        });
     });
 });

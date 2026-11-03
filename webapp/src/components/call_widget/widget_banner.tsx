@@ -17,6 +17,10 @@ type Props = {
     leftText?: string,
     rightText?: string,
     onLeftButtonClick?: () => void,
+
+    // Runs straight from the click, before the fade-out animation, for actions
+    // the browser only allows inside a user gesture (e.g. starting audio).
+    onLeftButtonPress?: () => void,
     onRightButtonClick?: () => void,
     onCloseButtonClick?: () => void,
     leftButton?: typeof DefaultLeftButton;
@@ -50,6 +54,7 @@ export default function WidgetBanner({
     const [leftButtoning, setLeftButtoning] = useState(false);
     const [rightButtoning, setRightButtoning] = useState(false);
     const [closeButtoning, setCloseButtoning] = useState(false);
+    const hasLeftButton = Boolean(props.leftText && (props.onLeftButtonClick || props.onLeftButtonPress));
 
     const onAnimationEnd = () => {
         if (leftButtoning && props.onLeftButtonClick) {
@@ -94,12 +99,15 @@ export default function WidgetBanner({
                         <BodyText>{props.body}</BodyText>
                     </Body>
                 }
-                {((props.leftText && props.onLeftButtonClick) || (props.onRightButtonClick && props.rightText)) &&
+                {((hasLeftButton) || (props.onRightButtonClick && props.rightText)) &&
                     <Footer>
-                        {props.leftText && props.onLeftButtonClick &&
+                        {hasLeftButton &&
                             <LeftButton
                                 className='cursor--pointer style--none'
-                                onClick={() => setLeftButtoning(true)}
+                                onClick={() => {
+                                    props.onLeftButtonPress?.();
+                                    setLeftButtoning(true);
+                                }}
                             >
                                 {props.leftText}
                             </LeftButton>

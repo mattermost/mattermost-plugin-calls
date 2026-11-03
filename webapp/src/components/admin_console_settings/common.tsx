@@ -188,9 +188,3 @@ export const UnavailableSubtitle = styled.div`
   font-weight: 400;
   line-height: 20px;
 `;
-
-export const TextInput = styled.input<{disabled: boolean}>`
-&& {
-  cursor: ${({disabled}) => (disabled ? 'not-allowed' : 'auto')};
-}
-`;

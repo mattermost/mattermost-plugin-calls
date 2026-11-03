@@ -10,7 +10,6 @@ import (
 	"time"
 
 	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/mysql"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -23,9 +22,6 @@ const (
 
 	PostgresImage = "postgres:14"
 	PostgrePort   = 5432
-
-	MySQLImage = "mysql/mysql-server:8.0.32"
-	MySQLPort  = 3306
 )
 
 // RunPostgresContainerLocal creates and run a postgres container accessible
@@ -69,43 +65,4 @@ func RunPostgresContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (
 			log.Print(err.Error())
 		}
 	}, nil
-}
-
-// RunMySQLContainer creates and runs a mysql container
-func RunMySQLContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (*mysql.MySQLContainer, func(), error) {
-	opts = append([]tc.ContainerCustomizer{
-		mysql.WithDatabase(DBName),
-		mysql.WithUsername(DBUser),
-		mysql.WithPassword(DBPass),
-	}, opts...)
-
-	cnt, err := mysql.Run(ctx, MySQLImage, opts...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to run container: %w", err)
-	}
-
-	return cnt, func() {
-		if err := cnt.Terminate(ctx); err != nil {
-			log.Print(err.Error())
-		}
-	}, nil
-}
-
-// RunMySQLContainerLocal creates and run a mysql container accessible
-// from the local network.
-func RunMySQLContainerLocal(ctx context.Context) (string, func(), error) {
-	cnt, tearDown, err := RunMySQLContainer(ctx, tc.CustomizeRequest(tc.GenericContainerRequest{
-		Started: true,
-	}))
-	if err != nil {
-		return "", nil, err
-	}
-
-	dsn, err := cnt.ConnectionString(ctx)
-	if err != nil {
-		tearDown()
-		return "", nil, err
-	}
-
-	return dsn, tearDown, err
 }

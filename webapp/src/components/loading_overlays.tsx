@@ -89,35 +89,3 @@ const Text = styled.span<{$size: number}>`
   line-height: 16px;
   font-weight: 600;
 `;
-
-export type LoadingOverlayProps = {
-    visible: boolean,
-    spinnerSize?: number,
-    text?: string | React.ReactNode[],
-    textSize?: number,
-}
-
-export function VideoLoadingOverlay({visible, spinnerSize = 16, text, textSize = 12}: LoadingOverlayProps) {
-    const [transitionEnded, setTransitionEnded] = useState(false);
-
-    if (!visible && transitionEnded) {
-        return null;
-    }
-
-    const onTransitionEnd = () => {
-        setTransitionEnded(true);
-    };
-
-    return (
-        <Container
-            data-testid={'calls-video-loading-overlay'}
-            onTransitionEnd={onTransitionEnd}
-            $visible={visible}
-        >
-            <Body>
-                <Spinner $size={spinnerSize}/>
-                {text && <Text $size={textSize}>{text}</Text>}
-            </Body>
-        </Container>
-    );
-}

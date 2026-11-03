@@ -2,10 +2,12 @@
 // See LICENSE.txt for license information.
 
 import {
+    BaseData,
     CallPostProps,
-    CallsConfig,
+    CallsConfig as CommonCallsConfig,
     CallStartData,
     CallState,
+    CallsVersionInfo as CommonCallsVersionInfo,
     LiveCaption,
     SessionState,
     TranscribeAPI,
@@ -13,43 +15,50 @@ import {
 import {MessageDescriptor} from 'react-intl';
 import {RTCStats} from 'src/types/webrtc';
 
+// calls-common still carries these for v1 (RTCD); the v2 server never sends them.
+type V1CallsConfigKeys =
+    | 'ICEServers'
+    | 'ICEServersConfigs'
+    | 'NeedsTURNCredentials'
+    | 'EnableSimulcast'
+    | 'EnableAV1'
+    | 'EnableDCSignaling'
+    | 'EnableVideo'
+    | 'ICEHostOverride'
+    | 'ICEHostPortOverride'
+    | 'UDPServerAddress'
+    | 'TCPServerAddress'
+    | 'UDPServerPort'
+    | 'TCPServerPort'
+    | 'EnableIPv6'
+    | 'RTCDServiceURL'
+    | 'TURNStaticAuthSecret'
+    | 'TURNCredentialsExpirationMinutes'
+    | 'ServerSideTURN';
+
+export type CallsConfig = Omit<CommonCallsConfig, V1CallsConfigKeys>;
+
+export type CallsVersionInfo = Omit<CommonCallsVersionInfo, 'rtcd_version' | 'rtcd_build'>;
+
 export const CallsConfigDefault: CallsConfig = {
-    ICEServers: [],
-    ICEServersConfigs: [],
     DefaultEnabled: false,
     MaxCallParticipants: 0,
-    NeedsTURNCredentials: false,
     AllowScreenSharing: true,
     EnableRecordings: false,
     MaxRecordingDuration: 60,
     sku_short_name: '',
-    EnableSimulcast: false,
     EnableRinging: true,
     EnableTranscriptions: false,
     EnableLiveCaptions: false,
     HostControlsAllowed: false,
-    EnableAV1: false,
     TranscribeAPI: TranscribeAPI.WhisperCPP,
     GroupCallsAllowed: false,
-    EnableDCSignaling: false,
-    EnableVideo: false,
     EnableSIPOutbound: false,
 };
 
 export type ChannelState = {
     id: string;
     enabled?: boolean;
-}
-
-export type CallsClientConfig = {
-    wsURL: string;
-    authToken?: string;
-    iceServers: RTCIceServer[];
-    simulcast?: boolean;
-    enableAV1: boolean;
-    dcSignaling: boolean;
-    dcLocking: boolean;
-    enableVideo: boolean;
 }
 
 export type MediaDevices = {
@@ -93,6 +102,7 @@ export type CallAlertConfig = {
     bannerText: MessageDescriptor;
     tooltipText?: MessageDescriptor;
     tooltipSubtext?: MessageDescriptor;
+    actionText?: MessageDescriptor;
     dismissable: boolean;
 }
 
@@ -112,14 +122,6 @@ export const CallAlertStatesDefault = {
         show: false,
     },
     missingAudioInputPermissions: {
-        active: false,
-        show: false,
-    },
-    missingVideoInput: {
-        active: false,
-        show: false,
-    },
-    missingVideoInputPermissions: {
         active: false,
         show: false,
     },
@@ -147,6 +149,10 @@ export const CallAlertStatesDefault = {
         active: false,
         show: false,
     },
+    remoteAudioPlaybackBlocked: {
+        active: false,
+        show: false,
+    },
 };
 
 export type CallJobReduxState = {
@@ -160,13 +166,6 @@ export type CallJobReduxState = {
 
 export type ShareScreenError = 'not-connected' | 'already-sharing' | 'permission-denied' | 'capture-error';
 export type ShareScreenResult = [stream: MediaStream | null, error: ShareScreenError | null];
-
-export type CapturerSource = {
-    id: string;
-    name: string;
-    thumbnailURL: string;
-    display_id: string;
-}
 
 // currentCallData (of type CurrentCallData) is attached to the widget's window to keep persistent data across
 // the various call windows. As a simple rule, if a child window (eg, ExpandedViewWindow) sets data,
@@ -263,6 +262,12 @@ export enum CallPostStatus {
     Declined = 'declined',
     Failed = 'failed',
 }
+
+// See publishCallEnd in server/state.go. reason is the call post's final call_status.
+export type CallEndData = BaseData & {
+    call_id?: string;
+    reason?: CallPostStatus;
+};
 
 // Phone calls
 

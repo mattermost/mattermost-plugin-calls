@@ -77,6 +77,11 @@ type configuration struct {
 	// Managed trunk: SRTP media encryption (disable, allow, require). Carriers requiring
 	// TLS signaling generally require encrypted media too.
 	SIPTrunkMediaEncryption string
+	// Country calling code (digits only, no '+') applied to bare national-format numbers, e.g. "1".
+	// Empty means no country code is added (e.g. a closed network such as DSN).
+	SIPTrunkDefaultCountryCode string
+	// Numbers with at most this many digits are treated as PBX extensions and dialed as-is. 0 disables.
+	SIPTrunkExtensionMaxDigits int
 	// When set to true, only numbers in SIPOutboundAllowlist may be dialed. Intended for dev/test environments.
 	EnableSIPOutboundAllowlist *bool
 	// Newline-separated list of E.164 phone numbers permitted for outbound dialing when the allowlist is enabled.
@@ -121,8 +126,6 @@ type ClientConfig struct {
 	EnableLiveCaptions *bool
 	// The maximum duration (in minutes) for call recordings.
 	MaxRecordingDuration *int
-	// When set to true it enables simulcast for screen sharing. This can help to improve screen sharing quality.
-	EnableSimulcast *bool
 	// When set to true it enables ringing for DM/GM channels.
 	EnableRinging *bool
 	// When set to true it enables outbound SIP phone dialing. Requires a configured
@@ -132,14 +135,8 @@ type ClientConfig struct {
 	SkuShortName string `json:"sku_short_name"`
 	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
 	HostControlsAllowed bool
-	// When set to true it enables using the AV1 codec to encode screen sharing tracks.
-	EnableAV1 *bool
 	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
 	GroupCallsAllowed bool
-	// When set to true it enables experimental support for using the data channel for signaling.
-	EnableDCSignaling *bool
-	// When set to try it enables video calls in direct message channels.
-	EnableVideo *bool
 }
 
 const (
@@ -174,9 +171,6 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.RecordingQuality == "" {
 		c.RecordingQuality = "medium"
-	}
-	if c.EnableSimulcast == nil {
-		c.EnableSimulcast = model.NewPointer(false)
 	}
 	if c.EnableRinging == nil {
 		c.EnableRinging = model.NewPointer(false)
@@ -216,15 +210,6 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.LiveCaptionsLanguage == "" {
 		c.LiveCaptionsLanguage = transcriber.LiveCaptionsLanguageDefault
-	}
-	if c.EnableAV1 == nil {
-		c.EnableAV1 = model.NewPointer(false)
-	}
-	if c.EnableDCSignaling == nil {
-		c.EnableDCSignaling = model.NewPointer(false)
-	}
-	if c.EnableVideo == nil {
-		c.EnableVideo = model.NewPointer(false)
 	}
 }
 
@@ -273,6 +258,15 @@ func (c *configuration) IsValid() error {
 		}
 	}
 
+	if cc := c.SIPTrunkDefaultCountryCode; cc != "" {
+		if len(cc) > 3 || strings.Trim(cc, "0123456789") != "" || cc[0] == '0' {
+			return fmt.Errorf("SIPTrunkDefaultCountryCode is not valid: should be 1-3 digits with no leading zero or '+', or blank")
+		}
+	}
+	if c.SIPTrunkExtensionMaxDigits < 0 || c.SIPTrunkExtensionMaxDigits > 9 {
+		return fmt.Errorf("SIPTrunkExtensionMaxDigits is not valid: should be between 0 and 9")
+	}
+
 	if c.sipTrunkManaged() {
 		if err := c.validateManagedSIPTrunk(); err != nil {
 			return err
@@ -306,6 +300,8 @@ func (c *configuration) Clone() *configuration {
 	cfg.SIPTrunkAuthPassword = c.SIPTrunkAuthPassword
 	cfg.SIPTrunkTransport = c.SIPTrunkTransport
 	cfg.SIPTrunkMediaEncryption = c.SIPTrunkMediaEncryption
+	cfg.SIPTrunkDefaultCountryCode = c.SIPTrunkDefaultCountryCode
+	cfg.SIPTrunkExtensionMaxDigits = c.SIPTrunkExtensionMaxDigits
 	cfg.SIPOutboundAllowlist = c.SIPOutboundAllowlist
 	cfg.LiveKitSIPOutboundAllowedTeams = c.LiveKitSIPOutboundAllowedTeams
 
@@ -344,10 +340,6 @@ func (c *configuration) Clone() *configuration {
 		cfg.MaxRecordingDuration = model.NewPointer(*c.MaxRecordingDuration)
 	}
 
-	if c.EnableSimulcast != nil {
-		cfg.EnableSimulcast = model.NewPointer(*c.EnableSimulcast)
-	}
-
 	if c.EnableRinging != nil {
 		cfg.EnableRinging = model.NewPointer(*c.EnableRinging)
 	}
@@ -366,18 +358,6 @@ func (c *configuration) Clone() *configuration {
 
 	if c.LiveCaptionsNumThreadsPerTranscriber != nil {
 		cfg.LiveCaptionsNumThreadsPerTranscriber = model.NewPointer(*c.LiveCaptionsNumThreadsPerTranscriber)
-	}
-
-	if c.EnableAV1 != nil {
-		cfg.EnableAV1 = model.NewPointer(*c.EnableAV1)
-	}
-
-	if c.EnableDCSignaling != nil {
-		cfg.EnableDCSignaling = model.NewPointer(*c.EnableDCSignaling)
-	}
-
-	if c.EnableVideo != nil {
-		cfg.EnableVideo = model.NewPointer(*c.EnableVideo)
 	}
 
 	return &cfg
@@ -462,15 +442,11 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		EnableTranscriptions: c.EnableTranscriptions,
 		EnableLiveCaptions:   c.EnableLiveCaptions,
 		MaxRecordingDuration: c.MaxRecordingDuration,
-		EnableSimulcast:      c.EnableSimulcast,
 		EnableRinging:        c.EnableRinging,
 		EnableSIPOutbound:    c.EnableSIPOutbound,
 		SkuShortName:         skuShortName,
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
-		EnableAV1:            c.EnableAV1,
 		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
-		EnableDCSignaling:    c.EnableDCSignaling,
-		EnableVideo:          c.EnableVideo,
 	}
 }
 
@@ -664,6 +640,7 @@ func (p *Plugin) setOverrides(cfg *configuration) {
 	cfg.SIPTrunkAddress = strings.TrimSpace(cfg.SIPTrunkAddress)
 	cfg.SIPTrunkNumber = strings.TrimSpace(cfg.SIPTrunkNumber)
 	cfg.SIPTrunkAuthUsername = strings.TrimSpace(cfg.SIPTrunkAuthUsername)
+	cfg.SIPTrunkDefaultCountryCode = strings.TrimPrefix(strings.TrimSpace(cfg.SIPTrunkDefaultCountryCode), "+")
 	cfg.SIPTrunkTransport = strings.ToLower(strings.TrimSpace(cfg.SIPTrunkTransport))
 	cfg.SIPTrunkMediaEncryption = strings.ToLower(strings.TrimSpace(cfg.SIPTrunkMediaEncryption))
 	cfg.LiveKitSIPOutboundAllowedTeams = strings.TrimSpace(cfg.LiveKitSIPOutboundAllowedTeams)
@@ -695,11 +672,17 @@ func (c *configuration) isNumberInAllowlist(number string) bool {
 		if entry == "" {
 			continue
 		}
-		if normalizePhoneNumber(entry) == number {
+		if n, err := c.normalizePhoneNumber(entry); err == nil && n == number {
 			return true
 		}
 	}
 	return false
+}
+
+// normalizePhoneNumber normalizes raw using the trunk's country code and
+// extension settings.
+func (c *configuration) normalizePhoneNumber(raw string) (string, error) {
+	return normalizePhoneNumber(raw, c.SIPTrunkDefaultCountryCode, c.SIPTrunkExtensionMaxDigits)
 }
 
 // outboundAllowedTeams parses LiveKitSIPOutboundAllowedTeams (semicolon/comma

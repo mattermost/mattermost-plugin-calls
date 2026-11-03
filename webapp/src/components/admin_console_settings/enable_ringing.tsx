@@ -35,7 +35,7 @@ export default function EnableRinging(props: CustomComponentProps) {
             className='form-group'
         >
             <label className={'control-label ' + leftCol}>
-                {formatMessage({defaultMessage: 'Enable call ringing'})}
+                {formatMessage({defaultMessage: 'Enable call ringing for direct and group messages'})}
             </label>
             <div className={rightCol}>
                 <RadioInputLabel $disabled={disabled}>
@@ -68,7 +68,7 @@ export default function EnableRinging(props: CustomComponentProps) {
                     data-testid={props.id + 'help-text'}
                     className='help-text'
                 >
-                    {formatMessage({defaultMessage: 'When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started. Changing this setting requires a plugin restart.'})}
+                    {formatMessage({defaultMessage: 'When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started.'})}
                 </div>
 
                 {overridden &&
