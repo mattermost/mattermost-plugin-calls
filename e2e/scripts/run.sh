@@ -10,6 +10,13 @@ function print_logs {
 		docker logs ${CONTAINER_SERVER}2
 		docker logs ${CONTAINER_PROXY}
 		docker logs ${CONTAINER_LIVEKIT}
+		docker logs ${CONTAINER_OFFLOADER}
+
+		# Recorder/transcriber job containers are spawned by the offloader (labeled) and
+		# kept after exit.
+		for ID in $(docker ps -a --filter="label=app=mattermost-calls-offloader" --format "{{.ID}}"); do
+			docker logs $ID || true
+		done
 
 		# SIP harness (compose-generated names) — best effort, for @sip-smoke triage.
 		docker logs "$(docker ps -aqf name=livekit-sip)" 2>/dev/null || true
@@ -109,6 +116,7 @@ docker logs ${CONTAINER_SERVER}1 >"${WORKSPACE}/logs/server1.log"
 docker logs ${CONTAINER_SERVER}2 >"${WORKSPACE}/logs/server2.log"
 docker logs ${CONTAINER_PROXY} >"${WORKSPACE}/logs/proxy.log"
 docker logs ${CONTAINER_LIVEKIT} >"${WORKSPACE}/logs/livekit.log"
+docker logs ${CONTAINER_OFFLOADER} >"${WORKSPACE}/logs/offloader.log"
 
 ## Count failures. The recursive descent (`..`) walks arbitrary `test.describe`
 ## nesting; a shallow `.suites[].suites[].specs[]` filter would miss specs nested

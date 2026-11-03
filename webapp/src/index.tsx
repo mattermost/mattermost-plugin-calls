@@ -43,7 +43,7 @@ import {
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import CallClient, {CALL_EVENT, DisconnectReason} from 'src/clients/call';
-import type {LiveKitSessionResponse, ScreenSharingSession} from 'src/clients/call/types';
+import type {ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
@@ -108,6 +108,7 @@ import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import {
     dialPhoneNumber,
+    PhoneCallResponse,
     PhoneCallTarget,
     phoneDialingSupported,
     registerPhoneDialer,
@@ -483,7 +484,7 @@ export default class Plugin {
             ));
         });
 
-        const connectPhoneCall = (channelID: string, phoneSession: LiveKitSessionResponse) => connectCall(channelID, '', '', phoneSession);
+        const connectPhoneCall = (channelID: string, phoneSession: PhoneCallResponse) => connectCall(channelID, '', '', phoneSession);
         const dialNumber = (number: string, target?: PhoneCallTarget) => dialPhoneNumber(store, number, connectPhoneCall, {target});
         this.unsubscribers.push(registerTelLinkDialing(store, connectPhoneCall));
         this.unsubscribers.push(registerPhoneDialer(dialNumber));
@@ -654,7 +655,7 @@ export default class Plugin {
             }));
         }
 
-        const connectCall = async (channelID: string, title?: string, rootId?: string, phoneSession?: LiveKitSessionResponse) => {
+        const connectCall = async (channelID: string, title?: string, rootId?: string, phoneSession?: PhoneCallResponse) => {
             const channel = getChannel(store.getState(), channelID);
 
             // Flush any pending logs from previous call
@@ -871,7 +872,7 @@ export default class Plugin {
                 const connectingClient = window.callsClient;
                 const connecting = connectingClient.connect({channelID, title, threadID: rootId, session: phoneSession});
                 if (phoneSession) {
-                    watchPhoneCall(store, connectingClient, channelID, connecting);
+                    watchPhoneCall(store, connectingClient, channelID, phoneSession.call_id, connecting);
                 }
                 connecting.catch((err: Error) => {
                     // If a concurrent DISCONNECTED teardown already cleaned up (it deletes
