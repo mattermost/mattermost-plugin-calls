@@ -17,6 +17,14 @@ import (
 // earliest across repeated joins/reconnects. LEAST (rather than a plain
 // DO NOTHING) makes FirstJoinAt the true minimum even if join events are applied
 // out of order, so the audit value can't be corrupted by event reordering.
+//
+// A (re)join also resets LastLeaveAt to 0: the user is present again, so any
+// earlier leave is no longer their final one. Without this, a rejoined user
+// would show as already-left in a live audit, and if the call then ended via the
+// call-end backstop (which only stamps LastLeaveAt = 0 rows) their recorded leave
+// would stay the stale intermediate time instead of the call's end time. Only
+// addUserSession calls this, and only for a real new session, so every call is a
+// genuine join — never a stale duplicate that could wrongly clear a leave.
 func (s *Store) RecordParticipantJoin(callID, userID string, joinAt int64) error {
 	s.metrics.IncStoreOp("RecordParticipantJoin")
 	defer func(start time.Time) {
@@ -27,7 +35,7 @@ func (s *Store) RecordParticipantJoin(callID, userID string, joinAt int64) error
 		Insert("calls_participants").
 		Columns("CallID", "UserID", "FirstJoinAt", "LastLeaveAt").
 		Values(callID, userID, joinAt, 0).
-		Suffix("ON CONFLICT (callid, userid) DO UPDATE SET firstjoinat = LEAST(calls_participants.firstjoinat, EXCLUDED.firstjoinat)")
+		Suffix("ON CONFLICT (callid, userid) DO UPDATE SET firstjoinat = LEAST(calls_participants.firstjoinat, EXCLUDED.firstjoinat), lastleaveat = 0")
 
 	q, args, err := qb.ToSql()
 	if err != nil {

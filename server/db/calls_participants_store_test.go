@@ -48,6 +48,33 @@ func testRecordParticipantJoin(t *testing.T, store *Store) {
 		require.NoError(t, err)
 		require.Equal(t, int64(200), got[callID][userID].FirstJoinAt)
 	})
+
+	t.Run("a rejoin after leaving resets the leave time", func(t *testing.T) {
+		rejoinCall := model.NewId()
+		rejoinUser := model.NewId()
+
+		require.NoError(t, store.RecordParticipantJoin(rejoinCall, rejoinUser, 1000))
+		require.NoError(t, store.RecordParticipantLeave(rejoinCall, rejoinUser, 2000))
+
+		got, err := store.GetParticipantsForCalls([]string{rejoinCall}, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Equal(t, int64(2000), got[rejoinCall][rejoinUser].LastLeaveAt)
+
+		// Rejoin: present again, so the earlier leave must be cleared, while the
+		// first join is preserved.
+		require.NoError(t, store.RecordParticipantJoin(rejoinCall, rejoinUser, 3000))
+
+		got, err = store.GetParticipantsForCalls([]string{rejoinCall}, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Equal(t, int64(1000), got[rejoinCall][rejoinUser].FirstJoinAt, "first join preserved")
+		require.Equal(t, int64(0), got[rejoinCall][rejoinUser].LastLeaveAt, "leave reset to 0 on rejoin")
+
+		// A subsequent leave records normally.
+		require.NoError(t, store.RecordParticipantLeave(rejoinCall, rejoinUser, 4000))
+		got, err = store.GetParticipantsForCalls([]string{rejoinCall}, GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Equal(t, int64(4000), got[rejoinCall][rejoinUser].LastLeaveAt)
+	})
 }
 
 func testRecordParticipantLeave(t *testing.T, store *Store) {
