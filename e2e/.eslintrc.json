@@ -6,7 +6,8 @@
     {
       "files": [
         "tests/slash_commands.spec.ts",
-        "tests/switch_call.spec.ts"
+        "tests/switch_call.spec.ts",
+        "tests/channel_toast.spec.ts"
       ],
       "rules": {
         "no-restricted-syntax": [
