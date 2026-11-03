@@ -18,9 +18,7 @@ import {CALL_EVENT} from 'src/clients/call/constants';
 import type {LiveKitSessionResponse} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import {logErr, logWarn} from 'src/log';
-import {toSIPCallStatus} from 'src/phone_utils';
 import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
-import {sipCallStatusChanged} from 'src/state/sip_call_state/actions';
 import type {Store} from 'src/types/mattermost-webapp';
 import {CallPostStatus} from 'src/types/types';
 import {getPluginPath, isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
@@ -28,7 +26,6 @@ import {getPluginPath, isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 
 export type PhoneCallResponse = LiveKitSessionResponse & {
     call_id: string;
     channel_id: string;
-    sip_call_id: string;
 };
 
 export type TelParams = {
@@ -81,12 +78,7 @@ const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
     ['outbound_not_configured', OUTBOUND_UNAVAILABLE_MESSAGE],
     ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
     ['invalid_target', INVALID_TARGET_MESSAGE],
-    ['call_ended', defineMessage({defaultMessage: 'The call ended before it connected. Please try again.'})],
 ]);
-
-// LiveKit adds the phone leg to the room before /phone-call returns; the grace
-// period only covers a late room update.
-const PHONE_LEG_GRACE_MS = 5_000;
 
 // The phone call this window placed whose outcome it hasn't shown yet. Only the
 // window that placed a call tells the caller how it ended, and only once.
@@ -347,37 +339,13 @@ export function registerTelLinkDialing(store: Store, connect: ConnectPhoneCall) 
     };
 }
 
-export function trackSIPCallStatus(store: Store, client: CallClient) {
-    const onStatus = (status: string) => {
-        const sipStatus = toSIPCallStatus(status);
-        if (sipStatus) {
-            store.dispatch(sipCallStatusChanged(client.channelID, sipStatus));
-        }
-    };
-    client.on(CALL_EVENT.SIP_STATUS_CHANGED, onStatus);
-    client.on(CALL_EVENT.SIP_LEFT, onStatus);
-}
-
-// Ends the phone call once the caller's client leaves it, never joins it, or the
-// phone leg is gone. The server otherwise learns of these only from LiveKit
-// webhooks, which not every deployment receives, so the phone could keep ringing
-// and a redial would be refused as already in progress.
-//
-// onDialFailed runs before hanging up on a dial that never reached the phone.
-// The Desktop widget has no modals, so it reports the failure to the main window instead.
-export function watchPhoneCall(
-    store: Store,
-    client: CallClient,
-    channelID: string,
-    callID: string,
-    connecting: Promise<void>,
-    onDialFailed: () => void = () => store.dispatch(displayGenericErrorModal(DIAL_ERROR_TITLE, DIAL_FAILED_MESSAGE)),
-) {
+// Ends the phone call once the caller's client leaves it or never joins it. The
+// server dials only after the caller has joined and ends the call itself when the
+// phone leg fails or leaves, so there is nothing to watch for on the phone side.
+export function watchPhoneCall(client: CallClient, channelID: string, connecting: Promise<void>) {
     let ended = false;
-    let phoneLegTimer: ReturnType<typeof setTimeout> | undefined;
 
     const endPhoneCall = () => {
-        clearTimeout(phoneLegTimer);
         if (ended) {
             return;
         }
@@ -392,36 +360,12 @@ export function watchPhoneCall(
         }
     }, endPhoneCall);
 
-    // A dial the carrier rejects straight away can leave the room before we join
-    // it. The server removes us once a webhook tells it we joined; this covers
-    // deployments that don't receive webhooks.
-    client.on(CALL_EVENT.CONNECTED, () => {
-        phoneLegTimer = setTimeout(() => {
-            if (!client.hasSIPParticipant()) {
-                if (claimCallOutcome(callID)) {
-                    onDialFailed();
-                }
-                client.disconnect();
-            }
-        }, PHONE_LEG_GRACE_MS);
-    });
-
-    // The phone leg leaving means the call is over, whatever the reason.
-    client.on(CALL_EVENT.SIP_LEFT, () => {
-        if (!client.hasSIPParticipant()) {
-            client.disconnect();
-        }
-    });
-
     // Ending the call deletes the room, which hangs up the phone, so don't wait
     // for the LiveKit leave to finish first.
     client.on(CALL_EVENT.DISCONNECTING, endPhoneCall);
 
     client.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
-        clearTimeout(phoneLegTimer);
-
-        // The server deletes the room when it ends the call, and removes a caller
-        // who joins after the call has already ended.
+        // A deleted room means the server has already ended the call.
         if (reason !== DisconnectReason.ROOM_DELETED && reason !== DisconnectReason.PARTICIPANT_REMOVED) {
             endPhoneCall();
         }

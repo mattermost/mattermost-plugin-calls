@@ -55,17 +55,20 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 		return
 	}
 
+	defer p.unlockCall(channelID)
+
 	if state == nil || state.Call.EndAt > 0 {
-		p.unlockCall(channelID)
 		p.LogDebug("handleLiveKitParticipantJoined: no active call",
 			"channelID", channelID, "sessionID", sessionID)
-		p.removeFromEndedPhoneCall(channelID, participant.Identity)
 		return
 	}
-	defer p.unlockCall(channelID)
 
 	now := time.Now().UnixMilli()
 	session := state.sessions[sessionID]
+
+	// Only the first confirmation of a session can trigger a phone dial. A
+	// reconnect rebinds the SID and a duplicate is a no-op, so neither reaches it.
+	firstConfirm := false
 
 	switch {
 	case session != nil && session.ConfirmedAt > 0 && session.SID == sid:
@@ -98,6 +101,7 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 		}
 		session.SID = sid
 		session.ConfirmedAt = now
+		firstConfirm = true
 
 	default:
 		// No row at all. Either the token endpoint's row was reaped, or the token
@@ -120,6 +124,14 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 			return
 		}
 		state.sessions[sessionID] = session
+		firstConfirm = true
+	}
+
+	// The flag is consumed under the call lock, so concurrent deliveries can't
+	// both dial.
+	dialPhone := firstConfirm && state.Call.Props.DialSessionID == sessionID
+	if dialPhone {
+		state.Call.Props.DialSessionID = ""
 	}
 
 	// Participants feeds the call post's attendee list, so the bot is excluded
@@ -146,6 +158,10 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 			"channelID", channelID, "err", err.Error())
 	}
 
+	if dialPhone {
+		go p.dialPhoneCall(channelID, state.Call.ID, userID)
+	}
+
 	p.LogInfo("call session confirmed",
 		"callID", state.Call.ID,
 		"channelID", channelID,
@@ -159,25 +175,6 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 		"user_id":    userID,
 		"session_id": sessionID,
 	}, &WebSocketBroadcast{ChannelID: channelID, ReliableClusterSend: true})
-}
-
-// removeFromEndedPhoneCall disconnects a caller whose client joined after their
-// phone call had ended, e.g. because the carrier rejected the number while the
-// client was still connecting. LiveKit recreated the room for them, so nothing
-// else would. Every phone call a user places shares the bot DM's room, so only
-// this connection is removed: deleting the room could drop a redial.
-func (p *Plugin) removeFromEndedPhoneCall(channelID, identity string) {
-	if !p.isPhoneCallChannel(channelID) {
-		return
-	}
-
-	p.LogInfo("handleLiveKitParticipantJoined: phone call already ended, removing participant",
-		"channelID", channelID, "identity", identity)
-
-	if err := p.livekitRemoveParticipant(channelID, identity); err != nil && !errors.Is(err, errLiveKitNotConfigured) {
-		p.LogError("handleLiveKitParticipantJoined: failed to remove participant from ended phone call",
-			"channelID", channelID, "identity", identity, "err", err.Error())
-	}
 }
 
 // handleLiveKitParticipantLeft removes a human participant's session when
