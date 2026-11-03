@@ -872,7 +872,7 @@ export default class Plugin {
                 const connectingClient = window.callsClient;
                 const connecting = connectingClient.connect({channelID, title, threadID: rootId, session: phoneSession});
                 if (phoneSession) {
-                    watchPhoneCall(store, connectingClient, channelID, phoneSession.call_id, connecting);
+                    watchPhoneCall(connectingClient, channelID, connecting);
                 }
                 connecting.catch((err: Error) => {
                     // If a concurrent DISCONNECTED teardown already cleaned up (it deletes
