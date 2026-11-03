@@ -144,6 +144,7 @@ describe('phone_call', () => {
     describe('phoneCallErrorMessage', () => {
         it.each([
             ['invalid_number', defineMessage({defaultMessage: 'That doesn\'t look like a valid phone number.'})],
+            ['ambiguous_number', defineMessage({defaultMessage: 'Start international numbers with + and the country code.'})],
             ['sip_number_not_allowed', defineMessage({defaultMessage: 'Calling this number isn\'t permitted.'})],
             ['sip_team_not_allowed', defineMessage({defaultMessage: 'You don\'t have permission to place phone calls.'})],
             ['outbound_disabled', defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'})],
@@ -660,12 +661,12 @@ describe('phone_call', () => {
             expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
         });
 
-        it('ends the call when the caller is removed from the room', () => {
+        it('does not end the call again when the server removed the caller', () => {
             watch();
 
             client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.PARTICIPANT_REMOVED);
 
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm', 'call-1');
+            expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
         });
 
         it('ends the call when the join fails', async () => {

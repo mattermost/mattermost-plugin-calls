@@ -93,6 +93,29 @@ services:
         aliases:
           - sipp
 
+  # Job service for recording/transcription (MM-69770). Spawns the recorder and
+  # transcriber containers named in the plugin manifest as siblings on
+  # ${DOCKER_NETWORK}, so they can reach livekit and mm-server by alias.
+  # DEV_MODE is deliberately off: it forces local :master images and host
+  # networking, which would bypass the production image-pull path.
+  calls-offloader:
+    image: ${IMAGE_CALLS_OFFLOADER}
+    container_name: ${CONTAINER_OFFLOADER}
+    restart: on-failure
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+    environment:
+      API_SECURITY_ALLOWSELFREGISTRATION: "true"
+      JOBS_MAXCONCURRENTJOBS: "20"
+      LOGGER_ENABLEFILE: "false"
+      LOGGER_CONSOLELEVEL: DEBUG
+      DOCKER_NETWORK: ${DOCKER_NETWORK}
+    networks:
+      default:
+        aliases:
+          - calls-offloader
+
   start_dependencies:
     image: mattermost/mattermost-wait-for-dep:latest
     depends_on:
@@ -102,6 +125,7 @@ services:
       - redis
       - livekit-sip
       - sipp
+      - calls-offloader
     command: postgres:5432
     networks:
       default:

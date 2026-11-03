@@ -71,6 +71,7 @@ const DECLINED_MESSAGE = defineMessage({defaultMessage: 'The number you called i
 
 const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
     ['invalid_number', defineMessage({defaultMessage: 'That doesn\'t look like a valid phone number.'})],
+    ['ambiguous_number', defineMessage({defaultMessage: 'Start international numbers with + and the country code.'})],
     ['sip_number_not_allowed', defineMessage({defaultMessage: 'Calling this number isn\'t permitted.'})],
     ['sip_team_not_allowed', defineMessage({defaultMessage: 'You don\'t have permission to place phone calls.'})],
     ['outbound_disabled', OUTBOUND_UNAVAILABLE_MESSAGE],
@@ -365,7 +366,7 @@ export function watchPhoneCall(client: CallClient, channelID: string, callID: st
 
     client.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
         // A deleted room means the server has already ended the call.
-        if (reason !== DisconnectReason.ROOM_DELETED) {
+        if (reason !== DisconnectReason.ROOM_DELETED && reason !== DisconnectReason.PARTICIPANT_REMOVED) {
             endPhoneCall();
         }
     });
