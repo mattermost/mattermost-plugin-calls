@@ -19,7 +19,10 @@
 
      Sink-initiated hangup: a call to a number starting +15550009 is answered as usual,
      then the sink sends BYE 2s after the ACK, so tests can cover "callee hangs up".
-     Other numbers wait for LiveKit's BYE. -->
+     Other numbers wait for LiveKit's BYE.
+
+     Refusals: a call to a number starting +15550486 is refused with 486 Busy Here, and
+     +15550603 with 603 Decline, instead of being answered. -->
 <scenario name="LiveKit SIP smoke sink (UAS)">
   <recv request="INVITE" crlf="true">
     <action>
@@ -33,6 +36,8 @@
       <ereg regexp="\r\na=rtpmap:8 PCMA/8000" search_in="msg" assign_to="8"/>
       <ereg regexp="\r\na=rtpmap:[0-9]+ telephone-event/8000" search_in="msg" assign_to="9"/>
       <ereg regexp="^INVITE sip:\+15550009" search_in="msg" assign_to="10"/>
+      <ereg regexp="^INVITE sip:\+15550486" search_in="msg" assign_to="14"/>
+      <ereg regexp="^INVITE sip:\+15550603" search_in="msg" assign_to="15"/>
     </action>
   </recv>
   <nop test="1" next="c1"/>
@@ -62,6 +67,8 @@
   <nop test="9" next="c9"/>
   <nop next="fail9"/>
   <label id="c9"/>
+  <nop test="14" next="busy"/>
+  <nop test="15" next="decline"/>
   <nop next="ok"/>
 
   <label id="fail1"/>
@@ -140,6 +147,38 @@
   <send>
     <![CDATA[
       SIP/2.0 488 Not Acceptable Here
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Content-Length: 0
+
+    ]]>
+  </send>
+  <recv request="ACK" crlf="true"/>
+  <nop next="end"/>
+
+  <label id="busy"/>
+  <send>
+    <![CDATA[
+      SIP/2.0 486 Busy Here
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Content-Length: 0
+
+    ]]>
+  </send>
+  <recv request="ACK" crlf="true"/>
+  <nop next="end"/>
+
+  <label id="decline"/>
+  <send>
+    <![CDATA[
+      SIP/2.0 603 Decline
       [last_Via:]
       [last_From:]
       [last_To:];tag=[pid]SIPpTag01[call_number]
