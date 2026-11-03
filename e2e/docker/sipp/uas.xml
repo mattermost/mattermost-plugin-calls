@@ -15,7 +15,11 @@
      smoke test share this sink. Covered: E.164 request-line, From, Contact,
      Content-Type: application/sdp, Allow incl. BYE, an audio m-line offering G.711
      (PCMU 0 + PCMA 8) with its rtpmap lines, and RFC 4733 telephone-event (which the
-     in-call DTMF keypad relies on). -->
+     in-call DTMF keypad relies on).
+
+     Sink-initiated hangup: a call to a number starting +15550009 is answered as usual,
+     then the sink sends BYE 2s after the ACK, so tests can cover "callee hangs up".
+     Other numbers wait for LiveKit's BYE. -->
 <scenario name="LiveKit SIP smoke sink (UAS)">
   <recv request="INVITE" crlf="true">
     <action>
@@ -28,6 +32,7 @@
       <ereg regexp="\r\na=rtpmap:0 PCMU/8000" search_in="msg" assign_to="7"/>
       <ereg regexp="\r\na=rtpmap:8 PCMA/8000" search_in="msg" assign_to="8"/>
       <ereg regexp="\r\na=rtpmap:[0-9]+ telephone-event/8000" search_in="msg" assign_to="9"/>
+      <ereg regexp="^INVITE sip:\+15550009" search_in="msg" assign_to="10"/>
     </action>
   </recv>
   <nop test="1" next="c1"/>
@@ -186,7 +191,15 @@
     ]]>
   </send>
 
-  <recv request="ACK" rtd="true" crlf="true"/>
+  <recv request="ACK" rtd="true" crlf="true">
+    <action>
+      <ereg regexp="[^ ].*" search_in="hdr" header="To:" assign_to="11"/>
+      <ereg regexp="[^ ].*" search_in="hdr" header="From:" assign_to="12"/>
+      <ereg regexp="sip:[^>]*" search_in="hdr" header="Contact:" assign_to="13"/>
+    </action>
+  </recv>
+
+  <nop test="10" next="sinkbye"/>
 
   <recv request="BYE"/>
 
@@ -202,6 +215,25 @@
 
     ]]>
   </send>
+
+  <nop next="end"/>
+
+  <label id="sinkbye"/>
+  <pause milliseconds="2000"/>
+  <send retrans="500">
+    <![CDATA[
+      BYE [$13] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: [$11]
+      To: [$12]
+      Call-ID: [call_id]
+      CSeq: 1 BYE
+      Max-Forwards: 70
+      Content-Length: 0
+
+    ]]>
+  </send>
+  <recv response="200" crlf="true"/>
 
   <label id="end"/>
   <timewait milliseconds="2000"/>
