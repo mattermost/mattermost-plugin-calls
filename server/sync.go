@@ -11,9 +11,8 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 )
 
-const (
-	lockTimeout = 10 * time.Second
-)
+// A var rather than a const so tests can shorten it.
+var lockTimeout = 10 * time.Second
 
 // lockCall locks the global (cluster) mutex for the given channelID.
 func (p *Plugin) lockCall(channelID string) error {
