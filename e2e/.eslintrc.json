@@ -5,7 +5,8 @@
   "overrides": [
     {
       "files": [
-        "tests/slash_commands.spec.ts"
+        "tests/slash_commands.spec.ts",
+        "tests/switch_call.spec.ts"
       ],
       "rules": {
         "no-restricted-syntax": [
