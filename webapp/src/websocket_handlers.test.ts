@@ -179,6 +179,31 @@ describe('websocket_handlers', () => {
             }));
             expect(mockedDisplayCallErrorModal).toHaveBeenCalledTimes(1);
         });
+
+        it('eviction with no user_removed after it: a later removal does not show the error modal', () => {
+            jest.useFakeTimers();
+            try {
+                mockedGetCurrentUserId.mockReturnValue('me');
+                mockedChannelIDForCurrentCall.mockReturnValue('');
+                const disconnect = jest.fn();
+                mockedGetCallsClient.mockReturnValue({disconnect});
+                const store = makeStore();
+
+                setParticipantRemovedChannelID('call-channel');
+                jest.advanceTimersByTime(60_000);
+
+                handleUserRemovedFromChannel(store as never, buildEvent({
+                    channel_id: 'call-channel',
+                    user_id: 'me',
+                    remover_id: 'admin',
+                }));
+
+                expect(mockedDisplayCallErrorModal).not.toHaveBeenCalled();
+                expect(disconnect).not.toHaveBeenCalled();
+            } finally {
+                jest.useRealTimers();
+            }
+        });
     });
 
     // Regression coverage for MM-69189: the channel-wide join/leave broadcasts must keep

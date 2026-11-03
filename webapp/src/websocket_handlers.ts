@@ -84,11 +84,21 @@ export type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 // Channel ID saved when the client is evicted from a LiveKit room (PARTICIPANT_REMOVED).
 // Lets handleUserRemovedFromChannel show the error modal even if the Mattermost WS
 // user_removed event arrives after window.callsClient has already been torn down.
-// Cleared after the modal is shown or on any non-eviction disconnect.
-let participantRemovedChannelID = '';
+// It expires, since not every eviction is followed by a user_removed event (a host
+// removing the participant isn't), and a stale one would show the error modal for
+// a later removal from that channel. Also cleared on any non-eviction disconnect.
+const PARTICIPANT_REMOVED_TTL_MS = 15_000;
+let participantRemoved: {channelID: string, expiresAt: number} | undefined;
 
 export function setParticipantRemovedChannelID(channelID: string) {
-    participantRemovedChannelID = channelID;
+    participantRemoved = channelID ? {channelID, expiresAt: Date.now() + PARTICIPANT_REMOVED_TTL_MS} : undefined;
+}
+
+function getParticipantRemovedChannelID() {
+    if (participantRemoved && Date.now() >= participantRemoved.expiresAt) {
+        participantRemoved = undefined;
+    }
+    return participantRemoved?.channelID ?? '';
 }
 
 const CONFIG_FETCH_MIN_DELAY_MS = 1_000;
@@ -334,11 +344,11 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
 
     // channelIDForCurrentCall reads window.callsClient?.channelID, which may already
     // be deleted when user_removed arrives after a LiveKit PARTICIPANT_REMOVED kick.
-    // participantRemovedChannelID is set in that case and survives the disconnect.
+    // The saved eviction channel is set in that case and survives the disconnect.
     const currentCallChannelID = channelIDForCurrentCall(store.getState()) ||
-        participantRemovedChannelID;
+        getParticipantRemovedChannelID();
     if (removedUserID === currentUserID && channelID === currentCallChannelID) {
-        participantRemovedChannelID = '';
+        setParticipantRemovedChannelID('');
         const errorMessage = removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr;
         store.dispatch(displayCallErrorModal(errorMessage, channelID));
         getCallsClient()?.disconnect();

@@ -660,12 +660,12 @@ describe('phone_call', () => {
             expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
         });
 
-        it('does not end the call again when the server removed the caller', () => {
+        it('ends the call when the caller is removed from the room', () => {
             watch();
 
             client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.PARTICIPANT_REMOVED);
 
-            expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm', 'call-1');
         });
 
         it('ends the call when the join fails', async () => {

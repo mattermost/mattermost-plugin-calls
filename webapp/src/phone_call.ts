@@ -365,7 +365,7 @@ export function watchPhoneCall(client: CallClient, channelID: string, callID: st
 
     client.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
         // A deleted room means the server has already ended the call.
-        if (reason !== DisconnectReason.ROOM_DELETED && reason !== DisconnectReason.PARTICIPANT_REMOVED) {
+        if (reason !== DisconnectReason.ROOM_DELETED) {
             endPhoneCall();
         }
     });
