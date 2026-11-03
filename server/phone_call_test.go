@@ -46,6 +46,9 @@ type fakeLiveKit struct {
 	mut          sync.Mutex
 	participants []*livekit.ParticipantInfo
 	listFailures int
+	// listOKs is how many ListParticipants calls succeed before listFailures
+	// starts failing them.
+	listOKs int
 	// listQueue is served one entry per ListParticipants call before falling
 	// back to participants, to model the room changing between two listings.
 	listQueue       [][]*livekit.ParticipantInfo
@@ -75,9 +78,11 @@ func (lk *fakeLiveKit) serve(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasSuffix(r.URL.Path, "/livekit.RoomService/ListParticipants"):
 		lk.mut.Lock()
-		fail := lk.listFailures > 0
+		fail := lk.listFailures > 0 && lk.listOKs == 0
 		if fail {
 			lk.listFailures--
+		} else if lk.listOKs > 0 {
+			lk.listOKs--
 		}
 		participants := lk.participants
 		if !fail && len(lk.listQueue) > 0 {
@@ -153,6 +158,14 @@ func (lk *fakeLiveKit) queueLists(lists ...[]*livekit.ParticipantInfo) {
 func (lk *fakeLiveKit) failLists(n int) {
 	lk.mut.Lock()
 	defer lk.mut.Unlock()
+	lk.listFailures = n
+}
+
+// failListsAfter lets the next ok ListParticipants calls succeed, then fails n.
+func (lk *fakeLiveKit) failListsAfter(ok, n int) {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	lk.listOKs = ok
 	lk.listFailures = n
 }
 
@@ -993,6 +1006,31 @@ func TestHandleSIPNoAnswerTimer(t *testing.T) {
 
 		// LiveKit is back by the retry, and the callee is still ringing.
 		tc.lk.setParticipants(sipParticipantWithStatus("ringing"))
+		tc.expectCallPostStatus(postID, callStatusNoAnswer)
+
+		tc.p.handleSIPNoAnswerTimer(tc.channelID, entry)
+
+		require.Empty(t, tc.activeCallID(t))
+		require.Nil(t, tc.sipTimer())
+		tc.api.AssertExpectations(t)
+	})
+
+	t.Run("a failed re-check under the lock leaves the call up and checks again", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		// The first listing looks like a no-answer, but it predates the lock, so
+		// a failed re-check must not act on it.
+		tc.lk.setParticipants(sipParticipantWithStatus("ringing"), tc.callerParticipant())
+		tc.lk.failListsAfter(1, 1)
+		callID, postID := tc.createCall(t, true)
+
+		entry := fire(tc, callID)
+
+		require.Equal(t, callID, tc.activeCallID(t))
+		require.Same(t, entry, tc.sipTimer())
+		require.True(t, entry.timer.Stop(), "a retry should be pending")
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
+
+		// LiveKit is back by the retry, and the callee is still ringing.
 		tc.expectCallPostStatus(postID, callStatusNoAnswer)
 
 		tc.p.handleSIPNoAnswerTimer(tc.channelID, entry)
