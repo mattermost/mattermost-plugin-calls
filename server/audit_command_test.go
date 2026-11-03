@@ -126,6 +126,68 @@ func TestBuildAuditCSV(t *testing.T) {
 	require.Empty(t, ongRow[7]) // duration blank
 }
 
+func TestBuildScreenShareCSV(t *testing.T) {
+	chanID := model.NewId()
+	mockAPI := &pluginMocks.MockAPI{}
+	mockAPI.On("GetChannel", chanID).Return(&model.Channel{
+		Id:          chanID,
+		Name:        "town-square",
+		DisplayName: "=Town Square", // triggers CSV-injection sanitization
+	}, nil)
+	p := Plugin{MattermostPlugin: plugin.MattermostPlugin{API: mockAPI}}
+
+	u1, u2 := model.NewId(), model.NewId()
+
+	sharedCall := &public.Call{
+		ID:        model.NewId(),
+		ChannelID: chanID,
+		StartAt:   1_000_000,
+		EndAt:     1_060_000,
+		Title:     "Standup",
+	}
+	// A call with no screen shares must be omitted from this file entirely.
+	quietCall := &public.Call{ID: model.NewId(), ChannelID: chanID, StartAt: 2_000_000}
+
+	screenShares := map[string][]*public.CallScreenShare{
+		sharedCall.ID: {
+			{UserID: u1, SessionID: model.NewId(), StartAt: 1_010_000, StopAt: 1_020_000},
+			{UserID: u2, SessionID: model.NewId(), StartAt: 1_030_000, StopAt: 0}, // still open -> blank stop
+		},
+	}
+	usernames := map[string]string{u1: "alice"} // u2 missing -> falls back to ID
+
+	data, err := p.buildScreenShareCSV([]*public.Call{sharedCall, quietCall}, screenShares, usernames)
+	require.NoError(t, err)
+
+	records, err := csv.NewReader(bytes.NewReader(data)).ReadAll()
+	require.NoError(t, err)
+
+	header := records[0]
+	require.Equal(t, "screen_share_user_id", header[6])
+	require.Equal(t, "screen_share_start_utc", header[8])
+	require.Equal(t, "screen_share_stop_utc", header[9])
+
+	// Only the two segments of sharedCall; quietCall is omitted.
+	require.Len(t, records, 3)
+
+	rows := map[string][]string{}
+	for _, r := range records[1:] {
+		rows[r[6]] = r // key by user id
+	}
+
+	u1Row := rows[u1]
+	require.Equal(t, "alice", u1Row[7])
+	require.Equal(t, "'=Town Square", u1Row[3]) // sanitized display name
+	require.Equal(t, "Standup", u1Row[4])
+	require.NotEmpty(t, u1Row[8]) // start
+	require.NotEmpty(t, u1Row[9]) // stop
+
+	u2Row := rows[u2]
+	require.Equal(t, u2, u2Row[7]) // username falls back to ID
+	require.NotEmpty(t, u2Row[8])  // start
+	require.Empty(t, u2Row[9])     // still open -> blank stop
+}
+
 func TestHandleAuditCommandPermissions(t *testing.T) {
 	t.Run("non-admin without ReadChannel is denied (channel scope)", func(t *testing.T) {
 		userID, chanID := model.NewId(), model.NewId()
