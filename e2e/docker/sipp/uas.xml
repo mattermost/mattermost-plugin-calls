@@ -2,17 +2,152 @@
 <!DOCTYPE scenario SYSTEM "sipp.dtd">
 
 <!-- Auto-answering UAS sink for the LiveKit SIP harness (CI).
-     Answers any inbound INVITE with 180 then 200 OK (G.711 SDP), accepts the
-     ACK, and waits for the BYE that LiveKit sends when the room is torn down.
-     SIPp runs this in server mode (no call limit) so it keeps answering across
-     test retries. Exit code stays 0 while the scenario completes cleanly.
+     Answers a well-formed INVITE with 180 then 200 OK (G.711 SDP), accepts the ACK,
+     and waits for the BYE that LiveKit sends when the room is torn down. SIPp runs
+     this in server mode (no call limit) so it keeps answering across test retries.
 
-     This is the shared template for MM-69369's SIP-layer coverage: <recv>
-     elements can grow `regexp`-matched asserts on INVITE headers/SDP to turn a
-     received message into a hard pass/fail. -->
+     INVITE well-formedness (MM-69369): each ereg captures one required piece of the
+     INVITE, and a jump with test="N" continues only if ereg N matched. A mismatch falls
+     through to a branch that logs which check failed to SIPp's *_errors.log and refuses the call with 488,
+     so the dial under test fails fast instead of connecting. (`check_it` is not used:
+     in this SIPp build a failed check only logs and the call still proceeds.) The checks
+     don't depend on the dialed or trunk number, since the plugin dials and the harness
+     smoke test share this sink. Covered: E.164 request-line, From, Contact,
+     Content-Type: application/sdp, Allow incl. BYE, an audio m-line offering G.711
+     (PCMU 0 + PCMA 8) with its rtpmap lines, and RFC 4733 telephone-event (which the
+     in-call DTMF keypad relies on). -->
 <scenario name="LiveKit SIP smoke sink (UAS)">
-  <recv request="INVITE" crlf="true"/>
+  <recv request="INVITE" crlf="true">
+    <action>
+      <ereg regexp="^INVITE sip:\+[0-9]+@" search_in="msg" assign_to="1"/>
+      <ereg regexp="\r\nFrom: [^\r\n]*sip:\+?[0-9]+@" search_in="msg" assign_to="2"/>
+      <ereg regexp="\r\nContact: [^\r\n]*sip:" search_in="msg" assign_to="3"/>
+      <ereg regexp="\r\nContent-Type: application/sdp" search_in="msg" assign_to="4"/>
+      <ereg regexp="\r\nAllow: [^\r\n]*BYE" search_in="msg" assign_to="5"/>
+      <ereg regexp="\r\nm=audio [0-9]+ RTP/AVP [0-9 ]*\b0\b[0-9 ]*\b8\b" search_in="msg" assign_to="6"/>
+      <ereg regexp="\r\na=rtpmap:0 PCMU/8000" search_in="msg" assign_to="7"/>
+      <ereg regexp="\r\na=rtpmap:8 PCMA/8000" search_in="msg" assign_to="8"/>
+      <ereg regexp="\r\na=rtpmap:[0-9]+ telephone-event/8000" search_in="msg" assign_to="9"/>
+    </action>
+  </recv>
+  <nop test="1" next="c1"/>
+  <nop next="fail1"/>
+  <label id="c1"/>
+  <nop test="2" next="c2"/>
+  <nop next="fail2"/>
+  <label id="c2"/>
+  <nop test="3" next="c3"/>
+  <nop next="fail3"/>
+  <label id="c3"/>
+  <nop test="4" next="c4"/>
+  <nop next="fail4"/>
+  <label id="c4"/>
+  <nop test="5" next="c5"/>
+  <nop next="fail5"/>
+  <label id="c5"/>
+  <nop test="6" next="c6"/>
+  <nop next="fail6"/>
+  <label id="c6"/>
+  <nop test="7" next="c7"/>
+  <nop next="fail7"/>
+  <label id="c7"/>
+  <nop test="8" next="c8"/>
+  <nop next="fail8"/>
+  <label id="c8"/>
+  <nop test="9" next="c9"/>
+  <nop next="fail9"/>
+  <label id="c9"/>
+  <nop next="ok"/>
 
+  <label id="fail1"/>
+  <nop>
+    <action>
+      <warning message="INVITE check failed: request-line is an E.164 number"/>
+    </action>
+  </nop>
+  <nop next="reject"/>
+
+  <label id="fail2"/>
+  <nop>
+    <action>
+      <warning message="INVITE check failed: From carries a number"/>
+    </action>
+  </nop>
+  <nop next="reject"/>
+
+  <label id="fail3"/>
+  <nop>
+    <action>
+      <warning message="INVITE check failed: Contact present"/>
+    </action>
+  </nop>
+  <nop next="reject"/>
+
+  <label id="fail4"/>
+  <nop>
+    <action>
+      <warning message="INVITE check failed: Content-Type is application/sdp"/>
+    </action>
+  </nop>
+  <nop next="reject"/>
+
+  <label id="fail5"/>
+  <nop>
+    <action>
+      <warning message="INVITE check failed: Allow includes BYE"/>
+    </action>
+  </nop>
+  <nop next="reject"/>
+
+  <label id="fail6"/>
+  <nop>
+    <action>
+      <warning message="INVITE check failed: SDP audio m-line offers PCMU and PCMA"/>
+    </action>
+  </nop>
+  <nop next="reject"/>
+
+  <label id="fail7"/>
+  <nop>
+    <action>
+      <warning message="INVITE check failed: SDP rtpmap PCMU/8000"/>
+    </action>
+  </nop>
+  <nop next="reject"/>
+
+  <label id="fail8"/>
+  <nop>
+    <action>
+      <warning message="INVITE check failed: SDP rtpmap PCMA/8000"/>
+    </action>
+  </nop>
+  <nop next="reject"/>
+
+  <label id="fail9"/>
+  <nop>
+    <action>
+      <warning message="INVITE check failed: SDP telephone-event/8000"/>
+    </action>
+  </nop>
+  <nop next="reject"/>
+
+  <label id="reject"/>
+  <send>
+    <![CDATA[
+      SIP/2.0 488 Not Acceptable Here
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Content-Length: 0
+
+    ]]>
+  </send>
+  <recv request="ACK" crlf="true"/>
+  <nop next="end"/>
+
+  <label id="ok"/>
   <send>
     <![CDATA[
       SIP/2.0 180 Ringing
@@ -68,6 +203,7 @@
     ]]>
   </send>
 
+  <label id="end"/>
   <timewait milliseconds="2000"/>
 
   <ResponseTimeRepartition value="10, 20, 30, 40, 50, 100, 150, 200"/>
