@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {ChannelsPost} from '@mattermost/playwright-lib';
-import {expect, type Locator, type Page} from '@playwright/test';
+import {errors, expect, type Locator, type Page} from '@playwright/test';
 
 // The custom call post ("call thread" card) rendered inside a lib ChannelsPost.
 export default class CallPost {
@@ -28,7 +28,18 @@ export default class CallPost {
     async leave() {
         await expect(this.leaveButton).toBeVisible();
         await this.leaveButton.click();
-        await this.leaveMenu.getByText('Leave call').click();
+
+        // Intentional change from the original spec, which always waited for the menu and
+        // hung when there wasn't one. The Leave button either opens a dot menu (e.g. for the
+        // host) or disconnects directly (e.g. for a non-host), so give the menu a short window
+        // to render, as page.ts leaveFromWidget/leaveFromPopout already do.
+        try {
+            await this.leaveMenu.getByText('Leave call').click({timeout: 2000});
+        } catch (err) {
+            if (!(err instanceof errors.TimeoutError)) {
+                throw err;
+            }
+        }
     }
 
     async endCallForEveryone() {
