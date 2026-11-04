@@ -43,9 +43,15 @@ import (
 type fakeLiveKit struct {
 	srv *httptest.Server
 
-	mut             sync.Mutex
-	participants    []*livekit.ParticipantInfo
-	listFailures    int
+	mut          sync.Mutex
+	participants []*livekit.ParticipantInfo
+	listFailures int
+	// listOKs is how many ListParticipants calls succeed before listFailures
+	// starts failing them.
+	listOKs int
+	// listQueue is served one entry per ListParticipants call before falling
+	// back to participants, to model the room changing between two listings.
+	listQueue       [][]*livekit.ParticipantInfo
 	removalFailures int
 	removed         []string
 	// dial stands in for CreateSIPParticipant. The handler has released the
@@ -72,11 +78,16 @@ func (lk *fakeLiveKit) serve(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasSuffix(r.URL.Path, "/livekit.RoomService/ListParticipants"):
 		lk.mut.Lock()
-		fail := lk.listFailures > 0
+		fail := lk.listFailures > 0 && lk.listOKs == 0
 		if fail {
 			lk.listFailures--
+		} else if lk.listOKs > 0 {
+			lk.listOKs--
 		}
 		participants := lk.participants
+		if !fail && len(lk.listQueue) > 0 {
+			participants, lk.listQueue = lk.listQueue[0], lk.listQueue[1:]
+		}
 		lk.mut.Unlock()
 		if fail {
 			http.Error(w, "unavailable", http.StatusServiceUnavailable)
@@ -138,9 +149,23 @@ func (lk *fakeLiveKit) setParticipants(participants ...*livekit.ParticipantInfo)
 	lk.participants = participants
 }
 
+func (lk *fakeLiveKit) queueLists(lists ...[]*livekit.ParticipantInfo) {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	lk.listQueue = lists
+}
+
 func (lk *fakeLiveKit) failLists(n int) {
 	lk.mut.Lock()
 	defer lk.mut.Unlock()
+	lk.listFailures = n
+}
+
+// failListsAfter lets the next ok ListParticipants calls succeed, then fails n.
+func (lk *fakeLiveKit) failListsAfter(ok, n int) {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	lk.listOKs = ok
 	lk.listFailures = n
 }
 
@@ -202,6 +227,10 @@ func TestCallEndReasonStatus(t *testing.T) {
 }
 
 func TestPhoneLegEndReason(t *testing.T) {
+	t.Run("a trunk failure after the callee answered is a dropped call", func(t *testing.T) {
+		require.Equal(t, callEndReasonNormal, phoneLegEndReason(livekit.DisconnectReason_SIP_TRUNK_FAILURE, true))
+	})
+
 	for reason, want := range map[livekit.DisconnectReason]callEndReason{
 		livekit.DisconnectReason_CLIENT_INITIATED:    callEndReasonNormal,
 		livekit.DisconnectReason_USER_REJECTED:       callEndReasonDeclined,
@@ -211,7 +240,7 @@ func TestPhoneLegEndReason(t *testing.T) {
 		livekit.DisconnectReason_PARTICIPANT_REMOVED: callEndReasonNormal,
 		livekit.DisconnectReason_UNKNOWN_REASON:      callEndReasonNormal,
 	} {
-		require.Equal(t, want, phoneLegEndReason(reason), reason.String())
+		require.Equal(t, want, phoneLegEndReason(reason, false), reason.String())
 	}
 }
 
@@ -833,7 +862,7 @@ func TestHostEndPhoneCallReason(t *testing.T) {
 		callID, postID := tc.createCall(t, true)
 		tc.expectCallPostStatus(postID, callStatusCanceledByCaller)
 
-		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID))
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, ""))
 		tc.api.AssertExpectations(t)
 		tc.assertCallEndPublished(t, callID, callStatusCanceledByCaller)
 	})
@@ -843,8 +872,49 @@ func TestHostEndPhoneCallReason(t *testing.T) {
 		_, postID := tc.createCall(t, true)
 		tc.expectCallPostStatus(postID, callStatusEnded)
 
-		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID))
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, ""))
 		tc.api.AssertExpectations(t)
+	})
+}
+
+func TestHostEndCallID(t *testing.T) {
+	t.Run("a stale request for an earlier call does not end the redialed call", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus("ringing"))
+		staleCallID, stalePostID := tc.createCall(t, true)
+		tc.expectCallPostStatus(stalePostID, callStatusEnded)
+		tc.endCall(t)
+		require.Empty(t, tc.activeCallID(t))
+
+		newCallID, _ := tc.createCall(t, true)
+
+		err := tc.p.hostEnd(tc.callerID, tc.channelID, staleCallID)
+
+		require.ErrorIs(t, err, ErrCallMismatch)
+		require.Equal(t, newCallID, tc.activeCallID(t))
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.MatchedBy(func(post *model.Post) bool {
+			return post.GetProp("call_status") != callStatusEnded
+		}))
+	})
+
+	t.Run("a request for the active call ends it", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus(sipCallStatusActive))
+		callID, postID := tc.createCall(t, true)
+		tc.expectCallPostStatus(postID, callStatusEnded)
+
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, callID))
+
+		require.Empty(t, tc.activeCallID(t))
+		tc.api.AssertExpectations(t)
+	})
+
+	t.Run("a request without a call id ends the active call", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus(sipCallStatusActive))
+		_, postID := tc.createCall(t, true)
+		tc.expectCallPostStatus(postID, callStatusEnded)
+
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, ""))
+
+		require.Empty(t, tc.activeCallID(t))
 	})
 }
 
@@ -870,6 +940,22 @@ func TestHandleSIPNoAnswerTimer(t *testing.T) {
 		require.Nil(t, tc.sipTimer())
 		tc.api.AssertExpectations(t)
 		tc.assertCallEndPublished(t, callID, callStatusNoAnswer)
+	})
+
+	t.Run("a callee who answers while the timer waits for the lock is not hung up", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		caller := tc.callerParticipant()
+		// The first listing predates the answer; the re-check under the lock sees it.
+		tc.lk.queueLists(
+			[]*livekit.ParticipantInfo{sipParticipantWithStatus("ringing"), caller},
+			[]*livekit.ParticipantInfo{sipParticipantWithStatus(sipCallStatusActive), caller},
+		)
+		callID, _ := tc.createCall(t, true)
+
+		fire(tc, callID)
+
+		require.Equal(t, callID, tc.activeCallID(t))
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
 	})
 
 	t.Run("an answered call with a connected caller stays up", func(t *testing.T) {
@@ -920,6 +1006,31 @@ func TestHandleSIPNoAnswerTimer(t *testing.T) {
 
 		// LiveKit is back by the retry, and the callee is still ringing.
 		tc.lk.setParticipants(sipParticipantWithStatus("ringing"))
+		tc.expectCallPostStatus(postID, callStatusNoAnswer)
+
+		tc.p.handleSIPNoAnswerTimer(tc.channelID, entry)
+
+		require.Empty(t, tc.activeCallID(t))
+		require.Nil(t, tc.sipTimer())
+		tc.api.AssertExpectations(t)
+	})
+
+	t.Run("a failed re-check under the lock leaves the call up and checks again", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		// The first listing looks like a no-answer, but it predates the lock, so
+		// a failed re-check must not act on it.
+		tc.lk.setParticipants(sipParticipantWithStatus("ringing"), tc.callerParticipant())
+		tc.lk.failListsAfter(1, 1)
+		callID, postID := tc.createCall(t, true)
+
+		entry := fire(tc, callID)
+
+		require.Equal(t, callID, tc.activeCallID(t))
+		require.Same(t, entry, tc.sipTimer())
+		require.True(t, entry.timer.Stop(), "a retry should be pending")
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
+
+		// LiveKit is back by the retry, and the callee is still ringing.
 		tc.expectCallPostStatus(postID, callStatusNoAnswer)
 
 		tc.p.handleSIPNoAnswerTimer(tc.channelID, entry)

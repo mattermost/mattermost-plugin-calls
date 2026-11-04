@@ -17,6 +17,7 @@ var (
 	ErrNoPermissions = errors.New("no permissions")
 	ErrNotInCall     = errors.New("requested session or user is not in the call")
 	ErrNotAllowed    = errors.New("not allowed")
+	ErrCallMismatch  = errors.New("call is not the active call in the channel")
 )
 
 func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
@@ -321,7 +322,10 @@ func (p *Plugin) hostRemoveParticipant(requesterID, channelID, sessionID string)
 	return nil
 }
 
-func (p *Plugin) hostEnd(requesterID, channelID string) error {
+// hostEnd ends the active call in channelID. A non-empty callID restricts it to
+// that call, so a late request for a call that has already ended can't end a
+// newer one in the same channel.
+func (p *Plugin) hostEnd(requesterID, channelID, callID string) error {
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
@@ -330,6 +334,10 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 
 	if state == nil {
 		return ErrNoCallOngoing
+	}
+
+	if callID != "" && callID != state.Call.ID {
+		return ErrCallMismatch
 	}
 
 	if requesterID != state.Call.GetHostID() {
