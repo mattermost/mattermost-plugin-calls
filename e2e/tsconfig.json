@@ -20,6 +20,10 @@
     "noEmit": true,
     "experimentalDecorators": true,
     "baseUrl": "./",
+    "paths": {
+      // @mattermost/playwright-lib 11.4.0 ships .d.ts files that still import its internal "@/" alias.
+      "@/*": ["./node_modules/@mattermost/playwright-lib/dist/*"]
+    }
   },
   "include": [
     "./**/*"
