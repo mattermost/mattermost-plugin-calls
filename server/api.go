@@ -35,11 +35,13 @@ const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 // these rather than on human-readable message strings.
 const (
 	errIDInvalidNumber         = "invalid_number"
+	errIDAmbiguousNumber       = "ambiguous_number"
 	errIDOutboundDisabled      = "outbound_disabled"
 	errIDOutboundNotConfigured = "outbound_not_configured"
 	errIDSIPNumberNotAllowed   = "sip_number_not_allowed"
 	errIDSIPTeamNotAllowed     = "sip_team_not_allowed"
 	errIDCallInProgress        = "call_in_progress"
+	errIDNoActiveCall          = "no_active_call"
 	errIDDialFailed            = "dial_failed"
 	errIDInvalidTarget         = "invalid_target"
 )
@@ -400,10 +402,7 @@ func (p *Plugin) declineCall(channelID, userID string) (int, error) {
 
 	// Tell the channel the call ended so bystander UI clears; the caller's widget teardown is
 	// driven by LiveKit.
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
-		ChannelID:           channelID,
-		ReliableClusterSend: true,
-	})
+	p.publishCallEnd(channelID, callID, callEndReasonDeclined)
 
 	// Declining is also a dismissal, so the callee's own incoming-call notification goes away
 	// without them having to dismiss it separately.
@@ -748,8 +747,7 @@ func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, 
 }
 
 // phoneCallResponse is returned by handlePhoneCall. It extends the standard
-// LiveKit session response with the add-phone-call identifiers the client needs
-// to log and to correlate with the SIP leg.
+// LiveKit session response with the call and channel identifiers the client needs.
 type phoneCallResponse struct {
 	SessionID string           `json:"session_id"`
 	Token     string           `json:"token"`
@@ -757,13 +755,13 @@ type phoneCallResponse struct {
 	BotUserID string           `json:"bot_user_id"`
 	CallID    string           `json:"call_id"`
 	ChannelID string           `json:"channel_id"`
-	SIPCallID string           `json:"sip_call_id"`
 	CallState *CallStateClient `json:"call_state"`
 }
 
-// handlePhoneCall is a self-contained phone-call endpoint: it resolves the
-// bot DM channel, creates a LiveKit session, dials the SIP number, and returns
-// everything the client needs to connect in a single round trip.
+// handlePhoneCall is a self-contained phone-call endpoint: it validates the
+// request, resolves the bot DM channel, creates a LiveKit session and returns
+// everything the client needs to connect in a single round trip. It records the
+// intent to dial; the dial itself happens once the caller has joined the room.
 func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handlePhoneCall", &res, w, r)
@@ -784,17 +782,16 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	number := normalizePhoneNumber(req.Number)
-	if number == "" {
-		res.Err = "number is required"
-		res.ErrID = errIDInvalidNumber
-		res.Code = http.StatusBadRequest
+	cfg := p.getConfiguration()
+
+	number, err := cfg.normalizePhoneNumber(req.Number)
+	if err != nil {
+		setInvalidNumberResponse(&res, req.Number, err)
 		return
 	}
 
 	displayLabel := truncateRunes(strings.TrimSpace(req.DisplayLabel), phoneDisplayLabelMaxLen)
 
-	cfg := p.getConfiguration()
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
 		res.Err = "outbound dialing is disabled. Enable it in the admin console."
 		res.ErrID = errIDOutboundDisabled
@@ -873,27 +870,17 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		res.Code = http.StatusInternalServerError
 		return
 	}
-	unlocked := false
-	defer func() {
-		if !unlocked {
-			p.unlockCall(channelID)
-		}
-	}()
+	defer p.unlockCall(channelID)
 
-	createdCall := state == nil
-
-	// Reject a second dial from the same user whether the session is still
-	// connecting (ConfirmedAt == 0) or already confirmed (user is in the call).
-	// Both cases would produce a redundant SIP leg.
-	if !createdCall {
-		for _, session := range state.sessions {
-			if session.UserID == userID {
-				res.Err = "a phone call is already in progress"
-				res.ErrID = errIDCallInProgress
-				res.Code = http.StatusConflict
-				return
-			}
-		}
+	// The bot DM only ever hosts the caller's own phone call, so any active call
+	// there, whether still connecting (ConfirmedAt == 0) or live, means a call is
+	// already in progress. Reusing it would dial the wrong number and leave a
+	// redundant SIP leg.
+	if state != nil {
+		res.Err = "a phone call is already in progress"
+		res.ErrID = errIDCallInProgress
+		res.Code = http.StatusConflict
+		return
 	}
 
 	// callsEnabled is intentionally nil: the bot DM channel has no per-channel
@@ -914,7 +901,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 	token, lkURL, err := p.mintLiveKitToken(userID, channelID, sessionID)
 	if err != nil {
 		p.LogError("handlePhoneCall: failed to mint LiveKit token", "err", err.Error(), "channelID", channelID)
-		p.rollbackSession(sessionID, state.Call.ID, createdCall)
+		p.rollbackSession(sessionID, state.Call.ID, true)
 		res.Err = "Internal server error"
 		res.Code = http.StatusInternalServerError
 		return
@@ -922,78 +909,37 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	callID := state.Call.ID
 
-	// Stamp the call as a phone call on first creation so the client and any
-	// future isPhoneCallChannel checks can key on props.type rather than
-	// "DM with the Calls bot".
-	if createdCall {
-		state.Call.Props.Type = callTypePhone
-		state.Call.Props.PhoneNumber = number
-		state.Call.Props.DisplayNumber = req.Number
-		state.Call.Props.DisplayLabel = displayLabel
-		state.Call.Props.TargetUserID = req.TargetUserID
-		if err := p.store.UpdateCall(&state.Call); err != nil {
-			p.LogError("handlePhoneCall: failed to set phone call props", "err", err.Error(), "callID", callID)
-			p.rollbackSession(sessionID, callID, createdCall)
-			res.Err = "Internal server error"
-			res.Code = http.StatusInternalServerError
-			return
-		}
-	}
+	// Stamp the call as a phone call so the client and any future
+	// isPhoneCallChannel checks can key on props.type rather than "DM with the
+	// Calls bot". The dial reads the number back from these props.
+	state.Call.Props.Type = callTypePhone
+	state.Call.Props.PhoneNumber = number
+	state.Call.Props.DisplayNumber = req.Number
+	state.Call.Props.DisplayLabel = displayLabel
+	state.Call.Props.TargetUserID = req.TargetUserID
 
-	// Release the lock before the SIP dial: it can take the full sipOutboundDialTimeout
-	// and holding it blocks every other operation on this call (including plugin shutdown).
-	// Same pattern as publishCallRoomMetadata.
-	unlocked = true
-	p.unlockCall(channelID)
-
-	// Dial synchronously so a failed dial reaches the caller as an error. We
-	// don't set WaitUntilAnswered, so LiveKit returns once the SIP leg is created
-	// (INVITE dispatched) rather than once the callee picks up.
-	info, dialErr := p.createSIPParticipant(trunkID, number, channelID, req.Number)
-
-	// Re-acquire the lock to announce the new call or roll back.
-	state, err = p.lockCallReturnState(channelID)
-	if err != nil {
-		p.LogError("handlePhoneCall: failed to re-lock call after SIP dial", "err", err.Error(), "channelID", channelID)
-		if dialErr == nil {
-			p.rollbackSession(sessionID, callID, createdCall)
-		}
+	// Nothing is dialed here. The dial happens once the caller's session is
+	// confirmed (handleLiveKitParticipantJoined), so the phone leg can't exist,
+	// or end, before the caller is in the room.
+	state.Call.Props.DialSessionID = sessionID
+	if err := p.store.UpdateCall(&state.Call); err != nil {
+		p.LogError("handlePhoneCall: failed to set phone call props", "err", err.Error(), "callID", callID)
+		p.rollbackSession(sessionID, callID, true)
 		res.Err = "Internal server error"
 		res.Code = http.StatusInternalServerError
 		return
 	}
-	unlocked = false
 
-	if dialErr != nil {
-		p.LogError("handlePhoneCall: failed to create SIP participant",
-			"err", dialErr.Error(), "number", number, "channelID", channelID)
-		p.rollbackSession(sessionID, callID, createdCall)
-		res.Err = "failed to dial number"
-		res.ErrID = errIDDialFailed
-		res.Code = http.StatusInternalServerError
-		return
-	}
-
-	// Announce only after a successful dial: observers and the ring timer should
-	// not fire for a call that never connected. Use createdCall rather than
-	// len(state.sessions)==1 because the lock was released during the dial and
-	// the SIP participant_joined webhook may have already added a session.
-	if createdCall {
-		p.announceCallStarted(state, userID, channelID, "", "", dmChannel.Type)
-	}
-	p.cancelDMNoAnswerTimerIfAnswered(state, userID, channelID, dmChannel.Type)
-
-	// Start the SIP no-answer timer. It fires if either the human caller's
-	// client or the SIP callee has not confirmed within sipNoAnswerTimeout,
-	// and is cancelled in participant_joined once both sides are live.
+	// Doubles as the deadline for the caller to connect: it hangs the call up
+	// unless, by sipNoAnswerTimeout, the caller has connected and the callee has
+	// answered. Cancelled when the call ends.
 	p.startSIPNoAnswerTimer(channelID, callID)
 
 	p.LogInfo("phone call session created",
 		"callID", callID,
 		"channelID", channelID,
 		"sessionID", sessionID,
-		"userID", userID,
-		"sipCallID", info.GetSipCallId())
+		"userID", userID)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(phoneCallResponse{
@@ -1003,17 +949,30 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		BotUserID: p.getBotID(),
 		CallID:    callID,
 		ChannelID: channelID,
-		SIPCallID: info.GetSipCallId(),
 		CallState: state.getClientState(p.getBotID(), userID),
 	}); err != nil {
 		p.LogError("failed to encode phone-call response", "err", err.Error())
 	}
 }
 
+// callerConfirmedCallID returns the ID of the active call when userID has a
+// confirmed session in it, and "" otherwise.
+func callerConfirmedCallID(state *callState, userID string) string {
+	if state == nil {
+		return ""
+	}
+	for _, s := range state.sessions {
+		if s.UserID == userID && s.ConfirmedAt > 0 {
+			return state.Call.ID
+		}
+	}
+	return ""
+}
+
 // handleAddPhoneCall dials an external phone number into an existing call. The
 // client must already have a live session in the bot DM channel before calling
 // this endpoint. Useful for testing and future multi-party dial-in scenarios.
-// Returns {call_id, channel_id, sip_call_id} without a LiveKit token.
+// Returns {call_id, channel_id} without a LiveKit token.
 func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 	var res httpResponse
 	defer p.httpAudit("handleAddPhoneCall", &res, w, r)
@@ -1029,15 +988,13 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	number := normalizePhoneNumber(req.Number)
-	if number == "" {
-		res.Err = "number is required"
-		res.ErrID = errIDInvalidNumber
-		res.Code = http.StatusBadRequest
+	cfg := p.getConfiguration()
+
+	number, err := cfg.normalizePhoneNumber(req.Number)
+	if err != nil {
+		setInvalidNumberResponse(&res, req.Number, err)
 		return
 	}
-
-	cfg := p.getConfiguration()
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
 		res.Err = "outbound dialing is disabled. Enable it in the admin console."
 		res.ErrID = errIDOutboundDisabled
@@ -1091,24 +1048,20 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		res.Code = http.StatusInternalServerError
 		return
 	}
-	var callID string
-	if state != nil {
-		for _, s := range state.sessions {
-			if s.UserID == userID && s.ConfirmedAt > 0 {
-				callID = state.Call.ID
-				break
-			}
-		}
-	}
+	callID := callerConfirmedCallID(state, userID)
 	p.unlockCall(channelID)
 
 	if callID == "" {
 		res.Err = "no active call or caller is not in the call"
+		res.ErrID = errIDNoActiveCall
 		res.Code = http.StatusBadRequest
 		return
 	}
 
 	info, err := p.createSIPParticipant(trunkID, number, channelID, req.Number)
+	if err == nil {
+		p.LogInfo("add phone call dialed", "callID", callID, "channelID", channelID, "sipCallID", info.GetSipCallId())
+	}
 	if err != nil {
 		p.LogError("handleAddPhoneCall: failed to create SIP participant",
 			"err", err.Error(), "number", number, "channelID", channelID)
@@ -1118,11 +1071,33 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The lock was released for the dial, so the caller may have left or the
+	// call may have ended since.
+	state, err = p.lockCallReturnState(channelID)
+	if err != nil {
+		p.LogError("handleAddPhoneCall: failed to re-lock call after SIP dial", "channelID", channelID, "err", err.Error())
+		p.hangUpSIPLeg(channelID, info)
+		res.Err = "Internal server error"
+		res.Code = http.StatusInternalServerError
+		return
+	}
+	stillInCall := callerConfirmedCallID(state, userID) == callID
+	p.unlockCall(channelID)
+
+	if !stillInCall {
+		p.LogInfo("handleAddPhoneCall: caller left or call ended during SIP dial, hanging up",
+			"callID", callID, "channelID", channelID, "sipCallID", info.GetSipCallId())
+		p.hangUpSIPLeg(channelID, info)
+		res.Err = "no active call or caller is not in the call"
+		res.ErrID = errIDNoActiveCall
+		res.Code = http.StatusBadRequest
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
-		"call_id":     callID,
-		"channel_id":  channelID,
-		"sip_call_id": info.GetSipCallId(),
+		"call_id":    callID,
+		"channel_id": channelID,
 	}); err != nil {
 		p.LogError("handleAddPhoneCall: failed to encode response", "err", err.Error())
 	}
@@ -1229,14 +1204,53 @@ func (p *Plugin) handleGetStats(w http.ResponseWriter) error {
 	return nil
 }
 
-// normalizePhoneNumber strips formatting from a phone number, keeping only
-// digits and a leading '+'. A number with no '+' prefix and >= 10 digits is
-// assumed to be E.164 and gets a '+' prepended. Examples:
+// errAmbiguousNumber is returned when digits could be read as either a national
+// number or one that already carries the country code.
+var errAmbiguousNumber = errors.New("ambiguous number")
+
+// setInvalidNumberResponse fills res for a number that normalizePhoneNumber rejected.
+func setInvalidNumberResponse(res *httpResponse, raw string, err error) {
+	res.Err = "invalid phone number"
+	res.ErrID = errIDInvalidNumber
+	switch {
+	case strings.TrimSpace(raw) == "":
+		res.Err = "number is required"
+	case errors.Is(err, errAmbiguousNumber):
+		res.Err = err.Error()
+		res.ErrID = errIDAmbiguousNumber
+	}
+	res.Code = http.StatusBadRequest
+}
+
+// maxE164Digits is the maximum number of digits in an E.164 number.
+const maxE164Digits = 15
+
+// minPhoneDigits is the minimum number of digits accepted for a dialed number that is not an extension.
+const minPhoneDigits = 7
+
+// nanpNationalDigits is the length of a North American national number.
+const nanpNationalDigits = 10
+
+// normalizePhoneNumber strips formatting from a phone number (and any "tel:"
+// prefix) and applies the trunk's dialing rules. It returns an error for input
+// that cannot be normalized rather than a best-effort guess. Rules, in order:
+//
+//   - "+"-prefixed numbers are taken as E.164 and returned unchanged.
+//   - At most extensionMaxDigits digits: dialed as-is (PBX extension).
+//   - Empty defaultCountryCode: digits pass through with no '+'.
+//   - Code "1": 11 digits starting with 1 get only '+'; 10 digits get "+1".
+//   - Other codes: the code is prepended; digits beginning with the code or a
+//     0 (a possible trunk prefix) are rejected as ambiguous.
+//
+// A defaultCountryCode of "1" requires exactly 10 national digits (or 11 with
+// the leading 1). For any other code, digits that begin with the code are
+// rejected as ambiguous; international numbers need an explicit '+'. Examples
+// with defaultCountryCode "1":
 //
 //	"1-781-307-8753"    -> "+17813078753"
-//	"+1 (555) 123-4567" -> "+15551234567"
+//	"(555) 123-4567"    -> "+15551234567"
 //	"tel:+17813078753"  -> "+17813078753"
-func normalizePhoneNumber(raw string) string {
+func normalizePhoneNumber(raw string, defaultCountryCode string, extensionMaxDigits int) (string, error) {
 	s := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), "tel:"))
 
 	var b strings.Builder
@@ -1247,10 +1261,59 @@ func normalizePhoneNumber(raw string) string {
 	}
 
 	num := b.String()
-	if len(num) >= 10 && num[0] != '+' {
-		num = "+" + num
+	digits := strings.TrimPrefix(num, "+")
+	if digits == "" {
+		return "", errors.New("no digits")
 	}
-	return num
+	if len(digits) > maxE164Digits {
+		return "", errors.New("too many digits")
+	}
+
+	if strings.HasPrefix(num, "+") {
+		if len(digits) < minPhoneDigits {
+			return "", errors.New("too few digits")
+		}
+		return num, nil
+	}
+
+	if extensionMaxDigits > 0 && len(digits) <= extensionMaxDigits {
+		return digits, nil
+	}
+
+	if len(digits) < minPhoneDigits {
+		return "", errors.New("too few digits")
+	}
+
+	if defaultCountryCode == "" {
+		return digits, nil
+	}
+
+	cc := defaultCountryCode
+	if cc == "1" {
+		switch {
+		case len(digits) == nanpNationalDigits:
+			return "+1" + digits, nil
+		case len(digits) == nanpNationalDigits+1 && digits[0] == '1':
+			return "+" + digits, nil
+		}
+		return "", errors.New("not a valid national number for country code 1")
+	}
+
+	// Other country codes have variable national number lengths, so there is no
+	// reliable way to tell a leading copy of the code from a national number that
+	// happens to start with the same digits. Without a '+', input is national;
+	// ambiguous input is rejected rather than guessed.
+	const minNationalDigits = 6
+	// A leading 0 is a trunk prefix to drop in many countries (UK) but part of the
+	// number in others (Italy). Without a per-country table we can't tell which, so
+	// reject it; valid numbers like Italian landlines must be entered with a '+'.
+	if strings.HasPrefix(digits, cc) || digits[0] == '0' {
+		return "", fmt.Errorf("%w for country code %s: use a leading + for international numbers", errAmbiguousNumber, cc)
+	}
+	if len(digits)+len(cc) > maxE164Digits || len(digits) < minNationalDigits {
+		return "", fmt.Errorf("not a valid national number for country code %s", cc)
+	}
+	return "+" + cc + digits, nil
 }
 
 func truncateRunes(s string, maxLen int) string {
@@ -1502,7 +1565,9 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 	identity := participant.Identity
 
 	p.LogDebug("handleLiveKitSIPParticipantLeft: SIP participant left",
-		"channelID", channelID, "sid", sid, "identity", identity)
+		"channelID", channelID, "sid", sid, "identity", identity,
+		"disconnectReason", participant.GetDisconnectReason().String(),
+		"callStatus", participant.GetAttributes()[livekit.AttrSIPCallStatus])
 
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
@@ -1547,12 +1612,10 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 
 		p.cancelSIPNoAnswerTimer(channelID)
 
-		p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
-			ChannelID:           channelID,
-			ReliableClusterSend: true,
-		})
+		answered := participant.GetAttributes()[livekit.AttrSIPCallStatus] == sipCallStatusActive
+		endReason := phoneLegEndReason(participant.GetDisconnectReason(), answered)
+		p.publishCallEnd(channelID, state.Call.ID, endReason)
 
-		endReason := phoneLegEndReason(participant.GetDisconnectReason())
 		if err := p.cleanCallState(&state.Call, "sip_hangup", endReason); err != nil {
 			p.LogError("handleLiveKitSIPParticipantLeft: failed to clean call state",
 				"channelID", channelID, "err", err.Error())

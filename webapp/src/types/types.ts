@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {
+    BaseData,
     CallPostProps,
     CallsConfig as CommonCallsConfig,
     CallStartData,
@@ -261,6 +262,12 @@ export enum CallPostStatus {
     Declined = 'declined',
     Failed = 'failed',
 }
+
+// See publishCallEnd in server/state.go. reason is the call post's final call_status.
+export type CallEndData = BaseData & {
+    call_id?: string;
+    reason?: CallPostStatus;
+};
 
 // Phone calls
 

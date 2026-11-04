@@ -6,10 +6,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,6 +21,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
+	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 
@@ -27,45 +32,175 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/livekit/protocol/livekit"
+	"github.com/livekit/protocol/webhook"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-// newFakeLiveKitRoomService serves the Twirp RoomService.ListParticipants
-// endpoint with a fixed participant list, so code that asks LiveKit about the
-// SIP leg can be exercised without a LiveKit server.
-func newFakeLiveKitRoomService(t *testing.T, participants []*livekit.ParticipantInfo) *httptest.Server {
-	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
+// fakeLiveKit serves the Twirp endpoints the phone-call paths use, so they can
+// be exercised without a LiveKit server.
+type fakeLiveKit struct {
+	srv *httptest.Server
 
-		var resp proto.Message
-		switch {
-		case strings.HasSuffix(r.URL.Path, "/livekit.RoomService/ListParticipants"):
-			var req livekit.ListParticipantsRequest
-			require.NoError(t, proto.Unmarshal(body, &req))
-			resp = &livekit.ListParticipantsResponse{Participants: participants}
-		case strings.HasSuffix(r.URL.Path, "/livekit.RoomService/DeleteRoom"):
-			resp = &livekit.DeleteRoomResponse{}
-		default:
-			http.Error(w, "unexpected call: "+r.URL.Path, http.StatusNotFound)
+	mut          sync.Mutex
+	participants []*livekit.ParticipantInfo
+	listFailures int
+	// listOKs is how many ListParticipants calls succeed before listFailures
+	// starts failing them.
+	listOKs int
+	// listQueue is served one entry per ListParticipants call before falling
+	// back to participants, to model the room changing between two listings.
+	listQueue       [][]*livekit.ParticipantInfo
+	removalFailures int
+	removed         []string
+	// dial stands in for CreateSIPParticipant. The handler has released the
+	// call lock by then, so dial can change the call the way a webhook would.
+	dial func() (*livekit.SIPParticipantInfo, error)
+}
+
+func newFakeLiveKit(t *testing.T, participants ...*livekit.ParticipantInfo) *fakeLiveKit {
+	t.Helper()
+	lk := &fakeLiveKit{participants: participants}
+	lk.srv = httptest.NewServer(http.HandlerFunc(lk.serve))
+	t.Cleanup(lk.srv.Close)
+	return lk
+}
+
+func (lk *fakeLiveKit) serve(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var resp proto.Message
+	switch {
+	case strings.HasSuffix(r.URL.Path, "/livekit.RoomService/ListParticipants"):
+		lk.mut.Lock()
+		fail := lk.listFailures > 0 && lk.listOKs == 0
+		if fail {
+			lk.listFailures--
+		} else if lk.listOKs > 0 {
+			lk.listOKs--
+		}
+		participants := lk.participants
+		if !fail && len(lk.listQueue) > 0 {
+			participants, lk.listQueue = lk.listQueue[0], lk.listQueue[1:]
+		}
+		lk.mut.Unlock()
+		if fail {
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
 			return
 		}
+		resp = &livekit.ListParticipantsResponse{Participants: participants}
+	case strings.HasSuffix(r.URL.Path, "/livekit.RoomService/DeleteRoom"):
+		resp = &livekit.DeleteRoomResponse{}
+	case strings.HasSuffix(r.URL.Path, "/livekit.RoomService/RemoveParticipant"):
+		var req livekit.RoomParticipantIdentity
+		if err := proto.Unmarshal(body, &req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		lk.mut.Lock()
+		fail := lk.removalFailures > 0
+		if fail {
+			lk.removalFailures--
+		} else {
+			lk.removed = append(lk.removed, req.Identity)
+		}
+		lk.mut.Unlock()
+		if fail {
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		resp = &livekit.RemoveParticipantResponse{}
+	case strings.HasSuffix(r.URL.Path, "/livekit.SIP/CreateSIPParticipant"):
+		lk.mut.Lock()
+		dial := lk.dial
+		lk.mut.Unlock()
+		if dial == nil {
+			http.Error(w, "no dial configured", http.StatusInternalServerError)
+			return
+		}
+		info, err := dial()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		resp = info
+	default:
+		http.Error(w, "unexpected call: "+r.URL.Path, http.StatusNotFound)
+		return
+	}
 
-		data, err := proto.Marshal(resp)
-		require.NoError(t, err)
-		w.Header().Set("Content-Type", "application/protobuf")
-		_, _ = w.Write(data)
-	}))
-	t.Cleanup(srv.Close)
-	return srv
+	data, err := proto.Marshal(resp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/protobuf")
+	_, _ = w.Write(data)
 }
+
+func (lk *fakeLiveKit) setParticipants(participants ...*livekit.ParticipantInfo) {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	lk.participants = participants
+}
+
+func (lk *fakeLiveKit) queueLists(lists ...[]*livekit.ParticipantInfo) {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	lk.listQueue = lists
+}
+
+func (lk *fakeLiveKit) failLists(n int) {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	lk.listFailures = n
+}
+
+// failListsAfter lets the next ok ListParticipants calls succeed, then fails n.
+func (lk *fakeLiveKit) failListsAfter(ok, n int) {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	lk.listOKs = ok
+	lk.listFailures = n
+}
+
+func (lk *fakeLiveKit) failRemovals(n int) {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	lk.removalFailures = n
+}
+
+func (lk *fakeLiveKit) setDial(dial func() (*livekit.SIPParticipantInfo, error)) {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	lk.dial = dial
+}
+
+func (lk *fakeLiveKit) removedIdentities() []string {
+	lk.mut.Lock()
+	defer lk.mut.Unlock()
+	return slices.Clone(lk.removed)
+}
+
+// dialedSIPLeg returns what CreateSIPParticipant reports for a dial to
+// testPhoneNumber, and the participant LiveKit then lists for it.
+func dialedSIPLeg(sid string) (*livekit.SIPParticipantInfo, *livekit.ParticipantInfo) {
+	identity := "sip:" + testPhoneNumber
+	return &livekit.SIPParticipantInfo{ParticipantId: sid, ParticipantIdentity: identity, SipCallId: "SCL_" + sid},
+		&livekit.ParticipantInfo{Sid: sid, Identity: identity, Kind: livekit.ParticipantInfo_SIP}
+}
+
+const testPhoneNumber = "+14155551234"
 
 func sipParticipantWithStatus(status string) *livekit.ParticipantInfo {
 	return &livekit.ParticipantInfo{
 		Sid:        model.NewId(),
-		Identity:   "sip:+14155551234",
+		Identity:   "sip:" + testPhoneNumber,
 		Kind:       livekit.ParticipantInfo_SIP,
 		Attributes: map[string]string{livekit.AttrSIPCallStatus: status},
 	}
@@ -92,6 +227,10 @@ func TestCallEndReasonStatus(t *testing.T) {
 }
 
 func TestPhoneLegEndReason(t *testing.T) {
+	t.Run("a trunk failure after the callee answered is a dropped call", func(t *testing.T) {
+		require.Equal(t, callEndReasonNormal, phoneLegEndReason(livekit.DisconnectReason_SIP_TRUNK_FAILURE, true))
+	})
+
 	for reason, want := range map[livekit.DisconnectReason]callEndReason{
 		livekit.DisconnectReason_CLIENT_INITIATED:    callEndReasonNormal,
 		livekit.DisconnectReason_USER_REJECTED:       callEndReasonDeclined,
@@ -101,7 +240,7 @@ func TestPhoneLegEndReason(t *testing.T) {
 		livekit.DisconnectReason_PARTICIPANT_REMOVED: callEndReasonNormal,
 		livekit.DisconnectReason_UNKNOWN_REASON:      callEndReasonNormal,
 	} {
-		require.Equal(t, want, phoneLegEndReason(reason), reason.String())
+		require.Equal(t, want, phoneLegEndReason(reason, false), reason.String())
 	}
 }
 
@@ -150,27 +289,31 @@ func TestPhoneCallFields(t *testing.T) {
 	})
 }
 
-func TestPhoneCallerHangupReason(t *testing.T) {
-	newPlugin := func(t *testing.T, lkURL string) *Plugin {
-		t.Helper()
-		mockAPI := &pluginMocks.MockAPI{}
-		mockAllLogs(mockAPI)
-		cfg := &configuration{}
-		cfg.SetDefaults()
-		cfg.LiveKitURL = lkURL
-		if lkURL != "" {
-			cfg.LiveKitAPIKey = "key"
-			cfg.LiveKitAPISecret = "secret"
-		}
-		return &Plugin{
-			MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
-			configuration:    cfg,
-		}
+// newLiveKitTestPlugin returns a plugin that talks to the LiveKit server at
+// lkURL and nothing else. An empty lkURL leaves LiveKit unconfigured.
+func newLiveKitTestPlugin(t *testing.T, lkURL string) *Plugin {
+	t.Helper()
+	mockAPI := &pluginMocks.MockAPI{}
+	mockAllLogs(mockAPI)
+	cfg := &configuration{}
+	cfg.SetDefaults()
+	cfg.LiveKitURL = lkURL
+	if lkURL != "" {
+		cfg.LiveKitAPIKey = "key"
+		cfg.LiveKitAPISecret = "secret"
 	}
+	return &Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
+		configuration:    cfg,
+	}
+}
+
+func TestPhoneCallerHangupReason(t *testing.T) {
+	newPlugin := newLiveKitTestPlugin
 	phoneCall := &public.Call{Props: public.CallProps{Type: callTypePhone}}
 
 	t.Run("non-phone call is a normal end", func(t *testing.T) {
-		p := newPlugin(t, newFakeLiveKitRoomService(t, []*livekit.ParticipantInfo{sipParticipantWithStatus("ringing")}).URL)
+		p := newPlugin(t, newFakeLiveKit(t, sipParticipantWithStatus("ringing")).srv.URL)
 		require.Equal(t, callEndReasonNormal, p.phoneCallerHangupReason(&public.Call{}, "channelID"))
 	})
 
@@ -180,24 +323,24 @@ func TestPhoneCallerHangupReason(t *testing.T) {
 	})
 
 	t.Run("callee still ringing means canceled", func(t *testing.T) {
-		p := newPlugin(t, newFakeLiveKitRoomService(t, []*livekit.ParticipantInfo{sipParticipantWithStatus("ringing")}).URL)
+		p := newPlugin(t, newFakeLiveKit(t, sipParticipantWithStatus("ringing")).srv.URL)
 		require.Equal(t, callEndReasonCanceledByCaller, p.phoneCallerHangupReason(phoneCall, "channelID"))
 	})
 
 	t.Run("callee still dialing means canceled", func(t *testing.T) {
-		p := newPlugin(t, newFakeLiveKitRoomService(t, []*livekit.ParticipantInfo{sipParticipantWithStatus("dialing")}).URL)
+		p := newPlugin(t, newFakeLiveKit(t, sipParticipantWithStatus("dialing")).srv.URL)
 		require.Equal(t, callEndReasonCanceledByCaller, p.phoneCallerHangupReason(phoneCall, "channelID"))
 	})
 
 	t.Run("callee answered means ended", func(t *testing.T) {
-		p := newPlugin(t, newFakeLiveKitRoomService(t, []*livekit.ParticipantInfo{sipParticipantWithStatus(sipCallStatusActive)}).URL)
+		p := newPlugin(t, newFakeLiveKit(t, sipParticipantWithStatus(sipCallStatusActive)).srv.URL)
 		require.Equal(t, callEndReasonNormal, p.phoneCallerHangupReason(phoneCall, "channelID"))
 	})
 
 	t.Run("no SIP leg in the room means ended", func(t *testing.T) {
-		p := newPlugin(t, newFakeLiveKitRoomService(t, []*livekit.ParticipantInfo{{
+		p := newPlugin(t, newFakeLiveKit(t, &livekit.ParticipantInfo{
 			Identity: "user___session", Kind: livekit.ParticipantInfo_STANDARD,
-		}}).URL)
+		}).srv.URL)
 		require.Equal(t, callEndReasonNormal, p.phoneCallerHangupReason(phoneCall, "channelID"))
 	})
 }
@@ -501,103 +644,722 @@ func TestHandlePhoneCallTarget(t *testing.T) {
 	})
 }
 
+// phoneCallTest is a plugin backed by a test store, with SIP outbound enabled
+// against a fake LiveKit. callerID places calls through the bot DM channelID.
+type phoneCallTest struct {
+	p         *Plugin
+	api       *pluginMocks.MockAPI
+	lk        *fakeLiveKit
+	channelID string
+	callerID  string
+	// lockFails makes every new call-lock attempt fail while it is set.
+	lockFails atomic.Bool
+}
+
+func newPhoneCallTest(t *testing.T, participants ...*livekit.ParticipantInfo) *phoneCallTest {
+	t.Helper()
+	mockAPI := &pluginMocks.MockAPI{}
+	mockMetrics := &serverMocks.MockMetrics{}
+
+	store, tearDown := NewTestStore(t)
+	t.Cleanup(tearDown)
+
+	tc := &phoneCallTest{
+		api:       mockAPI,
+		lk:        newFakeLiveKit(t, participants...),
+		channelID: model.NewId(),
+		callerID:  model.NewId(),
+	}
+
+	cfg := &configuration{}
+	cfg.SetDefaults()
+	cfg.DefaultEnabled = model.NewPointer(true)
+	cfg.EnableRinging = model.NewPointer(false)
+	cfg.EnableSIPOutbound = model.NewPointer(true)
+	cfg.LiveKitSIPOutboundTrunkID = "ST_test"
+	cfg.LiveKitURL = tc.lk.srv.URL
+	cfg.LiveKitAPIKey = "key"
+	cfg.LiveKitAPISecret = "secret"
+
+	tc.p = &Plugin{
+		MattermostPlugin:  plugin.MattermostPlugin{API: mockAPI},
+		metrics:           mockMetrics,
+		apiLimiters:       map[string]*rate.Limiter{},
+		callsClusterLocks: map[string]*cluster.Mutex{},
+		sessions:          map[string]*session{},
+		store:             store,
+		nodeID:            "test-node",
+		botID:             model.NewId(),
+		configuration:     cfg,
+		dirtyCalls:        map[string]struct{}{},
+		dirtyCallsCh:      make(chan struct{}, 1),
+		dmNoAnswerTimers:  map[string]*time.Timer{},
+		sipNoAnswerTimers: map[string]*sipNoAnswerTimer{},
+	}
+	tc.p.licenseChecker = enterprise.NewLicenseChecker(tc.p.API)
+
+	mockMetrics.On("Handler").Return(nil).Maybe()
+	mockMetrics.On("ObserveAppHandlersTime", mock.Anything, mock.AnythingOfType("float64")).Maybe()
+	mockMetrics.On("ObserveClusterMutexGrabTime", mock.Anything, mock.AnythingOfType("float64")).Maybe()
+	mockMetrics.On("ObserveClusterMutexLockedTime", mock.Anything, mock.AnythingOfType("float64")).Maybe()
+	mockMetrics.On("IncClusterMutexLockRetries", mock.Anything).Maybe()
+	mockMetrics.On("IncWebSocketEvent", mock.Anything, mock.Anything).Maybe()
+
+	dmChannel := &model.Channel{Id: tc.channelID, Type: model.ChannelTypeDirect}
+	mockAPI.On("GetConfig").Return(&model.Config{}, nil).Maybe()
+	mockAPI.On("GetLicense").Return(&model.License{SkuShortName: "enterprise"}, nil).Maybe()
+	mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(
+		func(_ string, _ []byte, opts model.PluginKVSetOptions) (bool, *model.AppError) {
+			// A nil OldValue is a fresh lock attempt; refreshing a held lock still works.
+			return opts.OldValue != nil || !tc.lockFails.Load(), nil
+		}).Maybe()
+	mockAPI.On("KVDelete", mock.Anything).Return(nil).Maybe()
+	mockAPI.On("PublishWebSocketEvent", mock.AnythingOfType("string"), mock.Anything,
+		mock.AnythingOfType("*model.WebsocketBroadcast")).Maybe()
+	mockAPI.On("HasPermissionTo", mock.AnythingOfType("string"), model.PermissionManageSystem).Return(false).Maybe()
+	mockAPI.On("GetDirectChannel", tc.callerID, tc.p.botID).Return(dmChannel, nil).Maybe()
+	mockAPI.On("GetChannel", tc.channelID).Return(dmChannel, nil).Maybe()
+	mockAPI.On("GetChannelMembers", tc.channelID, 0, 10).Return(model.ChannelMembers{
+		{ChannelId: tc.channelID, UserId: tc.callerID},
+		{ChannelId: tc.channelID, UserId: tc.p.botID},
+	}, nil).Maybe()
+	mockAPI.On("GetUser", tc.callerID).Return(&model.User{Id: tc.callerID, Username: "caller"}, nil).Maybe()
+	mockAllLogs(mockAPI)
+
+	// Built last: newAPIRouter calls into the metrics mock.
+	tc.p.apiRouter = tc.p.newAPIRouter()
+
+	t.Cleanup(func() {
+		tc.p.sipNoAnswerTimersMut.Lock()
+		defer tc.p.sipNoAnswerTimersMut.Unlock()
+		for _, entry := range tc.p.sipNoAnswerTimers {
+			entry.timer.Stop()
+		}
+	})
+
+	return tc
+}
+
+// createCall stores an active phone call in the bot DM, with its call post and
+// the caller's session, confirmed or still pending.
+func (tc *phoneCallTest) createCall(t *testing.T, callerConfirmed bool) (callID, postID string) {
+	t.Helper()
+	postID = model.NewId()
+	createPost(t, tc.p.store, postID, tc.callerID, tc.channelID)
+	call := &public.Call{
+		ID:        model.NewId(),
+		CreateAt:  time.Now().UnixMilli(),
+		StartAt:   time.Now().UnixMilli(),
+		ChannelID: tc.channelID,
+		PostID:    postID,
+		ThreadID:  postID,
+		OwnerID:   tc.callerID,
+		Props: public.CallProps{
+			Hosts:       []string{tc.callerID},
+			Type:        callTypePhone,
+			PhoneNumber: testPhoneNumber,
+		},
+	}
+	require.NoError(t, tc.p.store.CreateCall(call))
+
+	session := &public.CallSession{ID: model.NewId(), CallID: call.ID, UserID: tc.callerID, JoinAt: time.Now().UnixMilli()}
+	if callerConfirmed {
+		session.ConfirmedAt = time.Now().UnixMilli()
+	}
+	require.NoError(t, tc.p.store.CreateCallSession(session))
+	return call.ID, postID
+}
+
+// endCall ends the active call under the call lock, as a webhook would while a
+// handler has the lock released for its dial. It runs on the fake LiveKit's
+// goroutine, so it reports failures without stopping the test.
+func (tc *phoneCallTest) endCall(t *testing.T) {
+	state, err := tc.p.lockCallReturnState(tc.channelID)
+	if !assert.NoError(t, err) {
+		return
+	}
+	defer tc.p.unlockCall(tc.channelID)
+	if assert.NotNil(t, state) {
+		assert.NoError(t, tc.p.cleanCallState(&state.Call, "test", callEndReasonNormal))
+	}
+}
+
+// activeCallID returns the ID of the active call in the bot DM, or "".
+func (tc *phoneCallTest) activeCallID(t *testing.T) string {
+	t.Helper()
+	call, err := tc.p.store.GetActiveCallByChannelID(tc.channelID, db.GetCallOpts{FromWriter: true})
+	if errors.Is(err, db.ErrNotFound) {
+		return ""
+	}
+	require.NoError(t, err)
+	return call.ID
+}
+
+func (tc *phoneCallTest) sipTimer() *sipNoAnswerTimer {
+	tc.p.sipNoAnswerTimersMut.Lock()
+	defer tc.p.sipNoAnswerTimersMut.Unlock()
+	return tc.p.sipNoAnswerTimers[tc.channelID]
+}
+
+func (tc *phoneCallTest) expectCallPostStatus(postID, status string) {
+	tc.api.On("UpdatePost", mock.MatchedBy(func(post *model.Post) bool {
+		return post.Id == postID && post.GetProp("call_status") == status
+	})).Return(&model.Post{Id: postID}, nil).Once()
+}
+
+func (tc *phoneCallTest) assertCallEndPublished(t *testing.T, callID, reason string) {
+	t.Helper()
+	tc.api.AssertCalled(t, "PublishWebSocketEvent", wsEventCallEnd, map[string]interface{}{
+		"call_id":   callID,
+		"reason":    reason,
+		"channelID": tc.channelID,
+	}, mock.Anything)
+}
+
+// callerParticipant is the caller's client as LiveKit lists it.
+func (tc *phoneCallTest) callerParticipant() *livekit.ParticipantInfo {
+	return &livekit.ParticipantInfo{
+		Sid:      "PA_" + model.NewId(),
+		Identity: composeLivekitIdentity(tc.callerID, model.NewId()),
+		Kind:     livekit.ParticipantInfo_STANDARD,
+	}
+}
+
+// sendWebhook delivers a signed LiveKit webhook about participant in room.
+func (tc *phoneCallTest) sendWebhook(t *testing.T, room, event string, participant *livekit.ParticipantInfo) {
+	t.Helper()
+	w := httptest.NewRecorder()
+	tc.p.apiRouter.ServeHTTP(w, newSignedWebhookRequest(t, "key", "secret", &livekit.WebhookEvent{
+		Event:       event,
+		Room:        &livekit.Room{Name: room},
+		Participant: participant,
+	}))
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+// dial posts testPhoneNumber to a dialing route as the caller.
+func (tc *phoneCallTest) dial(t *testing.T, route string) *httptest.ResponseRecorder {
+	t.Helper()
+	body, err := json.Marshal(map[string]string{"number": testPhoneNumber})
+	require.NoError(t, err)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, route, bytes.NewReader(body))
+	r.Header.Set("Mattermost-User-Id", tc.callerID)
+	tc.p.apiRouter.ServeHTTP(w, r)
+	return w
+}
+
+func errorID(t *testing.T, w *httptest.ResponseRecorder) string {
+	t.Helper()
+	var res httpResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&res))
+	return res.ErrID
+}
+
 func TestHostEndPhoneCallReason(t *testing.T) {
-	newPlugin := func(t *testing.T, lkURL string) (*Plugin, *pluginMocks.MockAPI) {
-		t.Helper()
-		mockAPI := &pluginMocks.MockAPI{}
-		mockMetrics := &serverMocks.MockMetrics{}
-
-		store, tearDown := NewTestStore(t)
-		t.Cleanup(tearDown)
-
-		cfg := &configuration{}
-		cfg.SetDefaults()
-		cfg.DefaultEnabled = model.NewPointer(true)
-		cfg.LiveKitURL = lkURL
-		cfg.LiveKitAPIKey = "key"
-		cfg.LiveKitAPISecret = "secret"
-
-		p := &Plugin{
-			MattermostPlugin:  plugin.MattermostPlugin{API: mockAPI},
-			metrics:           mockMetrics,
-			callsClusterLocks: map[string]*cluster.Mutex{},
-			store:             store,
-			nodeID:            "test-node",
-			botID:             model.NewId(),
-			configuration:     cfg,
-			dirtyCalls:        map[string]struct{}{},
-			dirtyCallsCh:      make(chan struct{}, 1),
-			dmNoAnswerTimers:  map[string]*time.Timer{},
-			sipNoAnswerTimers: map[string]*time.Timer{},
-		}
-		p.licenseChecker = enterprise.NewLicenseChecker(p.API)
-
-		mockMetrics.On("ObserveAppHandlersTime", mock.Anything, mock.AnythingOfType("float64")).Maybe()
-		mockMetrics.On("ObserveClusterMutexGrabTime", mock.Anything, mock.AnythingOfType("float64")).Maybe()
-		mockMetrics.On("ObserveClusterMutexLockedTime", mock.Anything, mock.AnythingOfType("float64")).Maybe()
-		mockMetrics.On("IncWebSocketEvent", mock.Anything, mock.Anything).Maybe()
-		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Maybe()
-		mockAPI.On("GetLicense").Return(&model.License{SkuShortName: "enterprise"}, nil).Maybe()
-		mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
-		mockAPI.On("KVDelete", mock.Anything).Return(nil).Maybe()
-		mockAPI.On("PublishWebSocketEvent", mock.AnythingOfType("string"), mock.Anything,
-			mock.AnythingOfType("*model.WebsocketBroadcast")).Maybe()
-		mockAPI.On("HasPermissionTo", mock.AnythingOfType("string"), model.PermissionManageSystem).Return(false).Maybe()
-		mockAllLogs(mockAPI)
-		return p, mockAPI
-	}
-
-	// Build a phone call owned by the caller, with its call post in the store.
-	setupPhoneCall := func(t *testing.T, p *Plugin, channelID, callerID string) string {
-		t.Helper()
-		postID := model.NewId()
-		createPost(t, p.store, postID, callerID, channelID)
-		call := &public.Call{
-			ID:        model.NewId(),
-			CreateAt:  time.Now().UnixMilli(),
-			StartAt:   time.Now().UnixMilli(),
-			ChannelID: channelID,
-			PostID:    postID,
-			ThreadID:  postID,
-			OwnerID:   callerID,
-			Props: public.CallProps{
-				Hosts:       []string{callerID},
-				Type:        callTypePhone,
-				PhoneNumber: "+14155551234",
-			},
-		}
-		require.NoError(t, p.store.CreateCall(call))
-		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
-			ID: model.NewId(), CallID: call.ID, UserID: callerID, JoinAt: time.Now().UnixMilli(), ConfirmedAt: time.Now().UnixMilli(),
-		}))
-		return postID
-	}
-
 	t.Run("hanging up while ringing cancels the call", func(t *testing.T) {
-		lk := newFakeLiveKitRoomService(t, []*livekit.ParticipantInfo{sipParticipantWithStatus("ringing")})
-		p, mockAPI := newPlugin(t, lk.URL)
-		channelID, callerID := model.NewId(), model.NewId()
-		postID := setupPhoneCall(t, p, channelID, callerID)
+		tc := newPhoneCallTest(t, sipParticipantWithStatus("ringing"))
+		callID, postID := tc.createCall(t, true)
+		tc.expectCallPostStatus(postID, callStatusCanceledByCaller)
 
-		mockAPI.On("UpdatePost", mock.MatchedBy(func(post *model.Post) bool {
-			return post.Id == postID && post.GetProp("call_status") == callStatusCanceledByCaller
-		})).Return(&model.Post{Id: postID}, nil).Once()
-
-		require.NoError(t, p.hostEnd(callerID, channelID))
-		mockAPI.AssertExpectations(t)
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, ""))
+		tc.api.AssertExpectations(t)
+		tc.assertCallEndPublished(t, callID, callStatusCanceledByCaller)
 	})
 
 	t.Run("hanging up an answered call ends it", func(t *testing.T) {
-		lk := newFakeLiveKitRoomService(t, []*livekit.ParticipantInfo{sipParticipantWithStatus(sipCallStatusActive)})
-		p, mockAPI := newPlugin(t, lk.URL)
-		channelID, callerID := model.NewId(), model.NewId()
-		postID := setupPhoneCall(t, p, channelID, callerID)
+		tc := newPhoneCallTest(t, sipParticipantWithStatus(sipCallStatusActive))
+		_, postID := tc.createCall(t, true)
+		tc.expectCallPostStatus(postID, callStatusEnded)
 
-		mockAPI.On("UpdatePost", mock.MatchedBy(func(post *model.Post) bool {
-			return post.Id == postID && post.GetProp("call_status") == callStatusEnded
-		})).Return(&model.Post{Id: postID}, nil).Once()
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, ""))
+		tc.api.AssertExpectations(t)
+	})
+}
 
-		require.NoError(t, p.hostEnd(callerID, channelID))
-		mockAPI.AssertExpectations(t)
+func TestHostEndCallID(t *testing.T) {
+	t.Run("a stale request for an earlier call does not end the redialed call", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus("ringing"))
+		staleCallID, stalePostID := tc.createCall(t, true)
+		tc.expectCallPostStatus(stalePostID, callStatusEnded)
+		tc.endCall(t)
+		require.Empty(t, tc.activeCallID(t))
+
+		newCallID, _ := tc.createCall(t, true)
+
+		err := tc.p.hostEnd(tc.callerID, tc.channelID, staleCallID)
+
+		require.ErrorIs(t, err, ErrCallMismatch)
+		require.Equal(t, newCallID, tc.activeCallID(t))
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.MatchedBy(func(post *model.Post) bool {
+			return post.GetProp("call_status") != callStatusEnded
+		}))
+	})
+
+	t.Run("a request for the active call ends it", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus(sipCallStatusActive))
+		callID, postID := tc.createCall(t, true)
+		tc.expectCallPostStatus(postID, callStatusEnded)
+
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, callID))
+
+		require.Empty(t, tc.activeCallID(t))
+		tc.api.AssertExpectations(t)
+	})
+
+	t.Run("a request without a call id ends the active call", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus(sipCallStatusActive))
+		_, postID := tc.createCall(t, true)
+		tc.expectCallPostStatus(postID, callStatusEnded)
+
+		require.NoError(t, tc.p.hostEnd(tc.callerID, tc.channelID, ""))
+
+		require.Empty(t, tc.activeCallID(t))
+	})
+}
+
+func TestHandleSIPNoAnswerTimer(t *testing.T) {
+	// fire arms the call's timer and runs its check straight away.
+	fire := func(tc *phoneCallTest, callID string) *sipNoAnswerTimer {
+		tc.p.startSIPNoAnswerTimer(tc.channelID, callID)
+		entry := tc.sipTimer()
+		entry.timer.Stop()
+		tc.p.handleSIPNoAnswerTimer(tc.channelID, entry)
+		return entry
+	}
+
+	t.Run("a callee who never answered is hung up as no answer", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		tc.lk.setParticipants(sipParticipantWithStatus("ringing"), tc.callerParticipant())
+		callID, postID := tc.createCall(t, true)
+		tc.expectCallPostStatus(postID, callStatusNoAnswer)
+
+		fire(tc, callID)
+
+		require.Empty(t, tc.activeCallID(t))
+		require.Nil(t, tc.sipTimer())
+		tc.api.AssertExpectations(t)
+		tc.assertCallEndPublished(t, callID, callStatusNoAnswer)
+	})
+
+	t.Run("a callee who answers while the timer waits for the lock is not hung up", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		caller := tc.callerParticipant()
+		// The first listing predates the answer; the re-check under the lock sees it.
+		tc.lk.queueLists(
+			[]*livekit.ParticipantInfo{sipParticipantWithStatus("ringing"), caller},
+			[]*livekit.ParticipantInfo{sipParticipantWithStatus(sipCallStatusActive), caller},
+		)
+		callID, _ := tc.createCall(t, true)
+
+		fire(tc, callID)
+
+		require.Equal(t, callID, tc.activeCallID(t))
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
+	})
+
+	t.Run("an answered call with a connected caller stays up", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		tc.lk.setParticipants(sipParticipantWithStatus(sipCallStatusActive), tc.callerParticipant())
+		// LiveKit lists the caller before their participant_joined webhook lands.
+		callID, _ := tc.createCall(t, false)
+
+		fire(tc, callID)
+
+		require.Equal(t, callID, tc.activeCallID(t))
+		require.Nil(t, tc.sipTimer())
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
+	})
+
+	t.Run("a confirmed caller LiveKit doesn't list still counts as connected", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus(sipCallStatusActive))
+		callID, _ := tc.createCall(t, true)
+
+		fire(tc, callID)
+
+		require.Equal(t, callID, tc.activeCallID(t))
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
+	})
+
+	t.Run("an answered call whose caller never connected is hung up as failed", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus(sipCallStatusActive))
+		callID, postID := tc.createCall(t, false)
+		tc.expectCallPostStatus(postID, callStatusFailed)
+
+		fire(tc, callID)
+
+		require.Empty(t, tc.activeCallID(t))
+		require.Nil(t, tc.sipTimer())
+		tc.api.AssertExpectations(t)
+	})
+
+	t.Run("a failed participant list leaves the call up and checks again", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		tc.lk.failLists(1)
+		callID, postID := tc.createCall(t, true)
+
+		entry := fire(tc, callID)
+
+		require.Equal(t, callID, tc.activeCallID(t))
+		require.Same(t, entry, tc.sipTimer())
+		require.True(t, entry.timer.Stop(), "a retry should be pending")
+
+		// LiveKit is back by the retry, and the callee is still ringing.
+		tc.lk.setParticipants(sipParticipantWithStatus("ringing"))
+		tc.expectCallPostStatus(postID, callStatusNoAnswer)
+
+		tc.p.handleSIPNoAnswerTimer(tc.channelID, entry)
+
+		require.Empty(t, tc.activeCallID(t))
+		require.Nil(t, tc.sipTimer())
+		tc.api.AssertExpectations(t)
+	})
+
+	t.Run("a failed re-check under the lock leaves the call up and checks again", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		// The first listing looks like a no-answer, but it predates the lock, so
+		// a failed re-check must not act on it.
+		tc.lk.setParticipants(sipParticipantWithStatus("ringing"), tc.callerParticipant())
+		tc.lk.failListsAfter(1, 1)
+		callID, postID := tc.createCall(t, true)
+
+		entry := fire(tc, callID)
+
+		require.Equal(t, callID, tc.activeCallID(t))
+		require.Same(t, entry, tc.sipTimer())
+		require.True(t, entry.timer.Stop(), "a retry should be pending")
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
+
+		// LiveKit is back by the retry, and the callee is still ringing.
+		tc.expectCallPostStatus(postID, callStatusNoAnswer)
+
+		tc.p.handleSIPNoAnswerTimer(tc.channelID, entry)
+
+		require.Empty(t, tc.activeCallID(t))
+		require.Nil(t, tc.sipTimer())
+		tc.api.AssertExpectations(t)
+	})
+
+	t.Run("a stale callback leaves the current call's timer alone", func(t *testing.T) {
+		tc := newPhoneCallTest(t, sipParticipantWithStatus("ringing"))
+		callID, _ := tc.createCall(t, true)
+		tc.p.startSIPNoAnswerTimer(tc.channelID, model.NewId())
+		stale := tc.sipTimer()
+		stale.timer.Stop()
+		tc.p.startSIPNoAnswerTimer(tc.channelID, callID)
+		current := tc.sipTimer()
+
+		tc.p.handleSIPNoAnswerTimer(tc.channelID, stale)
+
+		require.Same(t, current, tc.sipTimer())
+		require.Equal(t, callID, tc.activeCallID(t))
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
+	})
+}
+
+func TestHangUpSIPLeg(t *testing.T) {
+	info, leg := dialedSIPLeg("PA_dialed")
+
+	t.Run("removes the leg this dial created", func(t *testing.T) {
+		lk := newFakeLiveKit(t, leg)
+		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
+		require.Equal(t, []string{leg.Identity}, lk.removedIdentities())
+	})
+
+	t.Run("leaves a redial's leg to the same number alone", func(t *testing.T) {
+		_, redialed := dialedSIPLeg("PA_redialed")
+		lk := newFakeLiveKit(t, redialed)
+		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
+		require.Empty(t, lk.removedIdentities())
+	})
+
+	t.Run("does nothing once the leg is gone", func(t *testing.T) {
+		lk := newFakeLiveKit(t)
+		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
+		require.Empty(t, lk.removedIdentities())
+	})
+
+	t.Run("retries a failed participant list", func(t *testing.T) {
+		lk := newFakeLiveKit(t, leg)
+		lk.failLists(sipHangUpAttempts - 1)
+		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
+		require.Equal(t, []string{leg.Identity}, lk.removedIdentities())
+	})
+
+	t.Run("retries a failed removal", func(t *testing.T) {
+		lk := newFakeLiveKit(t, leg)
+		lk.failRemovals(sipHangUpAttempts - 1)
+		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
+		require.Equal(t, []string{leg.Identity}, lk.removedIdentities())
+	})
+
+	t.Run("gives up after the last attempt", func(t *testing.T) {
+		lk := newFakeLiveKit(t, leg)
+		lk.failRemovals(sipHangUpAttempts)
+		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
+		require.Empty(t, lk.removedIdentities())
+	})
+}
+
+// placeCall posts to /phone-call as the caller and returns the response.
+func (tc *phoneCallTest) placeCall(t *testing.T) phoneCallResponse {
+	t.Helper()
+	w := tc.dial(t, "/phone-call")
+	require.Equal(t, http.StatusOK, w.Code)
+	var res phoneCallResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&res))
+	return res
+}
+
+// callerJoined delivers the participant_joined webhook for the caller's session
+// under sid, as LiveKit sends it once their client has connected.
+func (tc *phoneCallTest) callerJoined(t *testing.T, sessionID, sid string) {
+	t.Helper()
+	tc.sendWebhook(t, tc.channelID, webhook.EventParticipantJoined, &livekit.ParticipantInfo{
+		Sid:      sid,
+		Identity: composeLivekitIdentity(tc.callerID, sessionID),
+		Kind:     livekit.ParticipantInfo_STANDARD,
+	})
+}
+
+func TestPhoneCallDialAfterCallerJoins(t *testing.T) {
+	failedDial := func() (*livekit.SIPParticipantInfo, error) {
+		return nil, errors.New("trunk unavailable")
+	}
+
+	// countDials makes every dial succeed, counting them.
+	countDials := func(tc *phoneCallTest) *atomic.Int32 {
+		var dials atomic.Int32
+		info, leg := dialedSIPLeg("PA_dialed")
+		tc.lk.setDial(func() (*livekit.SIPParticipantInfo, error) {
+			dials.Add(1)
+			tc.lk.setParticipants(leg)
+			return info, nil
+		})
+		return &dials
+	}
+
+	// expectAnnounce reports on the returned channel when the call post is created.
+	expectAnnounce := func(tc *phoneCallTest) <-chan struct{} {
+		announced := make(chan struct{}, 1)
+		tc.api.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: model.NewId()}, nil).
+			Run(func(mock.Arguments) { announced <- struct{}{} }).Once()
+		return announced
+	}
+
+	t.Run("placing the call records the intent without dialing or announcing", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		dials := countDials(tc)
+
+		res := tc.placeCall(t)
+
+		require.Equal(t, res.CallID, tc.activeCallID(t))
+		call, err := tc.p.store.GetCall(res.CallID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Equal(t, res.SessionID, call.Props.DialSessionID)
+		require.Equal(t, res.CallID, tc.sipTimer().callID)
+		require.Never(t, func() bool { return dials.Load() > 0 }, 200*time.Millisecond, 20*time.Millisecond)
+		tc.api.AssertNotCalled(t, "CreatePost", mock.Anything)
+	})
+
+	t.Run("an active call in the bot DM is never reused", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		dials := countDials(tc)
+		callID, _ := tc.createCall(t, true)
+		// A leftover call the caller has no session in must be refused too, or
+		// the dial would use that call's number rather than the one requested.
+		_, err := tc.p.store.DeleteCallsSessions(callID)
+		require.NoError(t, err)
+
+		w := tc.dial(t, "/phone-call")
+
+		require.Equal(t, http.StatusConflict, w.Code)
+		require.Equal(t, errIDCallInProgress, errorID(t, w))
+		call, err := tc.p.store.GetCall(callID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Empty(t, call.Props.DialSessionID)
+		require.Nil(t, tc.sipTimer())
+		require.Zero(t, dials.Load())
+	})
+
+	t.Run("a second call while one is connecting is refused", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		res := tc.placeCall(t)
+
+		w := tc.dial(t, "/phone-call")
+
+		require.Equal(t, http.StatusConflict, w.Code)
+		require.Equal(t, errIDCallInProgress, errorID(t, w))
+		require.Equal(t, res.CallID, tc.activeCallID(t))
+	})
+
+	t.Run("the caller's first confirmation dials once and announces the call", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		dials := countDials(tc)
+		announced := expectAnnounce(tc)
+		res := tc.placeCall(t)
+
+		tc.callerJoined(t, res.SessionID, "PA_caller")
+
+		select {
+		case <-announced:
+		case <-time.After(5 * time.Second):
+			t.Fatal("call was not announced after the dial")
+		}
+		require.EqualValues(t, 1, dials.Load())
+		call, err := tc.p.store.GetCall(res.CallID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Empty(t, call.Props.DialSessionID)
+		require.Equal(t, res.CallID, tc.sipTimer().callID)
+
+		// A duplicate delivery and a reconnect (same session, new SID) must not dial again.
+		tc.callerJoined(t, res.SessionID, "PA_caller")
+		tc.callerJoined(t, res.SessionID, "PA_caller_reconnected")
+		require.Never(t, func() bool { return dials.Load() > 1 }, 300*time.Millisecond, 20*time.Millisecond)
+		require.Equal(t, res.CallID, tc.activeCallID(t))
+	})
+
+	t.Run("another session confirming first doesn't dial, the caller's session still does", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		dials := countDials(tc)
+		announced := expectAnnounce(tc)
+		res := tc.placeCall(t)
+
+		// E.g. a delayed webhook or a stale client from an earlier call.
+		tc.callerJoined(t, model.NewId(), "PA_other")
+		require.Never(t, func() bool { return dials.Load() > 0 }, 300*time.Millisecond, 20*time.Millisecond)
+		call, err := tc.p.store.GetCall(res.CallID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Equal(t, res.SessionID, call.Props.DialSessionID)
+
+		tc.callerJoined(t, res.SessionID, "PA_caller")
+
+		select {
+		case <-announced:
+		case <-time.After(5 * time.Second):
+			t.Fatal("call was not announced after the dial")
+		}
+		require.EqualValues(t, 1, dials.Load())
+	})
+
+	t.Run("a failed dial ends the call as failed without announcing it", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		tc.lk.setDial(failedDial)
+		res := tc.placeCall(t)
+
+		tc.callerJoined(t, res.SessionID, "PA_caller")
+
+		require.Eventually(t, func() bool { return tc.activeCallID(t) == "" }, 5*time.Second, 20*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return tc.sipTimer() == nil
+		}, 5*time.Second, 20*time.Millisecond)
+		tc.assertCallEndPublished(t, res.CallID, callStatusFailed)
+		tc.api.AssertNotCalled(t, "CreatePost", mock.Anything)
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
+	})
+
+	t.Run("a caller who leaves during the dial gets the SIP leg hung up", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		info, leg := dialedSIPLeg("PA_dialed")
+		tc.lk.setDial(func() (*livekit.SIPParticipantInfo, error) {
+			tc.lk.setParticipants(leg)
+			tc.endCall(t)
+			return info, nil
+		})
+		res := tc.placeCall(t)
+
+		tc.callerJoined(t, res.SessionID, "PA_caller")
+
+		require.Eventually(t, func() bool {
+			return slices.Equal(tc.lk.removedIdentities(), []string{leg.Identity})
+		}, 5*time.Second, 20*time.Millisecond)
+		require.Empty(t, tc.activeCallID(t))
+		tc.api.AssertNotCalled(t, "CreatePost", mock.Anything)
+	})
+
+	t.Run("a caller who never connects leaves no call behind", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		dials := countDials(tc)
+		tc.lk.setParticipants()
+		res := tc.placeCall(t)
+
+		entry := tc.sipTimer()
+		entry.timer.Stop()
+		tc.p.handleSIPNoAnswerTimer(tc.channelID, entry)
+
+		require.Empty(t, tc.activeCallID(t))
+		require.Nil(t, tc.sipTimer())
+		require.Zero(t, dials.Load())
+		tc.assertCallEndPublished(t, res.CallID, callStatusFailed)
+		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
+
+		// A redial is not refused as already in progress.
+		tc.placeCall(t)
+	})
+}
+
+func TestHandleAddPhoneCallAfterDial(t *testing.T) {
+	t.Run("no active call has a stable error id", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+
+		w := tc.dial(t, "/add-phone-call")
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		require.Equal(t, errIDNoActiveCall, errorID(t, w))
+	})
+
+	t.Run("a successful dial returns the call", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		callID, _ := tc.createCall(t, true)
+		info, leg := dialedSIPLeg("PA_dialed")
+		tc.lk.setDial(func() (*livekit.SIPParticipantInfo, error) {
+			tc.lk.setParticipants(leg)
+			return info, nil
+		})
+
+		w := tc.dial(t, "/add-phone-call")
+
+		require.Equal(t, http.StatusOK, w.Code)
+		var res map[string]string
+		require.NoError(t, json.NewDecoder(w.Body).Decode(&res))
+		require.Equal(t, callID, res["call_id"])
+		require.NotContains(t, res, "sip_call_id")
+		require.Empty(t, tc.lk.removedIdentities())
+	})
+
+	t.Run("a caller who leaves during the dial gets the SIP leg hung up", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		callID, _ := tc.createCall(t, true)
+		info, leg := dialedSIPLeg("PA_dialed")
+		tc.lk.setDial(func() (*livekit.SIPParticipantInfo, error) {
+			tc.lk.setParticipants(leg)
+			_, err := tc.p.store.DeleteCallsSessions(callID)
+			assert.NoError(t, err)
+			return info, nil
+		})
+
+		w := tc.dial(t, "/add-phone-call")
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		require.Equal(t, errIDNoActiveCall, errorID(t, w))
+		require.Equal(t, []string{leg.Identity}, tc.lk.removedIdentities())
+	})
+
+	t.Run("a call that ends during the dial gets the SIP leg hung up", func(t *testing.T) {
+		tc := newPhoneCallTest(t)
+		tc.createCall(t, true)
+		tc.api.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Maybe()
+		info, leg := dialedSIPLeg("PA_dialed")
+		tc.lk.setDial(func() (*livekit.SIPParticipantInfo, error) {
+			tc.lk.setParticipants(leg)
+			tc.endCall(t)
+			return info, nil
+		})
+
+		w := tc.dial(t, "/add-phone-call")
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		require.Equal(t, errIDNoActiveCall, errorID(t, w))
+		require.Equal(t, []string{leg.Identity}, tc.lk.removedIdentities())
 	})
 }

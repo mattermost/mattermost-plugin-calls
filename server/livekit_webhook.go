@@ -54,6 +54,7 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 		p.LogError("handleLiveKitParticipantJoined: failed to lock call", "channelID", channelID, "err", err.Error())
 		return
 	}
+
 	defer p.unlockCall(channelID)
 
 	if state == nil || state.Call.EndAt > 0 {
@@ -64,6 +65,10 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 
 	now := time.Now().UnixMilli()
 	session := state.sessions[sessionID]
+
+	// Only the first confirmation of a session can trigger a phone dial. A
+	// reconnect rebinds the SID and a duplicate is a no-op, so neither reaches it.
+	firstConfirm := false
 
 	switch {
 	case session != nil && session.ConfirmedAt > 0 && session.SID == sid:
@@ -96,6 +101,7 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 		}
 		session.SID = sid
 		session.ConfirmedAt = now
+		firstConfirm = true
 
 	default:
 		// No row at all. Either the token endpoint's row was reaped, or the token
@@ -118,6 +124,14 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 			return
 		}
 		state.sessions[sessionID] = session
+		firstConfirm = true
+	}
+
+	// The flag is consumed under the call lock, so concurrent deliveries can't
+	// both dial.
+	dialPhone := firstConfirm && state.Call.Props.DialSessionID == sessionID
+	if dialPhone {
+		state.Call.Props.DialSessionID = ""
 	}
 
 	// Participants feeds the call post's attendee list, so the bot is excluded
@@ -147,6 +161,10 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("handleLiveKitParticipantJoined: failed to update call",
 			"channelID", channelID, "err", err.Error())
+	}
+
+	if dialPhone {
+		go p.dialPhoneCall(channelID, state.Call.ID, userID)
 	}
 
 	p.LogInfo("call session confirmed",
@@ -448,10 +466,7 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 		"reason", reason,
 		"sessionCount", 0)
 
-	p.publishWebSocketEvent(wsEventCallEnd, map[string]interface{}{}, &WebSocketBroadcast{
-		ChannelID:           channelID,
-		ReliableClusterSend: true,
-	})
+	p.publishCallEnd(channelID, state.Call.ID, endReason)
 
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("endEmptyCall: failed to update call", "channelID", channelID, "err", err.Error())

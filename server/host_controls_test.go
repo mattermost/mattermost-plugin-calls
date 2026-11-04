@@ -45,7 +45,7 @@ func TestHostEndPendingPhoneCall(t *testing.T) {
 		dirtyCalls:        map[string]struct{}{},
 		dirtyCallsCh:      make(chan struct{}, 1),
 		dmNoAnswerTimers:  map[string]*time.Timer{},
-		sipNoAnswerTimers: map[string]*time.Timer{},
+		sipNoAnswerTimers: map[string]*sipNoAnswerTimer{},
 	}
 	p.licenseChecker = enterprise.NewLicenseChecker(p.API)
 
@@ -86,7 +86,7 @@ func TestHostEndPendingPhoneCall(t *testing.T) {
 	callID := state.Call.ID
 	p.startSIPNoAnswerTimer(channelID, callID)
 
-	require.NoError(t, p.hostEnd(userID, channelID))
+	require.NoError(t, p.hostEnd(userID, channelID, ""))
 
 	_, err = store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
 	require.ErrorIs(t, err, db.ErrNotFound)

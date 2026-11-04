@@ -1933,14 +1933,14 @@ export default class CallClient extends EventEmitter {
     }
 
     /**
-     * Whether a participant is the recording/transcribing bot. The bot is flagged
-     * server-side with a LiveKit attribute on its token grant (see
-     * livekitAttributeBot), so this works regardless of how the participant was
-     * discovered and is robust to multi-node. Used to keep the bot out of the
-     * participant list (no USER_JOINED/USER_LEFT, no join/leave sound or tile).
+     * Whether a participant is the recording/transcribing bot, by comparing the
+     * user id in its identity with the bot user id from the join response. Both
+     * are server-controlled; participant attributes are not, since participants
+     * can overwrite their own. Used to keep the bot out of the participant list
+     * (no USER_JOINED/USER_LEFT, no join/leave sound or tile).
      */
     private isBotParticipant(p: Participant): boolean {
-        return p.attributes?.[CALL_ATTRIBUTES.BOT] === 'true';
+        return Boolean(this.botUserID) && this.parseUserIdAndSessionIdFromIdentity(p).userID === this.botUserID;
     }
 
     private isSipParticipant(p: Participant): boolean {

@@ -459,9 +459,11 @@ func TestWebSocketMessageHasBeenPostedUTF8Validation(t *testing.T) {
 			}
 		}
 
-		// Test that invalid types are rejected
+		// Test that invalid types are rejected. This includes the v1 transient-state
+		// messages removed in MM-69116 (mute/video/raise-hand now live in LiveKit).
 		invalidTypes := []string{
 			"invalid", "unknown", "hack", "exploit", "",
+			"mute", "unmute", "video_on", "video_off", "raise_hand", "unraise_hand",
 		}
 
 		for _, msgType := range invalidTypes {
@@ -621,7 +623,7 @@ func TestHandleJoin(t *testing.T) {
 
 		// Last participant leaving triggers the call_end broadcast.
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{},
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{"call_id": state.Call.ID, "reason": callStatusEnded},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
 		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()
@@ -758,7 +760,7 @@ func TestHandleJoin(t *testing.T) {
 
 		// Last participant leaving triggers the call_end broadcast.
 		mockMetrics.On("IncWebSocketEvent", "out", wsEventCallEnd).Once()
-		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{},
+		mockAPI.On("PublishWebSocketEvent", wsEventCallEnd, map[string]any{"call_id": state.Call.ID, "reason": callStatusEnded},
 			&model.WebsocketBroadcast{ChannelId: channelID, ReliableClusterSend: true}).Once()
 
 		mockAPI.On("UpdatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: postID}, nil).Once()

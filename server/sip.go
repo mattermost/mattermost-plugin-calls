@@ -8,11 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/livekit/protocol/auth"
 	"github.com/livekit/protocol/livekit"
+	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/twitchtv/twirp"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
@@ -34,6 +36,12 @@ const sipOutboundRingingTimeout = 60 * time.Second
 // WaitUntilAnswered, so LiveKit returns as soon as the SIP leg is created; this
 // only guards against an unresponsive LiveKit SIP service.
 const sipOutboundDialTimeout = 5 * time.Second
+
+// sipHangUpAttempts and sipHangUpRetryDelay bound how hard hangUpSIPLeg tries.
+const (
+	sipHangUpAttempts   = 3
+	sipHangUpRetryDelay = 500 * time.Millisecond
+)
 
 // livekitHTTPURL converts the configured LiveKit WebSocket URL to an HTTP URL
 // suitable for Twirp API calls.
@@ -123,4 +131,116 @@ func (p *Plugin) dialSIPParticipant(cfg *configuration, trunkID, phoneNumber, ro
 		"phoneNumber", phoneNumber, "room", roomName)
 
 	return resp, nil
+}
+
+// hangUpSIPLeg removes a SIP leg that the request which dialed it can no longer
+// use. A redial of the same number reuses the participant identity, so the leg
+// is only removed while LiveKit still lists it under the SID this dial got.
+// Nothing else hangs up a leg its call has lost track of, so LiveKit errors are
+// retried a few times.
+func (p *Plugin) hangUpSIPLeg(room string, info *livekit.SIPParticipantInfo) {
+	identity := info.GetParticipantIdentity()
+
+	var err error
+	for attempt := range sipHangUpAttempts {
+		if attempt > 0 {
+			time.Sleep(sipHangUpRetryDelay)
+		}
+
+		var participants []*livekit.ParticipantInfo
+		if participants, err = p.livekitListParticipants(room); err != nil {
+			continue
+		}
+		if !slices.ContainsFunc(participants, func(participant *livekit.ParticipantInfo) bool {
+			return participant.Identity == identity && participant.Sid == info.GetParticipantId()
+		}) {
+			p.LogDebug("hangUpSIPLeg: SIP leg already gone", "room", room, "identity", identity)
+			return
+		}
+		if err = p.livekitRemoveParticipant(room, identity); err == nil {
+			return
+		}
+	}
+
+	p.LogError("hangUpSIPLeg: failed to hang up SIP leg", "room", room, "identity", identity, "err", err.Error())
+}
+
+// dialPhoneCall places the outbound leg of a phone call. It runs once the
+// caller's session is confirmed, after the call lock was released. The call is
+// announced only after a successful dial, so a failed one never shows up to
+// observers.
+func (p *Plugin) dialPhoneCall(channelID, callID, userID string) {
+	state, err := p.lockCallReturnState(channelID)
+	if err != nil {
+		p.LogError("dialPhoneCall: failed to lock call", "channelID", channelID, "callID", callID, "err", err.Error())
+		return
+	}
+	if state == nil || state.Call.ID != callID {
+		p.unlockCall(channelID)
+		return
+	}
+	number := state.Call.Props.PhoneNumber
+	displayNumber := state.Call.Props.DisplayNumber
+	p.unlockCall(channelID)
+
+	// The dial can take the full sipOutboundDialTimeout, so the lock isn't held.
+	// We don't set WaitUntilAnswered, so LiveKit returns once the SIP leg is
+	// created (INVITE dispatched) rather than once the callee picks up.
+	trunkID := p.resolveSIPTrunkID(p.getConfiguration())
+	var info *livekit.SIPParticipantInfo
+	dialErr := errors.New("outbound dialing is not configured")
+	if trunkID != "" {
+		info, dialErr = p.createSIPParticipant(trunkID, number, channelID, displayNumber)
+	}
+
+	state, err = p.lockCallReturnState(channelID)
+	if err != nil {
+		p.LogError("dialPhoneCall: failed to re-lock call after SIP dial", "channelID", channelID, "callID", callID, "err", err.Error())
+		if dialErr == nil {
+			p.hangUpSIPLeg(channelID, info)
+		}
+		return
+	}
+	unlocked := false
+	defer func() {
+		if !unlocked {
+			p.unlockCall(channelID)
+		}
+	}()
+
+	// The call can end during the dial, e.g. the caller hung up. Whatever ended it
+	// has already cleaned up, so only a leg that was created needs to go.
+	if state == nil || state.Call.ID != callID {
+		if dialErr == nil {
+			p.LogInfo("dialPhoneCall: call ended during SIP dial, hanging up",
+				"callID", callID, "channelID", channelID, "sipCallID", info.GetSipCallId())
+			unlocked = true
+			p.unlockCall(channelID)
+			p.hangUpSIPLeg(channelID, info)
+		}
+		return
+	}
+
+	if dialErr != nil {
+		p.LogError("dialPhoneCall: failed to create SIP participant",
+			"err", dialErr.Error(), "callID", callID, "channelID", channelID)
+		p.cancelSIPNoAnswerTimer(channelID)
+		if err := p.cleanCallState(&state.Call, "sip_dial_failed", callEndReasonFailed); err != nil {
+			p.LogError("dialPhoneCall: failed to clean call state", "channelID", channelID, "err", err.Error())
+		}
+		unlocked = true
+		p.unlockCall(channelID)
+
+		p.endDMCallRoom("dialPhoneCall", channelID)
+		p.publishCallEnd(channelID, callID, callEndReasonFailed)
+		return
+	}
+
+	p.announceCallStarted(state, userID, channelID, "", "", model.ChannelTypeDirect)
+
+	p.LogInfo("phone call dialed",
+		"callID", callID,
+		"channelID", channelID,
+		"userID", userID,
+		"sipCallID", info.GetSipCallId())
 }

@@ -17,11 +17,13 @@ import type CallClient from 'src/clients/call/call_client';
 import {CALL_EVENT} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
 import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
+import {CallPostStatus} from 'src/types/types';
 import {isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
 
 import {
     dialFromUI,
     dialPhoneNumber,
+    handlePhoneCallEnd,
     installTelLinkInterceptor,
     openInOSDialer,
     parseTelHref,
@@ -108,6 +110,12 @@ describe('phone_call', () => {
         setDesktopAPI(undefined);
     });
 
+    // Only the window that placed a call says how it ended.
+    const placeCall = async (store: {dispatch: jest.Mock; getState: jest.Mock}) => {
+        mockedFetch.mockResolvedValueOnce({call_id: 'call-id', channel_id: 'bot-dm'});
+        await dialPhoneNumber(store as never, '+15550100', jest.fn());
+    };
+
     describe('parseTelHref', () => {
         it('returns the number when there are no parameters', () => {
             expect(parseTelHref('tel:+15551234567')).toEqual({number: '+15551234567', params: {}});
@@ -136,6 +144,7 @@ describe('phone_call', () => {
     describe('phoneCallErrorMessage', () => {
         it.each([
             ['invalid_number', defineMessage({defaultMessage: 'That doesn\'t look like a valid phone number.'})],
+            ['ambiguous_number', defineMessage({defaultMessage: 'Start international numbers with + and the country code.'})],
             ['sip_number_not_allowed', defineMessage({defaultMessage: 'Calling this number isn\'t permitted.'})],
             ['sip_team_not_allowed', defineMessage({defaultMessage: 'You don\'t have permission to place phone calls.'})],
             ['outbound_disabled', defineMessage({defaultMessage: 'Phone calls aren\'t available. Contact your system admin.'})],
@@ -366,7 +375,6 @@ describe('phone_call', () => {
             url: 'wss://phone.url',
             call_id: 'call-id',
             channel_id: 'bot-dm',
-            sip_call_id: 'SCL_123',
             call_state: {id: 'call-id'},
         };
         const errorTitle = defineMessage({defaultMessage: 'Unable to place phone call'});
@@ -605,11 +613,8 @@ describe('phone_call', () => {
     });
 
     describe('watchPhoneCall', () => {
-        const dialFailed = defineMessage({defaultMessage: 'The call couldn\'t be placed. Please try again.'});
-
         class FakeClient extends EventEmitter {
             isConnected = true;
-            hasSIPParticipant = jest.fn(() => true);
             disconnect = jest.fn(() => {
                 this.emit(CALL_EVENT.DISCONNECTING);
                 this.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
@@ -618,14 +623,11 @@ describe('phone_call', () => {
         }
 
         let client: FakeClient;
-        let store: {dispatch: jest.Mock; getState: jest.Mock};
-
-        const watch = (connecting: Promise<void> = Promise.resolve()) => watchPhoneCall(store as never, client as unknown as CallClient, 'bot-dm', connecting);
+        const watch = (connecting: Promise<void> = Promise.resolve()) => watchPhoneCall(client as unknown as CallClient, 'bot-dm', 'call-1', connecting);
 
         beforeEach(() => {
             jest.useFakeTimers();
             client = new FakeClient();
-            store = {dispatch: jest.fn(), getState: jest.fn(() => ({}))};
             mockedHostEndCallForEveryone.mockResolvedValue({});
         });
 
@@ -637,7 +639,7 @@ describe('phone_call', () => {
             watch();
 
             client.emit(CALL_EVENT.DISCONNECTING);
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm', 'call-1');
 
             client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
             expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
@@ -648,7 +650,7 @@ describe('phone_call', () => {
 
             client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
 
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm', 'call-1');
         });
 
         it('does not end the call again when the server already deleted the room', () => {
@@ -659,13 +661,21 @@ describe('phone_call', () => {
             expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
         });
 
+        it('does not end the call again when the server removed the caller', () => {
+            watch();
+
+            client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.PARTICIPANT_REMOVED);
+
+            expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
+        });
+
         it('ends the call when the join fails', async () => {
             const connecting = Promise.reject(new Error('join failed'));
             watch(connecting);
 
             await connecting.catch(() => {});
 
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm', 'call-1');
         });
 
         it('ends the call when the caller cancels before joining', async () => {
@@ -675,7 +685,7 @@ describe('phone_call', () => {
 
             await connecting;
 
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm', 'call-1');
         });
 
         it('keeps the call once the join succeeds', async () => {
@@ -697,73 +707,58 @@ describe('phone_call', () => {
             expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
         });
 
-        it('hangs up when the phone leg leaves', () => {
+        it('leaves the call alone when the phone leg leaves; the server ends it', () => {
             watch();
-            client.emit(CALL_EVENT.CONNECTED);
-            client.hasSIPParticipant.mockReturnValue(false);
-
-            client.emit(CALL_EVENT.SIP_LEFT, 'hangup');
-
-            expect(client.disconnect).toHaveBeenCalled();
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
-        });
-
-        it('stays in the call when someone other than the phone leg leaves', () => {
-            watch();
-            client.emit(CALL_EVENT.CONNECTED);
-
-            client.emit(CALL_EVENT.USER_LEFT, 'session', 'user');
-
-            expect(client.disconnect).not.toHaveBeenCalled();
-        });
-
-        it('stays in the call while another phone leg is still in the room', () => {
-            watch();
-            client.emit(CALL_EVENT.CONNECTED);
 
             client.emit(CALL_EVENT.SIP_LEFT, 'hangup');
 
             expect(client.disconnect).not.toHaveBeenCalled();
+            expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('handlePhoneCallEnd', () => {
+        const store = {dispatch: jest.fn(), getState: jest.fn(() => ({}))};
+
+        it.each([
+            [CallPostStatus.NoAnswer, defineMessage({defaultMessage: 'No answer'}), defineMessage({defaultMessage: 'Nobody answered the call.'})],
+            [CallPostStatus.Declined, defineMessage({defaultMessage: 'Call declined'}), defineMessage({defaultMessage: 'The number you called is busy or declined the call.'})],
+            [CallPostStatus.Failed, defineMessage({defaultMessage: 'Unable to place phone call'}), defineMessage({defaultMessage: 'The call couldn\'t be placed. Please try again.'})],
+        ])('tells the caller a call that ended as %s why', async (reason, title, message) => {
+            await placeCall(store);
+
+            handlePhoneCallEnd(store as never, 'call-id', reason);
+
+            expect(mockedDisplayGenericErrorModal).toHaveBeenCalledWith(title, message);
+            expect(store.dispatch).toHaveBeenCalledWith(mockedDisplayGenericErrorModal.mock.results[0].value);
         });
 
-        it('reports a failed dial when the phone leg is already gone after joining', () => {
-            watch();
-            client.hasSIPParticipant.mockReturnValue(false);
-            client.emit(CALL_EVENT.CONNECTED);
+        it.each([
+            CallPostStatus.Ended,
+            CallPostStatus.Canceled,
+        ])('says nothing about a call that ended as %s', async (reason) => {
+            await placeCall(store);
 
-            jest.advanceTimersByTime(4999);
-            expect(client.disconnect).not.toHaveBeenCalled();
+            handlePhoneCallEnd(store as never, 'call-id', reason);
 
-            jest.advanceTimersByTime(1);
-            expect(mockedDisplayGenericErrorModal).toHaveBeenCalledWith(
-                defineMessage({defaultMessage: 'Unable to place phone call'}),
-                dialFailed,
-            );
-            expect(client.disconnect).toHaveBeenCalled();
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
-        });
-
-        it('keeps the call when the phone leg shows up within the grace period', () => {
-            watch();
-            client.emit(CALL_EVENT.CONNECTED);
-
-            jest.advanceTimersByTime(5000);
-
-            expect(client.disconnect).not.toHaveBeenCalled();
             expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
         });
 
-        it('does not report a failed dial after the caller has left', () => {
-            watch();
-            client.hasSIPParticipant.mockReturnValue(false);
-            client.emit(CALL_EVENT.CONNECTED);
-            client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
+        it('says nothing about a call this window did not place', async () => {
+            await placeCall(store);
 
-            jest.advanceTimersByTime(5000);
+            handlePhoneCallEnd(store as never, 'other-call-id', CallPostStatus.Declined);
 
             expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
+        });
+
+        it('says how a call ended only once', async () => {
+            await placeCall(store);
+
+            handlePhoneCallEnd(store as never, 'call-id', CallPostStatus.Declined);
+            handlePhoneCallEnd(store as never, 'call-id', CallPostStatus.Declined);
+
+            expect(mockedDisplayGenericErrorModal).toHaveBeenCalledTimes(1);
         });
     });
 });
