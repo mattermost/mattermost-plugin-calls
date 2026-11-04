@@ -19,7 +19,7 @@
             "message": "No locator or page script code in specs. Use a page object in e2e/lib or @mattermost/playwright-lib."
           },
           {
-            "selector": "CallExpression[callee.object.name='page'][callee.property.name=/^(click|dblclick|fill|hover|press|type|check|uncheck|selectOption|setInputFiles|focus|tap)$/]",
+            "selector": "CallExpression[callee.property.name=/^(click|dblclick|fill|hover|press|type|check|uncheck|selectOption|setInputFiles|focus|tap)$/]",
             "message": "No raw page interactions in specs. Use a page object method."
           },
           {
