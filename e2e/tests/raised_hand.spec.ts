@@ -110,4 +110,46 @@ test.describe('raised hand', {tag: '@livekit'}, () => {
 
         await Promise.all([user0Page.leaveCall(), user1Page.leaveCall(), user2Page.leaveCall()]);
     });
+
+    test.describe('lower hand on unmute setting', () => {
+        const setLowerHandOnUnmute = async (devPage: PlaywrightDevPage, value: 'on' | 'off') => {
+            await devPage.page.evaluate((v) => window.localStorage.setItem('calls_lower_hand_on_unmute', v), value);
+        };
+
+        test('enabled - hand is lowered after staying unmuted', async ({page}) => {
+            const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
+            const [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
+            await setLowerHandOnUnmute(user1Page, 'on');
+
+            await user1Popout.raiseHandOnPopout();
+            await user0Popout.expectRaisedHandOnPopout(usernames[1]);
+
+            await user1Page.unmute();
+            await user0Popout.expectMutedOnPopout(usernames[1], false);
+
+            // Lowered automatically once user1 stays unmuted past the delay.
+            await user0Popout.expectUnRaisedHandOnPoput(usernames[1]);
+            await user0Popout.expectRaisedHandChipHiddenOnPopout();
+
+            await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
+        });
+
+        test('disabled - hand stays raised after unmuting', async ({page}) => {
+            const [user0Page, user0Popout] = await startCallAndPopoutFromPage(new PlaywrightDevPage(page));
+            const [user1Page, user1Popout] = await joinCallAndPopout(userStorages[1]);
+            await setLowerHandOnUnmute(user1Page, 'off');
+
+            await user1Popout.raiseHandOnPopout();
+            await user0Popout.expectRaisedHandOnPopout(usernames[1]);
+
+            await user1Page.unmute();
+            await user0Popout.expectMutedOnPopout(usernames[1], false);
+
+            // Wait well past the auto-lower delay; the hand must still be raised.
+            await user0Popout.page.waitForTimeout(6000);
+            await user0Popout.expectRaisedHandOnPopout(usernames[1]);
+
+            await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
+        });
+    });
 });

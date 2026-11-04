@@ -18,6 +18,7 @@ import {
     getWebappUtils,
     hasLiveCallClient,
     isMobile,
+    lowerHandOnUnmute,
     maxAttemptsReachedErr,
     runWithRetry,
     selfFirstSortSessions,
@@ -807,3 +808,20 @@ describe('utils', () => {
     });
 });
 
+describe('lowerHandOnUnmute', () => {
+    afterEach(() => {
+        window.localStorage.removeItem('calls_lower_hand_on_unmute');
+    });
+
+    test('defaults to off when unset', () => {
+        expect(lowerHandOnUnmute()).toBe(false);
+    });
+
+    test('is on only when explicitly set to on', () => {
+        window.localStorage.setItem('calls_lower_hand_on_unmute', 'on');
+        expect(lowerHandOnUnmute()).toBe(true);
+
+        window.localStorage.setItem('calls_lower_hand_on_unmute', 'off');
+        expect(lowerHandOnUnmute()).toBe(false);
+    });
+});
