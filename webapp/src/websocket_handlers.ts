@@ -14,7 +14,6 @@ import {
     UserDismissedNotification,
     UserJoinedData,
     UserLeftData,
-    UserRaiseUnraiseHandData,
     UserReactionData,
     UserRemovedData,
     UserScreenOnOffData,
@@ -48,7 +47,7 @@ import {logWarn} from 'src/log';
 import {handlePhoneCallEnd} from 'src/phone_call';
 import {getPhoneCallProps} from 'src/phone_utils';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
-import {userLoweredHand, userRaisedHand, userReacted, userReactedTimeout} from 'src/state/session/actions';
+import {userReacted, userReactedTimeout} from 'src/state/session/actions';
 import {
     CallEndData,
     HostControlNotice,
@@ -235,20 +234,6 @@ export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScree
         return;
     }
     store.dispatch(userScreenUnshared(channelID, ev.data.session_id, ev.data.userID));
-}
-
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch(userRaisedHand(channelID, ev.data.session_id, ev.data.userID, ev.data.raised_hand));
-}
-
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch(userLoweredHand(channelID, ev.data.session_id, ev.data.userID));
 }
 
 // dispatchReaction stores a reaction (with the sender's display name resolved from the
