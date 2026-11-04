@@ -336,6 +336,60 @@ func TestCallStateGetHostID(t *testing.T) {
 	})
 }
 
+func TestCallStateGetHostIDUnconfirmed(t *testing.T) {
+	sess := func(userID string, joinAt, confirmedAt int64, sip bool) *public.CallSession {
+		return &public.CallSession{ID: "s_" + userID, UserID: userID, JoinAt: joinAt, ConfirmedAt: confirmedAt, IsSIPParticipant: sip}
+	}
+	build := func(props public.CallProps, sessions ...*public.CallSession) *callState {
+		cs := &callState{Call: public.Call{Props: props}, sessions: map[string]*public.CallSession{}}
+		for _, s := range sessions {
+			cs.sessions[s.ID] = s
+		}
+		return cs
+	}
+
+	t.Run("only unconfirmed first joiner is host", func(t *testing.T) {
+		cs := build(public.CallProps{}, sess("userA", 1000, 0, false), sess("userB", 2000, 0, false))
+		require.Equal(t, "userA", cs.getHostID("botID"))
+	})
+
+	t.Run("unconfirmed host yields to confirmed user", func(t *testing.T) {
+		cs := build(public.CallProps{Hosts: []string{"userA"}},
+			sess("userA", 1000, 0, false), sess("userB", 2000, 2100, false))
+		require.Equal(t, "userB", cs.getHostID("botID"))
+	})
+
+	t.Run("confirmed non-SIP beats earlier unconfirmed and SIP", func(t *testing.T) {
+		cs := build(public.CallProps{},
+			sess("userA", 1000, 0, false), sess("+1415", 1500, 1600, true), sess("userC", 3000, 3100, false))
+		require.Equal(t, "userC", cs.getHostID("botID"))
+	})
+
+	t.Run("confirmed host is kept when former pending host confirms later", func(t *testing.T) {
+		cs := build(public.CallProps{Hosts: []string{"userB"}},
+			sess("userA", 1000, 4000, false), sess("userB", 2000, 2100, false))
+		require.Equal(t, "userB", cs.getHostID("botID"))
+	})
+
+	t.Run("bot confirmation does not count", func(t *testing.T) {
+		cs := build(public.CallProps{Hosts: []string{"userA"}},
+			sess("userA", 1000, 0, false), sess("botID", 500, 600, false))
+		require.Equal(t, "userA", cs.getHostID("botID"))
+	})
+
+	t.Run("pending locked host is skipped", func(t *testing.T) {
+		cs := build(public.CallProps{HostLockedUserID: "userA", Hosts: []string{"userA"}},
+			sess("userA", 1000, 0, false), sess("userB", 2000, 2100, false))
+		require.Equal(t, "userB", cs.getHostID("botID"))
+	})
+
+	t.Run("confirmed locked host is kept", func(t *testing.T) {
+		cs := build(public.CallProps{HostLockedUserID: "userA", Hosts: []string{"userA"}},
+			sess("userA", 3000, 3100, false), sess("userB", 2000, 2100, false))
+		require.Equal(t, "userA", cs.getHostID("botID"))
+	})
+}
+
 func TestGetClientStateFromCallJob(t *testing.T) {
 	t.Run("nil", func(t *testing.T) {
 		var job *public.CallJob

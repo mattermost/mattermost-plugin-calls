@@ -52,7 +52,7 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 		return nil
 	}
 
-	if !state.isUserIDInCall(newHostID) {
+	if !state.isUserConfirmedInCall(newHostID) {
 		return ErrNotInCall
 	}
 
