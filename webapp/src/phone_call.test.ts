@@ -24,6 +24,7 @@ import {isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
 import {
     dialFromUI,
     dialPhoneNumber,
+    endPhoneCallAfterDesktopError,
     handlePhoneCallEnd,
     installTelLinkInterceptor,
     openInOSDialer,
@@ -764,6 +765,60 @@ describe('phone_call', () => {
             client.emit(CALL_EVENT.SIP_LEFT, 'hangup');
 
             expect(client.disconnect).not.toHaveBeenCalled();
+            expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('endPhoneCallAfterDesktopError', () => {
+        const store = {dispatch: jest.fn(), getState: jest.fn(() => ({}))};
+
+        beforeEach(() => {
+            mockedHostEndCallForEveryone.mockResolvedValue({});
+        });
+
+        it.each([
+            {label: 'its channel', channelID: 'bot-dm'},
+            {label: 'no channel', channelID: undefined},
+        ])('ends the phone call this window placed when the widget reports an error for $label', async ({channelID}) => {
+            await placeCall(store);
+
+            endPhoneCallAfterDesktopError(channelID);
+
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+        });
+
+        it('does not report the call as failed once it has been ended', async () => {
+            await placeCall(store);
+            endPhoneCallAfterDesktopError('bot-dm');
+
+            handlePhoneCallEnd(store as never, 'call-id', CallPostStatus.Failed);
+
+            expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
+        });
+
+        it('ends the call only once', async () => {
+            await placeCall(store);
+
+            endPhoneCallAfterDesktopError('bot-dm');
+            endPhoneCallAfterDesktopError('bot-dm');
+
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
+        });
+
+        it('leaves the phone call alone for an error from another channel', async () => {
+            await placeCall(store);
+
+            endPhoneCallAfterDesktopError('other-channel');
+
+            expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
+        });
+
+        it('does nothing once the phone call has ended', async () => {
+            await placeCall(store);
+            handlePhoneCallEnd(store as never, 'call-id', CallPostStatus.Ended);
+
+            endPhoneCallAfterDesktopError('bot-dm');
+
             expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
         });
     });

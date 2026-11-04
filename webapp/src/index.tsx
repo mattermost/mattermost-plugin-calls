@@ -108,6 +108,7 @@ import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import {
     dialPhoneNumber,
+    endPhoneCallAfterDesktopError,
     PhoneCallResponse,
     PhoneCallTarget,
     phoneDialingSupported,
@@ -621,6 +622,7 @@ export default class Plugin {
                 store.dispatch(setClientConnecting(false));
                 if (err === 'client-error') {
                     store.dispatch(displayCallErrorModal(new Error(errMsg), callID));
+                    endPhoneCallAfterDesktopError(callID);
                 }
             }));
         }
@@ -904,6 +906,7 @@ export default class Plugin {
                 // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
                 store.dispatch(setClientConnecting(false));
                 store.dispatch(displayCallErrorModal(new Error(ev.data.message.errMsg), ev.data.message.callID));
+                endPhoneCallAfterDesktopError(ev.data.message.callID);
             } else if (ev.data?.type === 'calls-run-slash-command') {
                 slashCommandsHandler(store, joinCall, dialNumber, ev.data.message, ev.data.args);
             } else if (ev.data?.type === 'calls-link-click' && !window.desktopAPI?.openLinkFromCalls) {

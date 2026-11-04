@@ -85,12 +85,14 @@ const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
 // The phone call this window placed whose outcome it hasn't shown yet. Only the
 // window that placed a call tells the caller how it ended, and only once.
 let unreportedCallID = '';
+let unreportedChannelID = '';
 
 function claimCallOutcome(callID: string) {
     if (!callID || callID !== unreportedCallID) {
         return false;
     }
     unreportedCallID = '';
+    unreportedChannelID = '';
     return true;
 }
 
@@ -130,6 +132,20 @@ export function handlePhoneCallEnd(store: Store, callID: string, reason?: CallPo
     if (outcome) {
         store.dispatch(displayGenericErrorModal(outcome.title, outcome.message));
     }
+}
+
+// The Desktop widget reports a failure only to the window that placed the call.
+// Left alone, the server keeps the call until its no-answer timer, refusing a
+// redial and then reporting it as failed on top of the widget's own error.
+export function endPhoneCallAfterDesktopError(channelID?: string) {
+    if (!unreportedCallID || (channelID && channelID !== unreportedChannelID)) {
+        return;
+    }
+
+    const callChannelID = unreportedChannelID;
+    unreportedCallID = '';
+    unreportedChannelID = '';
+    hostEndCallForEveryone(callChannelID).catch((err) => logErr('failed to end phone call after Desktop error', err));
 }
 
 export function placePhoneCall(number: string, target?: PhoneCallTarget) {
@@ -301,6 +317,7 @@ export async function dialPhoneNumber(
     }
 
     unreportedCallID = session.call_id;
+    unreportedChannelID = session.channel_id;
 
     await store.dispatch(getChannelAction(session.channel_id));
     connect(session.channel_id, session);
