@@ -15,6 +15,9 @@ dist/
 # generated files
 bin
 dist
+dist-fips/
+server/dist-fips/
+server/dist-fips-staged/
 tests-e2e/node_modules
 tests-e2e/cypress/screenshots
 tests-e2e/cypress/videos
