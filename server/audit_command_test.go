@@ -38,13 +38,10 @@ func TestCSVSafe(t *testing.T) {
 
 func TestBuildAuditCSV(t *testing.T) {
 	chanID := model.NewId()
-	mockAPI := &pluginMocks.MockAPI{}
-	mockAPI.On("GetChannel", chanID).Return(&model.Channel{
-		Id:          chanID,
-		Name:        "town-square",
-		DisplayName: "=Town Square", // triggers CSV-injection sanitization
-	}, nil)
-	p := Plugin{MattermostPlugin: plugin.MattermostPlugin{API: mockAPI}}
+	p := Plugin{}
+	channelNames := map[string]auditChannel{
+		chanID: {name: "town-square", display: "=Town Square"}, // display triggers CSV-injection sanitization
+	}
 
 	u1, u2, u3 := model.NewId(), model.NewId(), model.NewId()
 
@@ -78,7 +75,7 @@ func TestBuildAuditCSV(t *testing.T) {
 	}
 	usernames := map[string]string{u1: "alice", u2: "bob"} // u3 intentionally missing
 
-	data, err := p.buildAuditCSV([]*public.Call{endedCall, ongoingCall}, participantTimes, usernames)
+	data, err := p.buildAuditCSV([]*public.Call{endedCall, ongoingCall}, participantTimes, usernames, channelNames)
 	require.NoError(t, err)
 
 	records, err := csv.NewReader(bytes.NewReader(data)).ReadAll()
@@ -128,13 +125,10 @@ func TestBuildAuditCSV(t *testing.T) {
 
 func TestBuildScreenShareCSV(t *testing.T) {
 	chanID := model.NewId()
-	mockAPI := &pluginMocks.MockAPI{}
-	mockAPI.On("GetChannel", chanID).Return(&model.Channel{
-		Id:          chanID,
-		Name:        "town-square",
-		DisplayName: "=Town Square", // triggers CSV-injection sanitization
-	}, nil)
-	p := Plugin{MattermostPlugin: plugin.MattermostPlugin{API: mockAPI}}
+	p := Plugin{}
+	channelNames := map[string]auditChannel{
+		chanID: {name: "town-square", display: "=Town Square"}, // display triggers CSV-injection sanitization
+	}
 
 	u1, u2 := model.NewId(), model.NewId()
 
@@ -156,7 +150,7 @@ func TestBuildScreenShareCSV(t *testing.T) {
 	}
 	usernames := map[string]string{u1: "alice"} // u2 missing -> falls back to ID
 
-	data, err := p.buildScreenShareCSV([]*public.Call{sharedCall, quietCall}, screenShares, usernames)
+	data, err := p.buildScreenShareCSV([]*public.Call{sharedCall, quietCall}, screenShares, usernames, channelNames)
 	require.NoError(t, err)
 
 	records, err := csv.NewReader(bytes.NewReader(data)).ReadAll()
@@ -186,6 +180,47 @@ func TestBuildScreenShareCSV(t *testing.T) {
 	require.Equal(t, u2, u2Row[7]) // username falls back to ID
 	require.NotEmpty(t, u2Row[8])  // start
 	require.Empty(t, u2Row[9])     // still open -> blank stop
+}
+
+func TestResolveChannelNames(t *testing.T) {
+	dmID, gmID, regID, failID := model.NewId(), model.NewId(), model.NewId(), model.NewId()
+	botID, alice, bob := model.NewId(), model.NewId(), model.NewId()
+
+	mockAPI := &pluginMocks.MockAPI{}
+	mockAPI.On("GetChannel", dmID).Return(&model.Channel{Id: dmID, Name: "a__b", Type: model.ChannelTypeDirect}, nil)
+	mockAPI.On("GetChannel", gmID).Return(&model.Channel{Id: gmID, Name: "gmhandle", DisplayName: "carol, dave", Type: model.ChannelTypeGroup}, nil)
+	mockAPI.On("GetChannel", regID).Return(&model.Channel{Id: regID, Name: "town-square", DisplayName: "Town Square", Type: model.ChannelTypeOpen}, nil)
+	mockAPI.On("GetChannel", failID).Return(nil, &model.AppError{Message: "boom"})
+
+	// DM members returned unsorted and including the bot, which must be dropped.
+	mockAPI.On("GetUsersInChannel", dmID, model.ChannelSortByUsername, 0, 100).Return([]*model.User{
+		{Id: bob, Username: "bob"},
+		{Id: botID, Username: "calls"},
+		{Id: alice, Username: "alice"},
+	}, nil)
+
+	p := Plugin{MattermostPlugin: plugin.MattermostPlugin{API: mockAPI}}
+	p.botID = botID
+
+	calls := []*public.Call{
+		{ID: model.NewId(), ChannelID: dmID},
+		{ID: model.NewId(), ChannelID: gmID},
+		{ID: model.NewId(), ChannelID: regID},
+		{ID: model.NewId(), ChannelID: failID},
+		{ID: model.NewId(), ChannelID: dmID}, // duplicate channel -> fetched once
+	}
+
+	got := p.resolveChannelNames(calls)
+
+	require.Equal(t, "alice, bob", got[dmID].display, "DM gets a synthesized, sorted, bot-excluded member list")
+	require.Equal(t, "a__b", got[dmID].name)
+	require.Equal(t, "carol, dave", got[gmID].display, "GM display passes through untouched")
+	require.Equal(t, "Town Square", got[regID].display, "regular channel display passes through")
+	require.Equal(t, auditChannel{}, got[failID], "unresolvable channel maps to a blank entry")
+
+	// Deduped: GetChannel called once per unique channel, GetUsersInChannel once for the DM.
+	mockAPI.AssertNumberOfCalls(t, "GetChannel", 4)
+	mockAPI.AssertNumberOfCalls(t, "GetUsersInChannel", 1)
 }
 
 func TestHandleAuditCommandPermissions(t *testing.T) {

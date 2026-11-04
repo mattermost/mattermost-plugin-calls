@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
@@ -182,13 +183,14 @@ func (p *Plugin) handleAuditCommand(args *model.CommandArgs, fields []string) (*
 	}
 
 	usernames := p.resolveUsernames(calls, participantTimes, screenShares)
+	channelNames := p.resolveChannelNames(calls)
 
-	csvData, err := p.buildAuditCSV(calls, participantTimes, usernames)
+	csvData, err := p.buildAuditCSV(calls, participantTimes, usernames, channelNames)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build report: %w", err)
 	}
 
-	screenShareCSV, err := p.buildScreenShareCSV(calls, screenShares, usernames)
+	screenShareCSV, err := p.buildScreenShareCSV(calls, screenShares, usernames, channelNames)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build screen share report: %w", err)
 	}
@@ -305,6 +307,59 @@ func (p *Plugin) resolveUsernames(calls []*public.Call, participantTimes map[str
 	return usernames
 }
 
+// auditChannel holds the resolved name/display for a call's channel, used to fill
+// the channel columns of both report CSVs.
+type auditChannel struct {
+	name    string
+	display string
+}
+
+// resolveChannelNames resolves each call's channel to (name, display) once, so the
+// two CSVs don't each hit the API for the same channel. DMs carry no stored
+// DisplayName, so we synthesize one from the members' usernames, mirroring the
+// comma-separated name GMs already have. A channel that can't be fetched maps to a
+// blank entry so the row still carries its channel_id.
+func (p *Plugin) resolveChannelNames(calls []*public.Call) map[string]auditChannel {
+	out := map[string]auditChannel{}
+	for _, call := range calls {
+		if _, ok := out[call.ChannelID]; ok {
+			continue
+		}
+		ch, appErr := p.API.GetChannel(call.ChannelID)
+		if appErr != nil {
+			out[call.ChannelID] = auditChannel{}
+			continue
+		}
+		display := ch.DisplayName
+		if ch.Type == model.ChannelTypeDirect {
+			display = p.synthesizeDMName(call.ChannelID)
+		}
+		out[call.ChannelID] = auditChannel{name: ch.Name, display: display}
+	}
+	return out
+}
+
+// synthesizeDMName builds a readable name for a DM channel from its members'
+// usernames (sorted, comma-separated), e.g. "alice, bob". DMs have no stored
+// DisplayName, so without this the audit report would show only the channel ID.
+func (p *Plugin) synthesizeDMName(channelID string) string {
+	users, appErr := p.API.GetUsersInChannel(channelID, model.ChannelSortByUsername, 0, 100)
+	if appErr != nil {
+		p.LogWarn("calls audit: failed to resolve DM members", "channelID", channelID, "err", appErr.Error())
+		return ""
+	}
+	botID := p.getBotID()
+	names := make([]string, 0, len(users))
+	for _, u := range users {
+		if u.Id == botID { // defensive; a DM hosting a call is between two real users
+			continue
+		}
+		names = append(names, u.Username)
+	}
+	sort.Strings(names)
+	return strings.Join(names, ", ")
+}
+
 // getUserChannelIDs returns every channel the user is a member of, across teams.
 func (p *Plugin) getUserChannelIDs(userID string) ([]string, error) {
 	var ids []string
@@ -329,7 +384,7 @@ func (p *Plugin) getUserChannelIDs(userID string) ([]string, error) {
 // buildAuditCSV renders one row per participant per call: the attendance sheet.
 // Columns are append-only so future additions don't break consumers. usernames
 // maps participant userID -> display username (pre-resolved in batch).
-func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string]map[string]*public.CallParticipant, usernames map[string]string) ([]byte, error) {
+func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string]map[string]*public.CallParticipant, usernames map[string]string, channelNames map[string]auditChannel) ([]byte, error) {
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
 
@@ -358,23 +413,9 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 		return time.UnixMilli(ms).UTC().Format(time.RFC3339)
 	}
 
-	channelCache := map[string]*model.Channel{}
-
 	for _, call := range calls {
-		channelName, channelDisplay := "", ""
-		if ch, ok := channelCache[call.ChannelID]; ok {
-			if ch != nil {
-				channelName, channelDisplay = ch.Name, ch.DisplayName
-			}
-		} else {
-			ch, appErr := p.API.GetChannel(call.ChannelID)
-			if appErr == nil {
-				channelCache[call.ChannelID] = ch
-				channelName, channelDisplay = ch.Name, ch.DisplayName
-			} else {
-				channelCache[call.ChannelID] = nil
-			}
-		}
+		cn := channelNames[call.ChannelID]
+		channelName, channelDisplay := cn.name, cn.display
 
 		startUTC := time.UnixMilli(call.StartAt).UTC().Format(time.RFC3339)
 		endUTC := ""
@@ -468,7 +509,7 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 // omitted, so this file is purely the screen-share log. Columns are append-only.
 // usernames maps userID -> display username (pre-resolved in batch, shared with
 // the attendance report).
-func (p *Plugin) buildScreenShareCSV(calls []*public.Call, screenShares map[string][]*public.CallScreenShare, usernames map[string]string) ([]byte, error) {
+func (p *Plugin) buildScreenShareCSV(calls []*public.Call, screenShares map[string][]*public.CallScreenShare, usernames map[string]string, channelNames map[string]auditChannel) ([]byte, error) {
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
 
@@ -495,28 +536,14 @@ func (p *Plugin) buildScreenShareCSV(calls []*public.Call, screenShares map[stri
 		return time.UnixMilli(ms).UTC().Format(time.RFC3339)
 	}
 
-	channelCache := map[string]*model.Channel{}
-
 	for _, call := range calls {
 		shares := screenShares[call.ID]
 		if len(shares) == 0 {
 			continue
 		}
 
-		channelName, channelDisplay := "", ""
-		if ch, ok := channelCache[call.ChannelID]; ok {
-			if ch != nil {
-				channelName, channelDisplay = ch.Name, ch.DisplayName
-			}
-		} else {
-			ch, appErr := p.API.GetChannel(call.ChannelID)
-			if appErr == nil {
-				channelCache[call.ChannelID] = ch
-				channelName, channelDisplay = ch.Name, ch.DisplayName
-			} else {
-				channelCache[call.ChannelID] = nil
-			}
-		}
+		cn := channelNames[call.ChannelID]
+		channelName, channelDisplay := cn.name, cn.display
 
 		startUTC := time.UnixMilli(call.StartAt).UTC().Format(time.RFC3339)
 
