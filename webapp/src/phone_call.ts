@@ -18,10 +18,12 @@ import {CALL_EVENT} from 'src/clients/call/constants';
 import type {LiveKitSessionResponse} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import {logErr, logWarn} from 'src/log';
+import {toSIPCallStatus} from 'src/phone_utils';
 import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
+import {sipCallStatusChanged} from 'src/state/sip_call_state/actions';
 import type {Store} from 'src/types/mattermost-webapp';
 import {CallPostStatus} from 'src/types/types';
-import {getPluginPath, isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
+import {getPluginPath, isCallsPopOut, isMobile} from 'src/utils';
 
 export type PhoneCallResponse = LiveKitSessionResponse & {
     call_id: string;
@@ -216,7 +218,7 @@ export function openInOSDialer(href: string) {
 // Whether this window can place a phone call. Mobile is left out of
 // telLinkInterceptionSupported only so tel: links reach the phone's own dialer.
 export function phoneDialingSupported() {
-    return !joinsInDesktopWidget() && !isCallsPopOut();
+    return !isCallsPopOut();
 }
 
 export function telLinkInterceptionSupported() {
@@ -240,12 +242,6 @@ export function dialFromUI(number: string, target?: PhoneCallTarget) {
         return Promise.resolve();
     }
     return phoneDialer(number, target);
-}
-
-// The Desktop app joins calls from a separate widget window that creates its
-// own session, so it can't use the session /phone-call returns.
-function joinsInDesktopWidget() {
-    return Boolean(window.desktopAPI?.joinCall) || shouldRenderDesktopWidget();
 }
 
 export async function dialPhoneNumber(
@@ -276,11 +272,6 @@ export async function dialPhoneNumber(
 
     if (channelIDForCurrentCall(state)) {
         showError(defineMessage({defaultMessage: 'You\'re already in a call. Leave it before placing a phone call.'}));
-        return;
-    }
-
-    if (joinsInDesktopWidget()) {
-        showError(defineMessage({defaultMessage: 'Phone calls aren\'t supported in the desktop app yet.'}));
         return;
     }
 
@@ -337,6 +328,17 @@ export function registerTelLinkDialing(store: Store, connect: ConnectPhoneCall) 
         unsubscribe();
         uninstall?.();
     };
+}
+
+export function trackSIPCallStatus(store: Store, client: CallClient) {
+    const onStatus = (status: string) => {
+        const sipStatus = toSIPCallStatus(status);
+        if (sipStatus) {
+            store.dispatch(sipCallStatusChanged(client.channelID, sipStatus));
+        }
+    };
+    client.on(CALL_EVENT.SIP_STATUS_CHANGED, onStatus);
+    client.on(CALL_EVENT.SIP_LEFT, onStatus);
 }
 
 // Ends the phone call once the caller's client leaves it or never joins it. The

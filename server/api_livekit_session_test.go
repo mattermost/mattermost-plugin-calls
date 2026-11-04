@@ -263,7 +263,11 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 			ChannelID: channelID,
 			PostID:    postID,
 			OwnerID:   userID,
-			Props:     public.CallProps{NodeID: "test-node", Type: callTypePhone},
+			Props: public.CallProps{
+				NodeID:        "test-node",
+				Type:          callTypePhone,
+				DialSessionID: sessionID,
+			},
 		}))
 
 		// Created by /phone-call in the Desktop main window, which can't join it:
@@ -287,7 +291,6 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 		var res livekitSessionResponse
 		require.NoError(t, json.NewDecoder(w.Result().Body).Decode(&res))
 		require.Equal(t, sessionID, res.SessionID)
-		require.NotNil(t, res.CallState)
 
 		verifier, err := auth.ParseAPIToken(res.Token)
 		require.NoError(t, err)
@@ -296,5 +299,11 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 		sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.Len(t, sessions, 1)
+
+		// The dial fires on this session's first confirm, so minting a token for
+		// it must leave the pending dial in place.
+		call, err := p.store.GetCall(callID, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Equal(t, sessionID, call.Props.DialSessionID)
 	})
 }

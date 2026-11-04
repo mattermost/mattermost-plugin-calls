@@ -17,6 +17,7 @@ import type CallClient from 'src/clients/call/call_client';
 import {CALL_EVENT} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
 import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
+import {SIP_CALL_STATUS_CHANGED} from 'src/state/sip_call_state/action_types';
 import {CallPostStatus} from 'src/types/types';
 import {isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
 
@@ -33,6 +34,7 @@ import {
     registerPhoneDialer,
     registerTelLinkDialing,
     telLinkInterceptionSupported,
+    trackSIPCallStatus,
     watchPhoneCall,
 } from './phone_call';
 
@@ -243,18 +245,19 @@ describe('phone_call', () => {
     });
 
     describe('phoneDialingSupported', () => {
-        it('is supported in a browser, including a mobile one', () => {
-            mockedIsMobile.mockReturnValue(true);
+        it.each([
+            {label: 'a browser', setUp: () => {}},
+            {label: 'a mobile browser', setUp: () => mockedIsMobile.mockReturnValue(true)},
+            {label: 'the Desktop app', setUp: () => setDesktopAPI({joinCall: jest.fn()})},
+            {label: 'a legacy Desktop app', setUp: () => mockedShouldRenderDesktopWidget.mockReturnValue(true)},
+        ])('is supported in $label', ({setUp}) => {
+            setUp();
 
             expect(phoneDialingSupported()).toBe(true);
         });
 
-        it.each([
-            {label: 'the Desktop app', setUp: () => setDesktopAPI({joinCall: jest.fn()})},
-            {label: 'a legacy Desktop app', setUp: () => mockedShouldRenderDesktopWidget.mockReturnValue(true)},
-            {label: 'the expanded-view pop-out', setUp: () => mockedIsCallsPopOut.mockReturnValue(true)},
-        ])('is not supported in $label', ({setUp}) => {
-            setUp();
+        it('is not supported in the expanded-view pop-out', () => {
+            mockedIsCallsPopOut.mockReturnValue(true);
 
             expect(phoneDialingSupported()).toBe(false);
         });
@@ -341,13 +344,17 @@ describe('phone_call', () => {
     });
 
     describe('telLinkInterceptionSupported', () => {
-        it('is supported in a browser outside the expanded-view pop-out', () => {
+        it.each([
+            {label: 'a browser', setUp: () => {}},
+            {label: 'the Desktop app', setUp: () => setDesktopAPI({joinCall: jest.fn()})},
+            {label: 'a legacy Desktop app', setUp: () => mockedShouldRenderDesktopWidget.mockReturnValue(true)},
+        ])('is supported in $label', ({setUp}) => {
+            setUp();
+
             expect(telLinkInterceptionSupported()).toBe(true);
         });
 
         it.each([
-            {label: 'the Desktop app', setUp: () => setDesktopAPI({joinCall: jest.fn()})},
-            {label: 'a legacy Desktop app', setUp: () => mockedShouldRenderDesktopWidget.mockReturnValue(true)},
             {label: 'the expanded-view pop-out', setUp: () => mockedIsCallsPopOut.mockReturnValue(true)},
             {label: 'a mobile browser', setUp: () => mockedIsMobile.mockReturnValue(true)},
         ])('is not supported in $label', ({setUp}) => {
@@ -399,6 +406,18 @@ describe('phone_call', () => {
             expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
         });
 
+        it('places the call and hands it to connect in the Desktop app', async () => {
+            setDesktopAPI({joinCall: jest.fn()});
+            mockedFetch.mockResolvedValueOnce(phoneCallResponse);
+            const connect = jest.fn();
+
+            await dialPhoneNumber(makeStore() as never, '+15550100', connect);
+
+            expect(mockedFetch).toHaveBeenCalledWith(expect.stringMatching(/\/phone-call$/), expect.anything());
+            expect(connect).toHaveBeenCalledWith('bot-dm', phoneCallResponse);
+            expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
+        });
+
         it('passes the target along to the server', async () => {
             mockedFetch.mockResolvedValueOnce(phoneCallResponse);
 
@@ -434,11 +453,6 @@ describe('phone_call', () => {
                 label: 'the user is already in a call',
                 setUp: () => mockedChannelIDForCurrentCall.mockReturnValue('other-channel'),
                 message: defineMessage({defaultMessage: 'You\'re already in a call. Leave it before placing a phone call.'}),
-            },
-            {
-                label: 'running in the Desktop app',
-                setUp: () => setDesktopAPI({joinCall: jest.fn()}),
-                message: defineMessage({defaultMessage: 'Phone calls aren\'t supported in the desktop app yet.'}),
             },
         ])('does not dial when $label', async ({setUp, message}) => {
             setUp();
@@ -612,6 +626,43 @@ describe('phone_call', () => {
         });
     });
 
+    describe('trackSIPCallStatus', () => {
+        const sipStatusAction = (status: string) => expect.objectContaining({
+            type: SIP_CALL_STATUS_CHANGED,
+            data: expect.objectContaining({channelID: 'bot-dm', status}),
+        });
+
+        let client: EventEmitter & {channelID: string};
+        let store: {dispatch: jest.Mock};
+
+        beforeEach(() => {
+            client = Object.assign(new EventEmitter(), {channelID: 'bot-dm'});
+            store = {dispatch: jest.fn()};
+            trackSIPCallStatus(store as never, client as unknown as CallClient);
+        });
+
+        it('stores each status change of the phone leg', () => {
+            client.emit(CALL_EVENT.SIP_STATUS_CHANGED, 'ringing');
+            client.emit(CALL_EVENT.SIP_STATUS_CHANGED, 'active');
+
+            expect(store.dispatch).toHaveBeenNthCalledWith(1, sipStatusAction('ringing'));
+            expect(store.dispatch).toHaveBeenNthCalledWith(2, sipStatusAction('active'));
+        });
+
+        it('stores the last status when the phone leg leaves', () => {
+            client.emit(CALL_EVENT.SIP_LEFT, 'hangup');
+
+            expect(store.dispatch).toHaveBeenCalledWith(sipStatusAction('hangup'));
+        });
+
+        it('ignores statuses it does not know', () => {
+            client.emit(CALL_EVENT.SIP_STATUS_CHANGED, 'unknown');
+            client.emit(CALL_EVENT.SIP_LEFT, '');
+
+            expect(store.dispatch).not.toHaveBeenCalled();
+        });
+    });
+
     describe('watchPhoneCall', () => {
         class FakeClient extends EventEmitter {
             isConnected = true;
@@ -742,6 +793,18 @@ describe('phone_call', () => {
             handlePhoneCallEnd(store as never, 'call-id', reason);
 
             expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
+        });
+
+        it('tells the caller why a call placed from the Desktop app ended', async () => {
+            setDesktopAPI({joinCall: jest.fn()});
+            await placeCall(store);
+
+            handlePhoneCallEnd(store as never, 'call-id', CallPostStatus.Failed);
+
+            expect(mockedDisplayGenericErrorModal).toHaveBeenCalledWith(
+                defineMessage({defaultMessage: 'Unable to place phone call'}),
+                defineMessage({defaultMessage: 'The call couldn\'t be placed. Please try again.'}),
+            );
         });
 
         it('says nothing about a call this window did not place', async () => {
