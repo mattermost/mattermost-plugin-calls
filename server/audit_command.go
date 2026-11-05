@@ -398,6 +398,8 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 		"call_end_utc",
 		"call_duration_seconds",
 		"participant_user_id",
+		"participant_type",
+		"participant_identity",
 		"participant_username",
 		"participant_first_join_utc",
 		"participant_last_leave_utc",
@@ -450,10 +452,10 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 		}
 		sort.Strings(participants)
 
-		writeRow := func(userID, username, firstJoinUTC, lastLeaveUTC string) error {
-			// User-controlled fields (channel name/display, call title, username)
-			// are sanitized against CSV formula injection; IDs and timestamps are
-			// machine-generated and safe.
+		writeRow := func(userID, identityType, identity, username, firstJoinUTC, lastLeaveUTC string) error {
+			// User-controlled fields (channel name/display, call title, username,
+			// identity) are sanitized against CSV formula injection; IDs, the
+			// identity type, and timestamps are machine-generated and safe.
 			return w.Write([]string{
 				call.ID,
 				call.ChannelID,
@@ -464,6 +466,8 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 				endUTC,
 				durationSeconds,
 				userID,
+				identityType,
+				csvSafe(identity),
 				csvSafe(username),
 				firstJoinUTC,
 				lastLeaveUTC,
@@ -472,25 +476,39 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 
 		if len(participants) == 0 {
 			// Keep the call in the report even if no participants were recorded.
-			if err := writeRow("", "", "", ""); err != nil {
+			if err := writeRow("", "", "", "", "", ""); err != nil {
 				return nil, err
 			}
 			continue
 		}
 
-		for _, uid := range participants {
-			username := usernames[uid]
-			if username == "" {
-				username = uid
-			}
-
-			firstJoinUTC, lastLeaveUTC := "", ""
-			if cp := callParticipants[uid]; cp != nil {
+		for _, id := range participants {
+			// Identities only present in Call.Participants / Props.Participants (not
+			// in calls_participants) are always Mattermost users; a phone callee only
+			// ever comes from the calls_participants table, so it carries a row here.
+			identityType := public.IdentityTypeUser
+			var firstJoinUTC, lastLeaveUTC string
+			if cp := callParticipants[id]; cp != nil {
+				identityType = cp.IdentityType
 				firstJoinUTC = utcOrEmpty(cp.FirstJoinAt)
 				lastLeaveUTC = utcOrEmpty(cp.LastLeaveAt)
 			}
 
-			if err := writeRow(uid, username, firstJoinUTC, lastLeaveUTC); err != nil {
+			userID, username := "", ""
+			switch identityType {
+			case public.IdentityTypePhone:
+				// Non-user: user_id stays blank, the number is both the identity and
+				// the human-readable label.
+				username = id
+			default: // user
+				userID = id
+				username = usernames[id]
+				if username == "" {
+					username = id
+				}
+			}
+
+			if err := writeRow(userID, identityType, id, username, firstJoinUTC, lastLeaveUTC); err != nil {
 				return nil, err
 			}
 		}

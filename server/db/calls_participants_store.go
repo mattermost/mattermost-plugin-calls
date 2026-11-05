@@ -25,7 +25,7 @@ import (
 // would stay the stale intermediate time instead of the call's end time. Only
 // addUserSession calls this, and only for a real new session, so every call is a
 // genuine join — never a stale duplicate that could wrongly clear a leave.
-func (s *Store) RecordParticipantJoin(callID, userID string, joinAt int64) error {
+func (s *Store) RecordParticipantJoin(callID, identityType, identity string, joinAt int64) error {
 	s.metrics.IncStoreOp("RecordParticipantJoin")
 	defer func(start time.Time) {
 		s.metrics.ObserveStoreMethodsTime("RecordParticipantJoin", time.Since(start).Seconds())
@@ -33,9 +33,9 @@ func (s *Store) RecordParticipantJoin(callID, userID string, joinAt int64) error
 
 	qb := getQueryBuilder().
 		Insert("calls_participants").
-		Columns("CallID", "UserID", "FirstJoinAt", "LastLeaveAt").
-		Values(callID, userID, joinAt, 0).
-		Suffix("ON CONFLICT (callid, userid) DO UPDATE SET firstjoinat = LEAST(calls_participants.firstjoinat, EXCLUDED.firstjoinat), lastleaveat = 0")
+		Columns("CallID", "IdentityType", "Identity", "FirstJoinAt", "LastLeaveAt").
+		Values(callID, identityType, identity, joinAt, 0).
+		Suffix("ON CONFLICT (callid, identitytype, identity) DO UPDATE SET firstjoinat = LEAST(calls_participants.firstjoinat, EXCLUDED.firstjoinat), lastleaveat = 0")
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -55,7 +55,7 @@ func (s *Store) RecordParticipantJoin(callID, userID string, joinAt int64) error
 // keeps the most recent leave, so out-of-order or reconnect-driven leaves can't
 // move LastLeaveAt backwards. A leave for a user with no recorded join is a
 // no-op (the join always comes first in practice).
-func (s *Store) RecordParticipantLeave(callID, userID string, leaveAt int64) error {
+func (s *Store) RecordParticipantLeave(callID, identityType, identity string, leaveAt int64) error {
 	s.metrics.IncStoreOp("RecordParticipantLeave")
 	defer func(start time.Time) {
 		s.metrics.ObserveStoreMethodsTime("RecordParticipantLeave", time.Since(start).Seconds())
@@ -66,7 +66,8 @@ func (s *Store) RecordParticipantLeave(callID, userID string, leaveAt int64) err
 		Set("LastLeaveAt", leaveAt).
 		Where(sq.And{
 			sq.Eq{"CallID": callID},
-			sq.Eq{"UserID": userID},
+			sq.Eq{"IdentityType": identityType},
+			sq.Eq{"Identity": identity},
 			sq.Lt{"LastLeaveAt": leaveAt},
 		})
 
@@ -119,7 +120,9 @@ func (s *Store) RecordLeaveForActiveParticipants(callID string, leaveAt int64) e
 }
 
 // GetParticipantsForCalls returns the attendance records for the given calls,
-// keyed by callID then userID, for building the audit report.
+// keyed by callID then identity, for building the audit report. Identity is a
+// Mattermost user ID for "user" rows or an E.164 number for "phone" rows; the two
+// identity spaces can't collide, so keying by identity alone is unambiguous.
 func (s *Store) GetParticipantsForCalls(callIDs []string, opts GetCallOpts) (map[string]map[string]*public.CallParticipant, error) {
 	s.metrics.IncStoreOp("GetParticipantsForCalls")
 	defer func(start time.Time) {
@@ -132,7 +135,7 @@ func (s *Store) GetParticipantsForCalls(callIDs []string, opts GetCallOpts) (map
 	}
 
 	qb := getQueryBuilder().
-		Select("CallID", "UserID", "FirstJoinAt", "LastLeaveAt").
+		Select("CallID", "IdentityType", "Identity", "FirstJoinAt", "LastLeaveAt").
 		From("calls_participants").
 		Where(sq.Eq{"CallID": callIDs})
 
@@ -151,14 +154,14 @@ func (s *Store) GetParticipantsForCalls(callIDs []string, opts GetCallOpts) (map
 
 	for rows.Next() {
 		var cp public.CallParticipant
-		if err := rows.Scan(&cp.CallID, &cp.UserID, &cp.FirstJoinAt, &cp.LastLeaveAt); err != nil {
+		if err := rows.Scan(&cp.CallID, &cp.IdentityType, &cp.Identity, &cp.FirstJoinAt, &cp.LastLeaveAt); err != nil {
 			return nil, fmt.Errorf("failed to scan rows: %w", err)
 		}
 		if result[cp.CallID] == nil {
 			result[cp.CallID] = map[string]*public.CallParticipant{}
 		}
 		participant := cp
-		result[cp.CallID][cp.UserID] = &participant
+		result[cp.CallID][cp.Identity] = &participant
 	}
 
 	if err := rows.Err(); err != nil {

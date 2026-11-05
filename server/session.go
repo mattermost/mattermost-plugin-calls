@@ -222,12 +222,14 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 	// roll back the session (and the call, if this join created it) so the join
 	// fails cleanly rather than admitting an unrecorded participant.
 	//
-	// SIP (phone) participants are intentionally included here (only bots are
-	// excluded): this records the outbound dial time as their join. Their leave is
-	// handled by the call-end backstop. See removeUserSession.
+	// This path records Mattermost users (the human caller of an outbound phone
+	// call reaches here too, and is a user). The SIP (phone) callee never flows
+	// through addUserSession — its session is built directly in
+	// handleLiveKitSIPParticipantJoined, which records the phone identity there.
+	// Only bots are excluded here.
 	if userID != p.getBotID() {
 		joinAt := state.sessions[connID].JoinAt
-		if err := p.store.RecordParticipantJoin(state.Call.ID, userID, joinAt); err != nil {
+		if err := p.store.RecordParticipantJoin(state.Call.ID, public.IdentityTypeUser, userID, joinAt); err != nil {
 			p.rollbackSession(connID, state.Call.ID, createdCall)
 			return nil, fmt.Errorf("%w: failed to record participant join: %w", errStoreFailure, err)
 		}
@@ -312,15 +314,15 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 	// leave time for anyone still unrecorded, so no attendee is ever left without
 	// one, and failing the leave here would risk a stuck session.
 	//
-	// SIP (phone) participants ARE in the audit: their join is recorded in
-	// addUserSession at dial time. We deliberately skip their per-leave write so
-	// their leave comes from the call-end backstop (= call end time). The server
+	// SIP (phone) callees ARE in the audit: their join is recorded in
+	// handleLiveKitSIPParticipantJoined. We deliberately skip their per-leave write
+	// so their leave comes from the call-end backstop (= call end time). The server
 	// never observes the phone call being answered, so dial-time -> call-end is the
 	// meaningful window we can report; there's no distinct SIP "leave" moment worth
 	// recording ahead of that. Matches removeParticipantSession.
 	if userID != p.getBotID() && !leavingSession.IsSIPParticipant {
 		leaveAt := nowMillis()
-		if err := p.store.RecordParticipantLeave(state.Call.ID, userID, leaveAt); err != nil {
+		if err := p.store.RecordParticipantLeave(state.Call.ID, public.IdentityTypeUser, userID, leaveAt); err != nil {
 			p.LogError("calls audit: failed to record participant leave",
 				"callID", state.Call.ID, "userID", userID, "err", err.Error())
 		}

@@ -35,9 +35,9 @@ func TestRecordLeaveBackstop(t *testing.T) {
 	left := model.NewId()    // left normally, precise leave recorded
 	present := model.NewId() // still in the call when it ended (no leave recorded)
 
-	require.NoError(t, store.RecordParticipantJoin(callID, left, 1000))
-	require.NoError(t, store.RecordParticipantJoin(callID, present, 1500))
-	require.NoError(t, store.RecordParticipantLeave(callID, left, 4000))
+	require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypeUser, left, 1000))
+	require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypeUser, present, 1500))
+	require.NoError(t, store.RecordParticipantLeave(callID, public.IdentityTypeUser, left, 4000))
 
 	const endAt = 9000
 	p.recordLeaveBackstop(&public.Call{ID: callID, EndAt: endAt})
@@ -67,7 +67,7 @@ func TestRecordLeaveBackstopNoEnd(t *testing.T) {
 
 	callID := model.NewId()
 	u1 := model.NewId()
-	require.NoError(t, store.RecordParticipantJoin(callID, u1, 1000))
+	require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypeUser, u1, 1000))
 
 	p.recordLeaveBackstop(&public.Call{ID: callID, EndAt: 0})
 

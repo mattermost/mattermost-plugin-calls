@@ -6,6 +6,8 @@ package db
 import (
 	"testing"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/stretchr/testify/require"
@@ -17,6 +19,7 @@ func TestCallsParticipantsStore(t *testing.T) {
 		"TestRecordParticipantLeave":           testRecordParticipantLeave,
 		"TestRecordLeaveForActiveParticipants": testRecordLeaveForActiveParticipants,
 		"TestGetParticipantsForCalls":          testGetParticipantsForCalls,
+		"TestPhoneIdentity":                    testPhoneIdentity,
 	})
 }
 
@@ -25,16 +28,18 @@ func testRecordParticipantJoin(t *testing.T, store *Store) {
 	userID := model.NewId()
 
 	t.Run("records first join", func(t *testing.T) {
-		require.NoError(t, store.RecordParticipantJoin(callID, userID, 1000))
+		require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypeUser, userID, 1000))
 
 		got, err := store.GetParticipantsForCalls([]string{callID}, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.Equal(t, int64(1000), got[callID][userID].FirstJoinAt)
 		require.Equal(t, int64(0), got[callID][userID].LastLeaveAt)
+		require.Equal(t, public.IdentityTypeUser, got[callID][userID].IdentityType)
+		require.Equal(t, userID, got[callID][userID].Identity)
 	})
 
 	t.Run("keeps earliest join on a later re-join", func(t *testing.T) {
-		require.NoError(t, store.RecordParticipantJoin(callID, userID, 5000))
+		require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypeUser, userID, 5000))
 
 		got, err := store.GetParticipantsForCalls([]string{callID}, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
@@ -42,7 +47,7 @@ func testRecordParticipantJoin(t *testing.T, store *Store) {
 	})
 
 	t.Run("keeps earliest join even when an earlier event arrives out of order", func(t *testing.T) {
-		require.NoError(t, store.RecordParticipantJoin(callID, userID, 200))
+		require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypeUser, userID, 200))
 
 		got, err := store.GetParticipantsForCalls([]string{callID}, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
@@ -53,8 +58,8 @@ func testRecordParticipantJoin(t *testing.T, store *Store) {
 		rejoinCall := model.NewId()
 		rejoinUser := model.NewId()
 
-		require.NoError(t, store.RecordParticipantJoin(rejoinCall, rejoinUser, 1000))
-		require.NoError(t, store.RecordParticipantLeave(rejoinCall, rejoinUser, 2000))
+		require.NoError(t, store.RecordParticipantJoin(rejoinCall, public.IdentityTypeUser, rejoinUser, 1000))
+		require.NoError(t, store.RecordParticipantLeave(rejoinCall, public.IdentityTypeUser, rejoinUser, 2000))
 
 		got, err := store.GetParticipantsForCalls([]string{rejoinCall}, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
@@ -62,7 +67,7 @@ func testRecordParticipantJoin(t *testing.T, store *Store) {
 
 		// Rejoin: present again, so the earlier leave must be cleared, while the
 		// first join is preserved.
-		require.NoError(t, store.RecordParticipantJoin(rejoinCall, rejoinUser, 3000))
+		require.NoError(t, store.RecordParticipantJoin(rejoinCall, public.IdentityTypeUser, rejoinUser, 3000))
 
 		got, err = store.GetParticipantsForCalls([]string{rejoinCall}, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
@@ -70,7 +75,7 @@ func testRecordParticipantJoin(t *testing.T, store *Store) {
 		require.Equal(t, int64(0), got[rejoinCall][rejoinUser].LastLeaveAt, "leave reset to 0 on rejoin")
 
 		// A subsequent leave records normally.
-		require.NoError(t, store.RecordParticipantLeave(rejoinCall, rejoinUser, 4000))
+		require.NoError(t, store.RecordParticipantLeave(rejoinCall, public.IdentityTypeUser, rejoinUser, 4000))
 		got, err = store.GetParticipantsForCalls([]string{rejoinCall}, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.Equal(t, int64(4000), got[rejoinCall][rejoinUser].LastLeaveAt)
@@ -82,7 +87,7 @@ func testRecordParticipantLeave(t *testing.T, store *Store) {
 	userID := model.NewId()
 
 	t.Run("leave without a join is a no-op", func(t *testing.T) {
-		require.NoError(t, store.RecordParticipantLeave(callID, userID, 3000))
+		require.NoError(t, store.RecordParticipantLeave(callID, public.IdentityTypeUser, userID, 3000))
 
 		got, err := store.GetParticipantsForCalls([]string{callID}, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
@@ -90,8 +95,8 @@ func testRecordParticipantLeave(t *testing.T, store *Store) {
 	})
 
 	t.Run("records leave after a join", func(t *testing.T) {
-		require.NoError(t, store.RecordParticipantJoin(callID, userID, 1000))
-		require.NoError(t, store.RecordParticipantLeave(callID, userID, 3000))
+		require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypeUser, userID, 1000))
+		require.NoError(t, store.RecordParticipantLeave(callID, public.IdentityTypeUser, userID, 3000))
 
 		got, err := store.GetParticipantsForCalls([]string{callID}, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
@@ -99,8 +104,8 @@ func testRecordParticipantLeave(t *testing.T, store *Store) {
 	})
 
 	t.Run("keeps the latest leave", func(t *testing.T) {
-		require.NoError(t, store.RecordParticipantLeave(callID, userID, 9000))
-		require.NoError(t, store.RecordParticipantLeave(callID, userID, 4000)) // earlier, must not win
+		require.NoError(t, store.RecordParticipantLeave(callID, public.IdentityTypeUser, userID, 9000))
+		require.NoError(t, store.RecordParticipantLeave(callID, public.IdentityTypeUser, userID, 4000)) // earlier, must not win
 
 		got, err := store.GetParticipantsForCalls([]string{callID}, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
@@ -113,13 +118,15 @@ func testRecordLeaveForActiveParticipants(t *testing.T, store *Store) {
 	callID := model.NewId()
 	stillIn := model.NewId() // joined, never left
 	alreadyLeft := model.NewId()
+	phoneNumber := "+15551234567" // SIP callee: joined, no per-leave write
 	otherCall := model.NewId()
 	otherUser := model.NewId()
 
-	require.NoError(t, store.RecordParticipantJoin(callID, stillIn, 1000))
-	require.NoError(t, store.RecordParticipantJoin(callID, alreadyLeft, 1000))
-	require.NoError(t, store.RecordParticipantLeave(callID, alreadyLeft, 3000))
-	require.NoError(t, store.RecordParticipantJoin(otherCall, otherUser, 1000))
+	require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypeUser, stillIn, 1000))
+	require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypeUser, alreadyLeft, 1000))
+	require.NoError(t, store.RecordParticipantLeave(callID, public.IdentityTypeUser, alreadyLeft, 3000))
+	require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypePhone, phoneNumber, 1000))
+	require.NoError(t, store.RecordParticipantJoin(otherCall, public.IdentityTypeUser, otherUser, 1000))
 
 	t.Run("stamps only zero-leave participants of the target call", func(t *testing.T) {
 		require.NoError(t, store.RecordLeaveForActiveParticipants(callID, 9000))
@@ -129,6 +136,8 @@ func testRecordLeaveForActiveParticipants(t *testing.T, store *Store) {
 
 		require.Equal(t, int64(9000), got[callID][stillIn].LastLeaveAt, "never-left attendee gets the end time")
 		require.Equal(t, int64(3000), got[callID][alreadyLeft].LastLeaveAt, "precise leave preserved")
+		require.Equal(t, int64(9000), got[callID][phoneNumber].LastLeaveAt, "SIP callee's leave comes from the backstop")
+		require.Equal(t, public.IdentityTypePhone, got[callID][phoneNumber].IdentityType)
 		require.Equal(t, int64(0), got[otherCall][otherUser].LastLeaveAt, "other calls untouched")
 	})
 
@@ -147,10 +156,10 @@ func testGetParticipantsForCalls(t *testing.T, store *Store) {
 	user1 := model.NewId()
 	user2 := model.NewId()
 
-	require.NoError(t, store.RecordParticipantJoin(callA, user1, 100))
-	require.NoError(t, store.RecordParticipantLeave(callA, user1, 200))
-	require.NoError(t, store.RecordParticipantJoin(callA, user2, 150))
-	require.NoError(t, store.RecordParticipantJoin(callB, user1, 300))
+	require.NoError(t, store.RecordParticipantJoin(callA, public.IdentityTypeUser, user1, 100))
+	require.NoError(t, store.RecordParticipantLeave(callA, public.IdentityTypeUser, user1, 200))
+	require.NoError(t, store.RecordParticipantJoin(callA, public.IdentityTypeUser, user2, 150))
+	require.NoError(t, store.RecordParticipantJoin(callB, public.IdentityTypeUser, user1, 300))
 
 	t.Run("empty input returns empty map", func(t *testing.T) {
 		got, err := store.GetParticipantsForCalls(nil, GetCallOpts{FromWriter: true})
@@ -158,7 +167,7 @@ func testGetParticipantsForCalls(t *testing.T, store *Store) {
 		require.Empty(t, got)
 	})
 
-	t.Run("groups by call then user", func(t *testing.T) {
+	t.Run("groups by call then identity", func(t *testing.T) {
 		got, err := store.GetParticipantsForCalls([]string{callA, callB}, GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
 
@@ -177,4 +186,30 @@ func testGetParticipantsForCalls(t *testing.T, store *Store) {
 		require.NoError(t, err)
 		require.Empty(t, got)
 	})
+}
+
+// testPhoneIdentity covers the SIP callee: a "phone" identity recorded alongside
+// a "user" identity in the same call, keyed by the E.164 number.
+func testPhoneIdentity(t *testing.T, store *Store) {
+	callID := model.NewId()
+	userID := model.NewId()
+	phoneNumber := "+15559876543"
+
+	require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypeUser, userID, 1000))
+	require.NoError(t, store.RecordParticipantJoin(callID, public.IdentityTypePhone, phoneNumber, 1200))
+
+	got, err := store.GetParticipantsForCalls([]string{callID}, GetCallOpts{FromWriter: true})
+	require.NoError(t, err)
+
+	require.Len(t, got[callID], 2, "user and phone identities coexist under one call")
+
+	phone := got[callID][phoneNumber]
+	require.NotNil(t, phone)
+	require.Equal(t, public.IdentityTypePhone, phone.IdentityType)
+	require.Equal(t, phoneNumber, phone.Identity)
+	require.Equal(t, int64(1200), phone.FirstJoinAt)
+
+	user := got[callID][userID]
+	require.NotNil(t, user)
+	require.Equal(t, public.IdentityTypeUser, user.IdentityType)
 }

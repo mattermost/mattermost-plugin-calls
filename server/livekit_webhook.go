@@ -138,9 +138,10 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 	// even though it holds a session — matching addUserSession.
 	//
 	// Audit attendance (RecordParticipantJoin) is recorded in addUserSession, the
-	// chokepoint every join path funnels through (WebSocket, REST token endpoint,
-	// phone). Recording it here too would miss the WebSocket-only join path and
-	// double-write on the normal path, so it deliberately lives there, not here.
+	// chokepoint every user join path funnels through (WebSocket, REST token
+	// endpoint, phone caller). Recording it here too would miss the WebSocket-only
+	// join path and double-write on the normal path, so it deliberately lives there,
+	// not here. The SIP (phone) callee is recorded in handleLiveKitSIPParticipantJoined.
 	if !p.isBot(userID) {
 		if state.Call.Props.Participants == nil {
 			state.Call.Props.Participants = map[string]struct{}{}
@@ -257,13 +258,13 @@ func (p *Plugin) removeParticipantSession(channelID, userID, sessionID, sid stri
 	// (keeps the latest leave per user). A failed write is logged, not fatal: the
 	// call-end backstop stamps a leave time for anyone still unrecorded.
 	//
-	// SIP (phone) participants are intentionally skipped here: their join is
-	// recorded at dial time and their leave comes from the call-end backstop
-	// (= call end time), since the server never observes the phone answering. See
-	// removeUserSession for the full rationale.
+	// SIP (phone) callees are intentionally skipped here: their join is recorded in
+	// handleLiveKitSIPParticipantJoined and their leave comes from the call-end
+	// backstop (= call end time), since the server never observes the phone
+	// answering. See removeUserSession for the full rationale.
 	if !p.isBot(userID) && !session.IsSIPParticipant {
 		leaveAt := nowMillis()
-		if err := p.store.RecordParticipantLeave(state.Call.ID, userID, leaveAt); err != nil {
+		if err := p.store.RecordParticipantLeave(state.Call.ID, public.IdentityTypeUser, userID, leaveAt); err != nil {
 			p.LogError("calls audit: failed to record participant leave",
 				"callID", state.Call.ID, "userID", userID, "err", err.Error())
 		}
@@ -415,7 +416,7 @@ func (p *Plugin) handleLiveKitRoomFinished(event *livekit.WebhookEvent) {
 		if p.isBot(sess.UserID) || sess.IsSIPParticipant {
 			continue
 		}
-		if err := p.store.RecordParticipantLeave(state.Call.ID, sess.UserID, roomFinishedAt); err != nil {
+		if err := p.store.RecordParticipantLeave(state.Call.ID, public.IdentityTypeUser, sess.UserID, roomFinishedAt); err != nil {
 			p.LogError("calls audit: failed to record participant leave",
 				"callID", state.Call.ID, "userID", sess.UserID, "err", err.Error())
 		}

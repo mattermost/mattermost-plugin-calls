@@ -44,6 +44,7 @@ func TestBuildAuditCSV(t *testing.T) {
 	}
 
 	u1, u2, u3 := model.NewId(), model.NewId(), model.NewId()
+	phone := "+15551234567" // SIP callee: appears only in the times table, as a phone identity
 
 	// Ended call. u3 is present in the authoritative participant-times table but
 	// NOT in Call.Participants — it must still appear (union behavior).
@@ -66,11 +67,12 @@ func TestBuildAuditCSV(t *testing.T) {
 
 	participantTimes := map[string]map[string]*public.CallParticipant{
 		endedCall.ID: {
-			u1: {FirstJoinAt: 1_000_000, LastLeaveAt: 1_050_000},
-			u3: {FirstJoinAt: 1_010_000, LastLeaveAt: 1_060_000},
+			u1:    {IdentityType: public.IdentityTypeUser, Identity: u1, FirstJoinAt: 1_000_000, LastLeaveAt: 1_050_000},
+			u3:    {IdentityType: public.IdentityTypeUser, Identity: u3, FirstJoinAt: 1_010_000, LastLeaveAt: 1_060_000},
+			phone: {IdentityType: public.IdentityTypePhone, Identity: phone, FirstJoinAt: 1_005_000, LastLeaveAt: 1_060_000},
 		},
 		ongoingCall.ID: {
-			u1: {FirstJoinAt: 2_000_000, LastLeaveAt: 0},
+			u1: {IdentityType: public.IdentityTypeUser, Identity: u1, FirstJoinAt: 2_000_000, LastLeaveAt: 0},
 		},
 	}
 	usernames := map[string]string{u1: "alice", u2: "bob"} // u3 intentionally missing
@@ -83,39 +85,59 @@ func TestBuildAuditCSV(t *testing.T) {
 
 	header := records[0]
 	require.Equal(t, "call_id", header[0])
-	require.Equal(t, "participant_first_join_utc", header[10])
-	require.Equal(t, "participant_last_leave_utc", header[11])
+	require.Equal(t, "participant_user_id", header[8])
+	require.Equal(t, "participant_type", header[9])
+	require.Equal(t, "participant_identity", header[10])
+	require.Equal(t, "participant_username", header[11])
+	require.Equal(t, "participant_first_join_utc", header[12])
+	require.Equal(t, "participant_last_leave_utc", header[13])
 
-	// Index rows by (callID, userID).
-	type key struct{ call, user string }
+	// Index rows by (callID, identity) — identity is unique per call across both
+	// user IDs and phone numbers.
+	type key struct{ call, identity string }
 	rows := map[key][]string{}
 	for _, r := range records[1:] {
-		rows[key{r[0], r[8]}] = r
+		rows[key{r[0], r[10]}] = r
 	}
 
-	// Union: u1, u2 (from Participants) and u3 (from times-only) all present.
-	require.Len(t, rows, 4) // endedCall: u1,u2,u3 ; ongoingCall: u1
+	// Union: u1, u2 (from Participants), u3 and the phone callee (from times-only).
+	require.Len(t, rows, 5) // endedCall: u1,u2,u3,phone ; ongoingCall: u1
 
 	u1Row := rows[key{endedCall.ID, u1}]
-	require.Equal(t, "alice", u1Row[9])
+	require.Equal(t, u1, u1Row[8]) // participant_user_id
+	require.Equal(t, public.IdentityTypeUser, u1Row[9])
+	require.Equal(t, u1, u1Row[10])             // identity
+	require.Equal(t, "alice", u1Row[11])        // username
 	require.Equal(t, "'=Town Square", u1Row[3]) // sanitized display name
 	require.Equal(t, "Standup", u1Row[4])
 	require.Equal(t, "60", u1Row[7]) // duration seconds
 	require.NotEmpty(t, u1Row[5])    // start
 	require.NotEmpty(t, u1Row[6])    // end
-	require.NotEmpty(t, u1Row[10])   // first join
-	require.NotEmpty(t, u1Row[11])   // last leave
+	require.NotEmpty(t, u1Row[12])   // first join
+	require.NotEmpty(t, u1Row[13])   // last leave
 
 	// u2 is in Participants but has no times row -> blank join/leave.
 	u2Row := rows[key{endedCall.ID, u2}]
-	require.Equal(t, "bob", u2Row[9])
-	require.Empty(t, u2Row[10])
-	require.Empty(t, u2Row[11])
+	require.Equal(t, "bob", u2Row[11])
+	require.Empty(t, u2Row[12])
+	require.Empty(t, u2Row[13])
 
 	// u3 came from the times table only; username falls back to the ID.
 	u3Row := rows[key{endedCall.ID, u3}]
-	require.Equal(t, u3, u3Row[9])
-	require.NotEmpty(t, u3Row[10])
+	require.Equal(t, u3, u3Row[11])
+	require.NotEmpty(t, u3Row[12])
+
+	// Phone callee: blank user_id, type "phone", the number as both identity and
+	// username. The leading "+" makes csvSafe prefix a "'" (formula-injection
+	// guard), so the number appears in its sanitized form.
+	safePhone := csvSafe(phone)
+	phoneRow := rows[key{endedCall.ID, safePhone}]
+	require.Empty(t, phoneRow[8], "phone rows have no Mattermost user id")
+	require.Equal(t, public.IdentityTypePhone, phoneRow[9])
+	require.Equal(t, safePhone, phoneRow[10])
+	require.Equal(t, safePhone, phoneRow[11])
+	require.NotEmpty(t, phoneRow[12]) // first join
+	require.NotEmpty(t, phoneRow[13]) // last leave
 
 	// Ongoing call: no end/duration; u1 present via Props fallback.
 	ongRow := rows[key{ongoingCall.ID, u1}]
