@@ -19,11 +19,24 @@ import type {LiveKitSessionResponse} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import {logErr, logWarn} from 'src/log';
 import {toSIPCallStatus} from 'src/phone_utils';
-import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
+import {
+    channelIDForCurrentCall,
+    clientConnecting,
+    defaultEnabled,
+    getCallIDForChannel,
+    sipOutboundEnabled,
+} from 'src/selectors';
 import {sipCallStatusChanged} from 'src/state/sip_call_state/actions';
 import type {Store} from 'src/types/mattermost-webapp';
 import {CallPostStatus} from 'src/types/types';
-import {getPluginPath, isCallsPopOut, isMobile} from 'src/utils';
+import {
+    getCallsClient,
+    getPluginPath,
+    isCallsPopOut,
+    isMobile,
+    sendDesktopEvent,
+    shouldRenderDesktopWidget,
+} from 'src/utils';
 
 export type PhoneCallResponse = LiveKitSessionResponse & {
     call_id: string;
@@ -87,6 +100,10 @@ const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
 let unreportedCallID = '';
 let unreportedChannelID = '';
 
+// Clients leaving a call the server has already ended, so watchPhoneCall
+// doesn't ask the server to end it again.
+const clientsLeavingEndedCall = new WeakSet<CallClient>();
+
 function claimCallOutcome(callID: string) {
     if (!callID || callID !== unreportedCallID) {
         return false;
@@ -131,6 +148,45 @@ export function handlePhoneCallEnd(store: Store, callID: string, reason?: CallPo
     const outcome = callOutcomeMessage(reason);
     if (outcome) {
         store.dispatch(displayGenericErrorModal(outcome.title, outcome.message));
+    }
+}
+
+// The client normally leaves an ended call when LiveKit deletes the room. It misses
+// that if the delete fails, or if it finishes joining after the delete and lands in
+// an empty room LiveKit recreated, which leaves it stuck in a call that's gone.
+// Must run before call_end is applied to the store, which drops the call's ID.
+export function leaveCallEndedByServer(store: Store, channelID: string, callID: string) {
+    if (!callID || isCallsPopOut()) {
+        return;
+    }
+
+    const state = store.getState();
+    const isPlacedCall = callID === unreportedCallID && channelID === unreportedChannelID;
+    if (!isPlacedCall && getCallIDForChannel(state, channelID) !== callID) {
+        return;
+    }
+
+    const client = getCallsClient();
+    if (client) {
+        if (client.channelID === channelID) {
+            clientsLeavingEndedCall.add(client);
+            client.disconnect();
+        }
+        return;
+    }
+
+    // The Desktop widget's channel is only known here once it has connected, so a
+    // widget still connecting is matched by the phone call this window placed.
+    const currentChannelID = channelIDForCurrentCall(state);
+    if (currentChannelID ? currentChannelID !== channelID : !isPlacedCall) {
+        return;
+    }
+
+    if (window.desktopAPI?.leaveCall) {
+        window.desktopAPI.leaveCall();
+    } else if (shouldRenderDesktopWidget()) {
+        // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+        sendDesktopEvent('calls-leave-call', {callID: channelID});
     }
 }
 
@@ -369,6 +425,9 @@ export function watchPhoneCall(client: CallClient, channelID: string, callID: st
             return;
         }
         ended = true;
+        if (clientsLeavingEndedCall.has(client)) {
+            return;
+        }
         hostEndCallForEveryone(channelID, callID).catch((err) => logErr('failed to end phone call', err));
     };
 
