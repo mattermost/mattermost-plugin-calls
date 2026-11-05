@@ -307,8 +307,13 @@ func (p *Plugin) handleSIPNoAnswerTimer(channelID string, entry *sipNoAnswerTime
 	var endReason callEndReason
 	switch {
 	case !p.phoneCallerConnected(state, participants):
-		// The caller never connected, so nothing was dialed or announced.
 		reason, endReason = "sip_caller_not_connected", callEndReasonFailed
+		// A pending dial means nothing reached the phone, so there is no failure
+		// to report: the caller's client gave up or never opened (e.g. a closed
+		// Desktop widget).
+		if state.Call.Props.DialSessionID != "" {
+			endReason = callEndReasonCanceledByCaller
+		}
 	case !sipCalleeAnswered(participants):
 		reason, endReason = "sip_no_answer", callEndReasonNoAnswer
 	default:
