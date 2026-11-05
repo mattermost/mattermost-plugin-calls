@@ -86,7 +86,7 @@ func TestHostEndPendingPhoneCall(t *testing.T) {
 	callID := state.Call.ID
 	p.startSIPNoAnswerTimer(channelID, callID)
 
-	require.NoError(t, p.hostEnd(userID, channelID))
+	require.NoError(t, p.hostEnd(userID, channelID, ""))
 
 	_, err = store.GetActiveCallByChannelID(channelID, db.GetCallOpts{FromWriter: true})
 	require.ErrorIs(t, err, db.ErrNotFound)

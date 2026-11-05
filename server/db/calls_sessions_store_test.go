@@ -18,7 +18,6 @@ func TestCallsSessionsStore(t *testing.T) {
 	testStore(t, map[string]func(t *testing.T, store *Store){
 		"TestCreateCallSession":                testCreateCallSession,
 		"TestDeleteCallSession":                testDeleteCallSession,
-		"TestUpdateCallSession":                testUpdateCallSession,
 		"TestGetCallSession":                   testGetCallSession,
 		"TestGetCallSessions":                  testGetCallSessions,
 		"TestDeleteCallsSessions":              testDeleteCallsSessions,
@@ -58,12 +57,10 @@ func testCreateCallSession(t *testing.T, store *Store) {
 
 	t.Run("valid", func(t *testing.T) {
 		session := &public.CallSession{
-			ID:         model.NewId(),
-			CallID:     model.NewId(),
-			UserID:     model.NewId(),
-			JoinAt:     time.Now().UnixMilli(),
-			Unmuted:    true,
-			RaisedHand: time.Now().UnixMilli(),
+			ID:     model.NewId(),
+			CallID: model.NewId(),
+			UserID: model.NewId(),
+			JoinAt: time.Now().UnixMilli(),
 		}
 
 		err := store.CreateCallSession(session)
@@ -74,49 +71,25 @@ func testCreateCallSession(t *testing.T, store *Store) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, session, gotSession)
-	})
-}
 
-func testUpdateCallSession(t *testing.T, store *Store) {
-	t.Run("nil", func(t *testing.T) {
-		var session *public.CallSession
-		err := store.UpdateCallSession(session)
-		require.EqualError(t, err, "invalid call session: should not be nil")
-	})
-
-	t.Run("existing", func(t *testing.T) {
-		session := &public.CallSession{
-			ID:      model.NewId(),
-			CallID:  model.NewId(),
-			UserID:  model.NewId(),
-			JoinAt:  time.Now().UnixMilli(),
-			Unmuted: true,
-		}
-
-		err := store.CreateCallSession(session)
+		// The legacy columns are no longer read, but must be written as non-NULL
+		// defaults so that older plugin versions can still scan these rows.
+		var unmuted, video bool
+		var raisedHand int64
+		err = store.wDB.QueryRow("SELECT Unmuted, RaisedHand, Video FROM calls_sessions WHERE ID = $1", session.ID).Scan(&unmuted, &raisedHand, &video)
 		require.NoError(t, err)
-
-		session.RaisedHand = time.Now().UnixMilli()
-		session.Unmuted = false
-
-		err = store.UpdateCallSession(session)
-		require.NoError(t, err)
-
-		gotSession, err := store.GetCallSession(session.ID, GetCallSessionOpts{
-			FromWriter: true,
-		})
-		require.NoError(t, err)
-		require.Equal(t, session, gotSession)
+		require.False(t, unmuted)
+		require.Zero(t, raisedHand)
+		require.False(t, video)
 	})
 }
 
 func testDeleteCallSession(t *testing.T, store *Store) {
 	session := &public.CallSession{
-		ID:      model.NewId(),
-		CallID:  model.NewId(),
-		UserID:  model.NewId(),
-		JoinAt:  time.Now().UnixMilli(),
-		Unmuted: true,
+		ID:     model.NewId(),
+		CallID: model.NewId(),
+		UserID: model.NewId(),
+		JoinAt: time.Now().UnixMilli(),
 	}
 
 	err := store.CreateCallSession(session)
@@ -145,11 +118,10 @@ func testGetCallSession(t *testing.T, store *Store) {
 
 	t.Run("existing", func(t *testing.T) {
 		session := &public.CallSession{
-			ID:      model.NewId(),
-			CallID:  model.NewId(),
-			UserID:  model.NewId(),
-			JoinAt:  time.Now().UnixMilli(),
-			Unmuted: true,
+			ID:     model.NewId(),
+			CallID: model.NewId(),
+			UserID: model.NewId(),
+			JoinAt: time.Now().UnixMilli(),
 		}
 
 		err := store.CreateCallSession(session)
@@ -207,11 +179,10 @@ func testDeleteCallsSessions(t *testing.T, store *Store) {
 
 		for i := 0; i < 10; i++ {
 			session := &public.CallSession{
-				ID:      model.NewId(),
-				CallID:  callID,
-				UserID:  model.NewId(),
-				JoinAt:  time.Now().UnixMilli(),
-				Unmuted: true,
+				ID:     model.NewId(),
+				CallID: callID,
+				UserID: model.NewId(),
+				JoinAt: time.Now().UnixMilli(),
 			}
 
 			err := store.CreateCallSession(session)
@@ -321,12 +292,10 @@ func testCallsSessionsTableColumnAddition(t *testing.T, store *Store) {
 
 	// Create a session with the current schema
 	session := &public.CallSession{
-		ID:         model.NewId(),
-		CallID:     model.NewId(),
-		UserID:     model.NewId(),
-		JoinAt:     time.Now().UnixMilli(),
-		Unmuted:    true,
-		RaisedHand: time.Now().UnixMilli(),
+		ID:     model.NewId(),
+		CallID: model.NewId(),
+		UserID: model.NewId(),
+		JoinAt: time.Now().UnixMilli(),
 	}
 
 	err := store.CreateCallSession(session)
@@ -347,18 +316,6 @@ func testCallsSessionsTableColumnAddition(t *testing.T, store *Store) {
 	gotSession, err := store.GetCallSession(session.ID, GetCallSessionOpts{FromWriter: true})
 	require.NoError(t, err)
 	require.Equal(t, session, gotSession)
-
-	// Verify we can still update the session
-	session.Unmuted = false
-	session.RaisedHand = time.Now().UnixMilli()
-	err = store.UpdateCallSession(session)
-	require.NoError(t, err)
-
-	// Verify the update worked correctly
-	updatedSession, err := store.GetCallSession(session.ID, GetCallSessionOpts{FromWriter: true})
-	require.NoError(t, err)
-	require.Equal(t, session.Unmuted, updatedSession.Unmuted)
-	require.Equal(t, session.RaisedHand, updatedSession.RaisedHand)
 
 	// Clean up - drop the test column
 	var dropColumnSQL string

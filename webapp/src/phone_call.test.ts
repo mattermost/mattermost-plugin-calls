@@ -675,7 +675,7 @@ describe('phone_call', () => {
         }
 
         let client: FakeClient;
-        const watch = (connecting: Promise<void> = Promise.resolve()) => watchPhoneCall(client as unknown as CallClient, 'bot-dm', connecting);
+        const watch = (connecting: Promise<void> = Promise.resolve()) => watchPhoneCall(client as unknown as CallClient, 'bot-dm', 'call-1', connecting);
 
         beforeEach(() => {
             jest.useFakeTimers();
@@ -691,7 +691,7 @@ describe('phone_call', () => {
             watch();
 
             client.emit(CALL_EVENT.DISCONNECTING);
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm', 'call-1');
 
             client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
             expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
@@ -702,7 +702,7 @@ describe('phone_call', () => {
 
             client.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
 
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm', 'call-1');
         });
 
         it('does not end the call again when the server already deleted the room', () => {
@@ -727,7 +727,7 @@ describe('phone_call', () => {
 
             await connecting.catch(() => {});
 
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm', 'call-1');
         });
 
         it('ends the call when the caller cancels before joining', async () => {
@@ -737,7 +737,7 @@ describe('phone_call', () => {
 
             await connecting;
 
-            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm', 'call-1');
         });
 
         it('keeps the call once the join succeeds', async () => {

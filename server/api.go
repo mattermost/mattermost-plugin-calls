@@ -1565,7 +1565,9 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 	identity := participant.Identity
 
 	p.LogDebug("handleLiveKitSIPParticipantLeft: SIP participant left",
-		"channelID", channelID, "sid", sid, "identity", identity)
+		"channelID", channelID, "sid", sid, "identity", identity,
+		"disconnectReason", participant.GetDisconnectReason().String(),
+		"callStatus", participant.GetAttributes()[livekit.AttrSIPCallStatus])
 
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
@@ -1610,7 +1612,8 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 
 		p.cancelSIPNoAnswerTimer(channelID)
 
-		endReason := phoneLegEndReason(participant.GetDisconnectReason())
+		answered := participant.GetAttributes()[livekit.AttrSIPCallStatus] == sipCallStatusActive
+		endReason := phoneLegEndReason(participant.GetDisconnectReason(), answered)
 		p.publishCallEnd(channelID, state.Call.ID, endReason)
 
 		if err := p.cleanCallState(&state.Call, "sip_hangup", endReason); err != nil {

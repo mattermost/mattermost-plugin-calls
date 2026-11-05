@@ -17,6 +17,7 @@ var (
 	ErrNoPermissions = errors.New("no permissions")
 	ErrNotInCall     = errors.New("requested session or user is not in the call")
 	ErrNotAllowed    = errors.New("not allowed")
+	ErrCallMismatch  = errors.New("call is not the active call in the channel")
 )
 
 func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
@@ -51,7 +52,7 @@ func (p *Plugin) changeHost(requesterID, channelID, newHostID string) error {
 		return nil
 	}
 
-	if !state.isUserIDInCall(newHostID) {
+	if !state.isUserConfirmedInCall(newHostID) {
 		return ErrNotInCall
 	}
 
@@ -95,10 +96,9 @@ func (p *Plugin) hostMuteParticipant(requesterID, channelID, sessionID string) e
 		return ErrNotInCall
 	}
 
-	// NB: we deliberately do not gate on server-side mute state. Under LiveKit
-	// (v2) mute lives in the track state; the server's session.Unmuted is
-	// vestigial (never updated post-migration, see MM-69116) and would always
-	// read false here. livekitMuteParticipant is idempotent — it no-ops if the
+	// NB: there is no server-side mute state to gate on. Under LiveKit (v2) mute
+	// lives in the track state (the vestigial session.Unmuted was removed in
+	// MM-69116). livekitMuteParticipant is idempotent — it no-ops if the
 	// participant has no unmuted mic track.
 	//
 	// No plugin WebSocket event is needed: MutePublishedTrack causes LiveKit to
@@ -129,12 +129,11 @@ func (p *Plugin) hostMuteAllParticipants(requesterID, channelID string) error {
 		}
 	}
 
-	// Mute every participant except the host/requester. We deliberately do not
-	// gate on server-side mute state: under LiveKit (v2) mute lives in the track
-	// state and the server's session.Unmuted is vestigial (never updated
-	// post-migration, see MM-69116) — it would read false for everyone and skip
-	// the whole loop. livekitMuteParticipant is idempotent, so muting an
-	// already-muted participant is a harmless no-op.
+	// Mute every participant except the host/requester. There is no server-side
+	// mute state to gate on: under LiveKit (v2) mute lives in the track state
+	// (the vestigial session.Unmuted was removed in MM-69116).
+	// livekitMuteParticipant is idempotent, so muting an already-muted
+	// participant is a harmless no-op.
 	//
 	// Calls are issued concurrently: each livekitMuteParticipant makes two
 	// blocking RPCs (GetParticipant + MutePublishedTrack), so sequential
@@ -233,10 +232,9 @@ func (p *Plugin) hostLowerParticipantHand(requesterID, channelID, sessionID stri
 		return ErrNotInCall
 	}
 
-	// NB: we deliberately do not gate on server-side raised-hand state. Under
-	// LiveKit (v2) the hand is a participant attribute the client owns; the
-	// server's session.RaisedHand is vestigial (never updated post-migration,
-	// see MM-69116) and would always read 0 here. Clearing an already-empty
+	// NB: there is no server-side raised-hand state to gate on. Under LiveKit
+	// (v2) the hand is a participant attribute the client owns (the vestigial
+	// session.RaisedHand was removed in MM-69116). Clearing an already-empty
 	// attribute is a harmless no-op.
 	//
 	// Clear the raised-hand attribute directly on the LiveKit server. This is the
@@ -321,7 +319,10 @@ func (p *Plugin) hostRemoveParticipant(requesterID, channelID, sessionID string)
 	return nil
 }
 
-func (p *Plugin) hostEnd(requesterID, channelID string) error {
+// hostEnd ends the active call in channelID. A non-empty callID restricts it to
+// that call, so a late request for a call that has already ended can't end a
+// newer one in the same channel.
+func (p *Plugin) hostEnd(requesterID, channelID, callID string) error {
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
 		return fmt.Errorf("failed to lock call: %w", err)
@@ -330,6 +331,10 @@ func (p *Plugin) hostEnd(requesterID, channelID string) error {
 
 	if state == nil {
 		return ErrNoCallOngoing
+	}
+
+	if callID != "" && callID != state.Call.ID {
+		return ErrCallMismatch
 	}
 
 	if requesterID != state.Call.GetHostID() {
