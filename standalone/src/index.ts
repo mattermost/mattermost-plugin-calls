@@ -27,6 +27,7 @@ import {
     logErr,
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
+import {trackSIPCallStatus} from 'plugin/phone_call';
 import reducer from 'plugin/reducers';
 import {getCallIDForChannel} from 'plugin/selectors';
 import {userScreenShared, userScreenUnshared} from 'plugin/state/screen_sharing_ids/actions';
@@ -134,6 +135,8 @@ function connectCall(
                 timestamp,
             });
         });
+
+        trackSIPCallStatus(store, callClient);
 
         let lastError: Error | undefined;
 

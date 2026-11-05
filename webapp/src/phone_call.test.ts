@@ -16,15 +16,18 @@ import {
 import type CallClient from 'src/clients/call/call_client';
 import {CALL_EVENT} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
-import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
+import {channelIDForCurrentCall, clientConnecting, defaultEnabled, getCallIDForChannel, sipOutboundEnabled} from 'src/selectors';
+import {SIP_CALL_STATUS_CHANGED} from 'src/state/sip_call_state/action_types';
 import {CallPostStatus} from 'src/types/types';
-import {isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
+import {getCallsClient, isCallsPopOut, isMobile, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
 
 import {
     dialFromUI,
     dialPhoneNumber,
+    endPhoneCallAfterDesktopError,
     handlePhoneCallEnd,
     installTelLinkInterceptor,
+    leaveCallEndedByServer,
     openInOSDialer,
     parseTelHref,
     phoneCallErrorMessage,
@@ -33,6 +36,7 @@ import {
     registerPhoneDialer,
     registerTelLinkDialing,
     telLinkInterceptionSupported,
+    trackSIPCallStatus,
     watchPhoneCall,
 } from './phone_call';
 
@@ -64,12 +68,15 @@ jest.mock('src/selectors', () => ({
     channelIDForCurrentCall: jest.fn(),
     clientConnecting: jest.fn(),
     defaultEnabled: jest.fn(),
+    getCallIDForChannel: jest.fn(),
     sipOutboundEnabled: jest.fn(),
 }));
 jest.mock('src/utils', () => ({
     ...jest.requireActual('src/utils'),
+    getCallsClient: jest.fn(),
     isCallsPopOut: jest.fn(),
     isMobile: jest.fn(),
+    sendDesktopEvent: jest.fn(),
     shouldRenderDesktopWidget: jest.fn(),
 }));
 
@@ -88,6 +95,9 @@ const mockedSipOutboundEnabled = sipOutboundEnabled as jest.Mock;
 const mockedIsCallsPopOut = isCallsPopOut as jest.Mock;
 const mockedIsMobile = isMobile as jest.Mock;
 const mockedShouldRenderDesktopWidget = shouldRenderDesktopWidget as jest.Mock;
+const mockedGetCallIDForChannel = getCallIDForChannel as jest.Mock;
+const mockedGetCallsClient = getCallsClient as jest.Mock;
+const mockedSendDesktopEvent = sendDesktopEvent as jest.Mock;
 
 const setDesktopAPI = (desktopAPI?: unknown) => {
     (window as {desktopAPI?: unknown}).desktopAPI = desktopAPI;
@@ -104,6 +114,8 @@ describe('phone_call', () => {
         mockedIsCurrentUserSystemAdmin.mockReturnValue(false);
         mockedChannelIDForCurrentCall.mockReturnValue('');
         mockedClientConnecting.mockReturnValue(false);
+        mockedGetCallIDForChannel.mockReturnValue('');
+        mockedGetCallsClient.mockReturnValue(undefined);
     });
 
     afterEach(() => {
@@ -243,18 +255,19 @@ describe('phone_call', () => {
     });
 
     describe('phoneDialingSupported', () => {
-        it('is supported in a browser, including a mobile one', () => {
-            mockedIsMobile.mockReturnValue(true);
+        it.each([
+            {label: 'a browser', setUp: () => {}},
+            {label: 'a mobile browser', setUp: () => mockedIsMobile.mockReturnValue(true)},
+            {label: 'the Desktop app', setUp: () => setDesktopAPI({joinCall: jest.fn()})},
+            {label: 'a legacy Desktop app', setUp: () => mockedShouldRenderDesktopWidget.mockReturnValue(true)},
+        ])('is supported in $label', ({setUp}) => {
+            setUp();
 
             expect(phoneDialingSupported()).toBe(true);
         });
 
-        it.each([
-            {label: 'the Desktop app', setUp: () => setDesktopAPI({joinCall: jest.fn()})},
-            {label: 'a legacy Desktop app', setUp: () => mockedShouldRenderDesktopWidget.mockReturnValue(true)},
-            {label: 'the expanded-view pop-out', setUp: () => mockedIsCallsPopOut.mockReturnValue(true)},
-        ])('is not supported in $label', ({setUp}) => {
-            setUp();
+        it('is not supported in the expanded-view pop-out', () => {
+            mockedIsCallsPopOut.mockReturnValue(true);
 
             expect(phoneDialingSupported()).toBe(false);
         });
@@ -341,13 +354,17 @@ describe('phone_call', () => {
     });
 
     describe('telLinkInterceptionSupported', () => {
-        it('is supported in a browser outside the expanded-view pop-out', () => {
+        it.each([
+            {label: 'a browser', setUp: () => {}},
+            {label: 'the Desktop app', setUp: () => setDesktopAPI({joinCall: jest.fn()})},
+            {label: 'a legacy Desktop app', setUp: () => mockedShouldRenderDesktopWidget.mockReturnValue(true)},
+        ])('is supported in $label', ({setUp}) => {
+            setUp();
+
             expect(telLinkInterceptionSupported()).toBe(true);
         });
 
         it.each([
-            {label: 'the Desktop app', setUp: () => setDesktopAPI({joinCall: jest.fn()})},
-            {label: 'a legacy Desktop app', setUp: () => mockedShouldRenderDesktopWidget.mockReturnValue(true)},
             {label: 'the expanded-view pop-out', setUp: () => mockedIsCallsPopOut.mockReturnValue(true)},
             {label: 'a mobile browser', setUp: () => mockedIsMobile.mockReturnValue(true)},
         ])('is not supported in $label', ({setUp}) => {
@@ -399,6 +416,18 @@ describe('phone_call', () => {
             expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
         });
 
+        it('places the call and hands it to connect in the Desktop app', async () => {
+            setDesktopAPI({joinCall: jest.fn()});
+            mockedFetch.mockResolvedValueOnce(phoneCallResponse);
+            const connect = jest.fn();
+
+            await dialPhoneNumber(makeStore() as never, '+15550100', connect);
+
+            expect(mockedFetch).toHaveBeenCalledWith(expect.stringMatching(/\/phone-call$/), expect.anything());
+            expect(connect).toHaveBeenCalledWith('bot-dm', phoneCallResponse);
+            expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
+        });
+
         it('passes the target along to the server', async () => {
             mockedFetch.mockResolvedValueOnce(phoneCallResponse);
 
@@ -434,11 +463,6 @@ describe('phone_call', () => {
                 label: 'the user is already in a call',
                 setUp: () => mockedChannelIDForCurrentCall.mockReturnValue('other-channel'),
                 message: defineMessage({defaultMessage: 'You\'re already in a call. Leave it before placing a phone call.'}),
-            },
-            {
-                label: 'running in the Desktop app',
-                setUp: () => setDesktopAPI({joinCall: jest.fn()}),
-                message: defineMessage({defaultMessage: 'Phone calls aren\'t supported in the desktop app yet.'}),
             },
         ])('does not dial when $label', async ({setUp, message}) => {
             setUp();
@@ -603,12 +627,49 @@ describe('phone_call', () => {
         });
 
         it('leaves tel: links alone where interception is not supported', () => {
-            setDesktopAPI({joinCall: jest.fn()});
+            mockedIsCallsPopOut.mockReturnValue(true);
 
             registerTelLinkDialing(store as never, jest.fn());
             onStoreChange();
 
             expect(telClickListeners(addListenerSpy)).toHaveLength(0);
+        });
+    });
+
+    describe('trackSIPCallStatus', () => {
+        const sipStatusAction = (status: string) => expect.objectContaining({
+            type: SIP_CALL_STATUS_CHANGED,
+            data: expect.objectContaining({channelID: 'bot-dm', status}),
+        });
+
+        let client: EventEmitter & {channelID: string};
+        let store: {dispatch: jest.Mock};
+
+        beforeEach(() => {
+            client = Object.assign(new EventEmitter(), {channelID: 'bot-dm'});
+            store = {dispatch: jest.fn()};
+            trackSIPCallStatus(store as never, client as unknown as CallClient);
+        });
+
+        it('stores each status change of the phone leg', () => {
+            client.emit(CALL_EVENT.SIP_STATUS_CHANGED, 'ringing');
+            client.emit(CALL_EVENT.SIP_STATUS_CHANGED, 'active');
+
+            expect(store.dispatch).toHaveBeenNthCalledWith(1, sipStatusAction('ringing'));
+            expect(store.dispatch).toHaveBeenNthCalledWith(2, sipStatusAction('active'));
+        });
+
+        it('stores the last status when the phone leg leaves', () => {
+            client.emit(CALL_EVENT.SIP_LEFT, 'hangup');
+
+            expect(store.dispatch).toHaveBeenCalledWith(sipStatusAction('hangup'));
+        });
+
+        it('ignores statuses it does not know', () => {
+            client.emit(CALL_EVENT.SIP_STATUS_CHANGED, 'unknown');
+            client.emit(CALL_EVENT.SIP_LEFT, '');
+
+            expect(store.dispatch).not.toHaveBeenCalled();
         });
     });
 
@@ -717,6 +778,60 @@ describe('phone_call', () => {
         });
     });
 
+    describe('endPhoneCallAfterDesktopError', () => {
+        const store = {dispatch: jest.fn(), getState: jest.fn(() => ({}))};
+
+        beforeEach(() => {
+            mockedHostEndCallForEveryone.mockResolvedValue({});
+        });
+
+        it.each([
+            {label: 'its channel', channelID: 'bot-dm'},
+            {label: 'no channel', channelID: undefined},
+        ])('ends the phone call this window placed when the widget reports an error for $label', async ({channelID}) => {
+            await placeCall(store);
+
+            endPhoneCallAfterDesktopError(channelID);
+
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledWith('bot-dm');
+        });
+
+        it('does not report the call as failed once it has been ended', async () => {
+            await placeCall(store);
+            endPhoneCallAfterDesktopError('bot-dm');
+
+            handlePhoneCallEnd(store as never, 'call-id', CallPostStatus.Failed);
+
+            expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
+        });
+
+        it('ends the call only once', async () => {
+            await placeCall(store);
+
+            endPhoneCallAfterDesktopError('bot-dm');
+            endPhoneCallAfterDesktopError('bot-dm');
+
+            expect(mockedHostEndCallForEveryone).toHaveBeenCalledTimes(1);
+        });
+
+        it('leaves the phone call alone for an error from another channel', async () => {
+            await placeCall(store);
+
+            endPhoneCallAfterDesktopError('other-channel');
+
+            expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
+        });
+
+        it('does nothing once the phone call has ended', async () => {
+            await placeCall(store);
+            handlePhoneCallEnd(store as never, 'call-id', CallPostStatus.Ended);
+
+            endPhoneCallAfterDesktopError('bot-dm');
+
+            expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
+        });
+    });
+
     describe('handlePhoneCallEnd', () => {
         const store = {dispatch: jest.fn(), getState: jest.fn(() => ({}))};
 
@@ -744,6 +859,18 @@ describe('phone_call', () => {
             expect(mockedDisplayGenericErrorModal).not.toHaveBeenCalled();
         });
 
+        it('tells the caller why a call placed from the Desktop app ended', async () => {
+            setDesktopAPI({joinCall: jest.fn()});
+            await placeCall(store);
+
+            handlePhoneCallEnd(store as never, 'call-id', CallPostStatus.Failed);
+
+            expect(mockedDisplayGenericErrorModal).toHaveBeenCalledWith(
+                defineMessage({defaultMessage: 'Unable to place phone call'}),
+                defineMessage({defaultMessage: 'The call couldn\'t be placed. Please try again.'}),
+            );
+        });
+
         it('says nothing about a call this window did not place', async () => {
             await placeCall(store);
 
@@ -759,6 +886,157 @@ describe('phone_call', () => {
             handlePhoneCallEnd(store as never, 'call-id', CallPostStatus.Declined);
 
             expect(mockedDisplayGenericErrorModal).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('leaveCallEndedByServer', () => {
+        class FakeClient extends EventEmitter {
+            channelID = 'bot-dm';
+            isConnected = false;
+            disconnect = jest.fn(() => {
+                this.emit(CALL_EVENT.DISCONNECTING);
+                this.emit(CALL_EVENT.DISCONNECTED, DisconnectReason.CLIENT_INITIATED);
+                return Promise.resolve();
+            });
+        }
+
+        const store = {dispatch: jest.fn(), getState: jest.fn(() => ({}))};
+        let client: FakeClient;
+
+        beforeEach(() => {
+            client = new FakeClient();
+            mockedHostEndCallForEveryone.mockResolvedValue({});
+
+            // Forget any phone call an earlier test placed.
+            handlePhoneCallEnd(store as never, 'call-id');
+        });
+
+        describe('in the browser', () => {
+            beforeEach(() => {
+                mockedGetCallsClient.mockReturnValue(client);
+            });
+
+            it('disconnects the client from the call that ended', () => {
+                mockedGetCallIDForChannel.mockReturnValue('call-id');
+
+                leaveCallEndedByServer(store as never, 'bot-dm', 'call-id');
+
+                expect(client.disconnect).toHaveBeenCalledTimes(1);
+            });
+
+            it('disconnects the client from the phone call this window placed', async () => {
+                await placeCall(store);
+
+                leaveCallEndedByServer(store as never, 'bot-dm', 'call-id');
+
+                expect(client.disconnect).toHaveBeenCalledTimes(1);
+            });
+
+            it('does not ask the server to end a phone call it already ended', async () => {
+                await placeCall(store);
+                watchPhoneCall(client as unknown as CallClient, 'bot-dm', 'call-id', new Promise(() => {}));
+
+                leaveCallEndedByServer(store as never, 'bot-dm', 'call-id');
+
+                expect(client.disconnect).toHaveBeenCalledTimes(1);
+                expect(mockedHostEndCallForEveryone).not.toHaveBeenCalled();
+            });
+
+            it('stays in a newer call in the same channel', async () => {
+                await placeCall(store);
+                mockedGetCallIDForChannel.mockReturnValue('call-id');
+
+                leaveCallEndedByServer(store as never, 'bot-dm', 'old-call-id');
+
+                expect(client.disconnect).not.toHaveBeenCalled();
+            });
+
+            it('stays in a call in another channel', () => {
+                mockedGetCallIDForChannel.mockReturnValue('call-id');
+
+                leaveCallEndedByServer(store as never, 'other-channel', 'call-id');
+
+                expect(client.disconnect).not.toHaveBeenCalled();
+            });
+
+            it('ignores a call_end without a call ID', () => {
+                mockedGetCallIDForChannel.mockReturnValue('');
+
+                leaveCallEndedByServer(store as never, 'bot-dm', '');
+
+                expect(client.disconnect).not.toHaveBeenCalled();
+            });
+
+            it('leaves it to the main window from the popout', () => {
+                mockedIsCallsPopOut.mockReturnValue(true);
+                mockedGetCallIDForChannel.mockReturnValue('call-id');
+
+                leaveCallEndedByServer(store as never, 'bot-dm', 'call-id');
+
+                expect(client.disconnect).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('in the Desktop app', () => {
+            let leaveCall: jest.Mock;
+
+            beforeEach(() => {
+                leaveCall = jest.fn();
+                setDesktopAPI({joinCall: jest.fn(), leaveCall});
+            });
+
+            it('closes a widget still connecting to the phone call this window placed', async () => {
+                await placeCall(store);
+
+                leaveCallEndedByServer(store as never, 'bot-dm', 'call-id');
+
+                expect(leaveCall).toHaveBeenCalledTimes(1);
+            });
+
+            it('closes the widget connected to the call that ended', () => {
+                mockedChannelIDForCurrentCall.mockReturnValue('bot-dm');
+                mockedGetCallIDForChannel.mockReturnValue('call-id');
+
+                leaveCallEndedByServer(store as never, 'bot-dm', 'call-id');
+
+                expect(leaveCall).toHaveBeenCalledTimes(1);
+            });
+
+            it('keeps a widget that has moved to a call in another channel', async () => {
+                await placeCall(store);
+                mockedChannelIDForCurrentCall.mockReturnValue('other-channel');
+
+                leaveCallEndedByServer(store as never, 'bot-dm', 'call-id');
+
+                expect(leaveCall).not.toHaveBeenCalled();
+            });
+
+            it('keeps the widget for a call_end of an older call', () => {
+                mockedChannelIDForCurrentCall.mockReturnValue('bot-dm');
+                mockedGetCallIDForChannel.mockReturnValue('call-id');
+
+                leaveCallEndedByServer(store as never, 'bot-dm', 'old-call-id');
+
+                expect(leaveCall).not.toHaveBeenCalled();
+            });
+
+            it('does nothing when not in a call', () => {
+                mockedGetCallIDForChannel.mockReturnValue('call-id');
+
+                leaveCallEndedByServer(store as never, 'bot-dm', 'call-id');
+
+                expect(leaveCall).not.toHaveBeenCalled();
+            });
+
+            it('asks a legacy Desktop app to close the widget', async () => {
+                setDesktopAPI(undefined);
+                mockedShouldRenderDesktopWidget.mockReturnValue(true);
+                await placeCall(store);
+
+                leaveCallEndedByServer(store as never, 'bot-dm', 'call-id');
+
+                expect(mockedSendDesktopEvent).toHaveBeenCalledWith('calls-leave-call', {callID: 'bot-dm'});
+            });
         });
     });
 });
