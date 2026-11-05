@@ -226,6 +226,13 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 		mockAPI.On("LogError", mock.AnythingOfType("string"),
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+		// LogWarn shapes used by handleLiveKitSIPParticipantJoined: the empty-identity
+		// guard (2 key/value pairs) and the number-mismatch warning (3 pairs).
+		mockAPI.On("LogWarn", mock.AnythingOfType("string"),
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+		mockAPI.On("LogWarn", mock.AnythingOfType("string"),
+			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			mock.Anything, mock.Anything).Maybe()
 		mockAPI.On("PublishWebSocketEvent",
 			mock.AnythingOfType("string"),
 			mock.Anything,
@@ -315,6 +322,75 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 				"session_id":         sipSid,
 				"is_sip_participant": true,
 			}, mock.Anything)
+
+		// The SIP leg is recorded in the audit as a "phone" identity, keyed by the
+		// E.164 number, so it appears in attendance reports.
+		parts, err := p.store.GetParticipantsForCalls([]string{call.ID}, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.NotNil(t, parts[call.ID][sipIdentity], "phone leg must have a calls_participants row")
+		require.Equal(t, public.IdentityTypePhone, parts[call.ID][sipIdentity].IdentityType)
+		require.Equal(t, sipIdentity, parts[call.ID][sipIdentity].Identity)
+		require.Zero(t, parts[call.ID][sipIdentity].LastLeaveAt, "leave is left to the call-end backstop")
+	})
+
+	t.Run("SIP participant_joined records the E.164 number, stripping the sip: prefix", func(t *testing.T) {
+		p, mockAPI, mockMetrics := setupPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		postID := model.NewId()
+		call := createActiveCall(t, p, channelID, postID)
+		setupLock(mockAPI, mockMetrics, channelID)
+
+		const number = "+14155559999"
+		event := &livekit.WebhookEvent{
+			Event: "participant_joined",
+			Room:  &livekit.Room{Name: channelID},
+			Participant: &livekit.ParticipantInfo{
+				Sid:      model.NewId(),
+				Identity: "sip:" + number, // the shape LiveKit actually sends for the dialed leg
+				Kind:     livekit.ParticipantInfo_SIP,
+			},
+		}
+
+		apiRouter := p.newAPIRouter()
+		w := httptest.NewRecorder()
+		apiRouter.ServeHTTP(w, newSignedWebhookRequest(t, testAPIKey, testAPISecret, event))
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+		parts, err := p.store.GetParticipantsForCalls([]string{call.ID}, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.NotNil(t, parts[call.ID][number], "identity is the bare E.164 number, not the sip: form")
+		require.Equal(t, public.IdentityTypePhone, parts[call.ID][number].IdentityType)
+	})
+
+	t.Run("SIP participant_joined with an empty identity records no audit row", func(t *testing.T) {
+		p, mockAPI, mockMetrics := setupPlugin(t)
+		defer ResetTestStore(t, p.store)
+
+		channelID := model.NewId()
+		postID := model.NewId()
+		call := createActiveCall(t, p, channelID, postID)
+		setupLock(mockAPI, mockMetrics, channelID)
+
+		event := &livekit.WebhookEvent{
+			Event: "participant_joined",
+			Room:  &livekit.Room{Name: channelID},
+			Participant: &livekit.ParticipantInfo{
+				Sid:      model.NewId(),
+				Identity: "sip:", // strips to "", which can't key a row
+				Kind:     livekit.ParticipantInfo_SIP,
+			},
+		}
+
+		apiRouter := p.newAPIRouter()
+		w := httptest.NewRecorder()
+		apiRouter.ServeHTTP(w, newSignedWebhookRequest(t, testAPIKey, testAPISecret, event))
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+		parts, err := p.store.GetParticipantsForCalls([]string{call.ID}, db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Empty(t, parts[call.ID], "a blank identity must not create a junk participant row")
 	})
 
 	t.Run("SIP participant_joined no active call is a no-op", func(t *testing.T) {
