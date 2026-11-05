@@ -5,6 +5,7 @@ package main
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
@@ -193,6 +194,62 @@ func TestGetClientConfig(t *testing.T) {
 	// admin config
 	adminClientCfg := p.getAdminClientConfig(p.getConfiguration())
 	require.Equal(t, transcriber.TranscribeAPI(transcriber.TranscribeAPIWhisperCPP), adminClientCfg.TranscribeAPI)
+	require.Empty(t, adminClientCfg.TranscribeAPIAzureSpeechKey)
+	require.Empty(t, adminClientCfg.LiveKitAPISecret)
+	require.Empty(t, adminClientCfg.SIPTrunkAuthPassword)
+
+	p.configuration.TranscribeAPIAzureSpeechKey = "azure-key"
+	p.configuration.LiveKitAPIKey = "lk-key"
+	p.configuration.LiveKitAPISecret = "lk-secret"
+	p.configuration.SIPTrunkAuthPassword = "sip-pass"
+	adminClientCfg = p.getAdminClientConfig(p.getConfiguration())
+	require.Equal(t, model.FakeSetting, adminClientCfg.TranscribeAPIAzureSpeechKey)
+	require.Equal(t, model.FakeSetting, adminClientCfg.LiveKitAPISecret)
+	require.Equal(t, model.FakeSetting, adminClientCfg.SIPTrunkAuthPassword)
+	require.Equal(t, "lk-key", adminClientCfg.LiveKitAPIKey)
+
+	require.Equal(t, "azure-key", p.configuration.TranscribeAPIAzureSpeechKey)
+	require.Equal(t, "lk-secret", p.configuration.LiveKitAPISecret)
+	require.Equal(t, "sip-pass", p.configuration.SIPTrunkAuthPassword)
+}
+
+func TestGetAdminClientConfigMasksManifestSecrets(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	defer mockAPI.AssertExpectations(t)
+	mockAPI.On("GetLicense").Return(&model.License{})
+	mockAPI.On("GetConfig").Return(&model.Config{}).Maybe()
+
+	p := &Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		licenseChecker: enterprise.NewLicenseChecker(mockAPI),
+	}
+
+	settings := manifest.SettingsSchema.Settings
+	for _, section := range manifest.SettingsSchema.Sections {
+		settings = append(settings, section.Settings...)
+	}
+
+	cfg := p.getConfiguration()
+	var secretKeys []string
+	for _, s := range settings {
+		if !s.Secret {
+			continue
+		}
+		field := reflect.ValueOf(cfg).Elem().FieldByName(s.Key)
+		require.True(t, field.IsValid(), "secret setting %s has no configuration field", s.Key)
+		require.Equal(t, reflect.String, field.Kind(), "secret setting %s is not a string", s.Key)
+		field.SetString("secret-value")
+		secretKeys = append(secretKeys, s.Key)
+	}
+	require.ElementsMatch(t, secretSettingKeys, secretKeys)
+	p.configuration = cfg
+
+	adminCfg := p.getAdminClientConfig(p.getConfiguration())
+	for _, key := range secretKeys {
+		require.Equal(t, model.FakeSetting, reflect.ValueOf(adminCfg).FieldByName(key).String(), "secret setting %s is not masked", key)
+	}
 }
 
 func TestConfigurationWillBeSaved(t *testing.T) {
@@ -257,6 +314,18 @@ func TestConfigurationWillBeSaved(t *testing.T) {
 
 		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{
 			"livekitapisecret": model.FakeSetting,
+		}))
+		require.Nil(t, retCfg)
+		require.NoError(t, err)
+	})
+
+	t.Run("sanitized azure speech key", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		mockAPI.On("LogDebug", "ConfigurationWillBeSaved", "origin", mock.AnythingOfType("string")).Return()
+
+		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{
+			"transcribeapiazurespeechkey": model.FakeSetting,
 		}))
 		require.Nil(t, retCfg)
 		require.NoError(t, err)

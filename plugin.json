@@ -340,6 +340,7 @@
             "key": "TranscribeAPIAzureSpeechKey",
             "display_name": "Azure API Key",
             "type": "text",
+            "secret": true,
             "help_text": "The API key for Azure Speech Services",
             "default": "",
             "hosting": "on-prem"
