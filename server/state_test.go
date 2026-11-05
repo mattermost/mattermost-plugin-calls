@@ -262,7 +262,8 @@ func TestCallStateGetHostID(t *testing.T) {
 			},
 		}
 
-		require.Equal(t, "userB", cs.getHostID("botID"))
+		// userB joined first, but a confirmed session wins over unconfirmed ones.
+		require.Equal(t, "userA", cs.getHostID("botID"))
 	})
 
 	t.Run("skip botID", func(t *testing.T) {
