@@ -1290,7 +1290,8 @@ func TestPhoneCallDialAfterCallerJoins(t *testing.T) {
 		require.Empty(t, tc.activeCallID(t))
 		require.Nil(t, tc.sipTimer())
 		require.Zero(t, dials.Load())
-		tc.assertCallEndPublished(t, res.CallID, callStatusFailed)
+		// Nothing was dialed, so the caller isn't told the call couldn't be placed.
+		tc.assertCallEndPublished(t, res.CallID, callStatusCanceledByCaller)
 		tc.api.AssertNotCalled(t, "UpdatePost", mock.Anything)
 
 		// A redial is not refused as already in progress.

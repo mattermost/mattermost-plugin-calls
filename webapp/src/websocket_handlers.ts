@@ -44,7 +44,7 @@ import {
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
 import {logWarn} from 'src/log';
-import {handlePhoneCallEnd} from 'src/phone_call';
+import {handlePhoneCallEnd, leaveCallEndedByServer} from 'src/phone_call';
 import {getPhoneCallProps} from 'src/phone_utils';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userReacted, userReactedTimeout} from 'src/state/session/actions';
@@ -119,8 +119,10 @@ export function handleConfigChanged(store: Store) {
 // state mutating operations.
 export function handleCallEnd(store: Store, ev: WebSocketMessage<CallEndData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
+    const callID = ev.data.call_id ?? '';
+    leaveCallEndedByServer(store, channelID, callID);
     store.dispatch(callEnd(channelID));
-    handlePhoneCallEnd(store, ev.data.call_id ?? '', ev.data.reason);
+    handlePhoneCallEnd(store, callID, ev.data.reason);
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of

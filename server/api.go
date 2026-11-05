@@ -1597,7 +1597,9 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 	// participant hangs up, end the call so the remaining MM user is dropped too.
 	if !sipParticipantsRemain(state.sessions) && p.isPhoneCallChannel(channelID) {
 		p.LogInfo("handleLiveKitSIPParticipantLeft: last SIP participant left phone call, ending call",
-			"channelID", channelID, "callID", state.Call.ID)
+			"channelID", channelID, "callID", state.Call.ID,
+			"disconnectReason", participant.GetDisconnectReason().String(),
+			"callStatus", participant.GetAttributes()[livekit.AttrSIPCallStatus])
 
 		// Tear down the media room so the MM user's client disconnects, mirroring
 		// the host-end path; clients also get wsEventCallEnd as a fallback.
