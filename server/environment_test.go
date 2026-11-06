@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -160,6 +161,44 @@ func TestHandleEnv(t *testing.T) {
 		require.Equal(t, "lk-secret", p.configEnvOverrides["LiveKitAPISecret"])
 		require.Equal(t, "sip-pass", p.configEnvOverrides["SIPTrunkAuthPassword"])
 	})
+
+	t.Run("does not add secrets that are not overridden", func(t *testing.T) {
+		p, mockAPI := newPlugin(true)
+		defer mockAPI.AssertExpectations(t)
+		p.configEnvOverrides = map[string]string{
+			"LiveKitURL": "wss://livekit.example.com",
+		}
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodGet, "/env", nil)
+		r.Header.Set("Mattermost-User-Id", userID)
+		require.NoError(t, p.handleEnv(w, r))
+		require.Equal(t, http.StatusOK, w.Code)
+
+		var overrides map[string]string
+		require.NoError(t, json.NewDecoder(w.Body).Decode(&overrides))
+		require.Equal(t, map[string]string{
+			"LiveKitURL": "wss://livekit.example.com",
+		}, overrides)
+	})
+
+	t.Run("returns encoding errors", func(t *testing.T) {
+		p, mockAPI := newPlugin(true)
+		defer mockAPI.AssertExpectations(t)
+
+		w := failingResponseWriter{httptest.NewRecorder()}
+		r := httptest.NewRequest(http.MethodGet, "/env", nil)
+		r.Header.Set("Mattermost-User-Id", userID)
+		require.ErrorContains(t, p.handleEnv(w, r), "error encoding config env overrides")
+	})
+}
+
+type failingResponseWriter struct {
+	*httptest.ResponseRecorder
+}
+
+func (failingResponseWriter) Write([]byte) (int, error) {
+	return 0, errors.New("write failed")
 }
 
 func TestSetFieldFromEnv(t *testing.T) {
