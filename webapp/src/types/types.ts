@@ -36,7 +36,11 @@ type V1CallsConfigKeys =
     | 'TURNCredentialsExpirationMinutes'
     | 'ServerSideTURN';
 
-export type CallsConfig = Omit<CommonCallsConfig, V1CallsConfigKeys>;
+export type CallsConfig = Omit<CommonCallsConfig, V1CallsConfigKeys> & {
+
+    // Whether the server license permits outbound SIP dialing.
+    SIPOutboundAllowed: boolean;
+};
 
 export type CallsVersionInfo = Omit<CommonCallsVersionInfo, 'rtcd_version' | 'rtcd_build'>;
 
@@ -53,6 +57,7 @@ export const CallsConfigDefault: CallsConfig = {
     HostControlsAllowed: false,
     TranscribeAPI: TranscribeAPI.WhisperCPP,
     GroupCallsAllowed: false,
+    SIPOutboundAllowed: false,
     EnableSIPOutbound: false,
 };
 
