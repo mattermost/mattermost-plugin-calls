@@ -456,11 +456,20 @@ func (p *Plugin) getAdminClientConfig(c *configuration) configuration {
 
 	cfg := p.configuration.Clone()
 	cfg.ClientConfig = p.getClientConfig(c)
-	// The admin console reads settings through the server config API, not this
-	// endpoint, so there's no reason to hand the trunk password to the browser.
-	cfg.SIPTrunkAuthPassword = ""
+	cfg.TranscribeAPIAzureSpeechKey = maskSecret(cfg.TranscribeAPIAzureSpeechKey)
+	cfg.LiveKitAPISecret = maskSecret(cfg.LiveKitAPISecret)
+	cfg.SIPTrunkAuthPassword = maskSecret(cfg.SIPTrunkAuthPassword)
 
 	return *cfg
+}
+
+var secretSettingKeys = []string{"TranscribeAPIAzureSpeechKey", "LiveKitAPISecret", "SIPTrunkAuthPassword"}
+
+func maskSecret(s string) string {
+	if s == "" {
+		return ""
+	}
+	return model.FakeSetting
 }
 
 // getConfiguration retrieves the active configuration under lock, making it safe to use
