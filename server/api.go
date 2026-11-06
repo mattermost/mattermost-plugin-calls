@@ -1532,6 +1532,32 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 		return
 	}
 
+	// Record the SIP participant in the audit as a "phone" identity. This handler
+	// runs for every SIP join: the callee of an outbound phone call (the human
+	// caller was already recorded via addUserSession) and inbound SIP participants,
+	// which otherwise never appear in calls_participants. The identity is the E.164
+	// number, derived from the participant identity ("sip:" + E.164, set by the
+	// outbound dial); for an outbound call it's cross-checked against
+	// Props.PhoneNumber. Leave is left to the call-end backstop, matching how SIP
+	// leaves are handled everywhere else. Non-fatal: a failure is logged, like the
+	// other audit writes.
+	number := strings.TrimPrefix(identity, "sip:")
+	if number == "" {
+		// No usable identity to key the row on (identity is part of the primary
+		// key); skip rather than write a blank-identity junk row.
+		p.LogWarn("handleLiveKitSIPParticipantJoined: empty SIP identity, skipping audit record",
+			"channelID", channelID, "identity", identity)
+	} else {
+		if propsNumber := state.Call.Props.PhoneNumber; propsNumber != "" && number != propsNumber {
+			p.LogWarn("handleLiveKitSIPParticipantJoined: SIP identity number differs from call's PhoneNumber",
+				"channelID", channelID, "identityNumber", number, "propsNumber", propsNumber)
+		}
+		if err := p.store.RecordParticipantJoin(state.Call.ID, public.IdentityTypePhone, number, session.JoinAt); err != nil {
+			p.LogError("calls audit: failed to record SIP participant join",
+				"channelID", channelID, "number", number, "err", err.Error())
+		}
+	}
+
 	if hostChanged {
 		p.setCallHost(state, channelID, newHostID)
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{

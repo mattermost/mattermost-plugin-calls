@@ -262,7 +262,9 @@ func TestCallStateGetHostID(t *testing.T) {
 			},
 		}
 
-		// userB joined first, but a confirmed session wins over unconfirmed ones.
+		// userA is the only confirmed session, so it wins over the earlier-joined
+		// but unconfirmed userB/userC (confirmed is the top-priority tier in
+		// isBetterHostCandidate).
 		require.Equal(t, "userA", cs.getHostID("botID"))
 	})
 

@@ -193,7 +193,8 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 		state.Call.Props.Participants[userID] = struct{}{}
 	}
 
-	if len(state.sessions) == 1 {
+	createdCall := len(state.sessions) == 1
+	if createdCall {
 		if err := p.store.CreateCall(&state.Call); err != nil {
 			return nil, fmt.Errorf("%w: failed to create call: %w", errStoreFailure, err)
 		}
@@ -210,6 +211,34 @@ func (p *Plugin) addUserSession(state *callState, callsEnabled *bool, userID, co
 	}
 	if err := p.store.CreateCallSession(state.sessions[connID]); err != nil {
 		return nil, fmt.Errorf("%w: failed to create call session: %w", errStoreFailure, err)
+	}
+
+	// Durable attendance timestamp for audit reporting. This is the chokepoint
+	// every join path funnels through (WebSocket, REST token endpoint, phone), so
+	// it is where join is recorded rather than in the LiveKit webhook. The write
+	// is synchronous and treated like the session write above: an acknowledged
+	// join always has a persisted first-join time, so a crash can't lose it. It is
+	// idempotent (keeps the earliest join), so reconnects are safe. On failure we
+	// roll back the session (and the call, if this join created it) so the join
+	// fails cleanly rather than admitting an unrecorded participant.
+	//
+	// This path records Mattermost users (the human caller of an outbound phone
+	// call reaches here too, and is a user). The SIP (phone) callee never flows
+	// through addUserSession — its session is built directly in
+	// handleLiveKitSIPParticipantJoined, which records the phone identity there.
+	// Only bots are excluded here.
+	if userID != p.getBotID() {
+		joinAt := state.sessions[connID].JoinAt
+		if err := p.store.RecordParticipantJoin(state.Call.ID, public.IdentityTypeUser, userID, joinAt); err != nil {
+			p.rollbackSession(connID, state.Call.ID, createdCall)
+			return nil, fmt.Errorf("%w: failed to record participant join: %w", errStoreFailure, err)
+		}
+		p.LogInfo("calls audit: participant joined",
+			"event", "participant_joined",
+			"callID", state.Call.ID,
+			"channelID", channelID,
+			"userID", userID,
+			"joinAt", time.UnixMilli(joinAt).UTC().Format(time.RFC3339))
 	}
 
 	p.LogInfo("call session joined",
@@ -268,7 +297,8 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		return fmt.Errorf("call state is nil")
 	}
 
-	if _, ok := state.sessions[originalConnID]; !ok {
+	leavingSession, ok := state.sessions[originalConnID]
+	if !ok {
 		return fmt.Errorf("session not found in call state")
 	}
 
@@ -276,6 +306,34 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		return fmt.Errorf("failed to delete call session: %w", err)
 	}
 	delete(state.sessions, originalConnID)
+
+	// Durable attendance timestamp for audit reporting. This is the WebSocket
+	// leave path; the LiveKit webhook leave path records in removeParticipantSession.
+	// The write is synchronous and idempotent (keeps the latest leave per user).
+	// A failed write is logged, not fatal: the call-end backstop below stamps a
+	// leave time for anyone still unrecorded, so no attendee is ever left without
+	// one, and failing the leave here would risk a stuck session.
+	//
+	// SIP (phone) callees ARE in the audit: their join is recorded in
+	// handleLiveKitSIPParticipantJoined. We deliberately skip their per-leave write
+	// so their leave comes from the call-end backstop (= call end time). The server
+	// never observes the phone call being answered, so dial-time -> call-end is the
+	// meaningful window we can report; there's no distinct SIP "leave" moment worth
+	// recording ahead of that. Matches removeParticipantSession.
+	if userID != p.getBotID() && !leavingSession.IsSIPParticipant {
+		leaveAt := nowMillis()
+		if err := p.store.RecordParticipantLeave(state.Call.ID, public.IdentityTypeUser, userID, leaveAt); err != nil {
+			p.LogError("calls audit: failed to record participant leave",
+				"callID", state.Call.ID, "userID", userID, "err", err.Error())
+		}
+		p.LogInfo("calls audit: participant left",
+			"event", "participant_left",
+			"callID", state.Call.ID,
+			"channelID", channelID,
+			"userID", userID,
+			"leaveAt", time.UnixMilli(leaveAt).UTC().Format(time.RFC3339))
+	}
+
 	p.LogInfo("call session left",
 		"callID", state.Call.ID,
 		"channelID", channelID,
@@ -474,6 +532,11 @@ func (p *Plugin) removeUserSession(state *callState, userID, originalConnID, con
 		participants := mapKeys(state.Call.Props.Participants)
 
 		setCallEnded(&state.Call)
+
+		// Completeness backstop: guarantee every attendee has a durable leave time
+		// and every screen share a durable stop time.
+		p.recordLeaveBackstop(&state.Call)
+		p.recordScreenShareBackstop(&state.Call)
 
 		p.cancelDMNoAnswerTimer(channelID)
 
