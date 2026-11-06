@@ -19,7 +19,7 @@ Status legend: **[validated]** was run end to end on AWS; **[untested]** is writ
   | 7882 | UDP | Media over UDP (preferred) |
   | 5060/udp, 10000-10100/udp | UDP | Only if the SIP bridge is enabled |
 
-  Clients connect to the media ports directly, so they must be reachable from the internet (or from your users' networks). TURN is not required.
+  Clients connect to the media ports directly, so they must be reachable from the internet (or from your users' networks). TURN is not required; see [External TURN](#external-turn-for-restrictive-firewalls-optional-validated) for users behind restrictive firewalls.
 
 ## 1. Install Docker **[validated]**
 
@@ -99,6 +99,19 @@ SIP outbound lets users dial phone numbers from a call. It adds the SIP bridge a
 3. In the Calls plugin settings (System Console > Plugins > Calls > SIP Outbound), enable outbound phone dialing, set the trunk mode to **managed**, and enter your provider's trunk address, caller ID number, and credentials. The plugin creates the trunk in LiveKit; the status should show `ready` with a trunk ID. If it shows an error, fix the cause and save the settings again to retry.
    - Alternative: use mode **existing** and create the trunk yourself with `lk sip outbound create`, then enter the trunk ID.
 4. Place a call to a phone number in E.164 format (`+1...`). **[validated with a Twilio Elastic SIP trunk]** In the bridge logs (`docker compose logs livekit-sip`) a healthy call shows `Outbound SIP call established`, then `call statistics` with `audio_packets` counts in both directions, and ends with `BYE from remote` or `SIP call ended`. `failed to get server reflexive address udp6 ... network is unreachable` warnings only mean the host has no IPv6 route and are harmless.
+
+## External TURN for restrictive firewalls (optional) **[validated]**
+
+Clients on networks that block UDP and plain TCP (7881) cannot reach LiveKit directly. A TURN server on TCP 443 with TLS lets them in. LiveKit's built-in TURN would need port 443, which Caddy already uses on this host, so run coturn on a separate host with its own public IP. See [turn/README.md](turn/README.md) for the full procedure. On this host the only change is one option when you generate the config:
+
+```bash
+./setup.sh lk.example.com https://mattermost.example.com \
+    --turn-host turn.example.com --turn-secret-file ./turn-secret
+docker compose up -d --force-recreate
+docker compose logs --tail 20 livekit    # confirm LiveKit started
+```
+
+Options are not remembered, so include `--sip` as well if you use SIP. No Calls plugin setting is needed; LiveKit gives clients the TURN address and short-lived credentials automatically.
 
 ## Operations
 
