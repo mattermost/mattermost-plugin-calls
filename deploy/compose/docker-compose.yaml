@@ -1,0 +1,85 @@
+# Calls v2 (LiveKit) single-host deployment.
+#
+# Generate the config files first with ./setup.sh, then:
+#   docker compose up -d     # LiveKit + TLS proxy
+#
+# SIP outbound dialing (optional): run ./setup.sh with --sip. That enables the
+# `sip` profile (Redis + SIP bridge) via COMPOSE_PROFILES in .env, so the same
+# `docker compose up -d` starts them too.
+#
+# Ports to open on the host firewall / security group:
+#   80/tcp     Let's Encrypt HTTP challenge
+#   443/tcp    LiveKit signaling over TLS (wss)
+#   7881/tcp   Media over TCP (fallback for clients that cannot use UDP)
+#   7882/udp   Media over UDP (preferred)
+#   5060/udp, 10000-10100/udp   Only if the SIP bridge is enabled (see livekit-sip below)
+
+services:
+  livekit:
+    image: livekit/livekit-server:v1.13.10
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7881:7881"        # TCP media fallback
+      - "7882:7882/udp"    # UDP media
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+
+  # TLS-terminating reverse proxy for the signaling WebSocket. Obtains and
+  # renews a Let's Encrypt certificate for LIVEKIT_DOMAIN automatically.
+  # Media (7881/7882) is DTLS-SRTP and does not pass through this proxy.
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - LIVEKIT_DOMAIN=${LIVEKIT_DOMAIN:?run ./setup.sh first}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - livekit
+
+  # Message bus between LiveKit and the SIP bridge. Only runs with SIP enabled
+  # (`./setup.sh ... --sip` sets COMPOSE_PROFILES=sip in .env). Not exposed
+  # outside the compose network. Do not point this at Mattermost's Redis.
+  redis:
+    image: redis:7.4-alpine
+    profiles: ["sip"]
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+  # SIP bridge for outbound phone dialing. Optional: enabled by
+  # `./setup.sh ... --sip`, which also writes sip.yaml (advertises the public IP).
+  # The RTP range must be reachable by your SIP provider (UDP, both directions).
+  # Outbound-only dialing does not need 5060 open to the internet.
+  livekit-sip:
+    image: livekit/sip:v1.20.0
+    profiles: ["sip"]
+    restart: unless-stopped
+    command: --config /etc/sip.yaml
+    ports:
+      - "5060:5060/udp"
+      - "10000-10100:10000-10100/udp"
+    volumes:
+      - ./sip.yaml:/etc/sip.yaml:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+
+volumes:
+  caddy-data:
+  caddy-config:
+  redis-data:
