@@ -19,6 +19,36 @@ jobs:
       go-version-file: .go-version
     secrets: inherit
 
+  dist-fips:
+    # Fork PRs don't get the Chainguard identity secret.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+      - name: Build and verify FIPS bundle
+        uses: mattermost/actions/plugin-ci/build-fips@ec00f39dab9ee31b6dc7f36671d5c8afcf74cc54
+        with:
+          chainguard-identity: ${{ secrets.CHAINGUARD_IDENTITY }}
+      - name: Upload FIPS bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: calls-bundle-fips-${{ github.event.pull_request.head.sha || github.sha }}
+          path: dist-fips/*.tar.gz
+          retention-days: 7
+
   code-coverage:
     runs-on: ubuntu-latest
     steps:
