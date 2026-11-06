@@ -18,3 +18,7 @@ server/db/migrations/postgres/000008_create_calls_participants.down.sql
 server/db/migrations/postgres/000008_create_calls_participants.up.sql
 server/db/migrations/postgres/000009_calls_startat_index.down.sql
 server/db/migrations/postgres/000009_calls_startat_index.up.sql
+server/db/migrations/postgres/000010_create_calls_screen_shares.down.sql
+server/db/migrations/postgres/000010_create_calls_screen_shares.up.sql
+server/db/migrations/postgres/000011_upgrade_calls_participants_typed.down.sql
+server/db/migrations/postgres/000011_upgrade_calls_participants_typed.up.sql
