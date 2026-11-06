@@ -49,6 +49,26 @@ jobs:
           path: dist-fips/*.tar.gz
           retention-days: 7
 
+  test-fips:
+    # Fork PRs don't get the Chainguard identity secret.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+      - name: Log in to Chainguard
+        uses: chainguard-dev/setup-chainctl@67a753db49c7e97fed4c76fbe809b1339b11facf
+        with:
+          identity: ${{ secrets.CHAINGUARD_IDENTITY }}
+      - name: Run Go tests with the FIPS toolchain
+        run: make test-fips
+
   code-coverage:
     runs-on: ubuntu-latest
     steps:
