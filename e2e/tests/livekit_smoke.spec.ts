@@ -30,6 +30,47 @@ test.describe('livekit framework smoke', {tag: '@livekit-smoke'}, () => {
         });
     });
 
+    test.describe('/call diag', () => {
+        // The webhook probe waits up to ~10s for LiveKit to call back.
+        const reportTimeout = 30000;
+
+        test('admin sees a passing report with webhook detail', async ({browser}) => {
+            const context = await browser.newContext({storageState: adminState.storageStatePath});
+            const page = await context.newPage();
+            const devPage = new PlaywrightDevPage(page);
+            await devPage.goto();
+
+            await devPage.sendSlashCommand('/call diag force');
+
+            // The webhook row proves LiveKit -> plugin delivery works in this stack,
+            // and "Received room_started" is admin-only detail.
+            const report = page.locator('.post__body', {hasText: 'Calls diagnostics'}).last();
+            await expect(report).toContainText('LiveKit webhook', {timeout: reportTimeout});
+            await expect(report).toContainText('Received room_started');
+            await expect(report).toContainText('credentials valid');
+            await expect(report).not.toContainText('Ask your system admin');
+
+            await context.close();
+        });
+
+        test.describe('regular user', () => {
+            test.use({storageState: userStorages[0]});
+
+            test('sees a passing report without admin detail', async ({page}) => {
+                const devPage = new PlaywrightDevPage(page);
+                await devPage.goto();
+
+                await devPage.sendSlashCommand('/call diag');
+
+                const report = page.locator('.post__body', {hasText: 'Calls diagnostics'}).last();
+                await expect(report).toContainText('LiveKit webhook', {timeout: reportTimeout});
+                await expect(report).not.toContainText('Ask a system admin to run');
+                await expect(report).not.toContainText('Received room_started');
+                await expect(report).not.toContainText('credentials valid');
+            });
+        });
+    });
+
     test.describe('end-to-end call via LiveKit', () => {
         test.use({storageState: userStorages[0]});
 
