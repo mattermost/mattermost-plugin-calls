@@ -6,6 +6,7 @@ import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import RestClient from 'src/clients/rest';
 import {
+    EnterprisePill,
     LabelRow,
     leftCol,
     RadioInput,
@@ -13,10 +14,11 @@ import {
     rightCol,
     SectionTitle,
 } from 'src/components/admin_console_settings/common';
+import SIPOutboundPromo from 'src/components/admin_console_settings/sip_outbound_promo';
 import {SIPTrunkMode, SIPTrunkModeContext} from 'src/components/admin_console_settings/sip_trunk_mode_context';
-import {callsConfigEnvOverrides} from 'src/selectors';
+import {callsConfigEnvOverrides, isOnPremSIPOutboundRestricted} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
-import {getPluginPath} from 'src/utils';
+import {getPluginPath, untranslatable} from 'src/utils';
 
 const E164 = /^\+[1-9][0-9]{6,14}$/;
 
@@ -26,6 +28,11 @@ const E164 = /^\+[1-9][0-9]{6,14}$/;
 export function SIPOutboundSection(props: {settingsList: React.ReactNode[]}) {
     const {formatMessage} = useIntl();
     const [mode, setMode] = useState<SIPTrunkMode>('existing');
+    const restricted = useSelector(isOnPremSIPOutboundRestricted);
+
+    if (restricted) {
+        return <SIPOutboundPromo/>;
+    }
 
     return (
         <SIPTrunkModeContext.Provider value={{mode, setMode}}>
@@ -38,6 +45,7 @@ export function SIPOutboundSection(props: {settingsList: React.ReactNode[]}) {
                         <div className='section-header'>
                             <SectionTitle className='section-title'>
                                 {formatMessage({defaultMessage: 'Outbound phone calls'})}
+                                <EnterprisePill>{untranslatable('Enterprise Advanced')}</EnterprisePill>
                             </SectionTitle>
                             <div className='section-subtitle'>
                                 {formatMessage({defaultMessage: 'Let users dial external phone numbers through a LiveKit SIP bridge'})}

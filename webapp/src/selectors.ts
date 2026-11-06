@@ -662,6 +662,11 @@ export const callsUserPreferences = (state: GlobalState): CallsUserPreferences =
 export const shouldPlayJoinUserSound = (state: GlobalState): boolean =>
     profilesInCurrentCall(state).length < callsUserPreferences(state).joinSoundParticipantsThreshold;
 
+// Follows the server's own SIP license check, so developer mode counts as allowed.
+export const isOnPremSIPOutboundRestricted = (state: GlobalState): boolean => {
+    return !isCloud(state) && !sipOutboundAllowed(state);
+};
+
 export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
     const license = getLicense(state);
     const enterprise = license.SkuShortName === LicenseSkus.Enterprise || license.SkuShortName === LicenseSkus.EntepriseAdvanced;
