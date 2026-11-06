@@ -28,7 +28,13 @@ export function randomNumber(prefix: string, digits: number) {
 export async function findSIPRoom(rooms: RoomServiceClient, number: string) {
     for (const room of await rooms.listRooms()) {
         // eslint-disable-next-line no-await-in-loop
-        const participants = await rooms.listParticipants(room.name).catch(() => []);
+        const participants = await rooms.listParticipants(room.name).catch((err) => {
+            // The room can be deleted between listRooms and here; anything else is a real failure.
+            if (err?.status === 404) {
+                return [];
+            }
+            throw err;
+        });
         const found = participants.some((p) => p.kind === ParticipantInfo_Kind.SIP &&
             [p.identity, p.name, ...Object.values(p.attributes)].some((v) => v?.includes(number)));
         if (found) {
