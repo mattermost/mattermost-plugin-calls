@@ -1,11 +1,6 @@
 module github.com/mattermost/mattermost-plugin-calls
 
-go 1.26.10
-
-require (
-	github.com/prometheus/client_golang v1.24.1
-	github.com/stretchr/testify v1.12.1
-)
+go 1.27.3
 
 require (
 	github.com/Masterminds/semver v1.5.0
@@ -24,6 +19,8 @@ require (
 	github.com/mattermost/morph v1.1.0
 	github.com/mattermost/squirrel v0.2.0
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.24.1
+	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
 	github.com/twitchtv/twirp v8.1.3+incompatible
