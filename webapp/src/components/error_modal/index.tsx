@@ -1,14 +1,14 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {ClientError} from '@mattermost/client';
+import {ConnectionError} from 'livekit-client';
 import React, {ComponentProps} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {
     HostRemovedYouFromCallErr,
     insecureContextErr,
-    rtcPeerCloseErr,
-    rtcPeerErr,
-    rtcPeerTimeoutErr,
+    joinDeniedMsgs,
     userLeftChannelErr,
     userRemovedFromChannelErr,
 } from 'src/components/error_modal/error_messages';
@@ -41,14 +41,6 @@ export const ErrorModal = (props: Props) => {
 
     const modalProps = {
         ...props,
-    };
-
-    const onRejoinClick = (ev: React.MouseEvent) => {
-        ev.preventDefault();
-        window.postMessage({type: 'connectCall', channelID: props.channelID}, window.origin);
-        if (props.onHide) {
-            props.onHide();
-        }
     };
 
     const onConfirm = () => {
@@ -97,46 +89,67 @@ export const ErrorModal = (props: Props) => {
     let headerMsg = genericHeaderMsg;
     let confirmMsg = formatMessage({defaultMessage: 'Okay'});
 
+    // Any failure to establish the LiveKit connection, whatever the underlying reason.
+    if (props.err instanceof ConnectionError) {
+        headerMsg = (
+            <span>{formatMessage({defaultMessage: 'Call connection failed'})}</span>
+        );
+        msg = (
+            <span>
+                {formatMessage({defaultMessage: 'We couldn\'t connect to the call. Please check your network connection and try again.'})}
+                {untranslatable(' ')}
+                {troubleShootingMsg}
+            </span>
+        );
+    }
+
+    // The join API's 4xx denials arrive as ClientErrors carrying the server's text.
+    const joinDenied = props.err instanceof ClientError && (props.err.status_code === 400 || props.err.status_code === 403) ? props.err.message : '';
+    const joinDeniedHeaderMsg = (
+        <span>{formatMessage({defaultMessage: 'Unable to join call'})}</span>
+    );
+
+    switch (joinDenied) {
+    case joinDeniedMsgs.forbidden:
+    case joinDeniedMsgs.insufficientPermissions:
+        headerMsg = joinDeniedHeaderMsg;
+        msg = (
+            <span>{formatMessage({defaultMessage: 'You don\'t have permission to start or join calls in this channel.'})}</span>
+        );
+        break;
+    case joinDeniedMsgs.channelDisabled:
+        headerMsg = joinDeniedHeaderMsg;
+        msg = (
+            <span>{formatMessage({defaultMessage: 'Calls are disabled in this channel.'})}</span>
+        );
+        break;
+    case joinDeniedMsgs.atCapacity:
+        headerMsg = joinDeniedHeaderMsg;
+        msg = (
+            <span>{formatMessage({defaultMessage: 'This call has reached its maximum number of participants.'})}</span>
+        );
+        break;
+    case joinDeniedMsgs.groupCallsUnlicensed:
+        headerMsg = joinDeniedHeaderMsg;
+        msg = (
+            <span>{formatMessage({defaultMessage: 'Calls in group channels require a licensed server. Calls are only available in direct messages.'})}</span>
+        );
+        break;
+    case joinDeniedMsgs.callEnded:
+        headerMsg = joinDeniedHeaderMsg;
+        msg = (
+            <span>{formatMessage({defaultMessage: 'This call has already ended.'})}</span>
+        );
+        break;
+    case joinDeniedMsgs.channelArchived:
+        headerMsg = joinDeniedHeaderMsg;
+        msg = (
+            <span>{formatMessage({defaultMessage: 'Calls can\'t be joined in an archived channel.'})}</span>
+        );
+        break;
+    }
+
     switch (props.err.message) {
-    case rtcPeerTimeoutErr.message:
-        headerMsg = (
-            <span>{formatMessage({defaultMessage: 'Call connection failed'})}</span>
-        );
-        msg = (
-            <span>
-                {formatMessage({defaultMessage: 'We couldn\'t join the call because the connection timed out. Please check your network connection and try again.'}, {
-                    joinLink: (text: React.ReactNode) => (
-                        <a
-                            href=''
-                            onClick={onRejoinClick}
-                        >{text}</a>
-                    ),
-                })}
-                {untranslatable(' ')}
-                {troubleShootingMsg}
-            </span>
-        );
-        break;
-    case rtcPeerErr.message:
-    case rtcPeerCloseErr.message:
-        headerMsg = (
-            <span>{formatMessage({defaultMessage: 'Call connection failed'})}</span>
-        );
-        msg = (
-            <span>
-                {formatMessage({defaultMessage: 'There was an error with the connection to the call. Try to <joinLink>re-join</joinLink> the call.'}, {
-                    joinLink: (text: React.ReactNode) => (
-                        <a
-                            href=''
-                            onClick={onRejoinClick}
-                        >{text}</a>
-                    ),
-                })}
-                {untranslatable(' ')}
-                {troubleShootingMsg}
-            </span>
-        );
-        break;
     case insecureContextErr.message:
         headerMsg = (
             <ColumnContainer>
