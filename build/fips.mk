@@ -35,6 +35,28 @@ server-fips: setup-go-work manifest-check
 	    $(GO_BUILD_FLAGS) $(FIPS_GO_BUILD_LDFLAGS) \
 	    -o dist-fips/plugin-linux-amd64-fips'
 
+# Extra `go test` flags, e.g. FIPS_GO_TEST_FLAGS=-run=TestName. Same quoting
+# constraint as FIPS_GO_BUILD_LDFLAGS.
+FIPS_GO_TEST_FLAGS ?=
+
+# The DB tests start Postgres through testcontainers, so the container needs
+# the host's Docker socket, and host networking to reach the mapped ports.
+## Runs the server Go tests built with the Go FIPS toolchain.
+.PHONY: test-fips
+test-fips: setup-go-work apply
+	docker run --rm \
+	  --platform=linux/amd64 \
+	  --entrypoint="" \
+	  --network=host \
+	  -v /var/run/docker.sock:/var/run/docker.sock \
+	  -e TESTCONTAINERS_HOST_OVERRIDE=localhost \
+	  -v $(PWD):/plugin \
+	  -w /plugin \
+	  $(FIPS_IMAGE) \
+	  /bin/sh -c 'CGO_ENABLED=1 GOFIPS140=certified GOTOOLCHAIN=local \
+	    go test -buildvcs=false -count=1 $(FIPS_GO_TEST_FLAGS) \
+	    ./server/... ./server/public/...'
+
 # GOFIPS140=certified is recorded as the resolved module version; compare it to
 # the toolchain's certified.txt so "inprocess", "latest" and "off" builds are
 # rejected. Each check is its own recipe line so a failure exits non-zero.
