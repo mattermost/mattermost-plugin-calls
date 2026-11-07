@@ -127,6 +127,11 @@ export const STORAGE_CALLS_CLIENT_LOGS_KEY = 'calls_client_logs';
 export const STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY = 'calls_default_audio_input';
 export const STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY = 'calls_default_audio_output';
 export const STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN = 'calls_share_audio_with_screen';
+export const STORAGE_CALLS_LOWER_HAND_ON_UNMUTE = 'calls_lower_hand_on_unmute';
+
+// How long the user needs to stay unmuted before their raised hand is
+// automatically lowered (when the setting is enabled).
+export const LOWER_HAND_ON_UNMUTE_DELAY_MS = 3000;
 
 // Log buffer size limit
 export const MAX_ACCUMULATED_LOG_SIZE = 1024 * 1024; // 1 MB
