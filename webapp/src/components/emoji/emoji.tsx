@@ -34,7 +34,7 @@ export const Emoji = ({emoji, size}: Props) => {
 };
 
 const getEmojiURL = (emoji: EmojiData) => {
-    const index = EmojiIndicesByUnicode.get(emoji.unified.toLowerCase());
+    const index = EmojiIndicesByUnicode.get(String(emoji.unified ?? '').toLowerCase());
     if (typeof index === 'undefined') {
         return '';
     }

@@ -1416,6 +1416,68 @@ describe('CallClient', () => {
             expect(reactionListener).toHaveBeenCalledWith('p1-session', 'user1', emoji, 1700000000000);
         });
 
+        it.each([
+            ['missing emojiData', {timestamp: 1}],
+            ['null emojiData', {emojiData: null, timestamp: 1}],
+            ['string emojiData', {emojiData: 'x', timestamp: 1}],
+            ['missing unified', {emojiData: {name: 'x'}, timestamp: 1}],
+            ['non-string unified', {emojiData: {name: 'x', unified: 5}, timestamp: 1}],
+            ['non-hex unified', {emojiData: {name: 'x', unified: '<img>'}, timestamp: 1}],
+            ['non-string name', {emojiData: {name: {a: 1}, unified: '1f44d'}, timestamp: 1}],
+            ['oversized name', {emojiData: {name: 'x'.repeat(1000), unified: '1f44d'}, timestamp: 1}],
+            ['non-string literal', {emojiData: {name: 'x', unified: '1f44d', literal: {}}, timestamp: 1}],
+            ['missing timestamp', {emojiData: {name: 'x', unified: '1f44d'}}],
+            ['non-numeric timestamp', {emojiData: {name: 'x', unified: '1f44d'}, timestamp: 'now'}],
+            ['null payload', null],
+            ['array payload', []],
+        ])('drops a malformed reaction: %s', async (_desc, body) => {
+            await client.connect({channelID: 'test-channel'});
+            const reactionListener = jest.fn();
+            client.on(CALL_EVENT.REACTION, reactionListener);
+
+            mockRoom.fire(
+                RoomEvent.DataReceived,
+                new TextEncoder().encode(JSON.stringify(body)),
+                {sid: 'p1-sid', identity: 'user1___p1-session'},
+                undefined,
+                'reaction',
+            );
+
+            expect(reactionListener).not.toHaveBeenCalled();
+        });
+
+        it('drops a reaction that is not valid JSON', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const reactionListener = jest.fn();
+            client.on(CALL_EVENT.REACTION, reactionListener);
+
+            mockRoom.fire(
+                RoomEvent.DataReceived,
+                new TextEncoder().encode('{not json'),
+                {sid: 'p1-sid', identity: 'user1___p1-session'},
+                undefined,
+                'reaction',
+            );
+
+            expect(reactionListener).not.toHaveBeenCalled();
+        });
+
+        it('strips unknown fields from a valid reaction', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const reactionListener = jest.fn();
+            client.on(CALL_EVENT.REACTION, reactionListener);
+
+            mockRoom.fire(
+                RoomEvent.DataReceived,
+                new TextEncoder().encode(JSON.stringify({emojiData: {...emoji, extra: 'x'}, timestamp: 1})),
+                {sid: 'p1-sid', identity: 'user1___p1-session'},
+                undefined,
+                'reaction',
+            );
+
+            expect(reactionListener).toHaveBeenCalledWith('p1-session', 'user1', emoji, 1);
+        });
+
         it('ignores DataReceived for other topics', async () => {
             await client.connect({channelID: 'test-channel'});
             const reactionListener = jest.fn();

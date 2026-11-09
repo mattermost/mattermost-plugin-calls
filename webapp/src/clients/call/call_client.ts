@@ -61,6 +61,7 @@ import {
     RemoteAudioPlayback,
     ScreenSharingSession,
 } from './types';
+import {parseReactionPayload} from './validation';
 
 // trackMetadata extracts the diagnostic fields getStats() reports for a track,
 // from its underlying MediaStreamTrack. Mirrors the shape produced by the legacy
@@ -1599,7 +1600,12 @@ export default class CallClient extends EventEmitter {
         if (topic === CALL_MESSAGE_TOPICS.REACTION) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             try {
-                const {emojiData, timestamp} = JSON.parse(new TextDecoder().decode(payload)) as ReactionPayload;
+                const reaction = parseReactionPayload(JSON.parse(new TextDecoder().decode(payload)));
+                if (!reaction) {
+                    logWarn(`CallClient: reaction ignored, invalid payload from user ${userID}`);
+                    return;
+                }
+                const {emojiData, timestamp} = reaction;
 
                 this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
 
