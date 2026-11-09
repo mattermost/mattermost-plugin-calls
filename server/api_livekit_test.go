@@ -499,6 +499,7 @@ func TestHandlePhoneCall(t *testing.T) {
 		mockMetrics.On("Handler").Return(nil)
 		mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Maybe()
 		mockAPI.On("GetConfig").Return(&model.Config{}, nil)
+		mockAPI.On("GetLicense").Return(&model.License{SkuShortName: "advanced"}).Maybe()
 		mockAPI.On("LogDebug", "handlePhoneCall",
 			"origin", mock.AnythingOfType("string"), mock.Anything, mock.Anything, mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
@@ -534,6 +535,50 @@ func TestHandlePhoneCall(t *testing.T) {
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
 		require.Equal(t, "number is required", res.Msg)
 		require.Equal(t, errIDInvalidNumber, res.ErrID)
+	})
+
+	t.Run("unlicensed rejects with license error", func(t *testing.T) {
+		for name, license := range map[string]*model.License{
+			"nil":          nil,
+			"professional": {SkuShortName: "professional"},
+			"enterprise":   {SkuShortName: "enterprise"},
+		} {
+			t.Run(name, func(t *testing.T) {
+				p, mockAPI := setupPlugin(t)
+				mockAPI.ExpectedCalls = filterCalls(mockAPI.ExpectedCalls, "GetLicense")
+				mockAPI.On("GetLicense").Return(license)
+				mockAPI.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+				cfg := &configuration{}
+				cfg.SetDefaults()
+				cfg.EnableSIPOutbound = model.NewPointer(true)
+				cfg.LiveKitSIPOutboundTrunkID = "ST_test"
+				p.configuration = cfg
+
+				resp := doRequest(t, p, "+14155551234")
+				require.Equal(t, http.StatusForbidden, resp.StatusCode)
+				var res httpResponse
+				require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
+				require.Equal(t, errIDSIPLicenseRequired, res.ErrID)
+			})
+		}
+	})
+
+	t.Run("developer mode bypasses license check", func(t *testing.T) {
+		p, mockAPI := setupPlugin(t)
+		mockAPI.ExpectedCalls = filterCalls(mockAPI.ExpectedCalls, "GetLicense", "GetConfig")
+		mockAPI.On("GetLicense").Return((*model.License)(nil))
+		mockAPI.On("GetConfig").Return(&model.Config{ServiceSettings: model.ServiceSettings{
+			EnableDeveloper: model.NewPointer(true),
+			EnableTesting:   model.NewPointer(true),
+		}}, nil)
+		cfg := &configuration{}
+		cfg.SetDefaults() // outbound disabled: reaching that check means the license passed
+		p.configuration = cfg
+
+		resp := doRequest(t, p, "+14155551234")
+		var res httpResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
+		require.Equal(t, errIDOutboundDisabled, res.ErrID)
 	})
 
 	t.Run("disabled toggle rejects even with trunk configured", func(t *testing.T) {
@@ -688,6 +733,7 @@ func TestHandleAddPhoneCall(t *testing.T) {
 		mockMetrics.On("Handler").Return(nil)
 		mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Maybe()
 		mockAPI.On("GetConfig").Return(&model.Config{}, nil)
+		mockAPI.On("GetLicense").Return(&model.License{SkuShortName: "advanced"}).Maybe()
 		mockAPI.On("LogDebug", "handleAddPhoneCall",
 			"origin", mock.AnythingOfType("string"), mock.Anything, mock.Anything, mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything,
@@ -728,4 +774,20 @@ func TestHandleAddPhoneCall(t *testing.T) {
 		require.Equal(t, "user is not a member of a team permitted to place outbound calls", res.Msg)
 		require.Equal(t, errIDSIPTeamNotAllowed, res.ErrID)
 	})
+}
+
+func filterCalls(calls []*mock.Call, methods ...string) []*mock.Call {
+	var out []*mock.Call
+	for _, c := range calls {
+		keep := true
+		for _, m := range methods {
+			if c.Method == m {
+				keep = false
+			}
+		}
+		if keep {
+			out = append(out, c)
+		}
+	}
+	return out
 }

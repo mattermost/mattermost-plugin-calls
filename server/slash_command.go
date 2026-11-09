@@ -40,6 +40,7 @@ var subCommands = []string{
 	recordingCommandTrigger,
 	logsCommandTrigger,
 	auditCommandTrigger,
+	diagCommandTrigger,
 }
 
 func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
@@ -57,6 +58,7 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Show client-generated statistics about the call."))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately."))
 	data.AddCommand(model.NewAutocompleteData(logsCommandTrigger, "", "Show client logs."))
+	data.AddCommand(model.NewAutocompleteData(diagCommandTrigger, "", "Run Calls setup and connectivity diagnostics."))
 
 	auditCmdData := model.NewAutocompleteData(auditCommandTrigger, "", "Generate a CSV attendance report of past calls, DM'd to you.")
 	auditCmdData.AddNamedTextArgument("from", "Include calls that started on or after this date, UTC (YYYY-MM-DD)", "YYYY-MM-DD", "", false)
@@ -235,6 +237,10 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 			ResponseType: model.CommandResponseTypeEphemeral,
 			Text:         "Outbound dialing is only supported in the web/desktop app.",
 		}, nil
+	}
+
+	if subCmd == diagCommandTrigger {
+		return buildCommandResponse(p.handleDiagCommand(args, fields))
 	}
 
 	if subCmd == recordingCommandTrigger {

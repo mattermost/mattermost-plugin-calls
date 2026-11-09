@@ -325,15 +325,16 @@ func reconcileSIPTrunkWithClient(ctx context.Context, client livekit.SIP, cfg *c
 }
 
 // sipTrunkReconcileWanted reports whether the plugin should be managing a trunk.
-func sipTrunkReconcileWanted(cfg *configuration) bool {
-	return cfg.sipTrunkManaged() && cfg.EnableSIPOutbound != nil && *cfg.EnableSIPOutbound &&
+// Unlicensed servers never manage one.
+func (p *Plugin) sipTrunkReconcileWanted(cfg *configuration) bool {
+	return p.licenseChecker.SIPOutboundAllowed() && cfg.sipTrunkManaged() && cfg.EnableSIPOutbound != nil && *cfg.EnableSIPOutbound &&
 		cfg.getLiveKitURL() != "" && cfg.LiveKitAPIKey != "" && cfg.LiveKitAPISecret != ""
 }
 
 // reconcileSIPTrunk reconciles the managed trunk under a cluster mutex and records
 // the result.
 func (p *Plugin) reconcileSIPTrunk() error {
-	if !sipTrunkReconcileWanted(p.getConfiguration()) {
+	if !p.sipTrunkReconcileWanted(p.getConfiguration()) {
 		return nil
 	}
 
@@ -366,7 +367,7 @@ func (p *Plugin) doReconcileSIPTrunk() error {
 	// Read the config under the lock so a reconcile queued by an earlier save
 	// can't overwrite the trunk with stale values.
 	cfg := p.getConfiguration()
-	if !sipTrunkReconcileWanted(cfg) {
+	if !p.sipTrunkReconcileWanted(cfg) {
 		return nil
 	}
 
@@ -398,7 +399,7 @@ func (p *Plugin) doReconcileSIPTrunk() error {
 // recorded for the status endpoint; LiveKit being down must not block activation
 // or config saves.
 func (p *Plugin) reconcileSIPTrunkAsync() {
-	if !p.sipTrunkActive.Load() || !sipTrunkReconcileWanted(p.getConfiguration()) {
+	if !p.sipTrunkActive.Load() || !p.sipTrunkReconcileWanted(p.getConfiguration()) {
 		return
 	}
 	go func() {
@@ -420,7 +421,7 @@ func (p *Plugin) resolveSIPTrunkID(cfg *configuration) string {
 	throttled := time.Since(p.sipTrunkLastAttempt) < sipTrunkReconcileInterval
 	p.sipTrunkMut.Unlock()
 
-	if id != "" || throttled || !sipTrunkReconcileWanted(cfg) {
+	if id != "" || throttled || !p.sipTrunkReconcileWanted(cfg) {
 		return id
 	}
 
@@ -467,7 +468,7 @@ func (p *Plugin) buildSIPTrunkStatus() sipTrunkStatus {
 	p.sipTrunkMut.Unlock()
 
 	switch {
-	case !sipTrunkReconcileWanted(cfg):
+	case !p.sipTrunkReconcileWanted(cfg):
 		status.State = sipTrunkStateNone
 	case status.Error != "":
 		status.State = sipTrunkStateError

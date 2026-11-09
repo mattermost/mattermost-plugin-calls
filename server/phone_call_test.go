@@ -540,6 +540,7 @@ func TestHandlePhoneCallTarget(t *testing.T) {
 		mockMetrics.On("Handler").Return(nil)
 		mockMetrics.On("ObserveAppHandlersTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Maybe()
 		mockAPI.On("GetConfig").Return(&model.Config{}, nil).Maybe()
+		mockAPI.On("GetLicense").Return(&model.License{SkuShortName: "advanced"}).Maybe()
 		mockAllLogs(mockAPI)
 		return p, mockAPI
 	}
@@ -707,7 +708,7 @@ func newPhoneCallTest(t *testing.T, participants ...*livekit.ParticipantInfo) *p
 
 	dmChannel := &model.Channel{Id: tc.channelID, Type: model.ChannelTypeDirect}
 	mockAPI.On("GetConfig").Return(&model.Config{}, nil).Maybe()
-	mockAPI.On("GetLicense").Return(&model.License{SkuShortName: "enterprise"}, nil).Maybe()
+	mockAPI.On("GetLicense").Return(&model.License{SkuShortName: "advanced"}).Maybe()
 	mockAPI.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(
 		func(_ string, _ []byte, opts model.PluginKVSetOptions) (bool, *model.AppError) {
 			// A nil OldValue is a fresh lock attempt; refreshing a held lock still works.

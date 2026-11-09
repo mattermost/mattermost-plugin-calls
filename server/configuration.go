@@ -135,6 +135,8 @@ type ClientConfig struct {
 	SkuShortName string `json:"sku_short_name"`
 	// Let the server determine whether or not host controls are allowed (through license checks or otherwise)
 	HostControlsAllowed bool
+	// Let the server determine whether or not outbound SIP dialing is allowed (through license checks or otherwise)
+	SIPOutboundAllowed bool
 	// Let the server determine whether or not group calls are allowed (through license checks or otherwise)
 	GroupCallsAllowed bool
 }
@@ -445,6 +447,7 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		EnableRinging:        c.EnableRinging,
 		EnableSIPOutbound:    c.EnableSIPOutbound,
 		SkuShortName:         skuShortName,
+		SIPOutboundAllowed:   p.licenseChecker.SIPOutboundAllowed(),
 		HostControlsAllowed:  p.licenseChecker.HostControlsAllowed(),
 		GroupCallsAllowed:    p.licenseChecker.GroupCallsAllowed(),
 	}
@@ -456,11 +459,20 @@ func (p *Plugin) getAdminClientConfig(c *configuration) configuration {
 
 	cfg := p.configuration.Clone()
 	cfg.ClientConfig = p.getClientConfig(c)
-	// The admin console reads settings through the server config API, not this
-	// endpoint, so there's no reason to hand the trunk password to the browser.
-	cfg.SIPTrunkAuthPassword = ""
+	cfg.TranscribeAPIAzureSpeechKey = maskSecret(cfg.TranscribeAPIAzureSpeechKey)
+	cfg.LiveKitAPISecret = maskSecret(cfg.LiveKitAPISecret)
+	cfg.SIPTrunkAuthPassword = maskSecret(cfg.SIPTrunkAuthPassword)
 
 	return *cfg
+}
+
+var secretSettingKeys = []string{"TranscribeAPIAzureSpeechKey", "LiveKitAPISecret", "SIPTrunkAuthPassword"}
+
+func maskSecret(s string) string {
+	if s == "" {
+		return ""
+	}
+	return model.FakeSetting
 }
 
 // getConfiguration retrieves the active configuration under lock, making it safe to use
