@@ -5,11 +5,15 @@ package main
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
+	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/livekit/protocol/livekit"
 )
@@ -125,6 +129,13 @@ func (p *Plugin) reconcileCallSessions(channelID string, sessions map[string]*pu
 		if session.IsSIPParticipant {
 			continue
 		}
+
+		// Access to the call must keep following auth state (MM-71651). This runs
+		// for every non-SIP, non-bot session regardless of LiveKit presence since a
+		// revoked user is, by definition, still connected.
+		if p.reconcileSessionAccess(channelID, session, seenSessionIDs) {
+			continue
+		}
 		// A pending session's absence from LK is expected while its client is
 		// still connecting. Once past the grace period nothing else would ever
 		// remove it, and it would hold the call open indefinitely.
@@ -203,4 +214,76 @@ func buildLKSessionIDSet(participants []*livekit.ParticipantInfo) map[string]str
 		ids[sessionID] = struct{}{}
 	}
 	return ids
+}
+
+// reconcileSessionAccess verifies that the user behind a call session is still
+// allowed to be in the call: their Mattermost session must still be valid and
+// they must still be able to read the channel. If not, the participant is evicted
+// via the same path as participant_left. It returns true if the session was
+// evicted.
+//
+// A definitively invalid auth session evicts immediately. Channel access comes
+// from a bare boolean that can't distinguish "removed" from a transient failure,
+// so it needs two consecutive failing ticks, like the LiveKit absence check.
+func (p *Plugin) reconcileSessionAccess(channelID string, session *public.CallSession, seenSessionIDs map[string]struct{}) bool {
+	if p.isBot(session.UserID) {
+		return false
+	}
+
+	reason := ""
+	if session.AuthSessionID != "" {
+		s, appErr := p.API.GetSession(session.AuthSessionID)
+		switch {
+		case appErr != nil && (appErr.StatusCode == http.StatusUnauthorized || appErr.StatusCode == http.StatusNotFound):
+			reason = "auth session revoked"
+		case appErr != nil:
+			// Transient failure: don't evict on an error we can't interpret.
+			p.LogWarn("reconciler: failed to check auth session", "sessionID", session.ID, "err", appErr.Error())
+		case s == nil || (s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt):
+			reason = "auth session expired"
+		}
+	}
+
+	suspicionKey := "access:" + session.ID
+	seenSessionIDs[suspicionKey] = struct{}{}
+
+	if reason == "" {
+		if p.API.HasPermissionToChannel(session.UserID, channelID, model.PermissionReadChannel) {
+			p.reconcilerSuspicionsMut.Lock()
+			delete(p.reconcilerSuspicions, suspicionKey)
+			p.reconcilerSuspicionsMut.Unlock()
+			return false
+		}
+
+		p.reconcilerSuspicionsMut.Lock()
+		p.reconcilerSuspicions[suspicionKey]++
+		count := p.reconcilerSuspicions[suspicionKey]
+		p.reconcilerSuspicionsMut.Unlock()
+		if count < reconcilerSuspicionLimit {
+			return false
+		}
+		reason = "no channel access"
+	}
+
+	p.reconcilerSuspicionsMut.Lock()
+	delete(p.reconcilerSuspicions, suspicionKey)
+	p.reconcilerSuspicionsMut.Unlock()
+
+	p.LogInfo("reconciler: evicting session that lost access",
+		"channelID", channelID,
+		"callID", session.CallID,
+		"sessionID", session.ID,
+		"userID", session.UserID,
+		"reason", reason)
+
+	if err := p.livekitRemoveParticipant(channelID, composeLivekitIdentity(session.UserID, session.ID)); err != nil &&
+		!errors.Is(err, errLiveKitNotConfigured) {
+		// The participant may not be in the room (e.g. still pending); the session
+		// row is removed below either way.
+		p.LogDebug("reconciler: failed to remove LiveKit participant", "sessionID", session.ID, "err", err.Error())
+	}
+
+	p.removeParticipantSession(channelID, session.UserID, session.ID, session.SID)
+
+	return true
 }
