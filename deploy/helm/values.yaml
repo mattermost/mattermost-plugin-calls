@@ -34,6 +34,15 @@ loadBalancer:
 # This means one LiveKit pod per node (the ports cannot be shared).
 podHostNetwork: true
 
+# One pod at a time. The default surge pod can never be scheduled: with host
+# ports and anti-affinity every node already runs a LiveKit pod, so an upgrade
+# would hang. Calls on the pod being restarted are dropped.
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
+
 # Spread replicas over different nodes.
 affinity:
   podAntiAffinity:

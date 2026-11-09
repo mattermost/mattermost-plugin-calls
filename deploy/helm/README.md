@@ -16,7 +16,8 @@ Status legend: **[validated]** was run end to end on AWS; **[untested]** is writ
 ## Prerequisites
 
 - A Kubernetes cluster (1.28+) with **at least two nodes that have public IP addresses**. LiveKit pods use the host network so clients can reach media ports on the node's public IP. Dedicate nodes to LiveKit with the label `role=calls` and the taint `calls=true:NoSchedule` (the values file expects this), plus at least one other node for ingress-nginx, Redis and cert-manager. `eks/cluster.yaml` is an example for Amazon EKS.
-- `kubectl` and `helm` (v3.12+) with access to the cluster.
+- `kubectl` and `helm` (v3.12+) with access to the cluster, and `openssl` (used by `setup.sh`). To create the example EKS cluster you also need `eksctl` and the `aws` CLI with a configured profile and region.
+- Creating the example cluster: `eksctl create cluster -f eks/cluster.yaml` (about 15 minutes). It makes this cluster your current `kubectl` context. If you use an AWS profile, export `AWS_PROFILE` in every shell where you run `kubectl`, `helm` or `eksctl`.
 - A DNS name for LiveKit (for example `lk.example.com`). You will point it at the ingress load balancer in step 4.
 - A TLS certificate for that name: either use cert-manager with Let's Encrypt (step 1), or provide your own `kubernetes.io/tls` Secret.
 - A Mattermost server running the Calls v2 plugin, reachable over HTTPS from the cluster, and system admin access to it.
@@ -30,7 +31,7 @@ Status legend: **[validated]** was run end to end on AWS; **[untested]** is writ
 
   The ingress load balancer needs 443/tcp (and 80/tcp for certificate issuance). Do not open 7880, the signaling port, to the internet; it is reached through the ingress.
 
-Sizing: for testing, small nodes are enough (the tested setup used `t3.small`). For production, give each LiveKit node plenty of CPU, because one pod uses the whole node (for example `c5.2xlarge` or larger, depending on call size), and raise the `resources` requests in `values.yaml` to match.
+Sizing: for testing, small nodes are enough (the tested setup used `t3.small`, with the small SIP requests in `sip.yaml`). For production, give each LiveKit node plenty of CPU, because one pod uses the whole node (for example `c5.2xlarge` or larger, depending on call size), and raise the `resources` requests in `values.yaml` to match.
 
 ## 1. Install ingress-nginx and cert-manager **[validated]**
 
@@ -68,12 +69,22 @@ kubectl -n livekit get pods -o wide         # two livekit-server pods on differe
 kubectl -n livekit logs deploy/livekit-server --tail 20
 ```
 
+Until the media ports are open (step 4), the logs show `could not validate external IP` and `no external IPs found, using node IP`; both are expected at this point. `UDP receive buffer is too small` is also harmless for testing.
+
 LiveKit reads its config only at startup; after changing values, `helm upgrade` rolls the pods. Check the logs rather than relying on `Running`.
 
 ## 4. Open the media ports and create the DNS record **[validated]**
 
-1. Allow 7882/udp and 7881/tcp (and 10000-10100/udp for SIP) on the LiveKit nodes' security group. On EKS, add the rules to the node group's security group.
-2. Find the ingress address and create a DNS record for your LiveKit name pointing at it (CNAME for a hostname, A for an IP):
+1. Allow 7882/udp and 7881/tcp (and 10000-10100/udp for SIP) on the security group of the LiveKit nodes. On EKS, all managed node groups share the cluster security group, so the ports are also open on the other nodes, where nothing listens. Restrict the source range if your users' networks are known; `0.0.0.0/0` is the simplest:
+   ```bash
+   SG=$(aws ec2 describe-instances --filters Name=tag:eks:cluster-name,Values=<cluster-name> Name=instance-state-name,Values=running \
+     --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' --output text)
+   aws ec2 authorize-security-group-ingress --group-id $SG --ip-permissions \
+     '[{"IpProtocol":"udp","FromPort":7882,"ToPort":7882,"IpRanges":[{"CidrIp":"0.0.0.0/0"}]},
+       {"IpProtocol":"tcp","FromPort":7881,"ToPort":7881,"IpRanges":[{"CidrIp":"0.0.0.0/0"}]}]'
+   # with SIP, also: IpProtocol udp, ports 10000-10100
+   ```
+2. Find the ingress address and create a DNS record for your LiveKit name pointing at it (CNAME for a hostname, A for an IP). If the name already exists, update it instead of creating a new one:
    ```bash
    kubectl -n ingress-nginx get svc ingress-nginx-controller
    ```
@@ -89,34 +100,36 @@ In System Console > Plugins > Calls, set:
 | LiveKit API key | `calls-plugin` |
 | LiveKit API secret | the value in `secrets.yaml` under `livekit-keys` |
 
+Paste the values without leading or trailing spaces. The plugin's config endpoint returns the API secret in clear text to an admin token, so do not paste its output into tickets or chat.
+
 ## 6. Verify
 
 **[validated: audio and screen share with two users over direct UDP, participants landing on both LiveKit pods, and TCP fallback. Upgrades are untested.]**
 
 1. Start a call and join from a client outside the cluster's network. **[validated]**
-2. Start several calls and confirm participants land on more than one LiveKit pod:
+2. Start several calls, each in a fresh room, and confirm participants land on more than one LiveKit pod. Use `starting RTC session` and `room_started`: the `selected node for room` line is logged by the pod that handled the request, not necessarily the one hosting the room. Rooms are placed per call, so two or three calls may all land on one pod; start more if so.
    ```bash
    for p in $(kubectl -n livekit get pods -l app.kubernetes.io/name=livekit-server -o name); do
-     echo "== $p"; kubectl -n livekit logs $p | grep -E "starting RTC session|selected node for room" | tail -3
+     echo "== $p"; kubectl -n livekit logs $p --since=15m | grep -E "starting RTC session|room_started" | cut -c1-120
    done
    ```
 3. Share a screen and confirm the other participant sees it. **[validated]**
-4. UDP blocked (remove the 7882/udp rule), start a fresh call and confirm the selected candidate is `tcp4 ... :7881`. To print the selected candidates: `kubectl -n livekit logs <pod> | grep 'participant active' | grep -oE '\[(local|remote)\]\[selected:1\][^"]*'`. **[validated]**
+4. UDP blocked (remove the 7882/udp rule), start a fresh call and confirm the selected candidate is `tcp4 ... :7881`. To print the selected candidates of recent calls (the timestamp tells calls apart): `kubectl -n livekit logs <pod> --since=5m | grep 'participant active' | grep -oE '^[0-9T:.Z-]+|\[(local|remote)\]\[selected:1\][^"]*'`. **[validated]**
 
 ## SIP outbound (optional)
 
 **[validated: managed trunk and an outbound call to a phone with audio in both directions, using the in-cluster bridge]**
 
 1. Generate with `--sip` (step 2) and apply `secrets.yaml` again.
-2. Confirm Redis and LiveKit are running, then `kubectl apply -f sip.yaml`. The bridge runs on the host network of a `role=calls` node.
+2. Confirm Redis and LiveKit are running, then `kubectl apply -f sip.yaml`. The bridge runs on the host network of a `role=calls` node, next to a LiveKit pod. If it stays `Pending`, the node has too little memory or CPU left; see Troubleshooting.
 3. Open `10000-10100/udp` on that node.
-4. In the plugin settings (SIP Outbound), enable outbound dialing, trunk mode **managed**, and enter your provider's trunk address, caller ID and credentials. Check `GET /plugins/com.mattermost.calls/sip/trunk-status`. If it reports `sip not connected (redis required)`, fix the cause and toggle **Enable outbound phone dialing** off and on; plain re-saves do not retry.
+4. In the plugin settings (SIP Outbound), enable outbound dialing, trunk mode **managed**, and enter your provider's trunk address, caller ID and credentials. Check `GET /plugins/com.mattermost.calls/sip/trunk-status`. A `ready` status does not prove the bridge is healthy (it can show `ready` before the bridge pod exists): check `kubectl -n livekit logs deploy/livekit-sip` and, on a test call, look for `Outbound SIP call established`. The `failed to get server reflexive address udp6 ... network is unreachable` warnings and `error closing media port: opus: invalid argument` at hangup are harmless. If it reports `sip not connected (redis required)`, fix the cause and toggle **Enable outbound phone dialing** off and on; plain re-saves do not retry.
 
 ## Operations
 
 - Logs: `kubectl -n livekit logs -f deploy/livekit-server`
-- Upgrade: change `image.tag` (and the chart `--version`), then `helm upgrade`. **[untested]**
-- Remove: `helm uninstall livekit -n livekit`, then `kubectl delete namespace livekit`.
+- Upgrade: change `image.tag` (and the chart `--version`), then `helm upgrade livekit livekit/livekit-server --version <v> -n livekit -f values.yaml -f values-site.yaml`. Pods restart one at a time, and calls on the restarting pod are dropped. **[validated for a values change; a version bump is untested]**
+- Remove: `helm uninstall livekit -n livekit`, then `kubectl delete namespace livekit`. To remove the whole example cluster: first `helm uninstall ingress-nginx -n ingress-nginx` (it created the load balancer, which Kubernetes owns and which can block VPC deletion or keep billing if left behind), then `helm uninstall cert-manager -n cert-manager`, then `eksctl delete cluster -f eks/cluster.yaml`, and finally delete the DNS record.
 
 ## Troubleshooting
 
@@ -129,4 +142,4 @@ In System Console > Plugins > Calls, set:
 - **EKS cluster creation fails with `maximum number of addresses has been reached`:** the default VPC setup creates a NAT gateway, which needs an Elastic IP. Free an address or set `vpc.nat.gateway: Disable` (nodes here are in public subnets anyway).
 - **No call events in Mattermost:** LiveKit must reach `<site-url>/plugins/com.mattermost.calls/livekit-webhook`.
 
-_Validated by the author on Amazon EKS with a human at the call-test checkpoints. Upgrades, recording and transcription are untested._
+_Validated by the author, and by a separate agent session that followed this README and the files in this directory end to end on a fresh EKS cluster, with a human at the call-test checkpoints. Bring-your-own certificate (`--tls-secret`), external Redis (`--redis`), production-size nodes, chart or image version upgrades, recording and transcription are untested._

@@ -51,7 +51,9 @@ spec:
           livenessProbe:  {httpGet: {path: /, port: health}}
           readinessProbe: {httpGet: {path: /, port: health}}
           resources:
-            requests: {cpu: 500m, memory: 512Mi}
+            # Small requests so it fits next to LiveKit on small test nodes
+            # (t3.small). Raise them for production.
+            requests: {cpu: 250m, memory: 256Mi}
           volumeMounts:
             - {name: config, mountPath: /sip/config.yaml, subPath: config.yaml, readOnly: true}
       volumes:

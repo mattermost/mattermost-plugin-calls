@@ -1,5 +1,7 @@
 # Example Amazon EKS cluster for the Calls v2 LiveKit deployment (eksctl).
-#   eksctl create cluster -f cluster.yaml
+#   eksctl create cluster -f eks/cluster.yaml    (takes about 15 minutes)
+# Change metadata.name and metadata.region to suit. To tag the cluster and its
+# resources, add a metadata.tags block (for example Project: calls-livekit).
 # Instance sizes are small, for testing only. For production use larger nodes
 # for the "calls" group (see Sizing in ../README.md).
 apiVersion: eksctl.io/v1alpha5
