@@ -101,7 +101,8 @@ func TestHandleLiveKitWebhook(t *testing.T) {
 	})
 
 	t.Run("invalid signature rejected", func(t *testing.T) {
-		p, _ := newPlugin(t)
+		p, mockAPI := newPlugin(t)
+		mockAPI.On("KVGet", diagProbeActiveKey).Return(nil, nil)
 		cfg := &configuration{}
 		cfg.SetDefaults()
 		cfg.LiveKitAPIKey = testAPIKey

@@ -1444,6 +1444,7 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 	event, err := webhook.ReceiveWebhookEvent(r, auth.NewSimpleKeyProvider(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret))
 	if err != nil {
 		p.LogError("handleLiveKitWebhook: failed to verify webhook", "err", err.Error())
+		p.recordDiagBadSignature()
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -1468,6 +1469,13 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	p.LogInfo("handleLiveKitWebhook: received event", fields...)
+
+	// /call diag probe rooms are not real calls; record and stop.
+	if _, ok := parseSelftestRoom(event.GetRoom().GetName()); ok {
+		p.recordDiagWebhook(event)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	switch event.GetEvent() {
 	case webhook.EventParticipantJoined:
