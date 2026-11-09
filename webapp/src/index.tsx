@@ -107,7 +107,6 @@ import RaiseHandSettingsSection from 'src/components/user_settings/raise_hand_se
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
-import {createLowerHandOnUnmute} from 'src/lower_hand_on_unmute';
 import {
     dialPhoneNumber,
     PhoneCallResponse,
@@ -165,7 +164,6 @@ import {
     isLimitRestricted,
     ringingEnabled,
     screenSharingSessionForCurrentCall,
-    sessionForCurrentCall,
     sessionsInCurrentCall,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
@@ -180,7 +178,6 @@ import {
     getUserIDsForSessions,
     isCallsPopOut,
     isDMChannel,
-    lowerHandOnUnmute,
     playSound,
     sendDesktopEvent,
     setCallsGlobalCSSVars,
@@ -750,17 +747,7 @@ export default class Plugin {
 
                 window.callsClient.on(CALL_EVENT.CONNECTED, () => store.dispatch(setClientConnecting(false)));
 
-                const lowerHandOnUnmuteHandler = createLowerHandOnUnmute({
-                    getOwnSessionID: () => window.callsClient?.getSessionID(),
-                    isEnabled: lowerHandOnUnmute,
-                    isOwnHandRaised: () => (sessionForCurrentCall(store.getState())?.raised_hand ?? 0) > 0,
-
-                    // unraiseHand handles and logs its own errors.
-                    lowerHand: () => window.callsClient?.unraiseHand(),
-                });
-
                 window.callsClient.on(CALL_EVENT.DISCONNECTED, (reason?: DisconnectReason) => {
-                    lowerHandOnUnmuteHandler.dispose();
                     store.dispatch(setClientConnecting(false));
 
                     unmountCallWidget();
@@ -802,12 +789,10 @@ export default class Plugin {
 
                 window.callsClient.on(CALL_EVENT.MUTE, (session_id: string, userID: string) => {
                     store.dispatch(userMuted(window.callsClient?.channelID ?? '', session_id, userID));
-                    lowerHandOnUnmuteHandler.onMute(session_id);
                 });
 
                 window.callsClient.on(CALL_EVENT.UNMUTE, (session_id: string, userID: string) => {
                     store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', session_id, userID));
-                    lowerHandOnUnmuteHandler.onUnmute(session_id);
                 });
 
                 window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {

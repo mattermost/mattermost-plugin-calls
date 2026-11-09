@@ -638,7 +638,6 @@ export function shareAudioWithScreen() {
 }
 
 export function lowerHandOnUnmute() {
-    // Defaults to off when unset.
     return window.localStorage.getItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE) === 'on';
 }
 

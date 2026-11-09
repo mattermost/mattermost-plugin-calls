@@ -50,17 +50,30 @@ describe('RaiseHandSettingsSection', () => {
         expect(screen.getByLabelText('Off')).not.toBeChecked();
     });
 
-    it('persists the selection to localStorage', async () => {
+    it('persists the selection to localStorage only on save', async () => {
         renderComponent();
         await openSection();
 
         await userEvent.click(screen.getByLabelText('On'));
-        expect(window.localStorage.getItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE)).toBe('on');
         expect(screen.getByLabelText('On')).toBeChecked();
+        expect(window.localStorage.getItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE)).toBeNull();
 
-        await userEvent.click(screen.getByLabelText('Off'));
+        await userEvent.click(screen.getByText('Save'));
+        expect(window.localStorage.getItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE)).toBe('on');
+    });
+
+    it('discards the selection on cancel', async () => {
+        window.localStorage.setItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, 'off');
+        renderComponent();
+        await openSection();
+
+        await userEvent.click(screen.getByLabelText('On'));
+        await userEvent.click(screen.getByText('Cancel'));
         expect(window.localStorage.getItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE)).toBe('off');
+
+        await openSection();
         expect(screen.getByLabelText('Off')).toBeChecked();
+        expect(screen.getByLabelText('On')).not.toBeChecked();
     });
 
     it('collapses on save and on cancel', async () => {

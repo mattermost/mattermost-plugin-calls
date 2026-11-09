@@ -6,6 +6,7 @@ import {Post} from '@mattermost/types/posts';
 import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
 import type CallClient from 'src/clients/call';
+import {STORAGE_CALLS_LOWER_HAND_ON_UNMUTE} from 'src/constants';
 
 import {pluginId} from './manifest';
 import {
@@ -810,7 +811,7 @@ describe('utils', () => {
 
 describe('lowerHandOnUnmute', () => {
     afterEach(() => {
-        window.localStorage.removeItem('calls_lower_hand_on_unmute');
+        window.localStorage.removeItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE);
     });
 
     test('defaults to off when unset', () => {
@@ -818,10 +819,10 @@ describe('lowerHandOnUnmute', () => {
     });
 
     test('is on only when explicitly set to on', () => {
-        window.localStorage.setItem('calls_lower_hand_on_unmute', 'on');
+        window.localStorage.setItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, 'on');
         expect(lowerHandOnUnmute()).toBe(true);
 
-        window.localStorage.setItem('calls_lower_hand_on_unmute', 'off');
+        window.localStorage.setItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, 'off');
         expect(lowerHandOnUnmute()).toBe(false);
     });
 });

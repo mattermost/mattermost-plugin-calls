@@ -112,8 +112,13 @@ test.describe('raised hand', {tag: '@livekit'}, () => {
     });
 
     test.describe('lower hand on unmute setting', () => {
+        // Mirrors STORAGE_CALLS_LOWER_HAND_ON_UNMUTE and LOWER_HAND_ON_UNMUTE_DELAY_MS
+        // in webapp/src/constants.ts; e2e cannot import from the webapp sources.
+        const STORAGE_CALLS_LOWER_HAND_ON_UNMUTE = 'calls_lower_hand_on_unmute';
+        const LOWER_HAND_ON_UNMUTE_DELAY_MS = 3000;
+
         const setLowerHandOnUnmute = async (devPage: PlaywrightDevPage, value: 'on' | 'off') => {
-            await devPage.page.evaluate((v) => window.localStorage.setItem('calls_lower_hand_on_unmute', v), value);
+            await devPage.page.evaluate(([key, v]) => window.localStorage.setItem(key, v), [STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, value] as const);
         };
 
         test('enabled - hand is lowered after staying unmuted', async ({page}) => {
@@ -126,6 +131,9 @@ test.describe('raised hand', {tag: '@livekit'}, () => {
 
             await user1Page.unmute();
             await user0Popout.expectMutedOnPopout(usernames[1], false);
+
+            // Not lowered right away: the delay must elapse first.
+            await user0Popout.expectRaisedHandOnPopout(usernames[1]);
 
             // Lowered automatically once user1 stays unmuted past the delay.
             await user0Popout.expectUnRaisedHandOnPoput(usernames[1]);
@@ -145,8 +153,8 @@ test.describe('raised hand', {tag: '@livekit'}, () => {
             await user1Page.unmute();
             await user0Popout.expectMutedOnPopout(usernames[1], false);
 
-            // Wait well past the auto-lower delay; the hand must still be raised.
-            await user0Popout.page.waitForTimeout(6000);
+            // Wait 2x the auto-lower delay; the hand must still be raised.
+            await user0Popout.page.waitForTimeout(LOWER_HAND_ON_UNMUTE_DELAY_MS * 2);
             await user0Popout.expectRaisedHandOnPopout(usernames[1]);
 
             await Promise.all([user0Page.leaveCall(), user1Page.leaveCall()]);
