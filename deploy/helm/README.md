@@ -100,7 +100,7 @@ In System Console > Plugins > Calls, set:
 | LiveKit API key | `calls-plugin` |
 | LiveKit API secret | the value in `secrets.yaml` under `livekit-keys` |
 
-Paste the values without leading or trailing spaces. The plugin's config endpoint returns the API secret in clear text to an admin token, so do not paste its output into tickets or chat.
+Paste the values without leading or trailing spaces.
 
 ## 6. Verify
 
