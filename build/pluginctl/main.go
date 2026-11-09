@@ -144,9 +144,11 @@ func deploy(client *model.Client4, pluginID, bundlePath string) error {
 // disablePlugin attempts to disable the plugin via the Client4 API.
 func disablePlugin(client *model.Client4, pluginID string) error {
 	log.Print("Disabling plugin.")
-	_, resp := client.DisablePlugin(context.Background(), pluginID)
-	if resp.Error != nil {
-		return fmt.Errorf("failed to disable plugin: %w", resp.Error)
+	// server/public v0.6 returns the request error directly. Response no longer
+	// carries an Error field.
+	_, err := client.DisablePlugin(context.Background(), pluginID)
+	if err != nil {
+		return fmt.Errorf("failed to disable plugin: %w", err)
 	}
 
 	return nil
