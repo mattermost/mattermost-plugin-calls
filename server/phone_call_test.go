@@ -38,9 +38,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fakeLiveKit serves the Twirp endpoints the phone-call paths use, so they can
+// fakePhoneLiveKit serves the Twirp endpoints the phone-call paths use, so they can
 // be exercised without a LiveKit server.
-type fakeLiveKit struct {
+type fakePhoneLiveKit struct {
 	srv *httptest.Server
 
 	mut          sync.Mutex
@@ -59,15 +59,15 @@ type fakeLiveKit struct {
 	dial func() (*livekit.SIPParticipantInfo, error)
 }
 
-func newFakeLiveKit(t *testing.T, participants ...*livekit.ParticipantInfo) *fakeLiveKit {
+func newFakePhoneLiveKit(t *testing.T, participants ...*livekit.ParticipantInfo) *fakePhoneLiveKit {
 	t.Helper()
-	lk := &fakeLiveKit{participants: participants}
+	lk := &fakePhoneLiveKit{participants: participants}
 	lk.srv = httptest.NewServer(http.HandlerFunc(lk.serve))
 	t.Cleanup(lk.srv.Close)
 	return lk
 }
 
-func (lk *fakeLiveKit) serve(w http.ResponseWriter, r *http.Request) {
+func (lk *fakePhoneLiveKit) serve(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -143,45 +143,45 @@ func (lk *fakeLiveKit) serve(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(data)
 }
 
-func (lk *fakeLiveKit) setParticipants(participants ...*livekit.ParticipantInfo) {
+func (lk *fakePhoneLiveKit) setParticipants(participants ...*livekit.ParticipantInfo) {
 	lk.mut.Lock()
 	defer lk.mut.Unlock()
 	lk.participants = participants
 }
 
-func (lk *fakeLiveKit) queueLists(lists ...[]*livekit.ParticipantInfo) {
+func (lk *fakePhoneLiveKit) queueLists(lists ...[]*livekit.ParticipantInfo) {
 	lk.mut.Lock()
 	defer lk.mut.Unlock()
 	lk.listQueue = lists
 }
 
-func (lk *fakeLiveKit) failLists(n int) {
+func (lk *fakePhoneLiveKit) failLists(n int) {
 	lk.mut.Lock()
 	defer lk.mut.Unlock()
 	lk.listFailures = n
 }
 
 // failListsAfter lets the next ok ListParticipants calls succeed, then fails n.
-func (lk *fakeLiveKit) failListsAfter(ok, n int) {
+func (lk *fakePhoneLiveKit) failListsAfter(ok, n int) {
 	lk.mut.Lock()
 	defer lk.mut.Unlock()
 	lk.listOKs = ok
 	lk.listFailures = n
 }
 
-func (lk *fakeLiveKit) failRemovals(n int) {
+func (lk *fakePhoneLiveKit) failRemovals(n int) {
 	lk.mut.Lock()
 	defer lk.mut.Unlock()
 	lk.removalFailures = n
 }
 
-func (lk *fakeLiveKit) setDial(dial func() (*livekit.SIPParticipantInfo, error)) {
+func (lk *fakePhoneLiveKit) setDial(dial func() (*livekit.SIPParticipantInfo, error)) {
 	lk.mut.Lock()
 	defer lk.mut.Unlock()
 	lk.dial = dial
 }
 
-func (lk *fakeLiveKit) removedIdentities() []string {
+func (lk *fakePhoneLiveKit) removedIdentities() []string {
 	lk.mut.Lock()
 	defer lk.mut.Unlock()
 	return slices.Clone(lk.removed)
@@ -313,7 +313,7 @@ func TestPhoneCallerHangupReason(t *testing.T) {
 	phoneCall := &public.Call{Props: public.CallProps{Type: callTypePhone}}
 
 	t.Run("non-phone call is a normal end", func(t *testing.T) {
-		p := newPlugin(t, newFakeLiveKit(t, sipParticipantWithStatus("ringing")).srv.URL)
+		p := newPlugin(t, newFakePhoneLiveKit(t, sipParticipantWithStatus("ringing")).srv.URL)
 		require.Equal(t, callEndReasonNormal, p.phoneCallerHangupReason(&public.Call{}, "channelID"))
 	})
 
@@ -323,22 +323,22 @@ func TestPhoneCallerHangupReason(t *testing.T) {
 	})
 
 	t.Run("callee still ringing means canceled", func(t *testing.T) {
-		p := newPlugin(t, newFakeLiveKit(t, sipParticipantWithStatus("ringing")).srv.URL)
+		p := newPlugin(t, newFakePhoneLiveKit(t, sipParticipantWithStatus("ringing")).srv.URL)
 		require.Equal(t, callEndReasonCanceledByCaller, p.phoneCallerHangupReason(phoneCall, "channelID"))
 	})
 
 	t.Run("callee still dialing means canceled", func(t *testing.T) {
-		p := newPlugin(t, newFakeLiveKit(t, sipParticipantWithStatus("dialing")).srv.URL)
+		p := newPlugin(t, newFakePhoneLiveKit(t, sipParticipantWithStatus("dialing")).srv.URL)
 		require.Equal(t, callEndReasonCanceledByCaller, p.phoneCallerHangupReason(phoneCall, "channelID"))
 	})
 
 	t.Run("callee answered means ended", func(t *testing.T) {
-		p := newPlugin(t, newFakeLiveKit(t, sipParticipantWithStatus(sipCallStatusActive)).srv.URL)
+		p := newPlugin(t, newFakePhoneLiveKit(t, sipParticipantWithStatus(sipCallStatusActive)).srv.URL)
 		require.Equal(t, callEndReasonNormal, p.phoneCallerHangupReason(phoneCall, "channelID"))
 	})
 
 	t.Run("no SIP leg in the room means ended", func(t *testing.T) {
-		p := newPlugin(t, newFakeLiveKit(t, &livekit.ParticipantInfo{
+		p := newPlugin(t, newFakePhoneLiveKit(t, &livekit.ParticipantInfo{
 			Identity: "user___session", Kind: livekit.ParticipantInfo_STANDARD,
 		}).srv.URL)
 		require.Equal(t, callEndReasonNormal, p.phoneCallerHangupReason(phoneCall, "channelID"))
@@ -650,7 +650,7 @@ func TestHandlePhoneCallTarget(t *testing.T) {
 type phoneCallTest struct {
 	p         *Plugin
 	api       *pluginMocks.MockAPI
-	lk        *fakeLiveKit
+	lk        *fakePhoneLiveKit
 	channelID string
 	callerID  string
 	// lockFails makes every new call-lock attempt fail while it is set.
@@ -667,7 +667,7 @@ func newPhoneCallTest(t *testing.T, participants ...*livekit.ParticipantInfo) *p
 
 	tc := &phoneCallTest{
 		api:       mockAPI,
-		lk:        newFakeLiveKit(t, participants...),
+		lk:        newFakePhoneLiveKit(t, participants...),
 		channelID: model.NewId(),
 		callerID:  model.NewId(),
 	}
@@ -1062,40 +1062,40 @@ func TestHangUpSIPLeg(t *testing.T) {
 	info, leg := dialedSIPLeg("PA_dialed")
 
 	t.Run("removes the leg this dial created", func(t *testing.T) {
-		lk := newFakeLiveKit(t, leg)
+		lk := newFakePhoneLiveKit(t, leg)
 		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
 		require.Equal(t, []string{leg.Identity}, lk.removedIdentities())
 	})
 
 	t.Run("leaves a redial's leg to the same number alone", func(t *testing.T) {
 		_, redialed := dialedSIPLeg("PA_redialed")
-		lk := newFakeLiveKit(t, redialed)
+		lk := newFakePhoneLiveKit(t, redialed)
 		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
 		require.Empty(t, lk.removedIdentities())
 	})
 
 	t.Run("does nothing once the leg is gone", func(t *testing.T) {
-		lk := newFakeLiveKit(t)
+		lk := newFakePhoneLiveKit(t)
 		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
 		require.Empty(t, lk.removedIdentities())
 	})
 
 	t.Run("retries a failed participant list", func(t *testing.T) {
-		lk := newFakeLiveKit(t, leg)
+		lk := newFakePhoneLiveKit(t, leg)
 		lk.failLists(sipHangUpAttempts - 1)
 		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
 		require.Equal(t, []string{leg.Identity}, lk.removedIdentities())
 	})
 
 	t.Run("retries a failed removal", func(t *testing.T) {
-		lk := newFakeLiveKit(t, leg)
+		lk := newFakePhoneLiveKit(t, leg)
 		lk.failRemovals(sipHangUpAttempts - 1)
 		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
 		require.Equal(t, []string{leg.Identity}, lk.removedIdentities())
 	})
 
 	t.Run("gives up after the last attempt", func(t *testing.T) {
-		lk := newFakeLiveKit(t, leg)
+		lk := newFakePhoneLiveKit(t, leg)
 		lk.failRemovals(sipHangUpAttempts)
 		newLiveKitTestPlugin(t, lk.srv.URL).hangUpSIPLeg("room", info)
 		require.Empty(t, lk.removedIdentities())
