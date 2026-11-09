@@ -19,7 +19,7 @@ export const insecureContextErr = new Error('insecure context');
 // server/session.go. The server sends untranslated strings, so the modal maps these
 // to localized copy. Keep in sync with the server; unmapped text falls back to the
 // generic modal.
-export const joinDeniedMsgs = {
+export const JOIN_DENIED_MSGS = {
     forbidden: 'forbidden',
     insufficientPermissions: 'insufficient permissions',
     channelDisabled: 'calls are disabled in the channel',

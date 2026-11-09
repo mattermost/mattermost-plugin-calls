@@ -2,13 +2,13 @@
 // See LICENSE.txt for license information.
 
 import {ClientError} from '@mattermost/client';
-import {ConnectionError} from 'livekit-client';
+import {ConnectionError, ConnectionErrorReason} from 'livekit-client';
 import React, {ComponentProps} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {
     HostRemovedYouFromCallErr,
     insecureContextErr,
-    joinDeniedMsgs,
+    JOIN_DENIED_MSGS,
     userLeftChannelErr,
     userRemovedFromChannelErr,
 } from 'src/components/error_modal/error_messages';
@@ -94,9 +94,12 @@ export const ErrorModal = (props: Props) => {
         headerMsg = (
             <span>{formatMessage({defaultMessage: 'Call connection failed'})}</span>
         );
+        const isNetworkReason = props.err.reason === ConnectionErrorReason.ServerUnreachable ||
+            props.err.reason === ConnectionErrorReason.Timeout ||
+            props.err.reason === ConnectionErrorReason.WebSocket;
         msg = (
             <span>
-                {formatMessage({defaultMessage: 'We couldn\'t connect to the call. Please check your network connection and try again.'})}
+                {isNetworkReason ? formatMessage({defaultMessage: 'We couldn\'t connect to the call. Please check your network connection and try again.'}) : formatMessage({defaultMessage: 'We couldn\'t connect to the call. Please try again.'})}
                 {untranslatable(' ')}
                 {troubleShootingMsg}
             </span>
@@ -110,38 +113,38 @@ export const ErrorModal = (props: Props) => {
     );
 
     switch (joinDenied) {
-    case joinDeniedMsgs.forbidden:
-    case joinDeniedMsgs.insufficientPermissions:
+    case JOIN_DENIED_MSGS.forbidden:
+    case JOIN_DENIED_MSGS.insufficientPermissions:
         headerMsg = joinDeniedHeaderMsg;
         msg = (
             <span>{formatMessage({defaultMessage: 'You don\'t have permission to start or join calls in this channel.'})}</span>
         );
         break;
-    case joinDeniedMsgs.channelDisabled:
+    case JOIN_DENIED_MSGS.channelDisabled:
         headerMsg = joinDeniedHeaderMsg;
         msg = (
             <span>{formatMessage({defaultMessage: 'Calls are disabled in this channel.'})}</span>
         );
         break;
-    case joinDeniedMsgs.atCapacity:
+    case JOIN_DENIED_MSGS.atCapacity:
         headerMsg = joinDeniedHeaderMsg;
         msg = (
             <span>{formatMessage({defaultMessage: 'This call has reached its maximum number of participants.'})}</span>
         );
         break;
-    case joinDeniedMsgs.groupCallsUnlicensed:
+    case JOIN_DENIED_MSGS.groupCallsUnlicensed:
         headerMsg = joinDeniedHeaderMsg;
         msg = (
             <span>{formatMessage({defaultMessage: 'Calls in group channels require a licensed server. Calls are only available in direct messages.'})}</span>
         );
         break;
-    case joinDeniedMsgs.callEnded:
+    case JOIN_DENIED_MSGS.callEnded:
         headerMsg = joinDeniedHeaderMsg;
         msg = (
             <span>{formatMessage({defaultMessage: 'This call has already ended.'})}</span>
         );
         break;
-    case joinDeniedMsgs.channelArchived:
+    case JOIN_DENIED_MSGS.channelArchived:
         headerMsg = joinDeniedHeaderMsg;
         msg = (
             <span>{formatMessage({defaultMessage: 'Calls can\'t be joined in an archived channel.'})}</span>
