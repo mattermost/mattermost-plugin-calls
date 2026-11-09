@@ -101,7 +101,9 @@ func tempGitRepo(assert *assert.Assertions) (string, *git.Repository, func()) {
 		Email: "test@example.com",
 		When:  time.Now(),
 	}
-	_, err = w.Commit("initial commit", &git.CommitOptions{Author: sig})
+	// go-git v5.13+ rejects an empty first commit unless this is set. The
+	// "test" file above is left untracked, matching the previous behavior.
+	_, err = w.Commit("initial commit", &git.CommitOptions{Author: sig, AllowEmptyCommits: true})
 	assert.Nil(err)
 	pathA := "a.txt"
 	err = ioutil.WriteFile(filepath.Join(wd, pathA),
