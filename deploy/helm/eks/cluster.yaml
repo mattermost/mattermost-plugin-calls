@@ -1,0 +1,32 @@
+# Example Amazon EKS cluster for the Calls v2 LiveKit deployment (eksctl).
+#   eksctl create cluster -f cluster.yaml
+# Instance sizes are small, for testing only. For production use larger nodes
+# for the "calls" group (see Sizing in ../README.md).
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: calls-livekit
+  region: us-east-1
+vpc:
+  nat:
+    gateway: Disable   # nodes run in public subnets; avoids a NAT gateway and an Elastic IP
+managedNodeGroups:
+  # ingress-nginx, cert-manager and Redis. Two nodes: a small node runs out of
+  # pod slots (about 11 on t3.small).
+  - name: system
+    instanceType: t3.small
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 2
+    labels: {role: system}
+  # LiveKit (and the SIP bridge). One LiveKit pod per node, on the node's public IP.
+  - name: calls
+    instanceType: t3.small
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 2
+    labels: {role: calls}
+    taints:
+      - key: calls
+        value: "true"
+        effect: NoSchedule
