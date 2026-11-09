@@ -35,6 +35,8 @@ Run from the repo root:
 
 Go tests sit beside the code as `*_test.go`; Jest tests as `*.test.ts(x)`.
 
+In Jest tests, write `test(...)` and `test.each(...)`, not `it(...)`.
+
 ## Local environment
 
 Calls needs a LiveKit server. The `Makefile` has several targets because the right one depends on how clients reach your Mattermost:
