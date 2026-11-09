@@ -19,6 +19,7 @@ import {
     STORAGE_CALLS_CLIENT_STATS_KEY,
 } from 'src/constants';
 
+import {handleDiagCommand} from './diag';
 import {flushAndGetLogs, logDebug} from './log';
 import {
     areGroupCallsAllowed,
@@ -228,6 +229,14 @@ export default async function slashCommandsHandler(store: Store, joinCall: joinC
             return {error: {message: `Failed to upload logs: ${(err as Error).message}`}};
         }
     }
+    case 'diag':
+        // The server sends the report; return no message so the command isn't posted.
+        return handleDiagCommand(args.channel_id, args.root_id || '', fields.slice(2), () => {
+            store.dispatch(displayGenericErrorModal(
+                defineMessage({defaultMessage: 'Unable to run diagnostics'}),
+                defineMessage({defaultMessage: 'Something went wrong while running or sending the diagnostics. Please try again.'}),
+            ));
+        });
     case 'recording': {
         if (fields.length < 3 || (fields[2] !== 'start' && fields[2] !== 'stop')) {
             break;

@@ -31,8 +31,11 @@ test.describe('livekit framework smoke', {tag: '@livekit-smoke'}, () => {
     });
 
     test.describe('/call diag', () => {
-        // The webhook probe waits up to ~10s for LiveKit to call back.
-        const reportTimeout = 30000;
+        // The server half's webhook probe waits up to ~10s, and the client half
+        // runs livekit-client's ConnectionCheck (including a UDP/TCP media test),
+        // which takes tens of seconds. The report is posted once both are done.
+        const reportTimeout = 90000;
+        test.setTimeout(180000);
 
         test('admin sees a passing report with webhook detail', async ({browser}) => {
             const context = await browser.newContext({storageState: adminState.storageStatePath});
@@ -49,6 +52,11 @@ test.describe('livekit framework smoke', {tag: '@livekit-smoke'}, () => {
             await expect(report).toContainText('Received room_started');
             await expect(report).toContainText('credentials valid');
             await expect(report).not.toContainText('Ask your system admin');
+
+            // Client half. Not asserting pass/fail on individual checks: the CI
+            // network can legitimately differ from a real deployment.
+            await expect(report).toContainText('Your connection');
+            await expect(report).toContainText('WebRTC');
 
             await context.close();
         });
@@ -67,6 +75,7 @@ test.describe('livekit framework smoke', {tag: '@livekit-smoke'}, () => {
                 await expect(report).not.toContainText('Ask a system admin to run');
                 await expect(report).not.toContainText('Received room_started');
                 await expect(report).not.toContainText('credentials valid');
+                await expect(report).toContainText('Your connection');
             });
         });
     });

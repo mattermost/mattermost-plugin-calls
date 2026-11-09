@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -58,6 +59,17 @@ const (
 // tests can shorten it.
 var diagWebhookTimeout = 10 * time.Second
 
+// Rough durations shown to the user while a run is in progress. The client
+// half (a media test over UDP and TCP) dominates a full run.
+const (
+	diagServerEstimate = "10 seconds"
+	diagClientEstimate = "30 seconds"
+)
+
+func diagRunningMessage(estimate string) string {
+	return fmt.Sprintf("Running Calls diagnostics... this usually takes about %s.", estimate)
+}
+
 type diagStatus string
 
 const (
@@ -65,6 +77,9 @@ const (
 	diagWarn diagStatus = "warn"
 	diagFail diagStatus = "fail"
 	diagSkip diagStatus = "skip"
+	// diagInfo is for results that are informational rather than pass/fail
+	// (e.g. TURN when no TURN server is configured).
+	diagInfo diagStatus = "info"
 )
 
 const (
@@ -403,6 +418,10 @@ func (p *Plugin) checkSIP(_ context.Context, cfg *configuration) []diagResult {
 	switch status.State {
 	case sipTrunkStateReady, sipTrunkStateFound:
 		res.AdminDetail = fmt.Sprintf("Trunk %s (%s).", status.TrunkID, status.State)
+	case sipTrunkStateNone:
+		// Enabled but never set up: nothing is broken, so don't fail the report.
+		res.Status = diagInfo
+		res.Detail = "Outbound dialing is enabled but no SIP trunk is set up."
 	default:
 		res.Status = diagFail
 		res.Detail = "Outbound dialing is not working. Ask your system admin."
@@ -414,8 +433,11 @@ func (p *Plugin) checkSIP(_ context.Context, cfg *configuration) []diagResult {
 // getDiagReport returns a recent cached report, or runs the checks. Concurrent
 // callers serialize on a cluster mutex, so a second caller usually finds the
 // first caller's fresh result instead of probing again. force (admins only)
-// bypasses the cooldown but still takes the lock.
-func (p *Plugin) getDiagReport(force bool) (*diagReport, bool, error) {
+// bypasses the cooldown but still takes the lock. notBefore (unix ms, 0 for
+// none) accepts any result produced at or after that time regardless of the
+// cooldown, and reports it as fresh: the client half of a run can outlast the
+// cooldown, and the result it started alongside is still this run's.
+func (p *Plugin) getDiagReport(force bool, notBefore int64) (*diagReport, bool, error) {
 	m, err := cluster.NewMutex(p.API, p.metrics, "diag", cluster.MutexConfig{})
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to create cluster mutex: %w", err)
@@ -430,8 +452,11 @@ func (p *Plugin) getDiagReport(force bool) (*diagReport, bool, error) {
 	if !force {
 		if data, err := p.KVGet(diagResultKey, true); err == nil && len(data) > 0 {
 			var cached diagReport
-			if json.Unmarshal(data, &cached) == nil && time.Since(time.UnixMilli(cached.At)) < diagCooldown {
-				return &cached, true, nil
+			if json.Unmarshal(data, &cached) == nil {
+				fromThisRun := notBefore > 0 && cached.At >= notBefore
+				if fromThisRun || time.Since(time.UnixMilli(cached.At)) < diagCooldown {
+					return &cached, !fromThisRun, nil
+				}
 			}
 		}
 	}
@@ -454,12 +479,43 @@ var diagStatusIcon = map[diagStatus]string{
 	diagWarn: ":warning:",
 	diagFail: ":x:",
 	diagSkip: ":fast_forward:",
+	diagInfo: ":information_source:",
+}
+
+var (
+	// ICE candidate lines from livekit-client, e.g. "udp 172.16.0.3:7882 host (private)".
+	diagCandidateRe = regexp.MustCompile(`(?i)^(udp|tcp|tls)\s+\S+:\d+\b`)
+	// ICE candidate error lines from livekit-client, which end in the TURN/STUN URL,
+	// e.g. "error with ICE candidate: 701 ... turn:host:3478".
+	diagICEErrorRe = regexp.MustCompile(`(?i)^error with ICE candidate\b`)
+	// Any other IPv4 address, with or without a port.
+	diagIPv4Re = regexp.MustCompile(`\b\d{1,3}(\.\d{1,3}){3}(:\d+)?\b`)
+	// LiveKit server version, e.g. ", version 1.13.1".
+	diagVersionRe = regexp.MustCompile(`(?i),?\s*version\s+v?\d+(?:\.\d+)*(?:[-+]\w+)?`)
+)
+
+// redactClientDetail removes server infrastructure details from a client check's
+// text before a non-admin sees it. The client checks run in the user's browser
+// but report on the server's side of the connection: its candidate addresses
+// version and TURN/STUN URLs.
+func redactClientDetail(detail string) string {
+	var kept []string
+	for _, part := range strings.Split(detail, "; ") {
+		trimmed := strings.TrimSpace(part)
+		if diagCandidateRe.MatchString(trimmed) || diagICEErrorRe.MatchString(trimmed) {
+			continue
+		}
+		part = diagVersionRe.ReplaceAllString(part, "")
+		part = diagIPv4Re.ReplaceAllString(part, "[address]")
+		kept = append(kept, part)
+	}
+	return strings.Join(kept, "; ")
 }
 
 // renderDiagReport formats the report for the invoking user. Regular users get
 // categories and actions only; admins also get the admin detail. Configured
 // secrets are scrubbed from admin text as a last line of defence.
-func (p *Plugin) renderDiagReport(report *diagReport, userID string, isAdmin, cached bool) string {
+func (p *Plugin) renderDiagReport(report *diagReport, client *diagClientReport, userID string, isAdmin, cached bool) string {
 	cfg := p.getConfiguration()
 
 	var sb strings.Builder
@@ -474,9 +530,19 @@ func (p *Plugin) renderDiagReport(report *diagReport, userID string, isAdmin, ca
 		}
 		sb.WriteString("_\n")
 	}
-	sb.WriteString("\n| Check | Result |\n| :-- | :-- |\n")
+	sb.WriteString("\n| Check | Notes |\n| :-- | :-- |\n")
 
 	var summary []string
+	writeRow := func(status diagStatus, name, detail string) {
+		detail = strings.ReplaceAll(strings.TrimSpace(detail), "\n", " ")
+		fmt.Fprintf(&sb, "| %s %s | %s |\n", diagStatusIcon[status], name, strings.ReplaceAll(detail, "|", "\\|"))
+		line := fmt.Sprintf("%s: %s", name, status)
+		if detail != "" {
+			line += " - " + detail
+		}
+		summary = append(summary, line)
+	}
+
 	for _, res := range report.Results {
 		if res.Name == diagCheckSIP && !isAdmin && !p.isUserInAllowedTeams(userID, cfg.outboundAllowedTeams()) {
 			continue
@@ -486,7 +552,11 @@ func (p *Plugin) renderDiagReport(report *diagReport, userID string, isAdmin, ca
 		if res.Name == diagCheckSIP && !isAdmin {
 			// Bare ok/not-ok for regular users.
 			detail = ""
-			if res.Status != diagOK {
+			switch res.Status {
+			case diagOK:
+			case diagInfo:
+				detail = "Not set up."
+			default:
 				detail = "Not working."
 			}
 		}
@@ -496,11 +566,26 @@ func (p *Plugin) renderDiagReport(report *diagReport, userID string, isAdmin, ca
 			}
 			detail += res.AdminDetail
 		}
-		detail = strings.ReplaceAll(strings.TrimSpace(detail), "|", "\\|")
-		detail = strings.ReplaceAll(detail, "\n", " ")
+		writeRow(res.Status, res.Name, detail)
+	}
 
-		fmt.Fprintf(&sb, "| %s %s | %s |\n", diagStatusIcon[res.Status], res.Name, detail)
-		summary = append(summary, fmt.Sprintf("%s: %s", res.Name, res.Status))
+	switch {
+	case client == nil:
+		sb.WriteString("\n_Client connection checks were skipped: this client does not support them._\n")
+		summary = append(summary, "", "Client connection checks skipped: client does not support them")
+	case client.SkippedReason != "":
+		fmt.Fprintf(&sb, "\n_Client connection checks were skipped: %s_\n", client.SkippedReason)
+		summary = append(summary, "", "Client connection checks skipped: "+client.SkippedReason)
+	default:
+		sb.WriteString("\n**Your connection**\n\n| Check | Notes |\n| :-- | :-- |\n")
+		summary = append(summary, "", "Your connection")
+		for _, c := range client.Checks {
+			detail := c.Detail
+			if !isAdmin {
+				detail = redactClientDetail(detail)
+			}
+			writeRow(c.Status, c.Name, detail)
+		}
 	}
 
 	if report.failed() && !isAdmin {
@@ -518,24 +603,46 @@ func (p *Plugin) renderDiagReport(report *diagReport, userID string, isAdmin, ca
 	return out
 }
 
-func (p *Plugin) handleDiagCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
-	if !p.API.HasPermissionToChannel(args.UserId, args.ChannelId, model.PermissionCreatePost) {
-		return nil, fmt.Errorf("you do not have permission to run diagnostics in this channel")
+// diagGate applies the same gate as /call start: the user must be able to post
+// in the channel and start or join a call there.
+func (p *Plugin) diagGate(userID, channelID string) error {
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+		return fmt.Errorf("you do not have permission to run diagnostics in this channel")
 	}
 
-	channel, appErr := p.API.GetChannel(args.ChannelId)
+	channel, appErr := p.API.GetChannel(channelID)
 	if appErr != nil {
-		return nil, appErr
+		return appErr
 	}
-	callsChannel, err := p.store.GetCallsChannel(args.ChannelId, db.GetCallsChannelOpts{})
+	callsChannel, err := p.store.GetCallsChannel(channelID, db.GetCallsChannelOpts{})
 	if err != nil && !errors.Is(err, db.ErrNotFound) {
-		return nil, fmt.Errorf("failed to get channel state: %w", err)
+		return fmt.Errorf("failed to get channel state: %w", err)
 	}
 	var enabled *bool
 	if callsChannel != nil {
 		enabled = model.NewPointer(callsChannel.Enabled)
 	}
-	if err := p.userCanStartOrJoin(args.UserId, enabled, channel.Type); err != nil {
+	return p.userCanStartOrJoin(userID, enabled, channel.Type)
+}
+
+// sendDiagReport gets the server half (cached or fresh), merges the client half
+// if there is one, and sends the result to the user as an ephemeral post.
+func (p *Plugin) sendDiagReport(userID, channelID, rootID string, force bool, notBefore int64, client *diagClientReport) {
+	post := &model.Post{ChannelId: channelID, RootId: rootID}
+
+	report, cached, err := p.getDiagReport(force, notBefore)
+	if err != nil {
+		p.LogError("diag: failed to get report", "err", err.Error())
+		post.Message = "Diagnostics failed: " + err.Error()
+	} else {
+		isAdmin := p.API.HasPermissionTo(userID, model.PermissionManageSystem)
+		post.Message = p.renderDiagReport(report, client, userID, isAdmin, cached)
+	}
+	p.API.SendEphemeralPost(userID, post)
+}
+
+func (p *Plugin) handleDiagCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
+	if err := p.diagGate(args.UserId, args.ChannelId); err != nil {
 		return nil, err
 	}
 
@@ -543,23 +650,14 @@ func (p *Plugin) handleDiagCommand(args *model.CommandArgs, fields []string) (*m
 	force := isAdmin && len(fields) > 2 && fields[2] == diagForceArg
 
 	// The webhook probe can take ~10s, longer than a command should block, so
-	// acknowledge now and post the report when it is ready.
-	go func() {
-		post := &model.Post{ChannelId: args.ChannelId, RootId: args.RootId}
-
-		report, cached, err := p.getDiagReport(force)
-		if err != nil {
-			p.LogError("diag: failed to get report", "err", err.Error())
-			post.Message = "Diagnostics failed: " + err.Error()
-		} else {
-			post.Message = p.renderDiagReport(report, args.UserId, isAdmin, cached)
-		}
-		p.API.SendEphemeralPost(args.UserId, post)
-	}()
+	// acknowledge now and post the report when it is ready. Reaching the server
+	// means the client did not handle the command (e.g. mobile), so there is no
+	// client half.
+	go p.sendDiagReport(args.UserId, args.ChannelId, args.RootId, force, 0, nil)
 
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
-		Text:         "Running diagnostics...",
+		Text:         diagRunningMessage(diagServerEstimate),
 	}, nil
 }
 
