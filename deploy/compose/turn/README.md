@@ -36,7 +36,14 @@ Install Docker as in the main README. On Ubuntu: `sudo apt-get install -y certbo
 
 ## 2. Get the files and generate the config **[validated]**
 
-Copy this directory to the host as `/opt/coturn` (the renewal hook expects that path; set `COTURN_DIR` to use another), then:
+Copy this directory to the host as `/opt/coturn` (the renewal hook expects that path; set `COTURN_DIR` to use another). For example, from your workstation, in this repository's `deploy/compose` directory:
+
+```bash
+scp -r turn ubuntu@turn.example.com:/tmp/coturn
+ssh ubuntu@turn.example.com 'sudo cp -r /tmp/coturn /opt/coturn && sudo chmod 755 /opt/coturn'
+```
+
+Then, on the host:
 
 ```bash
 cd /opt/coturn
@@ -48,14 +55,16 @@ This writes `turnserver.conf` (mode 600, owned by uid 65534, because the contain
 ## 3. Get a certificate and install the renewal hook **[validated]**
 
 ```bash
+cd /opt/coturn
 sudo mkdir -p /etc/letsencrypt/renewal-hooks/deploy
 sudo install -m 755 renew-hook.sh /etc/letsencrypt/renewal-hooks/deploy/coturn.sh
-sudo certbot certonly --standalone -d turn.example.com
+sudo certbot certonly --standalone -d turn.example.com -m you@example.com --agree-tos --non-interactive
 sudo /etc/letsencrypt/renewal-hooks/deploy/coturn.sh /etc/letsencrypt/live/turn.example.com
 ```
 
 Notes:
 
+- Use a real address for `-m`; Let's Encrypt sends expiry notices to it. Without `-m`, `--agree-tos` and `--non-interactive`, certbot stops to ask for an email address and agreement to the terms.
 - The `mkdir` is needed: the hooks directory does not exist until you create it.
 - certbot runs the hook after each **renewal**, but **not** after the first `certonly`, hence the manual run in the last line. It copies the certificate to `/opt/coturn/certs` where the container can read it.
 - certbot installs a systemd timer that renews automatically. Non-interactive renewals wait a random delay of up to about 8 minutes, so a renewed certificate reaches coturn a few minutes after the timer fires.
@@ -84,16 +93,19 @@ docker compose logs --tail 20 livekit
 
 `setup.sh` refuses to continue if the secret is empty or too short. That matters: LiveKit will not start if a TURN entry has no credentials, so a bad value takes the whole deployment down until fixed. Always check the LiveKit log after restarting.
 
-## 6. Verify the relay path **[validated with an equivalent hand-built setup; not yet repeated with these exact files]**
+## 6. Verify the relay path **[validated: two users, audio and screen share, including an independent run with these exact files]**
 
 1. On the LiveKit host's firewall, temporarily limit `7882/udp` to the TURN host's IP only and remove `7881/tcp`, so TURN is the only way in. Leave 443 open for signaling.
 2. Start a fresh call and join with audio.
-3. In the LiveKit log (`docker compose logs livekit | grep "participant active"`) the selected remote candidate should be `udp relay <turn-host-ip>:<port in your relay range>`.
+3. In the LiveKit log, the selected remote candidate for each participant should be `udp relay <turn-host-ip>:<port in your relay range>`. The log abbreviates addresses (for example `203.0.113....:50007`), so check the first octets and that the port is inside your relay range, rather than searching for the full IP. To print just the selected candidates:
+   ```bash
+   docker compose logs livekit | grep 'participant active' | grep -oE '\[(local|remote)\]\[selected:1\][^"]*'
+   ```
 4. Restore the firewall rules.
 
 ## Certificate renewal **[validated]**
 
-Tested with a hand-written copy of the hook that does the same steps as `renew-hook.sh`; `renew-hook.sh` itself was run by hand (certificate copied, coturn signaled) but has not yet been exercised by a real certbot renewal. A forced renewal (`sudo certbot renew --force-renewal --no-random-sleep-on-renew --cert-name turn.example.com`) issued a new certificate, ran the hook, and coturn logged `Reloading TLS certificates and keys` without restarting; new connections were served the new certificate and an idle connection opened before the reload stayed open. coturn keeps the old certificate if the new one fails to load.
+A forced renewal (`sudo certbot renew --force-renewal --no-random-sleep-on-renew --cert-name turn.example.com`) issued a new certificate and ran `renew-hook.sh` installed as in step 3; coturn logged `Reloading TLS certificates and keys` without restarting, and new connections were served the new certificate. This was confirmed twice, including by an independent run that followed these instructions. In the author's test an idle connection opened before the reload also stayed open. coturn keeps the old certificate if the new one fails to load.
 
 - `certbot renew --dry-run` does **not** run deploy hooks, so use a real forced renewal to test. Let's Encrypt limits duplicate certificates to 5 per week.
 - A live relayed media session across a reload has not been tested.
