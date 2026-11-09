@@ -203,8 +203,8 @@ func TestRecordDiagBadSignature(t *testing.T) {
 	})
 }
 
-// fakeLiveKit stands in for a LiveKit server's RoomService and public root.
-type fakeLiveKit struct {
+// fakeDiagLiveKit stands in for a LiveKit server's RoomService and public root.
+type fakeDiagLiveKit struct {
 	*httptest.Server
 
 	rejectAuth   bool
@@ -213,9 +213,9 @@ type fakeLiveKit struct {
 	createCalls atomic.Int32
 }
 
-func newFakeLiveKit(t *testing.T) *fakeLiveKit {
+func newFakeDiagLiveKit(t *testing.T) *fakeDiagLiveKit {
 	t.Helper()
-	f := &fakeLiveKit{}
+	f := &fakeDiagLiveKit{}
 	f.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			w.WriteHeader(http.StatusOK)
@@ -331,7 +331,7 @@ func TestDiagChecksAgainstFakeLiveKit(t *testing.T) {
 	t.Cleanup(func() { diagWebhookTimeout = prev })
 
 	t.Run("healthy", func(t *testing.T) {
-		lk := newFakeLiveKit(t)
+		lk := newFakeDiagLiveKit(t)
 		p := newDiagProbePlugin(t, lk.URL)
 		lk.onCreateRoom = func(room string) {
 			p.recordDiagWebhook(&livekit.WebhookEvent{Event: "room_started", Room: &livekit.Room{Name: room}})
@@ -345,7 +345,7 @@ func TestDiagChecksAgainstFakeLiveKit(t *testing.T) {
 	})
 
 	t.Run("credentials rejected", func(t *testing.T) {
-		lk := newFakeLiveKit(t)
+		lk := newFakeDiagLiveKit(t)
 		lk.rejectAuth = true
 		p := newDiagProbePlugin(t, lk.URL)
 
@@ -358,7 +358,7 @@ func TestDiagChecksAgainstFakeLiveKit(t *testing.T) {
 	})
 
 	t.Run("webhook never arrives", func(t *testing.T) {
-		lk := newFakeLiveKit(t)
+		lk := newFakeDiagLiveKit(t)
 		p := newDiagProbePlugin(t, lk.URL)
 
 		got := diagResultsByName(p.runDiagChecks(context.Background()))
@@ -369,7 +369,7 @@ func TestDiagChecksAgainstFakeLiveKit(t *testing.T) {
 	})
 
 	t.Run("webhook arrives with invalid signature", func(t *testing.T) {
-		lk := newFakeLiveKit(t)
+		lk := newFakeDiagLiveKit(t)
 		p := newDiagProbePlugin(t, lk.URL)
 		lk.onCreateRoom = func(string) { p.recordDiagBadSignature() }
 
@@ -380,7 +380,7 @@ func TestDiagChecksAgainstFakeLiveKit(t *testing.T) {
 	})
 
 	t.Run("livekit unreachable", func(t *testing.T) {
-		lk := newFakeLiveKit(t)
+		lk := newFakeDiagLiveKit(t)
 		p := newDiagProbePlugin(t, lk.URL)
 		lk.Close()
 
@@ -395,7 +395,7 @@ func TestDiagChecksAgainstFakeLiveKit(t *testing.T) {
 }
 
 func TestDiagReportCooldown(t *testing.T) {
-	lk := newFakeLiveKit(t)
+	lk := newFakeDiagLiveKit(t)
 	p := newDiagProbePlugin(t, lk.URL)
 	lk.onCreateRoom = func(room string) {
 		p.recordDiagWebhook(&livekit.WebhookEvent{Event: "room_started", Room: &livekit.Room{Name: room}})
@@ -527,9 +527,9 @@ func TestRenderDiagReportClientHalf(t *testing.T) {
 }
 
 func TestHandleDiagToken(t *testing.T) {
-	setup := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI, *fakeLiveKit) {
+	setup := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI, *fakeDiagLiveKit) {
 		t.Helper()
-		lk := newFakeLiveKit(t)
+		lk := newFakeDiagLiveKit(t)
 		p := newDiagProbePlugin(t, lk.URL)
 		mockAPI := p.API.(*pluginMocks.MockAPI)
 		mockAPI.On("HasPermissionTo", mock.Anything, model.PermissionManageSystem).Return(false).Maybe()
