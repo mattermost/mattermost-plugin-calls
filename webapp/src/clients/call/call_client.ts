@@ -37,7 +37,6 @@ import {
 } from 'src/constants';
 import {dtmfCode, DTMFDigit} from 'src/dtmf';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from 'src/log';
-import {createLowerHandOnUnmute} from 'src/lower_hand_on_unmute';
 import {parseRTCStats} from 'src/rtc_stats';
 import {CallsClientStats, MediaDevices, ShareScreenError, ShareScreenResult, TrackMetadata} from 'src/types/types';
 import {getPersistentStorage, getPluginPath, getScreenStream, lowerHandOnUnmute} from 'src/utils';
@@ -52,6 +51,7 @@ import {
     TRACK_PUBLISHING_DEFAULTS,
     USER_ID_SESSION_ID_SEPARATOR,
 } from './constants';
+import {createLowerHandOnUnmute} from './lower_hand_on_unmute';
 import {
     CallRoomMetadata,
     CaptionPayload,

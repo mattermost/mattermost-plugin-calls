@@ -64,13 +64,17 @@ export default function OnOffSettingsSection({
                 className='section-min'
                 onClick={handleOpen}
             >
-                <div className='secion-min__header'>
-                    <h4 className='section-min__title'>
+                <div className='section-min__header'>
+                    <h4
+                        id={`${inputName}Title`}
+                        className='section-min__title'
+                    >
                         <span>{title}</span>
                     </h4>
                     <button
+                        id={`${inputName}Edit`}
                         className='color--link style--none section-min__edit'
-                        aria-labelledby=''
+                        aria-labelledby={`${inputName}Title ${inputName}Edit`}
                         aria-expanded={active}
                     >
                         <i

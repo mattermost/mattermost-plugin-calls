@@ -41,6 +41,12 @@ describe('OnOffSettingsSection', () => {
         expect(screen.queryByLabelText('On')).not.toBeInTheDocument();
     });
 
+    it('labels the edit button with the section title', () => {
+        renderComponent();
+
+        expect(screen.getByRole('button', {name: /Section title/})).toBeInTheDocument();
+    });
+
     it('uses the default value when nothing is stored', async () => {
         renderComponent('on');
         await openSection();

@@ -2,7 +2,8 @@
 // See LICENSE.txt for license information.
 
 import {LOWER_HAND_ON_UNMUTE_DELAY_MS} from 'src/constants';
-import {createLowerHandOnUnmute} from 'src/lower_hand_on_unmute';
+
+import {createLowerHandOnUnmute} from './lower_hand_on_unmute';
 
 describe('createLowerHandOnUnmute', () => {
     let enabled: boolean;
