@@ -135,11 +135,12 @@ Options are not remembered, so include `--sip` as well if you use SIP. No Calls 
 The single-host alternative to external TURN. LiveKit's built-in TURN shares 443 with signaling: Caddy routes by TLS name, so the LiveKit name goes to signaling and a second name goes to TURN. This needs a Caddy build with the layer4 module, which the stock image does not include; `builtin-turn/Dockerfile` builds one (Caddy 2.11.9 and caddy-l4 v0.1.2, pinned).
 
 1. Add a second DNS A record for the TURN name (for example `turn.example.com`) pointing at the same public IP as the LiveKit name. No new firewall ports are needed.
-2. Generate the configuration and start the stack. The first start builds the image, which takes a few minutes:
+2. Copy `docker-compose.builtin-turn.yaml` and the whole `builtin-turn/` directory from this directory to the host, next to `docker-compose.yaml`. The "Get the files" section above copies only the base files.
+3. Generate the configuration and start the stack. The first start builds the image, which takes a few minutes. `--force-recreate` makes LiveKit re-read `livekit.yaml`, which Compose does not detect on its own:
 
 ```bash
 ./setup.sh lk.example.com https://mattermost.example.com --turn-domain turn.example.com
-docker compose up -d --build
+docker compose up -d --build --force-recreate
 docker compose logs --tail 20 livekit    # confirm LiveKit started
 ```
 
