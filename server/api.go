@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"crypto/fips140"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -69,6 +70,7 @@ func (p *Plugin) handleGetVersion(w http.ResponseWriter, _ *http.Request) {
 	info := public.VersionInfo{
 		Version: manifest.Version,
 		Build:   buildHash,
+		FIPS:    fips140.Enabled(),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

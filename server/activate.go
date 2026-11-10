@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"crypto/fips140"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -77,6 +78,8 @@ func (p *Plugin) OnActivate() (retErr error) {
 		p.LogInfo("disable flag is set, exiting")
 		return fmt.Errorf("disabled by environment flag")
 	}
+
+	p.LogInfo("FIPS mode status", "fips_mode", fips140.Enabled())
 
 	bundlePath, err := p.API.GetBundlePath()
 	if err != nil {

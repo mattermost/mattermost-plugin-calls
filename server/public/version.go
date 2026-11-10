@@ -6,4 +6,5 @@ package public
 type VersionInfo struct {
 	Version string `json:"version"`
 	Build   string `json:"build"`
+	FIPS    bool   `json:"fips"`
 }
