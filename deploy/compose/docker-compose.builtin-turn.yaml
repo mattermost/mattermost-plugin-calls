@@ -1,0 +1,12 @@
+# Overlay: LiveKit's built-in TURN/TLS on 443, sharing the IP with signaling by SNI.
+# ./setup.sh ... --turn-domain <domain> sets COMPOSE_FILE in .env so a plain
+# `docker compose up -d --build` uses this file. Needs Docker Compose 2.24.4 or newer.
+services:
+  caddy:
+    image: !reset null
+    build: ./builtin-turn
+    command: caddy run --config /etc/caddy/caddy.json
+    environment:
+      - TURN_DOMAIN=${TURN_DOMAIN:?run ./setup.sh with --turn-domain first}
+    volumes:
+      - ./builtin-turn/caddy.json:/etc/caddy/caddy.json:ro
