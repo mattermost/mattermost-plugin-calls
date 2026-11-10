@@ -10,7 +10,8 @@ services:
           - postgres
     environment:
       POSTGRES_USER: mmuser
-      POSTGRES_PASSWORD: mostest
+      # 14+ characters: FIPS servers reject shorter HMAC keys during SCRAM auth.
+      POSTGRES_PASSWORD: mostest-e2e-password
       POSTGRES_DB: mattermost_test
     command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
     volumes:
