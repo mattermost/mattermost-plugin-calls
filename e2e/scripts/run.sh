@@ -101,8 +101,6 @@ echo "Spawning playwright image ..."
 # LiveKit SIP API endpoint + the SIP-bridge credentials (the `devkey` pair shared
 # with sip.yaml) + the SIPp sink address, consumed by the @sip-smoke test. The
 # SDK needs an http(s) URL, so this is not MM_CALLS_LIVE_KIT_URL (ws://).
-# PW_GREP narrows the run, e.g. the FIPS job runs only @livekit-smoke.
-PW_GREP="${PW_GREP:-@livekit-smoke|@livekit|@sip-smoke}"
 docker run -d --name playwright-e2e \
 	--network=container:${CONTAINER_PROXY} \
 	--entrypoint "" \
@@ -111,7 +109,7 @@ docker run -d --name playwright-e2e \
 	-e LIVEKIT_API_SECRET="this-is-a-32-plus-character-dev-secret" \
 	-e SIP_SINK_ADDRESS="sipp:5060" \
 	mm-playwright \
-	bash -c "npm ci && npx playwright install && npx playwright test --project=chromium --grep '${PW_GREP}' --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
+	bash -c "npm ci && npx playwright install && npx playwright test --project=chromium --grep '@livekit-smoke|@livekit|@sip-smoke' --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
 
 docker logs -f playwright-e2e
 

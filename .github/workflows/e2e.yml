@@ -242,6 +242,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs:
       - build-mattermost-plugin-calls-fips
+      - generate-matrix
     env:
       COMPOSE_PROJECT_NAME: playwright_tests
       DOCKER_NETWORK: playwright_tests
@@ -255,10 +256,29 @@ jobs:
       MM_CALLS_LIVE_KIT_URL: ws://livekit:7880
       MM_CALLS_LIVE_KIT_API_KEY: devkey_for_livekit_e2e_ci_tests
       MM_CALLS_LIVE_KIT_API_SECRET: secret_for_livekit_server_ci_e2e_tests
-      CI_NODE_INDEX: 1
-      CI_NODE_TOTAL: 1
+      CI_NODE_INDEX: ${{ matrix.run_id }}
+      CI_NODE_TOTAL: ${{ needs.generate-matrix.outputs.parallelism }}
       WORKSPACE: ${{github.workspace}}
+    strategy:
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.parallelism-matrix) }}
     steps:
+      # The transcriber runs on this host (via calls-offloader) and its whisper
+      # build is sensitive to the available CPU instruction sets, so record them.
+      - name: e2e/log-runner-cpu
+        run: |
+          model=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | xargs)
+          flags=$(grep -m1 '^flags' /proc/cpuinfo | cut -d: -f2-)
+          avx512=$(echo "${flags}" | tr ' ' '\n' | grep '^avx512' | tr '\n' ' ')
+          echo "CPU model: ${model}"
+          echo "avx2: $(echo "${flags}" | tr ' ' '\n' | grep -c '^avx2$')  fma: $(echo "${flags}" | tr ' ' '\n' | grep -c '^fma$')  f16c: $(echo "${flags}" | tr ' ' '\n' | grep -c '^f16c$')"
+          echo "avx512 flags: ${avx512:-none}"
+          echo "all flags:${flags}"
+          {
+            echo "### Runner CPU"
+            echo "- Model: ${model}"
+            echo "- AVX-512: ${avx512:-none}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
       - name: e2e/checkout-mattermost-plugin-calls-repo
         uses: actions/checkout@v4
 
@@ -326,8 +346,7 @@ jobs:
       - name: e2e/test
         env:
           WORKSPACE: ${{github.workspace}}
-          RUN_ID: 1
-          PW_GREP: "@livekit-smoke"
+          RUN_ID: ${{matrix.run_id}}
         id: test
         run: |
           ${{ github.workspace }}/e2e/scripts/run.sh
@@ -338,7 +357,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
         with:
-          name: e2e-fips-playwright-results-1
+          name: e2e-fips-playwright-results-${{ matrix.run_id }}
           path: ${{ github.workspace }}/results
           compression-level: 0
           retention-days: 1
@@ -347,7 +366,7 @@ jobs:
         if: ${{ always() && fromJson(steps.test.outputs.FAILURES || '0') > 0 }}
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
         with:
-          name: e2e-fips-playwright-logs-1
+          name: e2e-fips-playwright-logs-${{ matrix.run_id }}
           path: ${{ github.workspace }}/logs
           compression-level: 0
           retention-days: 5
