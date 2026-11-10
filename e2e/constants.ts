@@ -12,6 +12,8 @@ export const adminState: UserState = {
     storageStatePath: 'adminStorageState.json',
 };
 export const userPrefix = 'calls-user';
-export const userPassword = 'U$er-sample1';
+
+// FIPS servers require at least 14 characters.
+export const userPassword = 'U$er-sample-pass1';
 export const channelPrefix = 'calls';
 export const pluginID = 'com.mattermost.calls';

@@ -77,6 +77,12 @@ docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 	${CONTAINER_SERVER}1 \
 	/mattermost/bin/mmctl plugin enable com.mattermost.calls
 
+# mmctl reports success even if the plugin fails to activate, so poll the
+# plugin's unauthenticated /version route, which 404s until it's running.
+for NODE in mm-server1 mm-server2; do
+	timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_calls_${NODE} --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://${NODE}:8065/plugins/com.mattermost.calls/version; do echo Waiting for calls on ${NODE}; sleep 2; done; echo calls is up on ${NODE}"
+done
+
 echo "Spawning playwright image ..."
 # run e2e
 # `--network=container` tells this container to share a network stack
@@ -95,6 +101,8 @@ echo "Spawning playwright image ..."
 # LiveKit SIP API endpoint + the SIP-bridge credentials (the `devkey` pair shared
 # with sip.yaml) + the SIPp sink address, consumed by the @sip-smoke test. The
 # SDK needs an http(s) URL, so this is not MM_CALLS_LIVE_KIT_URL (ws://).
+# PW_GREP narrows the run, e.g. the FIPS job runs only @livekit-smoke.
+PW_GREP="${PW_GREP:-@livekit-smoke|@livekit|@sip-smoke}"
 docker run -d --name playwright-e2e \
 	--network=container:${CONTAINER_PROXY} \
 	--entrypoint "" \
@@ -103,7 +111,7 @@ docker run -d --name playwright-e2e \
 	-e LIVEKIT_API_SECRET="this-is-a-32-plus-character-dev-secret" \
 	-e SIP_SINK_ADDRESS="sipp:5060" \
 	mm-playwright \
-	bash -c "npm ci && npx playwright install && npx playwright test --project=chromium --grep '@livekit-smoke|@livekit|@sip-smoke' --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
+	bash -c "npm ci && npx playwright install && npx playwright test --project=chromium --grep '${PW_GREP}' --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
 
 docker logs -f playwright-e2e
 
