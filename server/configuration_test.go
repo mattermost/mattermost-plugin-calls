@@ -5,6 +5,7 @@ package main
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
@@ -257,6 +258,56 @@ func TestGetClientConfig(t *testing.T) {
 	// admin config
 	adminClientCfg := p.getAdminClientConfig(p.getConfiguration())
 	require.Equal(t, transcriber.TranscribeAPI(transcriber.TranscribeAPIWhisperCPP), adminClientCfg.TranscribeAPI)
+	require.Empty(t, adminClientCfg.TURNStaticAuthSecret)
+	require.Empty(t, adminClientCfg.TranscribeAPIAzureSpeechKey)
+
+	p.configuration.TURNStaticAuthSecret = "turn-secret"
+	p.configuration.TranscribeAPIAzureSpeechKey = "azure-key"
+	adminClientCfg = p.getAdminClientConfig(p.getConfiguration())
+	require.Equal(t, model.FakeSetting, adminClientCfg.TURNStaticAuthSecret)
+	require.Equal(t, model.FakeSetting, adminClientCfg.TranscribeAPIAzureSpeechKey)
+	require.Equal(t, "turn-secret", p.configuration.TURNStaticAuthSecret)
+	require.Equal(t, "azure-key", p.configuration.TranscribeAPIAzureSpeechKey)
+}
+
+func TestGetAdminClientConfigMasksManifestSecrets(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	defer mockAPI.AssertExpectations(t)
+
+	p := &Plugin{
+		MattermostPlugin: plugin.MattermostPlugin{
+			API: mockAPI,
+		},
+		licenseChecker: enterprise.NewLicenseChecker(mockAPI),
+	}
+
+	mockAPI.On("GetLicense").Return(&model.License{})
+	mockAPI.On("GetConfig").Return(&model.Config{})
+
+	var secretKeys []string
+	for _, section := range manifest.SettingsSchema.Sections {
+		for _, setting := range section.Settings {
+			// ICE servers are sent to every client so they can connect.
+			if setting.Secret && setting.Key != "ICEServersConfigs" {
+				secretKeys = append(secretKeys, setting.Key)
+			}
+		}
+	}
+	require.NotEmpty(t, secretKeys)
+	require.ElementsMatch(t, secretSettingKeys, secretKeys)
+
+	cfg := p.getConfiguration()
+	for _, key := range secretKeys {
+		field := reflect.ValueOf(cfg).Elem().FieldByName(key)
+		require.True(t, field.IsValid(), key)
+		field.SetString("secret-value")
+	}
+	p.configuration = cfg
+
+	adminCfg := p.getAdminClientConfig(p.getConfiguration())
+	for _, key := range secretKeys {
+		require.Equal(t, model.FakeSetting, reflect.ValueOf(adminCfg).FieldByName(key).String(), key)
+	}
 }
 
 func TestConfigurationWillBeSaved(t *testing.T) {
@@ -321,6 +372,18 @@ func TestConfigurationWillBeSaved(t *testing.T) {
 
 		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{
 			"turnstaticauthsecret": model.FakeSetting,
+		}))
+		require.Nil(t, retCfg)
+		require.NoError(t, err)
+	})
+
+	t.Run("sanitized Azure speech key", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		mockAPI.On("LogDebug", "ConfigurationWillBeSaved", "origin", mock.AnythingOfType("string")).Return()
+
+		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{
+			"transcribeapiazurespeechkey": model.FakeSetting,
 		}))
 		require.Nil(t, retCfg)
 		require.NoError(t, err)
