@@ -545,8 +545,20 @@ func (p *Plugin) getAdminClientConfig(c *configuration) configuration {
 
 	cfg := p.configuration.Clone()
 	cfg.ClientConfig = p.getClientConfig(c)
+	cfg.TURNStaticAuthSecret = maskSecret(cfg.TURNStaticAuthSecret)
+	cfg.TranscribeAPIAzureSpeechKey = maskSecret(cfg.TranscribeAPIAzureSpeechKey)
 
 	return *cfg
+}
+
+// secretSettingKeys must stay in sync with the fields masked in getAdminClientConfig.
+var secretSettingKeys = []string{"TURNStaticAuthSecret", "TranscribeAPIAzureSpeechKey"}
+
+func maskSecret(s string) string {
+	if s == "" {
+		return ""
+	}
+	return model.FakeSetting
 }
 
 // getConfiguration retrieves the active configuration under lock, making it safe to use
