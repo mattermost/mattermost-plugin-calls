@@ -28,10 +28,13 @@ import (
 func TestReconcileCallSessions(t *testing.T) {
 	// deniedUsers lists users HasPermissionToChannel reports as having no access.
 	var deniedUsers map[string]bool
+	// deactivatedUsers maps users GetUser reports as deactivated to their DeleteAt.
+	var deactivatedUsers map[string]int64
 
 	setupPlugin := func(t *testing.T) (*Plugin, func()) {
 		t.Helper()
 		deniedUsers = map[string]bool{}
+		deactivatedUsers = map[string]int64{}
 
 		mockAPI := &pluginMocks.MockAPI{}
 		mockMetrics := &serverMocks.MockMetrics{}
@@ -70,6 +73,9 @@ func TestReconcileCallSessions(t *testing.T) {
 		mockAPI.On("HasPermissionToChannel", mock.Anything, mock.Anything, model.PermissionReadChannel).Return(func(userID, _ string, _ *model.Permission) bool {
 			return !deniedUsers[userID]
 		}).Maybe()
+		mockAPI.On("GetUser", mock.AnythingOfType("string")).Return(func(userID string) *model.User {
+			return &model.User{Id: userID, DeleteAt: deactivatedUsers[userID]}
+		}, nil).Maybe()
 		mockAPI.On("GetChannel", mock.AnythingOfType("string")).Return(&model.Channel{
 			Type: model.ChannelTypeOpen,
 		}, nil).Maybe()
@@ -598,14 +604,47 @@ func TestReconcileCallSessions(t *testing.T) {
 		return true
 	}
 
-	t.Run("revoked auth session is evicted immediately", func(t *testing.T) {
+	// Core's GetSessionById wraps every store error, including not-found for a
+	// revoked session, as a 400.
+	badRequest := func() *model.AppError {
+		return model.NewAppError("GetSessionById", "app.session.get.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	t.Run("revoked auth session is evicted after two ticks", func(t *testing.T) {
+		p, tearDown := setupPlugin(t)
+		defer tearDown()
+
+		authID := model.NewId()
+		channelID, _, sessionID, callID := setupAccessCall(t, p, authID)
+		p.API.(*pluginMocks.MockAPI).On("GetSession", authID).Return(nil, badRequest())
+		lk := map[string]struct{}{sessionID: {}}
+
+		tick(p, channelID, sessionsFromDB(t, p, callID), lk)
+		require.True(t, sessionExists(t, p, sessionID), "first failing tick must not evict")
+
+		tick(p, channelID, sessionsFromDB(t, p, callID), lk)
+		require.False(t, sessionExists(t, p, sessionID))
+	})
+
+	t.Run("expired auth session is evicted immediately", func(t *testing.T) {
 		p, tearDown := setupPlugin(t)
 		defer tearDown()
 
 		authID := model.NewId()
 		channelID, _, sessionID, callID := setupAccessCall(t, p, authID)
 		p.API.(*pluginMocks.MockAPI).On("GetSession", authID).
-			Return(nil, model.NewAppError("GetSession", "id", nil, "", http.StatusUnauthorized))
+			Return(&model.Session{Id: authID, ExpiresAt: time.Now().Add(-time.Minute).UnixMilli()}, nil)
+
+		tick(p, channelID, sessionsFromDB(t, p, callID), map[string]struct{}{sessionID: {}})
+		require.False(t, sessionExists(t, p, sessionID))
+	})
+
+	t.Run("deactivated user is evicted immediately", func(t *testing.T) {
+		p, tearDown := setupPlugin(t)
+		defer tearDown()
+
+		channelID, userID, sessionID, callID := setupAccessCall(t, p, "")
+		deactivatedUsers[userID] = time.Now().UnixMilli()
 
 		tick(p, channelID, sessionsFromDB(t, p, callID), map[string]struct{}{sessionID: {}})
 		require.False(t, sessionExists(t, p, sessionID))
@@ -626,17 +665,24 @@ func TestReconcileCallSessions(t *testing.T) {
 		require.True(t, sessionExists(t, p, sessionID))
 	})
 
-	t.Run("transient auth session lookup error does not evict", func(t *testing.T) {
+	t.Run("a single failed auth session lookup does not evict", func(t *testing.T) {
 		p, tearDown := setupPlugin(t)
 		defer tearDown()
 
 		authID := model.NewId()
 		channelID, _, sessionID, callID := setupAccessCall(t, p, authID)
-		p.API.(*pluginMocks.MockAPI).On("GetSession", authID).
-			Return(nil, model.NewAppError("GetSession", "id", nil, "", http.StatusInternalServerError))
+		lk := map[string]struct{}{sessionID: {}}
+		mockAPI := p.API.(*pluginMocks.MockAPI)
 
-		for i := 0; i < 3; i++ {
-			tick(p, channelID, sessionsFromDB(t, p, callID), map[string]struct{}{sessionID: {}})
+		// Fail, recover, fail: never two in a row.
+		for _, fail := range []bool{true, false, true} {
+			mockAPI.ExpectedCalls = filterCalls(mockAPI.ExpectedCalls, "GetSession")
+			if fail {
+				mockAPI.On("GetSession", authID).Return(nil, badRequest())
+			} else {
+				mockAPI.On("GetSession", authID).Return(&model.Session{Id: authID}, nil)
+			}
+			tick(p, channelID, sessionsFromDB(t, p, callID), lk)
 		}
 		require.True(t, sessionExists(t, p, sessionID))
 	})
@@ -686,4 +732,14 @@ func TestReconcileCallSessions(t *testing.T) {
 		}
 		require.True(t, sessionExists(t, p, sessionID))
 	})
+}
+
+func filterCalls(calls []*mock.Call, method string) []*mock.Call {
+	out := calls[:0:0]
+	for _, c := range calls {
+		if c.Method != method {
+			out = append(out, c)
+		}
+	}
+	return out
 }

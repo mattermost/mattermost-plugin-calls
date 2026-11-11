@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"errors"
-	"net/http"
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/cluster"
@@ -217,52 +216,74 @@ func buildLKSessionIDSet(participants []*livekit.ParticipantInfo) map[string]str
 }
 
 // reconcileSessionAccess verifies that the user behind a call session is still
-// allowed to be in the call: their Mattermost session must still be valid and
-// they must still be able to read the channel. If not, the participant is evicted
-// via the same path as participant_left. It returns true if the session was
-// evicted.
+// allowed to be in the call: their account must be active, their Mattermost
+// session must still be valid, and they must still be able to read the channel.
+// If not, the participant is evicted via the same path as participant_left. It
+// returns true if the session was evicted.
 //
-// A definitively invalid auth session evicts immediately. Channel access comes
-// from a bare boolean that can't distinguish "removed" from a transient failure,
-// so it needs two consecutive failing ticks, like the LiveKit absence check.
+// A deactivated account or an expired session evicts immediately. Everything
+// else comes back from the Plugin API in a form that can't tell "gone" from a
+// transient failure: GetSession wraps every store error, including not-found for
+// a revoked session, as a 400, and HasPermissionToChannel returns a bare bool.
+// So those need to fail reconcilerSuspicionLimit consecutive ticks before
+// eviction, like the LiveKit absence check.
 func (p *Plugin) reconcileSessionAccess(channelID string, session *public.CallSession, seenSessionIDs map[string]struct{}) bool {
 	if p.isBot(session.UserID) {
 		return false
 	}
 
-	reason := ""
-	if session.AuthSessionID != "" {
-		s, appErr := p.API.GetSession(session.AuthSessionID)
-		switch {
-		case appErr != nil && (appErr.StatusCode == http.StatusUnauthorized || appErr.StatusCode == http.StatusNotFound):
-			reason = "auth session revoked"
-		case appErr != nil:
-			// Transient failure: don't evict on an error we can't interpret.
-			p.LogWarn("reconciler: failed to check auth session", "sessionID", session.ID, "err", appErr.Error())
-		case s == nil || (s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt):
-			reason = "auth session expired"
-		}
-	}
-
 	suspicionKey := "access:" + session.ID
 	seenSessionIDs[suspicionKey] = struct{}{}
 
-	if reason == "" {
-		if p.API.HasPermissionToChannel(session.UserID, channelID, model.PermissionReadChannel) {
-			p.reconcilerSuspicionsMut.Lock()
-			delete(p.reconcilerSuspicions, suspicionKey)
-			p.reconcilerSuspicionsMut.Unlock()
-			return false
-		}
+	// definitive is set for failures that don't need to be confirmed over
+	// several ticks; suspect for those that do.
+	reason, definitive := "", false
+	suspect := ""
 
+	user, appErr := p.API.GetUser(session.UserID)
+	switch {
+	case appErr != nil:
+		p.LogWarn("reconciler: failed to look up user", "userID", session.UserID, "err", appErr.Error())
+	case user.DeleteAt != 0:
+		reason, definitive = "user deactivated", true
+	}
+
+	if reason == "" && session.AuthSessionID != "" {
+		s, appErr := p.API.GetSession(session.AuthSessionID)
+		switch {
+		case appErr != nil:
+			suspect = "auth session lookup failed: " + appErr.Error()
+		case s == nil:
+			suspect = "auth session not found"
+		case s.ExpiresAt != 0 && time.Now().UnixMilli() >= s.ExpiresAt:
+			reason, definitive = "auth session expired", true
+		}
+	}
+
+	if reason == "" && suspect == "" && !p.API.HasPermissionToChannel(session.UserID, channelID, model.PermissionReadChannel) {
+		suspect = "no channel access"
+	}
+
+	if reason == "" && suspect == "" {
+		p.reconcilerSuspicionsMut.Lock()
+		delete(p.reconcilerSuspicions, suspicionKey)
+		p.reconcilerSuspicionsMut.Unlock()
+		return false
+	}
+
+	if !definitive {
 		p.reconcilerSuspicionsMut.Lock()
 		p.reconcilerSuspicions[suspicionKey]++
 		count := p.reconcilerSuspicions[suspicionKey]
 		p.reconcilerSuspicionsMut.Unlock()
+
+		p.LogDebug("reconciler: session failed access check",
+			"sessionID", session.ID, "userID", session.UserID, "reason", suspect, "suspicion", count)
+
 		if count < reconcilerSuspicionLimit {
 			return false
 		}
-		reason = "no channel access"
+		reason = suspect
 	}
 
 	p.reconcilerSuspicionsMut.Lock()
