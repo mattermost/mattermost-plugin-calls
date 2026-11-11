@@ -1,0 +1,30 @@
+{
+  "apps": {
+    "tls": {
+      "certificates": { "automate": ["{env.LIVEKIT_DOMAIN}", "{env.TURN_DOMAIN}"] }
+    },
+    "layer4": {
+      "servers": {
+        "main": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "match": [{ "tls": { "sni": ["{env.TURN_DOMAIN}"] } }],
+              "handle": [
+                { "handler": "tls" },
+                { "handler": "proxy", "upstreams": [{ "dial": ["livekit:5349"] }] }
+              ]
+            },
+            {
+              "match": [{ "tls": { "sni": ["{env.LIVEKIT_DOMAIN}"] } }],
+              "handle": [
+                { "handler": "tls", "connection_policies": [{ "alpn": ["http/1.1"] }] },
+                { "handler": "proxy", "upstreams": [{ "dial": ["livekit:7880"] }] }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
