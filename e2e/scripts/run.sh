@@ -2,6 +2,8 @@
 set -eu
 set -o pipefail
 
+EXPECT_FIPS="${EXPECT_FIPS:-false}"
+
 function print_logs {
 	exit_code=$?
 	if [[ ${exit_code} -ne 0 ]]; then
@@ -81,6 +83,15 @@ docker exec --env="XDG_CONFIG_HOME=/mattermost/config" \
 # plugin's unauthenticated /version route, which 404s until it's running.
 for NODE in mm-server1 mm-server2; do
 	timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_calls_${NODE} --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://${NODE}:8065/plugins/com.mattermost.calls/version; do echo Waiting for calls on ${NODE}; sleep 2; done; echo calls is up on ${NODE}"
+done
+
+for NODE in mm-server1 mm-server2; do
+	VERSION_INFO=$(docker run --rm --quiet --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://${NODE}:8065/plugins/com.mattermost.calls/version)
+	echo "calls /version on ${NODE}: ${VERSION_INFO}"
+	if ! jq -e --argjson want "${EXPECT_FIPS}" '.fips == $want' <<<"${VERSION_INFO}" >/dev/null; then
+		echo "calls on ${NODE} does not report fips=${EXPECT_FIPS}"
+		exit 1
+	fi
 done
 
 echo "Spawning playwright image ..."

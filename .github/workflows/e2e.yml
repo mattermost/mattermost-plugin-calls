@@ -347,6 +347,7 @@ jobs:
         env:
           WORKSPACE: ${{github.workspace}}
           RUN_ID: ${{matrix.run_id}}
+          EXPECT_FIPS: true
         id: test
         run: |
           ${{ github.workspace }}/e2e/scripts/run.sh
