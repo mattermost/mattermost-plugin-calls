@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: redis
-          image: redis:7.4-alpine
+          image: redis:8.10.2-alpine
           args: ["--save", "", "--appendonly", "no"]
           ports: [{name: redis, containerPort: 6379}]
           readinessProbe:
