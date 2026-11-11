@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -521,8 +522,16 @@ func (p *Plugin) handleEnv(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 
 	p.configurationLock.Lock()
-	defer p.configurationLock.Unlock()
-	if err := json.NewEncoder(w).Encode(p.configEnvOverrides); err != nil {
+	overrides := maps.Clone(p.configEnvOverrides)
+	p.configurationLock.Unlock()
+
+	for _, key := range secretSettingKeys {
+		if v, ok := overrides[key]; ok {
+			overrides[key] = maskSecret(v)
+		}
+	}
+
+	if err := json.NewEncoder(w).Encode(overrides); err != nil {
 		return fmt.Errorf("error encoding config env overrides: %w", err)
 	}
 
