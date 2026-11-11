@@ -250,9 +250,9 @@ jobs:
       EXPECT_FIPS: true
       # Chainguard FIPS builds of the compose services. Postgres runs in FIPS
       # mode, which prepare-server.sh checks.
-      IMAGE_LIVEKIT: cgr.dev/mattermost.com/livekit-server-fips:1.13.10
-      IMAGE_LIVEKIT_SIP: cgr.dev/mattermost.com/livekit-sip-fips:1.20.0
-      IMAGE_REDIS: cgr.dev/mattermost.com/redis-fips:8.10.2
+      IMAGE_LIVEKIT: cgr.dev/mattermost.com/livekit-server-fips:1.13.10@sha256:c83df4199335ada8f05e3fb0505dcc9211318b77de026b15f4682c4017a13a06
+      IMAGE_LIVEKIT_SIP: cgr.dev/mattermost.com/livekit-sip-fips:1.20.0@sha256:c4f0084fac602adcbae01056fa075c0abe6eeab84d4b79d91df497f6fdfc1d0c
+      IMAGE_REDIS: cgr.dev/mattermost.com/redis-fips:8.10.2@sha256:ebac161fd532aa2065c8722399d5a60a6b807dc70f0999bea752802ffe059c1d
       IMAGE_POSTGRES: cgr.dev/mattermost.com/postgres-fips:14
       COMPOSE_PROJECT_NAME: playwright_tests
       DOCKER_NETWORK: playwright_tests

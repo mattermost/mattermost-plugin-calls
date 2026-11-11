@@ -75,9 +75,11 @@ services:
   livekit-sip:
     image: ${IMAGE_LIVEKIT_SIP:-livekit/sip:v1.20.0}
     restart: on-failure
+    # Chainguard's entrypoint already passes --config=/sip/config.yaml, so the
+    # config is mounted there for both images.
     volumes:
-      - ../../sip.yaml:/etc/sip.yaml
-    command: --config /etc/sip.yaml
+      - ../../sip.yaml:/sip/config.yaml
+    command: --config /sip/config.yaml
     depends_on:
       redis:
         condition: service_healthy
