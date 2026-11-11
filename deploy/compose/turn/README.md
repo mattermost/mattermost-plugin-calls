@@ -66,7 +66,7 @@ Notes:
 
 - Use a real address for `-m`; Let's Encrypt sends expiry notices to it. Without `-m`, `--agree-tos` and `--non-interactive`, certbot stops to ask for an email address and agreement to the terms.
 - The `mkdir` is needed: the hooks directory does not exist until you create it.
-- certbot runs the hook after each **renewal**, but **not** after the first `certonly`, hence the manual run in the last line. It copies the certificate to `/opt/coturn/certs` where the container can read it.
+- certbot runs the hook after each **renewal**, but **not** after the first `certonly`, hence the manual run in the last line. It copies the certificate to `/opt/coturn/certs` where the container can read it. The hook skips any other certificate certbot renews on the host, because it only installs one that covers the `server-name` in `turnserver.conf`.
 - certbot installs a systemd timer that renews automatically. Non-interactive renewals wait a random delay of up to about 8 minutes, so a renewed certificate reaches coturn a few minutes after the timer fires.
 
 ## 4. Start coturn **[validated]**

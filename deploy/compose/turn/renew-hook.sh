@@ -10,6 +10,9 @@
 #   sudo mkdir -p /etc/letsencrypt/renewal-hooks/deploy
 #   sudo install -m 755 renew-hook.sh /etc/letsencrypt/renewal-hooks/deploy/coturn.sh
 #
+# It ignores any renewed certificate that does not cover the server-name in
+# turnserver.conf, so other certbot certificates on the host cannot replace coturn's.
+#
 # certbot runs it after each successful RENEWAL, but not after the first
 # `certbot certonly`, so run it by hand once:
 #   sudo /etc/letsencrypt/renewal-hooks/deploy/coturn.sh /etc/letsencrypt/live/<turn-domain>
@@ -19,6 +22,14 @@ COTURN_DIR="${COTURN_DIR:-/opt/coturn}"
 LINEAGE="${RENEWED_LINEAGE:-${1:-}}"
 [ -n "$LINEAGE" ] || { echo "usage: $0 /etc/letsencrypt/live/<turn-domain>" >&2; exit 1; }
 [ -d "$COTURN_DIR/certs" ] || { echo "$COTURN_DIR/certs not found; set COTURN_DIR" >&2; exit 1; }
+
+DOMAIN="$(sed -n 's/^server-name=//p' "$COTURN_DIR/turnserver.conf")"
+[ -n "$DOMAIN" ] || { echo "no server-name in $COTURN_DIR/turnserver.conf" >&2; exit 1; }
+if ! openssl x509 -in "$LINEAGE/fullchain.pem" -noout -ext subjectAltName | tr ',' '\n' | sed 's/^ *DNS://' \
+  | grep -qxF -e "$DOMAIN" -e "*.${DOMAIN#*.}"; then
+  echo "$LINEAGE does not cover $DOMAIN; skipping"
+  exit 0
+fi
 
 install -o 65534 -g 65534 -m 0644 "$LINEAGE/fullchain.pem" "$COTURN_DIR/certs/fullchain.pem"
 install -o 65534 -g 65534 -m 0600 "$LINEAGE/privkey.pem" "$COTURN_DIR/certs/privkey.pem"
