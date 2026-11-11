@@ -23,6 +23,10 @@ spec:
           ports: [{name: redis, containerPort: 6379}]
           readinessProbe:
             exec: {command: ["redis-cli", "ping"]}
+          livenessProbe:
+            exec: {command: ["redis-cli", "ping"]}
+            initialDelaySeconds: 10
+            periodSeconds: 10
           resources:
             requests: {cpu: 50m, memory: 64Mi}
 ---
