@@ -1,8 +1,7 @@
 version: '2.4'
 services:
   postgres:
-    # The FIPS e2e job overrides the images below with Chainguard FIPS builds.
-    image: ${IMAGE_POSTGRES:-postgres:14}
+    image: "postgres:14"
     restart: always
     tmpfs: /var/lib/postgresql/data
     networks:
@@ -14,9 +13,7 @@ services:
       # 14+ characters: FIPS servers reject shorter HMAC keys during SCRAM auth.
       POSTGRES_PASSWORD: mostest-e2e-password
       POSTGRES_DB: mattermost_test
-    # No leading `postgres`: Chainguard's entrypoint already includes it, and the
-    # upstream entrypoint adds it when the first argument is a flag.
-    command: -c 'config_file=/etc/postgresql/postgresql.conf'
+    command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
     volumes:
      - "./postgres.conf:/etc/postgresql/postgresql.conf"
     healthcheck:
@@ -39,6 +36,8 @@ services:
       - "8065:8065"
 
   livekit:
+    # The FIPS e2e job overrides the LiveKit, Redis and SIP images with
+    # Chainguard FIPS builds.
     image: ${IMAGE_LIVEKIT:-livekit/livekit-server:v1.13.10}
     restart: on-failure
     volumes:
