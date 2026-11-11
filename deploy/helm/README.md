@@ -146,7 +146,26 @@ Why not LiveKit's built-in TURN: the chart's TURN load balancer spreads connecti
    kubectl -n livekit logs deploy/livekit-server --tail 20
    ```
    Options are not remembered, so include `--sip`, `--redis` and so on again. The upgrade restarts the pods one at a time and drops calls on the pod being restarted. `setup.sh` refuses to write any file if the secret is missing, empty or shorter than 32 characters, because LiveKit does not start with a credential-less TURN entry.
-4. **Verify.** Block direct media for one client (remove the 7882/udp and 7881/tcp rules, or use a network that blocks them), start a fresh call and confirm the selected candidate is a relay: `kubectl -n livekit logs <pod> --since=5m | grep 'participant active' | grep -oE '\[(local|remote)\]\[selected:1\][^"]*'` should show `relay`. Restore the rules afterwards.
+4. **Verify.** This temporarily cuts off direct media for **everyone**, so use a test cluster or a quiet window. (Alternatively, test from a client network that blocks UDP and plain TCP and leave the rules alone.) Limit 7882/udp to the TURN host and remove 7881/tcp, so TURN is the only way in. `$SG` and the rules are those of step 4; adjust the `revoke` if you used a narrower source range; `<turn-ip>` is the TURN host's public IP:
+   ```bash
+   aws ec2 revoke-security-group-ingress --group-id $SG --ip-permissions \
+     '[{"IpProtocol":"udp","FromPort":7882,"ToPort":7882,"IpRanges":[{"CidrIp":"0.0.0.0/0"}]},
+       {"IpProtocol":"tcp","FromPort":7881,"ToPort":7881,"IpRanges":[{"CidrIp":"0.0.0.0/0"}]}]'
+   aws ec2 authorize-security-group-ingress --group-id $SG --ip-permissions \
+     '[{"IpProtocol":"udp","FromPort":7882,"ToPort":7882,"IpRanges":[{"CidrIp":"<turn-ip>/32"}]}]'
+   ```
+   Start a fresh call, join with audio, and confirm the selected candidate is a relay. It should show `relay`:
+   ```bash
+   kubectl -n livekit logs <pod> --since=5m | grep 'participant active' | grep -oE '\[(local|remote)\]\[selected:1\][^"]*'
+   ```
+   Then restore the rules:
+   ```bash
+   aws ec2 revoke-security-group-ingress --group-id $SG --ip-permissions \
+     '[{"IpProtocol":"udp","FromPort":7882,"ToPort":7882,"IpRanges":[{"CidrIp":"<turn-ip>/32"}]}]'
+   aws ec2 authorize-security-group-ingress --group-id $SG --ip-permissions \
+     '[{"IpProtocol":"udp","FromPort":7882,"ToPort":7882,"IpRanges":[{"CidrIp":"0.0.0.0/0"}]},
+       {"IpProtocol":"tcp","FromPort":7881,"ToPort":7881,"IpRanges":[{"CidrIp":"0.0.0.0/0"}]}]'
+   ```
 
 Note: the chart writes the whole `livekit` block, including the TURN secret, to a ConfigMap, so anyone who can read ConfigMaps in the `livekit` namespace can read it. The shared secret only lets someone mint TURN credentials that coturn will relay to the allowed LiveKit addresses.
 
