@@ -247,6 +247,7 @@ jobs:
       contents: read
       id-token: write
     env:
+      EXPECT_FIPS: true
       # Chainguard FIPS builds of the compose services.
       IMAGE_LIVEKIT: cgr.dev/mattermost.com/livekit-server-fips:1.13.10@sha256:c83df4199335ada8f05e3fb0505dcc9211318b77de026b15f4682c4017a13a06
       IMAGE_LIVEKIT_SIP: cgr.dev/mattermost.com/livekit-sip-fips:1.20.0@sha256:c4f0084fac602adcbae01056fa075c0abe6eeab84d4b79d91df497f6fdfc1d0c
@@ -359,7 +360,6 @@ jobs:
         env:
           WORKSPACE: ${{github.workspace}}
           RUN_ID: ${{matrix.run_id}}
-          EXPECT_FIPS: true
         id: test
         run: |
           ${{ github.workspace }}/e2e/scripts/run.sh
