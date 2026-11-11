@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -24,15 +23,6 @@ const (
 	PostgresImage = "postgres:14"
 	PostgrePort   = 5432
 )
-
-// Temporary MM-71800 diagnostic override. Will be reverted.
-func dbPass() string {
-	if p := os.Getenv("FIPSDIAG_DBPASS"); p != "" {
-		log.Printf("FIPSDIAG: using DB password of %d bytes", len(p))
-		return p
-	}
-	return DBPass
-}
 
 // RunPostgresContainerLocal creates and run a postgres container accessible
 // from the local network.
@@ -58,7 +48,7 @@ func RunPostgresContainer(ctx context.Context, opts ...tc.ContainerCustomizer) (
 	opts = append([]tc.ContainerCustomizer{
 		postgres.WithDatabase(DBName),
 		postgres.WithUsername(DBUser),
-		postgres.WithPassword(dbPass()),
+		postgres.WithPassword(DBPass),
 		tc.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
