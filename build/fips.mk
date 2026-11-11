@@ -41,8 +41,9 @@ server-fips: setup-go-work manifest-check
 FIPS_RUNTIME_IMAGE ?= cgr.dev/mattermost.com/glibc-openssl-fips:16@sha256:0718ac97b4bec26e964019772743cec8c52c6e14208e14c2e978f395998b19aa
 FIPS_TEST_DIR := server/dist-fips/tests
 
-# Extra test binary flags, e.g. FIPS_TEST_FLAGS=-test.run=TestName.
-FIPS_TEST_FLAGS ?=
+# Flags passed to each test binary, e.g. FIPS_TEST_FLAGS=-test.run=TestName.
+# -test.v keeps a skipped TestFIPSEnforced visible in the log.
+FIPS_TEST_FLAGS ?= -test.v
 
 # Test binaries are built in the toolchain image, then run one package at a
 # time in the runtime image, which has no shell. Only packages with tests are
@@ -61,9 +62,9 @@ test-fips: setup-go-work apply
 	  -v $(PWD):/plugin \
 	  -w /plugin \
 	  $(FIPS_IMAGE) \
-	  /bin/sh -c 'export CGO_ENABLED=1 GOFIPS140=certified GOTOOLCHAIN=local && \
-	    go test -c -buildvcs=false -o $(FIPS_TEST_DIR)/ \
-	    $$(go list -f "{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}" ./server/... ./server/public/...)'
+	  /bin/sh -c 'export CGO_ENABLED=1 GOFIPS140=certified GOTOOLCHAIN=local GOFLAGS=-buildvcs=false && \
+	    pkgs=$$(go list -f "{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}" ./server/... ./server/public/...) && \
+	    go test -c -o $(FIPS_TEST_DIR)/ $$pkgs'
 	set -e; for t in $(FIPS_TEST_DIR)/*.test; do \
 	  echo "== $$t"; \
 	  docker run --rm \
