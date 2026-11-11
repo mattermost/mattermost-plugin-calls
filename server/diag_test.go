@@ -91,7 +91,7 @@ func newDiagTestPlugin(t *testing.T) (*Plugin, *pluginMocks.MockAPI) {
 	cfg.SetDefaults()
 	cfg.LiveKitURL = "wss://lk.example.com"
 	cfg.LiveKitAPIKey = "APIkeyvalue"
-	cfg.LiveKitAPISecret = "supersecretvalue"
+	cfg.LiveKitAPISecret = testLiveKitAPISecret
 	p.configuration = cfg
 	return p, mockAPI
 }
@@ -103,7 +103,7 @@ func TestRenderDiagReport(t *testing.T) {
 		{
 			Name: diagCheckAPI, Status: diagFail,
 			Detail:      "LiveKit rejected the server's credentials. Ask your system admin.",
-			AdminDetail: "https://lk.internal:7880: credentials rejected (key supersecretvalue)",
+			AdminDetail: "https://lk.internal:7880: credentials rejected (key " + testLiveKitAPISecret + ")",
 		},
 		{Name: diagCheckSIP, Status: diagFail, Detail: "Outbound dialing is not working.", AdminDetail: "Trunk ST_abc"},
 	}}
@@ -121,7 +121,7 @@ func TestRenderDiagReport(t *testing.T) {
 		require.Contains(t, out, "lk.internal")
 		require.Contains(t, out, "ST_abc")
 		require.Contains(t, out, "/call diag force")
-		require.NotContains(t, out, "supersecretvalue")
+		require.NotContains(t, out, testLiveKitAPISecret)
 		require.Contains(t, out, "[redacted]")
 	})
 }
@@ -145,7 +145,7 @@ func TestDiagUnconfiguredSkipsRest(t *testing.T) {
 }
 
 func TestDiagWebhookShortCircuit(t *testing.T) {
-	const key, secret = "testkey", "testsecret"
+	const key, secret = "testkey", testLiveKitAPISecret
 	p, mockAPI := newDiagTestPlugin(t)
 	p.configuration.LiveKitAPIKey = key
 	p.configuration.LiveKitAPISecret = secret

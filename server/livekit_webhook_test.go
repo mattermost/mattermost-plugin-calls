@@ -31,7 +31,7 @@ import (
 func TestLiveKitParticipantWebhooks(t *testing.T) {
 	const (
 		hookAPIKey    = "testkey"
-		hookAPISecret = "testsecret"
+		hookAPISecret = testLiveKitAPISecret
 	)
 
 	setupPlugin := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI, *serverMocks.MockMetrics) {
@@ -512,7 +512,7 @@ func TestLiveKitParticipantWebhooks(t *testing.T) {
 func TestLiveKitTrackWebhooks(t *testing.T) {
 	const (
 		hookAPIKey    = "testkey"
-		hookAPISecret = "testsecret"
+		hookAPISecret = testLiveKitAPISecret
 	)
 
 	setupPlugin := func(t *testing.T) *Plugin {

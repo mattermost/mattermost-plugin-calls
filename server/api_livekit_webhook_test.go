@@ -57,7 +57,7 @@ func newSignedWebhookRequest(t *testing.T, apiKey, apiSecret string, event *live
 func TestHandleLiveKitWebhook(t *testing.T) {
 	const (
 		testAPIKey    = "testkey"
-		testAPISecret = "testsecret"
+		testAPISecret = testLiveKitAPISecret
 	)
 
 	newPlugin := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI) {
@@ -112,7 +112,7 @@ func TestHandleLiveKitWebhook(t *testing.T) {
 		apiRouter := p.newAPIRouter()
 
 		event := &livekit.WebhookEvent{Event: "participant_joined"}
-		r := newSignedWebhookRequest(t, testAPIKey, "wrongsecret", event)
+		r := newSignedWebhookRequest(t, testAPIKey, "this-is-a-different-32-plus-character-secret", event)
 
 		w := httptest.NewRecorder()
 		apiRouter.ServeHTTP(w, r)
@@ -183,7 +183,7 @@ func TestHandleLiveKitWebhook(t *testing.T) {
 func TestHandleLiveKitSIPParticipant(t *testing.T) {
 	const (
 		testAPIKey    = "testkey"
-		testAPISecret = "testsecret"
+		testAPISecret = testLiveKitAPISecret
 	)
 
 	setupPlugin := func(t *testing.T) (*Plugin, *pluginMocks.MockAPI, *serverMocks.MockMetrics) {
