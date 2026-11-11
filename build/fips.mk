@@ -65,6 +65,24 @@ test-fips: setup-go-work apply
 	  /bin/sh -c 'export CGO_ENABLED=1 GOFIPS140=certified GOTOOLCHAIN=local GOFLAGS=-buildvcs=false && \
 	    pkgs=$$(go list -f "{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}" ./server/... ./server/public/...) && \
 	    go test -c -o $(FIPS_TEST_DIR)/ $$pkgs'
+	@echo "== FIPSDIAG toolchain in build image"
+	-docker run --rm --platform=linux/amd64 --entrypoint="" $(FIPS_IMAGE) /bin/sh -c 'go version; go env GOROOT GOEXPERIMENT GOFIPS140; ls "$$(go env GOROOT)/src/vendor/github.com/"*; grep -rn "KEY_CHECK" --include=hmac.go "$$(go env GOROOT)/src/vendor/github.com/" || echo "FIPSDIAG: no KEY_CHECK in vendored hmac.go"'
+	@echo "== FIPSDIAG go version -m server.test"
+	-go version -m $(FIPS_TEST_DIR)/server.test | grep -E 'GODEBUG|GOEXPERIMENT|GOFIPS|-tags|systemcrypto|CGO|go1'
+	@echo "== FIPSDIAG openssl CLI in runtime image"
+	-docker run --rm --platform=linux/amd64 --entrypoint=openssl $(FIPS_RUNTIME_IMAGE) version -a
+	-docker run --rm --platform=linux/amd64 --entrypoint=openssl $(FIPS_RUNTIME_IMAGE) list -providers -verbose
+	@echo "== FIPSDIAG fipsdiag.test in runtime image"
+	-docker run --rm --platform=linux/amd64 --user 0:0 -e EXPECT_FIPS=true -v $(PWD):/plugin -w /plugin/server --entrypoint=/plugin/$(FIPS_TEST_DIR)/fipsdiag.test $(FIPS_RUNTIME_IMAGE) -test.v
+	@echo "== FIPSDIAG fipsdiag.test in runtime image with GODEBUG=fips140=only"
+	-docker run --rm --platform=linux/amd64 --user 0:0 -e GODEBUG=fips140=only -v $(PWD):/plugin -w /plugin/server --entrypoint=/plugin/$(FIPS_TEST_DIR)/fipsdiag.test $(FIPS_RUNTIME_IMAGE) -test.v
+	@echo "== FIPSDIAG fipsdiag.test in build image"
+	-docker run --rm --platform=linux/amd64 -v $(PWD):/plugin -w /plugin/server --entrypoint=/plugin/$(FIPS_TEST_DIR)/fipsdiag.test $(FIPS_IMAGE) -test.v
+	@echo "== FIPSDIAG fipsdiag.test on runner host (non-FIPS OpenSSL)"
+	-./$(FIPS_TEST_DIR)/fipsdiag.test -test.v
+	@echo "== FIPSDIAG db.test with DB password mostest in runtime image"
+	-docker run --rm --platform=linux/amd64 --network=host --user 0:0 -v /var/run/docker.sock:/var/run/docker.sock -e TESTCONTAINERS_HOST_OVERRIDE=localhost -e EXPECT_FIPS=true -e FIPSDIAG_DBPASS=mostest -v $(PWD):/plugin -w /plugin/server --entrypoint=/plugin/$(FIPS_TEST_DIR)/db.test $(FIPS_RUNTIME_IMAGE)
+	@echo "== FIPSDIAG end"
 	set -e; for t in $(FIPS_TEST_DIR)/*.test; do \
 	  echo "== $$t"; \
 	  docker run --rm \
