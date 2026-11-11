@@ -182,6 +182,7 @@ Note: the chart writes the whole `livekit` block, including the TURN secret, to 
 
 - Logs: `kubectl -n livekit logs -f deploy/livekit-server`
 - Upgrade: change `image.tag` (and the chart `--version`), then `helm upgrade livekit livekit/livekit-server --version <v> -n livekit -f values.yaml -f values-site.yaml`. Pods restart one at a time, and calls on the restarting pod are dropped. **[validated for a values change; a version bump is untested]**
+- Redis (in-cluster): changing `redis.yaml` (for example the image tag) stops the old pod before starting the new one, so Redis is briefly unavailable and its state, including live room routing, is lost. Do it in a quiet window. A managed Redis avoids this. **[untested]**
 - Remove: `helm uninstall livekit -n livekit`, then `kubectl delete namespace livekit`. To remove the whole example cluster: first `helm uninstall ingress-nginx -n ingress-nginx` (it created the load balancer, which Kubernetes owns and which can block VPC deletion or keep billing if left behind), then `helm uninstall cert-manager -n cert-manager`, then `eksctl delete cluster -f eks/cluster.yaml`, and finally delete the DNS record.
 
 ## Troubleshooting

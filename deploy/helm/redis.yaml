@@ -10,6 +10,9 @@ metadata:
   labels: {app.kubernetes.io/name: livekit-redis}
 spec:
   replicas: 1
+  # Never run two Redis pods at once: they do not share state, so a rolling
+  # update would split LiveKit across two independent instances.
+  strategy: {type: Recreate}
   selector:
     matchLabels: {app.kubernetes.io/name: livekit-redis}
   template:
