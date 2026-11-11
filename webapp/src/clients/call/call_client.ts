@@ -1578,8 +1578,13 @@ export default class CallClient extends EventEmitter {
      */
     private handleDataReceivedFromParticipant(payload: Uint8Array, participant?: RemoteParticipant, _kind?: number, topic?: string) {
         if (topic === CALL_MESSAGE_TOPICS.HOST_CONTROL) {
-            // Sent by the server through the admin API, so there is deliberately
-            // no sending participant here.
+            // Sent by the server through the admin API, so it has no sending
+            // participant. LiveKit stamps the real sender on participant-published
+            // packets, so a sender here means a peer is spoofing a host command.
+            if (participant) {
+                logWarn('CallClient: host control ignored, sent by a participant', {senderIdentity: participant.identity});
+                return;
+            }
             this.handleHostControl(payload);
             return;
         }

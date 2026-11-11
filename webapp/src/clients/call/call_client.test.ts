@@ -2125,6 +2125,22 @@ describe('CallClient', () => {
             expect(mockRoom.localParticipant.setScreenShareEnabled).toHaveBeenCalledWith(false);
         });
 
+        it('ignores a host command sent by a participant', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.fire(
+                RoomEvent.DataReceived,
+                encode({action: 'stop_screenshare'}),
+                {sid: 'p1-sid', identity: 'user1___p1-session'},
+                undefined,
+                CALL_MESSAGE_TOPICS.HOST_CONTROL,
+            );
+
+            await new Promise((resolve) => setImmediate(resolve));
+
+            expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
+        });
+
         it('ignores an unknown action', async () => {
             await client.connect({channelID: 'test-channel'});
 
