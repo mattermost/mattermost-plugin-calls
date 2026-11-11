@@ -145,7 +145,7 @@ Why not LiveKit's built-in TURN: the chart's TURN load balancer spreads connecti
    helm upgrade livekit livekit/livekit-server --version 1.9.0 -n livekit -f values.yaml -f values-site.yaml
    kubectl -n livekit logs deploy/livekit-server --tail 20
    ```
-   Options are not remembered, so include `--sip`, `--redis` and so on again. The upgrade restarts the pods one at a time and drops calls on the pod being restarted. `setup.sh` refuses to write any file if the secret is missing, empty or shorter than 32 characters, because LiveKit does not start with a credential-less TURN entry.
+   Options are not remembered, so include `--sip`, `--redis` and so on again. The upgrade restarts the pods one at a time and drops calls on the pod being restarted. `setup.sh` refuses to write any file unless the secret is at least 32 letters and digits (what the coturn `setup.sh` generates), because LiveKit does not start with a credential-less TURN entry and other characters would change the value in the generated YAML.
 4. **Verify.** This temporarily cuts off direct media for **everyone**, so use a test cluster or a quiet window. (Alternatively, test from a client network that blocks UDP and plain TCP and leave the rules alone.) Limit 7882/udp to the TURN host and remove 7881/tcp, so TURN is the only way in. `$SG` and the rules are those of step 4; adjust the `revoke` if you used a narrower source range; `<turn-ip>` is the TURN host's public IP:
    ```bash
    aws ec2 revoke-security-group-ingress --group-id $SG --ip-permissions \

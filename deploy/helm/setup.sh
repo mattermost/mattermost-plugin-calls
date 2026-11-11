@@ -73,9 +73,11 @@ if [ -n "$TURN_HOST" ] || [ -n "$TURN_SECRET_FILE" ]; then
     http*|*/*|*:*) echo "--turn-host must be a bare hostname, e.g. turn.example.com" >&2; exit 1 ;;
   esac
   [ -r "$TURN_SECRET_FILE" ] || { echo "Cannot read --turn-secret-file: $TURN_SECRET_FILE" >&2; exit 1; }
-  TURN_SECRET="$(tr -d '[:space:]' < "$TURN_SECRET_FILE")"
-  if [ "${#TURN_SECRET}" -lt 32 ]; then
-    echo "TURN secret in $TURN_SECRET_FILE is empty or shorter than 32 characters; refusing to write any files." >&2
+  # Letters and digits only (what turn/setup.sh generates): whitespace or YAML
+  # characters such as a leading # would change the value once it is written out.
+  TURN_SECRET="$(tr -d '\r\n' < "$TURN_SECRET_FILE")"
+  if ! [[ "$TURN_SECRET" =~ ^[A-Za-z0-9]{32,}$ ]]; then
+    echo "TURN secret in $TURN_SECRET_FILE must be at least 32 letters and digits only; refusing to write any files." >&2
     exit 1
   fi
 fi
