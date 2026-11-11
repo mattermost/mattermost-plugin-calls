@@ -243,7 +243,17 @@ jobs:
     needs:
       - build-mattermost-plugin-calls-fips
       - generate-matrix
+    permissions:
+      contents: read
+      id-token: write
     env:
+      EXPECT_FIPS: true
+      # Chainguard FIPS builds of the compose services. Postgres runs in FIPS
+      # mode, which prepare-server.sh checks.
+      IMAGE_LIVEKIT: cgr.dev/mattermost.com/livekit-server-fips:1.13.10
+      IMAGE_LIVEKIT_SIP: cgr.dev/mattermost.com/livekit-sip-fips:1.20.0
+      IMAGE_REDIS: cgr.dev/mattermost.com/redis-fips:8.10.2
+      IMAGE_POSTGRES: cgr.dev/mattermost.com/postgres-fips:14
       COMPOSE_PROJECT_NAME: playwright_tests
       DOCKER_NETWORK: playwright_tests
       CONTAINER_SERVER: playwright_tests_server
@@ -327,6 +337,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_DEV_USERNAME }}
           password: ${{ secrets.DOCKERHUB_DEV_TOKEN }}
 
+      - name: e2e/chainguard-login
+        uses: chainguard-dev/setup-chainctl@67a753db49c7e97fed4c76fbe809b1339b11facf
+        with:
+          identity: ${{ secrets.CHAINGUARD_IDENTITY }}
+
       - name: e2e/run-server
         env:
           DOCKER_CLIENT_TIMEOUT: 120
@@ -347,7 +362,6 @@ jobs:
         env:
           WORKSPACE: ${{github.workspace}}
           RUN_ID: ${{matrix.run_id}}
-          EXPECT_FIPS: true
         id: test
         run: |
           ${{ github.workspace }}/e2e/scripts/run.sh

@@ -1,7 +1,8 @@
 version: '2.4'
 services:
   postgres:
-    image: "postgres:14"
+    # The FIPS e2e job overrides the images below with Chainguard FIPS builds.
+    image: ${IMAGE_POSTGRES:-postgres:14}
     restart: always
     tmpfs: /var/lib/postgresql/data
     networks:
@@ -13,7 +14,9 @@ services:
       # 14+ characters: FIPS servers reject shorter HMAC keys during SCRAM auth.
       POSTGRES_PASSWORD: mostest-e2e-password
       POSTGRES_DB: mattermost_test
-    command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
+    # No leading `postgres`: Chainguard's entrypoint already includes it, and the
+    # upstream entrypoint adds it when the first argument is a flag.
+    command: -c 'config_file=/etc/postgresql/postgresql.conf'
     volumes:
      - "./postgres.conf:/etc/postgresql/postgresql.conf"
     healthcheck:
@@ -36,7 +39,7 @@ services:
       - "8065:8065"
 
   livekit:
-    image: livekit/livekit-server:v1.13.10
+    image: ${IMAGE_LIVEKIT:-livekit/livekit-server:v1.13.10}
     restart: on-failure
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml
@@ -55,7 +58,7 @@ services:
   # Dedicated Redis for the LiveKit <-> SIP PSRPC bus (see the design note in the
   # root docker-compose.livekit.yaml for why it isn't shared with anything else).
   redis:
-    image: redis:8.10.2-alpine
+    image: ${IMAGE_REDIS:-redis:8.10.2-alpine}
     restart: on-failure
     networks:
       default:
@@ -70,7 +73,7 @@ services:
   # LiveKit SIP bridge. Shares the dev compose's config (../../sip.yaml) so the
   # two paths can't drift; the smoke test drives it via the LiveKit SIP API.
   livekit-sip:
-    image: livekit/sip:v1.20.0
+    image: ${IMAGE_LIVEKIT_SIP:-livekit/sip:v1.20.0}
     restart: on-failure
     volumes:
       - ../../sip.yaml:/etc/sip.yaml
