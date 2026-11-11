@@ -11,7 +11,7 @@ Status legend: **[validated]** was run end to end on AWS; **[untested]** is writ
 | LiveKit server | `livekit/livekit-server` chart 1.9.0, `values.yaml` | 2 replicas, `hostNetwork`, one pod per node |
 | Redis | `redis.yaml` | Single in-cluster instance; use a managed Redis for production HA |
 | Ingress + TLS | ingress-nginx, `ingress.yaml`; cert-manager (optional) | Signaling only; media does not go through the ingress |
-| SIP bridge (optional) | `sip.yaml` | Outbound dialing; `hostNetwork` |
+| SIP bridge (optional) | `sip.yaml`, `sip-site.yaml` | Outbound dialing; `hostNetwork` |
 | TURN relay (optional) | coturn on a separate host, see [External TURN](#external-turn-for-restrictive-firewalls-optional) | For clients that block UDP and plain TCP; not run in the cluster |
 
 ## Prerequisites
@@ -54,7 +54,7 @@ Skip cert-manager if you bring your own certificate.
 ./setup.sh lk.example.com https://mattermost.example.com --acme-email you@example.com
 ```
 
-Use `--tls-secret <name>` instead of `--acme-email` to use your own certificate Secret (create it in the `livekit` namespace first). Use `--redis <host:port>` for an external Redis, and `--sip` to generate the SIP bridge Secret. This writes `secrets.yaml` (mode 600, contains the API secret), `values-site.yaml`, `ingress.yaml` and, with ACME, `issuer.yaml`. Re-running keeps the existing secret.
+Use `--tls-secret <name>` instead of `--acme-email` to use your own certificate Secret (create it in the `livekit` namespace first). Use `--redis <host:port>` for an external Redis, and `--sip` to generate the SIP bridge Secret and ConfigMap (`sip-site.yaml`, which carries the Redis address so `--redis` applies to the bridge too). This writes `secrets.yaml` (mode 600, contains the API secret), `values-site.yaml`, `ingress.yaml` and, with ACME, `issuer.yaml`. Re-running keeps the existing secret.
 
 ## 3. Deploy **[validated]**
 
@@ -154,8 +154,8 @@ Note: the chart writes the whole `livekit` block, including the TURN secret, to 
 
 **[validated: managed trunk and an outbound call to a phone with audio in both directions, using the in-cluster bridge]**
 
-1. Generate with `--sip` (step 2) and apply `secrets.yaml` again.
-2. Confirm Redis and LiveKit are running, then `kubectl apply -f sip.yaml`. The bridge runs on the host network of a `role=calls` node, next to a LiveKit pod. If it stays `Pending`, the node has too little memory or CPU left; see Troubleshooting.
+1. Generate with `--sip` (step 2) and apply `secrets.yaml` again. Use the same `--redis` value as for LiveKit.
+2. Confirm Redis and LiveKit are running, then `kubectl apply -f sip-site.yaml -f sip.yaml`. The bridge runs on the host network of a `role=calls` node, next to a LiveKit pod. If it stays `Pending`, the node has too little memory or CPU left; see Troubleshooting.
 3. Open `10000-10100/udp` on that node.
 4. In the plugin settings (SIP Outbound), enable outbound dialing, trunk mode **managed**, and enter your provider's trunk address, caller ID and credentials. Check `GET /plugins/com.mattermost.calls/sip/trunk-status`. A `ready` status does not prove the bridge is healthy (it can show `ready` before the bridge pod exists): check `kubectl -n livekit logs deploy/livekit-sip` and, on a test call, look for `Outbound SIP call established`. The `failed to get server reflexive address udp6 ... network is unreachable` warnings and `error closing media port: opus: invalid argument` at hangup are harmless. If it reports `sip not connected (redis required)`, fix the cause and toggle **Enable outbound phone dialing** off and on; plain re-saves do not retry.
 

@@ -2,6 +2,7 @@
 # Generates the site-specific files used by the LiveKit Helm deployment:
 #   secrets.yaml      Secrets: livekit-keys (API key/secret) and, with --sip, livekit-sip
 #   values-site.yaml  Helm values: webhook target, Redis address and, with --turn-host, TURN
+#   sip-site.yaml     SIP bridge ConfigMap, with the Redis address (only with --sip)
 #   ingress.yaml      Ingress for the signaling hostname
 #   issuer.yaml       cert-manager ClusterIssuer (only with --acme-email)
 #
@@ -10,7 +11,7 @@
 #   --tls-secret <name>      use an existing kubernetes.io/tls Secret in the livekit
 #                            namespace instead (bring your own certificate)
 #   --redis <host:port>      use an external Redis instead of redis.yaml
-#   --sip                    also generate the SIP bridge Secret
+#   --sip                    also generate the SIP bridge Secret and ConfigMap
 #   --turn-host <domain>     advertise an external coturn server (see README, "External TURN")
 #   --turn-secret-file <f>   file holding coturn's shared secret (used with --turn-host)
 # One of --acme-email or --tls-secret is required.
@@ -163,6 +164,29 @@ else
   rm -f issuer.yaml
 fi
 
+if $SIP; then
+  cat > sip-site.yaml <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: livekit-sip
+  namespace: livekit
+data:
+  config.yaml: |
+    log_level: info
+    ws_url: ws://livekit-server.livekit.svc.cluster.local:80
+    redis:
+      address: ${REDIS}
+    sip_port: 5060
+    rtp_port: 10000-10100
+    use_external_ip: true
+    health_port: 8080
+    prometheus_port: 6789
+EOF
+else
+  rm -f sip-site.yaml
+fi
+
 cat > ingress.yaml <<EOF
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -195,7 +219,7 @@ EOF
 
 cat <<EOF
 
-Wrote secrets.yaml (mode 600), values-site.yaml, ingress.yaml$([ -n "$ACME_EMAIL" ] && echo ", issuer.yaml").
+Wrote secrets.yaml (mode 600), values-site.yaml, ingress.yaml$([ -n "$ACME_EMAIL" ] && echo ", issuer.yaml")$($SIP && echo ", sip-site.yaml").
 
 Calls plugin settings (System Console > Plugins > Calls):
   LiveKit URL         wss://${DOMAIN}
