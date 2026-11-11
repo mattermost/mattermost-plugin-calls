@@ -26,7 +26,7 @@ LINEAGE="${RENEWED_LINEAGE:-${1:-}}"
 DOMAIN="$(sed -n 's/^server-name=//p' "$COTURN_DIR/turnserver.conf")"
 [ -n "$DOMAIN" ] || { echo "no server-name in $COTURN_DIR/turnserver.conf" >&2; exit 1; }
 if ! openssl x509 -in "$LINEAGE/fullchain.pem" -noout -ext subjectAltName | tr ',' '\n' | sed 's/^ *DNS://' \
-  | grep -qxF -e "$DOMAIN" -e "*.${DOMAIN#*.}"; then
+  | grep -qixF -e "$DOMAIN" -e "*.${DOMAIN#*.}"; then
   echo "$LINEAGE does not cover $DOMAIN; skipping"
   exit 0
 fi
