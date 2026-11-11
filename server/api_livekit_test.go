@@ -104,7 +104,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		cfg.SetDefaults()
 		cfg.LiveKitURL = "wss://lk.example.com"
 		cfg.LiveKitAPIKey = "testkey"
-		cfg.LiveKitAPISecret = "testsecret"
+		cfg.LiveKitAPISecret = testLiveKitAPISecret
 		p.configuration = cfg
 	}
 
@@ -399,7 +399,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		require.Equal(t, "testkey", verifier.APIKey())
 		require.Equal(t, userID+"___"+sessionID, verifier.Identity())
 
-		_, claims, err := verifier.Verify("testsecret")
+		_, claims, err := verifier.Verify(testLiveKitAPISecret)
 		require.NoError(t, err)
 		require.Equal(t, userID, claims.Name)
 		require.NotNil(t, claims.Video)
@@ -438,7 +438,7 @@ func TestMintLiveKitTokenBotDataGrant(t *testing.T) {
 		cfg.SetDefaults()
 		cfg.LiveKitURL = "wss://lk.example.com"
 		cfg.LiveKitAPIKey = "testkey"
-		cfg.LiveKitAPISecret = "testsecret"
+		cfg.LiveKitAPISecret = testLiveKitAPISecret
 		if liveCaptions {
 			cfg.EnableLiveCaptions = model.NewPointer(true)
 			cfg.EnableRecordings = model.NewPointer(true)
@@ -457,7 +457,7 @@ func TestMintLiveKitTokenBotDataGrant(t *testing.T) {
 
 		verifier, err := auth.ParseAPIToken(token)
 		require.NoError(t, err)
-		_, claims, err := verifier.Verify("testsecret")
+		_, claims, err := verifier.Verify(testLiveKitAPISecret)
 		require.NoError(t, err)
 		require.NotNil(t, claims.Video)
 		return claims
