@@ -36,7 +36,7 @@ Install Docker as in the main README. On Ubuntu: `sudo apt-get install -y certbo
 
 ## 2. Get the files and generate the config **[validated]**
 
-Copy this directory to the host as `/opt/coturn` (the renewal hook expects that path; set `COTURN_DIR` to use another). For example, from your workstation, in this repository's `deploy/compose` directory:
+Copy this directory to the host as `/opt/coturn`; the renewal hook expects that path. To use another directory, change the `COTURN_DIR` default at the top of the installed hook (`/etc/letsencrypt/renewal-hooks/deploy/coturn.sh`): certbot's scheduled renewal does not see environment variables from your shell, so exporting `COTURN_DIR` only works for a manual run. For example, from your workstation, in this repository's `deploy/compose` directory:
 
 ```bash
 scp -r turn ubuntu@turn.example.com:/tmp/coturn
