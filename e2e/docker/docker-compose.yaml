@@ -55,7 +55,7 @@ services:
   # Dedicated Redis for the LiveKit <-> SIP PSRPC bus (see the design note in the
   # root docker-compose.livekit.yaml for why it isn't shared with anything else).
   redis:
-    image: redis:7-alpine
+    image: redis:8.10.2-alpine
     restart: on-failure
     networks:
       default:

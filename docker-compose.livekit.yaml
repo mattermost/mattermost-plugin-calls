@@ -45,7 +45,7 @@ services:
   # local Redis and a pub/sub cross-DB collision (Redis pub/sub isn't namespaced
   # by db index).
   redis:
-    image: redis:7-alpine
+    image: redis:8.10.2-alpine
     profiles: ["sip"]
     restart: unless-stopped
     healthcheck:
