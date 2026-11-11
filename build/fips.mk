@@ -50,11 +50,12 @@ test-fips: setup-go-work apply
 	  --network=host \
 	  -v /var/run/docker.sock:/var/run/docker.sock \
 	  -e TESTCONTAINERS_HOST_OVERRIDE=localhost \
+	  -e EXPECT_FIPS=true \
 	  -v $(PWD):/plugin \
 	  -w /plugin \
 	  $(FIPS_IMAGE) \
 	  /bin/sh -c 'CGO_ENABLED=1 GOFIPS140=certified GOTOOLCHAIN=local \
-	    go test -buildvcs=false -count=1 $(FIPS_GO_TEST_FLAGS) \
+	    go test -v -buildvcs=false -count=1 $(FIPS_GO_TEST_FLAGS) \
 	    ./server/... ./server/public/...'
 
 # GOFIPS140=certified is recorded as the resolved module version; compare it to
