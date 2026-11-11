@@ -88,8 +88,10 @@ max-port=${RELAY_MAX}
 relay-ip=${PRIVATE_IP}
 ${EXTERNAL_LINE}
 
-# Relay only to the LiveKit host, never to private or special ranges.
+# Relay only to the LiveKit host. allowed-peer-ip is an exception to the deny list,
+# so deny every other address explicitly.
 allowed-peer-ip=${LK_IP}
+denied-peer-ip=0.0.0.0-255.255.255.255
 denied-peer-ip=0.0.0.0-0.255.255.255
 denied-peer-ip=10.0.0.0-10.255.255.255
 denied-peer-ip=100.64.0.0-100.127.255.255
