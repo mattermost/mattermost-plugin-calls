@@ -47,7 +47,7 @@ services:
   # (`./setup.sh ... --sip` sets COMPOSE_PROFILES=sip in .env). Not exposed
   # outside the compose network. Do not point this at Mattermost's Redis.
   redis:
-    image: redis:7.4-alpine
+    image: redis:8.10.2-alpine
     profiles: ["sip"]
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
