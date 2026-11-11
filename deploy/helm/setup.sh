@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generates the site-specific files used by the LiveKit Helm deployment:
 #   secrets.yaml      Secrets: livekit-keys (API key/secret) and, with --sip, livekit-sip
-#   values-site.yaml  Helm values: webhook target and Redis address
+#   values-site.yaml  Helm values: webhook target, Redis address and, with --turn-host, TURN
 #   ingress.yaml      Ingress for the signaling hostname
 #   issuer.yaml       cert-manager ClusterIssuer (only with --acme-email)
 #
@@ -11,14 +11,17 @@
 #                            namespace instead (bring your own certificate)
 #   --redis <host:port>      use an external Redis instead of redis.yaml
 #   --sip                    also generate the SIP bridge Secret
+#   --turn-host <domain>     advertise an external coturn server (see README, "External TURN")
+#   --turn-secret-file <f>   file holding coturn's shared secret (used with --turn-host)
 # One of --acme-email or --tls-secret is required.
 #
+# Options are not remembered: re-run with the same options you used before.
 # Re-running reuses the existing API secret (read from secrets.yaml); delete
 # secrets.yaml to rotate it.
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 <livekit-domain> <mattermost-site-url> (--acme-email <email> | --tls-secret <name>) [--redis <host:port>] [--sip]" >&2
+  echo "Usage: $0 <livekit-domain> <mattermost-site-url> (--acme-email <email> | --tls-secret <name>) [--redis <host:port>] [--sip] [--turn-host <domain> --turn-secret-file <file>]" >&2
   exit 1
 }
 [ $# -ge 2 ] || usage
@@ -30,12 +33,16 @@ ACME_EMAIL=""
 TLS_SECRET=""
 REDIS="livekit-redis.livekit.svc.cluster.local:6379"
 SIP=false
+TURN_HOST=""
+TURN_SECRET_FILE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --acme-email) ACME_EMAIL="${2:?--acme-email needs a value}"; shift 2 ;;
     --tls-secret) TLS_SECRET="${2:?--tls-secret needs a value}"; shift 2 ;;
     --redis) REDIS="${2:?--redis needs a value}"; shift 2 ;;
     --sip) SIP=true; shift ;;
+    --turn-host) TURN_HOST="${2:?--turn-host needs a value}"; shift 2 ;;
+    --turn-secret-file) TURN_SECRET_FILE="${2:?--turn-secret-file needs a value}"; shift 2 ;;
     *) usage ;;
   esac
 done
@@ -52,6 +59,24 @@ if [ -n "$ACME_EMAIL" ] && [ -n "$TLS_SECRET" ]; then
 fi
 if [ -z "$ACME_EMAIL" ] && [ -z "$TLS_SECRET" ]; then
   echo "One of --acme-email or --tls-secret is required" >&2; exit 1
+fi
+
+# TURN: both options or neither. LiveKit refuses to start if a TURN entry has no
+# credentials, so an empty or missing secret must stop us before anything is written.
+TURN_SECRET=""
+if [ -n "$TURN_HOST" ] || [ -n "$TURN_SECRET_FILE" ]; then
+  if [ -z "$TURN_HOST" ] || [ -z "$TURN_SECRET_FILE" ]; then
+    echo "--turn-host and --turn-secret-file must be used together" >&2; exit 1
+  fi
+  case "$TURN_HOST" in
+    http*|*/*|*:*) echo "--turn-host must be a bare hostname, e.g. turn.example.com" >&2; exit 1 ;;
+  esac
+  [ -r "$TURN_SECRET_FILE" ] || { echo "Cannot read --turn-secret-file: $TURN_SECRET_FILE" >&2; exit 1; }
+  TURN_SECRET="$(tr -d '[:space:]' < "$TURN_SECRET_FILE")"
+  if [ "${#TURN_SECRET}" -lt 32 ]; then
+    echo "TURN secret in $TURN_SECRET_FILE is empty or shorter than 32 characters; refusing to write any files." >&2
+    exit 1
+  fi
 fi
 
 cd "$(dirname "$0")"
@@ -100,6 +125,18 @@ livekit:
     urls:
       - ${MM_URL}/plugins/com.mattermost.calls/livekit-webhook
 EOF
+if [ -n "$TURN_HOST" ]; then
+  # Credentials are generated per client from the shared secret and expire after ttl seconds.
+  cat >> values-site.yaml <<EOF
+  rtc:
+    turn_servers:
+      - host: ${TURN_HOST}
+        port: 443
+        protocol: tls
+        secret: ${TURN_SECRET}
+        ttl: 14400
+EOF
+fi
 
 if [ -n "$ACME_EMAIL" ]; then
   TLS_SECRET="livekit-tls"

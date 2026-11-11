@@ -12,6 +12,7 @@ Status legend: **[validated]** was run end to end on AWS; **[untested]** is writ
 | Redis | `redis.yaml` | Single in-cluster instance; use a managed Redis for production HA |
 | Ingress + TLS | ingress-nginx, `ingress.yaml`; cert-manager (optional) | Signaling only; media does not go through the ingress |
 | SIP bridge (optional) | `sip.yaml` | Outbound dialing; `hostNetwork` |
+| TURN relay (optional) | coturn on a separate host, see [External TURN](#external-turn-for-restrictive-firewalls-optional) | For clients that block UDP and plain TCP; not run in the cluster |
 
 ## Prerequisites
 
@@ -116,6 +117,39 @@ Paste the values without leading or trailing spaces.
 3. Share a screen and confirm the other participant sees it. **[validated]**
 4. UDP blocked (remove the 7882/udp rule), start a fresh call and confirm the selected candidate is `tcp4 ... :7881`. To print the selected candidates of recent calls (the timestamp tells calls apart): `kubectl -n livekit logs <pod> --since=5m | grep 'participant active' | grep -oE '^[0-9T:.Z-]+|\[(local|remote)\]\[selected:1\][^"]*'`. **[validated]**
 
+## External TURN for restrictive firewalls (optional)
+
+**[untested on Kubernetes; the coturn setup itself is validated in the Compose deployment]**
+
+Most clients connect straight to the LiveKit nodes over UDP (7882) or TCP (7881). Clients behind a firewall that blocks both can still connect through a TURN server on TCP 443 with TLS, which looks like ordinary HTTPS. Skip this unless you have users on such networks.
+
+The relay is [coturn](https://github.com/coturn/coturn) on a **separate host with its own public IP**, outside the cluster. LiveKit hands its address and short-lived credentials to each client when it joins, so no Calls plugin setting is needed.
+
+```
+client --TLS 443--> coturn --UDP--> LiveKit nodes (7882/udp)
+```
+
+Why not LiveKit's built-in TURN: the chart's TURN load balancer spreads connections over all pods, but LiveKit's embedded relay appears to reach only its own node, so some clients would land on a pod that does not hold their session. The TLS certificate is also read only at startup, so each renewal would restart a pod and drop its calls. coturn has neither problem and reloads certificates in place.
+
+1. **Run coturn.** Follow the Compose deployment's `turn/README.md` (`deploy/compose/turn/`). It uses its own host, DNS name and certificate, and generates the shared secret. When it asks for the LiveKit public IP, give the public IP of **one** LiveKit node, then allow the rest. List all of them with `kubectl get nodes -l role=calls -o wide` (`EXTERNAL-IP`). `turn/setup.sh` takes a single IP, but coturn accepts several, so on the TURN host add one line per additional node and restart coturn:
+   ```bash
+   echo 'allowed-peer-ip=<another-livekit-node-ip>' | sudo tee -a /opt/coturn/turnserver.conf
+   cd /opt/coturn && sudo docker compose restart coturn
+   ```
+   Do this again whenever a LiveKit node is replaced; coturn refuses to relay to any address not listed.
+2. **Allow the TURN host to reach LiveKit.** 7882/udp on the LiveKit nodes must accept traffic from the TURN host. It already does if you opened it to `0.0.0.0/0` in step 4.
+3. **Point LiveKit at it.** Copy `/opt/coturn/secret` from the TURN host to the machine where you run `setup.sh` (keep it mode 600), then re-run `setup.sh` with the same options as before plus the TURN options, and upgrade:
+   ```bash
+   ./setup.sh lk.example.com https://mattermost.example.com --acme-email you@example.com \
+       --turn-host turn.example.com --turn-secret-file ./turn-secret
+   helm upgrade livekit livekit/livekit-server --version 1.9.0 -n livekit -f values.yaml -f values-site.yaml
+   kubectl -n livekit logs deploy/livekit-server --tail 20
+   ```
+   Options are not remembered, so include `--sip`, `--redis` and so on again. The upgrade restarts the pods one at a time and drops calls on the pod being restarted. `setup.sh` refuses to write any file if the secret is missing, empty or shorter than 32 characters, because LiveKit does not start with a credential-less TURN entry.
+4. **Verify.** Block direct media for one client (remove the 7882/udp and 7881/tcp rules, or use a network that blocks them), start a fresh call and confirm the selected candidate is a relay: `kubectl -n livekit logs <pod> --since=5m | grep 'participant active' | grep -oE '\[(local|remote)\]\[selected:1\][^"]*'` should show `relay`. Restore the rules afterwards.
+
+Note: the chart writes the whole `livekit` block, including the TURN secret, to a ConfigMap, so anyone who can read ConfigMaps in the `livekit` namespace can read it. The shared secret only lets someone mint TURN credentials that coturn will relay to the allowed LiveKit addresses.
+
 ## SIP outbound (optional)
 
 **[validated: managed trunk and an outbound call to a phone with audio in both directions, using the in-cluster bridge]**
@@ -142,4 +176,4 @@ Paste the values without leading or trailing spaces.
 - **EKS cluster creation fails with `maximum number of addresses has been reached`:** the default VPC setup creates a NAT gateway, which needs an Elastic IP. Free an address or set `vpc.nat.gateway: Disable` (nodes here are in public subnets anyway).
 - **No call events in Mattermost:** LiveKit must reach `<site-url>/plugins/com.mattermost.calls/livekit-webhook`.
 
-_Validated by the author, and by a separate agent session that followed this README and the files in this directory end to end on a fresh EKS cluster, with a human at the call-test checkpoints. Bring-your-own certificate (`--tls-secret`), external Redis (`--redis`), production-size nodes, chart or image version upgrades, recording and transcription are untested._
+_Validated by the author, and by a separate agent session that followed this README and the files in this directory end to end on a fresh EKS cluster, with a human at the call-test checkpoints. Bring-your-own certificate (`--tls-secret`), external Redis (`--redis`), external TURN, production-size nodes, chart or image version upgrades, recording and transcription are untested._
