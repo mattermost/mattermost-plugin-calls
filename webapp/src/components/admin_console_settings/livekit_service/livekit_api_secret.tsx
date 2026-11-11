@@ -8,10 +8,15 @@ import {LabelRow, leftCol, rightCol} from 'src/components/admin_console_settings
 import {callsConfigEnvOverrides} from 'src/selectors';
 import {CustomComponentProps} from 'src/types/mattermost-webapp';
 
+// Must match minLiveKitAPISecretLength in server/configuration.go.
+const MIN_LIVEKIT_API_SECRET_LENGTH = 32;
+
 export default function LiveKitAPISecret(props: CustomComponentProps) {
     const {formatMessage} = useIntl();
     const overrides = useSelector(callsConfigEnvOverrides);
     const overridden = 'LiveKitAPISecret' in overrides;
+    const value = props.value ?? '';
+    const tooShort = value !== '' && value.length < MIN_LIVEKIT_API_SECRET_LENGTH;
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         props.onChange(props.id, e.target.value);
@@ -50,6 +55,17 @@ export default function LiveKitAPISecret(props: CustomComponentProps) {
                 >
                     {formatMessage({defaultMessage: 'The API secret used to authenticate with the LiveKit server.'})}
                 </div>
+                {tooShort && !overridden &&
+                    <div
+                        data-testid={props.id + 'error'}
+                        className='help-text error-text'
+                    >
+                        {formatMessage(
+                            {defaultMessage: 'The API secret must be at least {min} characters.'},
+                            {min: MIN_LIVEKIT_API_SECRET_LENGTH},
+                        )}
+                    </div>
+                }
                 {overridden &&
                     <div className='alert alert-warning'>
                         {formatMessage({defaultMessage: 'This setting has been set through an environment variable. It cannot be changed through the System Console.'})}
