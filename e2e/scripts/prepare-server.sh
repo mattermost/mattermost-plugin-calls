@@ -2,6 +2,8 @@
 set -eu
 set -o pipefail
 
+EXPECT_FIPS="${EXPECT_FIPS:-false}"
+
 function print_logs {
 	docker logs ${CONTAINER_SERVER}1
 	docker logs ${CONTAINER_SERVER}2
@@ -30,6 +32,18 @@ docker compose -f ${DOCKER_COMPOSE_FILE} build sipp
 echo "Starting server dependencies ... "
 DOCKER_NETWORK=${DOCKER_NETWORK} CONTAINER_PROXY=${CONTAINER_PROXY} docker compose -f ${DOCKER_COMPOSE_FILE} run -d --rm start_dependencies
 timeout --foreground 90s bash -c "until docker compose -f ${DOCKER_COMPOSE_FILE} exec -T postgres pg_isready ; do sleep 5 ; done"
+
+# A FIPS-mode Postgres rejects md5(). TCP is used because the image's init
+# server only listens on the socket, so SELECT 1 also waits for the real server.
+if [[ "${EXPECT_FIPS}" == "true" ]]; then
+	PSQL="docker compose -f ${DOCKER_COMPOSE_FILE} exec -T -e PGPASSWORD=mostest-e2e-password postgres psql -h localhost -U mmuser -d mattermost_test -tA -v ON_ERROR_STOP=1 -c"
+	timeout --foreground 60s bash -c "until ${PSQL} 'SELECT 1'; do echo Waiting for postgres over TCP; sleep 2; done"
+	if MD5_OUTPUT=$(${PSQL} "SELECT md5('x')" 2>&1); then
+		echo "postgres is not in FIPS mode: SELECT md5('x') returned ${MD5_OUTPUT}"
+		exit 1
+	fi
+	echo "postgres rejected md5() as expected: ${MD5_OUTPUT}"
+fi
 
 # Rename the livekit container so it matches CONTAINER_LIVEKIT for log access.
 LIVEKIT_ID=$(docker compose -f ${DOCKER_COMPOSE_FILE} ps -q livekit)
