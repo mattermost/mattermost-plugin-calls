@@ -42,7 +42,8 @@ FIPS_RUNTIME_IMAGE ?= cgr.dev/mattermost.com/glibc-openssl-fips:16@sha256:0718ac
 FIPS_TEST_DIR := server/dist-fips/tests
 
 # Flags passed to each test binary, e.g. FIPS_TEST_FLAGS=-test.run=TestName.
-# -test.v keeps a skipped TestFIPSEnforced visible in the log.
+# -test.v keeps a skipped TestFIPSEnforced visible in the log. Each binary also
+# gets go test's default -test.timeout=10m, which a later flag overrides.
 FIPS_TEST_FLAGS ?= -test.v
 
 # Test binaries are built in the toolchain image, then run one package at a
@@ -78,7 +79,7 @@ test-fips: setup-go-work apply
 	    -w /plugin/server \
 	    --entrypoint=/plugin/$$t \
 	    $(FIPS_RUNTIME_IMAGE) \
-	    $(FIPS_TEST_FLAGS); \
+	    -test.timeout=10m $(FIPS_TEST_FLAGS); \
 	done
 
 # GOFIPS140=certified is recorded as the resolved module version; compare it to
