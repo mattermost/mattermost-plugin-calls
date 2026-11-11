@@ -35,28 +35,50 @@ server-fips: setup-go-work manifest-check
 	    $(GO_BUILD_FLAGS) $(FIPS_GO_BUILD_LDFLAGS) \
 	    -o dist-fips/plugin-linux-amd64-fips'
 
-# Extra `go test` flags, e.g. FIPS_GO_TEST_FLAGS=-run=TestName. Same quoting
-# constraint as FIPS_GO_BUILD_LDFLAGS.
-FIPS_GO_TEST_FLAGS ?=
+# OpenSSL FIPS runtime image the tests run in. Must match the runtime image in
+# mattermost/mattermost server/build/Dockerfile.fips, since the plugin runs as
+# a child process of that server.
+FIPS_RUNTIME_IMAGE ?= cgr.dev/mattermost.com/glibc-openssl-fips:16@sha256:0718ac97b4bec26e964019772743cec8c52c6e14208e14c2e978f395998b19aa
+FIPS_TEST_DIR := server/dist-fips/tests
 
-# The DB tests start Postgres through testcontainers, so the container needs
-# the host's Docker socket, and host networking to reach the mapped ports.
-## Runs the server Go tests built with the Go FIPS toolchain.
+# Extra test binary flags, e.g. FIPS_TEST_FLAGS=-test.run=TestName.
+FIPS_TEST_FLAGS ?=
+
+# Test binaries are built in the toolchain image, then run one package at a
+# time in the runtime image, which has no shell. Only packages with tests are
+# built, since `go test -c -o dir/` rejects clashing binary names, such as
+# interfaces and its mock. The DB tests start Postgres through testcontainers,
+# so the container needs the host's Docker socket (as root), and host
+# networking to reach the mapped ports.
+## Runs the server Go tests built with the Go FIPS toolchain in the FIPS runtime image.
 .PHONY: test-fips
 test-fips: setup-go-work apply
+	rm -rf $(FIPS_TEST_DIR)
+	mkdir -p $(FIPS_TEST_DIR)
 	docker run --rm \
 	  --platform=linux/amd64 \
 	  --entrypoint="" \
-	  --network=host \
-	  -v /var/run/docker.sock:/var/run/docker.sock \
-	  -e TESTCONTAINERS_HOST_OVERRIDE=localhost \
-	  -e EXPECT_FIPS=true \
 	  -v $(PWD):/plugin \
 	  -w /plugin \
 	  $(FIPS_IMAGE) \
-	  /bin/sh -c 'CGO_ENABLED=1 GOFIPS140=certified GOTOOLCHAIN=local \
-	    go test -v -buildvcs=false -count=1 $(FIPS_GO_TEST_FLAGS) \
-	    ./server/... ./server/public/...'
+	  /bin/sh -c 'export CGO_ENABLED=1 GOFIPS140=certified GOTOOLCHAIN=local && \
+	    go test -c -buildvcs=false -o $(FIPS_TEST_DIR)/ \
+	    $$(go list -f "{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}" ./server/... ./server/public/...)'
+	set -e; for t in $(FIPS_TEST_DIR)/*.test; do \
+	  echo "== $$t"; \
+	  docker run --rm \
+	    --platform=linux/amd64 \
+	    --network=host \
+	    --user 0:0 \
+	    -v /var/run/docker.sock:/var/run/docker.sock \
+	    -e TESTCONTAINERS_HOST_OVERRIDE=localhost \
+	    -e EXPECT_FIPS=true \
+	    -v $(PWD):/plugin \
+	    -w /plugin/server \
+	    --entrypoint=/plugin/$$t \
+	    $(FIPS_RUNTIME_IMAGE) \
+	    $(FIPS_TEST_FLAGS); \
+	done
 
 # GOFIPS140=certified is recorded as the resolved module version; compare it to
 # the toolchain's certified.txt so "inprocess", "latest" and "off" builds are
