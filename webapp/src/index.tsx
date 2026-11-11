@@ -103,6 +103,7 @@ import JoinCallWatcher from 'src/components/join_call_watcher';
 import RecordingsFilePreview from 'src/components/recordings_file_preview';
 import {makeSameChannelLinkClickHandler} from 'src/components/same_channel_link_click_handler';
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
+import RaiseHandSettingsSection from 'src/components/user_settings/raise_hand_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
@@ -362,6 +363,10 @@ export default class Plugin {
                 {
                     title: 'Screen sharing settings',
                     component: ScreenSharingSettingsSection,
+                },
+                {
+                    title: 'Raise hand settings',
+                    component: RaiseHandSettingsSection,
                 },
             ],
         });
@@ -1046,6 +1051,10 @@ export default class Plugin {
                 {
                     title: 'Screen sharing settings',
                     component: ScreenSharingSettingsSection,
+                },
+                {
+                    title: 'Raise hand settings',
+                    component: RaiseHandSettingsSection,
                 },
             ];
 

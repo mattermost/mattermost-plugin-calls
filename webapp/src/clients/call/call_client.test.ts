@@ -16,10 +16,12 @@ import {
 } from 'livekit-client';
 import RestClient from 'src/clients/rest';
 import {
+    LOWER_HAND_ON_UNMUTE_DELAY_MS,
     STORAGE_CALLS_CLIENT_LOGS_KEY,
     STORAGE_CALLS_CLIENT_STATS_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
+    STORAGE_CALLS_LOWER_HAND_ON_UNMUTE,
 } from 'src/constants';
 import * as log from 'src/log';
 import {flushLogsToAccumulated} from 'src/log';
@@ -713,6 +715,129 @@ describe('CallClient', () => {
             );
 
             expect(muteListener).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('lower hand on unmute', () => {
+        const DELAY = LOWER_HAND_ON_UNMUTE_DELAY_MS;
+        const micPub = {source: Track.Source.Microphone};
+
+        beforeEach(() => {
+            jest.useFakeTimers();
+            window.localStorage.setItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, 'on');
+        });
+
+        afterEach(() => {
+            jest.useRealTimers();
+            window.localStorage.removeItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE);
+        });
+
+        const raiseOwnHand = () => {
+            mockRoom.localParticipant.attributes = {raised_hand: String(Date.now())};
+        };
+
+        it('lowers the hand after the local participant stays unmuted', async () => {
+            await client.connect({channelID: 'test-channel'});
+            raiseOwnHand();
+
+            mockRoom.fire(RoomEvent.TrackUnmuted, micPub, mockRoom.localParticipant);
+            jest.advanceTimersByTime(DELAY - 1);
+            expect(mockRoom.localParticipant.setAttributes).not.toHaveBeenCalled();
+
+            jest.advanceTimersByTime(1);
+            expect(mockRoom.localParticipant.setAttributes).toHaveBeenCalledWith({raised_hand: ''});
+        });
+
+        it('does not arm for a remote participant unmuting', async () => {
+            await client.connect({channelID: 'test-channel'});
+            raiseOwnHand();
+
+            mockRoom.fire(RoomEvent.TrackUnmuted, micPub, {sid: 'p1-sid', identity: 'user1___p1-session'});
+            jest.advanceTimersByTime(DELAY * 2);
+            expect(mockRoom.localParticipant.setAttributes).not.toHaveBeenCalled();
+        });
+
+        it('does not arm from the synthetic UNMUTE emitted by reSyncMuteAndHandState', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.localParticipant.getTrackPublication.mockReturnValue({isMuted: false});
+            raiseOwnHand();
+
+            client.reSyncMuteAndHandState();
+            jest.advanceTimersByTime(DELAY * 2);
+            expect(mockRoom.localParticipant.setAttributes).not.toHaveBeenCalled();
+        });
+
+        it('cancels when the local participant mutes during the delay', async () => {
+            await client.connect({channelID: 'test-channel'});
+            raiseOwnHand();
+
+            mockRoom.fire(RoomEvent.TrackUnmuted, micPub, mockRoom.localParticipant);
+            jest.advanceTimersByTime(DELAY - 1);
+            mockRoom.fire(RoomEvent.TrackMuted, micPub, mockRoom.localParticipant);
+            jest.advanceTimersByTime(DELAY * 2);
+            expect(mockRoom.localParticipant.setAttributes).not.toHaveBeenCalled();
+        });
+
+        it('cancels on disconnect', async () => {
+            await client.connect({channelID: 'test-channel'});
+            raiseOwnHand();
+
+            mockRoom.fire(RoomEvent.TrackUnmuted, micPub, mockRoom.localParticipant);
+            mockRoom.fire(RoomEvent.Disconnected);
+            jest.advanceTimersByTime(DELAY * 2);
+            expect(mockRoom.localParticipant.setAttributes).not.toHaveBeenCalled();
+        });
+
+        it('does not lower the hand when the setting is disabled during the delay', async () => {
+            await client.connect({channelID: 'test-channel'});
+            raiseOwnHand();
+
+            mockRoom.fire(RoomEvent.TrackUnmuted, micPub, mockRoom.localParticipant);
+            window.localStorage.setItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, 'off');
+            jest.advanceTimersByTime(DELAY * 2);
+            expect(mockRoom.localParticipant.setAttributes).not.toHaveBeenCalled();
+        });
+
+        it('does nothing when the hand is not raised at unmute time', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            mockRoom.fire(RoomEvent.TrackUnmuted, micPub, mockRoom.localParticipant);
+            jest.advanceTimersByTime(DELAY * 2);
+            expect(mockRoom.localParticipant.setAttributes).not.toHaveBeenCalled();
+        });
+
+        it('cancels when the hand is lowered manually during the delay', async () => {
+            await client.connect({channelID: 'test-channel'});
+            raiseOwnHand();
+
+            mockRoom.fire(RoomEvent.TrackUnmuted, micPub, mockRoom.localParticipant);
+            jest.advanceTimersByTime(DELAY - 1);
+
+            // The user lowers the hand themselves; LiveKit reports the attribute change.
+            mockRoom.localParticipant.attributes = {raised_hand: ''};
+            mockRoom.fire(RoomEvent.ParticipantAttributesChanged, {raised_hand: ''}, mockRoom.localParticipant);
+
+            mockRoom.localParticipant.setAttributes.mockClear();
+            jest.advanceTimersByTime(DELAY * 2);
+            expect(mockRoom.localParticipant.setAttributes).not.toHaveBeenCalled();
+        });
+
+        it('does not lower a hand that was lowered and raised again during the delay', async () => {
+            await client.connect({channelID: 'test-channel'});
+            raiseOwnHand();
+
+            mockRoom.fire(RoomEvent.TrackUnmuted, micPub, mockRoom.localParticipant);
+            jest.advanceTimersByTime(DELAY - 1);
+
+            mockRoom.localParticipant.attributes = {raised_hand: ''};
+            mockRoom.fire(RoomEvent.ParticipantAttributesChanged, {raised_hand: ''}, mockRoom.localParticipant);
+            jest.advanceTimersByTime(1000);
+            raiseOwnHand();
+            mockRoom.fire(RoomEvent.ParticipantAttributesChanged, {raised_hand: '1'}, mockRoom.localParticipant);
+
+            mockRoom.localParticipant.setAttributes.mockClear();
+            jest.advanceTimersByTime(DELAY * 2);
+            expect(mockRoom.localParticipant.setAttributes).not.toHaveBeenCalled();
         });
     });
 

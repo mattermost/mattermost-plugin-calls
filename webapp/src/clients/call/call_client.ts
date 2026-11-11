@@ -39,7 +39,7 @@ import {dtmfCode, DTMFDigit} from 'src/dtmf';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from 'src/log';
 import {parseRTCStats} from 'src/rtc_stats';
 import {CallsClientStats, MediaDevices, ShareScreenError, ShareScreenResult, TrackMetadata} from 'src/types/types';
-import {getPersistentStorage, getPluginPath, getScreenStream} from 'src/utils';
+import {getPersistentStorage, getPluginPath, getScreenStream, lowerHandOnUnmute} from 'src/utils';
 
 import {
     AUDIO_CAPTURE_DEFAULTS,
@@ -51,6 +51,7 @@ import {
     TRACK_PUBLISHING_DEFAULTS,
     USER_ID_SESSION_ID_SEPARATOR,
 } from './constants';
+import {createLowerHandOnUnmute} from './lower_hand_on_unmute';
 import {
     CallRoomMetadata,
     CaptionPayload,
@@ -113,6 +114,16 @@ export default class CallClient extends EventEmitter {
     private disconnecting = false;
     private disconnected = false;
     private connectPayload: ConnectPayload | null = null;
+
+    // Lowers the local raised hand after staying unmuted (user setting). Only
+    // driven by the local participant's own mic mute/unmute transitions.
+    private lowerHandTimer = createLowerHandOnUnmute({
+        isEnabled: lowerHandOnUnmute,
+        ownHandRaisedAt: () => Number(this.room?.localParticipant.attributes?.[CALL_ATTRIBUTES.RAISED_HAND]) || 0,
+
+        // unraiseHand handles and logs its own errors.
+        lowerHand: () => this.unraiseHand(),
+    });
 
     // Server-minted session id from the join request. Held here rather than read
     // back off the LiveKit identity so it is available before the room connects.
@@ -1155,6 +1166,7 @@ export default class CallClient extends EventEmitter {
         this.connectPayload = null;
 
         this.stopStatsPolling();
+        this.lowerHandTimer.dispose();
         this.detachAllRemoteAudio();
 
         this.emit(CALL_EVENT.DISCONNECTED, reason);
@@ -1467,6 +1479,10 @@ export default class CallClient extends EventEmitter {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
 
+            if (participant === this.room?.localParticipant) {
+                this.lowerHandTimer.onMute();
+            }
+
             logDebug(`CallClient: track muted for user ${userID}`, this.trackPubSummary(trackPublication));
         }
     }
@@ -1479,6 +1495,13 @@ export default class CallClient extends EventEmitter {
         if (trackPublication.source === Track.Source.Microphone) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.UNMUTE, sessionID, userID);
+
+            // Only a real RoomEvent.TrackUnmuted for the local participant arms
+            // the timer. The synthetic UNMUTE events emitted on connect and by
+            // reSyncMuteAndHandState don't go through here.
+            if (participant === this.room?.localParticipant) {
+                this.lowerHandTimer.onUnmute();
+            }
 
             logDebug(`CallClient: track unmuted for user ${userID}`, this.trackPubSummary(trackPublication));
         }
@@ -1562,6 +1585,12 @@ export default class CallClient extends EventEmitter {
         if ((CALL_ATTRIBUTES.RAISED_HAND in changedAttributes)) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             const isHandRaised = changedAttributes[CALL_ATTRIBUTES.RAISED_HAND]?.length > 0;
+
+            // Lowered by any means (manually, or by the timer itself): stop a pending auto-lower.
+            if (!isHandRaised && participant === this.room?.localParticipant) {
+                this.lowerHandTimer.cancel();
+            }
+
             if (isHandRaised) {
                 this.emit(CALL_EVENT.RAISE_HAND, sessionID, userID, Number(changedAttributes[CALL_ATTRIBUTES.RAISED_HAND]));
             } else {
