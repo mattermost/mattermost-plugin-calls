@@ -36,12 +36,15 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         // prefix IDs with 'screen_', but LiveKit assigns its own track IDs
         // ('TR_VS…'). What we care about is that the remote side received a
         // screen video track at all.
-        const screenStreamID = await (await userPage.page.waitForFunction(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        const screenTrackID = await (await userPage.page.waitForFunction(() => {
+            return window.callsClient.getRemoteScreenTrack()?.mediaStreamTrack.id;
         })).evaluate(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+            return window.callsClient.getRemoteScreenTrack()?.mediaStreamTrack.id;
         });
-        expect(screenStreamID).toBeTruthy();
+        expect(screenTrackID).toBeTruthy();
+
+        await devPage.expectScreenPlaying();
+        await userPage.expectScreenPlaying();
 
         await page.getByTestId('calls-widget-stop-screenshare').click();
 
@@ -69,9 +72,9 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await expect(userPage.page.locator('#screen-player')).toBeVisible();
 
         const screenTrackID = await (await userPage.page.waitForFunction(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+            return window.callsClient.getRemoteScreenTrack()?.mediaStreamTrack.id;
         })).evaluate(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+            return window.callsClient.getRemoteScreenTrack()?.mediaStreamTrack.id;
         });
         expect(screenTrackID).toBeTruthy();
 
@@ -168,12 +171,12 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await expect(userPage.page.locator('#screen-player')).toBeVisible();
 
         // verify that on the receiving side the screen track is correctly set
-        let screenStreamID = await (await userPage.page.waitForFunction(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        let screenTrackID = await (await userPage.page.waitForFunction(() => {
+            return window.callsClient.getRemoteScreenTrack()?.mediaStreamTrack.id;
         })).evaluate(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+            return window.callsClient.getRemoteScreenTrack()?.mediaStreamTrack.id;
         });
-        expect(screenStreamID).toBeTruthy();
+        expect(screenTrackID).toBeTruthy();
 
         // presenter leaves call
         await devPage.leaveCall();
@@ -190,12 +193,12 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
         await expect(devPage.page.locator('#screen-player')).toBeVisible();
 
         // verify that on the receiving side the screen track is correctly set
-        screenStreamID = await (await devPage.page.waitForFunction(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        screenTrackID = await (await devPage.page.waitForFunction(() => {
+            return window.callsClient.getRemoteScreenTrack()?.mediaStreamTrack.id;
         })).evaluate(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+            return window.callsClient.getRemoteScreenTrack()?.mediaStreamTrack.id;
         });
-        expect(screenStreamID).toBeTruthy();
+        expect(screenTrackID).toBeTruthy();
 
         await Promise.all([devPage.leaveCall(), userPage.leaveCall()]);
     });
@@ -215,9 +218,11 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
 
         await expect(senderPage.page.locator('#screen-player')).toBeVisible();
         await expect(receiverPage.page.locator('#screen-player')).toBeVisible();
+        await receiverPage.expectScreenPlaying();
 
         const audioTrackID = await getRemoteScreenAudioTrackID(receiverPage.page);
         await expectAudioPlaying(receiverPage.page, audioTrackID);
+        await expectAudioPlayedOnce(receiverPage.page, audioTrackID);
 
         await senderPage.page.getByTestId('calls-widget-stop-screenshare').click();
         await expect(receiverPage.page.locator('#screen-player')).toBeHidden();
@@ -236,9 +241,11 @@ test.describe('screen sharing', {tag: '@livekit'}, () => {
 
         const receiverPage = await joinCall(userStorages[1]);
         await expect(receiverPage.page.locator('#screen-player')).toBeVisible();
+        await receiverPage.expectScreenPlaying();
 
         const audioTrackID = await getRemoteScreenAudioTrackID(receiverPage.page);
         await expectAudioPlaying(receiverPage.page, audioTrackID);
+        await expectAudioPlayedOnce(receiverPage.page, audioTrackID);
 
         await Promise.all([senderPage.leaveCall(), receiverPage.leaveCall()]);
     });
@@ -284,9 +291,12 @@ async function startScreenShare(page: Page) {
     await page.locator('#calls-widget-menu-screenshare').click();
 }
 
+// The screen track carries only the video, so read the share's audio off the
+// sharer's publication.
 async function getRemoteScreenAudioTrackID(page: Page) {
     const handle = await page.waitForFunction(() => {
-        return window.callsClient.getRemoteScreenStream()?.getAudioTracks()[0]?.id;
+        const participants = Array.from(window.callsClient.room?.remoteParticipants.values() ?? []) as any[];
+        return participants.map((p) => p.getTrackPublication('screen_share_audio')?.track?.mediaStreamTrack.id).find(Boolean);
     });
     const trackID = await handle.jsonValue();
     expect(trackID).toBeTruthy();
@@ -313,6 +323,17 @@ async function expectAudioPlaying(page: Page, trackID: string) {
 
     expect(endTime).not.toBeNull();
     expect(endTime as number).toBeGreaterThan(startTime as number);
+}
+
+// The share's audio is heard once: only its own <audio> element plays it, and
+// the screen <video> carries no audio of its own.
+async function expectAudioPlayedOnce(page: Page, trackID: string) {
+    const players = await page.evaluate((id) => {
+        return Array.from(document.querySelectorAll<HTMLMediaElement>('audio, video'))
+            .filter((el) => (el.srcObject as MediaStream | null)?.getAudioTracks().some((track) => track.id === id))
+            .map((el) => el.tagName.toLowerCase());
+    }, trackID);
+    expect(players).toEqual(['audio']);
 }
 
 test.describe('sending voice', {tag: '@livekit'}, () => {

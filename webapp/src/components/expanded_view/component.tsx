@@ -19,7 +19,7 @@ import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
-import type {ScreenSharingSession} from 'src/clients/call/types';
+import type {ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
@@ -46,6 +46,7 @@ import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
+import ScreenSharePlayer from 'src/components/screen_share_player';
 import {CallAlertConfigs, DEGRADED_CALL_QUALITY_ALERT_WAIT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
@@ -148,7 +149,7 @@ interface Props extends RouteComponentProps {
 }
 
 interface State {
-    screenStream: MediaStream | null,
+    screenTrack: ScreenShareTrack | null,
     showParticipantsList: boolean,
     showLiveCaptions: boolean,
     showFirefoxScreenShareWarning: boolean,
@@ -191,7 +192,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private readonly emojiButtonRef: React.RefObject<ReactionButtonRef>;
     private expandedRootRef = React.createRef<HTMLDivElement>();
     private pushToTalk = false;
-    private screenPlayer: HTMLVideoElement | null = null;
     private callQualityBannerLocked = false;
     private callClientUnsubscribers: Array<() => void> = [];
     private hasReSyncedLiveKitState = false;
@@ -312,7 +312,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         super(props);
         this.emojiButtonRef = React.createRef();
         this.state = {
-            screenStream: null,
+            screenTrack: null,
             showParticipantsList: false,
             showLiveCaptions: false,
             showFirefoxScreenShareWarning: false,
@@ -358,13 +358,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             });
         }
     }
-
-    setScreenPlayerRef = (node: HTMLVideoElement) => {
-        if (node && this.state.screenStream) {
-            node.srcObject = this.state.screenStream;
-        }
-        this.screenPlayer = node;
-    };
 
     setMissingScreenPermissions = (missing: boolean, forward?: boolean) => {
         this.setState({
@@ -547,8 +540,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         } else {
             // Main window: LiveKit drives getDisplayMedia in the same (focused) window.
-            const [stream] = await callsClient?.shareScreen('', shareAudioWithScreen()) ?? [null, null];
-            if (stream) {
+            const [track] = await callsClient?.shareScreen('', shareAudioWithScreen()) ?? [null, null];
+            if (track) {
                 this.setMissingScreenPermissions(false, true);
             } else {
                 this.setMissingScreenPermissions(true, true);
@@ -565,7 +558,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             logDebug('ExpandedView.onShareScreenToggle: stopping screen share');
             callsClient?.unshareScreen();
             this.setState({
-                screenStream: null,
+                screenTrack: null,
             });
         } else if (!this.props.screenSharingSession) {
             logDebug('ExpandedView.onShareScreenToggle: starting screen share');
@@ -609,7 +602,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         this.props.hideExpandedView();
     };
 
-    public componentDidUpdate(prevProps: Props, prevState: State) {
+    public componentDidUpdate(prevProps: Props) {
         if (prevProps.theme.type !== this.props.theme.type) {
             this.style = this.genStyle();
         }
@@ -641,10 +634,6 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 getCallsClient()?.reSyncMuteAndHandState();
             }
         }
-
-        if (this.screenPlayer && this.state.screenStream !== prevState.screenStream) {
-            this.screenPlayer.srcObject = this.state.screenStream;
-        }
     }
 
     public componentDidMount() {
@@ -671,11 +660,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.callClientUnsubscribers.push(() => callsClient.off(event, handler));
         };
 
-        // One derived sharer covers local and remote alike. The stream is null
+        // One derived sharer covers local and remote alike. The track is null
         // while a remote share is announced but not yet subscribed, and a
         // follow-up emission fills it in.
         onClient(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
-            this.setState({screenStream: session?.stream ?? null});
+            this.setState({screenTrack: session?.track ?? null});
         });
         onClient(CALL_EVENT.MUTE, (sessionID: string, userID: string) => {
             this.props.userMuted(callsClient.channelID, sessionID, userID);
@@ -804,7 +793,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         });
         this.setAudioDevices(callsClient.getAudioDevices());
 
-        const screenStream = callsClient.getLocalScreenStream() || callsClient.getRemoteScreenStream();
+        const screenTrack = callsClient.getLocalScreenTrack() || callsClient.getRemoteScreenTrack();
 
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
@@ -817,7 +806,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     show: false,
                 },
             },
-            screenStream,
+            screenTrack,
         });
 
         if (window.opener) {
@@ -1010,10 +999,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 <StyledMediaController
                     gesturesDisabled={true}
                 >
-                    <video
-                        id='screen-player'
+                    <ScreenSharePlayer
+                        track={this.state.screenTrack}
                         slot='media'
-                        ref={this.setScreenPlayerRef}
                         muted={true}
                         autoPlay={true}
                         onClick={(ev) => ev.preventDefault()}

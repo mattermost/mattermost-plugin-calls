@@ -17,7 +17,7 @@ import {compareSemVer} from 'semver-parser';
 import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call';
-import type {ScreenSharingSession} from 'src/clients/call/types';
+import type {ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
@@ -55,6 +55,7 @@ import {CallIncomingCondensed} from 'src/components/incoming_calls/call_incoming
 import {RingbackContainer} from 'src/components/incoming_calls/ringback_container';
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {JoinLoadingOverlay} from 'src/components/loading_overlays';
+import ScreenSharePlayer from 'src/components/screen_share_player';
 import {
     CallAlertConfigs,
     CallRecordingDisclaimerStrings,
@@ -171,7 +172,7 @@ interface State {
     // Kept here rather than in the panel so they survive closing and reopening it.
     dialPadDigits: string,
     dialPadError: boolean,
-    screenStream: MediaStream | null,
+    screenTrack: ScreenShareTrack | null,
     currentAudioInputDevice?: MediaDeviceInfo | null,
     currentAudioOutputDevice?: MediaDeviceInfo | null,
     devices?: MediaDevices,
@@ -191,7 +192,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private widgetResizerObserver: ResizeObserver | null = null;
     private menuResizeObserver: ResizeObserver | null = null;
     private audioMenuResizeObserver: ResizeObserver | null = null;
-    private screenPlayer: HTMLVideoElement | null = null;
     private prevDevicePixelRatio = 0;
     private unsubscribers: (() => void)[] = [];
     private callQualityBannerLocked = false;
@@ -322,7 +322,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 offY: 0,
             },
             alerts: CallAlertStatesDefault,
-            screenStream: null,
+            screenTrack: null,
             removeConfirmation: null,
             leaveMenuOpen: false,
             micPermissionPending: true,
@@ -331,13 +331,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.menuNode = React.createRef();
         this.expandedViewWindowRef = React.createRef<Window>() as React.MutableRefObject<Window | null>;
     }
-
-    setScreenPlayerRef = (node: HTMLVideoElement) => {
-        if (node && this.state.screenStream) {
-            node.srcObject = this.state.screenStream;
-        }
-        this.screenPlayer = node;
-    };
 
     handleKBShortcuts = (ev: KeyboardEvent) => {
         if (!this.props.show || this.props.clientConnecting) {
@@ -505,13 +498,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         };
 
         this.setState({
-            screenStream: window.callsClient.getRemoteScreenStream(),
+            screenTrack: window.callsClient.getRemoteScreenTrack(),
         });
 
         // One derived sharer covers local and remote alike, and clears when
         // nobody is sharing — the widget previously only handled the ON events.
         window.callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
-            this.setState({screenStream: session?.stream ?? null});
+            this.setState({screenTrack: session?.track ?? null});
         });
 
         this.syncRemoteAudioPlaybackBlocked();
@@ -683,12 +676,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     }
 
-    public componentDidUpdate(prevProps: Props, prevState: State) {
-        if (this.screenPlayer && this.state.screenStream !== prevState.screenStream) {
-            this.screenPlayer.srcObject = this.state.screenStream;
-        }
-    }
-
     private getGlobalWidgetBounds = () => {
         const bounds = {
             width: 0,
@@ -775,10 +762,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (window.currentCallData) {
             window.currentCallData.missingScreenPermissions = false;
         }
-        const [stream, err] = await window.callsClient?.shareScreen(sourceID, withAudio) ?? [null, null];
-        if (stream) {
-            logDebug(`CallWidget.shareScreen: stream received with ${stream.getVideoTracks().length} video tracks and ${stream.getAudioTracks().length} audio tracks`);
-            this.setState({screenStream: stream});
+        const [track, err] = await window.callsClient?.shareScreen(sourceID, withAudio) ?? [null, null];
+        if (track) {
+            logDebug('CallWidget.shareScreen: screen share track received');
+            this.setState({screenTrack: track});
         } else if (err) {
             logDebug('CallWidget.shareScreen: share failed', err);
             if (err === 'already-sharing') {
@@ -885,7 +872,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (this.props.screenSharingSession?.session_id === this.props.currentSession?.session_id) {
             logDebug('CallWidget.onShareScreenToggle: stopping screen share (user toggled off)');
             window.callsClient?.unshareScreen();
-            state.screenStream = null;
+            state.screenTrack = null;
         } else if (!this.props.screenSharingSession) {
             logDebug('CallWidget.onShareScreenToggle: starting screen share (user toggled on)');
 
@@ -1094,9 +1081,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     <div
                         style={{position: 'relative', width: '80%', maxHeight: '188px', background: '#C4C4C4'}}
                     >
-                        <video
-                            id='screen-player'
-                            ref={this.setScreenPlayerRef}
+                        <ScreenSharePlayer
+                            track={this.state.screenTrack}
                             style={{maxHeight: '188px'}}
                             width='100%'
                             height='100%'
@@ -2071,8 +2057,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     return;
                 }
 
-                const localScreenStream = window.callsClient.getLocalScreenStream();
-                if (localScreenStream && localScreenStream.getVideoTracks()[0].id === this.expandedViewWindowRef.current?.screenSharingTrackId) {
+                const localScreenTrack = window.callsClient.getLocalScreenTrack();
+                if (localScreenTrack && localScreenTrack.mediaStreamTrack.id === this.expandedViewWindowRef.current?.screenSharingTrackId) {
                     window.callsClient.unshareScreen();
                 }
             });
