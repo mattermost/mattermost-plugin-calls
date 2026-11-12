@@ -1,0 +1,172 @@
+// Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+package db
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
+	sq "github.com/mattermost/squirrel"
+)
+
+// RecordParticipantJoin records a user's join time for a call, keeping the
+// earliest across repeated joins/reconnects. LEAST (rather than a plain
+// DO NOTHING) makes FirstJoinAt the true minimum even if join events are applied
+// out of order, so the audit value can't be corrupted by event reordering.
+//
+// A (re)join also resets LastLeaveAt to 0: the user is present again, so any
+// earlier leave is no longer their final one. Without this, a rejoined user
+// would show as already-left in a live audit, and if the call then ended via the
+// call-end backstop (which only stamps LastLeaveAt = 0 rows) their recorded leave
+// would stay the stale intermediate time instead of the call's end time. Only
+// addUserSession calls this, and only for a real new session, so every call is a
+// genuine join — never a stale duplicate that could wrongly clear a leave.
+func (s *Store) RecordParticipantJoin(callID, identityType, identity string, joinAt int64) error {
+	s.metrics.IncStoreOp("RecordParticipantJoin")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("RecordParticipantJoin", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder().
+		Insert("calls_participants").
+		Columns("CallID", "IdentityType", "Identity", "FirstJoinAt", "LastLeaveAt").
+		Values(callID, identityType, identity, joinAt, 0).
+		Suffix("ON CONFLICT (callid, identitytype, identity) DO UPDATE SET firstjoinat = LEAST(calls_participants.firstjoinat, EXCLUDED.firstjoinat), lastleaveat = 0")
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if _, err := s.wDB.ExecContext(ctx, q, args...); err != nil {
+		return fmt.Errorf("failed to run query: %w", err)
+	}
+
+	return nil
+}
+
+// RecordParticipantLeave records the latest time a user left a call. The guard
+// keeps the most recent leave, so out-of-order or reconnect-driven leaves can't
+// move LastLeaveAt backwards. A leave for a user with no recorded join is a
+// no-op (the join always comes first in practice).
+func (s *Store) RecordParticipantLeave(callID, identityType, identity string, leaveAt int64) error {
+	s.metrics.IncStoreOp("RecordParticipantLeave")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("RecordParticipantLeave", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder().
+		Update("calls_participants").
+		Set("LastLeaveAt", leaveAt).
+		Where(sq.And{
+			sq.Eq{"CallID": callID},
+			sq.Eq{"IdentityType": identityType},
+			sq.Eq{"Identity": identity},
+			sq.Lt{"LastLeaveAt": leaveAt},
+		})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if _, err := s.wDB.ExecContext(ctx, q, args...); err != nil {
+		return fmt.Errorf("failed to run query: %w", err)
+	}
+
+	return nil
+}
+
+// RecordLeaveForActiveParticipants stamps leaveAt on every participant of the
+// call that has no recorded leave yet (LastLeaveAt = 0). It is the completeness
+// backstop called when a call ends: a participant whose individual leave was
+// never recorded (server crash, missed webhook, a failed per-leave write) can't
+// have outlived the call, so their leave is set to the call's end time. This
+// guarantees every attendee of an ended call has a durable, non-zero leave time.
+func (s *Store) RecordLeaveForActiveParticipants(callID string, leaveAt int64) error {
+	s.metrics.IncStoreOp("RecordLeaveForActiveParticipants")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("RecordLeaveForActiveParticipants", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder().
+		Update("calls_participants").
+		Set("LastLeaveAt", leaveAt).
+		Where(sq.And{
+			sq.Eq{"CallID": callID},
+			sq.Eq{"LastLeaveAt": 0},
+		})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if _, err := s.wDB.ExecContext(ctx, q, args...); err != nil {
+		return fmt.Errorf("failed to run query: %w", err)
+	}
+
+	return nil
+}
+
+// GetParticipantsForCalls returns the attendance records for the given calls,
+// keyed by callID then identity, for building the audit report. Identity is a
+// Mattermost user ID for "user" rows or an E.164 number for "phone" rows; the two
+// identity spaces can't collide, so keying by identity alone is unambiguous.
+func (s *Store) GetParticipantsForCalls(callIDs []string, opts GetCallOpts) (map[string]map[string]*public.CallParticipant, error) {
+	s.metrics.IncStoreOp("GetParticipantsForCalls")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetParticipantsForCalls", time.Since(start).Seconds())
+	}(time.Now())
+
+	result := map[string]map[string]*public.CallParticipant{}
+	if len(callIDs) == 0 {
+		return result, nil
+	}
+
+	qb := getQueryBuilder().
+		Select("CallID", "IdentityType", "Identity", "FirstJoinAt", "LastLeaveAt").
+		From("calls_participants").
+		Where(sq.Eq{"CallID": callIDs})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	rows, err := s.dbFromGetOpts(opts).QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get call participants: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cp public.CallParticipant
+		if err := rows.Scan(&cp.CallID, &cp.IdentityType, &cp.Identity, &cp.FirstJoinAt, &cp.LastLeaveAt); err != nil {
+			return nil, fmt.Errorf("failed to scan rows: %w", err)
+		}
+		if result[cp.CallID] == nil {
+			result[cp.CallID] = map[string]*public.CallParticipant{}
+		}
+		participant := cp
+		result[cp.CallID][cp.Identity] = &participant
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read rows: %w", err)
+	}
+
+	return result, nil
+}

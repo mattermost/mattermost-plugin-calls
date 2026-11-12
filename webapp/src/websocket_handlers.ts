@@ -14,7 +14,6 @@ import {
     UserDismissedNotification,
     UserJoinedData,
     UserLeftData,
-    UserRaiseUnraiseHandData,
     UserReactionData,
     UserRemovedData,
     UserScreenOnOffData,
@@ -45,10 +44,10 @@ import {
     REACTION_TIMEOUT_IN_REACTION_STREAM,
 } from 'src/constants';
 import {logWarn} from 'src/log';
-import {handlePhoneCallEnd} from 'src/phone_call';
+import {handlePhoneCallEnd, leaveCallEndedByServer} from 'src/phone_call';
 import {getPhoneCallProps} from 'src/phone_utils';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
-import {userLoweredHand, userRaisedHand, userReacted, userReactedTimeout} from 'src/state/session/actions';
+import {userReacted, userReactedTimeout} from 'src/state/session/actions';
 import {
     CallEndData,
     HostControlNotice,
@@ -84,11 +83,21 @@ export type WebSocketMessage<T> = BaseWebSocketMessage<string, T>;
 // Channel ID saved when the client is evicted from a LiveKit room (PARTICIPANT_REMOVED).
 // Lets handleUserRemovedFromChannel show the error modal even if the Mattermost WS
 // user_removed event arrives after window.callsClient has already been torn down.
-// Cleared after the modal is shown or on any non-eviction disconnect.
-let participantRemovedChannelID = '';
+// It expires, since not every eviction is followed by a user_removed event (a host
+// removing the participant isn't), and a stale one would show the error modal for
+// a later removal from that channel. Also cleared on any non-eviction disconnect.
+const PARTICIPANT_REMOVED_TTL_MS = 15_000;
+let participantRemoved: {channelID: string, expiresAt: number} | undefined;
 
 export function setParticipantRemovedChannelID(channelID: string) {
-    participantRemovedChannelID = channelID;
+    participantRemoved = channelID ? {channelID, expiresAt: Date.now() + PARTICIPANT_REMOVED_TTL_MS} : undefined;
+}
+
+function getParticipantRemovedChannelID() {
+    if (participantRemoved && Date.now() >= participantRemoved.expiresAt) {
+        participantRemoved = undefined;
+    }
+    return participantRemoved?.channelID ?? '';
 }
 
 const CONFIG_FETCH_MIN_DELAY_MS = 1_000;
@@ -110,8 +119,10 @@ export function handleConfigChanged(store: Store) {
 // state mutating operations.
 export function handleCallEnd(store: Store, ev: WebSocketMessage<CallEndData>) {
     const channelID = ev.data.channelID || ev.broadcast.channel_id;
+    const callID = ev.data.call_id ?? '';
+    leaveCallEndedByServer(store, channelID, callID);
     store.dispatch(callEnd(channelID));
-    handlePhoneCallEnd(store, ev.data.call_id ?? '', ev.data.reason);
+    handlePhoneCallEnd(store, callID, ev.data.reason);
 }
 
 // NOTE: it's important this function is kept synchronous in order to guarantee the order of
@@ -227,20 +238,6 @@ export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScree
     store.dispatch(userScreenUnshared(channelID, ev.data.session_id, ev.data.userID));
 }
 
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleUserRaisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch(userRaisedHand(channelID, ev.data.session_id, ev.data.userID, ev.data.raised_hand));
-}
-
-// NOTE: it's important this function is kept synchronous in order to guarantee the order of
-// state mutating operations.
-export function handleUserUnraisedHand(store: Store, ev: WebSocketMessage<UserRaiseUnraiseHandData>) {
-    const channelID = ev.data.channelID || ev.broadcast.channel_id;
-    store.dispatch(userLoweredHand(channelID, ev.data.session_id, ev.data.userID));
-}
-
 // dispatchReaction stores a reaction (with the sender's display name resolved from the
 // current call's profiles) in Redux and schedules its removal after the standard timeout.
 // Shared by the plugin-WS handler and the LiveKit data-message bridge so both transports
@@ -334,11 +331,11 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
 
     // channelIDForCurrentCall reads window.callsClient?.channelID, which may already
     // be deleted when user_removed arrives after a LiveKit PARTICIPANT_REMOVED kick.
-    // participantRemovedChannelID is set in that case and survives the disconnect.
+    // The saved eviction channel is set in that case and survives the disconnect.
     const currentCallChannelID = channelIDForCurrentCall(store.getState()) ||
-        participantRemovedChannelID;
+        getParticipantRemovedChannelID();
     if (removedUserID === currentUserID && channelID === currentCallChannelID) {
-        participantRemovedChannelID = '';
+        setParticipantRemovedChannelID('');
         const errorMessage = removerUserID === currentUserID ? userLeftChannelErr : userRemovedFromChannelErr;
         store.dispatch(displayCallErrorModal(errorMessage, channelID));
         getCallsClient()?.disconnect();

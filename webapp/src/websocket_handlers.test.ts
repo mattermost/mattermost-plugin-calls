@@ -6,7 +6,7 @@ import {BaseWebSocketMessage} from '@mattermost/client';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {callEnd, displayCallErrorModal, getCallsConfig, joinUser, leaveUser} from 'src/actions';
 import {HostRemovedYouFromCallErr, userLeftChannelErr, userRemovedFromChannelErr} from 'src/components/error_modal/error_messages';
-import {handlePhoneCallEnd} from 'src/phone_call';
+import {handlePhoneCallEnd, leaveCallEndedByServer} from 'src/phone_call';
 import {CallEndData, CallPostStatus} from 'src/types/types';
 
 import {channelIDForCurrentCall} from './selectors';
@@ -24,6 +24,7 @@ jest.mock('src/actions', () => ({
 }));
 jest.mock('src/phone_call', () => ({
     handlePhoneCallEnd: jest.fn(),
+    leaveCallEndedByServer: jest.fn(),
 }));
 jest.mock('./selectors', () => ({
     channelIDForCurrentCall: jest.fn(),
@@ -50,6 +51,7 @@ const mockedLeaveUser = leaveUser as unknown as jest.Mock;
 const mockedHasLiveCallClient = hasLiveCallClient as jest.Mock;
 const mockedCallEnd = callEnd as unknown as jest.Mock;
 const mockedHandlePhoneCallEnd = handlePhoneCallEnd as jest.Mock;
+const mockedLeaveCallEndedByServer = leaveCallEndedByServer as jest.Mock;
 
 describe('websocket_handlers', () => {
     const makeStore = () => ({
@@ -73,6 +75,18 @@ describe('websocket_handlers', () => {
             expect(mockedCallEnd).toHaveBeenCalledWith('bot-dm');
             expect(store.dispatch).toHaveBeenCalledWith(mockedCallEnd.mock.results[0].value);
             expect(mockedHandlePhoneCallEnd).toHaveBeenCalledWith(store, 'call-id', CallPostStatus.Declined);
+        });
+
+        it('leaves the ended call before the store drops its call ID', () => {
+            const store = makeStore();
+
+            handleCallEnd(store as never, {
+                data: {channelID: '', call_id: 'call-id'},
+                broadcast: {channel_id: 'bot-dm'},
+            } as unknown as WebSocketMessage<CallEndData>);
+
+            expect(mockedLeaveCallEndedByServer).toHaveBeenCalledWith(store, 'bot-dm', 'call-id');
+            expect(mockedLeaveCallEndedByServer.mock.invocationCallOrder[0]).toBeLessThan(store.dispatch.mock.invocationCallOrder[0]);
         });
     });
 
@@ -178,6 +192,31 @@ describe('websocket_handlers', () => {
                 remover_id: 'admin',
             }));
             expect(mockedDisplayCallErrorModal).toHaveBeenCalledTimes(1);
+        });
+
+        it('eviction with no user_removed after it: a later removal does not show the error modal', () => {
+            jest.useFakeTimers();
+            try {
+                mockedGetCurrentUserId.mockReturnValue('me');
+                mockedChannelIDForCurrentCall.mockReturnValue('');
+                const disconnect = jest.fn();
+                mockedGetCallsClient.mockReturnValue({disconnect});
+                const store = makeStore();
+
+                setParticipantRemovedChannelID('call-channel');
+                jest.advanceTimersByTime(60_000);
+
+                handleUserRemovedFromChannel(store as never, buildEvent({
+                    channel_id: 'call-channel',
+                    user_id: 'me',
+                    remover_id: 'admin',
+                }));
+
+                expect(mockedDisplayCallErrorModal).not.toHaveBeenCalled();
+                expect(disconnect).not.toHaveBeenCalled();
+            } finally {
+                jest.useRealTimers();
+            }
         });
     });
 

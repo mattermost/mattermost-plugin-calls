@@ -28,8 +28,6 @@ const (
 	wsEventCallStart                 = "call_start"
 	wsEventCallState                 = "call_state"
 	wsEventCallEnd                   = "call_end"
-	wsEventUserRaiseHand             = "user_raise_hand"
-	wsEventUserUnraiseHand           = "user_unraise_hand"
 	wsEventUserReacted               = "user_reacted"
 	wsEventJoin                      = "join"
 	wsEventError                     = "error"

@@ -26,6 +26,7 @@ const (
 	recordingCommandTrigger = "recording"
 	hostCommandTrigger      = "host"
 	logsCommandTrigger      = "logs"
+	auditCommandTrigger     = "audit"
 )
 
 var subCommands = []string{
@@ -38,6 +39,8 @@ var subCommands = []string{
 	statsCommandTrigger,
 	recordingCommandTrigger,
 	logsCommandTrigger,
+	auditCommandTrigger,
+	diagCommandTrigger,
 }
 
 func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
@@ -55,6 +58,16 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Show client-generated statistics about the call."))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately."))
 	data.AddCommand(model.NewAutocompleteData(logsCommandTrigger, "", "Show client logs."))
+	data.AddCommand(model.NewAutocompleteData(diagCommandTrigger, "", "Run Calls setup and connectivity diagnostics."))
+
+	auditCmdData := model.NewAutocompleteData(auditCommandTrigger, "", "Generate a CSV attendance report of past calls, DM'd to you.")
+	auditCmdData.AddNamedTextArgument("from", "Include calls that started on or after this date, UTC (YYYY-MM-DD)", "YYYY-MM-DD", "", false)
+	auditCmdData.AddNamedTextArgument("to", "Include calls that started on or before this date, UTC (YYYY-MM-DD)", "YYYY-MM-DD", "", false)
+	auditCmdData.AddNamedStaticListArgument("scope", "channel = current channel (default), all = every channel you can see", false, []model.AutocompleteListItem{
+		{Item: "channel", HelpText: "Only the current channel"},
+		{Item: "all", HelpText: "Every channel you're a member of (all channels for admins)"},
+	})
+	data.AddCommand(auditCmdData)
 
 	recordingCmdData := model.NewAutocompleteData(recordingCommandTrigger, "", "Manage calls recordings")
 	recordingCmdData.AddTextArgument("Available options: start, stop", "", "start|stop")
@@ -226,8 +239,16 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 		}, nil
 	}
 
+	if subCmd == diagCommandTrigger {
+		return buildCommandResponse(p.handleDiagCommand(args, fields))
+	}
+
 	if subCmd == recordingCommandTrigger {
 		return buildCommandResponse(p.handleRecordingCommand(fields))
+	}
+
+	if subCmd == auditCommandTrigger {
+		return buildCommandResponse(p.handleAuditCommand(args, fields))
 	}
 
 	if subCmd == hostCommandTrigger && p.licenseChecker.HostControlsAllowed() {

@@ -5,9 +5,11 @@ package main
 
 import (
 	"context"
+	"crypto/fips140"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -40,6 +42,7 @@ const (
 	errIDOutboundNotConfigured = "outbound_not_configured"
 	errIDSIPNumberNotAllowed   = "sip_number_not_allowed"
 	errIDSIPTeamNotAllowed     = "sip_team_not_allowed"
+	errIDSIPLicenseRequired    = "sip_license_required"
 	errIDCallInProgress        = "call_in_progress"
 	errIDNoActiveCall          = "no_active_call"
 	errIDDialFailed            = "dial_failed"
@@ -68,6 +71,7 @@ func (p *Plugin) handleGetVersion(w http.ResponseWriter, _ *http.Request) {
 	info := public.VersionInfo{
 		Version: manifest.Version,
 		Build:   buildHash,
+		FIPS:    fips140.Enabled(),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -792,6 +796,14 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 
 	displayLabel := truncateRunes(strings.TrimSpace(req.DisplayLabel), phoneDisplayLabelMaxLen)
 
+	if !p.licenseChecker.SIPOutboundAllowed() {
+		p.LogWarn("outbound dialing requires an Enterprise Advanced license", "userID", userID)
+		res.Err = "outbound dialing requires an Enterprise Advanced license"
+		res.ErrID = errIDSIPLicenseRequired
+		res.Code = http.StatusForbidden
+		return
+	}
+
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
 		res.Err = "outbound dialing is disabled. Enable it in the admin console."
 		res.ErrID = errIDOutboundDisabled
@@ -995,6 +1007,15 @@ func (p *Plugin) handleAddPhoneCall(w http.ResponseWriter, r *http.Request) {
 		setInvalidNumberResponse(&res, req.Number, err)
 		return
 	}
+
+	if !p.licenseChecker.SIPOutboundAllowed() {
+		p.LogWarn("outbound dialing requires an Enterprise Advanced license", "userID", userID)
+		res.Err = "outbound dialing requires an Enterprise Advanced license"
+		res.ErrID = errIDSIPLicenseRequired
+		res.Code = http.StatusForbidden
+		return
+	}
+
 	if cfg.EnableSIPOutbound == nil || !*cfg.EnableSIPOutbound {
 		res.Err = "outbound dialing is disabled. Enable it in the admin console."
 		res.ErrID = errIDOutboundDisabled
@@ -1137,8 +1158,16 @@ func (p *Plugin) handleEnv(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 
 	p.configurationLock.Lock()
-	defer p.configurationLock.Unlock()
-	if err := json.NewEncoder(w).Encode(p.configEnvOverrides); err != nil {
+	overrides := maps.Clone(p.configEnvOverrides)
+	p.configurationLock.Unlock()
+
+	for _, key := range secretSettingKeys {
+		if v, ok := overrides[key]; ok {
+			overrides[key] = maskSecret(v)
+		}
+	}
+
+	if err := json.NewEncoder(w).Encode(overrides); err != nil {
 		return fmt.Errorf("error encoding config env overrides: %w", err)
 	}
 
@@ -1417,6 +1446,7 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 	event, err := webhook.ReceiveWebhookEvent(r, auth.NewSimpleKeyProvider(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret))
 	if err != nil {
 		p.LogError("handleLiveKitWebhook: failed to verify webhook", "err", err.Error())
+		p.recordDiagBadSignature()
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -1441,6 +1471,13 @@ func (p *Plugin) handleLiveKitWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	p.LogInfo("handleLiveKitWebhook: received event", fields...)
+
+	// /call diag probe rooms are not real calls; record and stop.
+	if _, ok := parseSelftestRoom(event.GetRoom().GetName()); ok {
+		p.recordDiagWebhook(event)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	switch event.GetEvent() {
 	case webhook.EventParticipantJoined:
@@ -1523,6 +1560,32 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 		return
 	}
 
+	// Record the SIP participant in the audit as a "phone" identity. This handler
+	// runs for every SIP join: the callee of an outbound phone call (the human
+	// caller was already recorded via addUserSession) and inbound SIP participants,
+	// which otherwise never appear in calls_participants. The identity is the E.164
+	// number, derived from the participant identity ("sip:" + E.164, set by the
+	// outbound dial); for an outbound call it's cross-checked against
+	// Props.PhoneNumber. Leave is left to the call-end backstop, matching how SIP
+	// leaves are handled everywhere else. Non-fatal: a failure is logged, like the
+	// other audit writes.
+	number := strings.TrimPrefix(identity, "sip:")
+	if number == "" {
+		// No usable identity to key the row on (identity is part of the primary
+		// key); skip rather than write a blank-identity junk row.
+		p.LogWarn("handleLiveKitSIPParticipantJoined: empty SIP identity, skipping audit record",
+			"channelID", channelID, "identity", identity)
+	} else {
+		if propsNumber := state.Call.Props.PhoneNumber; propsNumber != "" && number != propsNumber {
+			p.LogWarn("handleLiveKitSIPParticipantJoined: SIP identity number differs from call's PhoneNumber",
+				"channelID", channelID, "identityNumber", number, "propsNumber", propsNumber)
+		}
+		if err := p.store.RecordParticipantJoin(state.Call.ID, public.IdentityTypePhone, number, session.JoinAt); err != nil {
+			p.LogError("calls audit: failed to record SIP participant join",
+				"channelID", channelID, "number", number, "err", err.Error())
+		}
+	}
+
 	if hostChanged {
 		p.setCallHost(state, channelID, newHostID)
 		p.publishWebSocketEvent(wsEventCallHostChanged, map[string]interface{}{
@@ -1565,7 +1628,9 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 	identity := participant.Identity
 
 	p.LogDebug("handleLiveKitSIPParticipantLeft: SIP participant left",
-		"channelID", channelID, "sid", sid, "identity", identity)
+		"channelID", channelID, "sid", sid, "identity", identity,
+		"disconnectReason", participant.GetDisconnectReason().String(),
+		"callStatus", participant.GetAttributes()[livekit.AttrSIPCallStatus])
 
 	state, err := p.lockCallReturnState(channelID)
 	if err != nil {
@@ -1595,7 +1660,9 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 	// participant hangs up, end the call so the remaining MM user is dropped too.
 	if !sipParticipantsRemain(state.sessions) && p.isPhoneCallChannel(channelID) {
 		p.LogInfo("handleLiveKitSIPParticipantLeft: last SIP participant left phone call, ending call",
-			"channelID", channelID, "callID", state.Call.ID)
+			"channelID", channelID, "callID", state.Call.ID,
+			"disconnectReason", participant.GetDisconnectReason().String(),
+			"callStatus", participant.GetAttributes()[livekit.AttrSIPCallStatus])
 
 		// Tear down the media room so the MM user's client disconnects, mirroring
 		// the host-end path; clients also get wsEventCallEnd as a fallback.
@@ -1610,7 +1677,8 @@ func (p *Plugin) handleLiveKitSIPParticipantLeft(event *livekit.WebhookEvent) {
 
 		p.cancelSIPNoAnswerTimer(channelID)
 
-		endReason := phoneLegEndReason(participant.GetDisconnectReason())
+		answered := participant.GetAttributes()[livekit.AttrSIPCallStatus] == sipCallStatusActive
+		endReason := phoneLegEndReason(participant.GetDisconnectReason(), answered)
 		p.publishCallEnd(channelID, state.Call.ID, endReason)
 
 		if err := p.cleanCallState(&state.Call, "sip_hangup", endReason); err != nil {

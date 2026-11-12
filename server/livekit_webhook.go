@@ -136,6 +136,12 @@ func (p *Plugin) handleLiveKitParticipantJoined(event *livekit.WebhookEvent) {
 
 	// Participants feeds the call post's attendee list, so the bot is excluded
 	// even though it holds a session — matching addUserSession.
+	//
+	// Audit attendance (RecordParticipantJoin) is recorded in addUserSession, the
+	// chokepoint every user join path funnels through (WebSocket, REST token
+	// endpoint, phone caller). Recording it here too would miss the WebSocket-only
+	// join path and double-write on the normal path, so it deliberately lives there,
+	// not here. The SIP (phone) callee is recorded in handleLiveKitSIPParticipantJoined.
 	if !p.isBot(userID) {
 		if state.Call.Props.Participants == nil {
 			state.Call.Props.Participants = map[string]struct{}{}
@@ -247,6 +253,28 @@ func (p *Plugin) removeParticipantSession(channelID, userID, sessionID, sid stri
 		return
 	}
 	delete(state.sessions, sessionID)
+
+	// Durable attendance timestamp for audit reporting. Synchronous and idempotent
+	// (keeps the latest leave per user). A failed write is logged, not fatal: the
+	// call-end backstop stamps a leave time for anyone still unrecorded.
+	//
+	// SIP (phone) callees are intentionally skipped here: their join is recorded in
+	// handleLiveKitSIPParticipantJoined and their leave comes from the call-end
+	// backstop (= call end time), since the server never observes the phone
+	// answering. See removeUserSession for the full rationale.
+	if !p.isBot(userID) && !session.IsSIPParticipant {
+		leaveAt := nowMillis()
+		if err := p.store.RecordParticipantLeave(state.Call.ID, public.IdentityTypeUser, userID, leaveAt); err != nil {
+			p.LogError("calls audit: failed to record participant leave",
+				"callID", state.Call.ID, "userID", userID, "err", err.Error())
+		}
+		p.LogInfo("calls audit: participant left",
+			"event", "participant_left",
+			"callID", state.Call.ID,
+			"channelID", channelID,
+			"userID", userID,
+			"leaveAt", time.UnixMilli(leaveAt).UTC().Format(time.RFC3339))
+	}
 
 	// A session that never confirmed was never announced, so there is nothing to
 	// retract and nobody expecting a user_left for it.
@@ -380,6 +408,26 @@ func (p *Plugin) handleLiveKitRoomFinished(event *livekit.WebhookEvent) {
 	// sessions go, while the job's bot session is still visible in state.
 	p.stopOngoingJobs(state, channelID)
 
+	// Record a leave for anyone still in the room: their individual
+	// participant_left never arrived, which is why we're here. Synchronous writes;
+	// endEmptyCall's backstop covers anyone this misses.
+	roomFinishedAt := nowMillis()
+	for _, sess := range state.sessions {
+		if p.isBot(sess.UserID) || sess.IsSIPParticipant {
+			continue
+		}
+		if err := p.store.RecordParticipantLeave(state.Call.ID, public.IdentityTypeUser, sess.UserID, roomFinishedAt); err != nil {
+			p.LogError("calls audit: failed to record participant leave",
+				"callID", state.Call.ID, "userID", sess.UserID, "err", err.Error())
+		}
+		p.LogInfo("calls audit: participant left",
+			"event", "participant_left",
+			"callID", state.Call.ID,
+			"channelID", channelID,
+			"userID", sess.UserID,
+			"leaveAt", time.UnixMilli(roomFinishedAt).UTC().Format(time.RFC3339))
+	}
+
 	if _, err := p.store.DeleteCallsSessions(state.Call.ID); err != nil {
 		p.LogError("handleLiveKitRoomFinished: failed to delete calls sessions",
 			"channelID", channelID, "err", err.Error())
@@ -402,6 +450,11 @@ func (p *Plugin) endEmptyCall(state *callState, channelID, reason string) {
 	endReason := p.resolveCallEndReason(state, participants, channelID)
 
 	setCallEnded(&state.Call)
+
+	// Completeness backstop: guarantee every attendee has a durable leave time and
+	// every screen share a durable stop time.
+	p.recordLeaveBackstop(&state.Call)
+	p.recordScreenShareBackstop(&state.Call)
 
 	// A DM/phone call may still have no-answer timers pending against it.
 	p.cancelDMNoAnswerTimer(channelID)
@@ -486,6 +539,23 @@ func (p *Plugin) handleLiveKitTrackPublished(event *livekit.WebhookEvent) {
 	state.Call.Props.ScreenSharingSessionID = sessionID
 	state.Call.Props.ScreenStartAt = time.Now().Unix()
 
+	// Durable screen-share segment for audit reporting. Synchronous and idempotent
+	// (one row per callID+sessionID+startAt). A failed write is logged, not fatal:
+	// the call-end backstop closes any segment left open. Bots never publish a
+	// screen-share track, so no bot guard is needed here.
+	screenStartAt := nowMillis()
+	if err := p.store.RecordScreenShareStart(state.Call.ID, userID, sessionID, screenStartAt); err != nil {
+		p.LogError("calls audit: failed to record screen share start",
+			"callID", state.Call.ID, "userID", userID, "err", err.Error())
+	}
+	p.LogInfo("calls audit: screen share started",
+		"event", "screen_share_started",
+		"callID", state.Call.ID,
+		"channelID", channelID,
+		"userID", userID,
+		"sessionID", sessionID,
+		"startAt", time.UnixMilli(screenStartAt).UTC().Format(time.RFC3339))
+
 	if err := p.store.UpdateCall(&state.Call); err != nil {
 		p.LogError("handleLiveKitTrackPublished: failed to update call", "channelID", channelID, "err", err.Error())
 		return
@@ -555,6 +625,24 @@ func (p *Plugin) clearScreenSharingState(state *callState, channelID, sessionID,
 	}
 	state.Call.Props.ScreenSharingSessionID = ""
 	state.Call.Props.ScreenStartAt = 0
+
+	// Close the durable screen-share segment for audit reporting. This is the single
+	// chokepoint for a share ending (track unpublished, or the sharer leaving), so
+	// it is where the stop is recorded. Synchronous and idempotent (only the open
+	// segment is touched); a failed write is logged, not fatal, since the call-end
+	// backstop closes any segment left open.
+	stopAt := nowMillis()
+	if err := p.store.RecordScreenShareStop(state.Call.ID, sessionID, stopAt); err != nil {
+		p.LogError("calls audit: failed to record screen share stop",
+			"callID", state.Call.ID, "sessionID", sessionID, "err", err.Error())
+	}
+	p.LogInfo("calls audit: screen share stopped",
+		"event", "screen_share_stopped",
+		"callID", state.Call.ID,
+		"channelID", channelID,
+		"userID", userID,
+		"sessionID", sessionID,
+		"stopAt", time.UnixMilli(stopAt).UTC().Format(time.RFC3339))
 
 	p.publishWebSocketEvent(wsEventUserScreenOff, map[string]interface{}{
 		"userID":     userID,

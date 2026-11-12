@@ -13,11 +13,61 @@ permissions:
 
 jobs:
   plugin-ci:
-    uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@6e3b523f38c8286c412fe5bef5261841e82f9dc7
+    uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@272673760d066687d90a736efe61ed68c8644e2e
     with:
-      golangci-lint-version: "v2.11.4"
+      golangci-lint-version: "v2.15.0"
       go-version-file: .go-version
     secrets: inherit
+
+  dist-fips:
+    # Fork PRs don't get the Chainguard identity secret.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+      - name: Build and verify FIPS bundle
+        uses: mattermost/actions/plugin-ci/build-fips@ec00f39dab9ee31b6dc7f36671d5c8afcf74cc54
+        with:
+          chainguard-identity: ${{ secrets.CHAINGUARD_IDENTITY }}
+      - name: Upload FIPS bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: calls-bundle-fips-${{ github.event.pull_request.head.sha || github.sha }}
+          path: dist-fips/*.tar.gz
+          retention-days: 7
+
+  test-fips:
+    # Fork PRs don't get the Chainguard identity secret.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+      - name: Log in to Chainguard
+        uses: chainguard-dev/setup-chainctl@67a753db49c7e97fed4c76fbe809b1339b11facf
+        with:
+          identity: ${{ secrets.CHAINGUARD_IDENTITY }}
+      - name: Run Go tests with the FIPS toolchain
+        run: make test-fips
 
   code-coverage:
     runs-on: ubuntu-latest
@@ -63,7 +113,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.11.4
+          version: v2.15.0
           args: --timeout 5m
           working-directory: ./lt
       - name: mattermost-govet

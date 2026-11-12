@@ -242,14 +242,19 @@ func (p *Plugin) phoneCallerHangupReason(call *public.Call, channelID string) ca
 }
 
 // phoneLegEndReason maps why the SIP leg left the room onto what the call post
-// should say. Busy (486) and rejected (603) both arrive as USER_REJECTED.
-func phoneLegEndReason(reason livekit.DisconnectReason) callEndReason {
+// should say. Busy (486) and rejected (603) both arrive as USER_REJECTED. A
+// trunk failure after the callee answered is a dropped call, not one that
+// couldn't be placed.
+func phoneLegEndReason(reason livekit.DisconnectReason, answered bool) callEndReason {
 	switch reason {
 	case livekit.DisconnectReason_USER_REJECTED:
 		return callEndReasonDeclined
 	case livekit.DisconnectReason_USER_UNAVAILABLE:
 		return callEndReasonNoAnswer
 	case livekit.DisconnectReason_SIP_TRUNK_FAILURE:
+		if answered {
+			return callEndReasonNormal
+		}
 		return callEndReasonFailed
 	default:
 		return callEndReasonNormal
@@ -301,14 +306,33 @@ func (p *Plugin) handleSIPNoAnswerTimer(channelID string, entry *sipNoAnswerTime
 		return
 	}
 
+	// The listing above predates the lock, and the callee or caller may have
+	// connected while this waited for it. Check again before hanging up, and
+	// retry later rather than act on the older listing if that fails.
+	if !sipCalleeAnswered(participants) || !p.phoneCallerConnected(state, participants) {
+		fresh, err := p.livekitListParticipants(channelID)
+		if err != nil {
+			p.LogError("handleSIPNoAnswerTimer: failed to re-list participants, will retry",
+				"channelID", channelID, "callID", callID, "err", err.Error())
+			p.retrySIPNoAnswerTimer(channelID, entry)
+			return
+		}
+		participants = fresh
+	}
+
 	p.clearSIPNoAnswerTimer(channelID, entry)
 
 	var reason string
 	var endReason callEndReason
 	switch {
 	case !p.phoneCallerConnected(state, participants):
-		// The caller never connected, so nothing was dialed or announced.
 		reason, endReason = "sip_caller_not_connected", callEndReasonFailed
+		// A pending dial means nothing reached the phone, so there is no failure
+		// to report: the caller's client gave up or never opened (e.g. a closed
+		// Desktop widget).
+		if state.Call.Props.DialSessionID != "" {
+			endReason = callEndReasonCanceledByCaller
+		}
 	case !sipCalleeAnswered(participants):
 		reason, endReason = "sip_no_answer", callEndReasonNoAnswer
 	default:

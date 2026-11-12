@@ -545,8 +545,11 @@ export const liveCaptionsEnabled = (state: GlobalState) =>
 export const recordingMaxDuration = (state: GlobalState) =>
     callsConfig(state).MaxRecordingDuration;
 
+export const sipOutboundAllowed = (state: GlobalState): boolean => callsConfig(state).SIPOutboundAllowed;
+
+// Dialing is only available when enabled by the admin and permitted by the license.
 export const sipOutboundEnabled = (state: GlobalState) =>
-    callsConfig(state).EnableSIPOutbound;
+    callsConfig(state).EnableSIPOutbound && sipOutboundAllowed(state);
 
 export const sipOutboundAllowlistEnabled = (state: GlobalState): boolean =>
     callsConfig(state).EnableSIPOutboundAllowlist || false;
@@ -658,6 +661,11 @@ export const callsUserPreferences = (state: GlobalState): CallsUserPreferences =
 
 export const shouldPlayJoinUserSound = (state: GlobalState): boolean =>
     profilesInCurrentCall(state).length < callsUserPreferences(state).joinSoundParticipantsThreshold;
+
+// Follows the server's own SIP license check, so developer mode counts as allowed.
+export const isOnPremSIPOutboundRestricted = (state: GlobalState): boolean => {
+    return !isCloud(state) && !sipOutboundAllowed(state);
+};
 
 export const isOnPremNotEnterprise = (state: GlobalState): boolean => {
     const license = getLicense(state);

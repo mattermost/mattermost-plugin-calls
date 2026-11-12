@@ -18,10 +18,25 @@ import {CALL_EVENT} from 'src/clients/call/constants';
 import type {LiveKitSessionResponse} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import {logErr, logWarn} from 'src/log';
-import {channelIDForCurrentCall, clientConnecting, defaultEnabled, sipOutboundEnabled} from 'src/selectors';
+import {toSIPCallStatus} from 'src/phone_utils';
+import {
+    channelIDForCurrentCall,
+    clientConnecting,
+    defaultEnabled,
+    getCallIDForChannel,
+    sipOutboundEnabled,
+} from 'src/selectors';
+import {sipCallStatusChanged} from 'src/state/sip_call_state/actions';
 import type {Store} from 'src/types/mattermost-webapp';
 import {CallPostStatus} from 'src/types/types';
-import {getPluginPath, isCallsPopOut, isMobile, shouldRenderDesktopWidget} from 'src/utils';
+import {
+    getCallsClient,
+    getPluginPath,
+    isCallsPopOut,
+    isMobile,
+    sendDesktopEvent,
+    shouldRenderDesktopWidget,
+} from 'src/utils';
 
 export type PhoneCallResponse = LiveKitSessionResponse & {
     call_id: string;
@@ -75,6 +90,7 @@ const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
     ['sip_number_not_allowed', defineMessage({defaultMessage: 'Calling this number isn\'t permitted.'})],
     ['sip_team_not_allowed', defineMessage({defaultMessage: 'You don\'t have permission to place phone calls.'})],
     ['outbound_disabled', OUTBOUND_UNAVAILABLE_MESSAGE],
+    ['sip_license_required', defineMessage({defaultMessage: 'Phone calls require an Enterprise Advanced license. Contact your system admin.'})],
     ['outbound_not_configured', OUTBOUND_UNAVAILABLE_MESSAGE],
     ['call_in_progress', defineMessage({defaultMessage: 'You\'re already on a phone call.'})],
     ['invalid_target', INVALID_TARGET_MESSAGE],
@@ -83,12 +99,18 @@ const SERVER_ERROR_MESSAGES = new Map<string, MessageDescriptor>([
 // The phone call this window placed whose outcome it hasn't shown yet. Only the
 // window that placed a call tells the caller how it ended, and only once.
 let unreportedCallID = '';
+let unreportedChannelID = '';
+
+// Clients leaving a call the server has already ended, so watchPhoneCall
+// doesn't ask the server to end it again.
+const clientsLeavingEndedCall = new WeakSet<CallClient>();
 
 function claimCallOutcome(callID: string) {
     if (!callID || callID !== unreportedCallID) {
         return false;
     }
     unreportedCallID = '';
+    unreportedChannelID = '';
     return true;
 }
 
@@ -128,6 +150,59 @@ export function handlePhoneCallEnd(store: Store, callID: string, reason?: CallPo
     if (outcome) {
         store.dispatch(displayGenericErrorModal(outcome.title, outcome.message));
     }
+}
+
+// The client normally leaves an ended call when LiveKit deletes the room. It misses
+// that if the delete fails, or if it finishes joining after the delete and lands in
+// an empty room LiveKit recreated, which leaves it stuck in a call that's gone.
+// Must run before call_end is applied to the store, which drops the call's ID.
+export function leaveCallEndedByServer(store: Store, channelID: string, callID: string) {
+    if (!callID || isCallsPopOut()) {
+        return;
+    }
+
+    const state = store.getState();
+    const isPlacedCall = callID === unreportedCallID && channelID === unreportedChannelID;
+    if (!isPlacedCall && getCallIDForChannel(state, channelID) !== callID) {
+        return;
+    }
+
+    const client = getCallsClient();
+    if (client) {
+        if (client.channelID === channelID) {
+            clientsLeavingEndedCall.add(client);
+            client.disconnect();
+        }
+        return;
+    }
+
+    // The Desktop widget's channel is only known here once it has connected, so a
+    // widget still connecting is matched by the phone call this window placed.
+    const currentChannelID = channelIDForCurrentCall(state);
+    if (currentChannelID ? currentChannelID !== channelID : !isPlacedCall) {
+        return;
+    }
+
+    if (window.desktopAPI?.leaveCall) {
+        window.desktopAPI.leaveCall();
+    } else if (shouldRenderDesktopWidget()) {
+        // DEPRECATED: legacy Desktop API logic (<= 5.6.0)
+        sendDesktopEvent('calls-leave-call', {callID: channelID});
+    }
+}
+
+// The Desktop widget reports a failure only to the window that placed the call.
+// Left alone, the server keeps the call until its no-answer timer, refusing a
+// redial and then reporting it as failed on top of the widget's own error.
+export function endPhoneCallAfterDesktopError(channelID?: string) {
+    if (!unreportedCallID || (channelID && channelID !== unreportedChannelID)) {
+        return;
+    }
+
+    const callChannelID = unreportedChannelID;
+    unreportedCallID = '';
+    unreportedChannelID = '';
+    hostEndCallForEveryone(callChannelID).catch((err) => logErr('failed to end phone call after Desktop error', err));
 }
 
 export function placePhoneCall(number: string, target?: PhoneCallTarget) {
@@ -213,16 +288,10 @@ export function openInOSDialer(href: string) {
     window.open(href, '_blank', 'noreferrer');
 }
 
-// The Desktop app joins calls from a separate widget window that creates its
-// own session, so it can't use the session /phone-call returns.
-function joinsInDesktopWidget() {
-    return Boolean(window.desktopAPI?.joinCall) || shouldRenderDesktopWidget();
-}
-
-// Whether this window can place a phone call itself. Mobile is left out of
+// Whether this window can place a phone call. Mobile is left out of
 // telLinkInterceptionSupported only so tel: links reach the phone's own dialer.
 export function phoneDialingSupported() {
-    return !joinsInDesktopWidget() && !isCallsPopOut();
+    return !isCallsPopOut();
 }
 
 export function telLinkInterceptionSupported() {
@@ -279,11 +348,6 @@ export async function dialPhoneNumber(
         return;
     }
 
-    if (joinsInDesktopWidget()) {
-        showError(defineMessage({defaultMessage: 'Phone calls aren\'t supported in the desktop app yet.'}));
-        return;
-    }
-
     if (clientConnecting(state)) {
         return;
     }
@@ -297,12 +361,23 @@ export async function dialPhoneNumber(
         logErr('failed to place phone call', err);
         store.dispatch(setClientConnecting(false));
 
-        // The config is only fetched on load, so an admin may have turned dialing off since.
-        // A missing trunk always shows the error, even for tel: links, so admins notice it.
-        if ((err as Partial<ClientError> | undefined)?.server_error_id === 'outbound_disabled') {
+        // The config is only fetched on load, so an admin may have turned dialing off, or the
+        // license may have lapsed, since. A missing trunk always shows the error, even for tel:
+        // links, so admins notice it.
+        const serverErrorID = (err as Partial<ClientError> | undefined)?.server_error_id;
+        if (serverErrorID === 'outbound_disabled') {
             store.dispatch(getCallsConfig());
             handleOutboundUnavailable();
             return;
+        }
+
+        // Direct dialing keeps the license-specific message; tel: links fall back to the OS dialer.
+        if (serverErrorID === 'sip_license_required') {
+            store.dispatch(getCallsConfig());
+            if (onOutboundUnavailable) {
+                onOutboundUnavailable();
+                return;
+            }
         }
 
         showError(phoneCallErrorMessage(err));
@@ -310,6 +385,7 @@ export async function dialPhoneNumber(
     }
 
     unreportedCallID = session.call_id;
+    unreportedChannelID = session.channel_id;
 
     await store.dispatch(getChannelAction(session.channel_id));
     connect(session.channel_id, session);
@@ -339,10 +415,21 @@ export function registerTelLinkDialing(store: Store, connect: ConnectPhoneCall) 
     };
 }
 
+export function trackSIPCallStatus(store: Store, client: CallClient) {
+    const onStatus = (status: string) => {
+        const sipStatus = toSIPCallStatus(status);
+        if (sipStatus) {
+            store.dispatch(sipCallStatusChanged(client.channelID, sipStatus));
+        }
+    };
+    client.on(CALL_EVENT.SIP_STATUS_CHANGED, onStatus);
+    client.on(CALL_EVENT.SIP_LEFT, onStatus);
+}
+
 // Ends the phone call once the caller's client leaves it or never joins it. The
 // server dials only after the caller has joined and ends the call itself when the
 // phone leg fails or leaves, so there is nothing to watch for on the phone side.
-export function watchPhoneCall(client: CallClient, channelID: string, connecting: Promise<void>) {
+export function watchPhoneCall(client: CallClient, channelID: string, callID: string, connecting: Promise<void>) {
     let ended = false;
 
     const endPhoneCall = () => {
@@ -350,7 +437,10 @@ export function watchPhoneCall(client: CallClient, channelID: string, connecting
             return;
         }
         ended = true;
-        hostEndCallForEveryone(channelID).catch((err) => logErr('failed to end phone call', err));
+        if (clientsLeavingEndedCall.has(client)) {
+            return;
+        }
+        hostEndCallForEveryone(channelID, callID).catch((err) => logErr('failed to end phone call', err));
     };
 
     // connect resolves without joining when the caller cancels mid-connect.

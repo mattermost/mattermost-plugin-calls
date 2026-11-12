@@ -115,7 +115,7 @@
             "display_name": "Enable outbound phone dialing",
             "type": "bool",
             "default": false,
-            "help_text": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a SIP outbound trunk.",
+            "help_text": "When set to true, users can dial external phone numbers via LiveKit SIP. Requires a SIP outbound trunk and an Enterprise Advanced license.",
             "hosting": "on-prem"
           },
           {
@@ -340,6 +340,7 @@
             "key": "TranscribeAPIAzureSpeechKey",
             "display_name": "Azure API Key",
             "type": "text",
+            "secret": true,
             "help_text": "The API key for Azure Speech Services",
             "default": "",
             "hosting": "on-prem"
@@ -419,6 +420,6 @@
   "props": {
     "min_offloader_version": "v0.9.0",
     "calls_recorder_version": "v0.8.13",
-    "calls_transcriber_version": "v1.0.0"
+    "calls_transcriber_version": "v1.0.1"
   }
 }

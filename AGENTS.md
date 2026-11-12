@@ -50,6 +50,8 @@ Each has a matching `-stop` target.
 
 Go and Node versions are pinned in `.go-version` and `.nvmrc`; read them rather than assuming a version. `goenv install` and `nvm use` in the repo root pick up the right ones.
 
+Bumping Go means updating `.go-version` and the `go` directive in all four modules (`go.mod`, `build/go.mod`, `lt/go.mod`, `server/public/go.mod`) together, plus the `FIPS_IMAGE` tag in `build/fips.mk`. Check that the image exists first, using the tag-listing recipe in `build/fips.mk`: `cgr.dev/mattermost.com/go-openssl-fips` lags behind upstream Go, and the FIPS build fails instead of falling back when the image's Go is older than `go.mod`. Set the new tag without a digest, let the `dist-fips` CI job pull it, then pin the digest CI resolves. A newer Go can also need a newer golangci-lint, which is pinned twice in `.github/workflows/ci.yml`.
+
 ## Conventions
 
 - Every new Go and TypeScript source file starts with the license header:

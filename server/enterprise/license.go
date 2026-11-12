@@ -31,6 +31,11 @@ func (e *LicenseChecker) isAtLeastEnterpriseLicensed() bool {
 	return license.IsMinimumEnterpriseLicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
 }
 
+// isAtLeastEnterpriseAdvancedLicensed returns true when the server either has an Enterprise Advanced license or is configured for development.
+func (e *LicenseChecker) isAtLeastEnterpriseAdvancedLicensed() bool {
+	return license.IsMinimumEnterpriseAdvancedLicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
+}
+
 // isAtLeastProfessionalLicensed returns true when the server either has at least a Professional License or is configured for development.
 func (e *LicenseChecker) isAtLeastProfessionalLicensed() bool {
 	return license.IsMinimumProfessionalLicensedOrDevelopment(e.api.GetConfig(), e.api.GetLicense())
@@ -46,6 +51,11 @@ func (e *LicenseChecker) RecordingsAllowed() bool {
 // the call transcriptions functionality.
 func (e *LicenseChecker) TranscriptionsAllowed() bool {
 	return e.isAtLeastEnterpriseLicensed()
+}
+
+// SIPOutboundAllowed returns true if the license allows placing outbound SIP calls.
+func (e *LicenseChecker) SIPOutboundAllowed() bool {
+	return e.isAtLeastEnterpriseAdvancedLicensed()
 }
 
 func (e *LicenseChecker) HostControlsAllowed() bool {

@@ -21,7 +21,7 @@ import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 import type CallClient from 'src/clients/call';
 import RestClient from 'src/clients/rest';
-import {STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
+import {STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
 import {CallPostStatus, CallsPostProps} from 'src/types/types';
 import {notificationSounds} from 'src/webapp_globals';
 
@@ -635,6 +635,10 @@ export function getPersistentStorage() {
 export function shareAudioWithScreen() {
     // Defaults to on when unset, so the browser surfaces its share-audio option.
     return window.localStorage.getItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN) !== 'off';
+}
+
+export function lowerHandOnUnmute() {
+    return window.localStorage.getItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE) === 'on';
 }
 
 // Ported from mattermost-redux/src/utils/browser_info.ts

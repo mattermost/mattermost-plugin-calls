@@ -285,10 +285,12 @@ export const requestOnPremTrialLicense = async (users: number, termsAccepted: bo
     }
 };
 
-export const hostEndCallForEveryone = (channelID: string) => {
+// callID restricts the request to that call, so a late request can't end a newer
+// call in the same channel.
+export const hostEndCallForEveryone = (channelID: string, callID?: string) => {
     return RestClient.fetch(
         `${getPluginPath()}/calls/${channelID}/host/end`,
-        {method: 'post'},
+        {method: 'post', body: callID ? JSON.stringify({call_id: callID}) : undefined},
     );
 };
 

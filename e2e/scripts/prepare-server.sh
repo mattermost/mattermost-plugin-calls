@@ -60,7 +60,7 @@ docker images
 echo "MM_LICENSE=${MM_PLUGIN_CALLS_TEST_LICENSE}" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_FEATUREFLAGS_BoardsProduct=true" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICEENVIRONMENT=test" >>${WORKSPACE}/dotenv/app.private.env
-echo "MM_CONFIG=postgres://mmuser:mostest@postgres/mattermost_test?sslmode=disable&connect_timeout=10&binary_parameters=yes" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CONFIG=postgres://mmuser:mostest-e2e-password@postgres/mattermost_test?sslmode=disable&connect_timeout=10&binary_parameters=yes" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICESETTINGS_SITEURL=http://mm-server:8065" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICESETTINGS_ENABLELOCALMODE=true" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_SERVICESETTINGS_ENABLEDEVELOPER=true" >>${WORKSPACE}/dotenv/app.private.env
@@ -75,7 +75,7 @@ echo "MM_CLUSTERSETTINGS_ENABLE=true" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_CLUSTERSETTINGS_CLUSTERNAME=mm_server_e2e" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_LOGSETTINGS_CONSOLELEVEL=DEBUG" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_LOGSETTINGS_FILELEVEL=DEBUG" >>${WORKSPACE}/dotenv/app.private.env
-echo "MM_SQLSETTINGS_DATASOURCE=postgres://mmuser:mostest@postgres:5432/mattermost_test?sslmode=disable&connect_timeout=10&binary_parameters=yes" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_SQLSETTINGS_DATASOURCE=postgres://mmuser:mostest-e2e-password@postgres:5432/mattermost_test?sslmode=disable&connect_timeout=10&binary_parameters=yes" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_EXPERIMENTALSETTINGS_DISABLEAPPBAR=false" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_ANNOUNCEMENTSETTINGS_USERNOTICESENABLED=false" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED=false" >>${WORKSPACE}/dotenv/app.private.env
