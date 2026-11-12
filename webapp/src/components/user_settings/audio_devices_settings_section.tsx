@@ -3,6 +3,7 @@
 
 import './user_settings.scss';
 
+import {Room} from 'livekit-client';
 import React, {forwardRef, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 import ReactSelect from 'react-select';
@@ -14,6 +15,7 @@ import {
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
 } from 'src/constants';
 import {logErr} from 'src/log';
+import type {MediaDevices} from 'src/types/types';
 
 const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectionProps>(({deviceType, devices}: DevicesSelectionProps, ref) => {
     const {formatMessage} = useIntl();
@@ -103,7 +105,8 @@ const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
 export default function AudioDevicesSettingsSection() {
     const {formatMessage} = useIntl();
     const [active, setActive] = useState(false);
-    const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+    const [devices, setDevices] = useState<MediaDevices>({inputs: [], outputs: []});
+    const [loadFailed, setLoadFailed] = useState(false);
 
     const title = formatMessage({defaultMessage: 'Audio devices'});
     const description = formatMessage({defaultMessage: 'Set up audio devices to be used for Mattermost calls'});
@@ -130,24 +133,17 @@ export default function AudioDevicesSettingsSection() {
     };
 
     const loadAudioDevices = async () => {
-        let stream;
         try {
-            // We need to ask for permissions as certain browsers (e.g. Firefox) won't give
-            // readable device labels otherwise.
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: false,
-                audio: true,
-            });
-            setDevices(await navigator.mediaDevices.enumerateDevices());
+            // getLocalDevices only asks for mic permission when device labels are hidden.
+            // Awaiting one call at a time means the browser shows at most one prompt.
+            const inputs = await Room.getLocalDevices('audioinput');
+            const outputs = await Room.getLocalDevices('audiooutput');
+            setDevices({inputs, outputs});
+            setLoadFailed(false);
         } catch (err) {
             logErr('failed to get audio devices', err);
-        } finally {
-            // We immediately stop the track as soon as we get the devices info (or error). No need
-            // to keep it around until we need to show more fancy information such as
-            // audio levels.
-            stream?.getTracks().forEach((track) => {
-                track.stop();
-            });
+            setDevices({inputs: [], outputs: []});
+            setLoadFailed(true);
         }
     };
 
@@ -204,14 +200,19 @@ export default function AudioDevicesSettingsSection() {
                         <Fieldset>
                             <AudioDevicesSelection
                                 deviceType='inputs'
-                                devices={devices.filter((device) => device.kind === 'audioinput')}
+                                devices={devices.inputs}
                                 ref={audioInputsRef}
                             />
                             <AudioDevicesSelection
                                 deviceType='outputs'
-                                devices={devices.filter((device) => device.kind === 'audiooutput')}
+                                devices={devices.outputs}
                                 ref={audioOutputsRef}
                             />
+                            {loadFailed && (
+                                <span className='devices_settings_error'>
+                                    {formatMessage({defaultMessage: 'Unable to load audio devices. Make sure a microphone is connected and that Mattermost is allowed to use it.'})}
+                                </span>
+                            )}
                             <Description>{description}</Description>
                         </Fieldset>
                     </div>
