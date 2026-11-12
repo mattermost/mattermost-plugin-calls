@@ -733,13 +733,3 @@ func TestReconcileCallSessions(t *testing.T) {
 		require.True(t, sessionExists(t, p, sessionID))
 	})
 }
-
-func filterCalls(calls []*mock.Call, method string) []*mock.Call {
-	out := calls[:0:0]
-	for _, c := range calls {
-		if c.Method != method {
-			out = append(out, c)
-		}
-	}
-	return out
-}
