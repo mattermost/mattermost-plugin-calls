@@ -334,7 +334,7 @@ test.describe('sending voice', {tag: '@livekit'}, () => {
         // the widget rendered an <audio data-testid={track.id}> for it.
         // RTCD exposed remote tracks via callsClient.streams[1]; LiveKit
         // exposes them through getRemoteVoiceTracks() (see
-        // call_client.ts:400).
+        // webapp/src/clients/call/call_client.ts).
         let voiceTrackID = await (await userPage.page.waitForFunction(() => {
             return window.callsClient.getRemoteVoiceTracks()[0]?.id;
         })).evaluate(() => {

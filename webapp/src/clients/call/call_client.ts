@@ -1287,16 +1287,10 @@ export default class CallClient extends EventEmitter {
      * - a remote participant's screen-share video starts flowing to us. The composed stream goes to the widget for `<video>` playback.
      */
     private handleRemoteTrackSubscribed(remoteTrack: RemoteTrack, _remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
-        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
+        const {userID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
 
         if (remoteTrack.source === Track.Source.Microphone || remoteTrack.source === Track.Source.ScreenShareAudio) {
             this.attachRemoteAudio(remoteTrack, userID);
-        }
-
-        if (remoteTrack.source === Track.Source.Microphone) {
-            const stream = new MediaStream([remoteTrack.mediaStreamTrack]);
-            this.emit(CALL_EVENT.REMOTE_VOICE_STREAM, stream, sessionID, userID);
-            logDebug(`CallClient: remote voice stream subscribed for user ${userID}`, this.trackSummary(remoteTrack));
         }
 
         if (remoteTrack.source === Track.Source.ScreenShare || remoteTrack.source === Track.Source.ScreenShareAudio) {
