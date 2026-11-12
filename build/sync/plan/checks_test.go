@@ -101,7 +101,7 @@ func tempGitRepo(assert *assert.Assertions) (string, *git.Repository, func()) {
 		Email: "test@example.com",
 		When:  time.Now(),
 	}
-	_, err = w.Commit("initial commit", &git.CommitOptions{Author: sig})
+	_, err = w.Commit("initial commit", &git.CommitOptions{Author: sig, AllowEmptyCommits: true})
 	assert.Nil(err)
 	pathA := "a.txt"
 	err = ioutil.WriteFile(filepath.Join(wd, pathA),
