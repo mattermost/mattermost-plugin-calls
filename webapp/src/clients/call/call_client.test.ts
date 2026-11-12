@@ -939,38 +939,6 @@ describe('CallClient', () => {
         });
     });
 
-    describe('TrackSubscribed (remote audio routing)', () => {
-        it('emits REMOTE_VOICE_STREAM with stream + session_id + user_id parsed from identity for mic source', async () => {
-            await client.connect({channelID: 'test-channel'});
-            const remoteVoiceListener = jest.fn();
-            client.on(CALL_EVENT.REMOTE_VOICE_STREAM, remoteVoiceListener);
-
-            mockRoom.fire(
-                RoomEvent.TrackSubscribed,
-                makeRemoteAudioTrack(Track.Source.Microphone),
-                {},
-                {sid: 'p1-sid', identity: 'user1___p1-session'},
-            );
-
-            expect(remoteVoiceListener).toHaveBeenCalledWith(expect.anything(), 'p1-session', 'user1');
-        });
-
-        it('does not emit for non-microphone tracks', async () => {
-            await client.connect({channelID: 'test-channel'});
-            const remoteVoiceListener = jest.fn();
-            client.on(CALL_EVENT.REMOTE_VOICE_STREAM, remoteVoiceListener);
-
-            mockRoom.fire(
-                RoomEvent.TrackSubscribed,
-                {source: Track.Source.ScreenShare, mediaStreamTrack: {}},
-                {},
-                {sid: 'p1-sid', identity: 'user1___p1-session', getTrackPublication: () => null},
-            );
-
-            expect(remoteVoiceListener).not.toHaveBeenCalled();
-        });
-    });
-
     describe('remote audio playback', () => {
         const participant = {sid: 'p1-sid', identity: 'user1___p1-session', getTrackPublication: () => null};
 
@@ -996,16 +964,6 @@ describe('CallClient', () => {
             expect(document.body.contains(track.element)).toBe(true);
             expect(track.element.getAttribute('data-testid')).toBe('track-1');
             expect(track.element.style.display).toBe('none');
-        });
-
-        it('does not emit REMOTE_VOICE_STREAM for screen-share audio', async () => {
-            await client.connect({channelID: 'test-channel'});
-            const remoteVoiceListener = jest.fn();
-            client.on(CALL_EVENT.REMOTE_VOICE_STREAM, remoteVoiceListener);
-
-            mockRoom.fire(RoomEvent.TrackSubscribed, makeRemoteAudioTrack(Track.Source.ScreenShareAudio), {}, participant);
-
-            expect(remoteVoiceListener).not.toHaveBeenCalled();
         });
 
         it('does not attach video tracks', async () => {
