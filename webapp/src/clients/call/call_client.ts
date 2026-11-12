@@ -60,6 +60,7 @@ import {
     LiveKitSessionResponse,
     ReactionPayload,
     RemoteAudioPlayback,
+    ScreenShareTrack,
     ScreenSharingSession,
 } from './types';
 
@@ -133,10 +134,10 @@ export default class CallClient extends EventEmitter {
     // messages are only trusted from this sender.
     private botUserID = '';
 
-    // The screen sharer last emitted, so a recompute that changes nothing stays
-    // silent instead of handing consumers a fresh MediaStream to re-attach.
+    // The screen share last emitted, so a recompute that finds the same sharer
+    // and video track stays silent instead of re-rendering every consumer.
     private screenSharingSessionID: string | null = null;
-    private screenShareTrackSIDs = '';
+    private screenShareTrack: ScreenShareTrack | null = null;
 
     // Most recent periodic stats sample, captured while the call is live. On a
     // remote-initiated teardown (host ends the call, network drop) the peer
@@ -475,12 +476,12 @@ export default class CallClient extends EventEmitter {
             return fail('not-connected');
         }
 
-        // If we're already sharing, return the existing stream.
+        // If we're already sharing, return the existing track.
         if (this.room.localParticipant.getTrackPublication(Track.Source.ScreenShare)) {
             logDebug('CallClient: you are already sharing screen');
-            const stream = this.getLocalScreenStream();
-            if (stream) {
-                return [stream, null];
+            const track = this.getLocalScreenTrack();
+            if (track) {
+                return [track, null];
             }
             return fail('capture-error');
         }
@@ -500,10 +501,10 @@ export default class CallClient extends EventEmitter {
                 return fail(shareErr);
             }
 
-            const stream = this.getLocalScreenStream();
-            logDebug('CallClient: screen share stream started', {sourceID, withAudio, streamID: stream?.id});
-            if (stream) {
-                return [stream, null];
+            const track = this.getLocalScreenTrack();
+            logDebug('CallClient: screen share track started', {sourceID, withAudio, trackID: track?.mediaStreamTrack.id});
+            if (track) {
+                return [track, null];
             }
             return fail('capture-error');
         } catch (err) {
@@ -802,23 +803,23 @@ export default class CallClient extends EventEmitter {
         return this.audioDevices;
     }
 
-    public getLocalScreenStream(): MediaStream | null {
+    public getLocalScreenTrack(): ScreenShareTrack | null {
         if (!this.room) {
             return null;
         }
-        return this.composeScreenShareStream(this.room.localParticipant);
+        return this.getScreenShareTrack(this.room.localParticipant);
     }
 
-    public getRemoteScreenStream(): MediaStream | null {
+    public getRemoteScreenTrack(): ScreenShareTrack | null {
         if (!this.room) {
             return null;
         }
 
         // Only one participant is allowed to share at a time; first match wins.
         for (const p of this.room.remoteParticipants.values()) {
-            const stream = this.composeScreenShareStream(p);
-            if (stream) {
-                return stream;
+            const track = this.getScreenShareTrack(p);
+            if (track) {
+                return track;
             }
         }
         return null;
@@ -1232,8 +1233,7 @@ export default class CallClient extends EventEmitter {
         }
 
         // LiveKit publishes ScreenShare and ScreenShareAudio as two separate tracks,
-        // so this fires once per source and the composed stream legitimately changes
-        // shortly after the video first appears.
+        // so this fires once per source.
         if (localTrackPublication.source === Track.Source.ScreenShare || localTrackPublication.source === Track.Source.ScreenShareAudio) {
             logDebug('CallClient: local screen share track published', this.trackPubSummary(localTrackPublication));
             this.emitScreenSharingSession();
@@ -1290,7 +1290,7 @@ export default class CallClient extends EventEmitter {
         if (remoteTrackPublication.source === Track.Source.ScreenShare || remoteTrackPublication.source === Track.Source.ScreenShareAudio) {
             // Screen-share publications do not carry stream state before subscription:
             // `remoteTrackPublication.track` is undefined here, so the recompute names
-            // the sharer with a null stream and the follow-up on subscription fills it in.
+            // the sharer with a null track and the follow-up on subscription fills it in.
             logDebug(`CallClient: remote screen share stream announced (awaiting subscription) for user ${userID}`, this.trackPubSummary(remoteTrackPublication));
             this.emitScreenSharingSession();
         }
@@ -1299,7 +1299,7 @@ export default class CallClient extends EventEmitter {
     /**
      * Fires when
      * - a remote participant's audio bits start flowing to us (mic or screen-share audio). We play it through LiveKit's attach().
-     * - a remote participant's screen-share video starts flowing to us. The composed stream goes to the widget for `<video>` playback.
+     * - a remote participant's screen-share video starts flowing to us. The track goes to the widget for `<video>` playback.
      */
     private handleRemoteTrackSubscribed(remoteTrack: RemoteTrack, _remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
         const {userID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
@@ -1930,22 +1930,18 @@ export default class CallClient extends EventEmitter {
             logWarn(`CallClient: ${candidates.length} concurrent screen shares, presenting session ${winnerSessionID}`);
         }
 
-        // Keyed on the track set as well as the sharer: composeScreenShareStream
-        // allocates a new MediaStream per call, so re-emitting an unchanged share
-        // would make consumers re-attach it and flicker. A publication with no
-        // track yet (announced, not subscribed) contributes nothing to the key, so
-        // subscription registers as a change and re-emits with the stream.
-        const trackKey = winner ? [Track.Source.ScreenShare, Track.Source.ScreenShareAudio]
-            .map((source) => {
-                const pub = winner?.getTrackPublication(source);
-                return pub?.track ? pub.trackSid : '';
-            }).join(',') : '';
+        // Keyed on the sharer and the video track object only. The share's audio
+        // plays on its own (see attachRemoteAudio), so audio coming or going is
+        // not a change consumers need to hear about. A publication with no track
+        // yet (announced, not subscribed) yields null, so subscription registers
+        // as a change and re-emits with the track.
+        const track = winner ? this.getScreenShareTrack(winner) : null;
 
-        if (winnerSessionID === this.screenSharingSessionID && trackKey === this.screenShareTrackSIDs) {
+        if (winnerSessionID === this.screenSharingSessionID && track === this.screenShareTrack) {
             return;
         }
         this.screenSharingSessionID = winnerSessionID;
-        this.screenShareTrackSIDs = trackKey;
+        this.screenShareTrack = track;
 
         if (!winner) {
             logDebug('CallClient: no screen share being presented');
@@ -1958,29 +1954,15 @@ export default class CallClient extends EventEmitter {
             sessionID,
             userID,
             isLocal: winner === this.room.localParticipant,
-            stream: this.composeScreenShareStream(winner),
+            track,
         };
 
-        logDebug('CallClient: screen share presented', {sessionID, userID, isLocal: session.isLocal, hasStream: Boolean(session.stream)});
+        logDebug('CallClient: screen share presented', {sessionID, userID, isLocal: session.isLocal, hasTrack: Boolean(track)});
         this.emit(CALL_EVENT.SCREEN_SHARING_CHANGED, session);
     }
 
-    /*
-     * Combines video and audio tracks into a single MediaStream from sourceParticipant.
-     * Just audio without video is never surfaced.
-     */
-    private composeScreenShareStream(participant: Participant): MediaStream | null {
-        const video = participant.getTrackPublication(Track.Source.ScreenShare)?.track?.mediaStreamTrack;
-        if (!video) {
-            return null;
-        }
-
-        const audio = participant.getTrackPublication(Track.Source.ScreenShareAudio)?.track?.mediaStreamTrack;
-        if (!audio) {
-            return new MediaStream([video]);
-        }
-
-        return new MediaStream([video, audio]);
+    private getScreenShareTrack(participant: Participant): ScreenShareTrack | null {
+        return participant.getTrackPublication(Track.Source.ScreenShare)?.videoTrack ?? null;
     }
 
     /**
