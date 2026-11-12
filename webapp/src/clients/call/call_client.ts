@@ -1221,16 +1221,6 @@ export default class CallClient extends EventEmitter {
             void this.pollStats();
         }
 
-        // Browser renders a native "Stop sharing" bar when sharing screen which has dismiss/stop button.
-        // Clicking on the button fires the 'ended' event on the underlying MediaStreamTrack and not by Client or WS.
-        // We need to handle this event to tear down the screen share stream.
-        if (localTrackPublication.source === Track.Source.ScreenShare && localTrackPublication.track) {
-            localTrackPublication.track.mediaStreamTrack.onended = () => {
-                this.unshareScreen();
-                logDebug('CallClient: local screen share stream teared down by user action on native "Stop sharing" bar');
-            };
-        }
-
         // LiveKit publishes ScreenShare and ScreenShareAudio as two separate tracks,
         // so this fires once per source and the composed stream legitimately changes
         // shortly after the video first appears.
@@ -1244,6 +1234,8 @@ export default class CallClient extends EventEmitter {
      * Fires when:
      * - our mic track is fully torn down (disconnect, explicit unpublish).
      * - we stop sharing our screen.
+     * - the browser's native "Stop sharing" bar ends the capture. LiveKit unpublishes
+     *   ended screen tracks itself, so we don't set an onended handler of our own.
      */
     private handleLocalTrackUnpublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
         const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
@@ -1253,9 +1245,21 @@ export default class CallClient extends EventEmitter {
             logDebug(`CallClient: local voice stream unpublished for user ${userID}`, this.trackPubSummary(localTrackPublication));
         }
 
-        if (localTrackPublication.source === Track.Source.ScreenShare) {
+        if (localTrackPublication.source === Track.Source.ScreenShare || localTrackPublication.source === Track.Source.ScreenShareAudio) {
             logDebug(`CallClient: local screen share stream unpublished for user ${userID}`, this.trackPubSummary(localTrackPublication));
             this.emitScreenSharingSession();
+        }
+
+        // A browser may end only the screen video, which would leave its audio
+        // published with no share to belong to.
+        if (localTrackPublication.source === Track.Source.ScreenShare) {
+            const screenAudio = localParticipant.getTrackPublication(Track.Source.ScreenShareAudio);
+            if (screenAudio?.track) {
+                logDebug('CallClient: unpublishing screen share audio left behind by its video', this.trackPubSummary(screenAudio));
+                localParticipant.unpublishTrack(screenAudio.track, true).catch((err: Error) => {
+                    logErr('CallClient: unpublishing leftover screen share audio failed', err);
+                });
+            }
         }
     }
 
