@@ -62,6 +62,7 @@ import {
     RemoteAudioPlayback,
     ScreenSharingSession,
 } from './types';
+import {parseReactionPayload} from './validation';
 
 // trackMetadata extracts the diagnostic fields getStats() reports for a track,
 // from its underlying MediaStreamTrack. Mirrors the shape produced by the legacy
@@ -1606,8 +1607,13 @@ export default class CallClient extends EventEmitter {
      */
     private handleDataReceivedFromParticipant(payload: Uint8Array, participant?: RemoteParticipant, _kind?: number, topic?: string) {
         if (topic === CALL_MESSAGE_TOPICS.HOST_CONTROL) {
-            // Sent by the server through the admin API, so there is deliberately
-            // no sending participant here.
+            // Sent by the server through the admin API, so it has no sending
+            // participant. LiveKit stamps the real sender on participant-published
+            // packets, so a sender here means a peer is spoofing a host command.
+            if (participant) {
+                logWarn('CallClient: host control ignored, sent by a participant', {senderIdentity: participant.identity});
+                return;
+            }
             this.handleHostControl(payload);
             return;
         }
@@ -1628,7 +1634,12 @@ export default class CallClient extends EventEmitter {
         if (topic === CALL_MESSAGE_TOPICS.REACTION) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             try {
-                const {emojiData, timestamp} = JSON.parse(new TextDecoder().decode(payload)) as ReactionPayload;
+                const reaction = parseReactionPayload(JSON.parse(new TextDecoder().decode(payload)));
+                if (!reaction) {
+                    logWarn(`CallClient: reaction ignored, invalid payload from user ${userID}`);
+                    return;
+                }
+                const {emojiData, timestamp} = reaction;
 
                 this.emit(CALL_EVENT.REACTION, sessionID, userID, emojiData, timestamp);
 
