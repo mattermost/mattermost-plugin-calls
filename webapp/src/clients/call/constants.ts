@@ -106,6 +106,16 @@ export const AUDIO_CAPTURE_DEFAULTS: AudioCaptureOptions = {
     noiseSuppression: true,
 };
 
+// Shared screen audio is often music or video, which voice processing distorts.
+// restrictOwnAudio (Chromium-only) keeps the call's own playback out of the capture.
+export const SCREEN_SHARE_AUDIO_CAPTURE_OPTIONS: AudioCaptureOptions = {
+    autoGainControl: false,
+    echoCancellation: false,
+    noiseSuppression: false,
+    voiceIsolation: false,
+    restrictOwnAudio: true,
+};
+
 export const TRACK_PUBLISHING_DEFAULTS: TrackPublishDefaults = {
     dtx: true,
     red: true,

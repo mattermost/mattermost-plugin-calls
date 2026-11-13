@@ -20,6 +20,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 import type CallClient from 'src/clients/call';
+import {SCREEN_SHARE_AUDIO_CAPTURE_OPTIONS} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
 import {STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
 import {CallPostStatus, CallsPostProps} from 'src/types/types';
@@ -267,7 +268,7 @@ export async function getScreenStream(sourceID?: string, withAudio?: boolean): P
         try {
             screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: true,
-                audio: Boolean(withAudio),
+                audio: withAudio ? SCREEN_SHARE_AUDIO_CAPTURE_OPTIONS : false,
             });
             logDebug(`getScreenStream: received stream with ${screenStream?.getVideoTracks().length} video tracks and ${screenStream?.getAudioTracks().length} audio tracks`);
         } catch (err) {
