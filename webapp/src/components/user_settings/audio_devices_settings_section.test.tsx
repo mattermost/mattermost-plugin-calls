@@ -173,6 +173,40 @@ describe('AudioDevicesSettingsSection', () => {
         expect(screen.queryByText(LOAD_ERROR_MESSAGE)).not.toBeInTheDocument();
     });
 
+    it('ignores an older load that fails after a newer one succeeds', async () => {
+        let rejectFirstLoad: (err: Error) => void = () => {};
+        getLocalAudioDevices.mockImplementationOnce(() => new Promise((_, reject) => {
+            rejectFirstLoad = reject;
+        }));
+        mockDevices([mic, speakers]);
+        renderComponent();
+        await openSection();
+
+        await fireDeviceChange();
+        expect(await screen.findByText('Built-in Microphone')).toBeInTheDocument();
+
+        await act(async () => rejectFirstLoad(new DOMException('failed', 'NotAllowedError')));
+
+        expect(screen.getByText('Built-in Microphone')).toBeInTheDocument();
+        expect(screen.queryByText(LOAD_ERROR_MESSAGE)).not.toBeInTheDocument();
+    });
+
+    it('keeps the saved devices when saving after a failed load', async () => {
+        const savedInput = JSON.stringify({deviceId: headsetMic.deviceId, label: headsetMic.label});
+        const savedOutput = JSON.stringify({deviceId: headphones.deviceId, label: headphones.label});
+        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, savedInput);
+        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, savedOutput);
+        getLocalAudioDevices.mockRejectedValue(new DOMException('failed', 'NotAllowedError'));
+        renderComponent();
+        await openSection();
+        expect(await screen.findByText(LOAD_ERROR_MESSAGE)).toBeInTheDocument();
+
+        await userEvent.click(screen.getByText('Save'));
+
+        expect(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY)).toBe(savedInput);
+        expect(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY)).toBe(savedOutput);
+    });
+
     it('saves the selected devices on save', async () => {
         mockDevices([mic, headsetMic, speakers, headphones]);
         renderComponent();
