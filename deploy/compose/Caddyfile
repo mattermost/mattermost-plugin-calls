@@ -1,0 +1,6 @@
+# TLS termination for the LiveKit signaling WebSocket. Caddy requests a
+# Let's Encrypt certificate for LIVEKIT_DOMAIN (set in .env by setup.sh) and
+# proxies to the plaintext LiveKit server. WebSocket upgrades are automatic.
+{$LIVEKIT_DOMAIN} {
+	reverse_proxy livekit:7880
+}

@@ -1,0 +1,4 @@
+.env
+livekit.yaml
+sip.yaml
+turn-secret
