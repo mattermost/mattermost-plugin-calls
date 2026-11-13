@@ -1795,8 +1795,8 @@ export default class CallClient extends EventEmitter {
 
     /**
      * Fires when the OS-level set of media devices changes (plug/unplug, permission grant).
-     * Re-enumerates, falls back to the system default if the active device disappeared,
-     * and broadcasts the new inventory so picker UIs refresh.
+     * Re-enumerates, falls back to the first mic if the active one disappeared, syncs the
+     * speaker LiveKit is using, and broadcasts the new inventory so picker UIs refresh.
      */
     private async handleMediaDevicesChanged() {
         const prevInputCount = this.audioDevices.inputs.length;
@@ -1818,30 +1818,43 @@ export default class CallClient extends EventEmitter {
                     {removed: {deviceId: unplugged.deviceId, label: unplugged.label}, fallback: fallback ? {deviceId: fallback.deviceId, label: fallback.label} : null});
                 if (fallback) {
                     await this.setAudioInputDevice(fallback, false);
+                    if (this.currentAudioInputDevice?.deviceId === fallback.deviceId) {
+                        this.emit(CALL_EVENT.DEVICE_FALLBACK, fallback);
+                    }
                 } else {
                     this.currentAudioInputDevice = null;
                 }
-                this.emit(CALL_EVENT.DEVICE_FALLBACK, unplugged);
             }
         }
 
-        if (this.currentAudioOutputDevice) {
-            const stillPresent = this.audioDevices.outputs.some((dev) => dev.deviceId === this.currentAudioOutputDevice?.deviceId);
-            if (!stillPresent) {
-                const unplugged = this.currentAudioOutputDevice;
-                const fallback = this.audioDevices.outputs[0] ?? null;
-                logWarn('CallClient: active audio output device removed, falling back to system default',
-                    {removed: {deviceId: unplugged.deviceId, label: unplugged.label}, fallback: fallback ? {deviceId: fallback.deviceId, label: fallback.label} : null});
-                if (fallback) {
-                    await this.setAudioOutputDevice(fallback, false);
-                } else {
-                    this.currentAudioOutputDevice = null;
-                }
-                this.emit(CALL_EVENT.DEVICE_FALLBACK, unplugged);
-            }
-        }
+        this.syncAudioOutputDevice();
 
         this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+    }
+
+    /**
+     * LiveKit moves audio off an unplugged speaker by itself, except on Safari where the
+     * sound follows the system default, so we only mirror the speaker it is using.
+     */
+    private syncAudioOutputDevice() {
+        const previous = this.currentAudioOutputDevice;
+        if (!previous) {
+            return;
+        }
+
+        const outputs = this.audioDevices.outputs;
+        const activeId = this.room?.getActiveDevice('audiooutput');
+        const listedPrevious = outputs.find((dev) => dev.deviceId === previous.deviceId);
+        const current = outputs.find((dev) => dev.deviceId === activeId) ?? listedPrevious ?? outputs[0] ?? null;
+        this.currentAudioOutputDevice = current;
+
+        if (!listedPrevious) {
+            logWarn('CallClient: active audio output device removed, falling back to system default',
+                {removed: {deviceId: previous.deviceId, label: previous.label}, fallback: current ? {deviceId: current.deviceId, label: current.label} : null});
+            if (current) {
+                this.emit(CALL_EVENT.DEVICE_FALLBACK, current);
+            }
+        }
     }
 
     /**
