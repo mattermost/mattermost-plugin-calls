@@ -3,6 +3,10 @@ set -eu
 set -o pipefail
 
 EXPECT_FIPS="${EXPECT_FIPS:-false}"
+if [[ ${EXPECT_FIPS} != "true" && ${EXPECT_FIPS} != "false" ]]; then
+	echo "EXPECT_FIPS must be true or false, got: ${EXPECT_FIPS}"
+	exit 1
+fi
 
 function print_logs {
 	exit_code=$?
