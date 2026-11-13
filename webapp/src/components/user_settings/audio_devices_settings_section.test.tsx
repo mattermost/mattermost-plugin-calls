@@ -3,16 +3,17 @@
 
 import {act, render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import {Room} from 'livekit-client';
 import React from 'react';
 import {IntlProvider} from 'react-intl';
+import CallClient from 'src/clients/call';
 import {STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY} from 'src/constants';
 import {logErr} from 'src/log';
 
 import AudioDevicesSettingsSection from './audio_devices_settings_section';
 
-jest.mock('livekit-client', () => ({
-    Room: {getLocalDevices: jest.fn()},
+jest.mock('src/clients/call', () => ({
+    __esModule: true,
+    default: {getLocalAudioDevices: jest.fn()},
 }));
 
 jest.mock('src/log', () => ({
@@ -29,11 +30,14 @@ const speakers = makeDevice('audiooutput', 'speakers-id', 'Built-in Speakers');
 const headphones = makeDevice('audiooutput', 'headphones-id', 'Headphones');
 
 describe('AudioDevicesSettingsSection', () => {
-    const getLocalDevices = Room.getLocalDevices as jest.Mock;
+    const getLocalAudioDevices = CallClient.getLocalAudioDevices as jest.Mock;
     let mediaDevices: EventTarget & {getUserMedia: jest.Mock; enumerateDevices: jest.Mock};
 
     const mockDevices = (devices: MediaDeviceInfo[]) => {
-        getLocalDevices.mockImplementation(async (kind: MediaDeviceKind) => devices.filter((d) => d.kind === kind));
+        getLocalAudioDevices.mockImplementation(async () => ({
+            inputs: devices.filter((d) => d.kind === 'audioinput'),
+            outputs: devices.filter((d) => d.kind === 'audiooutput'),
+        }));
     };
 
     const renderComponent = () => render(
@@ -73,29 +77,16 @@ describe('AudioDevicesSettingsSection', () => {
         renderComponent();
 
         expect(screen.getByText('Audio devices')).toBeInTheDocument();
-        expect(getLocalDevices).not.toHaveBeenCalled();
+        expect(getLocalAudioDevices).not.toHaveBeenCalled();
     });
 
-    it('loads inputs, then outputs, through Room.getLocalDevices', async () => {
-        let resolveInputs: (devices: MediaDeviceInfo[]) => void;
-        getLocalDevices.mockImplementation((kind: MediaDeviceKind) => {
-            if (kind === 'audioinput') {
-                return new Promise((resolve) => {
-                    resolveInputs = resolve;
-                });
-            }
-            return Promise.resolve([speakers]);
-        });
+    it('loads devices through the call client instead of the browser API', async () => {
+        mockDevices([mic, speakers]);
         renderComponent();
         await openSection();
 
-        expect(getLocalDevices).toHaveBeenCalledTimes(1);
-        expect(getLocalDevices).toHaveBeenCalledWith('audioinput');
-
-        await act(async () => resolveInputs([mic]));
-
-        expect(getLocalDevices).toHaveBeenCalledTimes(2);
-        expect(getLocalDevices).toHaveBeenLastCalledWith('audiooutput');
+        expect(await screen.findByText('Built-in Microphone')).toBeInTheDocument();
+        expect(getLocalAudioDevices).toHaveBeenCalledTimes(1);
         expect(mediaDevices.getUserMedia).not.toHaveBeenCalled();
         expect(mediaDevices.enumerateDevices).not.toHaveBeenCalled();
     });
@@ -146,21 +137,21 @@ describe('AudioDevicesSettingsSection', () => {
         await screen.findByText('Built-in Microphone');
 
         await userEvent.click(screen.getByText('Cancel'));
-        getLocalDevices.mockClear();
+        getLocalAudioDevices.mockClear();
         await fireDeviceChange();
 
-        expect(getLocalDevices).not.toHaveBeenCalled();
+        expect(getLocalAudioDevices).not.toHaveBeenCalled();
     });
 
     it.each(['NotAllowedError', 'NotFoundError'])('shows a message when devices cannot be loaded (%s)', async (errorName) => {
         const err = new DOMException('failed', errorName);
-        getLocalDevices.mockRejectedValue(err);
+        getLocalAudioDevices.mockRejectedValue(err);
         renderComponent();
         await openSection();
 
         expect(await screen.findByText(LOAD_ERROR_MESSAGE)).toBeInTheDocument();
         expect(logErr).toHaveBeenCalledWith('failed to get audio devices', err);
-        expect(getLocalDevices).toHaveBeenCalledTimes(1);
+        expect(getLocalAudioDevices).toHaveBeenCalledTimes(1);
         expect(screen.getByText('Save')).toBeInTheDocument();
     });
 
@@ -170,7 +161,7 @@ describe('AudioDevicesSettingsSection', () => {
         await openSection();
         expect(await screen.findByText('Built-in Microphone')).toBeInTheDocument();
 
-        getLocalDevices.mockRejectedValue(new DOMException('failed', 'NotFoundError'));
+        getLocalAudioDevices.mockRejectedValue(new DOMException('failed', 'NotFoundError'));
         await fireDeviceChange();
         expect(await screen.findByText(LOAD_ERROR_MESSAGE)).toBeInTheDocument();
         expect(screen.queryByText('Built-in Microphone')).not.toBeInTheDocument();

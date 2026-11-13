@@ -3,10 +3,10 @@
 
 import './user_settings.scss';
 
-import {Room} from 'livekit-client';
 import React, {forwardRef, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 import ReactSelect from 'react-select';
+import CallClient from 'src/clients/call';
 import {
     Description, type DevicesSelectionHandle, type DevicesSelectionProps, Fieldset,
     SelectionWrapper, SelectLabel, type SelectOption} from 'src/components/user_settings/common';
@@ -134,11 +134,7 @@ export default function AudioDevicesSettingsSection() {
 
     const loadAudioDevices = async () => {
         try {
-            // getLocalDevices only asks for mic permission when device labels are hidden.
-            // Awaiting one call at a time means the browser shows at most one prompt.
-            const inputs = await Room.getLocalDevices('audioinput');
-            const outputs = await Room.getLocalDevices('audiooutput');
-            setDevices({inputs, outputs});
+            setDevices(await CallClient.getLocalAudioDevices());
             setLoadFailed(false);
         } catch (err) {
             logErr('failed to get audio devices', err);
