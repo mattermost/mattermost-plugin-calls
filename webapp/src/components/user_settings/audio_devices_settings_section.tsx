@@ -114,15 +114,17 @@ export default function AudioDevicesSettingsSection() {
 
     const audioInputsRef = useRef<DevicesSelectionHandle>(null);
     const audioOutputsRef = useRef<DevicesSelectionHandle>(null);
+    const latestLoadRef = useRef(0);
 
+    // An empty list has nothing to pick, so keep the saved device for that kind.
     const handleSave = () => {
-        if (audioInputsRef.current) {
+        if (audioInputsRef.current && devices.inputs.length > 0) {
             window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
                 deviceId: audioInputsRef.current.getOption().value,
                 label: audioInputsRef.current.getOption().label,
             }));
         }
-        if (audioOutputsRef.current) {
+        if (audioOutputsRef.current && devices.outputs.length > 0) {
             window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({
                 deviceId: audioOutputsRef.current.getOption().value,
                 label: audioOutputsRef.current.getOption().label,
@@ -133,14 +135,22 @@ export default function AudioDevicesSettingsSection() {
     };
 
     const loadAudioDevices = async () => {
+        const loadID = ++latestLoadRef.current;
+        let loaded: MediaDevices = {inputs: [], outputs: []};
+        let failed = false;
         try {
-            setDevices(await CallClient.getLocalAudioDevices());
-            setLoadFailed(false);
+            loaded = await CallClient.getLocalAudioDevices();
         } catch (err) {
             logErr('failed to get audio devices', err);
-            setDevices({inputs: [], outputs: []});
-            setLoadFailed(true);
+            failed = true;
         }
+
+        // devicechange can start a load while another is still running; only the newest one applies.
+        if (loadID !== latestLoadRef.current) {
+            return;
+        }
+        setDevices(loaded);
+        setLoadFailed(failed);
     };
 
     useEffect(() => {
