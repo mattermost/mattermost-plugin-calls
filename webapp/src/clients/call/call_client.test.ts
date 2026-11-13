@@ -2023,6 +2023,26 @@ describe('CallClient', () => {
             expect(deviceChangeListener).toHaveBeenCalled();
         });
 
+        it('skips DEVICE_FALLBACK when switching to the fallback input fails', async () => {
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice, inputDevice2]);
+            await client.connect({channelID: 'test-channel'});
+            await client.setAudioInputDevice(inputDevice);
+
+            const fallbackListener = jest.fn();
+            const deviceChangeListener = jest.fn();
+            client.on(CALL_EVENT.DEVICE_FALLBACK, fallbackListener);
+            client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+
+            mockRoom.switchActiveDevice.mockRejectedValueOnce(new Error('device not found'));
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice2]);
+            mockRoom.fire(RoomEvent.MediaDevicesChanged);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(mockRoom.switchActiveDevice).toHaveBeenLastCalledWith('audioinput', 'mic-2', true);
+            expect(fallbackListener).not.toHaveBeenCalled();
+            expect(deviceChangeListener).toHaveBeenCalled();
+        });
+
         it('emits only DEVICE_CHANGE when the device list changes but the active one is still present', async () => {
             (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice]);
             await client.connect({channelID: 'test-channel'});

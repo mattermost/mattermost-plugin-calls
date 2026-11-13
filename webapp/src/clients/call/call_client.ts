@@ -1810,7 +1810,9 @@ export default class CallClient extends EventEmitter {
                     {removed: {deviceId: unplugged.deviceId, label: unplugged.label}, fallback: fallback ? {deviceId: fallback.deviceId, label: fallback.label} : null});
                 if (fallback) {
                     await this.setAudioInputDevice(fallback, false);
-                    this.emit(CALL_EVENT.DEVICE_FALLBACK, fallback);
+                    if (this.currentAudioInputDevice?.deviceId === fallback.deviceId) {
+                        this.emit(CALL_EVENT.DEVICE_FALLBACK, fallback);
+                    }
                 } else {
                     this.currentAudioInputDevice = null;
                 }
