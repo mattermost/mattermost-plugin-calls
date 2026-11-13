@@ -1251,8 +1251,9 @@ export default class CallClient extends EventEmitter {
         }
 
         // A browser may end only the screen video, which would leave its audio
-        // published with no share to belong to.
-        if (localTrackPublication.source === Track.Source.ScreenShare) {
+        // published with no share to belong to. Skipped while the video is still
+        // live (e.g. LiveKit's temporary unpublish on reconnect).
+        if (localTrackPublication.source === Track.Source.ScreenShare && localTrackPublication.track?.mediaStreamTrack.readyState === 'ended') {
             const screenAudio = localParticipant.getTrackPublication(Track.Source.ScreenShareAudio);
             if (screenAudio?.track) {
                 logDebug('CallClient: unpublishing screen share audio left behind by its video', this.trackPubSummary(screenAudio));

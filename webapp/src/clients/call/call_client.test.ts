@@ -2435,12 +2435,31 @@ describe('CallClient', () => {
             setLocalScreenPublications(undefined, screenAudio);
             mockRoom.fire(
                 RoomEvent.LocalTrackUnpublished,
-                {source: Track.Source.ScreenShare},
+                {source: Track.Source.ScreenShare, track: {mediaStreamTrack: {readyState: 'ended'}}},
                 mockRoom.localParticipant,
             );
 
             expect(listener).toHaveBeenCalledWith(null);
             expect(mockRoom.localParticipant.unpublishTrack).toHaveBeenCalledWith(screenAudio, true);
+        });
+
+        it('keeps screen share audio when LiveKit unpublishes a still-live video to republish it on reconnect', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            const audioTrack = {} as MediaStreamTrack;
+            stubCapture({} as MediaStreamTrack, audioTrack);
+            await client.shareScreen('', true);
+
+            const screenAudio = {mediaStreamTrack: audioTrack, stop: jest.fn()};
+            setLocalScreenPublications(undefined, screenAudio);
+            mockRoom.fire(
+                RoomEvent.LocalTrackUnpublished,
+                {source: Track.Source.ScreenShare, track: {mediaStreamTrack: {readyState: 'live'}}},
+                mockRoom.localParticipant,
+            );
+
+            expect(mockRoom.localParticipant.unpublishTrack).not.toHaveBeenCalled();
+            expect(screenAudio.stop).not.toHaveBeenCalled();
         });
 
         it('recomputes the derived sharer when only the local ScreenShareAudio is unpublished', async () => {
