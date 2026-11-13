@@ -1865,6 +1865,37 @@ describe('CallClient', () => {
             expect(client.getAudioDevices()).toEqual({inputs: [], outputs: []});
         });
 
+        describe('getLocalAudioDevices', () => {
+            const getLocalDevices = Room.getLocalDevices as jest.Mock;
+
+            it('lists inputs, then outputs, with the default permission behavior', async () => {
+                let resolveInputs: (devices: MediaDeviceInfo[]) => void = () => {};
+                getLocalDevices.mockImplementationOnce(() => new Promise((resolve) => {
+                    resolveInputs = resolve;
+                }));
+                getLocalDevices.mockImplementationOnce(async () => [outputDevice]);
+
+                const devices = CallClient.getLocalAudioDevices();
+
+                expect(getLocalDevices).toHaveBeenCalledTimes(1);
+                expect(getLocalDevices).toHaveBeenCalledWith('audioinput');
+
+                resolveInputs([inputDevice]);
+
+                await expect(devices).resolves.toEqual({inputs: [inputDevice], outputs: [outputDevice]});
+                expect(getLocalDevices).toHaveBeenCalledTimes(2);
+                expect(getLocalDevices).toHaveBeenLastCalledWith('audiooutput');
+            });
+
+            it('does not list outputs when listing inputs fails', async () => {
+                const err = new DOMException('denied', 'NotAllowedError');
+                getLocalDevices.mockRejectedValueOnce(err);
+
+                await expect(CallClient.getLocalAudioDevices()).rejects.toBe(err);
+                expect(getLocalDevices).toHaveBeenCalledTimes(1);
+            });
+        });
+
         it('partitions enumerated devices into inputs and outputs after connect', async () => {
             (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([
                 inputDevice,

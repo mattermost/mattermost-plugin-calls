@@ -2006,6 +2006,17 @@ export default class CallClient extends EventEmitter {
         };
     }
 
+    /**
+     * Lists audio devices without a call, e.g. for user settings. Unlike enumerateDevices,
+     * it asks for mic permission when the browser hides device labels.
+     */
+    static async getLocalAudioDevices(): Promise<MediaDevices> {
+        // One kind at a time, so the browser shows at most one permission prompt.
+        const inputs = await Room.getLocalDevices('audioinput');
+        const outputs = await Room.getLocalDevices('audiooutput');
+        return {inputs, outputs};
+    }
+
     private async enumerateDevices(): Promise<MediaDevices> {
         try {
             // Room.getLocalDevices wraps navigator.mediaDevices.enumerateDevices
