@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {CallJobState, CallState, EmojiData} from '@mattermost/calls-common/lib/types';
+import type {VideoTrack} from 'livekit-client';
 
 /**
  * Response from POST /livekit-token, which mints the call session and returns
@@ -38,9 +39,15 @@ export type HostControlPayload = {
 };
 
 /**
+ * The video of a screen share. Its audio is played separately, like any other
+ * remote audio, so it is not part of what consumers render.
+ */
+export type ScreenShareTrack = VideoTrack;
+
+/**
  * The single screen share being presented, derived from LiveKit track state.
  *
- * `stream` is null while a remote share has been announced but not yet
+ * `track` is null while a remote share has been announced but not yet
  * subscribed, so consumers rendering video should tolerate that and wait for the
  * follow-up emission.
  */
@@ -48,7 +55,7 @@ export type ScreenSharingSession = {
     sessionID: string;
     userID: string;
     isLocal: boolean;
-    stream: MediaStream | null;
+    track: ScreenShareTrack | null;
 };
 
 /**

@@ -136,8 +136,8 @@ describe('CallWidget', () => {
             disconnect,
             channelID: 'channel-id',
             canPlaybackAudio: true,
-            getRemoteScreenStream: () => null,
-            getLocalScreenStream: () => null,
+            getRemoteScreenTrack: () => null,
+            getLocalScreenTrack: () => null,
             on: jest.fn(),
             off: jest.fn(),
         } as unknown as CallClient;
@@ -227,8 +227,8 @@ describe('remote audio playback blocked banner', () => {
             channelID: 'channel-id',
             canPlaybackAudio,
             startAudio,
-            getRemoteScreenStream: () => null,
-            getLocalScreenStream: () => null,
+            getRemoteScreenTrack: () => null,
+            getLocalScreenTrack: () => null,
             on: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
                 handlers.set(event, handler);
             }),
@@ -292,6 +292,73 @@ describe('remote audio playback blocked banner', () => {
     });
 });
 
+describe('screen sharing panel', () => {
+    const currentUserSession: UserSessionState = {session_id: 'session-1', user_id: 'user-id', unmuted: false, raised_hand: 0};
+    const sharerSession: UserSessionState = {session_id: 'session-2', user_id: 'other-user', unmuted: false, raised_hand: 0};
+    let handlers: Map<string, (...args: unknown[]) => void>;
+
+    const makeTrack = () => ({attach: jest.fn(), detach: jest.fn()});
+
+    const renderWidget = (remoteTrack: ReturnType<typeof makeTrack>) => {
+        window.callsClient = {
+            disconnect: jest.fn(),
+            channelID: 'channel-id',
+            canPlaybackAudio: true,
+            getRemoteScreenTrack: () => remoteTrack,
+            getLocalScreenTrack: () => null,
+            on: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
+                handlers.set(event, handler);
+            }),
+            off: jest.fn(),
+        } as unknown as CallClient;
+
+        return render(
+            <Provider store={mockStore(stubState(stubChannel))}>
+                <RawIntlProvider value={intl}>
+                    <CallWidget
+                        {...props}
+                        sessions={[currentUserSession, sharerSession]}
+                        currentSession={currentUserSession}
+                        screenSharingSession={sharerSession}
+                        profiles={{'other-user': {id: 'other-user', username: 'sharer'} as UserProfile}}
+                    />
+                </RawIntlProvider>
+            </Provider>,
+        );
+    };
+
+    beforeEach(() => {
+        handlers = new Map();
+    });
+
+    afterEach(() => {
+        window.callsClient = undefined;
+    });
+
+    test('attaches the remote screen share track to the screen player', () => {
+        const track = makeTrack();
+        const {container} = renderWidget(track);
+
+        const player = container.querySelector('#screen-player');
+        expect(player).toBeInstanceOf(HTMLVideoElement);
+        expect(track.attach).toHaveBeenCalledWith(player);
+    });
+
+    test('moves the screen player to the track a new screen sharing event brings', () => {
+        const first = makeTrack();
+        const second = makeTrack();
+        const {container} = renderWidget(first);
+        const player = container.querySelector('#screen-player');
+
+        act(() => {
+            handlers.get(CALL_EVENT.SCREEN_SHARING_CHANGED)?.({sessionID: 'session-2', userID: 'other-user', isLocal: false, track: second});
+        });
+
+        expect(first.detach).toHaveBeenCalledWith(player);
+        expect(second.attach).toHaveBeenCalledWith(player);
+    });
+});
+
 describe('leave button behavior', () => {
     let disconnect: jest.Mock;
 
@@ -314,8 +381,8 @@ describe('leave button behavior', () => {
             disconnect,
             channelID: 'channel-id',
             canPlaybackAudio: true,
-            getRemoteScreenStream: () => null,
-            getLocalScreenStream: () => null,
+            getRemoteScreenTrack: () => null,
+            getLocalScreenTrack: () => null,
             on: jest.fn(),
             off: jest.fn(),
         } as unknown as (typeof window)['callsClient'];
@@ -524,8 +591,8 @@ describe('phone call', () => {
             sendDTMF,
             channelID: 'channel-id',
             canPlaybackAudio: true,
-            getRemoteScreenStream: () => null,
-            getLocalScreenStream: () => null,
+            getRemoteScreenTrack: () => null,
+            getLocalScreenTrack: () => null,
             on: jest.fn(),
             off: jest.fn(),
         } as unknown as (typeof window)['callsClient'];
