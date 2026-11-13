@@ -1049,13 +1049,19 @@ export default class CallClient extends EventEmitter {
         }
     }
 
-    // Requests microphone permission via getUserMedia, then pre-publishes the captured
-    // track to LiveKit in a muted state. Pre-publishing means subsequent mute/unmute
+    // Captures the mic with createTracks, so the Room's AUDIO_CAPTURE_DEFAULTS apply, then
+    // pre-publishes it to LiveKit in a muted state. Pre-publishing means subsequent mute/unmute
     // operations only require a LiveKit signal — no new getUserMedia call — which is
     // critical for Firefox, where getUserMedia is blocked in unfocused windows such as
     // the popout. The main window is always focused at join time, so capture is safe here.
+    // The saved mic is captured up front because switching device on the muted track
+    // later would make the first unmute capture again.
     // Idempotent: skips publication if a mic track is already published (e.g. on hot-plug).
     private async ensureMicrophoneTrack() {
+        const room = this.room;
+        if (!room) {
+            return;
+        }
         if (this.micTrackEnsureInProgress) {
             logDebug('CallClient: ensureMicrophoneTrack already in progress, skipping');
             return;
@@ -1064,26 +1070,24 @@ export default class CallClient extends EventEmitter {
         let notFound = false;
         try {
             logDebug('CallClient: ensuring microphone track');
-            const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true});
+            const storedInputDeviceId = await this.getStoredAudioInputDeviceId();
+            const [micTrack] = await room.localParticipant.createTracks({
+                audio: storedInputDeviceId ? {deviceId: {ideal: storedInputDeviceId}} : true,
+            });
 
-            const audioTrack = mediaStream.getTracks()[0];
-            if (audioTrack && this.room &&
+            if (micTrack && this.room &&
                 !this.room.localParticipant.getTrackPublication(Track.Source.Microphone)) {
-                const localAudioTrack = new LocalAudioTrack(audioTrack, undefined, false);
-                localAudioTrack.source = Track.Source.Microphone;
                 try {
-                    await this.room.localParticipant.publishTrack(localAudioTrack);
-
-                    // publishTrack always publishes as unmuted; call pub.mute() to set
-                    // LiveKit's signaling state so the UI and remote participants see muted.
-                    await this.mute();
+                    // A track muted before publishing is published muted, so it never shows as unmuted.
+                    await micTrack.mute();
+                    await this.room.localParticipant.publishTrack(micTrack);
                     logDebug('CallClient: pre-published muted mic track');
                 } catch (publishErr) {
-                    audioTrack.stop();
+                    micTrack.stop();
                     logErr('CallClient: failed to pre-publish muted mic track', publishErr);
                 }
-            } else if (audioTrack) {
-                audioTrack.stop();
+            } else if (micTrack) {
+                micTrack.stop();
             }
 
             logDebug('CallClient: microphone permission granted');
@@ -1100,7 +1104,13 @@ export default class CallClient extends EventEmitter {
             const storedInput = this.getStoredAudioDevice('input');
             logDebug('CallClient: storedInput resolved to', storedInput ? {deviceId: storedInput.deviceId, label: storedInput.label} : null);
             if (storedInput) {
-                await this.setAudioInputDevice(storedInput, false);
+                const micDeviceId = await this.room?.localParticipant.getTrackPublication(Track.Source.Microphone)?.track?.getDeviceId(false);
+                if (micDeviceId === storedInput.deviceId) {
+                    this.currentAudioInputDevice = storedInput;
+                    logDebug('CallClient: mic already captured on the stored input device');
+                } else {
+                    await this.setAudioInputDevice(storedInput, false);
+                }
             }
             const storedOutput = this.getStoredAudioDevice('output');
             logDebug('CallClient: storedOutput resolved to', storedOutput ? {deviceId: storedOutput.deviceId, label: storedOutput.label} : null);
@@ -2042,11 +2052,10 @@ export default class CallClient extends EventEmitter {
     }
 
     /**
-     * Looks up the user's last-selected device for `kind` from localStorage and matches
-     * it against the freshly enumerated list. Tolerates the legacy raw-string format
-     * stored before MM-63274.
+     * Reads the user's last-selected device for `kind` from localStorage. Tolerates the
+     * legacy raw-string format stored before MM-63274.
      */
-    private getStoredAudioDevice(kind: 'input' | 'output'): MediaDeviceInfo | null {
+    private readStoredAudioDevice(kind: 'input' | 'output'): {deviceId: string; label?: string} | null {
         const storageKey = kind === 'input' ? STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY : STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY;
         const data = window.localStorage.getItem(storageKey);
         if (!data) {
@@ -2061,11 +2070,22 @@ export default class CallClient extends EventEmitter {
             stored = {deviceId: data};
         }
 
-        if (!stored.deviceId) {
+        return stored.deviceId ? stored : null;
+    }
+
+    /**
+     * Matches the user's last-selected device for `kind` against `devices`, the freshly
+     * enumerated list by default.
+     */
+    private getStoredAudioDevice(
+        kind: 'input' | 'output',
+        devices = kind === 'input' ? this.audioDevices.inputs : this.audioDevices.outputs,
+    ): MediaDeviceInfo | null {
+        const stored = this.readStoredAudioDevice(kind);
+        if (!stored) {
             return null;
         }
 
-        const devices = kind === 'input' ? this.audioDevices.inputs : this.audioDevices.outputs;
         const matches = devices.filter((dev) => dev.deviceId === stored.deviceId || dev.label === stored.label);
         if (matches.length === 0) {
             logDebug(`CallClient: stored audio ${kind} device not found in current inventory`, {deviceId: stored.deviceId, label: stored.label});
@@ -2076,5 +2096,25 @@ export default class CallClient extends EventEmitter {
             return matches.find((dev) => dev.deviceId === stored.deviceId) ?? null;
         }
         return matches[0];
+    }
+
+    /**
+     * The stored input to capture the mic on. It is matched against a fresh list because
+     * this.audioDevices is only filled after capture, and since the browser can hide device
+     * IDs until permission is granted, an unmatched stored ID is still used as a preference.
+     */
+    private async getStoredAudioInputDeviceId(): Promise<string | undefined> {
+        const stored = this.readStoredAudioDevice('input');
+        if (!stored) {
+            return undefined;
+        }
+
+        try {
+            const inputs = await Room.getLocalDevices('audioinput', false);
+            return this.getStoredAudioDevice('input', inputs)?.deviceId ?? stored.deviceId;
+        } catch (err) {
+            logWarn('CallClient: listing audio inputs failed, using the stored input as is', err);
+            return stored.deviceId;
+        }
     }
 }

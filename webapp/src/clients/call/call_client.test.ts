@@ -15,6 +15,7 @@ import {
     TrackEvent,
 } from 'livekit-client';
 import RestClient from 'src/clients/rest';
+import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {
     LOWER_HAND_ON_UNMUTE_DELAY_MS,
     STORAGE_CALLS_CLIENT_LOGS_KEY,
@@ -28,7 +29,7 @@ import {flushLogsToAccumulated} from 'src/log';
 import {getPersistentStorage, getScreenStream} from 'src/utils';
 
 import CallClient from './call_client';
-import {CALL_EVENT, CALL_MESSAGE_TOPICS} from './constants';
+import {AUDIO_CAPTURE_DEFAULTS, CALL_EVENT, CALL_MESSAGE_TOPICS} from './constants';
 import type {LiveKitSessionResponse} from './types';
 
 jest.mock('livekit-client', () => {
@@ -121,6 +122,7 @@ function createMockRoom(): MockRoom {
             setMicrophoneEnabled: jest.fn().mockResolvedValue(null),
             setScreenShareEnabled: jest.fn().mockResolvedValue(null),
             createScreenTracks: jest.fn().mockResolvedValue([]),
+            createTracks: jest.fn().mockResolvedValue([]),
             publishTrack: jest.fn().mockResolvedValue(null),
             unpublishTrack: jest.fn().mockResolvedValue(null),
             setAttributes: jest.fn().mockResolvedValue(undefined),
@@ -167,6 +169,21 @@ function makeRemoteAudioTrack(source: Track.Source, id = 'remote-audio') {
         }),
         fire: (event: string, ...args: any[]) => handlers.get(event)?.(...args),
     };
+}
+
+// A mic track as createTracks hands it back. mute() flips isMuted as LiveKit's does,
+// so a test can tell whether the track was muted before it was published.
+function makeMicTrack(deviceId = 'mic-1') {
+    const track = {
+        source: Track.Source.Microphone,
+        isMuted: false,
+        mute: jest.fn(async () => {
+            track.isMuted = true;
+        }),
+        stop: jest.fn(),
+        getDeviceId: jest.fn().mockResolvedValue(deviceId),
+    };
+    return track;
 }
 
 // The shape POST /livekit-token returns: session id, LiveKit credentials and the
@@ -2230,24 +2247,232 @@ describe('CallClient', () => {
     });
 
     describe('ensureMicrophoneTrack', () => {
+        const builtInMic: MediaDeviceInfo = {
+            deviceId: 'mic-1', kind: 'audioinput', label: 'Built-in Mic', groupId: 'g1', toJSON: () => ({}),
+        } as MediaDeviceInfo;
+        const usbMic: MediaDeviceInfo = {
+            deviceId: 'mic-2', kind: 'audioinput', label: 'USB Mic', groupId: 'g2', toJSON: () => ({}),
+        } as MediaDeviceInfo;
+
+        function saveInput(deviceId: string, label: string) {
+            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({deviceId, label}));
+        }
+
+        // Publishing makes the track the participant's mic publication, as LiveKit does.
+        function publishAsMic() {
+            const published: {pub?: {track: unknown; isMuted: boolean; mute: jest.Mock}} = {};
+            mockRoom.localParticipant.publishTrack.mockImplementation(async (track: any) => {
+                const pub = {track, isMuted: track.isMuted, mute: jest.fn()};
+                published.pub = pub;
+                mockRoom.localParticipant.getTrackPublication.mockImplementation(
+                    (source: Track.Source) => (source === Track.Source.Microphone ? pub : undefined),
+                );
+                return pub;
+            });
+            return published;
+        }
+
+        async function join() {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Connected);
+            await new Promise((resolve) => setImmediate(resolve));
+        }
+
+        it('builds the Room with AUDIO_CAPTURE_DEFAULTS, which createTracks applies to the mic', () => {
+            expect(Room).toHaveBeenCalledWith(expect.objectContaining({audioCaptureDefaults: AUDIO_CAPTURE_DEFAULTS}));
+        });
+
+        it('creates the mic with createTracks instead of getUserMedia and a hand-built LocalAudioTrack', async () => {
+            const micTrack = makeMicTrack();
+            mockRoom.localParticipant.createTracks.mockResolvedValueOnce([micTrack]);
+
+            await join();
+
+            expect(mockRoom.localParticipant.createTracks).toHaveBeenCalledTimes(1);
+            expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+            expect(LocalAudioTrack).not.toHaveBeenCalled();
+            expect(mockRoom.localParticipant.publishTrack).toHaveBeenCalledWith(micTrack);
+        });
+
+        it('publishes the mic already muted, with no publication-level mute afterwards', async () => {
+            const micTrack = makeMicTrack();
+            mockRoom.localParticipant.createTracks.mockResolvedValueOnce([micTrack]);
+            const published = publishAsMic();
+
+            await join();
+
+            expect(micTrack.mute).toHaveBeenCalledTimes(1);
+            expect(published.pub?.isMuted).toBe(true);
+            expect(published.pub?.mute).not.toHaveBeenCalled();
+        });
+
+        it('stops the new track without publishing it when a mic was published during capture', async () => {
+            const micTrack = makeMicTrack();
+            mockRoom.localParticipant.createTracks.mockImplementationOnce(async () => {
+                mockRoom.localParticipant.getTrackPublication.mockReturnValue({track: makeMicTrack()});
+                return [micTrack];
+            });
+
+            await join();
+
+            expect(micTrack.stop).toHaveBeenCalled();
+            expect(mockRoom.localParticipant.publishTrack).not.toHaveBeenCalled();
+        });
+
+        it('stops the track when publishing fails, and still emits INIT_AUDIO', async () => {
+            const micTrack = makeMicTrack();
+            mockRoom.localParticipant.createTracks.mockResolvedValueOnce([micTrack]);
+            mockRoom.localParticipant.publishTrack.mockRejectedValueOnce(new Error('publish failed'));
+            const initAudioListener = jest.fn();
+            client.on(CALL_EVENT.INIT_AUDIO, initAudioListener);
+
+            await join();
+
+            expect(micTrack.stop).toHaveBeenCalled();
+            expect(initAudioListener).toHaveBeenCalled();
+        });
+
+        it('emits AudioInputPermissionsErr and publishes nothing when mic permission is denied', async () => {
+            mockRoom.localParticipant.createTracks.mockRejectedValueOnce(Object.assign(new Error('Permission denied'), {name: 'NotAllowedError'}));
+            const errorListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+
+            await join();
+
+            expect(errorListener).toHaveBeenCalledWith(AudioInputPermissionsErr);
+            expect(mockRoom.localParticipant.publishTrack).not.toHaveBeenCalled();
+        });
+
+        it('emits no error and fires DEVICE_CHANGE when no mic is found', async () => {
+            mockRoom.localParticipant.createTracks.mockRejectedValueOnce(Object.assign(new Error('Requested device not found'), {name: 'NotFoundError'}));
+            const errorListener = jest.fn();
+            const deviceChangeListener = jest.fn();
+            client.on(CALL_EVENT.ERROR, errorListener);
+            client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+
+            await join();
+
+            expect(errorListener).not.toHaveBeenCalled();
+            expect(deviceChangeListener).toHaveBeenCalledWith({inputs: [], outputs: []});
+            expect(mockRoom.localParticipant.publishTrack).not.toHaveBeenCalled();
+        });
+
+        describe('saved input device', () => {
+            it('requests any mic when none is saved', async () => {
+                await join();
+
+                expect(mockRoom.localParticipant.createTracks).toHaveBeenCalledWith({audio: true});
+            });
+
+            it('requests the saved mic as a preference, not an exact match', async () => {
+                saveInput('mic-2', 'USB Mic');
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic, usbMic]);
+
+                await join();
+
+                expect(mockRoom.localParticipant.createTracks).toHaveBeenCalledWith({audio: {deviceId: {ideal: 'mic-2'}}});
+            });
+
+            it('finds the saved mic by label when its ID has changed', async () => {
+                saveInput('old-mic-2', 'USB Mic');
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic, usbMic]);
+
+                await join();
+
+                expect(mockRoom.localParticipant.createTracks).toHaveBeenCalledWith({audio: {deviceId: {ideal: 'mic-2'}}});
+            });
+
+            it('still requests the saved mic when the browser hides device IDs before permission', async () => {
+                saveInput('mic-2', 'USB Mic');
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([
+                    {deviceId: '', kind: 'audioinput', label: '', groupId: '', toJSON: () => ({})},
+                ]);
+
+                await join();
+
+                expect(mockRoom.localParticipant.createTracks).toHaveBeenCalledWith({audio: {deviceId: {ideal: 'mic-2'}}});
+            });
+
+            it('publishes whichever mic the browser falls back to when the saved one is missing', async () => {
+                saveInput('gone-mic', 'Unplugged Mic');
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic]);
+                const micTrack = makeMicTrack('mic-1');
+                mockRoom.localParticipant.createTracks.mockResolvedValueOnce([micTrack]);
+                publishAsMic();
+                const errorListener = jest.fn();
+                const initAudioListener = jest.fn();
+                client.on(CALL_EVENT.ERROR, errorListener);
+                client.on(CALL_EVENT.INIT_AUDIO, initAudioListener);
+
+                await join();
+
+                expect(mockRoom.localParticipant.createTracks).toHaveBeenCalledWith({audio: {deviceId: {ideal: 'gone-mic'}}});
+                expect(mockRoom.localParticipant.publishTrack).toHaveBeenCalledWith(micTrack);
+                expect(mockRoom.switchActiveDevice).not.toHaveBeenCalled();
+                expect(errorListener).not.toHaveBeenCalled();
+                expect(initAudioListener).toHaveBeenCalled();
+            });
+
+            it('still requests the saved mic and publishes it when listing devices fails', async () => {
+                saveInput('mic-2', 'USB Mic');
+                (Room.getLocalDevices as jest.Mock).mockRejectedValueOnce(new Error('enumerateDevices failed'));
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic, usbMic]);
+                const micTrack = makeMicTrack('mic-2');
+                mockRoom.localParticipant.createTracks.mockResolvedValueOnce([micTrack]);
+                publishAsMic();
+                const initAudioListener = jest.fn();
+                client.on(CALL_EVENT.INIT_AUDIO, initAudioListener);
+
+                await join();
+
+                expect(mockRoom.localParticipant.createTracks).toHaveBeenCalledWith({audio: {deviceId: {ideal: 'mic-2'}}});
+                expect(mockRoom.localParticipant.publishTrack).toHaveBeenCalledWith(micTrack);
+                expect(initAudioListener).toHaveBeenCalled();
+            });
+
+            it('does not switch device again when the mic was captured on the saved one', async () => {
+                saveInput('mic-2', 'USB Mic');
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic, usbMic]);
+                mockRoom.localParticipant.createTracks.mockResolvedValueOnce([makeMicTrack('mic-2')]);
+                publishAsMic();
+
+                await join();
+
+                expect(mockRoom.switchActiveDevice).not.toHaveBeenCalled();
+                expect(client.currentAudioInputDevice).toBe(usbMic);
+            });
+
+            it('still switches to the saved mic when the browser captured another one', async () => {
+                saveInput('mic-2', 'USB Mic');
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic, usbMic]);
+                mockRoom.localParticipant.createTracks.mockResolvedValueOnce([makeMicTrack('mic-1')]);
+                publishAsMic();
+
+                await join();
+
+                expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('audioinput', 'mic-2', true);
+                expect(client.currentAudioInputDevice).toBe(usbMic);
+            });
+        });
+
         it('mutex prevents double publishTrack when Connected and MediaDevicesChanged race concurrently (Safari)', async () => {
             // Safari does not expose mic devices via enumerateDevices() until permission is
             // granted, so the initial input count is 0. When the user clicks Allow, Safari
             // fires mediadeviceschange — which triggers a second ensureMicrophoneTrack() call
-            // while the first (from handleConnected) is still suspended inside getUserMedia().
+            // while the first (from handleConnected) is still suspended inside createTracks().
             // Both calls would otherwise race past the !getTrackPublication guard and publish
             // two tracks. The micTrackEnsureInProgress mutex must block the second call.
 
-            let resolveGetUserMedia!: (stream: any) => void;
+            let resolveCreateTracks!: (tracks: unknown[]) => void;
 
-            // First getUserMedia call (from handleConnected) is deferred until we manually
+            // First createTracks call (from handleConnected) is deferred until we manually
             // resolve it. Second call (if the mutex fails) would resolve immediately with a
             // track, proving a second publishTrack was attempted.
-            (navigator.mediaDevices.getUserMedia as jest.Mock)
+            mockRoom.localParticipant.createTracks
                 .mockReturnValueOnce(new Promise((resolve) => {
-                    resolveGetUserMedia = resolve;
+                    resolveCreateTracks = resolve;
                 }))
-                .mockResolvedValueOnce({getTracks: () => [{stop: jest.fn()}]});
+                .mockResolvedValueOnce([makeMicTrack()]);
 
             // Simulate Safari: no inputs visible before permission.
             (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([]);
@@ -2255,7 +2480,7 @@ describe('CallClient', () => {
             await client.connect({channelID: 'test-channel'});
 
             // RoomEvent.Connected triggers the first ensureMicrophoneTrack(), which suspends
-            // at the deferred getUserMedia and sets micTrackEnsureInProgress = true.
+            // at the deferred createTracks and sets micTrackEnsureInProgress = true.
             mockRoom.fire(RoomEvent.Connected);
 
             // Permission is granted — Safari fires mediadeviceschange with the new input.
@@ -2270,9 +2495,9 @@ describe('CallClient', () => {
             // Let handleMediaDevicesChanged's enumerateDevices await settle.
             await new Promise((resolve) => setTimeout(resolve, 0));
 
-            // Resolve getUserMedia — the first ensureMicrophoneTrack() completes and
+            // Resolve createTracks — the first ensureMicrophoneTrack() completes and
             // publishes exactly one track.
-            resolveGetUserMedia({getTracks: () => [{stop: jest.fn()}]});
+            resolveCreateTracks([makeMicTrack()]);
             await new Promise((resolve) => setImmediate(resolve));
 
             expect(mockRoom.localParticipant.publishTrack).toHaveBeenCalledTimes(1);
