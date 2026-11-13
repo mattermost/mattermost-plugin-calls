@@ -86,6 +86,14 @@ echo "MM_CALLS_LIVE_KIT_URL=${MM_CALLS_LIVE_KIT_URL}" >>${WORKSPACE}/dotenv/app.
 echo "MM_CALLS_LIVE_KIT_API_KEY=${MM_CALLS_LIVE_KIT_API_KEY}" >>${WORKSPACE}/dotenv/app.private.env
 echo "MM_CALLS_LIVE_KIT_API_SECRET=${MM_CALLS_LIVE_KIT_API_SECRET}" >>${WORKSPACE}/dotenv/app.private.env
 
+# Outbound phone dialing through the SIPp sink (MM-69369). The plugin manages its own
+# trunk pointing at the sink, so dial tests go through the real /phone-call path.
+echo "MM_CALLS_ENABLE_SIP_OUTBOUND=true" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CALLS_SIP_TRUNK_MODE=managed" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CALLS_SIP_TRUNK_ADDRESS=sipp" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CALLS_SIP_TRUNK_NUMBER=+15550000000" >>${WORKSPACE}/dotenv/app.private.env
+echo "MM_CALLS_SIP_TRUNK_TRANSPORT=udp" >>${WORKSPACE}/dotenv/app.private.env
+
 # Recording/transcription job service. The recorder/transcriber image versions come from
 # the plugin manifest and are pulled by the offloader.
 echo "MM_CALLS_ENABLE_RECORDINGS=true" >>${WORKSPACE}/dotenv/app.private.env

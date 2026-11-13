@@ -109,7 +109,7 @@ docker run -d --name playwright-e2e \
 	-e LIVEKIT_API_SECRET="this-is-a-32-plus-character-dev-secret" \
 	-e SIP_SINK_ADDRESS="sipp:5060" \
 	mm-playwright \
-	bash -c "npm ci && npx playwright install && npx playwright test --project=chromium --grep '@livekit-smoke|@livekit|@sip-smoke' --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
+	bash -c "npm ci && npx playwright install && npx playwright test --project=chromium --grep '@livekit-smoke|@livekit|@sip-smoke|@sip' --shard=${CI_NODE_INDEX}/${CI_NODE_TOTAL}"
 
 docker logs -f playwright-e2e
 
