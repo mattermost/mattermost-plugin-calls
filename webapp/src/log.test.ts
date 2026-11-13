@@ -4,7 +4,7 @@
 import {MAX_ACCUMULATED_LOG_SIZE, STORAGE_CALLS_CLIENT_LOGS_KEY} from 'src/constants';
 import type {CallsClientStats} from 'src/types/types';
 
-import {flushLogsToAccumulated, getClientLogs, logDebug, logErr, logInfo, logWarn} from './log';
+import {flushAndGetLogs, flushLogsToAccumulated, getClientLogs, logDebug, logErr, logInfo, logWarn} from './log';
 
 // Mock the manifest
 jest.mock('./manifest', () => ({
@@ -358,6 +358,74 @@ describe('log', () => {
             mockStorage.set(STORAGE_CALLS_CLIENT_LOGS_KEY, 'test logs');
             const logs = getClientLogs();
             expect(logs).toBe('test logs');
+        });
+    });
+
+    describe('flushAndGetLogs', () => {
+        test('flushes in-memory logs and returns the accumulated buffer', () => {
+            logInfo('flush and get');
+
+            const result = flushAndGetLogs();
+
+            expect(result).toContain('flush and get');
+            expect(result).toBe(getClientLogs());
+        });
+
+        test('returns an empty string when there is nothing to flush', () => {
+            expect(flushAndGetLogs()).toBe('');
+        });
+
+        test('is exposed on window for popout delegation', () => {
+            expect(window.callsClientFlushAndGetLogs).toBe(flushAndGetLogs);
+        });
+    });
+
+    describe('in-memory auto-flush', () => {
+        test('flushes to storage once the in-memory buffer exceeds 50 KB', () => {
+            logInfo('x'.repeat(51 * 1024));
+
+            // No explicit flush: the write itself should have persisted.
+            expect(getClientLogs()).toContain('x'.repeat(1024));
+        });
+
+        test('does not flush for small writes', () => {
+            logInfo('small write');
+
+            expect(getClientLogs()).toBe('');
+        });
+    });
+
+    describe('window error listeners', () => {
+        // JSDOM does not implement PromiseRejectionEvent, so synthesise one.
+        const dispatchRejection = (reason: unknown) => {
+            const event = new Event('unhandledrejection');
+            Object.defineProperty(event, 'reason', {value: reason});
+            window.dispatchEvent(event);
+        };
+
+        test('captures uncaught errors', () => {
+            const error = new Error('kaboom');
+            window.dispatchEvent(new ErrorEvent('error', {message: 'kaboom', filename: 'a.js', lineno: 1, colno: 2, error}));
+
+            const logs = flushAndGetLogs();
+            expect(logs).toContain('[uncaught]');
+            expect(logs).toContain('kaboom');
+        });
+
+        test('captures Error rejections', () => {
+            dispatchRejection(new Error('rejected error'));
+
+            const logs = flushAndGetLogs();
+            expect(logs).toContain('[unhandledrejection]');
+            expect(logs).toContain('rejected error');
+        });
+
+        test('serialises non-Error object rejections instead of [object Object]', () => {
+            dispatchRejection({code: 42, detail: 'bad'});
+
+            const logs = flushAndGetLogs();
+            expect(logs).toContain('[unhandledrejection] {"code":42,"detail":"bad"}');
+            expect(logs).not.toContain('[object Object]');
         });
     });
 

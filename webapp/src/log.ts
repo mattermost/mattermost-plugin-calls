@@ -100,7 +100,7 @@ if (typeof window !== 'undefined') {
     window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
         const reason = event.reason instanceof Error ?
             (event.reason.stack || `${event.reason.name}: ${event.reason.message}`) :
-            String(event.reason);
+            stringifyLogArg(event.reason);
         appendClientLog('error', `[unhandledrejection] ${reason}`);
     });
 }
