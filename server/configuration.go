@@ -145,6 +145,10 @@ const (
 	defaultRecDurationMinutes = 60
 	minRecDurationMinutes     = 15
 	maxRecDurationMinutes     = 180
+
+	// LiveKit's recommended minimum. Also keeps HMAC keys above the FIPS
+	// minimum of 14 bytes, below which signing panics on a FIPS server.
+	minLiveKitAPISecretLength = 32
 )
 
 func (c *configuration) SetDefaults() {
@@ -226,6 +230,10 @@ func (c *configuration) IsValid() error {
 
 	if _, ok := recorderBaseConfigs[c.RecordingQuality]; !ok {
 		return fmt.Errorf("RecordingQuality is not valid")
+	}
+
+	if s := c.LiveKitAPISecret; s != "" && len(s) < minLiveKitAPISecretLength {
+		return fmt.Errorf("LiveKitAPISecret is not valid: must be at least %d characters", minLiveKitAPISecretLength)
 	}
 
 	if c.transcriptionsEnabled() {

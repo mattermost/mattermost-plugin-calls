@@ -55,7 +55,7 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 		cfg.DefaultEnabled = model.NewPointer(true)
 		cfg.LiveKitURL = "wss://lk.example.com"
 		cfg.LiveKitAPIKey = "testkey"
-		cfg.LiveKitAPISecret = "testsecret"
+		cfg.LiveKitAPISecret = testLiveKitAPISecret
 		p.configuration = cfg
 
 		mockMetrics.On("Handler").Return(nil).Once()

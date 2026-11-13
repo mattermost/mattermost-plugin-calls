@@ -119,7 +119,7 @@ func TestHandleEnv(t *testing.T) {
 			configEnvOverrides: map[string]string{
 				"LiveKitURL":                  "wss://livekit.example.com",
 				"LiveKitAPIKey":               "lk-key",
-				"LiveKitAPISecret":            "lk-secret",
+				"LiveKitAPISecret":            testLiveKitAPISecret,
 				"SIPTrunkAuthPassword":        "sip-pass",
 				"TranscribeAPIAzureSpeechKey": "",
 			},
@@ -158,7 +158,7 @@ func TestHandleEnv(t *testing.T) {
 			"TranscribeAPIAzureSpeechKey": "",
 		}, overrides)
 
-		require.Equal(t, "lk-secret", p.configEnvOverrides["LiveKitAPISecret"])
+		require.Equal(t, testLiveKitAPISecret, p.configEnvOverrides["LiveKitAPISecret"])
 		require.Equal(t, "sip-pass", p.configEnvOverrides["SIPTrunkAuthPassword"])
 	})
 
