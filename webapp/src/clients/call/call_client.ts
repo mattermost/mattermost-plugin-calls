@@ -2101,7 +2101,12 @@ export default class CallClient extends EventEmitter {
             return undefined;
         }
 
-        const inputs = await Room.getLocalDevices('audioinput', false);
-        return this.getStoredAudioDevice('input', inputs)?.deviceId ?? stored.deviceId;
+        try {
+            const inputs = await Room.getLocalDevices('audioinput', false);
+            return this.getStoredAudioDevice('input', inputs)?.deviceId ?? stored.deviceId;
+        } catch (err) {
+            logWarn('CallClient: listing audio inputs failed, using the stored input as is', err);
+            return stored.deviceId;
+        }
     }
 }

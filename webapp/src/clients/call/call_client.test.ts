@@ -2351,6 +2351,23 @@ describe('CallClient', () => {
                 expect(initAudioListener).toHaveBeenCalled();
             });
 
+            it('still requests the saved mic and publishes it when listing devices fails', async () => {
+                saveInput('mic-2', 'USB Mic');
+                (Room.getLocalDevices as jest.Mock).mockRejectedValueOnce(new Error('enumerateDevices failed'));
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic, usbMic]);
+                const micTrack = makeMicTrack('mic-2');
+                mockRoom.localParticipant.createTracks.mockResolvedValueOnce([micTrack]);
+                publishAsMic();
+                const initAudioListener = jest.fn();
+                client.on(CALL_EVENT.INIT_AUDIO, initAudioListener);
+
+                await join();
+
+                expect(mockRoom.localParticipant.createTracks).toHaveBeenCalledWith({audio: {deviceId: {ideal: 'mic-2'}}});
+                expect(mockRoom.localParticipant.publishTrack).toHaveBeenCalledWith(micTrack);
+                expect(initAudioListener).toHaveBeenCalled();
+            });
+
             it('does not switch device again when the mic was captured on the saved one', async () => {
                 saveInput('mic-2', 'USB Mic');
                 (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic, usbMic]);
