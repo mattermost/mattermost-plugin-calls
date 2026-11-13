@@ -20,7 +20,7 @@ import {
     RemoteParticipant,
     RemoteTrack,
     RemoteTrackPublication,
-    Room,
+    Room as LiveKitRoom,
     RoomEvent,
     ScreenShareCaptureOptions,
     SubscriptionError,
@@ -111,7 +111,7 @@ export default class CallClient extends EventEmitter {
     public currentAudioInputDevice: MediaDeviceInfo | null = null;
     public currentAudioOutputDevice: MediaDeviceInfo | null = null;
 
-    private room: Room | null = null;
+    private room: LiveKitRoom | null = null;
     private roomConnected = false;
     private disconnecting = false;
     private disconnected = false;
@@ -159,7 +159,7 @@ export default class CallClient extends EventEmitter {
     constructor() {
         super();
 
-        const room = new Room({
+        const room = new LiveKitRoom({
             audioCaptureDefaults: AUDIO_CAPTURE_DEFAULTS,
 
             // adaptiveStream/dynacast are disabled so screen shares always send
@@ -2014,17 +2014,17 @@ export default class CallClient extends EventEmitter {
         // One kind at a time, so the browser shows at most one permission prompt.
         // Safari before 18.4 and iOS never list speakers, so the output lookup briefly captures
         // the mic every time. On iOS that can mute an active call's mic if this runs mid-call.
-        const inputs = await Room.getLocalDevices('audioinput');
-        const outputs = await Room.getLocalDevices('audiooutput');
+        const inputs = await LiveKitRoom.getLocalDevices('audioinput');
+        const outputs = await LiveKitRoom.getLocalDevices('audiooutput');
         return {inputs, outputs};
     }
 
     private async enumerateDevices(): Promise<MediaDevices> {
         try {
-            // Room.getLocalDevices wraps navigator.mediaDevices.enumerateDevices
+            // LiveKitRoom.getLocalDevices wraps navigator.mediaDevices.enumerateDevices
             const [inputs, outputs] = await Promise.all([
-                Room.getLocalDevices('audioinput', false),
-                Room.getLocalDevices('audiooutput', false),
+                LiveKitRoom.getLocalDevices('audioinput', false),
+                LiveKitRoom.getLocalDevices('audiooutput', false),
             ]);
             this.audioDevices = {inputs, outputs};
 
@@ -2097,7 +2097,7 @@ export default class CallClient extends EventEmitter {
         }
 
         try {
-            const inputs = await Room.getLocalDevices('audioinput', false);
+            const inputs = await LiveKitRoom.getLocalDevices('audioinput', false);
             return this.getStoredAudioDevice('input', inputs)?.deviceId ?? stored.deviceId;
         } catch (err) {
             logWarn('CallClient: listing audio inputs failed, using the stored input as is', err);
