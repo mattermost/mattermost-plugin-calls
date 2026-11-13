@@ -16,6 +16,7 @@ import {
     getCallsClient,
     getCallsWindow,
     getPlatformInfo,
+    getScreenStream,
     getWebappUtils,
     hasLiveCallClient,
     isMobile,
@@ -806,6 +807,43 @@ describe('utils', () => {
                 expect(getPlatformInfo()).toBe(expectedPlatform);
             },
         );
+    });
+
+    describe('getScreenStream', () => {
+        const getDisplayMedia = jest.fn();
+
+        beforeAll(() => {
+            Object.defineProperty(navigator, 'mediaDevices', {
+                value: {getDisplayMedia},
+                configurable: true,
+                writable: true,
+            });
+        });
+
+        beforeEach(() => {
+            getDisplayMedia.mockReset().mockResolvedValue({getVideoTracks: () => [], getAudioTracks: () => []});
+        });
+
+        test('captures shared audio without voice processing or the call\'s own audio', async () => {
+            await getScreenStream('', true);
+
+            expect(getDisplayMedia).toHaveBeenCalledWith({
+                video: true,
+                audio: expect.objectContaining({
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                    voiceIsolation: false,
+                    restrictOwnAudio: true,
+                }),
+            });
+        });
+
+        test('requests no audio when sharing without audio', async () => {
+            await getScreenStream('', false);
+
+            expect(getDisplayMedia).toHaveBeenCalledWith({video: true, audio: false});
+        });
     });
 });
 

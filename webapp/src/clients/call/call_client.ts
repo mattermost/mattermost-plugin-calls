@@ -48,6 +48,7 @@ import {
     CALL_MESSAGE_TOPICS,
     CALL_TOKEN_API_PATH,
     HOST_CONTROL_ACTIONS,
+    SCREEN_SHARE_AUDIO_CAPTURE_OPTIONS,
     TRACK_PUBLISHING_DEFAULTS,
     USER_ID_SESSION_ID_SEPARATOR,
 } from './constants';
@@ -585,10 +586,9 @@ export default class CallClient extends EventEmitter {
         }
 
         // Only hint systemAudio when audio capture is actually requested.
-        const captureOptions: ScreenShareCaptureOptions = {audio: Boolean(withAudio)};
-        if (withAudio) {
-            captureOptions.systemAudio = 'include';
-        }
+        const captureOptions: ScreenShareCaptureOptions = withAudio ?
+            {audio: SCREEN_SHARE_AUDIO_CAPTURE_OPTIONS, systemAudio: 'include'} :
+            {audio: false};
 
         const tracks = await this.room.localParticipant.createScreenTracks(captureOptions);
         if (tracks.length === 0) {

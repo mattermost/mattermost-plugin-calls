@@ -3129,12 +3129,31 @@ describe('CallClient', () => {
             expect(mockRoom.localParticipant.createScreenTracks).not.toHaveBeenCalled();
         });
 
-        it('shareScreen passes systemAudio: include only when withAudio is true', async () => {
+        it('shareScreen captures shared audio without voice processing or the call\'s own audio', async () => {
             await client.connect({channelID: 'test-channel'});
 
             await client.shareScreen('', true);
 
-            expect(mockRoom.localParticipant.createScreenTracks).toHaveBeenCalledWith({audio: true, systemAudio: 'include'});
+            expect(mockRoom.localParticipant.createScreenTracks).toHaveBeenCalledWith({
+                audio: expect.objectContaining({
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                    voiceIsolation: false,
+                    restrictOwnAudio: true,
+                }),
+                systemAudio: 'include',
+            });
+        });
+
+        it('shareScreen requests no audio and no systemAudio when withAudio is false', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            await client.shareScreen('', false);
+
+            const [options] = mockRoom.localParticipant.createScreenTracks.mock.calls[0];
+            expect(options).toEqual({audio: false});
+            expect(options).not.toHaveProperty('systemAudio');
         });
 
         it('shareScreen returns already-sharing error without capturing when a remote participant is already sharing', async () => {
