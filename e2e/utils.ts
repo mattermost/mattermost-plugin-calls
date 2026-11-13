@@ -45,7 +45,7 @@ export function getUserIDsForTest() {
 
 export async function newUserPage(userState: string) {
     const browser = await chromium.launch();
-    const context = await browser.newContext({storageState: userState});
+    const context = await browser.newContext({baseURL, storageState: userState});
     return new PlaywrightDevPage(await context.newPage());
 }
 
