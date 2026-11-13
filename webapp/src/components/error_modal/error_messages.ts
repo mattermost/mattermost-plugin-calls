@@ -12,10 +12,19 @@ export const AudioInputPermissionsErr = new Error(AudioInputPermissionsMsg);
 export const userRemovedFromChannelErr = new Error('user was removed from channel');
 export const userLeftChannelErr = new Error('user has left channel');
 
-// Inherited from the pre-LiveKit client, which is where these were raised. The
-// modal still maps them to messages; nothing produces them any more.
-export const rtcPeerErr = new Error('rtc peer error');
-export const rtcPeerTimeoutErr = new Error('timed out waiting for rtc connection');
-export const rtcPeerCloseErr = new Error('rtc peer close');
 export const insecureContextErr = new Error('insecure context');
 
+// Text the join API (POST livekit-token) returns when it refuses a join, from
+// validateCallJoin in server/api.go and userCanStartOrJoin/addUserSession in
+// server/session.go. The server sends untranslated strings, so the modal maps these
+// to localized copy. Keep in sync with the server; unmapped text falls back to the
+// generic modal.
+export const JOIN_DENIED_MSGS = {
+    forbidden: 'forbidden',
+    insufficientPermissions: 'insufficient permissions',
+    channelDisabled: 'calls are disabled in the channel',
+    atCapacity: 'user cannot join because of limits',
+    groupCallsUnlicensed: 'unlicensed servers only allow calls in DMs',
+    callEnded: 'call has ended',
+    channelArchived: 'cannot join call in archived channel',
+} as const;

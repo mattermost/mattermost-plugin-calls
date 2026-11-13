@@ -2716,7 +2716,7 @@ describe('CallClient', () => {
             expect(mockRoom.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled();
         });
 
-        it('unshareScreen emits ERROR when setScreenShareEnabled rejects', async () => {
+        it('unshareScreen does NOT emit ERROR when setScreenShareEnabled rejects', async () => {
             await client.connect({channelID: 'test-channel'});
 
             mockRoom.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(new Error('unpublish failed'));
@@ -2725,7 +2725,7 @@ describe('CallClient', () => {
 
             await client.unshareScreen();
 
-            expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
+            expect(errorListener).not.toHaveBeenCalled();
         });
 
         it('shareScreen returns existing stream without publishing when this client is already sharing', async () => {
@@ -2764,11 +2764,11 @@ describe('CallClient', () => {
             expect(mockRoom.localParticipant.createScreenTracks).not.toHaveBeenCalled();
         });
 
-        it('shareScreen returns capture-error and emits ERROR for a non-permission failure', async () => {
+        it('shareScreen returns capture-error and does NOT emit ERROR for a non-permission failure', async () => {
             await client.connect({channelID: 'test-channel'});
 
-            // A generic failure (name !== NotAllowedError) is not classified as PermissionDenied,
-            // so it still surfaces as a call error.
+            // A generic failure (name !== NotAllowedError) is not classified as PermissionDenied.
+            // The caller shows an inline alert for capture-error, so no call error modal.
             mockRoom.localParticipant.createScreenTracks.mockRejectedValueOnce(new Error('publish failed'));
             const errorListener = jest.fn();
             client.on(CALL_EVENT.ERROR, errorListener);
@@ -2776,7 +2776,7 @@ describe('CallClient', () => {
             const result = await client.shareScreen();
 
             expect(result).toEqual([null, 'capture-error']);
-            expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
+            expect(errorListener).not.toHaveBeenCalled();
         });
 
         it('shareScreen returns permission-denied and does NOT emit ERROR when the picker is cancelled/denied (PermissionDenied)', async () => {
@@ -2885,7 +2885,7 @@ describe('CallClient', () => {
 
             expect(ok).toBe(false);
             expect(stopFn).toHaveBeenCalled();
-            expect(errorListener).toHaveBeenCalledWith(expect.any(Error));
+            expect(errorListener).not.toHaveBeenCalled();
         });
     });
 

@@ -513,7 +513,6 @@ export default class CallClient extends EventEmitter {
                 return fail('permission-denied');
             }
             logErr('CallClient: sharing screen failed', err);
-            this.emit(CALL_EVENT.ERROR, err);
             return fail('capture-error');
         }
     }
@@ -565,7 +564,6 @@ export default class CallClient extends EventEmitter {
             // wrapped for publishing.
             stream.getTracks().forEach((t) => t.stop());
             logErr('CallClient: shareScreenWithStream failed', err);
-            this.emit(CALL_EVENT.ERROR, err);
             return false;
         }
     }
@@ -700,7 +698,6 @@ export default class CallClient extends EventEmitter {
             await this.room.localParticipant.setScreenShareEnabled(false);
         } catch (err) {
             logErr('CallClient: unsharing screen failed', err);
-            this.emit(CALL_EVENT.ERROR, err);
         }
     }
 
