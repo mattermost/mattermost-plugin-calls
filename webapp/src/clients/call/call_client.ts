@@ -2012,6 +2012,8 @@ export default class CallClient extends EventEmitter {
      */
     static async getLocalAudioDevices(): Promise<MediaDevices> {
         // One kind at a time, so the browser shows at most one permission prompt.
+        // Safari before 18.4 and iOS never list speakers, so the output lookup briefly captures
+        // the mic every time. On iOS that can mute an active call's mic if this runs mid-call.
         const inputs = await Room.getLocalDevices('audioinput');
         const outputs = await Room.getLocalDevices('audiooutput');
         return {inputs, outputs};
