@@ -2010,7 +2010,7 @@ export default class CallClient extends EventEmitter {
      * Lists audio devices without a call, e.g. for user settings. Unlike enumerateDevices,
      * it asks for mic permission when the browser hides device labels.
      */
-    static async getLocalAudioDevices(): Promise<MediaDevices> {
+    public static async getLocalAudioDevices(): Promise<MediaDevices> {
         // One kind at a time, so the browser shows at most one permission prompt.
         // Safari before 18.4 and iOS never list speakers, so the output lookup briefly captures
         // the mic every time. On iOS that can mute an active call's mic if this runs mid-call.
