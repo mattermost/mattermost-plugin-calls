@@ -90,6 +90,7 @@ type MockRoom = {
     disconnect: jest.Mock;
     removeAllListeners: jest.Mock;
     switchActiveDevice: jest.Mock;
+    getActiveDevice: jest.Mock;
     startAudio: jest.Mock;
     canPlaybackAudio: boolean;
     localParticipant: any;
@@ -110,6 +111,7 @@ function createMockRoom(): MockRoom {
         disconnect: jest.fn().mockResolvedValue(null),
         removeAllListeners: jest.fn().mockReturnValue(null),
         switchActiveDevice: jest.fn().mockResolvedValue(null),
+        getActiveDevice: jest.fn(),
         startAudio: jest.fn().mockResolvedValue(undefined),
         canPlaybackAudio: true,
         localParticipant: {
@@ -1911,6 +1913,14 @@ describe('CallClient', () => {
             toJSON: () => ({}),
         } as MediaDeviceInfo;
 
+        const outputDevice2: MediaDeviceInfo = {
+            deviceId: 'spk-2',
+            kind: 'audiooutput',
+            label: 'USB Headset',
+            groupId: 'g4',
+            toJSON: () => ({}),
+        } as MediaDeviceInfo;
+
         it('returns empty audio devices before any enumeration', () => {
             expect(client.getAudioDevices()).toEqual({inputs: [], outputs: []});
         });
@@ -2070,8 +2080,28 @@ describe('CallClient', () => {
             // Wait for the async handler to complete.
             await new Promise((resolve) => setTimeout(resolve, 0));
 
-            expect(fallbackListener).toHaveBeenCalledWith(inputDevice);
+            expect(fallbackListener).toHaveBeenCalledWith(inputDevice2);
             expect(client.currentAudioInputDevice).toBe(inputDevice2);
+            expect(deviceChangeListener).toHaveBeenCalled();
+        });
+
+        it('skips DEVICE_FALLBACK when switching to the fallback input fails', async () => {
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice, inputDevice2]);
+            await client.connect({channelID: 'test-channel'});
+            await client.setAudioInputDevice(inputDevice);
+
+            const fallbackListener = jest.fn();
+            const deviceChangeListener = jest.fn();
+            client.on(CALL_EVENT.DEVICE_FALLBACK, fallbackListener);
+            client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+
+            mockRoom.switchActiveDevice.mockRejectedValueOnce(new Error('device not found'));
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice2]);
+            mockRoom.fire(RoomEvent.MediaDevicesChanged);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(mockRoom.switchActiveDevice).toHaveBeenLastCalledWith('audioinput', 'mic-2', true);
+            expect(fallbackListener).not.toHaveBeenCalled();
             expect(deviceChangeListener).toHaveBeenCalled();
         });
 
@@ -2091,6 +2121,111 @@ describe('CallClient', () => {
 
             expect(fallbackListener).not.toHaveBeenCalled();
             expect(deviceChangeListener).toHaveBeenCalled();
+        });
+
+        it('clears the input without DEVICE_FALLBACK when the last input is unplugged', async () => {
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice]);
+            await client.connect({channelID: 'test-channel'});
+            await client.setAudioInputDevice(inputDevice);
+
+            const fallbackListener = jest.fn();
+            const deviceChangeListener = jest.fn();
+            client.on(CALL_EVENT.DEVICE_FALLBACK, fallbackListener);
+            client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([]);
+            mockRoom.fire(RoomEvent.MediaDevicesChanged);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(client.currentAudioInputDevice).toBeNull();
+            expect(fallbackListener).not.toHaveBeenCalled();
+            expect(deviceChangeListener).toHaveBeenCalled();
+        });
+
+        describe('speaker sync on device change', () => {
+            let fallbackListener: jest.Mock;
+            let deviceChangeListener: jest.Mock;
+
+            beforeEach(async () => {
+                await client.connect({channelID: 'test-channel'});
+                fallbackListener = jest.fn();
+                deviceChangeListener = jest.fn();
+                client.on(CALL_EVENT.DEVICE_FALLBACK, fallbackListener);
+                client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+            });
+
+            async function pickSpeaker(device: MediaDeviceInfo) {
+                await client.setAudioOutputDevice(device);
+                mockRoom.switchActiveDevice.mockClear();
+                deviceChangeListener.mockClear();
+            }
+
+            // LiveKit runs its own speaker fallback before it emits MediaDevicesChanged,
+            // so liveKitSpeakerId is the speaker it is already using.
+            async function changeDevices(devices: MediaDeviceInfo[], liveKitSpeakerId?: string) {
+                mockRoom.getActiveDevice.mockImplementation((kind: MediaDeviceKind) => (kind === 'audiooutput' ? liveKitSpeakerId : undefined));
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue(devices);
+                mockRoom.fire(RoomEvent.MediaDevicesChanged);
+                await new Promise((resolve) => setTimeout(resolve, 0));
+            }
+
+            it('follows the speaker LiveKit moved to when the active one is unplugged (Chrome/Firefox)', async () => {
+                await pickSpeaker(outputDevice2);
+
+                await changeDevices([outputDevice], 'spk-1');
+
+                expect(mockRoom.switchActiveDevice).not.toHaveBeenCalled();
+                expect(client.currentAudioOutputDevice).toBe(outputDevice);
+                expect(fallbackListener).toHaveBeenCalledWith(outputDevice);
+                expect(deviceChangeListener).toHaveBeenCalled();
+            });
+
+            it('falls back to the first speaker when LiveKit reports none (Safari)', async () => {
+                await pickSpeaker(outputDevice2);
+
+                await changeDevices([outputDevice]);
+
+                expect(mockRoom.switchActiveDevice).not.toHaveBeenCalled();
+                expect(client.currentAudioOutputDevice).toBe(outputDevice);
+                expect(fallbackListener).toHaveBeenCalledWith(outputDevice);
+            });
+
+            it('leaves the speaker unset when none was ever picked', async () => {
+                await changeDevices([outputDevice2], 'spk-2');
+
+                expect(client.currentAudioOutputDevice).toBeNull();
+                expect(fallbackListener).not.toHaveBeenCalled();
+            });
+
+            it('clears the speaker without DEVICE_FALLBACK when the last one is unplugged', async () => {
+                await pickSpeaker(outputDevice);
+
+                await changeDevices([], 'spk-1');
+
+                expect(client.currentAudioOutputDevice).toBeNull();
+                expect(fallbackListener).not.toHaveBeenCalled();
+                expect(deviceChangeListener).toHaveBeenCalled();
+            });
+
+            it('follows LiveKit without DEVICE_FALLBACK when it moves the speaker while the old one is still listed (Firefox)', async () => {
+                await pickSpeaker(outputDevice);
+
+                await changeDevices([outputDevice2, outputDevice], 'spk-2');
+
+                expect(mockRoom.switchActiveDevice).not.toHaveBeenCalled();
+                expect(client.currentAudioOutputDevice).toBe(outputDevice2);
+                expect(fallbackListener).not.toHaveBeenCalled();
+                expect(deviceChangeListener).toHaveBeenCalled();
+            });
+
+            it('keeps the picked speaker when it is still listed and LiveKit reports one we do not list', async () => {
+                await pickSpeaker(outputDevice2);
+
+                await changeDevices([outputDevice, outputDevice2], 'default');
+
+                expect(client.currentAudioOutputDevice).toBe(outputDevice2);
+                expect(fallbackListener).not.toHaveBeenCalled();
+            });
         });
     });
 
