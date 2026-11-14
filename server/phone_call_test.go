@@ -300,7 +300,7 @@ func newLiveKitTestPlugin(t *testing.T, lkURL string) *Plugin {
 	cfg.LiveKitURL = lkURL
 	if lkURL != "" {
 		cfg.LiveKitAPIKey = "key"
-		cfg.LiveKitAPISecret = "secret"
+		cfg.LiveKitAPISecret = testLiveKitAPISecret
 	}
 	return &Plugin{
 		MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
@@ -680,7 +680,7 @@ func newPhoneCallTest(t *testing.T, participants ...*livekit.ParticipantInfo) *p
 	cfg.LiveKitSIPOutboundTrunkID = "ST_test"
 	cfg.LiveKitURL = tc.lk.srv.URL
 	cfg.LiveKitAPIKey = "key"
-	cfg.LiveKitAPISecret = "secret"
+	cfg.LiveKitAPISecret = testLiveKitAPISecret
 
 	tc.p = &Plugin{
 		MattermostPlugin:  plugin.MattermostPlugin{API: mockAPI},
@@ -830,7 +830,7 @@ func (tc *phoneCallTest) callerParticipant() *livekit.ParticipantInfo {
 func (tc *phoneCallTest) sendWebhook(t *testing.T, room, event string, participant *livekit.ParticipantInfo) {
 	t.Helper()
 	w := httptest.NewRecorder()
-	tc.p.apiRouter.ServeHTTP(w, newSignedWebhookRequest(t, "key", "secret", &livekit.WebhookEvent{
+	tc.p.apiRouter.ServeHTTP(w, newSignedWebhookRequest(t, "key", testLiveKitAPISecret, &livekit.WebhookEvent{
 		Event:       event,
 		Room:        &livekit.Room{Name: room},
 		Participant: participant,

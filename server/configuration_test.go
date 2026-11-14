@@ -6,8 +6,10 @@ package main
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/livekit/protocol/auth"
 	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
 	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
@@ -17,6 +19,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+const testLiveKitAPISecret = "this-is-a-32-plus-character-test-secret"
 
 func TestConfigurationIsValid(t *testing.T) {
 	var defaultConfig configuration
@@ -134,6 +138,25 @@ func TestConfigurationIsValid(t *testing.T) {
 			err: "TranscriberNumThreads is not valid: should be greater than 0",
 		},
 		{
+			name: "short LiveKitAPISecret",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.LiveKitAPISecret = strings.Repeat("s", minLiveKitAPISecretLength-1)
+				return cfg
+			}(),
+			err: "LiveKitAPISecret is not valid: must be at least 32 characters",
+		},
+		{
+			name: "minimum length LiveKitAPISecret",
+			input: func() configuration {
+				var cfg configuration
+				cfg.SetDefaults()
+				cfg.LiveKitAPISecret = strings.Repeat("s", minLiveKitAPISecretLength)
+				return cfg
+			}(),
+		},
+		{
 			name:  "defaults",
 			input: defaultConfig,
 		},
@@ -200,7 +223,7 @@ func TestGetClientConfig(t *testing.T) {
 
 	p.configuration.TranscribeAPIAzureSpeechKey = "azure-key"
 	p.configuration.LiveKitAPIKey = "lk-key"
-	p.configuration.LiveKitAPISecret = "lk-secret"
+	p.configuration.LiveKitAPISecret = testLiveKitAPISecret
 	p.configuration.SIPTrunkAuthPassword = "sip-pass"
 	adminClientCfg = p.getAdminClientConfig(p.getConfiguration())
 	require.Equal(t, model.FakeSetting, adminClientCfg.TranscribeAPIAzureSpeechKey)
@@ -209,7 +232,7 @@ func TestGetClientConfig(t *testing.T) {
 	require.Equal(t, "lk-key", adminClientCfg.LiveKitAPIKey)
 
 	require.Equal(t, "azure-key", p.configuration.TranscribeAPIAzureSpeechKey)
-	require.Equal(t, "lk-secret", p.configuration.LiveKitAPISecret)
+	require.Equal(t, testLiveKitAPISecret, p.configuration.LiveKitAPISecret)
 	require.Equal(t, "sip-pass", p.configuration.SIPTrunkAuthPassword)
 }
 
@@ -345,6 +368,61 @@ func TestConfigurationWillBeSaved(t *testing.T) {
 		require.True(t, errors.As(err, &appErr))
 		require.Contains(t, appErr.Message, "MaxCallParticipants is not valid")
 	})
+
+	t.Run("short LiveKit secret", func(t *testing.T) {
+		p, mockAPI := setup(t)
+		defer mockAPI.AssertExpectations(t)
+		mockAPI.On("LogDebug", "ConfigurationWillBeSaved", "origin", mock.AnythingOfType("string")).Return()
+
+		retCfg, err := p.ConfigurationWillBeSaved(pluginCfg(map[string]interface{}{
+			"livekitapisecret": "secret",
+		}))
+		require.Nil(t, retCfg)
+		var appErr *model.AppError
+		require.True(t, errors.As(err, &appErr))
+		require.Contains(t, appErr.Message, "LiveKitAPISecret is not valid")
+	})
+}
+
+func TestLoadConfigLiveKitAPISecretFromEnv(t *testing.T) {
+	setup := func(t *testing.T) *Plugin {
+		t.Helper()
+		mockAPI := &pluginMocks.MockAPI{}
+		t.Cleanup(func() { mockAPI.AssertExpectations(t) })
+		mockAPI.On("LoadPluginConfiguration", mock.AnythingOfType("*main.configuration")).Return(nil)
+		mockAPI.On("GetLicense").Return(nil)
+		return &Plugin{MattermostPlugin: plugin.MattermostPlugin{API: mockAPI}}
+	}
+
+	t.Run("short secret is rejected", func(t *testing.T) {
+		t.Setenv("MM_CALLS_LIVE_KIT_API_SECRET", "secret")
+		p := setup(t)
+		require.ErrorContains(t, p.loadConfig(), "LiveKitAPISecret is not valid")
+		require.Nil(t, p.configuration)
+	})
+
+	t.Run("long secret is accepted", func(t *testing.T) {
+		t.Setenv("MM_CALLS_LIVE_KIT_API_SECRET", testLiveKitAPISecret)
+		p := setup(t)
+		require.NoError(t, p.loadConfig())
+		require.Equal(t, testLiveKitAPISecret, p.getConfiguration().LiveKitAPISecret)
+	})
+}
+
+func TestLiveKitTokenSigningWithMinLengthSecret(t *testing.T) {
+	secret := strings.Repeat("s", minLiveKitAPISecretLength)
+
+	token, err := auth.NewAccessToken("testkey", secret).
+		SetIdentity("user").
+		SetVideoGrant(&auth.VideoGrant{RoomJoin: true, Room: "room"}).
+		ToJWT()
+	require.NoError(t, err)
+
+	verifier, err := auth.ParseAPIToken(token)
+	require.NoError(t, err)
+	_, claims, err := verifier.Verify(secret)
+	require.NoError(t, err)
+	require.Equal(t, "user", claims.Identity)
 }
 
 func TestOutboundAllowedTeams(t *testing.T) {
