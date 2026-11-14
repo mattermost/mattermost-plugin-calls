@@ -5,13 +5,14 @@ import {GlobalState} from '@mattermost/types/store';
 import {UserProfile} from '@mattermost/types/users';
 import Avatar from 'plugin/components/avatar/avatar';
 import {ParticipantsGrid} from 'plugin/components/expanded_view/participants_grid';
+import ScreenSharePlayer from 'plugin/components/screen_share_player';
 import {logErr} from 'plugin/log';
 import {alphaSortSessions, getUserDisplayName, stateSortSessions, untranslatable} from 'plugin/utils';
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {CALL_EVENT} from 'src/clients/call';
-import type {ScreenSharingSession} from 'src/clients/call/types';
+import type {ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import Timestamp from 'src/components/timestamp';
@@ -25,8 +26,7 @@ import {
 
 const RecordingView = () => {
     const {formatMessage} = useIntl();
-    const [screenPlayerNode, setScreenPlayerNode] = useState<HTMLVideoElement | null>(null);
-    const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+    const [screenTrack, setScreenTrack] = useState<ScreenShareTrack | null>(null);
     const callsClient = window.callsClient;
     const screenSharingSession = useSelector(screenSharingSessionForCurrentCall);
 
@@ -44,24 +44,14 @@ const RecordingView = () => {
             return;
         }
 
-        setScreenStream(callsClient.getRemoteScreenStream());
+        setScreenTrack(callsClient.getRemoteScreenTrack());
 
         // One derived sharer, which also clears when sharing stops — the recorder
         // previously only handled the ON event and never cleared.
         callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
-            setScreenStream(session?.stream ?? null);
+            setScreenTrack(session?.track ?? null);
         });
     }, [callsClient]);
-
-    useEffect(() => {
-        if (screenStream && screenPlayerNode && screenPlayerNode.srcObject !== screenStream) {
-            screenPlayerNode.srcObject = screenStream;
-        }
-    }, [screenStream, screenPlayerNode]);
-
-    const screenRefCb = useCallback((node: HTMLVideoElement | null) => {
-        setScreenPlayerNode(node);
-    }, []);
 
     if (!callsClient) {
         return null;
@@ -83,10 +73,9 @@ const RecordingView = () => {
 
         return (
             <div style={style.screenContainer}>
-                <video
+                <ScreenSharePlayer
+                    track={screenTrack}
                     style={style.screenPlayer}
-                    ref={screenRefCb}
-                    id='screen-player'
                     muted={true}
                     autoPlay={true}
                     onClick={(ev) => ev.preventDefault()}

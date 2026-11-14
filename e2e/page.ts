@@ -430,21 +430,26 @@ export default class PlaywrightDevPage {
     async expectScreenShared() {
         await expect(this.page.locator('#screen-player')).toBeVisible();
 
-        const screenStreamID = await (await this.page.waitForFunction(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
-        })).evaluate(() => {
-            return window.callsClient.getRemoteScreenStream()?.getVideoTracks()[0]?.id;
+        await this.page.waitForFunction(() => {
+            return Boolean(window.callsClient.getRemoteScreenTrack());
         });
-        expect(screenStreamID).toContain('screen_');
     }
 
     async expectScreenSharedOnPopout() {
         await expect(this.page.locator('#screen-player')).toBeVisible();
 
-        // Track ID format differs between v1 (screen_ prefix) and v2 (LiveKit); just verify the stream exists.
         await this.page.waitForFunction(() => {
             const callsClient = window.opener ? window.opener.callsClient : window.callsClient;
-            return Boolean(callsClient.getRemoteScreenStream()?.getVideoTracks()[0]);
+            return Boolean(callsClient.getRemoteScreenTrack());
+        });
+    }
+
+    // Waits until #screen-player is showing the share, not just mounted: it is
+    // playing, has a decoded frame, and its playback time has moved.
+    async expectScreenPlaying() {
+        await this.page.waitForFunction(() => {
+            const player = document.querySelector<HTMLVideoElement>('#screen-player');
+            return Boolean(player && !player.paused && player.videoWidth > 0 && player.currentTime > 0);
         });
     }
 

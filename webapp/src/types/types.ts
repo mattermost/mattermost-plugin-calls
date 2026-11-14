@@ -13,6 +13,7 @@ import {
     TranscribeAPI,
 } from '@mattermost/calls-common/lib/types';
 import {MessageDescriptor} from 'react-intl';
+import type {ScreenShareTrack} from 'src/clients/call/types';
 import {RTCStats} from 'src/types/webrtc';
 
 // calls-common still carries these for v1 (RTCD); the v2 server never sends them.
@@ -170,7 +171,7 @@ export type CallJobReduxState = {
 }
 
 export type ShareScreenError = 'not-connected' | 'already-sharing' | 'permission-denied' | 'capture-error';
-export type ShareScreenResult = [stream: MediaStream | null, error: ShareScreenError | null];
+export type ShareScreenResult = [track: ScreenShareTrack | null, error: ShareScreenError | null];
 
 // currentCallData (of type CurrentCallData) is attached to the widget's window to keep persistent data across
 // the various call windows. As a simple rule, if a child window (eg, ExpandedViewWindow) sets data,
