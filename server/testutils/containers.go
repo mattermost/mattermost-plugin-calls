@@ -17,7 +17,7 @@ import (
 const (
 	DBName         = "mattermost_test"
 	DBUser         = "mmuser"
-	DBPass         = "mostest"
+	DBPass         = "mostest-test-password"
 	DBNetworkAlias = "db"
 
 	PostgresImage = "postgres:14"
