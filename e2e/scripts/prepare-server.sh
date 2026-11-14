@@ -2,6 +2,8 @@
 set -eu
 set -o pipefail
 
+EXPECT_FIPS="${EXPECT_FIPS:-false}"
+
 function print_logs {
 	docker logs ${CONTAINER_SERVER}1
 	docker logs ${CONTAINER_SERVER}2
@@ -135,3 +137,29 @@ timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE
 
 echo "Checking proxy is up and running"
 timeout --foreground 90s bash -c "until docker run --rm --quiet --name ${COMPOSE_PROJECT_NAME}_curl_proxy --net ${DOCKER_NETWORK} ${IMAGE_CURL} curl -fs http://mm-server:8065/api/v4/system/ping; do echo Waiting for proxy; sleep 2; done; echo proxy is up"
+
+# Fails unless the container runs the given image and the image matches the
+# FIPS pattern. docker-compose.yaml falls back to public images when an IMAGE_*
+# variable is unset, so the FIPS job would otherwise pass without FIPS images.
+function check_fips_image {
+	local container image=$2 pattern=$3
+	container=$(docker inspect --format '{{.Name}}' "$1")
+	container=${container#/}
+	if [[ "${image}" != ${pattern} ]]; then
+		echo "${container}: '${image}' is not a FIPS image, want ${pattern}"
+		exit 1
+	fi
+	if [[ "$(docker inspect --format '{{.Image}}' "${container}")" != "$(docker image inspect --format '{{.Id}}' "${image}")" ]]; then
+		echo "${container} is not running ${image}"
+		exit 1
+	fi
+	echo "${container} runs ${image}"
+}
+
+if [[ "${EXPECT_FIPS}" == "true" ]]; then
+	check_fips_image "${CONTAINER_LIVEKIT}" "${IMAGE_LIVEKIT:-}" 'cgr.dev/mattermost.com/livekit-server-fips:*@sha256:*'
+	check_fips_image "$(docker compose -f ${DOCKER_COMPOSE_FILE} ps -q livekit-sip)" "${IMAGE_LIVEKIT_SIP:-}" 'cgr.dev/mattermost.com/livekit-sip-fips:*@sha256:*'
+	check_fips_image "$(docker compose -f ${DOCKER_COMPOSE_FILE} ps -q redis)" "${IMAGE_REDIS:-}" 'cgr.dev/mattermost.com/redis-fips:*@sha256:*'
+	check_fips_image "${CONTAINER_SERVER}1" "${IMAGE_SERVER}" 'mattermostdevelopment/mattermost-enterprise-fips-edition:*'
+	check_fips_image "${CONTAINER_SERVER}2" "${IMAGE_SERVER}" 'mattermostdevelopment/mattermost-enterprise-fips-edition:*'
+fi
