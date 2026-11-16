@@ -21,6 +21,8 @@ import (
 
 const (
 	migrationsTableName = "db_migrations_calls"
+
+	selectAppliedMigrationsQuery = "SELECT version, name FROM " + migrationsTableName
 )
 
 // morphLogWriter is a target to pass to the logger instance of morph.
@@ -114,15 +116,19 @@ func (s *Store) sourceMigrations() (map[uint32]string, error) {
 // applied by a newer Calls version sharing the same table). In that case
 // morph would refuse to run, even though nothing needs to be applied.
 func (s *Store) hasNewerSchema() (bool, error) {
+	// Same bound morph applies to its own reads: a non-positive timeout means no deadline.
+	ctx, cancel := drivers.GetContext(*s.settings.MigrationsStatementTimeoutSeconds)
+	defer cancel()
+
 	var exists bool
-	if err := s.wDB.QueryRow(`SELECT to_regclass($1) IS NOT NULL`, migrationsTableName).Scan(&exists); err != nil {
+	if err := s.wDB.QueryRowContext(ctx, `SELECT to_regclass($1) IS NOT NULL`, migrationsTableName).Scan(&exists); err != nil {
 		return false, fmt.Errorf("failed to check migrations table: %w", err)
 	}
 	if !exists {
 		return false, nil
 	}
 
-	rows, err := s.wDB.Query(`SELECT version, name FROM ` + migrationsTableName)
+	rows, err := s.wDB.QueryContext(ctx, selectAppliedMigrationsQuery)
 	if err != nil {
 		return false, fmt.Errorf("failed to query applied migrations: %w", err)
 	}
