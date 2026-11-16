@@ -6,6 +6,8 @@ MANIFEST_FILE ?= plugin.json
 GOPATH ?= $(shell go env GOPATH)
 GO_TEST_FLAGS ?= -race
 GO_BUILD_FLAGS ?=
+# Pinned mattermost/mattermost commit for tools/mmgotool. Bump with the monthly maintenance PR; must build with the Go version in go.mod.
+MMGOTOOL_VERSION ?= 3c6e3e099092
 MM_UTILITIES_DIR ?= ../mattermost-utilities
 DLV_DEBUG_PORT := 2346
 DEFAULT_GOOS := $(shell go env GOOS)
@@ -173,7 +175,7 @@ i18n-check:
 	cd webapp && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
 	cd standalone && $(NPM) run extract && git --no-pager diff --exit-code i18n/en.json || (echo "Missing translations. Please run \"make i18n-extract\" and commit the changes." && exit 1)
 
-	$(GO) install github.com/mattermost/mattermost/tools/mmgotool@latest
+	$(GO) install github.com/mattermost/mattermost/tools/mmgotool@$(MMGOTOOL_VERSION)
 	mkdir -p server/i18n
 	cd server && $(GOBIN)/mmgotool i18n clean-empty --portal-dir="" --check
 	cd server && $(GOBIN)/mmgotool i18n check-empty-src --portal-dir=""
@@ -478,7 +480,7 @@ i18n-extract:
 	cd webapp && $(NPM) run extract
 	cd standalone && $(NPM) run extract
 
-	$(GO) install github.com/mattermost/mattermost/tools/mmgotool@latest
+	$(GO) install github.com/mattermost/mattermost/tools/mmgotool@$(MMGOTOOL_VERSION)
 	cd server && $(GOBIN)/mmgotool i18n extract --portal-dir="" --skip-dynamic
 
 ## Disable the plugin.
