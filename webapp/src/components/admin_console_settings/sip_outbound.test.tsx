@@ -37,7 +37,7 @@ describe('SIPOutboundSection', () => {
         );
     };
 
-    it('renders settings for Enterprise Advanced', () => {
+    test('renders settings for Enterprise Advanced', () => {
         renderComponent({SkuShortName: 'advanced'}, true);
 
         expect(screen.getByText('Outbound phone calls')).toBeInTheDocument();
@@ -45,7 +45,7 @@ describe('SIPOutboundSection', () => {
         expect(screen.queryByTestId('calls-sip-outbound-promo')).not.toBeInTheDocument();
     });
 
-    it.each([
+    test.each([
         ['enterprise', {SkuShortName: 'enterprise'}],
         ['no license', {}],
     ])('renders the promo instead of settings for %s', (_name, license) => {
@@ -56,14 +56,14 @@ describe('SIPOutboundSection', () => {
         expect(screen.queryByTestId('setting1')).not.toBeInTheDocument();
     });
 
-    it('renders settings when the server allows SIP outbound without an Advanced license (developer mode)', () => {
+    test('renders settings when the server allows SIP outbound without an Advanced license (developer mode)', () => {
         renderComponent({SkuShortName: 'enterprise'}, true);
 
         expect(screen.getByTestId('setting1')).toBeInTheDocument();
         expect(screen.queryByTestId('calls-sip-outbound-promo')).not.toBeInTheDocument();
     });
 
-    it('renders settings on cloud', () => {
+    test('renders settings on cloud', () => {
         renderComponent({Cloud: 'true', SkuShortName: 'enterprise'});
 
         expect(screen.getByTestId('setting1')).toBeInTheDocument();
