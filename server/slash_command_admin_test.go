@@ -91,6 +91,40 @@ func TestAdminCallCommands(t *testing.T) {
 		assert.Contains(t, resp.Text, "| 1 |")
 	})
 
+	t.Run("cleanup waits for sessions that joined after the first close", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
+		call := newCall(t)
+		c := &callToEnd{callID: call.ID, channelID: call.ChannelID}
+
+		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		closed := map[string]struct{}{}
+		for id := range sessions {
+			closed[id] = struct{}{}
+		}
+
+		// A session joins after the snapshot: the call must not be cleaned up yet.
+		late := model.NewId()
+		require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+			ID: late, CallID: call.ID, UserID: model.NewId(), JoinAt: time.Now().UnixMilli(),
+		}))
+		done, err := p.cleanIfAllClosed(c, closed)
+		require.NoError(t, err)
+		assert.False(t, done)
+		active, err := p.store.GetAllActiveCalls(db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		assert.Len(t, active, 1)
+
+		// Once it has been closed too, cleanup goes ahead.
+		closed[late] = struct{}{}
+		done, err = p.cleanIfAllClosed(c, closed)
+		require.NoError(t, err)
+		assert.True(t, done)
+		active, err = p.store.GetAllActiveCalls(db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		assert.Empty(t, active)
+	})
+
 	t.Run("list-all with no calls", func(t *testing.T) {
 		resp, err := p.handleListAllCommand(&model.CommandArgs{UserId: adminID})
 		require.NoError(t, err)

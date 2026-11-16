@@ -137,36 +137,81 @@ func (p *Plugin) isCallActive(c *callToEnd) (bool, error) {
 	return call != nil && call.ID == c.callID, nil
 }
 
+const maxForceEndAttempts = 5
+
 // forceEndCall closes every remaining session and cleans up the call state. Sessions are
 // closed without holding the call lock: closing an embedded RTC session synchronously
 // triggers the leave handler which needs that same lock.
+//
+// Joins also take the call lock, so the session list is re-read under it before cleaning up:
+// a session that joined after the first read gets closed on the next attempt instead of
+// having its row deleted while its RTC session stays live.
 func (p *Plugin) forceEndCall(c *callToEnd) error {
-	sessions, err := p.store.GetCallSessions(c.callID, db.GetCallSessionOpts{FromWriter: true})
-	if err != nil {
-		return fmt.Errorf("failed to get call sessions: %w", err)
-	}
-	for _, session := range sessions {
-		if err := p.closeRTCSessionWithHost(session.UserID, session.ID, c.channelID, c.nodeID, c.callID, c.rtcdHost); err != nil {
-			p.LogError("end-all: failed to close RTC session", "err", err.Error(), "sessionID", session.ID, "callID", c.callID)
+	closed := map[string]struct{}{}
+
+	closeNew := func() error {
+		sessions, err := p.store.GetCallSessions(c.callID, db.GetCallSessionOpts{FromWriter: true})
+		if err != nil {
+			return fmt.Errorf("failed to get call sessions: %w", err)
 		}
-	}
-
-	// Closing the last session may already have ended the call.
-	state, err := p.lockCallReturnState(c.channelID)
-	if err != nil {
-		return fmt.Errorf("failed to lock call: %w", err)
-	}
-	defer p.unlockCall(c.channelID)
-
-	if state == nil || state.Call.ID != c.callID {
+		for _, session := range sessions {
+			if _, ok := closed[session.ID]; ok {
+				continue
+			}
+			closed[session.ID] = struct{}{}
+			if err := p.closeRTCSessionWithHost(session.UserID, session.ID, c.channelID, c.nodeID, c.callID, c.rtcdHost); err != nil {
+				p.LogError("end-all: failed to close RTC session", "err", err.Error(), "sessionID", session.ID, "callID", c.callID)
+			}
+		}
 		return nil
 	}
 
-	if err := p.cleanCallState(&state.Call); err != nil {
-		return fmt.Errorf("failed to clean call state: %w", err)
+	for range maxForceEndAttempts {
+		if err := closeNew(); err != nil {
+			return err
+		}
+
+		done, err := p.cleanIfAllClosed(c, closed)
+		if err != nil {
+			return err
+		}
+		if done {
+			return nil
+		}
 	}
 
-	return nil
+	return fmt.Errorf("sessions kept joining call %s", c.callID)
+}
+
+// cleanIfAllClosed cleans up the call state if, under the call lock, every session has
+// already been closed. It reports false if new sessions showed up in the meantime.
+func (p *Plugin) cleanIfAllClosed(c *callToEnd, closed map[string]struct{}) (bool, error) {
+	state, err := p.lockCallReturnState(c.channelID)
+	if err != nil {
+		return false, fmt.Errorf("failed to lock call: %w", err)
+	}
+	defer p.unlockCall(c.channelID)
+
+	// Closing the last session may already have ended the call.
+	if state == nil || state.Call.ID != c.callID {
+		return true, nil
+	}
+
+	sessions, err := p.store.GetCallSessions(c.callID, db.GetCallSessionOpts{FromWriter: true})
+	if err != nil {
+		return false, fmt.Errorf("failed to get call sessions: %w", err)
+	}
+	for _, session := range sessions {
+		if _, ok := closed[session.ID]; !ok {
+			return false, nil
+		}
+	}
+
+	if err := p.cleanCallState(&state.Call); err != nil {
+		return false, fmt.Errorf("failed to clean call state: %w", err)
+	}
+
+	return true, nil
 }
 
 func (p *Plugin) handleEndAllCommand(args *model.CommandArgs) (*model.CommandResponse, error) {
