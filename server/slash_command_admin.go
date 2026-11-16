@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +25,20 @@ func (p *Plugin) checkAdminCommand(userID string) error {
 	return nil
 }
 
+// activeParticipantCount returns the number of distinct users currently in the call.
+// Props.Participants can't be used: it also includes users who already left.
+func (p *Plugin) activeParticipantCount(call *public.Call) (int, error) {
+	sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
+	if err != nil {
+		return 0, err
+	}
+	users := make(map[string]struct{}, len(sessions))
+	for _, session := range sessions {
+		users[session.UserID] = struct{}{}
+	}
+	return len(users), nil
+}
+
 func (p *Plugin) describeCall(call *public.Call) string {
 	name, team := call.ChannelID, ""
 	if ch, appErr := p.API.GetChannel(call.ChannelID); appErr == nil {
@@ -40,10 +55,16 @@ func (p *Plugin) describeCall(call *public.Call) string {
 	if team == "" {
 		team = "-"
 	}
-	return fmt.Sprintf("| %s | %s | %s | %s | %d |",
+	count := "?"
+	if n, err := p.activeParticipantCount(call); err != nil {
+		p.LogError("list-all: failed to get call sessions", "err", err.Error(), "callID", call.ID)
+	} else {
+		count = strconv.Itoa(n)
+	}
+	return fmt.Sprintf("| %s | %s | %s | %s | %s |",
 		name, team, call.ChannelID,
 		time.UnixMilli(call.StartAt).UTC().Format(time.RFC3339),
-		len(call.Props.Participants))
+		count)
 }
 
 func (p *Plugin) handleListAllCommand(args *model.CommandArgs) (*model.CommandResponse, error) {
@@ -105,9 +126,15 @@ func (p *Plugin) notifyCallEnd(channelID string) (*callToEnd, error) {
 	}, nil
 }
 
-func (p *Plugin) isCallActive(c *callToEnd) bool {
+func (p *Plugin) isCallActive(c *callToEnd) (bool, error) {
 	call, err := p.store.GetActiveCallByChannelID(c.channelID, db.GetCallOpts{FromWriter: true})
-	return err == nil && call != nil && call.ID == c.callID
+	if errors.Is(err, db.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return call != nil && call.ID == c.callID, nil
 }
 
 // forceEndCall closes every remaining session and cleans up the call state. Sessions are
@@ -116,7 +143,7 @@ func (p *Plugin) isCallActive(c *callToEnd) bool {
 func (p *Plugin) forceEndCall(c *callToEnd) error {
 	sessions, err := p.store.GetCallSessions(c.callID, db.GetCallSessionOpts{FromWriter: true})
 	if err != nil {
-		p.LogError("end-all: failed to get call sessions", "err", err.Error(), "callID", c.callID)
+		return fmt.Errorf("failed to get call sessions: %w", err)
 	}
 	for _, session := range sessions {
 		if err := p.closeRTCSessionWithHost(session.UserID, session.ID, c.channelID, c.nodeID, c.callID, c.rtcdHost); err != nil {
@@ -176,7 +203,8 @@ wait:
 		case <-ticker.C:
 			var still []*callToEnd
 			for _, c := range pending {
-				if p.isCallActive(c) {
+				// On lookup errors keep the call pending so it gets checked again.
+				if active, err := p.isCallActive(c); err != nil || active {
 					still = append(still, c)
 				}
 			}
@@ -192,7 +220,13 @@ wait:
 
 	var ended []string
 	for _, c := range pending {
-		if p.isCallActive(c) {
+		active, err := p.isCallActive(c)
+		if err != nil {
+			p.LogError("end-all: failed to check call state", "err", err.Error(), "callID", c.callID, "channelID", c.channelID)
+			failed = append(failed, c.channelID)
+			continue
+		}
+		if active {
 			if err := p.forceEndCall(c); err != nil {
 				p.LogError("end-all: failed to end call", "err", err.Error(), "callID", c.callID, "channelID", c.channelID)
 				failed = append(failed, c.channelID)

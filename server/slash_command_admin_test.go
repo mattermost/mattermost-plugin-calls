@@ -79,6 +79,18 @@ func TestAdminCallCommands(t *testing.T) {
 		assert.Contains(t, resp.Text, c2.ChannelID)
 	})
 
+	t.Run("list-all counts only current participants", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
+		call := newCall(t)
+		// userID is in Props.Participants (and has a session); add a user who left.
+		call.Props.Participants[model.NewId()] = struct{}{}
+		require.NoError(t, p.store.UpdateCall(call))
+
+		resp, err := p.handleListAllCommand(&model.CommandArgs{UserId: adminID})
+		require.NoError(t, err)
+		assert.Contains(t, resp.Text, "| 1 |")
+	})
+
 	t.Run("list-all with no calls", func(t *testing.T) {
 		resp, err := p.handleListAllCommand(&model.CommandArgs{UserId: adminID})
 		require.NoError(t, err)
