@@ -84,6 +84,20 @@
             "type": "bool",
             "default": false,
             "help_text": "When set to true, video calls are enabled in direct message channels."
+          },
+          {
+            "key": "LiveKitAPISecret",
+            "display_name": "LiveKit API secret",
+            "type": "custom",
+            "secret": true,
+            "default": ""
+          },
+          {
+            "key": "SIPTrunkAuthPassword",
+            "display_name": "Auth password",
+            "type": "custom",
+            "secret": true,
+            "default": ""
           }
         ]
       },

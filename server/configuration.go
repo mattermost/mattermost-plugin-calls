@@ -91,6 +91,12 @@ type configuration struct {
 	// The language to be passed to the live captions transcriber.
 	LiveCaptionsLanguage string
 
+	// Calls v2 secrets. Unused by v1; declared (hidden in the System Console) only so
+	// they are masked in admin config and env responses while v1 is installed.
+	// Keys must match v2 exactly.
+	LiveKitAPISecret     string
+	SIPTrunkAuthPassword string
+
 	ClientConfig
 }
 
@@ -367,6 +373,8 @@ func (c *configuration) Clone() *configuration {
 	cfg.TranscribeAPIAzureSpeechRegion = c.TranscribeAPIAzureSpeechRegion
 	cfg.LiveCaptionsModelSize = c.LiveCaptionsModelSize
 	cfg.LiveCaptionsLanguage = c.LiveCaptionsLanguage
+	cfg.LiveKitAPISecret = c.LiveKitAPISecret
+	cfg.SIPTrunkAuthPassword = c.SIPTrunkAuthPassword
 
 	if c.UDPServerPort != nil {
 		cfg.UDPServerPort = model.NewPointer(*c.UDPServerPort)
@@ -547,12 +555,14 @@ func (p *Plugin) getAdminClientConfig(c *configuration) configuration {
 	cfg.ClientConfig = p.getClientConfig(c)
 	cfg.TURNStaticAuthSecret = maskSecret(cfg.TURNStaticAuthSecret)
 	cfg.TranscribeAPIAzureSpeechKey = maskSecret(cfg.TranscribeAPIAzureSpeechKey)
+	cfg.LiveKitAPISecret = maskSecret(cfg.LiveKitAPISecret)
+	cfg.SIPTrunkAuthPassword = maskSecret(cfg.SIPTrunkAuthPassword)
 
 	return *cfg
 }
 
 // secretSettingKeys must stay in sync with the fields masked in getAdminClientConfig.
-var secretSettingKeys = []string{"TURNStaticAuthSecret", "TranscribeAPIAzureSpeechKey"}
+var secretSettingKeys = []string{"TURNStaticAuthSecret", "TranscribeAPIAzureSpeechKey", "LiveKitAPISecret", "SIPTrunkAuthPassword"}
 
 func maskSecret(s string) string {
 	if s == "" {

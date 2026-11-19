@@ -47,6 +47,7 @@ import EnableIPv6 from 'src/components/admin_console_settings/enable_ipv6';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
 import EnableSimulcast from 'src/components/admin_console_settings/enable_simulcast';
 import EnableVideo from 'src/components/admin_console_settings/enable_video';
+import HiddenSetting from 'src/components/admin_console_settings/hidden_setting';
 import ICEHostOverride from 'src/components/admin_console_settings/ice_host_override';
 import ICEHostPortOverride from 'src/components/admin_console_settings/ice_host_port_override';
 import ICEServersConfigs from 'src/components/admin_console_settings/ice_servers_configs';
@@ -552,6 +553,10 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('TURNStaticAuthSecret', TURNStaticAuthSecret);
         registry.registerAdminConsoleCustomSetting('TURNCredentialsExpirationMinutes', TURNCredentialsExpirationMinutes);
         registry.registerAdminConsoleCustomSetting('ServerSideTURN', ServerSideTURN);
+
+        // Owned by Calls v2. Declared (and rendered as nothing) only so the server masks them.
+        registry.registerAdminConsoleCustomSetting('LiveKitAPISecret', HiddenSetting);
+        registry.registerAdminConsoleCustomSetting('SIPTrunkAuthPassword', HiddenSetting);
 
         // Recordings
         if (registry.registerAdminConsoleCustomSection) {
