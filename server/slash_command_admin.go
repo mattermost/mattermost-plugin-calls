@@ -101,6 +101,9 @@ type callToEnd struct {
 	channelID string
 	nodeID    string
 	rtcdHost  string
+
+	// hostGone is set if the call's RTCD host was unreachable when ending it.
+	hostGone bool
 }
 
 // notifyCallEnd asks clients to leave the call (they disconnect themselves and the
@@ -139,6 +142,21 @@ func (p *Plugin) isCallActive(c *callToEnd) (bool, error) {
 
 const maxForceEndAttempts = 5
 
+// isRTCDHostGone reports whether the RTCD node handling a call is verifiably unreachable,
+// in which case its sessions are gone with it and there is nothing left to close.
+func (p *Plugin) isRTCDHostGone(host string) bool {
+	if p.rtcdManager == nil || host == "" {
+		return false
+	}
+	h := p.rtcdManager.getHost(host)
+	if h == nil {
+		// The failed close already attempted (and failed) to create a client for it.
+		return true
+	}
+	_, err := h.client.GetVersionInfo()
+	return err != nil
+}
+
 // forceEndCall closes every remaining session and cleans up the call state. Sessions are
 // closed without holding the call lock: closing an embedded RTC session synchronously
 // triggers the leave handler which needs that same lock.
@@ -162,6 +180,13 @@ func (p *Plugin) forceEndCall(c *callToEnd) error {
 			// Only mark a session as closed on success: cleaning up the call state would
 			// delete the session row while its RTC session could still be live.
 			if err := p.closeRTCSessionWithHost(session.UserID, session.ID, c.channelID, c.nodeID, c.callID, c.rtcdHost); err != nil {
+				if p.isRTCDHostGone(c.rtcdHost) {
+					// Nothing left to close: don't leave the call lingering in the DB.
+					p.LogWarn("end-all: RTCD host unreachable, skipping session close", "err", err.Error(), "sessionID", session.ID, "callID", c.callID, "rtcdHost", c.rtcdHost)
+					c.hostGone = true
+					closed[session.ID] = struct{}{}
+					continue
+				}
 				p.LogError("end-all: failed to close RTC session", "err", err.Error(), "sessionID", session.ID, "callID", c.callID)
 				closeErrs = append(closeErrs, err)
 				continue
@@ -268,7 +293,7 @@ wait:
 		}
 	}
 
-	var ended []string
+	var ended, hostGone []string
 	for _, c := range pending {
 		active, err := p.isCallActive(c)
 		if err != nil {
@@ -284,11 +309,17 @@ wait:
 			}
 		}
 		ended = append(ended, c.channelID)
+		if c.hostGone {
+			hostGone = append(hostGone, c.channelID)
+		}
 	}
 
 	text := fmt.Sprintf("Ended %d call(s).", len(ended))
 	if len(ended) > 0 {
 		text += " Channels: " + strings.Join(ended, ", ")
+	}
+	if len(hostGone) > 0 {
+		text += fmt.Sprintf("\nRTCD host unreachable for %d call(s), their state was cleaned up without closing media: %s", len(hostGone), strings.Join(hostGone, ", "))
 	}
 	if len(failed) > 0 {
 		text += fmt.Sprintf("\nFailed to end %d call(s): %s", len(failed), strings.Join(failed, ", "))
