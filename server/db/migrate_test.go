@@ -4,6 +4,7 @@
 package db
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
@@ -144,4 +145,85 @@ func TestMigrate(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestMigrateNewerSchema(t *testing.T) {
+	store, tearDown := newPostgresStore(t, false)
+	require.NotNil(t, store)
+	t.Cleanup(tearDown)
+
+	initMMSchema(t, store)
+
+	src, err := store.sourceMigrations()
+	require.NoError(t, err)
+	require.NotEmpty(t, src)
+
+	extraVersion := uint32(len(src) + 6)
+
+	appliedCount := func() int {
+		var count int
+		require.NoError(t, store.wDBx.Get(&count, `SELECT COUNT(*) FROM `+migrationsTableName))
+		return count
+	}
+
+	t.Run("fresh database", func(t *testing.T) {
+		require.NoError(t, store.Migrate(models.Up, false))
+		require.Equal(t, len(src), appliedCount())
+	})
+
+	t.Run("already up to date", func(t *testing.T) {
+		require.NoError(t, store.Migrate(models.Up, false))
+		require.Equal(t, len(src), appliedCount())
+	})
+
+	t.Run("newer migrations present", func(t *testing.T) {
+		// Mirrors v2: 6 extra migrations (morph counts up+down files, so this exceeds its source count).
+		for i := uint32(0); i < 6; i++ {
+			_, err := store.wDB.Exec(`INSERT INTO `+migrationsTableName+` (version, name) VALUES ($1, $2)`, extraVersion+i, fmt.Sprintf("future_migration_%d", i))
+			require.NoError(t, err)
+		}
+
+		require.NoError(t, store.Migrate(models.Up, false))
+
+		// Extra rows and v1 tables are left untouched.
+		require.Equal(t, len(src)+6, appliedCount())
+		var count int
+		require.NoError(t, store.wDBx.Get(&count, `SELECT COUNT(*) FROM calls_sessions`))
+	})
+
+	t.Run("gap with newer migrations present", func(t *testing.T) {
+		_, err := store.wDB.Exec(`DELETE FROM ` + migrationsTableName + ` WHERE version = 3`)
+		require.NoError(t, err)
+
+		// Push the applied count past morph's source count so the gap is rejected rather than silently re-applied.
+		_, err = store.wDB.Exec(`INSERT INTO `+migrationsTableName+` (version, name) VALUES ($1, 'future_migration_extra')`, extraVersion+100)
+		require.NoError(t, err)
+
+		require.Error(t, store.Migrate(models.Up, false))
+
+		var count int
+		require.NoError(t, store.wDBx.Get(&count, `SELECT COUNT(*) FROM `+migrationsTableName+` WHERE version = 3`))
+		require.Zero(t, count)
+	})
+}
+
+func TestMigrateUpgradeFromEarlierVersion(t *testing.T) {
+	store, tearDown := newPostgresStore(t, false)
+	require.NotNil(t, store)
+	t.Cleanup(tearDown)
+
+	initMMSchema(t, store)
+	require.NoError(t, store.Migrate(models.Up, false))
+
+	// Simulate an earlier v1 release that only knew the first four migrations (before the video column).
+	_, err := store.wDB.Exec(`DELETE FROM ` + migrationsTableName + ` WHERE version = 5`)
+	require.NoError(t, err)
+	_, err = store.wDB.Exec(`ALTER TABLE calls_sessions DROP COLUMN IF EXISTS video`)
+	require.NoError(t, err)
+
+	require.NoError(t, store.Migrate(models.Up, false))
+
+	var count int
+	require.NoError(t, store.wDBx.Get(&count, `SELECT COUNT(*) FROM `+migrationsTableName+` WHERE version = 5`))
+	require.Equal(t, 1, count)
 }
