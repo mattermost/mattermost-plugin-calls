@@ -1,0 +1,21 @@
+# coturn for Calls v2: external TURN server, TURN over TLS on port 443.
+#
+# Runs on a SEPARATE host from LiveKit (it needs its own public IP so it can own
+# port 443). See README.md in this directory.
+#
+#   sudo ./setup.sh <turn-domain> <livekit-public-ip>
+#   docker compose up -d
+#
+# Host networking is used because TURN allocates relay ports from a UDP range.
+# The container runs as user "nobody", so the config and certificates must be
+# readable by uid 65534 (setup.sh and renew-hook.sh arrange this).
+services:
+  coturn:
+    image: coturn/coturn:4.18.0-r0
+    container_name: coturn
+    restart: unless-stopped
+    network_mode: host
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - ./certs:/certs:ro
