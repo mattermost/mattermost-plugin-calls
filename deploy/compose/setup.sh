@@ -8,6 +8,7 @@
 #   --sip                       also enable Redis and the SIP bridge
 #   --turn-host <domain>        advertise an external TURN server (see turn/README.md)
 #   --turn-secret-file <file>   file holding the TURN server's shared secret
+#   --turn-domain <domain>      use LiveKit's built-in TURN on this host (docker-compose.builtin-turn.yaml)
 #
 # Examples:
 #   ./setup.sh lk.example.com https://mattermost.example.com
@@ -24,7 +25,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 <livekit-domain> <mattermost-site-url> [--sip] [--turn-host <domain> --turn-secret-file <file>]" >&2
+  echo "Usage: $0 <livekit-domain> <mattermost-site-url> [--sip] [--turn-host <domain> --turn-secret-file <file> | --turn-domain <domain>]" >&2
   exit 1
 }
 [ $# -ge 2 ] || usage
@@ -35,11 +36,13 @@ shift 2
 SIP=false
 TURN_HOST=""
 TURN_SECRET_FILE=""
+TURN_DOMAIN=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --sip) SIP=true; shift ;;
     --turn-host) TURN_HOST="${2:?--turn-host needs a value}"; shift 2 ;;
     --turn-secret-file) TURN_SECRET_FILE="${2:?--turn-secret-file needs a value}"; shift 2 ;;
+    --turn-domain) TURN_DOMAIN="${2:?--turn-domain needs a value}"; shift 2 ;;
     *) usage ;;
   esac
 done
@@ -51,6 +54,15 @@ case "$MM_URL" in
   https://*|http://*) ;;
   *) echo "mattermost-site-url must start with https:// (or http://)" >&2; exit 1 ;;
 esac
+
+# Built-in TURN and an external TURN server are alternatives.
+if [ -n "$TURN_DOMAIN" ]; then
+  [ -z "$TURN_HOST" ] || { echo "--turn-domain cannot be combined with --turn-host" >&2; exit 1; }
+  case "$TURN_DOMAIN" in
+    http*|*/*|*:*) echo "--turn-domain must be a bare hostname, e.g. turn.example.com" >&2; exit 1 ;;
+  esac
+  [ "$TURN_DOMAIN" != "$DOMAIN" ] || { echo "--turn-domain must differ from livekit-domain" >&2; exit 1; }
+fi
 
 # TURN: both options or neither. LiveKit refuses to start if a TURN entry has no
 # credentials, so an empty or missing secret must stop us before anything is written.
@@ -86,6 +98,10 @@ fi
   echo "LIVEKIT_DOMAIN=${DOMAIN}"
   # Enables the Redis + SIP bridge services for a plain `docker compose up -d`.
   $SIP && echo "COMPOSE_PROFILES=sip"
+  if [ -n "$TURN_DOMAIN" ]; then
+    echo "TURN_DOMAIN=${TURN_DOMAIN}"
+    echo "COMPOSE_FILE=docker-compose.yaml:docker-compose.builtin-turn.yaml"
+  fi
   true
 } > .env
 
@@ -94,6 +110,17 @@ REDIS_BLOCK=""
 if $SIP; then
   REDIS_BLOCK="redis:
   address: redis:6379
+"
+fi
+
+# Built-in TURN over TLS only: Caddy terminates TLS on 443 (by SNI) and forwards plaintext to LiveKit.
+BUILTIN_TURN_BLOCK=""
+if [ -n "$TURN_DOMAIN" ]; then
+  BUILTIN_TURN_BLOCK="turn:
+  enabled: true
+  domain: ${TURN_DOMAIN}
+  external_tls: true
+  tls_port: 5349
 "
 fi
 
@@ -119,7 +146,7 @@ rtc:
   udp_port: 7882
   use_ice_lite: true
   use_external_ip: true
-${TURN_BLOCK}${REDIS_BLOCK}keys:
+${TURN_BLOCK}${BUILTIN_TURN_BLOCK}${REDIS_BLOCK}keys:
   ${KEY_NAME}: ${API_SECRET}
 webhook:
   api_key: ${KEY_NAME}
@@ -143,13 +170,14 @@ logging:
 EOF
 
 SIP_STATE="disabled"; $SIP && SIP_STATE="enabled"
-TURN_STATE="disabled"; [ -n "$TURN_HOST" ] && TURN_STATE="enabled (${TURN_HOST})"
+TURN_STATE="disabled"; [ -n "$TURN_HOST" ] && TURN_STATE="external (${TURN_HOST})"
+[ -n "$TURN_DOMAIN" ] && TURN_STATE="built-in (${TURN_DOMAIN})"
 
 cat <<EOF
 
 Wrote .env, livekit.yaml and sip.yaml (mode 600).
   SIP bridge:     ${SIP_STATE}
-  External TURN:  ${TURN_STATE}
+  TURN:           ${TURN_STATE}
 
 Calls plugin settings (System Console > Plugins > Calls):
   LiveKit URL         wss://${DOMAIN}

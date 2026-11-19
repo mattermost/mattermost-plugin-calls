@@ -20,7 +20,7 @@ Status legend: **[validated]** was run end to end on AWS; **[untested]** is writ
   | 10000-10100 | UDP | Only if the SIP bridge is enabled (RTP media) |
   | 5060 | UDP | Only for inbound SIP; not needed for outbound dialing |
 
-  Clients connect to the media ports directly, so they must be reachable from the internet (or from your users' networks). TURN is not required; see [External TURN](#external-turn-for-restrictive-firewalls-optional) for users behind restrictive firewalls.
+  Clients connect to the media ports directly, so they must be reachable from the internet (or from your users' networks). TURN is not required; see [Built-in TURN](#built-in-turn-on-this-host-optional) or [External TURN](#external-turn-for-restrictive-firewalls-optional) for users behind restrictive firewalls.
 
 ## 1. Install Docker **[validated]**
 
@@ -117,7 +117,7 @@ SIP outbound lets users dial phone numbers from a call. It adds the SIP bridge a
 
 **[validated: relay path with direct media blocked, and certificate renewal, including an independent run of the turn/ instructions]**
 
-Clients on networks that block UDP and plain TCP (7881) cannot reach LiveKit directly. A TURN server on TCP 443 with TLS lets them in. LiveKit's built-in TURN would need port 443, which Caddy already uses on this host, so run coturn on a separate host with its own public IP. See [turn/README.md](turn/README.md) for the full procedure. On this host the only change is one option when you generate the config:
+Clients on networks that block UDP and plain TCP (7881) cannot reach LiveKit directly. A TURN server on TCP 443 with TLS lets them in. With the stock Caddy image, port 443 on this host is taken, so run coturn on a separate host with its own public IP. To keep everything on one host, see [Built-in TURN](#built-in-turn-on-this-host-optional). See [turn/README.md](turn/README.md) for the full procedure. On this host the only change is one option when you generate the config:
 
 ```bash
 ./setup.sh lk.example.com https://mattermost.example.com \
@@ -127,6 +127,33 @@ docker compose logs --tail 20 livekit    # confirm LiveKit started
 ```
 
 Options are not remembered, so include `--sip` as well if you use SIP. No Calls plugin setting is needed; LiveKit gives clients the TURN address and short-lived credentials automatically.
+
+## Built-in TURN on this host (optional)
+
+**[validated on AWS with Safari, Chrome and Firefox: relay with direct media blocked, mid-call Caddy restart]**
+
+The single-host alternative to external TURN. LiveKit's built-in TURN shares 443 with signaling: Caddy routes by TLS name, so the LiveKit name goes to signaling and a second name goes to TURN. This needs a Caddy build with the layer4 module, which the stock image does not include; `builtin-turn/Dockerfile` builds one (Caddy 2.11.9 and caddy-l4 v0.1.2, pinned).
+
+1. Add a second DNS A record for the TURN name (for example `turn.example.com`) pointing at the same public IP as the LiveKit name. No new firewall ports are needed.
+2. Copy `docker-compose.builtin-turn.yaml` and the whole `builtin-turn/` directory from this directory to the host, next to `docker-compose.yaml`. The "Get the files" section above copies only the base files.
+3. Generate the configuration and start the stack. The first start builds the image, which takes a few minutes. `--force-recreate` makes LiveKit re-read `livekit.yaml`, which Compose does not detect on its own:
+
+```bash
+./setup.sh lk.example.com https://mattermost.example.com --turn-domain turn.example.com
+docker compose up -d --build --force-recreate
+docker compose logs --tail 20 livekit    # confirm LiveKit started
+```
+
+`setup.sh` writes `COMPOSE_FILE` to `.env`, so later `docker compose` commands keep using the overlay. Options are not remembered, so include `--sip` as well if you use SIP. `--turn-domain` cannot be combined with `--turn-host`. No Calls plugin setting is needed.
+
+Notes:
+- Caddy issues and renews certificates for both names; LiveKit holds no certificate. Issuance through TLS-ALPN-01 on 443 **[validated]**. A real renewal **[untested]**.
+- Only TURN over TLS on 443 is enabled. Clients that can reach 7882/udp or 7881/tcp connect directly and never use it.
+- Restarting Caddy (for example an image upgrade) interrupts calls for about a second; audio recovered on its own in testing. **[validated]** Screen share across a restart **[untested]**.
+- Image upgrades: change the versions in `builtin-turn/Dockerfile` and run `docker compose up -d --build`. Bump Caddy and caddy-l4 together. The image is about 150 MB, compared with about 90 MB for stock Caddy.
+- If clients connect through TURN but media does not flow: the relay forwards to LiveKit through its public IP, so the host must be able to reach its own public IP on 7881/tcp and 7882/udp. **[untested on hosts behind NAT]**
+
+Choosing: use built-in TURN when you want one host and one IP. Use external TURN when you want TURN on its own IP or want to keep the stock Caddy image.
 
 ## Operations
 
