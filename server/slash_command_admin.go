@@ -102,8 +102,8 @@ type callToEnd struct {
 	nodeID    string
 	rtcdHost  string
 
-	// hostGone is set if the call's RTCD host was unreachable when ending it.
-	hostGone bool
+	// closeFailures counts sessions that couldn't be closed (the call is cleaned up anyway).
+	closeFailures int
 }
 
 // notifyCallEnd asks clients to leave the call (they disconnect themselves and the
@@ -142,21 +142,6 @@ func (p *Plugin) isCallActive(c *callToEnd) (bool, error) {
 
 const maxForceEndAttempts = 5
 
-// isRTCDHostGone reports whether the RTCD node handling a call is verifiably unreachable,
-// in which case its sessions are gone with it and there is nothing left to close.
-func (p *Plugin) isRTCDHostGone(host string) bool {
-	if p.rtcdManager == nil || host == "" {
-		return false
-	}
-	h := p.rtcdManager.getHost(host)
-	if h == nil {
-		// The failed close already attempted (and failed) to create a client for it.
-		return true
-	}
-	_, err := h.client.GetVersionInfo()
-	return err != nil
-}
-
 // forceEndCall closes every remaining session and cleans up the call state. Sessions are
 // closed without holding the call lock: closing an embedded RTC session synchronously
 // triggers the leave handler which needs that same lock.
@@ -168,7 +153,6 @@ func (p *Plugin) forceEndCall(c *callToEnd) error {
 	closed := map[string]struct{}{}
 
 	closeNew := func() error {
-		var closeErrs []error
 		sessions, err := p.store.GetCallSessions(c.callID, db.GetCallSessionOpts{FromWriter: true})
 		if err != nil {
 			return fmt.Errorf("failed to get call sessions: %w", err)
@@ -177,28 +161,20 @@ func (p *Plugin) forceEndCall(c *callToEnd) error {
 			if _, ok := closed[session.ID]; ok {
 				continue
 			}
-			// Only mark a session as closed on success: cleaning up the call state would
-			// delete the session row while its RTC session could still be live.
-			if err := p.closeRTCSessionWithHost(session.UserID, session.ID, c.channelID, c.nodeID, c.callID, c.rtcdHost); err != nil {
-				if p.isRTCDHostGone(c.rtcdHost) {
-					// Nothing left to close: don't leave the call lingering in the DB.
-					p.LogWarn("end-all: RTCD host unreachable, skipping session close", "err", err.Error(), "sessionID", session.ID, "callID", c.callID, "rtcdHost", c.rtcdHost)
-					c.hostGone = true
-					closed[session.ID] = struct{}{}
-					continue
-				}
-				p.LogError("end-all: failed to close RTC session", "err", err.Error(), "sessionID", session.ID, "callID", c.callID)
-				closeErrs = append(closeErrs, err)
-				continue
-			}
+			// Best effort: end-all is a last-resort cleanup (e.g. right before disabling the
+			// plugin), so a failed close mustn't leave the call lingering in the DB.
 			closed[session.ID] = struct{}{}
+			if err := p.closeRTCSessionWithHost(session.UserID, session.ID, c.channelID, c.nodeID, c.callID, c.rtcdHost); err != nil {
+				p.LogWarn("end-all: failed to close RTC session, cleaning up anyway", "err", err.Error(), "sessionID", session.ID, "callID", c.callID)
+				c.closeFailures++
+			}
 		}
-		return errors.Join(closeErrs...)
+		return nil
 	}
 
 	for range maxForceEndAttempts {
 		if err := closeNew(); err != nil {
-			return fmt.Errorf("failed to close RTC sessions: %w", err)
+			return err
 		}
 
 		done, err := p.cleanIfAllClosed(c, closed)
@@ -293,7 +269,7 @@ wait:
 		}
 	}
 
-	var ended, hostGone []string
+	var ended, closeFailed []string
 	for _, c := range pending {
 		active, err := p.isCallActive(c)
 		if err != nil {
@@ -309,8 +285,8 @@ wait:
 			}
 		}
 		ended = append(ended, c.channelID)
-		if c.hostGone {
-			hostGone = append(hostGone, c.channelID)
+		if c.closeFailures > 0 {
+			closeFailed = append(closeFailed, c.channelID)
 		}
 	}
 
@@ -318,8 +294,8 @@ wait:
 	if len(ended) > 0 {
 		text += " Channels: " + strings.Join(ended, ", ")
 	}
-	if len(hostGone) > 0 {
-		text += fmt.Sprintf("\nRTCD host unreachable for %d call(s), their state was cleaned up without closing media: %s", len(hostGone), strings.Join(hostGone, ", "))
+	if len(closeFailed) > 0 {
+		text += fmt.Sprintf("\nSome sessions could not be closed for %d call(s), their state was cleaned up anyway: %s", len(closeFailed), strings.Join(closeFailed, ", "))
 	}
 	if len(failed) > 0 {
 		text += fmt.Sprintf("\nFailed to end %d call(s): %s", len(failed), strings.Join(failed, ", "))

@@ -16,7 +16,6 @@ import (
 	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/mattermost/mattermost/server/public/model"
-	rtcd "github.com/mattermost/rtcd/service"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -177,61 +176,29 @@ func TestAdminCallCommands(t *testing.T) {
 		assert.Contains(t, resp.Text, call.ChannelID)
 	})
 
-	t.Run("end-all fails a call if its RTC session close fails on a reachable RTCD host", func(t *testing.T) {
+	t.Run("end-all cleans up a call even if closing its RTC session fails", func(t *testing.T) {
 		defer ResetTestStore(t, p.store)
 		call := newCall(t)
 		setRTCDHost(t, p, call, "127.0.0.1")
 
 		client := &serverMocks.MockRTCDClient{}
 		client.On("Send", mock.Anything).Return(errors.New("send failed"))
-		client.On("GetVersionInfo").Return(rtcd.VersionInfo{}, nil)
-		p.rtcdManager = &rtcdClientManager{ctx: p, hosts: map[string]*rtcdHost{"127.0.0.1": {client: client}}}
-		defer func() { p.rtcdManager = nil }()
-
-		resp, err := p.handleEndAllCommand(&model.CommandArgs{UserId: adminID})
-		require.NoError(t, err)
-		assert.Contains(t, resp.Text, "Ended 0 call(s)")
-		assert.Contains(t, resp.Text, "Failed to end 1 call(s)")
-		assert.Contains(t, resp.Text, call.ChannelID)
-
-		// The call must still be active so that end-all can be retried.
-		active, err := p.store.GetAllActiveCalls(db.GetCallOpts{FromWriter: true})
-		require.NoError(t, err)
-		require.Len(t, active, 1)
-		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
-		require.NoError(t, err)
-		assert.Len(t, sessions, 1)
-	})
-
-	t.Run("end-all cleans up a call whose RTCD host is unreachable", func(t *testing.T) {
-		defer ResetTestStore(t, p.store)
-		call := newCall(t)
-		setRTCDHost(t, p, call, "127.0.0.1")
-
-		client := &serverMocks.MockRTCDClient{}
-		client.On("Send", mock.Anything).Return(errors.New("send failed"))
-		client.On("GetVersionInfo").Return(rtcd.VersionInfo{}, errors.New("unreachable"))
 		p.rtcdManager = &rtcdClientManager{ctx: p, hosts: map[string]*rtcdHost{"127.0.0.1": {client: client}}}
 		defer func() { p.rtcdManager = nil }()
 
 		resp, err := p.handleEndAllCommand(&model.CommandArgs{UserId: adminID})
 		require.NoError(t, err)
 		assert.Contains(t, resp.Text, "Ended 1 call(s)")
-		assert.Contains(t, resp.Text, "RTCD host unreachable for 1 call(s)")
+		assert.Contains(t, resp.Text, "Some sessions could not be closed for 1 call(s)")
+		assert.Contains(t, resp.Text, call.ChannelID)
 		assert.NotContains(t, resp.Text, "Failed")
 
 		active, err := p.store.GetAllActiveCalls(db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
 		assert.Empty(t, active)
-	})
-
-	t.Run("isRTCDHostGone", func(t *testing.T) {
-		assert.False(t, p.isRTCDHostGone("127.0.0.1"), "no RTCD manager")
-
-		p.rtcdManager = &rtcdClientManager{ctx: p, hosts: map[string]*rtcdHost{}}
-		defer func() { p.rtcdManager = nil }()
-		assert.False(t, p.isRTCDHostGone(""), "embedded RTC (no host)")
-		assert.True(t, p.isRTCDHostGone("10.0.0.1"), "no client for host")
+		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		assert.Empty(t, sessions)
 	})
 
 	t.Run("describeCall uses channel and team names", func(t *testing.T) {
