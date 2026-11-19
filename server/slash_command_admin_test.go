@@ -145,9 +145,23 @@ func TestAdminCallCommands(t *testing.T) {
 		endAllGracePeriod = 10 * time.Second
 		defer func() { endAllGracePeriod = prev }()
 
-		// Simulate the clients leaving on their own once they get call_end.
+		// Simulate the clients leaving on their own once they get call_end: wait for the
+		// event to be published rather than sleeping, so the order is deterministic.
+		published := make(chan struct{}, 1)
+		mockAPI.ExpectedCalls = filterCalls(mockAPI.ExpectedCalls, "PublishWebSocketEvent")
+		mockAPI.On("PublishWebSocketEvent", mock.Anything, mock.Anything, mock.Anything).Run(func(mock.Arguments) {
+			select {
+			case published <- struct{}{}:
+			default:
+			}
+		}).Maybe()
+
 		go func() {
-			time.Sleep(300 * time.Millisecond)
+			select {
+			case <-published:
+			case <-time.After(5 * time.Second):
+				return
+			}
 			state, err := p.lockCallReturnState(call.ChannelID)
 			if err == nil && state != nil {
 				_ = p.cleanCallState(&state.Call)
