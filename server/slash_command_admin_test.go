@@ -8,7 +8,10 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/db"
+	"github.com/mattermost/mattermost-plugin-calls/server/enterprise"
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
+	pluginMocks "github.com/mattermost/mattermost-plugin-calls/server/mocks/github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/mattermost/mattermost/server/public/model"
 
@@ -125,6 +128,91 @@ func TestAdminCallCommands(t *testing.T) {
 		assert.Empty(t, active)
 	})
 
+	t.Run("end-all with no calls", func(t *testing.T) {
+		resp, err := p.handleEndAllCommand(&model.CommandArgs{UserId: adminID})
+		require.NoError(t, err)
+		assert.Equal(t, "Ended 0 call(s).", resp.Text)
+	})
+
+	t.Run("end-all returns early when clients leave during the grace period", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
+		call := newCall(t)
+
+		prev := endAllGracePeriod
+		endAllGracePeriod = 10 * time.Second
+		defer func() { endAllGracePeriod = prev }()
+
+		// Simulate the clients leaving on their own once they get call_end.
+		go func() {
+			time.Sleep(300 * time.Millisecond)
+			state, err := p.lockCallReturnState(call.ChannelID)
+			if err == nil && state != nil {
+				_ = p.cleanCallState(&state.Call)
+			}
+			p.unlockCall(call.ChannelID)
+		}()
+
+		start := time.Now()
+		resp, err := p.handleEndAllCommand(&model.CommandArgs{UserId: adminID})
+		require.NoError(t, err)
+		assert.Less(t, time.Since(start), 5*time.Second)
+		assert.Contains(t, resp.Text, "Ended 1 call(s)")
+		assert.Contains(t, resp.Text, call.ChannelID)
+	})
+
+	t.Run("end-all reports a call as failed if closing its RTC session fails", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
+		call := newCall(t)
+
+		// An RTCD manager with no host for the call makes closing the session fail.
+		p.rtcdManager = &rtcdClientManager{ctx: p, hosts: map[string]*rtcdHost{}}
+		defer func() { p.rtcdManager = nil }()
+
+		resp, err := p.handleEndAllCommand(&model.CommandArgs{UserId: adminID})
+		require.NoError(t, err)
+		assert.Contains(t, resp.Text, "Ended 0 call(s)")
+		assert.Contains(t, resp.Text, "Failed to end 1 call(s)")
+		assert.Contains(t, resp.Text, call.ChannelID)
+
+		// The call must still be active so that end-all can be retried.
+		active, err := p.store.GetAllActiveCalls(db.GetCallOpts{FromWriter: true})
+		require.NoError(t, err)
+		require.Len(t, active, 1)
+		sessions, err := p.store.GetCallSessions(call.ID, db.GetCallSessionOpts{FromWriter: true})
+		require.NoError(t, err)
+		assert.Len(t, sessions, 1)
+	})
+
+	t.Run("describeCall uses channel and team names", func(t *testing.T) {
+		defer ResetTestStore(t, p.store)
+		call := newCall(t)
+		teamID := model.NewId()
+		mockAPI.ExpectedCalls = filterCalls(mockAPI.ExpectedCalls, "GetChannel")
+		mockAPI.On("GetChannel", call.ChannelID).Return(&model.Channel{Id: call.ChannelID, DisplayName: "Town Square", TeamId: teamID}, nil)
+		mockAPI.On("GetTeam", teamID).Return(&model.Team{Id: teamID, Name: "ad-1"}, nil)
+
+		desc := p.describeCall(call)
+		assert.Contains(t, desc, "Town Square")
+		assert.Contains(t, desc, "ad-1")
+		assert.Contains(t, desc, "| 1 |")
+	})
+
+	t.Run("commands are dispatched by ExecuteCommand", func(t *testing.T) {
+		for _, cmd := range []string{"list-all", "end-all"} {
+			resp, appErr := p.ExecuteCommand(nil, &model.CommandArgs{Command: "/call " + cmd, UserId: userID})
+			require.Nil(t, appErr)
+			assert.Equal(t, "Error: "+errAdminOnlyCommand.Error(), resp.Text)
+		}
+
+		resp, appErr := p.ExecuteCommand(nil, &model.CommandArgs{Command: "/call list-all", UserId: adminID})
+		require.Nil(t, appErr)
+		assert.Equal(t, "No active calls.", resp.Text)
+
+		resp, appErr = p.ExecuteCommand(nil, &model.CommandArgs{Command: "/call end-all", UserId: adminID})
+		require.Nil(t, appErr)
+		assert.Equal(t, "Ended 0 call(s).", resp.Text)
+	})
+
 	t.Run("list-all with no calls", func(t *testing.T) {
 		resp, err := p.handleListAllCommand(&model.CommandArgs{UserId: adminID})
 		require.NoError(t, err)
@@ -150,5 +238,79 @@ func TestAdminCallCommands(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, sessions)
 		}
+	})
+}
+
+func filterCalls(calls []*mock.Call, method string) []*mock.Call {
+	var out []*mock.Call
+	for _, c := range calls {
+		if c.Method != method {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func TestAdminCommandsAutocomplete(t *testing.T) {
+	mockAPI := &pluginMocks.MockAPI{}
+	mockAPI.On("GetLicense").Return(&model.License{SkuShortName: "starter"})
+	mockAPI.On("GetConfig").Return(&model.Config{})
+	p := &Plugin{licenseChecker: enterprise.NewLicenseChecker(mockAPI)}
+
+	data := p.getAutocompleteData()
+	var triggers []string
+	for _, c := range data.SubCommands {
+		triggers = append(triggers, c.Trigger)
+	}
+	assert.Contains(t, triggers, listAllCommandTrigger)
+	assert.Contains(t, triggers, endAllCommandTrigger)
+}
+
+func TestAdminCallCommandsStoreErrors(t *testing.T) {
+	p, mockAPI, mockMetrics := newDMTimerTestPlugin(t)
+	mockMetrics.On("IncWebSocketEvent", mock.Anything, mock.Anything).Maybe()
+
+	adminID := model.NewId()
+	mockAPI.On("HasPermissionTo", adminID, model.PermissionManageSystem).Return(true)
+	mockAPI.On("GetChannel", mock.Anything).Return(nil, &model.AppError{Message: "nope"}).Maybe()
+	mockAPI.On("KVDelete", mock.Anything).Return(nil).Maybe()
+
+	call := &public.Call{ID: model.NewId(), ChannelID: model.NewId()}
+	c := &callToEnd{callID: call.ID, channelID: call.ChannelID}
+
+	// Closing the DB makes every store call fail.
+	require.NoError(t, p.store.Close())
+
+	t.Run("list-all", func(t *testing.T) {
+		_, err := p.handleListAllCommand(&model.CommandArgs{UserId: adminID})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get active calls")
+	})
+
+	t.Run("end-all", func(t *testing.T) {
+		_, err := p.handleEndAllCommand(&model.CommandArgs{UserId: adminID})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get active calls")
+	})
+
+	t.Run("participant count", func(t *testing.T) {
+		_, err := p.activeParticipantCount(call)
+		require.Error(t, err)
+		assert.Contains(t, p.describeCall(call), "| ? |")
+	})
+
+	t.Run("isCallActive", func(t *testing.T) {
+		active, err := p.isCallActive(c)
+		require.Error(t, err)
+		assert.False(t, active)
+	})
+
+	t.Run("forceEndCall", func(t *testing.T) {
+		require.Error(t, p.forceEndCall(c))
+	})
+
+	t.Run("notifyCallEnd", func(t *testing.T) {
+		_, err := p.notifyCallEnd(call.ChannelID)
+		require.Error(t, err)
 	})
 }

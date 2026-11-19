@@ -150,6 +150,7 @@ func (p *Plugin) forceEndCall(c *callToEnd) error {
 	closed := map[string]struct{}{}
 
 	closeNew := func() error {
+		var closeErrs []error
 		sessions, err := p.store.GetCallSessions(c.callID, db.GetCallSessionOpts{FromWriter: true})
 		if err != nil {
 			return fmt.Errorf("failed to get call sessions: %w", err)
@@ -158,17 +159,21 @@ func (p *Plugin) forceEndCall(c *callToEnd) error {
 			if _, ok := closed[session.ID]; ok {
 				continue
 			}
-			closed[session.ID] = struct{}{}
+			// Only mark a session as closed on success: cleaning up the call state would
+			// delete the session row while its RTC session could still be live.
 			if err := p.closeRTCSessionWithHost(session.UserID, session.ID, c.channelID, c.nodeID, c.callID, c.rtcdHost); err != nil {
 				p.LogError("end-all: failed to close RTC session", "err", err.Error(), "sessionID", session.ID, "callID", c.callID)
+				closeErrs = append(closeErrs, err)
+				continue
 			}
+			closed[session.ID] = struct{}{}
 		}
-		return nil
+		return errors.Join(closeErrs...)
 	}
 
 	for range maxForceEndAttempts {
 		if err := closeNew(); err != nil {
-			return err
+			return fmt.Errorf("failed to close RTC sessions: %w", err)
 		}
 
 		done, err := p.cleanIfAllClosed(c, closed)
