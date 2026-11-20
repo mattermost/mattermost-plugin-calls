@@ -25,6 +25,8 @@ const (
 	recordingCommandTrigger = "recording"
 	hostCommandTrigger      = "host"
 	logsCommandTrigger      = "logs"
+	listAllCommandTrigger   = "list-all"
+	endAllCommandTrigger    = "end-all"
 )
 
 var subCommands = []string{
@@ -36,6 +38,8 @@ var subCommands = []string{
 	statsCommandTrigger,
 	recordingCommandTrigger,
 	logsCommandTrigger,
+	listAllCommandTrigger,
+	endAllCommandTrigger,
 }
 
 func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
@@ -50,6 +54,8 @@ func (p *Plugin) getAutocompleteData() *model.AutocompleteData {
 	data.AddCommand(model.NewAutocompleteData(statsCommandTrigger, "", "Show client-generated statistics about the call."))
 	data.AddCommand(model.NewAutocompleteData(endCommandTrigger, "", "End the call for everyone. All the participants will drop immediately."))
 	data.AddCommand(model.NewAutocompleteData(logsCommandTrigger, "", "Show client logs."))
+	data.AddCommand(model.NewAutocompleteData(listAllCommandTrigger, "", "List all active calls (system admins only)."))
+	data.AddCommand(model.NewAutocompleteData(endAllCommandTrigger, "", "End all active calls (system admins only)."))
 
 	recordingCmdData := model.NewAutocompleteData(recordingCommandTrigger, "", "Manage calls recordings")
 	recordingCmdData.AddTextArgument("Available options: start, stop", "", "start|stop")
@@ -210,6 +216,14 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	if subCmd == endCommandTrigger {
 		return buildCommandResponse(p.handleEndCallCommand())
+	}
+
+	if subCmd == listAllCommandTrigger {
+		return buildCommandResponse(p.handleListAllCommand(args))
+	}
+
+	if subCmd == endAllCommandTrigger {
+		return buildCommandResponse(p.handleEndAllCommand(args))
 	}
 
 	if subCmd == recordingCommandTrigger {
