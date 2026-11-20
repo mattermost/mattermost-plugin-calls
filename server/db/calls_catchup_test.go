@@ -24,7 +24,9 @@ func TestCatchUpV1Calls(t *testing.T) {
 	testStore(t, map[string]func(t *testing.T, store *Store){
 		"NoV1Table":        testCatchUpNoV1Table,
 		"RoundTrip":        testCatchUpRoundTrip,
-		"Overlap":          testCatchUpOverlap,
+		"MissedLongAgo":    testCatchUpMissedLongAgo,
+		"EmptyV1":          testCatchUpEmptyV1,
+		"UpToDate":         testCatchUpUpToDate,
 		"EmptyV2":          testCatchUpEmptyV2,
 		"Fidelity":         testCatchUpFidelity,
 		"Parallel":         testCatchUpParallel,
@@ -65,6 +67,16 @@ func testCatchUpNoV1Table(t *testing.T, store *Store) {
 	require.Zero(t, n)
 }
 
+func testCatchUpEmptyV1(t *testing.T, store *Store) {
+	setupV1Calls(t, store, v1CallsSchema)
+	insertCall(t, store, "calls", model.NewId(), time.Now().UnixMilli(), 0, "{}") // live only
+
+	n, err := store.CatchUpV1Calls()
+	require.NoError(t, err)
+	require.Zero(t, n)
+	require.Empty(t, v2CallIDs(t, store))
+}
+
 func testCatchUpRoundTrip(t *testing.T, store *Store) {
 	setupV1Calls(t, store, v1CallsSchema)
 	now := time.Now().UnixMilli()
@@ -95,23 +107,35 @@ func testCatchUpRoundTrip(t *testing.T, store *Store) {
 	require.Len(t, v2CallIDs(t, store), 4)
 }
 
-func testCatchUpOverlap(t *testing.T, store *Store) {
+// A missed v1 call is still copied after v2 has made calls long afterwards,
+// as happens when an earlier catch-up failed.
+func testCatchUpMissedLongAgo(t *testing.T, store *Store) {
 	setupV1Calls(t, store, v1CallsSchema)
 	now := time.Now().UnixMilli()
 	hour := int64(time.Hour / time.Millisecond)
 
-	watermark := now - 100*hour
-	insertCall(t, store, "calls_v2_calls", model.NewId(), watermark-hour, watermark, "{}")
-
-	inside, outside := model.NewId(), model.NewId()
-	insertCall(t, store, "calls", inside, watermark-5*hour, watermark-2*hour, "{}")    // within 24h of watermark
-	insertCall(t, store, "calls", outside, watermark-50*hour, watermark-48*hour, "{}") // older than the window
+	missed := model.NewId()
+	insertCall(t, store, "calls", missed, now-500*hour, now-499*hour, "{}")
+	insertCall(t, store, "calls_v2_calls", model.NewId(), now-10*hour, now-9*hour, "{}")
 
 	n, err := store.CatchUpV1Calls()
 	require.NoError(t, err)
 	require.EqualValues(t, 1, n)
-	require.Contains(t, v2CallIDs(t, store), inside)
-	require.NotContains(t, v2CallIDs(t, store), outside)
+	require.Contains(t, v2CallIDs(t, store), missed)
+}
+
+// When the latest ended v1 call is already in v2 nothing is copied.
+func testCatchUpUpToDate(t *testing.T, store *Store) {
+	setupV1Calls(t, store, v1CallsSchema)
+	now := time.Now().UnixMilli()
+	insertCall(t, store, "calls", model.NewId(), now-3000, now-2000, "{}")
+	n, err := store.CatchUpV1Calls()
+	require.NoError(t, err)
+	require.EqualValues(t, 1, n)
+
+	n, err = store.CatchUpV1Calls()
+	require.NoError(t, err)
+	require.Zero(t, n)
 }
 
 func testCatchUpEmptyV2(t *testing.T, store *Store) {

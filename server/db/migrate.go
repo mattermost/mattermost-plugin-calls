@@ -83,44 +83,71 @@ func (s *Store) initMorph(dryRun bool, timeoutSecs int) (*morph.Morph, error) {
 }
 
 func (s *Store) Migrate(direction models.Direction, dryRun bool) error {
+	// The copy checks run before morph takes its connections (the driver and
+	// the migration lock each hold one until Close), so they can't starve a
+	// small connection pool.
+	var cp copyPlan
+	if direction != models.Down && !dryRun {
+		cp = s.planV1Copy()
+	}
+
 	engine, err := s.initMorph(dryRun, *s.settings.MigrationsStatementTimeoutSeconds)
 	if err != nil {
 		return fmt.Errorf("failed to initialize morph: %w", err)
 	}
-	defer engine.Close()
 
 	switch direction {
 	case models.Down:
+		defer engine.Close()
 		_, err = engine.ApplyDown(-1)
 		return err
 	default:
 		if dryRun {
+			defer engine.Close()
 			return engine.ApplyAll()
 		}
-		return s.applyAllLogCopy(engine)
+		return s.applyAllLogCopy(engine, cp)
 	}
 }
 
-// applyAllLogCopy applies all migrations and, when this run performs the
-// one-time v1 data copy (000002), logs what was expected and what was copied.
-// The copy only happens once per database, so this is the only record of it.
-func (s *Store) applyAllLogCopy(engine *morph.Morph) error {
+// copyPlan describes the one-time v1 data copy (000002) expected from a run.
+type copyPlan struct {
+	pending               bool
+	srcCalls, srcChannels int
+}
+
+// planV1Copy works out whether this run performs the one-time v1 data copy.
+// The copy only happens once per database, so the log lines are the only
+// record of it. Failures here must not block migrating.
+func (s *Store) planV1Copy() copyPlan {
 	pending, err := s.copyV1DataPending()
 	if err != nil {
-		// Logging must not block migrating.
 		s.log.Warn("Failed to check whether the v1 data copy is pending", mlog.Err(err))
-		return engine.ApplyAll()
+		return copyPlan{}
 	}
 	if !pending {
+		return copyPlan{}
+	}
+	srcCalls, srcChannels := s.countV1Source()
+	return copyPlan{pending: true, srcCalls: srcCalls, srcChannels: srcChannels}
+}
+
+// applyAllLogCopy applies all migrations and, when cp says this run performs
+// the one-time copy, logs what was expected and what was copied. It closes the
+// engine before counting the destination rows so the lock connection is free.
+func (s *Store) applyAllLogCopy(engine *morph.Morph, cp copyPlan) error {
+	if !cp.pending {
+		defer engine.Close()
 		return engine.ApplyAll()
 	}
 
-	srcCalls, srcChannels := s.countV1Source()
 	s.log.Info("Running one-time copy of v1 data into v2 tables",
-		mlog.Int("v1_ended_calls", srcCalls), mlog.Int("v1_channels", srcChannels))
+		mlog.Int("v1_ended_calls", cp.srcCalls), mlog.Int("v1_channels", cp.srcChannels))
 
 	start := time.Now()
-	if err := engine.ApplyAll(); err != nil {
+	err := engine.ApplyAll()
+	engine.Close()
+	if err != nil {
 		s.log.Error("Migrations failed, v1 data copy may be incomplete", mlog.Err(err), mlog.Duration("elapsed", time.Since(start)))
 		return err
 	}
@@ -134,7 +161,7 @@ func (s *Store) applyAllLogCopy(engine *morph.Morph) error {
 	}
 	s.log.Info("Finished one-time copy of v1 data into v2 tables",
 		mlog.Int("v2_calls", dstCalls), mlog.Int("v2_channels", dstChannels),
-		mlog.Int("v1_ended_calls", srcCalls), mlog.Int("v1_channels", srcChannels),
+		mlog.Int("v1_ended_calls", cp.srcCalls), mlog.Int("v1_channels", cp.srcChannels),
 		mlog.Duration("elapsed", time.Since(start)))
 
 	return nil

@@ -29,7 +29,7 @@ func (p *Plugin) initDB() error {
 	}
 
 	// Best effort: pick up calls made under v1 since v2 last ran. A failure
-	// leaves the same range to retry at the next activation.
+	// leaves them to be picked up at the next activation.
 	if n, err := store.CatchUpV1Calls(); err != nil {
 		p.LogWarn("Failed to copy v1 calls into v2 tables, will retry at next activation", "err", err.Error())
 	} else if n > 0 {

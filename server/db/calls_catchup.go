@@ -5,26 +5,21 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 )
 
-// catchUpOverlapMs widens the catch-up window below the watermark to absorb
-// clock skew between nodes. Rows already present are skipped by id.
-const catchUpOverlapMs = int64(24 * time.Hour / time.Millisecond)
-
 // CatchUpV1Calls copies ended v1 calls that are not in the v2 table yet, e.g.
 // calls made under v1 after rolling back from v2 and switching to v2 again.
 //
-// v1 and v2 never run at the same time, so every call v1 ends during a
-// rollback ends after the last call in v2's table. MAX(endat) of that table is
-// therefore the watermark: no state to store, and the scan uses v1's endat
-// index rather than the whole table. On an empty v2 table it copies everything.
-//
-// It is a single INSERT…SELECT, so a failure leaves nothing partially copied
-// and the next run retries the same range. ON CONFLICT makes concurrent runs
-// from several nodes safe; ORDER BY id gives them the same insert order so they
-// can't deadlock. Returns the number of calls copied.
+// Each copy is a single INSERT…SELECT, so it either completes or leaves
+// nothing. If the most recent ended v1 call is already in v2 the tables are
+// up to date and nothing else is read. Otherwise (a rollback happened, or an
+// earlier catch-up failed, however long ago) every ended v1 call missing from
+// v2 is copied. ON CONFLICT makes concurrent runs from several nodes safe;
+// ORDER BY id gives them the same insert order so they can't deadlock.
+// Returns the number of calls copied.
 func (s *Store) CatchUpV1Calls() (int64, error) {
 	s.metrics.IncStoreOp("CatchUpV1Calls")
 	defer func(start time.Time) {
@@ -42,13 +37,28 @@ func (s *Store) CatchUpV1Calls() (int64, error) {
 		return 0, nil
 	}
 
+	var latest sql.NullString
+	if err := s.wDB.QueryRowContext(ctx, "SELECT (SELECT id FROM calls WHERE endat > 0 ORDER BY endat DESC LIMIT 1)").Scan(&latest); err != nil {
+		return 0, fmt.Errorf("failed to get latest v1 call: %w", err)
+	}
+	if !latest.Valid {
+		return 0, nil // nothing ended in v1
+	}
+
+	var upToDate bool
+	if err := s.wDB.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM "+tableCalls+" WHERE id = $1)", latest.String).Scan(&upToDate); err != nil {
+		return 0, fmt.Errorf("failed to check latest v1 call: %w", err)
+	}
+	if upToDate {
+		return 0, nil
+	}
+
 	const cols = "id, channelid, startat, endat, createat, deleteat, title, postid, threadid, ownerid, participants, stats, props"
 	q := "INSERT INTO " + tableCalls + " (" + cols + ") " +
-		"SELECT " + cols + " FROM calls " +
-		"WHERE endat > 0 AND endat > COALESCE((SELECT MAX(endat) FROM " + tableCalls + "), 0) - $1 " +
+		"SELECT " + cols + " FROM calls WHERE endat > 0 " +
 		"ORDER BY id ON CONFLICT (id) DO NOTHING"
 
-	res, err := s.wDB.ExecContext(ctx, q, catchUpOverlapMs)
+	res, err := s.wDB.ExecContext(ctx, q)
 	if err != nil {
 		return 0, fmt.Errorf("failed to copy v1 calls: %w", err)
 	}
