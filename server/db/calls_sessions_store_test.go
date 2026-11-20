@@ -71,16 +71,6 @@ func testCreateCallSession(t *testing.T, store *Store) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, session, gotSession)
-
-		// The legacy columns are no longer read, but must be written as non-NULL
-		// defaults so that older plugin versions can still scan these rows.
-		var unmuted, video bool
-		var raisedHand int64
-		err = store.wDB.QueryRow("SELECT Unmuted, RaisedHand, Video FROM calls_sessions WHERE ID = $1", session.ID).Scan(&unmuted, &raisedHand, &video)
-		require.NoError(t, err)
-		require.False(t, unmuted)
-		require.Zero(t, raisedHand)
-		require.False(t, video)
 	})
 }
 
@@ -287,7 +277,7 @@ func testIsUserInCall(t *testing.T, store *Store) {
 }
 
 func testCallsSessionsTableColumnAddition(t *testing.T, store *Store) {
-	// This test simulates adding a new column to the calls_sessions table
+	// This test simulates adding a new column to the calls_v2_sessions table
 	// and verifies that existing code can still fetch data correctly
 
 	// Create a session with the current schema
@@ -301,12 +291,12 @@ func testCallsSessionsTableColumnAddition(t *testing.T, store *Store) {
 	err := store.CreateCallSession(session)
 	require.NoError(t, err)
 
-	// Simulate adding a new column to the calls_sessions table
+	// Simulate adding a new column to the calls_v2_sessions table
 	var alterTableSQL string
 	if store.driverName == model.DatabaseDriverPostgres {
-		alterTableSQL = "ALTER TABLE calls_sessions ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+		alterTableSQL = "ALTER TABLE calls_v2_sessions ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
 	} else {
-		alterTableSQL = "ALTER TABLE calls_sessions ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+		alterTableSQL = "ALTER TABLE calls_v2_sessions ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
 	}
 
 	_, err = store.wDB.Exec(alterTableSQL)
@@ -320,9 +310,9 @@ func testCallsSessionsTableColumnAddition(t *testing.T, store *Store) {
 	// Clean up - drop the test column
 	var dropColumnSQL string
 	if store.driverName == model.DatabaseDriverPostgres {
-		dropColumnSQL = "ALTER TABLE calls_sessions DROP COLUMN test_column"
+		dropColumnSQL = "ALTER TABLE calls_v2_sessions DROP COLUMN test_column"
 	} else {
-		dropColumnSQL = "ALTER TABLE calls_sessions DROP COLUMN test_column"
+		dropColumnSQL = "ALTER TABLE calls_v2_sessions DROP COLUMN test_column"
 	}
 
 	_, err = store.wDB.Exec(dropColumnSQL)
@@ -368,9 +358,9 @@ func testCallSessionLiveKitColumns(t *testing.T, store *Store) {
 		}
 
 		qb := getQueryBuilder().
-			Insert("calls_sessions").
-			Columns("ID", "CallID", "UserID", "JoinAt", "Unmuted", "RaisedHand", "Video", "IsSIPParticipant").
-			Values(session.ID, session.CallID, session.UserID, session.JoinAt, false, 0, false, false)
+			Insert("calls_v2_sessions").
+			Columns("ID", "CallID", "UserID", "JoinAt", "IsSIPParticipant").
+			Values(session.ID, session.CallID, session.UserID, session.JoinAt, false)
 
 		q, args, err := qb.ToSql()
 		require.NoError(t, err)

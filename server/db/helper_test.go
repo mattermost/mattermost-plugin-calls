@@ -114,11 +114,11 @@ func newStore(t *testing.T, binaryParams bool) (*Store, func()) {
 func resetStore(t *testing.T, store *Store) {
 	t.Helper()
 
-	_, err := store.wDB.Exec(`TRUNCATE TABLE calls`)
+	_, err := store.wDB.Exec(`TRUNCATE TABLE calls_v2_calls`)
 	require.NoError(t, err)
-	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_channels`)
+	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_v2_channels`)
 	require.NoError(t, err)
-	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_sessions`)
+	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_v2_sessions`)
 	require.NoError(t, err)
 	_, err = store.wDB.Exec(`TRUNCATE TABLE channels`)
 	require.NoError(t, err)

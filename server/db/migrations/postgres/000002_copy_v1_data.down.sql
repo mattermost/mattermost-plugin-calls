@@ -1,0 +1,1 @@
+-- Data copy is not reversible; v1 tables are left untouched.

@@ -121,11 +121,11 @@ func NewTestStore(t *testing.T) (*db.Store, func()) {
 func ResetTestStore(t *testing.T, store *db.Store) {
 	t.Helper()
 
-	_, err := store.WriterDB().Exec(`TRUNCATE TABLE calls`)
+	_, err := store.WriterDB().Exec(`TRUNCATE TABLE calls_v2_calls`)
 	require.NoError(t, err)
-	_, err = store.WriterDB().Exec(`TRUNCATE TABLE calls_channels`)
+	_, err = store.WriterDB().Exec(`TRUNCATE TABLE calls_v2_channels`)
 	require.NoError(t, err)
-	_, err = store.WriterDB().Exec(`TRUNCATE TABLE calls_sessions`)
+	_, err = store.WriterDB().Exec(`TRUNCATE TABLE calls_v2_sessions`)
 	require.NoError(t, err)
 	_, err = store.WriterDB().Exec(`TRUNCATE TABLE posts`)
 	require.NoError(t, err)

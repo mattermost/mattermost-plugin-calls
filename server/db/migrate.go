@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	migrationsTableName = "db_migrations_calls"
+	migrationsTableName = "db_migrations_calls_v2"
 )
 
 // morphLogWriter is a target to pass to the logger instance of morph.

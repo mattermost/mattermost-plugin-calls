@@ -27,7 +27,7 @@ func (s *Store) CreateCallJob(job *public.CallJob) error {
 	}
 
 	qb := getQueryBuilder().
-		Insert("calls_jobs").
+		Insert(tableJobs).
 		Columns(callsJobsColumns...).
 		Values(job.ID, job.CallID, job.Type, job.CreatorID, job.InitAt, job.StartAt, job.EndAt, s.newJSONValueWrapper(job.Props))
 
@@ -57,7 +57,7 @@ func (s *Store) UpdateCallJob(job *public.CallJob) error {
 	}
 
 	qb := getQueryBuilder().
-		Update("calls_jobs").
+		Update(tableJobs).
 		Set("StartAt", job.StartAt).
 		Set("EndAt", job.EndAt).
 		Set("Props", s.newJSONValueWrapper(job.Props)).
@@ -85,7 +85,7 @@ func (s *Store) GetCallJob(id string, opts GetCallJobOpts) (*public.CallJob, err
 	}(time.Now())
 
 	qb := getQueryBuilder().Select(callsJobsColumns...).
-		From("calls_jobs").
+		From(tableJobs).
 		Where(sq.Eq{"ID": id})
 
 	if !opts.IncludeEnded {
@@ -116,7 +116,7 @@ func (s *Store) GetActiveCallJobs(callID string, opts GetCallJobOpts) (map[publi
 	}(time.Now())
 
 	qb := getQueryBuilder().Select(callsJobsColumns...).
-		From("calls_jobs").
+		From(tableJobs).
 		Where(sq.And{
 			sq.Eq{"CallID": callID},
 			sq.Eq{"EndAt": 0},

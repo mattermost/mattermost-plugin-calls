@@ -368,9 +368,9 @@ func testCallsTableColumnAddition(t *testing.T, store *Store) {
 	// Simulate adding a new column to the calls table
 	var alterTableSQL string
 	if store.driverName == model.DatabaseDriverPostgres {
-		alterTableSQL = "ALTER TABLE calls ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+		alterTableSQL = "ALTER TABLE calls_v2_calls ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
 	} else {
-		alterTableSQL = "ALTER TABLE calls ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+		alterTableSQL = "ALTER TABLE calls_v2_calls ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
 	}
 
 	_, err = store.wDB.Exec(alterTableSQL)
@@ -394,9 +394,9 @@ func testCallsTableColumnAddition(t *testing.T, store *Store) {
 	// Clean up - drop the test column
 	var dropColumnSQL string
 	if store.driverName == model.DatabaseDriverPostgres {
-		dropColumnSQL = "ALTER TABLE calls DROP COLUMN test_column"
+		dropColumnSQL = "ALTER TABLE calls_v2_calls DROP COLUMN test_column"
 	} else {
-		dropColumnSQL = "ALTER TABLE calls DROP COLUMN test_column"
+		dropColumnSQL = "ALTER TABLE calls_v2_calls DROP COLUMN test_column"
 	}
 
 	_, err = store.wDB.Exec(dropColumnSQL)

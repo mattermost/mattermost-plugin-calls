@@ -65,7 +65,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 	}
 
 	// createActiveCall persists an active calls row in the given channel and
-	// returns its ID, which callers can wire into a calls_sessions row.
+	// returns its ID, which callers can wire into a calls_v2_sessions row.
 	createActiveCall := func(t *testing.T, p *Plugin, channelID string) string {
 		t.Helper()
 		callID := model.NewId()
@@ -84,7 +84,7 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		return callID
 	}
 
-	// createCallSession persists a calls_sessions row. The row's ID is the
+	// createCallSession persists a calls_v2_sessions row. The row's ID is the
 	// originalConnID — exactly what the LiveKit client sends as session_id.
 	createCallSession := func(t *testing.T, p *Plugin, sessionID, userID, callID string) {
 		t.Helper()
