@@ -67,6 +67,7 @@ Bumping Go means updating `.go-version` and the `go` directive in all four modul
 - Run `make apply` before the first build, lint or test command in a session, and again after editing `plugin.json`. It generates the gitignored `server/manifest.go` and `webapp/src/manifest.ts` from `plugin.json`; without them a direct `go build` or npm script fails on an unresolved `manifest` symbol. The `check-style`, `test`, `dist` and `watch` targets already run it.
 - Regenerate derived files after the change that invalidates them: user-facing strings need `make i18n-extract`, a changed interface in `server/interfaces` needs `make server-mocks`, and a new db migration needs `make migrations-extract`. See Boundaries.
 - Style new webapp and standalone components with SCSS files imported into the component, not `styled-components`. See `.cursor/rules/webapp-frontend.mdc`.
+- System Console labels and section titles use sentence case, and say "direct messages" and "group messages" in full, never "DM" or "GM". Before adding or renaming a setting in `plugin.json` or `webapp/src/components/admin_console_settings/`, read `.cursor/rules/admin-settings.mdc`.
 - Prefer self-explanatory code over comments; comment only where intent isn't obvious from the code.
 - Use the `npm run` script defined in the package's `package.json` when one exists; fall back to `npx` only when there is no script for the tool.
 

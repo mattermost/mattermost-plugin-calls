@@ -1,0 +1,35 @@
+---
+description: Conventions for System Console settings in plugin.json, the webapp admin components and the server config
+globs: plugin.json,webapp/src/components/admin_console_settings/**,server/configuration.go
+alwaysApply: false
+---
+
+## Wording
+
+- Labels (`display_name`) and section titles use sentence case: capitalise only the first word, proper nouns and acronyms (`LiveKit server URL`, `Enable outbound phone dialing`). Older title-case labels (`General Settings`, `Azure API Key`) stay as they are unless the task is to rename them.
+- Write "direct messages" and "group messages" in full. Never use "DM" or "GM" in a label or help text; the core System Console doesn't either.
+- Labels have no trailing period. Mark a beta feature with ` (Beta)` at the end of the label.
+- Help text is full sentences. A bool's help text starts with "When set to true, …" and says what the person gets, not how it's enforced. Prefix optional features with `(Optional)`. State units and limits: "(in minutes)", "in the range [15, 180]".
+- Keep help text about the setting itself. Don't list what it doesn't cover (other channel types, other settings).
+
+## Keys
+
+- PascalCase. `Enable*` for a feature toggle, `Allow*` for a permission on something that already exists, `Max*` for a limit. Group related settings with a shared prefix (`SIPTrunk*`, `LiveCaptions*`).
+- Don't reuse a key that Calls v1 used (see `V1CallsConfigKeys` in `webapp/src/types/types.ts`, e.g. `EnableVideo`). Upgraded servers can still have the old value saved, and it would take effect silently.
+- The key is also the environment override: `EnableDMVideo` is overridden by `MM_CALLS_ENABLE_DM_VIDEO` (`fieldNameToEnvKey` in `server/environment.go`).
+
+## Adding a setting
+
+1. `plugin.json`: add it to the section where it belongs, with `type`, `default`, `display_name` and `help_text`. Run `make apply`.
+2. `server/configuration.go`: add the field (to `ClientConfig` if clients need it), a default in `SetDefaults`, a copy in `Clone`, and pass it through in `getClientConfig`. Enforce it on the server; the client only hides UI.
+3. Webapp: add it to `CallsConfig` and `CallsConfigDefault` in `webapp/src/types/types.ts`, and add a selector in `webapp/src/selectors.ts`.
+4. Custom sections render each setting through its own component so the strings can be translated. Create `webapp/src/components/admin_console_settings/<snake_case_key>.tsx` and register it in `webapp/src/index.tsx` with `registerAdminConsoleCustomSetting('<Key>', Component)`. Its label and help text must match `plugin.json` word for word; `plugin.json` is the fallback when the custom component isn't used.
+5. Run `make i18n-extract`. Only `webapp/i18n/en.json` should change for an admin setting; if `server/i18n/en.json` fills up with unrelated core Mattermost IDs, revert that file.
+
+## Admin components
+
+- Bool settings follow `enable_dm_video.tsx`: two radios (`True`/`False`) inside a `role='radiogroup'` with `aria-labelledby` on the label and `aria-describedby` on the help text (and on the override warning when it shows). Use the existing `RadioInput` and `RadioInputLabel` from `common.tsx`.
+- When the key is in `callsConfigEnvOverrides`, read the value from `callsConfig`, disable the inputs and show the "set through an environment variable" warning.
+- If the `plugin.json` default is `true`, treat an undefined value as `true` (see `allow_screen_sharing.tsx`).
+- Show `EnterprisePill` or an upgrade notice only for settings gated in `server/enterprise/license.go`. A setting that works on unlicensed servers gets neither.
+- Test with `@testing-library/react` beside the component, as in `enable_dm_video.test.tsx`: default value, `onChange`, disabled, env override and the accessible name and description.
