@@ -339,6 +339,13 @@ func (m *Metrics) UpdateHistoricalMetrics(stats *public.CallsStats) {
 	}
 }
 
+// UpdateActiveMetrics refreshes only the active calls and sessions gauges. They
+// change much faster than the historical stats, so they're updated more often.
+func (m *Metrics) UpdateActiveMetrics(activeCalls, activeSessions int64) {
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "total_active_calls"}).Set(float64(activeCalls))
+	m.AggregateStatsGauges.With(prometheus.Labels{"stat": "total_active_sessions"}).Set(float64(activeSessions))
+}
+
 func channelTypeToLabel(t string) string {
 	switch t {
 	case "O":

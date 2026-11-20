@@ -34,3 +34,15 @@ func TestUpdateHistoricalMetrics(t *testing.T) {
 	m.UpdateHistoricalMetrics(&public.CallsStats{CallsByDay: map[string]int64{"2026-11-20": 1}})
 	require.Equal(t, 1, testutil.CollectAndCount(m.HistoricalDailyCallsGauge))
 }
+
+func TestUpdateActiveMetrics(t *testing.T) {
+	m := NewMetrics()
+
+	m.UpdateHistoricalMetrics(&public.CallsStats{TotalCalls: 10, TotalActiveCalls: 1, TotalActiveSessions: 2})
+	m.UpdateActiveMetrics(3, 7)
+
+	require.Equal(t, 3.0, testutil.ToFloat64(m.AggregateStatsGauges.WithLabelValues("total_active_calls")))
+	require.Equal(t, 7.0, testutil.ToFloat64(m.AggregateStatsGauges.WithLabelValues("total_active_sessions")))
+	// Other stats are left alone.
+	require.Equal(t, 10.0, testutil.ToFloat64(m.AggregateStatsGauges.WithLabelValues("total_calls")))
+}
