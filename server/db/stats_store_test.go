@@ -203,6 +203,46 @@ func testGetStats(t *testing.T, store *Store) {
 		}, stats.CallsByChannelType)
 	})
 
+	t.Run("screen share and video stats", func(t *testing.T) {
+		defer resetStore(t, store)
+
+		create := func(stats public.CallStats) {
+			start := time.Now().Add(-2 * time.Hour)
+			require.NoError(t, store.CreateCall(&public.Call{
+				ID:        model.NewId(),
+				CreateAt:  start.UnixMilli(),
+				ChannelID: model.NewId(),
+				StartAt:   start.UnixMilli(),
+				EndAt:     start.Add(time.Hour).UnixMilli(),
+				PostID:    model.NewId(),
+				ThreadID:  model.NewId(),
+				OwnerID:   model.NewId(),
+				Stats:     stats,
+			}))
+		}
+
+		// Nothing records video on v2 yet, so it must read as zero.
+		create(public.CallStats{HasUsedScreenShare: true})
+		create(public.CallStats{})
+
+		stats, err := store.GetCallsStats()
+		require.NoError(t, err)
+		require.Equal(t, int64(1), stats.TotalScreenShareCalls)
+		require.Zero(t, stats.TotalVideoCalls)
+		require.Zero(t, stats.TotalVideoDuration)
+		require.Zero(t, stats.AvgVideoDuration)
+
+		create(public.CallStats{HasUsedVideo: true, VideoDuration: 100})
+		create(public.CallStats{HasUsedVideo: true, VideoDuration: 300, HasUsedScreenShare: true})
+
+		stats, err = store.GetCallsStats()
+		require.NoError(t, err)
+		require.Equal(t, int64(2), stats.TotalScreenShareCalls)
+		require.Equal(t, int64(2), stats.TotalVideoCalls)
+		require.Equal(t, int64(400), stats.TotalVideoDuration)
+		require.Equal(t, int64(200), stats.AvgVideoDuration)
+	})
+
 	t.Run("recording jobs", func(t *testing.T) {
 		defer resetStore(t, store)
 

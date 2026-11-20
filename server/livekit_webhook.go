@@ -538,6 +538,7 @@ func (p *Plugin) handleLiveKitTrackPublished(event *livekit.WebhookEvent) {
 
 	state.Call.Props.ScreenSharingSessionID = sessionID
 	state.Call.Props.ScreenStartAt = time.Now().Unix()
+	state.Call.Stats.HasUsedScreenShare = true
 
 	// Durable screen-share segment for audit reporting. Synchronous and idempotent
 	// (one row per callID+sessionID+startAt). A failed write is logged, not fatal:

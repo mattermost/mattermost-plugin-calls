@@ -296,6 +296,117 @@ func (s *Store) GetRecordingJobsByDay() (map[string]int64, error) {
 	return s.getByDay(getByDayQueryBase(now).From(tableJobs).Where(sq.Eq{"type": public.JobTypeRecording}), now)
 }
 
+// Video stats are read from the call's stats JSON. Nothing writes them on v2
+// yet (1:1 video isn't implemented), so these report 0 until it is.
+const videoDurationPath = "(stats->>'video_duration')::bigint"
+
+func (s *Store) GetAvgVideoDuration() (int64, error) {
+	s.metrics.IncStoreOp("GetAvgVideoDuration")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetAvgVideoDuration", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder().
+		Select("AVG(" + videoDurationPath + ")").
+		From(tableCalls).
+		Where(sq.And{
+			sq.Expr("EndAt > StartAt"),
+			sq.Eq{"DeleteAt": 0},
+			sq.Expr(videoDurationPath + " IS NOT NULL"),
+		})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var avg *float64
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.rDBx.GetContext(ctx, &avg, q, args...); err != nil {
+		return 0, fmt.Errorf("failed to get average video duration: %w", err)
+	}
+
+	if avg == nil {
+		return 0, nil
+	}
+
+	return int64(math.Round(*avg)), nil
+}
+
+func (s *Store) GetTotalVideoDuration() (int64, error) {
+	s.metrics.IncStoreOp("GetTotalVideoDuration")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetTotalVideoDuration", time.Since(start).Seconds())
+	}(time.Now())
+
+	qb := getQueryBuilder().
+		Select("COALESCE(SUM(" + videoDurationPath + "), 0)").
+		From(tableCalls).
+		Where(sq.And{
+			sq.Expr("EndAt > StartAt"),
+			sq.Eq{"DeleteAt": 0},
+		})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var total int64
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.rDBx.GetContext(ctx, &total, q, args...); err != nil {
+		return 0, fmt.Errorf("failed to get total video duration: %w", err)
+	}
+
+	return total, nil
+}
+
+// getTotalCallsWithStatFlag counts non-deleted calls whose stats JSON has the
+// given boolean flag set to true.
+func (s *Store) getTotalCallsWithStatFlag(flag string) (int64, error) {
+	qb := getQueryBuilder().
+		Select("COUNT(*)").
+		From(tableCalls).
+		Where(sq.And{
+			sq.Eq{"DeleteAt": 0},
+			sq.Expr("COALESCE((stats->>'" + flag + "')::bool, false)"),
+		})
+
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare query: %w", err)
+	}
+
+	var count int64
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
+	defer cancel()
+	if err := s.rDBx.GetContext(ctx, &count, q, args...); err != nil {
+		return 0, fmt.Errorf("failed to count calls with %s: %w", flag, err)
+	}
+
+	return count, nil
+}
+
+func (s *Store) GetTotalCallsWithVideo() (int64, error) {
+	s.metrics.IncStoreOp("GetTotalCallsWithVideo")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetTotalCallsWithVideo", time.Since(start).Seconds())
+	}(time.Now())
+
+	return s.getTotalCallsWithStatFlag("has_used_video")
+}
+
+func (s *Store) GetTotalCallsWithScreenShare() (int64, error) {
+	s.metrics.IncStoreOp("GetTotalCallsWithScreenShare")
+	defer func(start time.Time) {
+		s.metrics.ObserveStoreMethodsTime("GetTotalCallsWithScreenShare", time.Since(start).Seconds())
+	}(time.Now())
+
+	return s.getTotalCallsWithStatFlag("has_used_screen_share")
+}
+
 func (s *Store) GetCallsStats() (*public.CallsStats, error) {
 	s.metrics.IncStoreOp("GetCallsStats")
 	defer func(start time.Time) {
@@ -341,6 +452,26 @@ func (s *Store) GetCallsStats() (*public.CallsStats, error) {
 	}
 
 	stats.AvgParticipants, err = s.GetAvgCallParticipants()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.AvgVideoDuration, err = s.GetAvgVideoDuration()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.TotalVideoDuration, err = s.GetTotalVideoDuration()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.TotalVideoCalls, err = s.GetTotalCallsWithVideo()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.TotalScreenShareCalls, err = s.GetTotalCallsWithScreenShare()
 	if err != nil {
 		return nil, err
 	}
