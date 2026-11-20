@@ -30,7 +30,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "continuous-BlPu"
           },
           "custom": {
             "fillOpacity": 80,
@@ -60,7 +60,9 @@
         },
         "tooltip": {
           "mode": "single"
-        }
+        },
+        "xField": "date",
+        "colorByField": "Value"
       },
       "targets": [
         {
@@ -70,14 +72,38 @@
           },
           "editorMode": "code",
           "expr": "max by (date) (mattermost_plugin_calls_daily_calls_total{namespace=\"$namespace\"})",
-          "legendFormat": "{{date}}",
+          "legendFormat": "__auto",
           "range": false,
           "refId": "A",
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "title": "Calls Over Last 30 Days",
-      "type": "barchart"
+      "type": "barchart",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "date"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }
+      ]
     },
     {
       "datasource": {
@@ -524,7 +550,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "continuous-BlPu"
           },
           "custom": {
             "fillOpacity": 80,
@@ -554,7 +580,9 @@
         },
         "tooltip": {
           "mode": "single"
-        }
+        },
+        "xField": "month",
+        "colorByField": "Value"
       },
       "targets": [
         {
@@ -564,14 +592,38 @@
           },
           "editorMode": "code",
           "expr": "max by (month) (mattermost_plugin_calls_monthly_calls_total{namespace=\"$namespace\"})",
-          "legendFormat": "{{month}}",
+          "legendFormat": "__auto",
           "range": false,
           "refId": "A",
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "title": "Monthly Calls",
-      "type": "barchart"
+      "type": "barchart",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "month"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }
+      ]
     },
     {
       "datasource": {
