@@ -363,15 +363,14 @@ func (s *Store) GetTotalVideoDuration() (int64, error) {
 	return total, nil
 }
 
-// getTotalCallsWithStatFlag counts non-deleted calls whose stats JSON has the
-// given boolean flag set to true.
-func (s *Store) getTotalCallsWithStatFlag(flag string) (int64, error) {
+// countCallsWhere counts non-deleted calls matching the given condition on the stats JSON.
+func (s *Store) countCallsWhere(cond sq.Sqlizer, what string) (int64, error) {
 	qb := getQueryBuilder().
 		Select("COUNT(*)").
 		From(tableCalls).
 		Where(sq.And{
 			sq.Eq{"DeleteAt": 0},
-			sq.Expr("COALESCE((stats->>'" + flag + "')::bool, false)"),
+			cond,
 		})
 
 	q, args, err := qb.ToSql()
@@ -383,7 +382,7 @@ func (s *Store) getTotalCallsWithStatFlag(flag string) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*s.settings.QueryTimeout)*time.Second)
 	defer cancel()
 	if err := s.rDBx.GetContext(ctx, &count, q, args...); err != nil {
-		return 0, fmt.Errorf("failed to count calls with %s: %w", flag, err)
+		return 0, fmt.Errorf("failed to count calls with %s: %w", what, err)
 	}
 
 	return count, nil
@@ -395,7 +394,7 @@ func (s *Store) GetTotalCallsWithVideo() (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetTotalCallsWithVideo", time.Since(start).Seconds())
 	}(time.Now())
 
-	return s.getTotalCallsWithStatFlag("has_used_video")
+	return s.countCallsWhere(sq.Expr("COALESCE((stats->>'has_used_video')::bool, false)"), "video")
 }
 
 func (s *Store) GetTotalCallsWithScreenShare() (int64, error) {
@@ -404,7 +403,12 @@ func (s *Store) GetTotalCallsWithScreenShare() (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetTotalCallsWithScreenShare", time.Since(start).Seconds())
 	}(time.Now())
 
-	return s.getTotalCallsWithStatFlag("has_used_screen_share")
+	// Calls recorded before the flag existed (including ones copied from v1) only
+	// have a screen duration, so count those too.
+	return s.countCallsWhere(
+		sq.Expr("(COALESCE((stats->>'has_used_screen_share')::bool, false) OR COALESCE((stats->>'screen_duration')::bigint, 0) > 0)"),
+		"screen share",
+	)
 }
 
 func (s *Store) GetCallsStats() (*public.CallsStats, error) {
