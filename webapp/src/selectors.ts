@@ -533,6 +533,9 @@ export const isLimitRestricted = (state: GlobalState): boolean => {
 export const allowScreenSharing = (state: GlobalState) =>
     callsConfig(state).AllowScreenSharing;
 
+export const dmVideoEnabled = (state: GlobalState) =>
+    callsConfig(state).EnableDMVideo;
+
 export const recordingsEnabled = (state: GlobalState) =>
     callsConfig(state).EnableRecordings;
 

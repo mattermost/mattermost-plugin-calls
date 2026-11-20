@@ -198,12 +198,21 @@ func TestGetClientConfig(t *testing.T) {
 	require.Equal(t, p.getConfiguration().AllowEnableCalls, clientCfg.AllowEnableCalls)
 	require.Equal(t, model.NewPointer(false), clientCfg.DefaultEnabled)
 	require.Equal(t, p.getConfiguration().DefaultEnabled, clientCfg.DefaultEnabled)
+	require.Equal(t, model.NewPointer(false), clientCfg.EnableDMVideo)
 
 	*p.configuration.AllowEnableCalls = false
 	*p.configuration.DefaultEnabled = true
+	*p.configuration.EnableDMVideo = true
 	clientCfg = p.getClientConfig(p.getConfiguration())
 	require.Equal(t, true, *clientCfg.AllowEnableCalls)
 	require.Equal(t, p.getConfiguration().DefaultEnabled, clientCfg.DefaultEnabled)
+	require.Equal(t, model.NewPointer(true), clientCfg.EnableDMVideo)
+
+	// Clone copies the value rather than sharing the pointer.
+	cloned := p.getConfiguration().Clone()
+	require.Equal(t, model.NewPointer(true), cloned.EnableDMVideo)
+	*cloned.EnableDMVideo = false
+	require.True(t, *p.configuration.EnableDMVideo)
 
 	// Host controls
 	require.Equal(t, false, clientCfg.HostControlsAllowed)

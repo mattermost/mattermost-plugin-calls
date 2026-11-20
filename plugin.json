@@ -51,6 +51,13 @@
             "help_text": "When set to true, call participants can share their screen."
           },
           {
+            "key": "EnableDMVideo",
+            "display_name": "Enable video calls in direct messages",
+            "type": "bool",
+            "default": false,
+            "help_text": "When set to true, participants in direct messages can turn on their camera during a call."
+          },
+          {
             "key": "EnableRinging",
             "display_name": "Enable call ringing for direct and group messages",
             "type": "bool",

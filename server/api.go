@@ -675,7 +675,19 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, lkURL, err := p.mintLiveKitToken(requestingUserID, requestingChannelID, requestingSessionID)
+	var allowCamera bool
+	if cfg := p.getConfiguration(); requestingUserID != p.getBotID() && cfg.dmVideoEnabled() {
+		channel, appErr := p.API.GetChannel(requestingChannelID)
+		if appErr != nil {
+			p.LogError("failed to get channel", "err", appErr.Error(), "channel_id", requestingChannelID)
+			res.Err = "Internal server error"
+			res.Code = http.StatusInternalServerError
+			return
+		}
+		allowCamera = cfg.cameraAllowed(channel.Type, activeCall.Props.Type)
+	}
+
+	token, lkURL, err := p.mintLiveKitToken(requestingUserID, requestingChannelID, requestingSessionID, allowCamera)
 	if err != nil {
 		res.Err = err.Error()
 		res.Code = http.StatusInternalServerError
@@ -694,8 +706,9 @@ func (p *Plugin) handleGetLiveKitToken(w http.ResponseWriter, r *http.Request) {
 // mintLiveKitToken generates a LiveKit access token for the given user and call
 // session, returning the token and the signaling URL the caller should use. The
 // room is the channel; the identity carries both user and session so multiple
-// sessions of the same user are distinct participants.
-func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, string, error) {
+// sessions of the same user are distinct participants. allowCamera adds the
+// camera to the sources a user may publish; it is ignored for the bot.
+func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string, allowCamera bool) (string, string, error) {
 	cfg := p.getConfiguration()
 	lkURL := cfg.getLiveKitURL()
 	if lkURL == "" || cfg.LiveKitAPIKey == "" || cfg.LiveKitAPISecret == "" {
@@ -736,6 +749,16 @@ func (p *Plugin) mintLiveKitToken(userID, channelID, sessionID string) (string, 
 		at.SetAttributes(map[string]string{livekitAttributeBot: "true"})
 	} else {
 		grant.SetCanUpdateOwnMetadata(true)
+
+		sources := []livekit.TrackSource{
+			livekit.TrackSource_MICROPHONE,
+			livekit.TrackSource_SCREEN_SHARE,
+			livekit.TrackSource_SCREEN_SHARE_AUDIO,
+		}
+		if allowCamera {
+			sources = append(sources, livekit.TrackSource_CAMERA)
+		}
+		grant.SetCanPublishSources(sources)
 	}
 	at.SetVideoGrant(grant).
 		SetIdentity(composeLivekitIdentity(userID, sessionID)).
@@ -910,7 +933,7 @@ func (p *Plugin) handlePhoneCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, lkURL, err := p.mintLiveKitToken(userID, channelID, sessionID)
+	token, lkURL, err := p.mintLiveKitToken(userID, channelID, sessionID, false)
 	if err != nil {
 		p.LogError("handlePhoneCall: failed to mint LiveKit token", "err", err.Error(), "channelID", channelID)
 		p.rollbackSession(sessionID, state.Call.ID, true)
@@ -1915,7 +1938,7 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 	if state != nil && state.Call.Props.Type == "phone" {
 		for _, existing := range state.sessions {
 			if existing.UserID == userID && existing.ConfirmedAt == 0 {
-				token, lkURL, err := p.mintLiveKitToken(userID, req.ChannelID, existing.ID)
+				token, lkURL, err := p.mintLiveKitToken(userID, req.ChannelID, existing.ID, false)
 				if err != nil {
 					p.LogError("handleCreateLiveKitSession: failed to re-mint token for phone call session",
 						"err", err.Error(), "channelID", req.ChannelID, "sessionID", existing.ID)
@@ -1958,7 +1981,8 @@ func (p *Plugin) handleCreateLiveKitSession(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	token, lkURL, err := p.mintLiveKitToken(userID, req.ChannelID, sessionID)
+	allowCamera := p.getConfiguration().cameraAllowed(channel.Type, state.Call.Props.Type)
+	token, lkURL, err := p.mintLiveKitToken(userID, req.ChannelID, sessionID, allowCamera)
 	if err != nil {
 		p.LogError("failed to mint LiveKit token", "err", err.Error(), "channelID", req.ChannelID)
 		p.rollbackSession(sessionID, state.Call.ID, createdCall)

@@ -25,6 +25,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/livekit/protocol/auth"
+	"github.com/livekit/protocol/livekit"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -248,6 +249,7 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 	t.Run("reuses the pending phone call session", func(t *testing.T) {
 		p, mockAPI, _ := setupPlugin(t)
 		defer ResetTestStore(t, p.store)
+		p.configuration.EnableDMVideo = model.NewPointer(true)
 
 		userID := model.NewId()
 		channelID := model.NewId()
@@ -296,6 +298,11 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, userID+"___"+sessionID, verifier.Identity())
 
+		// Phone calls are audio only, even with DM video on.
+		_, claims, err := verifier.Verify(testLiveKitAPISecret)
+		require.NoError(t, err)
+		require.False(t, claims.Video.GetCanPublishSource(livekit.TrackSource_CAMERA))
+
 		sessions, err := p.store.GetCallSessions(callID, db.GetCallSessionOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.Len(t, sessions, 1)
@@ -305,5 +312,73 @@ func TestHandleCreateLiveKitSession(t *testing.T) {
 		call, err := p.store.GetCall(callID, db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
 		require.Equal(t, sessionID, call.Props.DialSessionID)
+	})
+
+	t.Run("camera grant follows the DM video setting", func(t *testing.T) {
+		tcs := []struct {
+			name        string
+			enabled     bool
+			channelType model.ChannelType
+			expected    bool
+		}{
+			{"setting on, DM", true, model.ChannelTypeDirect, true},
+			{"setting on, group message", true, model.ChannelTypeGroup, false},
+			{"setting on, channel", true, model.ChannelTypeOpen, false},
+			{"setting off, DM", false, model.ChannelTypeDirect, false},
+			{"setting off, group message", false, model.ChannelTypeGroup, false},
+			{"setting off, channel", false, model.ChannelTypeOpen, false},
+		}
+
+		for _, tc := range tcs {
+			t.Run(tc.name, func(t *testing.T) {
+				p, mockAPI, _ := setupPlugin(t)
+				defer ResetTestStore(t, p.store)
+				p.configuration.EnableDMVideo = model.NewPointer(tc.enabled)
+
+				callerID := model.NewId()
+				userID := model.NewId()
+				channelID := model.NewId()
+				callID := model.NewId()
+				postID := model.NewId()
+
+				// Join a call that already has its caller, so this request
+				// doesn't start the call.
+				createPost(t, p.store, postID, callerID, channelID)
+				require.NoError(t, p.store.CreateCall(&public.Call{
+					ID:        callID,
+					CreateAt:  time.Now().UnixMilli(),
+					StartAt:   time.Now().UnixMilli(),
+					ChannelID: channelID,
+					PostID:    postID,
+					OwnerID:   callerID,
+					Props:     public.CallProps{NodeID: "test-node"},
+				}))
+				require.NoError(t, p.store.CreateCallSession(&public.CallSession{
+					ID:     model.NewId(),
+					CallID: callID,
+					UserID: callerID,
+					JoinAt: time.Now().UnixMilli(),
+				}))
+
+				mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionCreatePost).Return(true).Once()
+				mockAPI.On("GetChannel", channelID).Return(&model.Channel{
+					Id: channelID, Type: tc.channelType,
+				}, nil).Maybe()
+				mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
+
+				w := postSession(t, p, userID, model.NewId(), map[string]string{"channel_id": channelID})
+				require.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+				var res livekitSessionResponse
+				require.NoError(t, json.NewDecoder(w.Result().Body).Decode(&res))
+				verifier, err := auth.ParseAPIToken(res.Token)
+				require.NoError(t, err)
+				_, claims, err := verifier.Verify(testLiveKitAPISecret)
+				require.NoError(t, err)
+				require.Equal(t, tc.expected, claims.Video.GetCanPublishSource(livekit.TrackSource_CAMERA))
+				require.True(t, claims.Video.GetCanPublishSource(livekit.TrackSource_MICROPHONE))
+				require.True(t, claims.Video.GetCanPublishSource(livekit.TrackSource_SCREEN_SHARE))
+			})
+		}
 	})
 }

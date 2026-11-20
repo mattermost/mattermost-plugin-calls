@@ -46,6 +46,7 @@ import CallClient, {CALL_EVENT, DisconnectReason} from 'src/clients/call';
 import type {ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
+import EnableDMVideo from 'src/components/admin_console_settings/enable_dm_video';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
 import EnableSIPOutbound from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound';
 import EnableSIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound_allowlist';
@@ -534,6 +535,7 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('DefaultEnabled', TestMode);
         registry.registerAdminConsoleCustomSetting('MaxCallParticipants', MaxCallParticipants);
         registry.registerAdminConsoleCustomSetting('AllowScreenSharing', AllowScreenSharing);
+        registry.registerAdminConsoleCustomSetting('EnableDMVideo', EnableDMVideo);
         registry.registerAdminConsoleCustomSetting('EnableRinging', EnableRinging);
 
         // LiveKit Service

@@ -118,6 +118,8 @@ type ClientConfig struct {
 	MaxCallParticipants *int
 	// When set to true it allows call participants to share their screen.
 	AllowScreenSharing *bool
+	// When set to true it allows participants in DM calls to publish their camera.
+	EnableDMVideo *bool
 	// When set to true it enables the call recordings functionality
 	EnableRecordings *bool
 	// When set to true it enables the call transcriptions functionality
@@ -162,6 +164,9 @@ func (c *configuration) SetDefaults() {
 	}
 	if c.AllowScreenSharing == nil {
 		c.AllowScreenSharing = model.NewPointer(true)
+	}
+	if c.EnableDMVideo == nil {
+		c.EnableDMVideo = model.NewPointer(false)
 	}
 	if c.EnableRecordings == nil {
 		c.EnableRecordings = model.NewPointer(false)
@@ -330,6 +335,10 @@ func (c *configuration) Clone() *configuration {
 		cfg.AllowScreenSharing = model.NewPointer(*c.AllowScreenSharing)
 	}
 
+	if c.EnableDMVideo != nil {
+		cfg.EnableDMVideo = model.NewPointer(*c.EnableDMVideo)
+	}
+
 	if c.EnableRecordings != nil {
 		cfg.EnableRecordings = model.NewPointer(*c.EnableRecordings)
 	}
@@ -436,6 +445,17 @@ func (c *configuration) liveCaptionsEnabled() bool {
 	return false
 }
 
+func (c *configuration) dmVideoEnabled() bool {
+	return c.EnableDMVideo != nil && *c.EnableDMVideo
+}
+
+// cameraAllowed reports whether a participant in a call of the given channel
+// and call type may publish their camera. Phone calls live in the user's DM
+// with the bot but are audio only.
+func (c *configuration) cameraAllowed(channelType model.ChannelType, callType string) bool {
+	return c.dmVideoEnabled() && channelType == model.ChannelTypeDirect && callType != callTypePhone
+}
+
 func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 	skuShortName := "starter"
 	license := p.API.GetLicense()
@@ -448,6 +468,7 @@ func (p *Plugin) getClientConfig(c *configuration) ClientConfig {
 		DefaultEnabled:       c.DefaultEnabled,
 		MaxCallParticipants:  c.MaxCallParticipants,
 		AllowScreenSharing:   c.AllowScreenSharing,
+		EnableDMVideo:        c.EnableDMVideo,
 		EnableRecordings:     c.EnableRecordings,
 		EnableTranscriptions: c.EnableTranscriptions,
 		EnableLiveCaptions:   c.EnableLiveCaptions,

@@ -41,6 +41,9 @@ export type CallsConfig = Omit<CommonCallsConfig, V1CallsConfigKeys> & {
 
     // Whether the server license permits outbound SIP dialing.
     SIPOutboundAllowed: boolean;
+
+    // Whether participants in DM calls may turn on their camera.
+    EnableDMVideo: boolean;
 };
 
 export type CallsVersionInfo = Omit<CommonCallsVersionInfo, 'rtcd_version' | 'rtcd_build'>;
@@ -49,6 +52,7 @@ export const CallsConfigDefault: CallsConfig = {
     DefaultEnabled: false,
     MaxCallParticipants: 0,
     AllowScreenSharing: true,
+    EnableDMVideo: false,
     EnableRecordings: false,
     MaxRecordingDuration: 60,
     sku_short_name: '',

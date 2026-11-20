@@ -25,6 +25,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/livekit/protocol/auth"
+	"github.com/livekit/protocol/livekit"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -406,7 +407,83 @@ func TestHandleGetLiveKitToken(t *testing.T) {
 		require.True(t, claims.Video.RoomJoin)
 		require.Equal(t, channelID, claims.Video.Room)
 		require.True(t, claims.Video.GetCanUpdateOwnMetadata())
+		require.False(t, claims.Video.GetCanPublishSource(livekit.TrackSource_CAMERA))
 		require.Empty(t, claims.Metadata)
+	})
+
+	t.Run("camera grant follows the DM video setting", func(t *testing.T) {
+		tcs := []struct {
+			name        string
+			enabled     bool
+			channelType model.ChannelType
+			callType    string
+			expected    bool
+		}{
+			{"setting on, DM", true, model.ChannelTypeDirect, "", true},
+			{"setting on, DM phone call", true, model.ChannelTypeDirect, callTypePhone, false},
+			{"setting on, group message", true, model.ChannelTypeGroup, "", false},
+			{"setting on, channel", true, model.ChannelTypeOpen, "", false},
+			{"setting off, DM", false, model.ChannelTypeDirect, "", false},
+		}
+
+		for _, tc := range tcs {
+			t.Run(tc.name, func(t *testing.T) {
+				p, mockAPI, _ := setupPlugin(t)
+				defer ResetTestStore(t, p.store)
+				apiRouter := p.newAPIRouter()
+
+				userID := model.NewId()
+				channelID := model.NewId()
+				sessionID := model.NewId()
+				callID := model.NewId()
+				postID := model.NewId()
+
+				setLiveKitConfig(p)
+				p.configuration.EnableDMVideo = model.NewPointer(tc.enabled)
+
+				createPost(t, p.store, postID, userID, channelID)
+				require.NoError(t, p.store.CreateCall(&public.Call{
+					ID:        callID,
+					CreateAt:  time.Now().UnixMilli(),
+					StartAt:   time.Now().UnixMilli(),
+					ChannelID: channelID,
+					PostID:    postID,
+					ThreadID:  model.NewId(),
+					OwnerID:   userID,
+					Props:     public.CallProps{NodeID: "test-node", Type: tc.callType},
+				}))
+				createCallSession(t, p, sessionID, userID, callID)
+
+				mockAPI.On("HasPermissionToChannel", userID, channelID, model.PermissionReadChannel).Return(true).Once()
+				mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Once()
+				if tc.enabled {
+					mockAPI.On("GetChannel", channelID).Return(&model.Channel{Id: channelID, Type: tc.channelType}, nil).Once()
+				}
+
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", fmt.Sprintf("/livekit-token?channel_id=%s&session_id=%s", channelID, sessionID), nil)
+				r.Header.Set("Mattermost-User-Id", userID)
+				apiRouter.ServeHTTP(w, r)
+
+				resp := w.Result()
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+
+				var tokenResp map[string]string
+				require.NoError(t, json.NewDecoder(resp.Body).Decode(&tokenResp))
+				verifier, err := auth.ParseAPIToken(tokenResp["token"])
+				require.NoError(t, err)
+				_, claims, err := verifier.Verify(testLiveKitAPISecret)
+				require.NoError(t, err)
+				require.Equal(t, tc.expected, claims.Video.GetCanPublishSource(livekit.TrackSource_CAMERA))
+				require.True(t, claims.Video.GetCanPublishSource(livekit.TrackSource_MICROPHONE))
+
+				expectedGetChannelCalls := 0
+				if tc.enabled {
+					expectedGetChannelCalls = 1
+				}
+				mockAPI.AssertNumberOfCalls(t, "GetChannel", expectedGetChannelCalls)
+			})
+		}
 	})
 
 	t.Run("unauthenticated", func(t *testing.T) {
@@ -452,7 +529,7 @@ func TestMintLiveKitTokenBotDataGrant(t *testing.T) {
 		}
 		require.Equal(t, liveCaptions, cfg.liveCaptionsEnabled())
 
-		token, _, err := p.mintLiveKitToken(botID, model.NewId(), model.NewId())
+		token, _, err := p.mintLiveKitToken(botID, model.NewId(), model.NewId(), true)
 		require.NoError(t, err)
 
 		verifier, err := auth.ParseAPIToken(token)
@@ -469,6 +546,7 @@ func TestMintLiveKitTokenBotDataGrant(t *testing.T) {
 		require.False(t, claims.Video.GetCanPublish())
 		require.True(t, claims.Video.GetCanSubscribe())
 		require.False(t, claims.Video.GetCanUpdateOwnMetadata())
+		require.Empty(t, claims.Video.CanPublishSources)
 	})
 
 	t.Run("live captions on", func(t *testing.T) {
@@ -478,6 +556,97 @@ func TestMintLiveKitTokenBotDataGrant(t *testing.T) {
 		require.False(t, claims.Video.GetCanPublish())
 		require.True(t, claims.Video.GetCanSubscribe())
 		require.False(t, claims.Video.GetCanUpdateOwnMetadata())
+	})
+}
+
+func TestMintLiveKitTokenPublishSources(t *testing.T) {
+	userID := model.NewId()
+
+	mint := func(t *testing.T, allowCamera bool) *auth.ClaimGrants {
+		t.Helper()
+
+		mockAPI := &pluginMocks.MockAPI{}
+		mockAPI.On("GetUser", userID).Return(&model.User{Id: userID}, nil)
+
+		cfg := &configuration{}
+		cfg.SetDefaults()
+		cfg.LiveKitURL = "wss://lk.example.com"
+		cfg.LiveKitAPIKey = "testkey"
+		cfg.LiveKitAPISecret = testLiveKitAPISecret
+
+		p := &Plugin{
+			MattermostPlugin: plugin.MattermostPlugin{API: mockAPI},
+			botID:            model.NewId(),
+			configuration:    cfg,
+		}
+
+		token, _, err := p.mintLiveKitToken(userID, model.NewId(), model.NewId(), allowCamera)
+		require.NoError(t, err)
+
+		verifier, err := auth.ParseAPIToken(token)
+		require.NoError(t, err)
+		_, claims, err := verifier.Verify(testLiveKitAPISecret)
+		require.NoError(t, err)
+		require.NotNil(t, claims.Video)
+		return claims
+	}
+
+	t.Run("camera not allowed", func(t *testing.T) {
+		claims := mint(t, false)
+		require.Equal(t, []livekit.TrackSource{
+			livekit.TrackSource_MICROPHONE,
+			livekit.TrackSource_SCREEN_SHARE,
+			livekit.TrackSource_SCREEN_SHARE_AUDIO,
+		}, claims.Video.GetCanPublishSources())
+		require.True(t, claims.Video.GetCanPublishSource(livekit.TrackSource_MICROPHONE))
+		require.False(t, claims.Video.GetCanPublishSource(livekit.TrackSource_CAMERA))
+		require.True(t, claims.Video.GetCanUpdateOwnMetadata())
+	})
+
+	t.Run("camera allowed", func(t *testing.T) {
+		claims := mint(t, true)
+		require.Equal(t, []livekit.TrackSource{
+			livekit.TrackSource_MICROPHONE,
+			livekit.TrackSource_SCREEN_SHARE,
+			livekit.TrackSource_SCREEN_SHARE_AUDIO,
+			livekit.TrackSource_CAMERA,
+		}, claims.Video.GetCanPublishSources())
+		require.True(t, claims.Video.GetCanPublishSource(livekit.TrackSource_CAMERA))
+	})
+}
+
+func TestConfigurationCameraAllowed(t *testing.T) {
+	tcs := []struct {
+		name        string
+		enabled     bool
+		channelType model.ChannelType
+		callType    string
+		expected    bool
+	}{
+		{"setting on, DM", true, model.ChannelTypeDirect, "", true},
+		{"setting on, DM phone call", true, model.ChannelTypeDirect, callTypePhone, false},
+		{"setting on, group message", true, model.ChannelTypeGroup, "", false},
+		{"setting on, public channel", true, model.ChannelTypeOpen, "", false},
+		{"setting on, private channel", true, model.ChannelTypePrivate, "", false},
+		{"setting off, DM", false, model.ChannelTypeDirect, "", false},
+		{"setting off, group message", false, model.ChannelTypeGroup, "", false},
+		{"setting off, public channel", false, model.ChannelTypeOpen, "", false},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &configuration{}
+			cfg.SetDefaults()
+			cfg.EnableDMVideo = model.NewPointer(tc.enabled)
+			require.Equal(t, tc.expected, cfg.cameraAllowed(tc.channelType, tc.callType))
+		})
+	}
+
+	t.Run("unset defaults to off", func(t *testing.T) {
+		cfg := &configuration{}
+		require.False(t, cfg.cameraAllowed(model.ChannelTypeDirect, ""))
+		cfg.SetDefaults()
+		require.False(t, cfg.cameraAllowed(model.ChannelTypeDirect, ""))
 	})
 }
 

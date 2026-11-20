@@ -47,6 +47,11 @@ func TestFieldNameToEnvKey(t *testing.T) {
 			input:    "LiveKitAPIKey",
 			expected: "LIVE_KIT_API_KEY",
 		},
+		{
+			name:     "acronym in the middle",
+			input:    "EnableDMVideo",
+			expected: "ENABLE_DM_VIDEO",
+		},
 	}
 
 	for _, tt := range tests {
