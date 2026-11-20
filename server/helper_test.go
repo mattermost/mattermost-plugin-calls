@@ -98,6 +98,13 @@ func NewTestStore(t *testing.T) (*db.Store, func()) {
 	mockLogger.On("Debug", mock.Anything).Run(func(args mock.Arguments) {
 		log.Print(args.Get(0).(string))
 	})
+	// One-time v1 copy logging: start (2 fields) and finish (5 fields).
+	mockLogger.On("Info", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		log.Print(args.Get(0).(string))
+	}).Maybe()
+	mockLogger.On("Info", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		log.Print(args.Get(0).(string))
+	}).Maybe()
 	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
 	mockMetrics.On("ObserveStoreMethodsTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
 
@@ -121,11 +128,11 @@ func NewTestStore(t *testing.T) (*db.Store, func()) {
 func ResetTestStore(t *testing.T, store *db.Store) {
 	t.Helper()
 
-	_, err := store.WriterDB().Exec(`TRUNCATE TABLE calls`)
+	_, err := store.WriterDB().Exec(`TRUNCATE TABLE calls_v2_calls`)
 	require.NoError(t, err)
-	_, err = store.WriterDB().Exec(`TRUNCATE TABLE calls_channels`)
+	_, err = store.WriterDB().Exec(`TRUNCATE TABLE calls_v2_channels`)
 	require.NoError(t, err)
-	_, err = store.WriterDB().Exec(`TRUNCATE TABLE calls_sessions`)
+	_, err = store.WriterDB().Exec(`TRUNCATE TABLE calls_v2_sessions`)
 	require.NoError(t, err)
 	_, err = store.WriterDB().Exec(`TRUNCATE TABLE posts`)
 	require.NoError(t, err)

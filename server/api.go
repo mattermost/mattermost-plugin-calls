@@ -286,7 +286,7 @@ func (p *Plugin) handleGetAllCallChannelStates(w http.ResponseWriter, r *http.Re
 	}
 
 	// We also need to include any active calls that may not have an explicit entry in
-	// calls_channels
+	// calls_v2_channels
 	for _, call := range callsMap {
 		cs, err := p.getCallStateFromCall(call, false)
 		if err != nil {
@@ -1586,7 +1586,7 @@ func (p *Plugin) handleLiveKitSIPParticipantJoined(event *livekit.WebhookEvent) 
 	// Record the SIP participant in the audit as a "phone" identity. This handler
 	// runs for every SIP join: the callee of an outbound phone call (the human
 	// caller was already recorded via addUserSession) and inbound SIP participants,
-	// which otherwise never appear in calls_participants. The identity is the E.164
+	// which otherwise never appear in calls_v2_participants. The identity is the E.164
 	// number, derived from the participant identity ("sip:" + E.164, set by the
 	// outbound dial); for an outbound call it's cross-checked against
 	// Props.PhoneNumber. Leave is left to the call-end backstop, matching how SIP

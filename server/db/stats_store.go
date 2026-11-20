@@ -22,7 +22,7 @@ func (s *Store) GetAvgCallParticipants() (int64, error) {
 
 	qb := getQueryBuilder().
 		Select("AVG(jsonb_array_length(participants))").
-		From("calls").
+		From(tableCalls).
 		Where("jsonb_typeof(participants) = 'array'")
 	qb = qb.Where(sq.And{
 		sq.Expr("EndAt > StartAt"),
@@ -55,7 +55,7 @@ func (s *Store) GetAvgCallDuration() (int64, error) {
 	}(time.Now())
 
 	qb := getQueryBuilder().Select("AVG(EndAt - StartAt)/1000").
-		From("calls").
+		From(tableCalls).
 		Where(sq.And{
 			sq.Expr("EndAt > StartAt"),
 			sq.Eq{"DeleteAt": 0},
@@ -87,11 +87,11 @@ func (s *Store) GetTotalActiveSessions() (int64, error) {
 	}(time.Now())
 
 	qb := getQueryBuilder().Select("COUNT(*)").
-		From("calls_sessions").
-		Join("calls ON calls_sessions.CallID = calls.ID").
+		From(tableSessions).
+		Join(tableCalls + " ON " + tableSessions + ".CallID = " + tableCalls + ".ID").
 		Where(sq.And{
-			sq.Eq{"calls.EndAt": 0},
-			sq.Eq{"calls.DeleteAt": 0},
+			sq.Eq{tableCalls + ".EndAt": 0},
+			sq.Eq{tableCalls + ".DeleteAt": 0},
 		})
 
 	q, args, err := qb.ToSql()
@@ -115,7 +115,7 @@ func (s *Store) GetTotalCalls(active bool) (int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetTotalCalls", time.Since(start).Seconds())
 	}(time.Now())
 
-	qb := getQueryBuilder().Select("COUNT(*)").From("calls")
+	qb := getQueryBuilder().Select("COUNT(*)").From(tableCalls)
 
 	if active {
 		qb = qb.Where(sq.And{
@@ -151,11 +151,11 @@ func (s *Store) GetCallsByChannelType() (map[string]int64, error) {
 	}(time.Now())
 
 	qb := getQueryBuilder().Select("COUNT(*) AS Count, Type").
-		From("calls").
-		Join("Channels ON calls.ChannelID = Channels.Id").
+		From(tableCalls).
+		Join("Channels ON " + tableCalls + ".ChannelID = Channels.Id").
 		Where(sq.And{
-			sq.Expr("calls.EndAt > calls.StartAt"),
-			sq.Eq{"calls.DeleteAt": 0},
+			sq.Expr(tableCalls + ".EndAt > " + tableCalls + ".StartAt"),
+			sq.Eq{tableCalls + ".DeleteAt": 0},
 		}).GroupBy("Type")
 
 	q, args, err := qb.ToSql()
@@ -223,7 +223,7 @@ func (s *Store) GetCallsByMonth() (map[string]int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetCallsByMonth", time.Since(start).Seconds())
 	}(now)
 
-	return s.getByMonth(getByMonthQueryBase(now).Where(sq.Eq{"DeleteAt": 0}).From("calls"), now)
+	return s.getByMonth(getByMonthQueryBase(now).Where(sq.Eq{"DeleteAt": 0}).From(tableCalls), now)
 }
 
 func getByDayQueryBase(now time.Time) sq.SelectBuilder {
@@ -271,7 +271,7 @@ func (s *Store) GetCallsByDay() (map[string]int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetCallsByDay", time.Since(start).Seconds())
 	}(now)
 
-	return s.getByDay(getByDayQueryBase(now).Where(sq.Eq{"DeleteAt": 0}).From("calls"), now)
+	return s.getByDay(getByDayQueryBase(now).Where(sq.Eq{"DeleteAt": 0}).From(tableCalls), now)
 }
 
 func (s *Store) GetRecordingJobsByMonth() (map[string]int64, error) {
@@ -282,7 +282,7 @@ func (s *Store) GetRecordingJobsByMonth() (map[string]int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetRecordingJobsByMonth", time.Since(start).Seconds())
 	}(now)
 
-	return s.getByMonth(getByMonthQueryBase(now).From("calls_jobs").Where(sq.Eq{"type": public.JobTypeRecording}), now)
+	return s.getByMonth(getByMonthQueryBase(now).From(tableJobs).Where(sq.Eq{"type": public.JobTypeRecording}), now)
 }
 
 func (s *Store) GetRecordingJobsByDay() (map[string]int64, error) {
@@ -293,7 +293,7 @@ func (s *Store) GetRecordingJobsByDay() (map[string]int64, error) {
 		s.metrics.ObserveStoreMethodsTime("GetRecordingJobsByDay", time.Since(start).Seconds())
 	}(now)
 
-	return s.getByDay(getByDayQueryBase(now).From("calls_jobs").Where(sq.Eq{"type": public.JobTypeRecording}), now)
+	return s.getByDay(getByDayQueryBase(now).From(tableJobs).Where(sq.Eq{"type": public.JobTypeRecording}), now)
 }
 
 func (s *Store) GetCallsStats() (*public.CallsStats, error) {

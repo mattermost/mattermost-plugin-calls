@@ -24,7 +24,7 @@ func (s *Store) RecordScreenShareStart(callID, userID, sessionID string, startAt
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Insert("calls_screen_shares").
+		Insert(tableScreenShares).
 		Columns("CallID", "UserID", "SessionID", "StartAt", "StopAt").
 		Values(callID, userID, sessionID, startAt, 0).
 		Suffix("ON CONFLICT (callid, sessionid, startat) DO NOTHING")
@@ -55,7 +55,7 @@ func (s *Store) RecordScreenShareStop(callID, sessionID string, stopAt int64) er
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Update("calls_screen_shares").
+		Update(tableScreenShares).
 		Set("StopAt", stopAt).
 		Where(sq.And{
 			sq.Eq{"CallID": callID},
@@ -89,7 +89,7 @@ func (s *Store) RecordStopForActiveScreenShares(callID string, stopAt int64) err
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Update("calls_screen_shares").
+		Update(tableScreenShares).
 		Set("StopAt", stopAt).
 		Where(sq.And{
 			sq.Eq{"CallID": callID},
@@ -125,7 +125,7 @@ func (s *Store) GetScreenSharesForCalls(callIDs []string, opts GetCallOpts) (map
 
 	qb := getQueryBuilder().
 		Select("CallID", "UserID", "SessionID", "StartAt", "StopAt").
-		From("calls_screen_shares").
+		From(tableScreenShares).
 		Where(sq.Eq{"CallID": callIDs}).
 		OrderBy("StartAt ASC")
 

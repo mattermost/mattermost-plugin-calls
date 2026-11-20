@@ -27,7 +27,7 @@ func (s *Store) CreateCallsChannel(channel *public.CallsChannel) error {
 	}
 
 	qb := getQueryBuilder().
-		Insert("calls_channels").
+		Insert(tableChannels).
 		Columns(callsChannelsColumns...).
 		Values(channel.ChannelID, channel.Enabled, s.newJSONValueWrapper(channel.Props))
 
@@ -53,7 +53,7 @@ func (s *Store) GetCallsChannel(channelID string, opts GetCallsChannelOpts) (*pu
 	}(time.Now())
 
 	qb := getQueryBuilder().Select(callsChannelsColumns...).
-		From("calls_channels").
+		From(tableChannels).
 		Where(sq.Eq{"ChannelID": channelID})
 
 	q, args, err := qb.ToSql()
@@ -82,7 +82,7 @@ func (s *Store) GetAllCallsChannels(opts GetCallsChannelOpts) ([]*public.CallsCh
 	// TODO: consider implementing paging
 	// This should be fine for now as we wouldn't expect to have more than a few
 	// channels with calls explicitly enabled/disabled.
-	qb := getQueryBuilder().Select(callsChannelsColumns...).From("calls_channels")
+	qb := getQueryBuilder().Select(callsChannelsColumns...).From(tableChannels)
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -110,7 +110,7 @@ func (s *Store) UpdateCallsChannel(channel *public.CallsChannel) error {
 	}
 
 	qb := getQueryBuilder().
-		Update("calls_channels").
+		Update(tableChannels).
 		Set("Enabled", channel.Enabled).
 		Set("Props", s.newJSONValueWrapper(channel.Props)).
 		Where(sq.Eq{"ChannelID": channel.ChannelID})

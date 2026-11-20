@@ -14,14 +14,7 @@ import (
 	sq "github.com/mattermost/squirrel"
 )
 
-// NOTE: the calls_sessions table still has the legacy unmuted/raisedhand/video
-// columns. Transient per-participant state lives in LiveKit, so we never read
-// them. Phase 2 drops unmuted/raisedhand; video stays until camera video is
-// designed for v2. Until then inserts write inert defaults: the columns are
-// nullable, and older plugin versions (rolling upgrade, rollback) scan them
-// into non-pointer fields, so a NULL would break loading a call's sessions.
 var callsSessionsColumns = []string{"ID", "CallID", "UserID", "JoinAt", "IsSIPParticipant", "ConfirmedAt", "SID", "AuthSessionID"}
-var callsSessionsLegacyColumns = []string{"Unmuted", "RaisedHand", "Video"}
 
 func (s *Store) CreateCallSession(session *public.CallSession) error {
 	s.metrics.IncStoreOp("CreateCallSession")
@@ -34,9 +27,9 @@ func (s *Store) CreateCallSession(session *public.CallSession) error {
 	}
 
 	qb := getQueryBuilder().
-		Insert("calls_sessions").
-		Columns(append(append([]string{}, callsSessionsColumns...), callsSessionsLegacyColumns...)...).
-		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.IsSIPParticipant, session.ConfirmedAt, session.SID, session.AuthSessionID, false, 0, false)
+		Insert(tableSessions).
+		Columns(callsSessionsColumns...).
+		Values(session.ID, session.CallID, session.UserID, session.JoinAt, session.IsSIPParticipant, session.ConfirmedAt, session.SID, session.AuthSessionID)
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -60,7 +53,7 @@ func (s *Store) DeleteCallSession(id string) error {
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Delete("calls_sessions").
+		Delete(tableSessions).
 		Where(sq.Eq{"ID": id})
 
 	q, args, err := qb.ToSql()
@@ -85,7 +78,7 @@ func (s *Store) GetCallSession(id string, opts GetCallSessionOpts) (*public.Call
 	}(time.Now())
 
 	qb := getQueryBuilder().Select(callsSessionsColumns...).
-		From("calls_sessions").
+		From(tableSessions).
 		Where(sq.Eq{"ID": id})
 
 	q, args, err := qb.ToSql()
@@ -112,7 +105,7 @@ func (s *Store) GetCallSessions(callID string, opts GetCallSessionOpts) (map[str
 	}(time.Now())
 
 	qb := getQueryBuilder().Select(callsSessionsColumns...).
-		From("calls_sessions").
+		From(tableSessions).
 		Where(sq.Eq{"CallID": callID})
 
 	q, args, err := qb.ToSql()
@@ -153,7 +146,7 @@ func (s *Store) DeleteCallsSessions(callID string) (int64, error) {
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Delete("calls_sessions").
+		Delete(tableSessions).
 		Where(sq.Eq{"CallID": callID})
 
 	q, args, err := qb.ToSql()
@@ -184,7 +177,7 @@ func (s *Store) GetCallSessionsCount(callID string, opts GetCallSessionOpts) (in
 	}(time.Now())
 
 	qb := getQueryBuilder().Select("COUNT(*)").
-		From("calls_sessions").
+		From(tableSessions).
 		Where(sq.Eq{"CallID": callID})
 
 	q, args, err := qb.ToSql()
@@ -209,7 +202,7 @@ func (s *Store) IsUserInCall(userID, callID string, opts GetCallSessionOpts) (bo
 	}(time.Now())
 
 	qb := getQueryBuilder().Select("1").
-		From("calls_sessions").
+		From(tableSessions).
 		Where(
 			sq.And{
 				sq.Eq{"CallID": callID},
@@ -243,7 +236,7 @@ func (s *Store) ConfirmCallSession(id, sid string, confirmedAt int64) error {
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Update("calls_sessions").
+		Update(tableSessions).
 		Set("SID", sid).
 		Set("ConfirmedAt", confirmedAt).
 		Where(sq.Eq{"ID": id})
@@ -272,7 +265,7 @@ func (s *Store) UpdateCallSessionSID(id, sid string) error {
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Update("calls_sessions").
+		Update(tableSessions).
 		Set("SID", sid).
 		Where(sq.Eq{"ID": id})
 

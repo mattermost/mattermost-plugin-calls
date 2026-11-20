@@ -32,10 +32,10 @@ func (s *Store) RecordParticipantJoin(callID, identityType, identity string, joi
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Insert("calls_participants").
+		Insert(tableParticipants).
 		Columns("CallID", "IdentityType", "Identity", "FirstJoinAt", "LastLeaveAt").
 		Values(callID, identityType, identity, joinAt, 0).
-		Suffix("ON CONFLICT (callid, identitytype, identity) DO UPDATE SET firstjoinat = LEAST(calls_participants.firstjoinat, EXCLUDED.firstjoinat), lastleaveat = 0")
+		Suffix("ON CONFLICT (callid, identitytype, identity) DO UPDATE SET firstjoinat = LEAST(" + tableParticipants + ".firstjoinat, EXCLUDED.firstjoinat), lastleaveat = 0")
 
 	q, args, err := qb.ToSql()
 	if err != nil {
@@ -62,7 +62,7 @@ func (s *Store) RecordParticipantLeave(callID, identityType, identity string, le
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Update("calls_participants").
+		Update(tableParticipants).
 		Set("LastLeaveAt", leaveAt).
 		Where(sq.And{
 			sq.Eq{"CallID": callID},
@@ -98,7 +98,7 @@ func (s *Store) RecordLeaveForActiveParticipants(callID string, leaveAt int64) e
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Update("calls_participants").
+		Update(tableParticipants).
 		Set("LastLeaveAt", leaveAt).
 		Where(sq.And{
 			sq.Eq{"CallID": callID},
@@ -136,7 +136,7 @@ func (s *Store) GetParticipantsForCalls(callIDs []string, opts GetCallOpts) (map
 
 	qb := getQueryBuilder().
 		Select("CallID", "IdentityType", "Identity", "FirstJoinAt", "LastLeaveAt").
-		From("calls_participants").
+		From(tableParticipants).
 		Where(sq.Eq{"CallID": callIDs})
 
 	q, args, err := qb.ToSql()

@@ -328,7 +328,7 @@ func TestHandleLiveKitSIPParticipant(t *testing.T) {
 		// E.164 number, so it appears in attendance reports.
 		parts, err := p.store.GetParticipantsForCalls([]string{call.ID}, db.GetCallOpts{FromWriter: true})
 		require.NoError(t, err)
-		require.NotNil(t, parts[call.ID][sipIdentity], "phone leg must have a calls_participants row")
+		require.NotNil(t, parts[call.ID][sipIdentity], "phone leg must have a calls_v2_participants row")
 		require.Equal(t, public.IdentityTypePhone, parts[call.ID][sipIdentity].IdentityType)
 		require.Equal(t, sipIdentity, parts[call.ID][sipIdentity].Identity)
 		require.Zero(t, parts[call.ID][sipIdentity].LastLeaveAt, "leave is left to the call-end backstop")

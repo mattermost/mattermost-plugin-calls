@@ -91,6 +91,13 @@ func newPostgresStore(t *testing.T, binaryParams bool) (*Store, func()) {
 	mockLogger.On("Debug", mock.Anything).Run(func(args mock.Arguments) {
 		log.Print(args.Get(0).(string))
 	})
+	// One-time v1 copy logging: start (2 fields) and finish (5 fields).
+	mockLogger.On("Info", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		log.Print(args.Get(0).(string))
+	}).Maybe()
+	mockLogger.On("Info", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		log.Print(args.Get(0).(string))
+	}).Maybe()
 	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
 	mockMetrics.On("ObserveStoreMethodsTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
 
@@ -114,11 +121,11 @@ func newStore(t *testing.T, binaryParams bool) (*Store, func()) {
 func resetStore(t *testing.T, store *Store) {
 	t.Helper()
 
-	_, err := store.wDB.Exec(`TRUNCATE TABLE calls`)
+	_, err := store.wDB.Exec(`TRUNCATE TABLE calls_v2_calls`)
 	require.NoError(t, err)
-	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_channels`)
+	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_v2_channels`)
 	require.NoError(t, err)
-	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_sessions`)
+	_, err = store.wDB.Exec(`TRUNCATE TABLE calls_v2_sessions`)
 	require.NoError(t, err)
 	_, err = store.wDB.Exec(`TRUNCATE TABLE channels`)
 	require.NoError(t, err)
