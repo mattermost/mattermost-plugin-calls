@@ -232,12 +232,19 @@ func testGetStats(t *testing.T, store *Store) {
 		require.Zero(t, stats.TotalVideoDuration)
 		require.Zero(t, stats.AvgVideoDuration)
 
+		// Older calls only have a screen duration, no flag.
+		create(public.CallStats{ScreenDuration: 30})
+
+		stats, err = store.GetCallsStats()
+		require.NoError(t, err)
+		require.Equal(t, int64(2), stats.TotalScreenShareCalls)
+
 		create(public.CallStats{HasUsedVideo: true, VideoDuration: 100})
 		create(public.CallStats{HasUsedVideo: true, VideoDuration: 300, HasUsedScreenShare: true})
 
 		stats, err = store.GetCallsStats()
 		require.NoError(t, err)
-		require.Equal(t, int64(2), stats.TotalScreenShareCalls)
+		require.Equal(t, int64(3), stats.TotalScreenShareCalls)
 		require.Equal(t, int64(2), stats.TotalVideoCalls)
 		require.Equal(t, int64(400), stats.TotalVideoDuration)
 		require.Equal(t, int64(200), stats.AvgVideoDuration)
