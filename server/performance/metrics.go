@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -44,6 +46,12 @@ type Metrics struct {
 	LiveCaptionsWindowDroppedCounter       prometheus.Counter
 	LiveCaptionsTranscriberBufFullCounter  prometheus.Counter
 	LiveCaptionsPktPayloadChBufFullCounter prometheus.Counter
+
+	// Historical statistics gauges, refreshed periodically from the DB.
+	HistoricalDailyCallsGauge   *prometheus.GaugeVec
+	HistoricalMonthlyCallsGauge *prometheus.GaugeVec
+	CallsByChannelTypeGauge     *prometheus.GaugeVec
+	AggregateStatsGauges        *prometheus.GaugeVec
 }
 
 func NewMetrics() *Metrics {
@@ -189,6 +197,46 @@ func NewMetrics() *Metrics {
 	)
 	m.registry.MustRegister(m.StoreMethodsTimeHistograms)
 
+	m.HistoricalDailyCallsGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: metricsNamespace,
+			Name:      "daily_calls_total",
+			Help:      "Total number of calls per day (last 30 days)",
+		},
+		[]string{"date"},
+	)
+	m.registry.MustRegister(m.HistoricalDailyCallsGauge)
+
+	m.HistoricalMonthlyCallsGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: metricsNamespace,
+			Name:      "monthly_calls_total",
+			Help:      "Total number of calls per month",
+		},
+		[]string{"month"},
+	)
+	m.registry.MustRegister(m.HistoricalMonthlyCallsGauge)
+
+	m.CallsByChannelTypeGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: metricsNamespace,
+			Name:      "calls_by_channel_type",
+			Help:      "Total calls by channel type (public, private, direct, group)",
+		},
+		[]string{"type"},
+	)
+	m.registry.MustRegister(m.CallsByChannelTypeGauge)
+
+	m.AggregateStatsGauges = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: metricsNamespace,
+			Name:      "aggregate_stats",
+			Help:      "Aggregate statistics (avg_duration, avg_participants, etc)",
+		},
+		[]string{"stat"},
+	)
+	m.registry.MustRegister(m.AggregateStatsGauges)
+
 	return &m
 }
 
@@ -254,4 +302,54 @@ func (m *Metrics) ObserveAppHandlersTime(handler string, elapsed float64) {
 
 func (m *Metrics) ObserveStoreMethodsTime(method string, elapsed float64) {
 	m.StoreMethodsTimeHistograms.With(prometheus.Labels{"method": method}).Observe(elapsed)
+}
+
+// UpdateHistoricalMetrics refreshes the historical statistics gauges from DB stats.
+// The video stats stay at 0 until v2 records them.
+func (m *Metrics) UpdateHistoricalMetrics(stats *public.CallsStats) {
+	// Reset so dates that have aged out of the window disappear.
+	m.HistoricalDailyCallsGauge.Reset()
+	m.HistoricalMonthlyCallsGauge.Reset()
+	m.CallsByChannelTypeGauge.Reset()
+
+	for date, count := range stats.CallsByDay {
+		m.HistoricalDailyCallsGauge.With(prometheus.Labels{"date": date}).Set(float64(count))
+	}
+
+	for month, count := range stats.CallsByMonth {
+		m.HistoricalMonthlyCallsGauge.With(prometheus.Labels{"month": month}).Set(float64(count))
+	}
+
+	for channelType, count := range stats.CallsByChannelType {
+		m.CallsByChannelTypeGauge.With(prometheus.Labels{"type": channelTypeToLabel(channelType)}).Set(float64(count))
+	}
+
+	for stat, val := range map[string]int64{
+		"total_calls":                  stats.TotalCalls,
+		"total_active_calls":           stats.TotalActiveCalls,
+		"total_active_sessions":        stats.TotalActiveSessions,
+		"avg_duration_seconds":         stats.AvgDuration,
+		"avg_participants":             stats.AvgParticipants,
+		"avg_video_duration_seconds":   stats.AvgVideoDuration,
+		"total_video_duration_seconds": stats.TotalVideoDuration,
+		"total_video_calls":            stats.TotalVideoCalls,
+		"total_screen_share_calls":     stats.TotalScreenShareCalls,
+	} {
+		m.AggregateStatsGauges.With(prometheus.Labels{"stat": stat}).Set(float64(val))
+	}
+}
+
+func channelTypeToLabel(t string) string {
+	switch t {
+	case "O":
+		return "public"
+	case "P":
+		return "private"
+	case "D":
+		return "direct"
+	case "G":
+		return "group"
+	default:
+		return "unknown"
+	}
 }
