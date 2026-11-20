@@ -91,6 +91,13 @@ func newPostgresStore(t *testing.T, binaryParams bool) (*Store, func()) {
 	mockLogger.On("Debug", mock.Anything).Run(func(args mock.Arguments) {
 		log.Print(args.Get(0).(string))
 	})
+	// One-time v1 copy logging: start (2 fields) and finish (5 fields).
+	mockLogger.On("Info", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		log.Print(args.Get(0).(string))
+	}).Maybe()
+	mockLogger.On("Info", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		log.Print(args.Get(0).(string))
+	}).Maybe()
 	mockMetrics.On("IncStoreOp", mock.AnythingOfType("string"))
 	mockMetrics.On("ObserveStoreMethodsTime", mock.AnythingOfType("string"), mock.AnythingOfType("float64"))
 

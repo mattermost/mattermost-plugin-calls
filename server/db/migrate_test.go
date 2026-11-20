@@ -98,7 +98,19 @@ func TestMigrate(t *testing.T) {
 				require.NoError(t, err)
 
 				t.Run("up", func(t *testing.T) {
+					pending, err := store.copyV1DataPending()
+					require.NoError(t, err)
+					require.True(t, pending)
+
+					srcCalls, srcChannels := store.countV1Source()
+					require.Equal(t, 1, srcCalls)
+					require.Equal(t, 2, srcChannels)
+
 					require.NoError(t, store.Migrate(models.Up, false))
+
+					pending, err = store.copyV1DataPending()
+					require.NoError(t, err)
+					require.False(t, pending)
 
 					var callsChannels []public.CallsChannel
 					err = store.wDBx.Select(&callsChannels, `SELECT channelid, enabled FROM calls_v2_channels`)
