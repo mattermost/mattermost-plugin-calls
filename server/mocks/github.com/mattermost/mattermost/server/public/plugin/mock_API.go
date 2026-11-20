@@ -207,6 +207,68 @@ func (_c *MockAPI_AddUserToChannel_Call) RunAndReturn(run func(string, string, s
 	return _c
 }
 
+// CheckAccessControlExpression provides a mock function with given fields: actingUserID, resourceType, expression
+func (_m *MockAPI) CheckAccessControlExpression(actingUserID string, resourceType string, expression string) ([]model.CELExpressionError, *model.AppError) {
+	ret := _m.Called(actingUserID, resourceType, expression)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CheckAccessControlExpression")
+	}
+
+	var r0 []model.CELExpressionError
+	var r1 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, string, string) ([]model.CELExpressionError, *model.AppError)); ok {
+		return rf(actingUserID, resourceType, expression)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, string) []model.CELExpressionError); ok {
+		r0 = rf(actingUserID, resourceType, expression)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.CELExpressionError)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, string) *model.AppError); ok {
+		r1 = rf(actingUserID, resourceType, expression)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockAPI_CheckAccessControlExpression_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CheckAccessControlExpression'
+type MockAPI_CheckAccessControlExpression_Call struct {
+	*mock.Call
+}
+
+// CheckAccessControlExpression is a helper method to define mock.On call
+//   - actingUserID string
+//   - resourceType string
+//   - expression string
+func (_e *MockAPI_Expecter) CheckAccessControlExpression(actingUserID interface{}, resourceType interface{}, expression interface{}) *MockAPI_CheckAccessControlExpression_Call {
+	return &MockAPI_CheckAccessControlExpression_Call{Call: _e.mock.On("CheckAccessControlExpression", actingUserID, resourceType, expression)}
+}
+
+func (_c *MockAPI_CheckAccessControlExpression_Call) Run(run func(actingUserID string, resourceType string, expression string)) *MockAPI_CheckAccessControlExpression_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_CheckAccessControlExpression_Call) Return(_a0 []model.CELExpressionError, _a1 *model.AppError) *MockAPI_CheckAccessControlExpression_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_CheckAccessControlExpression_Call) RunAndReturn(run func(string, string, string) ([]model.CELExpressionError, *model.AppError)) *MockAPI_CheckAccessControlExpression_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CopyFileInfos provides a mock function with given fields: userID, fileIds
 func (_m *MockAPI) CopyFileInfos(userID string, fileIds []string) ([]string, *model.AppError) {
 	ret := _m.Called(userID, fileIds)
@@ -910,6 +972,66 @@ func (_c *MockAPI_CreatePropertyField_Call) RunAndReturn(run func(*model.Propert
 	return _c
 }
 
+// CreatePropertyFieldOptions provides a mock function with given fields: groupID, fieldID, options
+func (_m *MockAPI) CreatePropertyFieldOptions(groupID string, fieldID string, options []*model.PropertyFieldOption) ([]*model.PropertyFieldOption, error) {
+	ret := _m.Called(groupID, fieldID, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreatePropertyFieldOptions")
+	}
+
+	var r0 []*model.PropertyFieldOption
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string, []*model.PropertyFieldOption) ([]*model.PropertyFieldOption, error)); ok {
+		return rf(groupID, fieldID, options)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, []*model.PropertyFieldOption) []*model.PropertyFieldOption); ok {
+		r0 = rf(groupID, fieldID, options)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.PropertyFieldOption)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, []*model.PropertyFieldOption) error); ok {
+		r1 = rf(groupID, fieldID, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_CreatePropertyFieldOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreatePropertyFieldOptions'
+type MockAPI_CreatePropertyFieldOptions_Call struct {
+	*mock.Call
+}
+
+// CreatePropertyFieldOptions is a helper method to define mock.On call
+//   - groupID string
+//   - fieldID string
+//   - options []*model.PropertyFieldOption
+func (_e *MockAPI_Expecter) CreatePropertyFieldOptions(groupID interface{}, fieldID interface{}, options interface{}) *MockAPI_CreatePropertyFieldOptions_Call {
+	return &MockAPI_CreatePropertyFieldOptions_Call{Call: _e.mock.On("CreatePropertyFieldOptions", groupID, fieldID, options)}
+}
+
+func (_c *MockAPI_CreatePropertyFieldOptions_Call) Run(run func(groupID string, fieldID string, options []*model.PropertyFieldOption)) *MockAPI_CreatePropertyFieldOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].([]*model.PropertyFieldOption))
+	})
+	return _c
+}
+
+func (_c *MockAPI_CreatePropertyFieldOptions_Call) Return(_a0 []*model.PropertyFieldOption, _a1 error) *MockAPI_CreatePropertyFieldOptions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_CreatePropertyFieldOptions_Call) RunAndReturn(run func(string, string, []*model.PropertyFieldOption) ([]*model.PropertyFieldOption, error)) *MockAPI_CreatePropertyFieldOptions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreatePropertyValue provides a mock function with given fields: value
 func (_m *MockAPI) CreatePropertyValue(value *model.PropertyValue) (*model.PropertyValue, error) {
 	ret := _m.Called(value)
@@ -1447,6 +1569,56 @@ func (_c *MockAPI_CreateUserAccessToken_Call) Return(_a0 *model.UserAccessToken,
 }
 
 func (_c *MockAPI_CreateUserAccessToken_Call) RunAndReturn(run func(*model.UserAccessToken) (*model.UserAccessToken, *model.AppError)) *MockAPI_CreateUserAccessToken_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteAccessControlPolicy provides a mock function with given fields: actingUserID, resourceType, id
+func (_m *MockAPI) DeleteAccessControlPolicy(actingUserID string, resourceType string, id string) *model.AppError {
+	ret := _m.Called(actingUserID, resourceType, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteAccessControlPolicy")
+	}
+
+	var r0 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, string, string) *model.AppError); ok {
+		r0 = rf(actingUserID, resourceType, id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AppError)
+		}
+	}
+
+	return r0
+}
+
+// MockAPI_DeleteAccessControlPolicy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteAccessControlPolicy'
+type MockAPI_DeleteAccessControlPolicy_Call struct {
+	*mock.Call
+}
+
+// DeleteAccessControlPolicy is a helper method to define mock.On call
+//   - actingUserID string
+//   - resourceType string
+//   - id string
+func (_e *MockAPI_Expecter) DeleteAccessControlPolicy(actingUserID interface{}, resourceType interface{}, id interface{}) *MockAPI_DeleteAccessControlPolicy_Call {
+	return &MockAPI_DeleteAccessControlPolicy_Call{Call: _e.mock.On("DeleteAccessControlPolicy", actingUserID, resourceType, id)}
+}
+
+func (_c *MockAPI_DeleteAccessControlPolicy_Call) Run(run func(actingUserID string, resourceType string, id string)) *MockAPI_DeleteAccessControlPolicy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_DeleteAccessControlPolicy_Call) Return(_a0 *model.AppError) *MockAPI_DeleteAccessControlPolicy_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_DeleteAccessControlPolicy_Call) RunAndReturn(run func(string, string, string) *model.AppError) *MockAPI_DeleteAccessControlPolicy_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2050,6 +2222,54 @@ func (_c *MockAPI_DeletePropertyField_Call) RunAndReturn(run func(string, string
 	return _c
 }
 
+// DeletePropertyFieldOptions provides a mock function with given fields: groupID, fieldID, optionIDs
+func (_m *MockAPI) DeletePropertyFieldOptions(groupID string, fieldID string, optionIDs []string) error {
+	ret := _m.Called(groupID, fieldID, optionIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeletePropertyFieldOptions")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, []string) error); ok {
+		r0 = rf(groupID, fieldID, optionIDs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAPI_DeletePropertyFieldOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeletePropertyFieldOptions'
+type MockAPI_DeletePropertyFieldOptions_Call struct {
+	*mock.Call
+}
+
+// DeletePropertyFieldOptions is a helper method to define mock.On call
+//   - groupID string
+//   - fieldID string
+//   - optionIDs []string
+func (_e *MockAPI_Expecter) DeletePropertyFieldOptions(groupID interface{}, fieldID interface{}, optionIDs interface{}) *MockAPI_DeletePropertyFieldOptions_Call {
+	return &MockAPI_DeletePropertyFieldOptions_Call{Call: _e.mock.On("DeletePropertyFieldOptions", groupID, fieldID, optionIDs)}
+}
+
+func (_c *MockAPI_DeletePropertyFieldOptions_Call) Run(run func(groupID string, fieldID string, optionIDs []string)) *MockAPI_DeletePropertyFieldOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].([]string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_DeletePropertyFieldOptions_Call) Return(_a0 error) *MockAPI_DeletePropertyFieldOptions_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_DeletePropertyFieldOptions_Call) RunAndReturn(run func(string, string, []string) error) *MockAPI_DeletePropertyFieldOptions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeletePropertyValue provides a mock function with given fields: groupID, valueID
 func (_m *MockAPI) DeletePropertyValue(groupID string, valueID string) error {
 	ret := _m.Called(groupID, valueID)
@@ -2093,6 +2313,54 @@ func (_c *MockAPI_DeletePropertyValue_Call) Return(_a0 error) *MockAPI_DeletePro
 }
 
 func (_c *MockAPI_DeletePropertyValue_Call) RunAndReturn(run func(string, string) error) *MockAPI_DeletePropertyValue_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeletePropertyValueWithOptions provides a mock function with given fields: groupID, valueID, options
+func (_m *MockAPI) DeletePropertyValueWithOptions(groupID string, valueID string, options model.PropertyRequestOptions) error {
+	ret := _m.Called(groupID, valueID, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeletePropertyValueWithOptions")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, model.PropertyRequestOptions) error); ok {
+		r0 = rf(groupID, valueID, options)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAPI_DeletePropertyValueWithOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeletePropertyValueWithOptions'
+type MockAPI_DeletePropertyValueWithOptions_Call struct {
+	*mock.Call
+}
+
+// DeletePropertyValueWithOptions is a helper method to define mock.On call
+//   - groupID string
+//   - valueID string
+//   - options model.PropertyRequestOptions
+func (_e *MockAPI_Expecter) DeletePropertyValueWithOptions(groupID interface{}, valueID interface{}, options interface{}) *MockAPI_DeletePropertyValueWithOptions_Call {
+	return &MockAPI_DeletePropertyValueWithOptions_Call{Call: _e.mock.On("DeletePropertyValueWithOptions", groupID, valueID, options)}
+}
+
+func (_c *MockAPI_DeletePropertyValueWithOptions_Call) Run(run func(groupID string, valueID string, options model.PropertyRequestOptions)) *MockAPI_DeletePropertyValueWithOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(model.PropertyRequestOptions))
+	})
+	return _c
+}
+
+func (_c *MockAPI_DeletePropertyValueWithOptions_Call) Return(_a0 error) *MockAPI_DeletePropertyValueWithOptions_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_DeletePropertyValueWithOptions_Call) RunAndReturn(run func(string, string, model.PropertyRequestOptions) error) *MockAPI_DeletePropertyValueWithOptions_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2144,6 +2412,54 @@ func (_c *MockAPI_DeletePropertyValuesForField_Call) RunAndReturn(run func(strin
 	return _c
 }
 
+// DeletePropertyValuesForFieldWithOptions provides a mock function with given fields: groupID, fieldID, options
+func (_m *MockAPI) DeletePropertyValuesForFieldWithOptions(groupID string, fieldID string, options model.PropertyRequestOptions) error {
+	ret := _m.Called(groupID, fieldID, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeletePropertyValuesForFieldWithOptions")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, model.PropertyRequestOptions) error); ok {
+		r0 = rf(groupID, fieldID, options)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAPI_DeletePropertyValuesForFieldWithOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeletePropertyValuesForFieldWithOptions'
+type MockAPI_DeletePropertyValuesForFieldWithOptions_Call struct {
+	*mock.Call
+}
+
+// DeletePropertyValuesForFieldWithOptions is a helper method to define mock.On call
+//   - groupID string
+//   - fieldID string
+//   - options model.PropertyRequestOptions
+func (_e *MockAPI_Expecter) DeletePropertyValuesForFieldWithOptions(groupID interface{}, fieldID interface{}, options interface{}) *MockAPI_DeletePropertyValuesForFieldWithOptions_Call {
+	return &MockAPI_DeletePropertyValuesForFieldWithOptions_Call{Call: _e.mock.On("DeletePropertyValuesForFieldWithOptions", groupID, fieldID, options)}
+}
+
+func (_c *MockAPI_DeletePropertyValuesForFieldWithOptions_Call) Run(run func(groupID string, fieldID string, options model.PropertyRequestOptions)) *MockAPI_DeletePropertyValuesForFieldWithOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(model.PropertyRequestOptions))
+	})
+	return _c
+}
+
+func (_c *MockAPI_DeletePropertyValuesForFieldWithOptions_Call) Return(_a0 error) *MockAPI_DeletePropertyValuesForFieldWithOptions_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_DeletePropertyValuesForFieldWithOptions_Call) RunAndReturn(run func(string, string, model.PropertyRequestOptions) error) *MockAPI_DeletePropertyValuesForFieldWithOptions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeletePropertyValuesForTarget provides a mock function with given fields: groupID, targetType, targetID
 func (_m *MockAPI) DeletePropertyValuesForTarget(groupID string, targetType string, targetID string) error {
 	ret := _m.Called(groupID, targetType, targetID)
@@ -2188,6 +2504,55 @@ func (_c *MockAPI_DeletePropertyValuesForTarget_Call) Return(_a0 error) *MockAPI
 }
 
 func (_c *MockAPI_DeletePropertyValuesForTarget_Call) RunAndReturn(run func(string, string, string) error) *MockAPI_DeletePropertyValuesForTarget_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeletePropertyValuesForTargetWithOptions provides a mock function with given fields: groupID, targetType, targetID, options
+func (_m *MockAPI) DeletePropertyValuesForTargetWithOptions(groupID string, targetType string, targetID string, options model.PropertyRequestOptions) error {
+	ret := _m.Called(groupID, targetType, targetID, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeletePropertyValuesForTargetWithOptions")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, string, model.PropertyRequestOptions) error); ok {
+		r0 = rf(groupID, targetType, targetID, options)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAPI_DeletePropertyValuesForTargetWithOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeletePropertyValuesForTargetWithOptions'
+type MockAPI_DeletePropertyValuesForTargetWithOptions_Call struct {
+	*mock.Call
+}
+
+// DeletePropertyValuesForTargetWithOptions is a helper method to define mock.On call
+//   - groupID string
+//   - targetType string
+//   - targetID string
+//   - options model.PropertyRequestOptions
+func (_e *MockAPI_Expecter) DeletePropertyValuesForTargetWithOptions(groupID interface{}, targetType interface{}, targetID interface{}, options interface{}) *MockAPI_DeletePropertyValuesForTargetWithOptions_Call {
+	return &MockAPI_DeletePropertyValuesForTargetWithOptions_Call{Call: _e.mock.On("DeletePropertyValuesForTargetWithOptions", groupID, targetType, targetID, options)}
+}
+
+func (_c *MockAPI_DeletePropertyValuesForTargetWithOptions_Call) Run(run func(groupID string, targetType string, targetID string, options model.PropertyRequestOptions)) *MockAPI_DeletePropertyValuesForTargetWithOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string), args[3].(model.PropertyRequestOptions))
+	})
+	return _c
+}
+
+func (_c *MockAPI_DeletePropertyValuesForTargetWithOptions_Call) Return(_a0 error) *MockAPI_DeletePropertyValuesForTargetWithOptions_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_DeletePropertyValuesForTargetWithOptions_Call) RunAndReturn(run func(string, string, string, model.PropertyRequestOptions) error) *MockAPI_DeletePropertyValuesForTargetWithOptions_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2490,6 +2855,69 @@ func (_c *MockAPI_EnsureBotUser_Call) RunAndReturn(run func(*model.Bot) (string,
 	return _c
 }
 
+// EvaluateAccessControl provides a mock function with given fields: userID, resourceType, resourceID, action
+func (_m *MockAPI) EvaluateAccessControl(userID string, resourceType string, resourceID string, action string) (*model.AccessDecision, *model.AppError) {
+	ret := _m.Called(userID, resourceType, resourceID, action)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EvaluateAccessControl")
+	}
+
+	var r0 *model.AccessDecision
+	var r1 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, string, string, string) (*model.AccessDecision, *model.AppError)); ok {
+		return rf(userID, resourceType, resourceID, action)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, string, string) *model.AccessDecision); ok {
+		r0 = rf(userID, resourceType, resourceID, action)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AccessDecision)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, string, string) *model.AppError); ok {
+		r1 = rf(userID, resourceType, resourceID, action)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockAPI_EvaluateAccessControl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EvaluateAccessControl'
+type MockAPI_EvaluateAccessControl_Call struct {
+	*mock.Call
+}
+
+// EvaluateAccessControl is a helper method to define mock.On call
+//   - userID string
+//   - resourceType string
+//   - resourceID string
+//   - action string
+func (_e *MockAPI_Expecter) EvaluateAccessControl(userID interface{}, resourceType interface{}, resourceID interface{}, action interface{}) *MockAPI_EvaluateAccessControl_Call {
+	return &MockAPI_EvaluateAccessControl_Call{Call: _e.mock.On("EvaluateAccessControl", userID, resourceType, resourceID, action)}
+}
+
+func (_c *MockAPI_EvaluateAccessControl_Call) Run(run func(userID string, resourceType string, resourceID string, action string)) *MockAPI_EvaluateAccessControl_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_EvaluateAccessControl_Call) Return(_a0 *model.AccessDecision, _a1 *model.AppError) *MockAPI_EvaluateAccessControl_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_EvaluateAccessControl_Call) RunAndReturn(run func(string, string, string, string) (*model.AccessDecision, *model.AppError)) *MockAPI_EvaluateAccessControl_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ExecuteSlashCommand provides a mock function with given fields: commandArgs
 func (_m *MockAPI) ExecuteSlashCommand(commandArgs *model.CommandArgs) (*model.CommandResponse, error) {
 	ret := _m.Called(commandArgs)
@@ -2593,6 +3021,190 @@ func (_c *MockAPI_ExtendSessionExpiry_Call) Return(_a0 *model.AppError) *MockAPI
 }
 
 func (_c *MockAPI_ExtendSessionExpiry_Call) RunAndReturn(run func(string, int64) *model.AppError) *MockAPI_ExtendSessionExpiry_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAccessControlFieldsAutocomplete provides a mock function with given fields: actingUserID, after, limit
+func (_m *MockAPI) GetAccessControlFieldsAutocomplete(actingUserID string, after string, limit int) ([]*model.PropertyField, *model.AppError) {
+	ret := _m.Called(actingUserID, after, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccessControlFieldsAutocomplete")
+	}
+
+	var r0 []*model.PropertyField
+	var r1 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, string, int) ([]*model.PropertyField, *model.AppError)); ok {
+		return rf(actingUserID, after, limit)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, int) []*model.PropertyField); ok {
+		r0 = rf(actingUserID, after, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.PropertyField)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, int) *model.AppError); ok {
+		r1 = rf(actingUserID, after, limit)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockAPI_GetAccessControlFieldsAutocomplete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccessControlFieldsAutocomplete'
+type MockAPI_GetAccessControlFieldsAutocomplete_Call struct {
+	*mock.Call
+}
+
+// GetAccessControlFieldsAutocomplete is a helper method to define mock.On call
+//   - actingUserID string
+//   - after string
+//   - limit int
+func (_e *MockAPI_Expecter) GetAccessControlFieldsAutocomplete(actingUserID interface{}, after interface{}, limit interface{}) *MockAPI_GetAccessControlFieldsAutocomplete_Call {
+	return &MockAPI_GetAccessControlFieldsAutocomplete_Call{Call: _e.mock.On("GetAccessControlFieldsAutocomplete", actingUserID, after, limit)}
+}
+
+func (_c *MockAPI_GetAccessControlFieldsAutocomplete_Call) Run(run func(actingUserID string, after string, limit int)) *MockAPI_GetAccessControlFieldsAutocomplete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockAPI_GetAccessControlFieldsAutocomplete_Call) Return(_a0 []*model.PropertyField, _a1 *model.AppError) *MockAPI_GetAccessControlFieldsAutocomplete_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_GetAccessControlFieldsAutocomplete_Call) RunAndReturn(run func(string, string, int) ([]*model.PropertyField, *model.AppError)) *MockAPI_GetAccessControlFieldsAutocomplete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAccessControlPolicy provides a mock function with given fields: id
+func (_m *MockAPI) GetAccessControlPolicy(id string) (*model.AccessControlPolicy, *model.AppError) {
+	ret := _m.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccessControlPolicy")
+	}
+
+	var r0 *model.AccessControlPolicy
+	var r1 *model.AppError
+	if rf, ok := ret.Get(0).(func(string) (*model.AccessControlPolicy, *model.AppError)); ok {
+		return rf(id)
+	}
+	if rf, ok := ret.Get(0).(func(string) *model.AccessControlPolicy); ok {
+		r0 = rf(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AccessControlPolicy)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) *model.AppError); ok {
+		r1 = rf(id)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockAPI_GetAccessControlPolicy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccessControlPolicy'
+type MockAPI_GetAccessControlPolicy_Call struct {
+	*mock.Call
+}
+
+// GetAccessControlPolicy is a helper method to define mock.On call
+//   - id string
+func (_e *MockAPI_Expecter) GetAccessControlPolicy(id interface{}) *MockAPI_GetAccessControlPolicy_Call {
+	return &MockAPI_GetAccessControlPolicy_Call{Call: _e.mock.On("GetAccessControlPolicy", id)}
+}
+
+func (_c *MockAPI_GetAccessControlPolicy_Call) Run(run func(id string)) *MockAPI_GetAccessControlPolicy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_GetAccessControlPolicy_Call) Return(_a0 *model.AccessControlPolicy, _a1 *model.AppError) *MockAPI_GetAccessControlPolicy_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_GetAccessControlPolicy_Call) RunAndReturn(run func(string) (*model.AccessControlPolicy, *model.AppError)) *MockAPI_GetAccessControlPolicy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAccessControlVisualAST provides a mock function with given fields: actingUserID, resourceType, expression
+func (_m *MockAPI) GetAccessControlVisualAST(actingUserID string, resourceType string, expression string) (*model.VisualExpression, *model.AppError) {
+	ret := _m.Called(actingUserID, resourceType, expression)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccessControlVisualAST")
+	}
+
+	var r0 *model.VisualExpression
+	var r1 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, string, string) (*model.VisualExpression, *model.AppError)); ok {
+		return rf(actingUserID, resourceType, expression)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, string) *model.VisualExpression); ok {
+		r0 = rf(actingUserID, resourceType, expression)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.VisualExpression)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, string) *model.AppError); ok {
+		r1 = rf(actingUserID, resourceType, expression)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockAPI_GetAccessControlVisualAST_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccessControlVisualAST'
+type MockAPI_GetAccessControlVisualAST_Call struct {
+	*mock.Call
+}
+
+// GetAccessControlVisualAST is a helper method to define mock.On call
+//   - actingUserID string
+//   - resourceType string
+//   - expression string
+func (_e *MockAPI_Expecter) GetAccessControlVisualAST(actingUserID interface{}, resourceType interface{}, expression interface{}) *MockAPI_GetAccessControlVisualAST_Call {
+	return &MockAPI_GetAccessControlVisualAST_Call{Call: _e.mock.On("GetAccessControlVisualAST", actingUserID, resourceType, expression)}
+}
+
+func (_c *MockAPI_GetAccessControlVisualAST_Call) Run(run func(actingUserID string, resourceType string, expression string)) *MockAPI_GetAccessControlVisualAST_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_GetAccessControlVisualAST_Call) Return(_a0 *model.VisualExpression, _a1 *model.AppError) *MockAPI_GetAccessControlVisualAST_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_GetAccessControlVisualAST_Call) RunAndReturn(run func(string, string, string) (*model.VisualExpression, *model.AppError)) *MockAPI_GetAccessControlVisualAST_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3204,6 +3816,67 @@ func (_c *MockAPI_GetChannelMembersForUser_Call) RunAndReturn(run func(string, s
 	return _c
 }
 
+// GetChannelOfType provides a mock function with given fields: channelId, channelType
+func (_m *MockAPI) GetChannelOfType(channelId string, channelType model.ChannelType) (*model.Channel, *model.AppError) {
+	ret := _m.Called(channelId, channelType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetChannelOfType")
+	}
+
+	var r0 *model.Channel
+	var r1 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, model.ChannelType) (*model.Channel, *model.AppError)); ok {
+		return rf(channelId, channelType)
+	}
+	if rf, ok := ret.Get(0).(func(string, model.ChannelType) *model.Channel); ok {
+		r0 = rf(channelId, channelType)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Channel)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, model.ChannelType) *model.AppError); ok {
+		r1 = rf(channelId, channelType)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockAPI_GetChannelOfType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetChannelOfType'
+type MockAPI_GetChannelOfType_Call struct {
+	*mock.Call
+}
+
+// GetChannelOfType is a helper method to define mock.On call
+//   - channelId string
+//   - channelType model.ChannelType
+func (_e *MockAPI_Expecter) GetChannelOfType(channelId interface{}, channelType interface{}) *MockAPI_GetChannelOfType_Call {
+	return &MockAPI_GetChannelOfType_Call{Call: _e.mock.On("GetChannelOfType", channelId, channelType)}
+}
+
+func (_c *MockAPI_GetChannelOfType_Call) Run(run func(channelId string, channelType model.ChannelType)) *MockAPI_GetChannelOfType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(model.ChannelType))
+	})
+	return _c
+}
+
+func (_c *MockAPI_GetChannelOfType_Call) Return(_a0 *model.Channel, _a1 *model.AppError) *MockAPI_GetChannelOfType_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_GetChannelOfType_Call) RunAndReturn(run func(string, model.ChannelType) (*model.Channel, *model.AppError)) *MockAPI_GetChannelOfType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetChannelSidebarCategories provides a mock function with given fields: userID, teamID
 func (_m *MockAPI) GetChannelSidebarCategories(userID string, teamID string) (*model.OrderedSidebarCategories, *model.AppError) {
 	ret := _m.Called(userID, teamID)
@@ -3440,6 +4113,108 @@ func (_c *MockAPI_GetCloudLimits_Call) Return(_a0 *model.ProductLimits, _a1 erro
 }
 
 func (_c *MockAPI_GetCloudLimits_Call) RunAndReturn(run func() (*model.ProductLimits, error)) *MockAPI_GetCloudLimits_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetClusterNodeID provides a mock function with no fields
+func (_m *MockAPI) GetClusterNodeID() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetClusterNodeID")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockAPI_GetClusterNodeID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetClusterNodeID'
+type MockAPI_GetClusterNodeID_Call struct {
+	*mock.Call
+}
+
+// GetClusterNodeID is a helper method to define mock.On call
+func (_e *MockAPI_Expecter) GetClusterNodeID() *MockAPI_GetClusterNodeID_Call {
+	return &MockAPI_GetClusterNodeID_Call{Call: _e.mock.On("GetClusterNodeID")}
+}
+
+func (_c *MockAPI_GetClusterNodeID_Call) Run(run func()) *MockAPI_GetClusterNodeID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockAPI_GetClusterNodeID_Call) Return(_a0 string) *MockAPI_GetClusterNodeID_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_GetClusterNodeID_Call) RunAndReturn(run func() string) *MockAPI_GetClusterNodeID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetClusterNodes provides a mock function with no fields
+func (_m *MockAPI) GetClusterNodes() ([]*model.ClusterInfo, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetClusterNodes")
+	}
+
+	var r0 []*model.ClusterInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func() ([]*model.ClusterInfo, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() []*model.ClusterInfo); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.ClusterInfo)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_GetClusterNodes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetClusterNodes'
+type MockAPI_GetClusterNodes_Call struct {
+	*mock.Call
+}
+
+// GetClusterNodes is a helper method to define mock.On call
+func (_e *MockAPI_Expecter) GetClusterNodes() *MockAPI_GetClusterNodes_Call {
+	return &MockAPI_GetClusterNodes_Call{Call: _e.mock.On("GetClusterNodes")}
+}
+
+func (_c *MockAPI_GetClusterNodes_Call) Run(run func()) *MockAPI_GetClusterNodes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockAPI_GetClusterNodes_Call) Return(_a0 []*model.ClusterInfo, _a1 error) *MockAPI_GetClusterNodes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_GetClusterNodes_Call) RunAndReturn(run func() ([]*model.ClusterInfo, error)) *MockAPI_GetClusterNodes_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5800,6 +6575,68 @@ func (_c *MockAPI_GetPropertyFieldByName_Call) RunAndReturn(run func(string, str
 	return _c
 }
 
+// GetPropertyFieldOptions provides a mock function with given fields: groupID, fieldID, cursorCreateAt, cursorID, perPage
+func (_m *MockAPI) GetPropertyFieldOptions(groupID string, fieldID string, cursorCreateAt int64, cursorID string, perPage int) (*model.PropertyFieldOptionPage, error) {
+	ret := _m.Called(groupID, fieldID, cursorCreateAt, cursorID, perPage)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPropertyFieldOptions")
+	}
+
+	var r0 *model.PropertyFieldOptionPage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string, int64, string, int) (*model.PropertyFieldOptionPage, error)); ok {
+		return rf(groupID, fieldID, cursorCreateAt, cursorID, perPage)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, int64, string, int) *model.PropertyFieldOptionPage); ok {
+		r0 = rf(groupID, fieldID, cursorCreateAt, cursorID, perPage)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.PropertyFieldOptionPage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, int64, string, int) error); ok {
+		r1 = rf(groupID, fieldID, cursorCreateAt, cursorID, perPage)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_GetPropertyFieldOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPropertyFieldOptions'
+type MockAPI_GetPropertyFieldOptions_Call struct {
+	*mock.Call
+}
+
+// GetPropertyFieldOptions is a helper method to define mock.On call
+//   - groupID string
+//   - fieldID string
+//   - cursorCreateAt int64
+//   - cursorID string
+//   - perPage int
+func (_e *MockAPI_Expecter) GetPropertyFieldOptions(groupID interface{}, fieldID interface{}, cursorCreateAt interface{}, cursorID interface{}, perPage interface{}) *MockAPI_GetPropertyFieldOptions_Call {
+	return &MockAPI_GetPropertyFieldOptions_Call{Call: _e.mock.On("GetPropertyFieldOptions", groupID, fieldID, cursorCreateAt, cursorID, perPage)}
+}
+
+func (_c *MockAPI_GetPropertyFieldOptions_Call) Run(run func(groupID string, fieldID string, cursorCreateAt int64, cursorID string, perPage int)) *MockAPI_GetPropertyFieldOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(int64), args[3].(string), args[4].(int))
+	})
+	return _c
+}
+
+func (_c *MockAPI_GetPropertyFieldOptions_Call) Return(_a0 *model.PropertyFieldOptionPage, _a1 error) *MockAPI_GetPropertyFieldOptions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_GetPropertyFieldOptions_Call) RunAndReturn(run func(string, string, int64, string, int) (*model.PropertyFieldOptionPage, error)) *MockAPI_GetPropertyFieldOptions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetPropertyFields provides a mock function with given fields: groupID, ids
 func (_m *MockAPI) GetPropertyFields(groupID string, ids []string) ([]*model.PropertyField, error) {
 	ret := _m.Called(groupID, ids)
@@ -7773,6 +8610,54 @@ func (_c *MockAPI_HasPermissionToChannel_Call) RunAndReturn(run func(string, str
 	return _c
 }
 
+// HasPermissionToFileAction provides a mock function with given fields: sessionID, fileID, action
+func (_m *MockAPI) HasPermissionToFileAction(sessionID string, fileID string, action string) bool {
+	ret := _m.Called(sessionID, fileID, action)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasPermissionToFileAction")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string, string, string) bool); ok {
+		r0 = rf(sessionID, fileID, action)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockAPI_HasPermissionToFileAction_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasPermissionToFileAction'
+type MockAPI_HasPermissionToFileAction_Call struct {
+	*mock.Call
+}
+
+// HasPermissionToFileAction is a helper method to define mock.On call
+//   - sessionID string
+//   - fileID string
+//   - action string
+func (_e *MockAPI_Expecter) HasPermissionToFileAction(sessionID interface{}, fileID interface{}, action interface{}) *MockAPI_HasPermissionToFileAction_Call {
+	return &MockAPI_HasPermissionToFileAction_Call{Call: _e.mock.On("HasPermissionToFileAction", sessionID, fileID, action)}
+}
+
+func (_c *MockAPI_HasPermissionToFileAction_Call) Run(run func(sessionID string, fileID string, action string)) *MockAPI_HasPermissionToFileAction_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_HasPermissionToFileAction_Call) Return(_a0 bool) *MockAPI_HasPermissionToFileAction_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_HasPermissionToFileAction_Call) RunAndReturn(run func(string, string, string) bool) *MockAPI_HasPermissionToFileAction_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HasPermissionToTeam provides a mock function with given fields: userID, teamID, permission
 func (_m *MockAPI) HasPermissionToTeam(userID string, teamID string, permission *model.Permission) bool {
 	ret := _m.Called(userID, teamID, permission)
@@ -9376,6 +10261,71 @@ func (_c *MockAPI_PublishWebSocketEvent_Call) RunAndReturn(run func(string, map[
 	return _c
 }
 
+// QueryUsersForAccessControlExpression provides a mock function with given fields: actingUserID, resourceType, expression, term, cursorID, limit
+func (_m *MockAPI) QueryUsersForAccessControlExpression(actingUserID string, resourceType string, expression string, term string, cursorID string, limit int) (*model.AccessControlPolicyTestResponse, *model.AppError) {
+	ret := _m.Called(actingUserID, resourceType, expression, term, cursorID, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for QueryUsersForAccessControlExpression")
+	}
+
+	var r0 *model.AccessControlPolicyTestResponse
+	var r1 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, string, string, string, string, int) (*model.AccessControlPolicyTestResponse, *model.AppError)); ok {
+		return rf(actingUserID, resourceType, expression, term, cursorID, limit)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, string, string, string, int) *model.AccessControlPolicyTestResponse); ok {
+		r0 = rf(actingUserID, resourceType, expression, term, cursorID, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AccessControlPolicyTestResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, string, string, string, int) *model.AppError); ok {
+		r1 = rf(actingUserID, resourceType, expression, term, cursorID, limit)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockAPI_QueryUsersForAccessControlExpression_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QueryUsersForAccessControlExpression'
+type MockAPI_QueryUsersForAccessControlExpression_Call struct {
+	*mock.Call
+}
+
+// QueryUsersForAccessControlExpression is a helper method to define mock.On call
+//   - actingUserID string
+//   - resourceType string
+//   - expression string
+//   - term string
+//   - cursorID string
+//   - limit int
+func (_e *MockAPI_Expecter) QueryUsersForAccessControlExpression(actingUserID interface{}, resourceType interface{}, expression interface{}, term interface{}, cursorID interface{}, limit interface{}) *MockAPI_QueryUsersForAccessControlExpression_Call {
+	return &MockAPI_QueryUsersForAccessControlExpression_Call{Call: _e.mock.On("QueryUsersForAccessControlExpression", actingUserID, resourceType, expression, term, cursorID, limit)}
+}
+
+func (_c *MockAPI_QueryUsersForAccessControlExpression_Call) Run(run func(actingUserID string, resourceType string, expression string, term string, cursorID string, limit int)) *MockAPI_QueryUsersForAccessControlExpression_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string), args[3].(string), args[4].(string), args[5].(int))
+	})
+	return _c
+}
+
+func (_c *MockAPI_QueryUsersForAccessControlExpression_Call) Return(_a0 *model.AccessControlPolicyTestResponse, _a1 *model.AppError) *MockAPI_QueryUsersForAccessControlExpression_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_QueryUsersForAccessControlExpression_Call) RunAndReturn(run func(string, string, string, string, string, int) (*model.AccessControlPolicyTestResponse, *model.AppError)) *MockAPI_QueryUsersForAccessControlExpression_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReadFile provides a mock function with given fields: path
 func (_m *MockAPI) ReadFile(path string) ([]byte, *model.AppError) {
 	ret := _m.Called(path)
@@ -10100,6 +11050,54 @@ func (_c *MockAPI_RequestTrialLicense_Call) RunAndReturn(run func(string, int, b
 	return _c
 }
 
+// RestoreChannel provides a mock function with given fields: channelId
+func (_m *MockAPI) RestoreChannel(channelId string) *model.AppError {
+	ret := _m.Called(channelId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RestoreChannel")
+	}
+
+	var r0 *model.AppError
+	if rf, ok := ret.Get(0).(func(string) *model.AppError); ok {
+		r0 = rf(channelId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AppError)
+		}
+	}
+
+	return r0
+}
+
+// MockAPI_RestoreChannel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RestoreChannel'
+type MockAPI_RestoreChannel_Call struct {
+	*mock.Call
+}
+
+// RestoreChannel is a helper method to define mock.On call
+//   - channelId string
+func (_e *MockAPI_Expecter) RestoreChannel(channelId interface{}) *MockAPI_RestoreChannel_Call {
+	return &MockAPI_RestoreChannel_Call{Call: _e.mock.On("RestoreChannel", channelId)}
+}
+
+func (_c *MockAPI_RestoreChannel_Call) Run(run func(channelId string)) *MockAPI_RestoreChannel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_RestoreChannel_Call) Return(_a0 *model.AppError) *MockAPI_RestoreChannel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAPI_RestoreChannel_Call) RunAndReturn(run func(string) *model.AppError) *MockAPI_RestoreChannel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RestoreGroup provides a mock function with given fields: groupID
 func (_m *MockAPI) RestoreGroup(groupID string) (*model.Group, *model.AppError) {
 	ret := _m.Called(groupID)
@@ -10299,6 +11297,67 @@ func (_c *MockAPI_RolesGrantPermission_Call) Return(_a0 bool) *MockAPI_RolesGran
 }
 
 func (_c *MockAPI_RolesGrantPermission_Call) RunAndReturn(run func([]string, string) bool) *MockAPI_RolesGrantPermission_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SaveAccessControlPolicy provides a mock function with given fields: actingUserID, policy
+func (_m *MockAPI) SaveAccessControlPolicy(actingUserID string, policy *model.AccessControlPolicy) (*model.AccessControlPolicy, *model.AppError) {
+	ret := _m.Called(actingUserID, policy)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveAccessControlPolicy")
+	}
+
+	var r0 *model.AccessControlPolicy
+	var r1 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, *model.AccessControlPolicy) (*model.AccessControlPolicy, *model.AppError)); ok {
+		return rf(actingUserID, policy)
+	}
+	if rf, ok := ret.Get(0).(func(string, *model.AccessControlPolicy) *model.AccessControlPolicy); ok {
+		r0 = rf(actingUserID, policy)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AccessControlPolicy)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, *model.AccessControlPolicy) *model.AppError); ok {
+		r1 = rf(actingUserID, policy)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockAPI_SaveAccessControlPolicy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveAccessControlPolicy'
+type MockAPI_SaveAccessControlPolicy_Call struct {
+	*mock.Call
+}
+
+// SaveAccessControlPolicy is a helper method to define mock.On call
+//   - actingUserID string
+//   - policy *model.AccessControlPolicy
+func (_e *MockAPI_Expecter) SaveAccessControlPolicy(actingUserID interface{}, policy interface{}) *MockAPI_SaveAccessControlPolicy_Call {
+	return &MockAPI_SaveAccessControlPolicy_Call{Call: _e.mock.On("SaveAccessControlPolicy", actingUserID, policy)}
+}
+
+func (_c *MockAPI_SaveAccessControlPolicy_Call) Run(run func(actingUserID string, policy *model.AccessControlPolicy)) *MockAPI_SaveAccessControlPolicy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(*model.AccessControlPolicy))
+	})
+	return _c
+}
+
+func (_c *MockAPI_SaveAccessControlPolicy_Call) Return(_a0 *model.AccessControlPolicy, _a1 *model.AppError) *MockAPI_SaveAccessControlPolicy_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_SaveAccessControlPolicy_Call) RunAndReturn(run func(string, *model.AccessControlPolicy) (*model.AccessControlPolicy, *model.AppError)) *MockAPI_SaveAccessControlPolicy_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -12385,6 +13444,66 @@ func (_c *MockAPI_UpdatePropertyField_Call) RunAndReturn(run func(string, *model
 	return _c
 }
 
+// UpdatePropertyFieldOptions provides a mock function with given fields: groupID, fieldID, options
+func (_m *MockAPI) UpdatePropertyFieldOptions(groupID string, fieldID string, options []*model.PropertyFieldOption) ([]*model.PropertyFieldOption, error) {
+	ret := _m.Called(groupID, fieldID, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdatePropertyFieldOptions")
+	}
+
+	var r0 []*model.PropertyFieldOption
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string, []*model.PropertyFieldOption) ([]*model.PropertyFieldOption, error)); ok {
+		return rf(groupID, fieldID, options)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, []*model.PropertyFieldOption) []*model.PropertyFieldOption); ok {
+		r0 = rf(groupID, fieldID, options)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.PropertyFieldOption)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, []*model.PropertyFieldOption) error); ok {
+		r1 = rf(groupID, fieldID, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_UpdatePropertyFieldOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdatePropertyFieldOptions'
+type MockAPI_UpdatePropertyFieldOptions_Call struct {
+	*mock.Call
+}
+
+// UpdatePropertyFieldOptions is a helper method to define mock.On call
+//   - groupID string
+//   - fieldID string
+//   - options []*model.PropertyFieldOption
+func (_e *MockAPI_Expecter) UpdatePropertyFieldOptions(groupID interface{}, fieldID interface{}, options interface{}) *MockAPI_UpdatePropertyFieldOptions_Call {
+	return &MockAPI_UpdatePropertyFieldOptions_Call{Call: _e.mock.On("UpdatePropertyFieldOptions", groupID, fieldID, options)}
+}
+
+func (_c *MockAPI_UpdatePropertyFieldOptions_Call) Run(run func(groupID string, fieldID string, options []*model.PropertyFieldOption)) *MockAPI_UpdatePropertyFieldOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].([]*model.PropertyFieldOption))
+	})
+	return _c
+}
+
+func (_c *MockAPI_UpdatePropertyFieldOptions_Call) Return(_a0 []*model.PropertyFieldOption, _a1 error) *MockAPI_UpdatePropertyFieldOptions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_UpdatePropertyFieldOptions_Call) RunAndReturn(run func(string, string, []*model.PropertyFieldOption) ([]*model.PropertyFieldOption, error)) *MockAPI_UpdatePropertyFieldOptions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdatePropertyFields provides a mock function with given fields: groupID, fields
 func (_m *MockAPI) UpdatePropertyFields(groupID string, fields []*model.PropertyField) ([]*model.PropertyField, error) {
 	ret := _m.Called(groupID, fields)
@@ -13492,6 +14611,65 @@ func (_c *MockAPI_UpsertPropertyValue_Call) RunAndReturn(run func(*model.Propert
 	return _c
 }
 
+// UpsertPropertyValueWithOptions provides a mock function with given fields: value, options
+func (_m *MockAPI) UpsertPropertyValueWithOptions(value *model.PropertyValue, options model.PropertyRequestOptions) (*model.PropertyValue, error) {
+	ret := _m.Called(value, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertPropertyValueWithOptions")
+	}
+
+	var r0 *model.PropertyValue
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*model.PropertyValue, model.PropertyRequestOptions) (*model.PropertyValue, error)); ok {
+		return rf(value, options)
+	}
+	if rf, ok := ret.Get(0).(func(*model.PropertyValue, model.PropertyRequestOptions) *model.PropertyValue); ok {
+		r0 = rf(value, options)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.PropertyValue)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*model.PropertyValue, model.PropertyRequestOptions) error); ok {
+		r1 = rf(value, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_UpsertPropertyValueWithOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertPropertyValueWithOptions'
+type MockAPI_UpsertPropertyValueWithOptions_Call struct {
+	*mock.Call
+}
+
+// UpsertPropertyValueWithOptions is a helper method to define mock.On call
+//   - value *model.PropertyValue
+//   - options model.PropertyRequestOptions
+func (_e *MockAPI_Expecter) UpsertPropertyValueWithOptions(value interface{}, options interface{}) *MockAPI_UpsertPropertyValueWithOptions_Call {
+	return &MockAPI_UpsertPropertyValueWithOptions_Call{Call: _e.mock.On("UpsertPropertyValueWithOptions", value, options)}
+}
+
+func (_c *MockAPI_UpsertPropertyValueWithOptions_Call) Run(run func(value *model.PropertyValue, options model.PropertyRequestOptions)) *MockAPI_UpsertPropertyValueWithOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*model.PropertyValue), args[1].(model.PropertyRequestOptions))
+	})
+	return _c
+}
+
+func (_c *MockAPI_UpsertPropertyValueWithOptions_Call) Return(_a0 *model.PropertyValue, _a1 error) *MockAPI_UpsertPropertyValueWithOptions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_UpsertPropertyValueWithOptions_Call) RunAndReturn(run func(*model.PropertyValue, model.PropertyRequestOptions) (*model.PropertyValue, error)) *MockAPI_UpsertPropertyValueWithOptions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpsertPropertyValues provides a mock function with given fields: values
 func (_m *MockAPI) UpsertPropertyValues(values []*model.PropertyValue) ([]*model.PropertyValue, error) {
 	ret := _m.Called(values)
@@ -13546,6 +14724,65 @@ func (_c *MockAPI_UpsertPropertyValues_Call) Return(_a0 []*model.PropertyValue, 
 }
 
 func (_c *MockAPI_UpsertPropertyValues_Call) RunAndReturn(run func([]*model.PropertyValue) ([]*model.PropertyValue, error)) *MockAPI_UpsertPropertyValues_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertPropertyValuesWithOptions provides a mock function with given fields: values, options
+func (_m *MockAPI) UpsertPropertyValuesWithOptions(values []*model.PropertyValue, options model.PropertyRequestOptions) ([]*model.PropertyValue, error) {
+	ret := _m.Called(values, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertPropertyValuesWithOptions")
+	}
+
+	var r0 []*model.PropertyValue
+	var r1 error
+	if rf, ok := ret.Get(0).(func([]*model.PropertyValue, model.PropertyRequestOptions) ([]*model.PropertyValue, error)); ok {
+		return rf(values, options)
+	}
+	if rf, ok := ret.Get(0).(func([]*model.PropertyValue, model.PropertyRequestOptions) []*model.PropertyValue); ok {
+		r0 = rf(values, options)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.PropertyValue)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func([]*model.PropertyValue, model.PropertyRequestOptions) error); ok {
+		r1 = rf(values, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_UpsertPropertyValuesWithOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertPropertyValuesWithOptions'
+type MockAPI_UpsertPropertyValuesWithOptions_Call struct {
+	*mock.Call
+}
+
+// UpsertPropertyValuesWithOptions is a helper method to define mock.On call
+//   - values []*model.PropertyValue
+//   - options model.PropertyRequestOptions
+func (_e *MockAPI_Expecter) UpsertPropertyValuesWithOptions(values interface{}, options interface{}) *MockAPI_UpsertPropertyValuesWithOptions_Call {
+	return &MockAPI_UpsertPropertyValuesWithOptions_Call{Call: _e.mock.On("UpsertPropertyValuesWithOptions", values, options)}
+}
+
+func (_c *MockAPI_UpsertPropertyValuesWithOptions_Call) Run(run func(values []*model.PropertyValue, options model.PropertyRequestOptions)) *MockAPI_UpsertPropertyValuesWithOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]*model.PropertyValue), args[1].(model.PropertyRequestOptions))
+	})
+	return _c
+}
+
+func (_c *MockAPI_UpsertPropertyValuesWithOptions_Call) Return(_a0 []*model.PropertyValue, _a1 error) *MockAPI_UpsertPropertyValuesWithOptions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_UpsertPropertyValuesWithOptions_Call) RunAndReturn(run func([]*model.PropertyValue, model.PropertyRequestOptions) ([]*model.PropertyValue, error)) *MockAPI_UpsertPropertyValuesWithOptions_Call {
 	_c.Call.Return(run)
 	return _c
 }
