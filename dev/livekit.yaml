@@ -1,3 +1,6 @@
+# No `redis:` block: it makes LiveKit refuse to start without Redis, which only
+# the SIP targets run. They set REDIS_HOST on the container instead, which the
+# SIP bridge needs to reach LiveKit.
 port: 7880
 bind_addresses:
   - "0.0.0.0"
@@ -11,9 +14,9 @@ keys:
 # receiver (server/api.go handleLiveKitWebhook), signed with the secret for
 # `api_key` below — which must name a key in `keys:` (the plugin verifies with
 # the same key/secret). `host.docker.internal` resolves from inside the
-# container to the host running `make run-server` (Docker Desktop on macOS); on
-# plain Linux Docker add `extra_hosts: ["host.docker.internal:host-gateway"]`
-# or use the host LAN IP (the same one passed as LIVEKIT_NODE_IP).
+# container to the host running `make run-server` (mapped in the compose file so
+# it also works on Linux). participant_left is what ends an outbound SIP call on
+# phone hang-up or when the last person leaves.
 webhook:
   api_key: devkey
   urls:

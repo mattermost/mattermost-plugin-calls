@@ -114,7 +114,7 @@ echo "Spawning playwright image ..."
 # actually executes today. Constrained to chromium because that's the browser
 # both the smoke test and the early MM-68570 specs were authored against.
 # LiveKit SIP API endpoint + the SIP-bridge credentials (the `devkey` pair shared
-# with sip.yaml) + the SIPp sink address, consumed by the @sip-smoke test. The
+# with dev/sip.yaml) + the SIPp sink address, consumed by the @sip-smoke test. The
 # SDK needs an http(s) URL, so this is not MM_CALLS_LIVE_KIT_URL (ws://).
 docker run -d --name playwright-e2e \
 	--network=container:${CONTAINER_PROXY} \
