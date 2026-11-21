@@ -47,7 +47,7 @@ cd ~/livekit
 ./setup.sh lk.example.com https://mattermost.example.com
 ```
 
-This writes `.env`, `livekit.yaml` and `sip.yaml` (mode 600) with a randomly generated API secret, and prints the plugin settings. Re-running keeps the existing secret. To rotate it, delete `livekit.yaml` first and update the plugin.
+This writes `.env`, `livekit.yaml` and `livekit-sip.yaml` (mode 600) with a randomly generated API secret, and prints the plugin settings. Re-running keeps the existing secret. To rotate it, delete `livekit.yaml` first and update the plugin.
 
 Pass `--sip` as a third argument to also enable the SIP bridge and Redis (see [SIP outbound](#sip-outbound-optional)). Without it, LiveKit runs standalone and Redis is not started.
 

@@ -49,13 +49,13 @@ services:
       default:
         aliases:
           - livekit
-          # The shared ../../sip.yaml dials LiveKit at ws://livekit-dev:7880
+          # The shared ../../dev/livekit-sip.yaml dials LiveKit at ws://livekit-dev:7880
           # (the dev compose's service name); this alias makes it resolve here too.
           - livekit-dev
 
   # --- SIP outbound test harness (MM-69368) -----------------------------------
   # Dedicated Redis for the LiveKit <-> SIP PSRPC bus (see the design note in the
-  # root docker-compose.livekit.yaml for why it isn't shared with anything else).
+  # dev compose, dev/docker-compose.livekit.yaml, for why it isn't shared with anything else).
   redis:
     image: ${IMAGE_REDIS:-redis:8.10.2-alpine}
     restart: on-failure
@@ -69,7 +69,7 @@ services:
       timeout: 3s
       retries: 10
 
-  # LiveKit SIP bridge. Shares the dev compose's config (../../sip.yaml) so the
+  # LiveKit SIP bridge. Shares the dev compose's config (../../dev/livekit-sip.yaml) so the
   # two paths can't drift; the smoke test drives it via the LiveKit SIP API.
   livekit-sip:
     image: ${IMAGE_LIVEKIT_SIP:-livekit/sip:v1.20.0}
@@ -77,7 +77,7 @@ services:
     # Chainguard's entrypoint already passes --config=/sip/config.yaml, so the
     # config is mounted there for both images.
     volumes:
-      - ../../sip.yaml:/sip/config.yaml
+      - ../../dev/livekit-sip.yaml:/sip/config.yaml
     command: --config /sip/config.yaml
     depends_on:
       redis:

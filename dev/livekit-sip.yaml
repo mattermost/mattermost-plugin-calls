@@ -3,7 +3,7 @@
 # (e2e/docker/) so the two paths can't drift.
 #
 # api_key/api_secret MUST match a pair in the LiveKit server `keys:` block
-# (livekit-sip.yaml); the bridge signs its own JWTs to call the LiveKit API.
+# (livekit.yaml); the bridge signs its own JWTs to call the LiveKit API.
 api_key: devkey
 api_secret: this-is-a-32-plus-character-dev-secret
 ws_url: ws://livekit-dev:7880
