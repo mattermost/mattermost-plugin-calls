@@ -1,102 +1,93 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {expect, test} from '@playwright/test';
+import {test} from '@playwright/test';
 
-import PlaywrightDevPage from '../page';
-import {getUserIdxForTest, getUserStoragesForTest} from '../utils';
+import {defaultTeam} from '../constants';
+import CallsSession from '../lib/pages/calls_session';
+import {getChannelNamesForTest, getUserStoragesForTest} from '../utils';
+
+const [channelName, otherChannelName] = getChannelNamesForTest();
 
 test.beforeEach(async ({page}) => {
-    const devPage = new PlaywrightDevPage(page);
-    await devPage.goto();
+    await new CallsSession(page).gotoChannel(defaultTeam, channelName);
 });
 
 test.describe('switch call', () => {
-    const userIdx = getUserIdxForTest();
     test.use({storageState: getUserStoragesForTest()[0]});
 
     test('exit modal - cancel button', async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.startCall();
+        const user = new CallsSession(page);
+        await user.startCall();
 
-        await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
+        await user.goToSidebarChannel(otherChannelName);
 
-        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start call")');
-        await expect(startCallButton).toBeVisible();
-        await startCallButton.click();
-        await expect(page.locator('#calls-switch-call-modal')).toBeVisible();
+        await user.clickHeaderStartCall();
+        await user.switchCallModal.toBeVisible();
 
-        await page.locator('button.switch-call-modal-cancel').click();
-        await expect(page.locator('#calls-switch-call-modal')).toBeHidden();
+        await user.switchCallModal.cancel();
+        await user.switchCallModal.toBeHidden();
 
-        await devPage.leaveCall();
+        await user.leaveCall();
     });
 
     test('exit modal - close icon', async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.startCall();
+        const user = new CallsSession(page);
+        await user.startCall();
 
-        await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
+        await user.goToSidebarChannel(otherChannelName);
 
-        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start call")');
-        await expect(startCallButton).toBeVisible();
-        await startCallButton.click();
-        await expect(page.locator('#calls-switch-call-modal')).toBeVisible();
+        await user.clickHeaderStartCall();
+        await user.switchCallModal.toBeVisible();
 
-        await page.locator('button.switch-call-modal-close').click();
-        await expect(page.locator('#calls-switch-call-modal')).toBeHidden();
+        await user.switchCallModal.close();
+        await user.switchCallModal.toBeHidden();
 
-        await devPage.leaveCall();
+        await user.leaveCall();
     });
 
     test('exit modal - esc key', async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.startCall();
+        const user = new CallsSession(page);
+        await user.startCall();
 
-        await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
+        await user.goToSidebarChannel(otherChannelName);
 
-        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start call")');
-        await expect(startCallButton).toBeVisible();
-        await startCallButton.click();
-        await expect(page.locator('#calls-switch-call-modal')).toBeVisible();
+        await user.clickHeaderStartCall();
+        await user.switchCallModal.toBeVisible();
 
-        await page.keyboard.press('Escape');
-        await expect(page.locator('#calls-switch-call-modal')).toBeHidden();
+        await user.switchCallModal.dismissWithEscape();
+        await user.switchCallModal.toBeHidden();
 
-        await devPage.leaveCall();
+        await user.leaveCall();
     });
 
     test('exit modal - click outside', async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.startCall();
+        const user = new CallsSession(page);
+        await user.startCall();
 
-        await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
+        await user.goToSidebarChannel(otherChannelName);
 
-        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start call")');
-        await expect(startCallButton).toBeVisible();
-        await startCallButton.click();
-        await expect(page.locator('#calls-switch-call-modal')).toBeVisible();
+        await user.clickHeaderStartCall();
+        await user.switchCallModal.toBeVisible();
 
-        await page.mouse.click(0, 0);
-        await expect(page.locator('#calls-switch-call-modal')).toBeHidden();
+        await user.switchCallModal.dismissByClickingOutside();
+        await user.switchCallModal.toBeHidden();
 
-        await devPage.leaveCall();
+        await user.leaveCall();
     });
 
     test('join call', async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.startCall();
+        const user = new CallsSession(page);
+        await user.startCall();
 
-        await page.locator(`#sidebarItem_calls${userIdx + 1}`).click();
+        await user.goToSidebarChannel(otherChannelName);
 
-        const startCallButton = page.locator('[aria-label="channel header region"] button:has-text("Start call")');
-        await expect(startCallButton).toBeVisible();
-        await startCallButton.click();
-        await expect(page.locator('#calls-switch-call-modal')).toBeVisible();
+        await user.clickHeaderStartCall();
+        await user.switchCallModal.toBeVisible();
 
-        await page.locator('button.switch-call-modal-join').click();
-        await expect(page.locator('#calls-switch-call-modal')).toBeHidden();
+        await user.switchCallModal.join();
+        await user.switchCallModal.toBeHidden();
 
-        await devPage.leaveCall();
+        await user.leaveCall();
     });
 });

@@ -4,6 +4,8 @@
 /* eslint-disable no-process-env */
 import {devices, PlaywrightTestConfig} from '@playwright/test';
 
+import {baseURL} from './constants';
+
 const config: PlaywrightTestConfig = {
     globalSetup: require.resolve('./global-setup'),
     globalTeardown: require.resolve('./global-teardown'),
@@ -23,6 +25,9 @@ const config: PlaywrightTestConfig = {
         threshold: 120 * 1000,
     },
     use: {
+
+        // Needed by @mattermost/playwright-lib page objects, which navigate with relative URLs.
+        baseURL,
         viewport: {width: 1280, height: 720},
         trace: 'retain-on-failure',
         launchOptions: {

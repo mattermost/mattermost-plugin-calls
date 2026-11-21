@@ -3,181 +3,124 @@
 
 import {expect, test} from '@playwright/test';
 
-import PlaywrightDevPage from '../page';
-import {getUserStoragesForTest} from '../utils';
+import {defaultTeam} from '../constants';
+import {isHandRaised, isMuted, trackHandRaised} from '../lib/client_hooks';
+import CallsSession from '../lib/pages/calls_session';
+import {getChannelNamesForTest, getUserStoragesForTest} from '../utils';
 
 test.beforeEach(async ({page}) => {
-    const devPage = new PlaywrightDevPage(page);
-    await devPage.goto();
+    await new CallsSession(page).gotoChannel(defaultTeam, getChannelNamesForTest()[0]);
 });
 
 test.describe('keyboard shortcuts', () => {
     test.use({storageState: getUserStoragesForTest()[0]});
 
     test('join/leave call', async ({page}) => {
+        const user = new CallsSession(page);
+
         // Solely needed to wait till the page has loaded.
-        await expect(page.locator('[aria-label="channel header region"] button:has-text("Start call")')).toBeVisible();
+        await expect(user.headerStartCallButton).toBeVisible();
 
-        if (process.platform === 'darwin') {
-            await page.keyboard.press('Meta+Alt+S');
-        } else {
-            await page.keyboard.press('Control+Alt+S');
-        }
+        await user.shortcuts.joinCall();
 
-        await expect(page.locator('#calls-widget')).toBeVisible();
-        await expect(page.getByTestId('calls-widget-loading-overlay')).toBeHidden();
+        await user.widget.toBeVisible();
 
-        if (process.platform === 'darwin') {
-            await page.keyboard.press('Meta+Shift+L');
-        } else {
-            await page.keyboard.press('Control+Shift+L');
-        }
+        await user.shortcuts.leaveCall();
 
-        await expect(page.locator('#calls-widget')).toBeHidden();
+        await user.widget.toBeHidden();
     });
 
     test('mute/unmute', async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.startCall();
+        const user = new CallsSession(page);
+        await user.startCall();
 
-        const toggleMute = async () => {
-            if (process.platform === 'darwin') {
-                await page.keyboard.press('Meta+Shift+Space');
-            } else {
-                await page.keyboard.press('Control+Shift+Space');
-            }
-        };
+        await user.shortcuts.toggleMute();
 
-        await toggleMute();
-
-        let isMuted = await page.evaluate(() => {
-            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
-        });
-        if (isMuted) {
+        let muted = await isMuted(page);
+        if (muted) {
             test.fail();
             return;
         }
 
-        await toggleMute();
+        await user.shortcuts.toggleMute();
 
-        isMuted = await page.evaluate(() => {
-            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
-        });
-        if (!isMuted) {
+        muted = await isMuted(page);
+        if (!muted) {
             test.fail();
             return;
         }
 
-        await devPage.leaveCall();
+        await user.leaveCall();
     });
 
     test('raise/lower hand', async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.startCall();
+        const user = new CallsSession(page);
+        await user.startCall();
 
-        const toggleHand = async () => {
-            if (process.platform === 'darwin') {
-                await page.keyboard.press('Meta+Shift+Y');
-            } else {
-                await page.keyboard.press('Control+Shift+Y');
-            }
-        };
+        await trackHandRaised(page);
 
-        await page.evaluate(() => {
-            window.callsClient.on('raise_hand', () => {
-                window.isHandRaised = true;
-            });
+        await user.shortcuts.toggleHand();
 
-            window.callsClient.on('lower_hand', () => {
-                window.isHandRaised = false;
-            });
-        });
-
-        await toggleHand();
-
-        let isHandRaised = await page.evaluate(() => {
-            return window.isHandRaised;
-        });
-        if (!isHandRaised) {
+        let handRaised = await isHandRaised(page);
+        if (!handRaised) {
             test.fail();
             return;
         }
 
-        await toggleHand();
+        await user.shortcuts.toggleHand();
 
-        isHandRaised = await page.evaluate(() => {
-            return window.isHandRaised;
-        });
-        if (isHandRaised) {
+        handRaised = await isHandRaised(page);
+        if (handRaised) {
             test.fail();
             return;
         }
 
-        await devPage.leaveCall();
+        await user.leaveCall();
     });
 
     test('participants list toggle', async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.startCall();
+        const user = new CallsSession(page);
+        await user.startCall();
 
-        const toggleParticipants = async () => {
-            if (process.platform === 'darwin') {
-                await page.keyboard.press('Meta+Shift+P');
-            } else {
-                await page.keyboard.press('Control+Shift+P');
-            }
-        };
+        await expect(user.widget.participantsList).toBeHidden();
 
-        await expect(page.locator('#calls-widget-participants-list')).toBeHidden();
+        await user.shortcuts.toggleParticipants();
 
-        await toggleParticipants();
+        await expect(user.widget.participantsList).toBeVisible();
 
-        await expect(page.locator('#calls-widget-participants-list')).toBeVisible();
+        await user.shortcuts.toggleParticipants();
 
-        await toggleParticipants();
+        await expect(user.widget.participantsList).toBeHidden();
 
-        await expect(page.locator('#calls-widget-participants-list')).toBeHidden();
-
-        await devPage.leaveCall();
+        await user.leaveCall();
     });
 
     test('accessibility conflict', async ({page}) => {
-        const devPage = new PlaywrightDevPage(page);
-        await devPage.startCall();
+        const user = new CallsSession(page);
+        await user.startCall();
 
         // unmute
-        const muteButton = page.locator('#voice-mute-unmute');
-        await expect(muteButton).toBeVisible();
-        await muteButton.click();
+        await user.widget.toggleMute();
 
         // open participants list
-        await page.keyboard.press('Alt+P');
+        await user.shortcuts.focusParticipants();
 
-        const participantsList = page.locator('#calls-widget-participants-list');
-        await expect(participantsList).toBeVisible();
+        await expect(user.widget.participantsList).toBeVisible();
 
         // should not mute
-        await page.keyboard.press('Space');
-        await expect(participantsList).toBeVisible();
-        let isMuted = await page.evaluate(() => {
-            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
-        });
-        if (isMuted) {
+        await user.shortcuts.pressSpace();
+        await expect(user.widget.participantsList).toBeVisible();
+        let muted = await isMuted(page);
+        if (muted) {
             test.fail();
             return;
         }
 
         // mute
-        if (process.platform === 'darwin') {
-            await page.keyboard.press('Meta+Shift+Space');
-        } else {
-            await page.keyboard.press('Control+Shift+Space');
-        }
+        await user.shortcuts.toggleMute();
 
-        isMuted = await page.evaluate(() => {
-            return !window.callsClient.audioTrack || !window.callsClient.audioTrack.enabled;
-        });
-        if (!isMuted) {
+        muted = await isMuted(page);
+        if (!muted) {
             test.fail();
         }
     });
