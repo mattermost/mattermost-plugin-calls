@@ -69,7 +69,7 @@ Each target prints the plugin settings when it starts. Enter them in *System Con
 | LiveKit API key | `devkey` |
 | LiveKit API secret | `this-is-a-32-plus-character-dev-secret` |
 
-The key and secret come from the `keys:` block in `dev/livekit.yaml`. Each target has a matching `-stop` target.
+The key and secret come from the `keys:` block in `dev/livekit.yaml`. Stop LiveKit with `make livekit-docker-stop` or `make livekit-tls-docker-stop`. Both SIP targets share `make livekit-sip-docker-stop`, which also stops Redis, the SIP bridge and the Asterisk sink.
 
 The targets work out your machine's network address on their own. If that fails, or picks the wrong network, set it yourself, for example `make livekit-docker-start LIVEKIT_NODE_IP=192.168.1.20`.
 

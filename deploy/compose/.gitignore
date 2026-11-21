@@ -1,4 +1,6 @@
 .env
 livekit.yaml
 livekit-sip.yaml
+# Older setup.sh runs wrote the SIP bridge secret here; existing checkouts may still have it.
+sip.yaml
 turn-secret
