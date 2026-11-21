@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Generates the files that contain site-specific values and secrets:
-#   .env         LIVEKIT_DOMAIN, used by docker-compose.yaml
-#   livekit.yaml LiveKit server config (API key/secret, webhook target)
-#   sip.yaml     SIP bridge config (same API key/secret)
+#   .env             LIVEKIT_DOMAIN, used by docker-compose.yaml
+#   livekit.yaml     LiveKit server config (API key/secret, webhook target)
+#   livekit-sip.yaml SIP bridge config (same API key/secret)
 #
 # Usage: ./setup.sh <livekit-domain> <mattermost-site-url> [options]
 #   --sip                       also enable Redis and the SIP bridge
@@ -156,7 +156,7 @@ logging:
   level: info
 EOF
 
-cat > sip.yaml <<EOF
+cat > livekit-sip.yaml <<EOF
 api_key: ${KEY_NAME}
 api_secret: ${API_SECRET}
 ws_url: ws://livekit:7880
@@ -175,7 +175,7 @@ TURN_STATE="disabled"; [ -n "$TURN_HOST" ] && TURN_STATE="external (${TURN_HOST}
 
 cat <<EOF
 
-Wrote .env, livekit.yaml and sip.yaml (mode 600).
+Wrote .env, livekit.yaml and livekit-sip.yaml (mode 600).
   SIP bridge:     ${SIP_STATE}
   TURN:           ${TURN_STATE}
 

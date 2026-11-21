@@ -1,4 +1,4 @@
 .env
 livekit.yaml
-sip.yaml
+livekit-sip.yaml
 turn-secret

@@ -60,7 +60,7 @@ services:
       retries: 10
 
   # SIP bridge for outbound phone dialing. Optional: enabled by
-  # `./setup.sh ... --sip`, which also writes sip.yaml (advertises the public IP).
+  # `./setup.sh ... --sip`, which also writes livekit-sip.yaml (advertises the public IP).
   # The RTP range must be reachable by your SIP provider (UDP, both directions).
   # Outbound-only dialing does not need 5060 open to the internet.
   livekit-sip:
@@ -72,7 +72,7 @@ services:
       - "5060:5060/udp"
       - "10000-10100:10000-10100/udp"
     volumes:
-      - ./sip.yaml:/etc/sip.yaml:ro
+      - ./livekit-sip.yaml:/etc/sip.yaml:ro
     depends_on:
       redis:
         condition: service_healthy
