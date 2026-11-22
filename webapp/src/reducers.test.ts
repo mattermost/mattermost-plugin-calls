@@ -2,8 +2,8 @@
 // See LICENSE.txt for license information.
 
 import type {AnyAction} from 'redux';
-import {ADD_INCOMING_CALL, REMOVE_INCOMING_CALL} from 'src/action_types';
-import {unInitialized} from 'src/state/session/actions';
+import {ADD_INCOMING_CALL, CALL_RECORDING_STATE, REMOVE_INCOMING_CALL} from 'src/action_types';
+import {localSessionClose, unInitialized} from 'src/state/session/actions';
 
 import reducer from './reducers';
 
@@ -46,5 +46,23 @@ describe('incomingCalls', () => {
         );
 
         expect(state.incomingCalls).toHaveLength(0);
+    });
+});
+
+describe('recordings', () => {
+    const recordingState = (cID: string) => ({
+        type: CALL_RECORDING_STATE,
+        data: {callID: cID, jobState: {init_at: 1, start_at: 2, end_at: 0}},
+    });
+
+    it('drops the recording of the channel whose local session closed', () => {
+        const state = apply(
+            recordingState(channelID),
+            recordingState('other-channel-id'),
+            localSessionClose(channelID),
+        );
+
+        expect(state.recordings[channelID]).toBeUndefined();
+        expect(state.recordings['other-channel-id']).toEqual({init_at: 1, start_at: 2, end_at: 0});
     });
 });
