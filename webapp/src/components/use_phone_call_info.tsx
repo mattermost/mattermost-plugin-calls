@@ -9,7 +9,8 @@ import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {loadProfilesByIdsIfMissing} from 'src/actions';
 import {phoneNumberForDisplay} from 'src/phone_utils';
-import {phoneCallPropsForCurrentCall, sipCallStateForCurrentCall} from 'src/selectors';
+import {phoneCallPropsForCurrentCall} from 'src/selectors';
+import {sipCallStateForCurrentCall} from 'src/state/sip_call_state/selectors';
 import {PhoneCallProps} from 'src/types/types';
 import {getUserDisplayName} from 'src/utils';
 
