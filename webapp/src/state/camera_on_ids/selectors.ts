@@ -5,7 +5,7 @@ import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {createSelector} from 'reselect';
 import {RootState} from 'src/reducers';
-import {channelIDForCurrentCall, pluginReduxStore} from 'src/selectors';
+import {channelIDForCurrentCall, pluginReduxStore} from 'src/state/root_selectors';
 
 const cameraOnIDsForCalls = (state: GlobalState): RootState['cameraOnIDs'] => {
     return pluginReduxStore(state).cameraOnIDs;

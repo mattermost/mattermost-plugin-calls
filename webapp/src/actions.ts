@@ -8,7 +8,7 @@ import {Channel} from '@mattermost/types/channels';
 import {UserTypes} from 'mattermost-redux/action_types';
 import {getChannel as loadChannel} from 'mattermost-redux/actions/channels';
 import {bindClientFunc} from 'mattermost-redux/actions/helpers';
-import {getThread as fetchThread} from 'mattermost-redux/actions/threads';
+import {getThread as fetchThread, setThreadFollow} from 'mattermost-redux/actions/threads';
 import {getProfilesByIds as getProfilesByIdsAction} from 'mattermost-redux/actions/users';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
@@ -26,7 +26,7 @@ import {GenericErrorModal, IDGenericErrorModal} from 'src/components/generic_err
 import {CallsInTestModeModal, IDTestModeUser} from 'src/components/modals';
 import {JOINED_USER_NOTIFICATION_TIMEOUT, LIVE_CAPTION_TIMEOUT, RING_LENGTH} from 'src/constants';
 import {applyCallHostChanged} from 'src/host_change';
-import {logErr} from 'src/log';
+import {logDebug, logErr} from 'src/log';
 import {getPhoneCallProps, withoutSIPSessions} from 'src/phone_utils';
 import {
     callDismissedNotification,
@@ -37,13 +37,15 @@ import {
     incomingCalls,
     isCurrentUserOwnerOfCurrentCall,
     isPhoneCallInChannel,
-    numSessionsInCallInChannel,
     ringingEnabled,
     ringingForCall,
     shouldPlayJoinUserSound,
+    threadIDForCallInChannel,
 } from 'src/selectors';
 import {userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {callEnded, getSessionsMapFromSessions, sessionsReceived, userJoined, userLeft} from 'src/state/session/actions';
+import {numSessionsInCallInChannel} from 'src/state/session/selectors';
+import {Store} from 'src/types/mattermost-webapp';
 import {CallsConfig, CallsStats, CallsVersionInfo, ChannelType, PhoneCallState} from 'src/types/types';
 import {
     getCallsClientSessionID,
@@ -808,3 +810,16 @@ export const setDMCalleeAnsweredAt = (callID: string, answeredAt: number) => ({
 export const callHostChanged = (channelID: string, hostID: string) => (dispatch: Dispatch, getState: GetStateFunc) => {
     applyCallHostChanged({dispatch, getState}, channelID, hostID, getCallIDForChannel(getState(), channelID));
 };
+
+export async function followThread(store: Store, channelID: string, teamID?: string) {
+    if (!teamID) {
+        logDebug('followThread: no team for channel');
+        return;
+    }
+    const threadID = threadIDForCallInChannel(store.getState(), channelID);
+    if (threadID) {
+        store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
+    } else {
+        logErr('Unable to follow call\'s thread, not registered in store');
+    }
+}

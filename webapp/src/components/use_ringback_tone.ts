@@ -13,10 +13,9 @@ import {
     getCallIDForCurrentCall,
     isCurrentCallPhoneCall,
     ringingEnabled,
-    sessionsForOtherUsersInCall,
-    sessionsInCurrentCall,
 } from 'src/selectors';
 import RingbackSound from 'src/sounds/ringback.mp3';
+import {sessionsForOtherUsersInCall, sessionsInCurrentCall} from 'src/state/session/selectors';
 import {isCurrentPhoneCallRinging} from 'src/state/sip_call_state/selectors';
 import {
     isDMChannel,

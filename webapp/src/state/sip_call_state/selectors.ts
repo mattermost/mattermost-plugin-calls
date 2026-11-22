@@ -4,7 +4,8 @@
 import {GlobalState} from '@mattermost/types/store';
 import {createSelector} from 'reselect';
 import {RootState} from 'src/reducers';
-import {channelIDForCurrentCall, phoneCallPropsForCurrentCall, pluginReduxStore} from 'src/selectors';
+import {phoneCallPropsForCurrentCall} from 'src/selectors';
+import {channelIDForCurrentCall, pluginReduxStore} from 'src/state/root_selectors';
 import {SIPCallState} from 'src/types/types';
 
 const sipCallStatesInPluginReduxStore = (state: GlobalState): RootState['sipCallStates'] =>

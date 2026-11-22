@@ -25,6 +25,7 @@ import {generateId} from 'mattermost-redux/utils/helpers';
 import {
     callEnd,
     displayCallErrorModal,
+    followThread,
     getCallsConfig,
     incomingCallOnChannel,
     joinUser,
@@ -48,6 +49,7 @@ import {handlePhoneCallEnd, leaveCallEndedByServer} from 'src/phone_call';
 import {getPhoneCallProps} from 'src/phone_utils';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userReacted, userReactedTimeout} from 'src/state/session/actions';
+import {profilesInCurrentCallMap} from 'src/state/session/selectors';
 import {
     CallEndData,
     HostControlNotice,
@@ -67,12 +69,10 @@ import {
 import {applyCallHostChanged} from './host_change';
 import {
     channelIDForCurrentCall,
-    profilesInCurrentCallMap,
     ringingEnabled,
 } from './selectors';
 import {Store} from './types/mattermost-webapp';
 import {
-    followThread,
     getCallsClient,
     getUserDisplayName,
     hasLiveCallClient,

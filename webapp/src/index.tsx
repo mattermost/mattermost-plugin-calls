@@ -25,6 +25,7 @@ import {
     displayFreeTrial,
     displayGenericErrorModal,
     fetchCallState,
+    followThread,
     getCallsConfig,
     getCallsConfigEnvOverrides,
     getCallsStats,
@@ -125,6 +126,7 @@ import {userCameraChanged} from 'src/state/camera_on_ids/actions';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
 import {getSessionsMapFromSessions, localSessionClose, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
+import {sessionsInCurrentCall} from 'src/state/session/selectors';
 import {CurrentCallDataDefault, PhoneCallState} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
 
@@ -168,13 +170,11 @@ import {
     isCloudStarter,
     isLimitRestricted,
     ringingEnabled,
-    sessionsInCurrentCall,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {convertStatsToPanels} from './stats';
 import {PhoneCallRequest, PluginRegistry, Store} from './types/mattermost-webapp';
 import {
-    followThread,
     getCallsClient,
     getChannelURL,
     getPluginPath,
