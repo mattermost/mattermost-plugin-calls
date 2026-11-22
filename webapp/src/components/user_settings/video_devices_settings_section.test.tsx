@@ -166,6 +166,18 @@ describe('VideoDevicesSettingsSection', () => {
         expect(await screen.findByText('USB Camera')).toBeInTheDocument();
     });
 
+    test.each([
+        ['is not valid JSON', '{not json'],
+        ['is gone and has no label', JSON.stringify({deviceId: 'gone'})],
+    ])('preselects the first camera when the saved camera %s', async (_, stored) => {
+        window.localStorage.setItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, stored);
+        renderComponent();
+        await openSection();
+
+        expect(await screen.findByText('Built-in Camera')).toBeInTheDocument();
+        expect(screen.queryByText('USB Camera')).not.toBeInTheDocument();
+    });
+
     test('shows "Starting camera…" until frames arrive, then announces the camera is on', async () => {
         let resolveTrack: (track: FakeTrack) => void = () => {};
         createTrack.mockImplementationOnce(() => new Promise((resolve) => {
@@ -211,6 +223,16 @@ describe('VideoDevicesSettingsSection', () => {
         renderComponent();
         await openSection();
         await screen.findByText('Camera 1');
+
+        await turnOnCamera();
+
+        expect(createTrack).toHaveBeenCalledWith({...CAMERA_CAPTURE_DEFAULTS, deviceId: undefined});
+    });
+
+    test('captures without a deviceId when no camera is listed', async () => {
+        getLocalVideoDevices.mockResolvedValue([]);
+        renderComponent();
+        await openSection();
 
         await turnOnCamera();
 
@@ -349,6 +371,37 @@ describe('VideoDevicesSettingsSection', () => {
         expect(track.stop).toHaveBeenCalledTimes(1);
     });
 
+    test('ignores a capture that fails after Cancel', async () => {
+        let rejectTrack: (err: unknown) => void = () => {};
+        createTrack.mockImplementationOnce(() => new Promise((_, reject) => {
+            rejectTrack = reject;
+        }));
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Camera');
+        await userEvent.click(screen.getByRole('button', {name: 'Turn on camera'}));
+
+        await userEvent.click(screen.getByText('Cancel'));
+        await act(async () => rejectTrack(new DOMException('failed', 'NotReadableError')));
+
+        expect(logErr).not.toHaveBeenCalled();
+        await openSection();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    test('ignores the end of a preview that was already turned off', async () => {
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Camera');
+        const track = await turnOnCamera();
+        await userEvent.click(screen.getByRole('button', {name: 'Turn off camera'}));
+
+        act(() => track.fire(TrackEvent.Ended));
+
+        expect(screen.queryByText('Camera disconnected.')).not.toBeInTheDocument();
+        expect(track.stop).toHaveBeenCalledTimes(1);
+    });
+
     test('mirrors only the preview when Mirror video is checked', async () => {
         renderComponent();
         await openSection();
@@ -403,6 +456,17 @@ describe('VideoDevicesSettingsSection', () => {
             expect(logErr).toHaveBeenCalledWith('failed to start camera preview', expect.any(DOMException));
         });
 
+        test('shows the generic message for a failure LiveKit cannot classify', async () => {
+            createTrack.mockRejectedValueOnce({});
+            renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+
+            await userEvent.click(screen.getByRole('button', {name: 'Turn on camera'}));
+
+            expect(await screen.findByText('Couldn\'t start your camera. Try again.')).toBeInTheDocument();
+        });
+
         test('shows a linked message and announces off when the camera is unplugged', async () => {
             renderComponent();
             await openSection();
@@ -432,6 +496,26 @@ describe('VideoDevicesSettingsSection', () => {
             expectLinkedMessage(message);
             expect(track.stop).toHaveBeenCalledTimes(1);
             expect(getLiveRegion()).toHaveTextContent('Camera off');
+        });
+
+        test('ignores a camera switch that fails after the preview was turned off', async () => {
+            renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+            const track = await turnOnCamera();
+            let rejectRestart: (err: unknown) => void = () => {};
+            track.restartTrack.mockImplementationOnce(() => new Promise((_, reject) => {
+                rejectRestart = reject;
+            }));
+            await userEvent.click(screen.getByLabelText('Camera input'));
+            await userEvent.click(screen.getByText('USB Camera'));
+
+            await userEvent.click(screen.getByRole('button', {name: 'Turn off camera'}));
+            await act(async () => rejectRestart(new DOMException('busy', 'NotReadableError')));
+
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+            expect(logErr).not.toHaveBeenCalled();
+            expect(track.stop).toHaveBeenCalledTimes(1);
         });
 
         test('shows a linked message when cameras cannot be listed', async () => {
@@ -472,5 +556,25 @@ describe('VideoDevicesSettingsSection', () => {
         await userEvent.click(screen.getByLabelText('Camera input'));
 
         expect(screen.getByText('USB Camera')).toBeInTheDocument();
+    });
+
+    test('keeps the newest list when an older device load finishes last', async () => {
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Camera');
+
+        let resolveOlder: (devices: MediaDeviceInfo[]) => void = () => {};
+        getLocalVideoDevices.mockImplementationOnce(() => new Promise((resolve) => {
+            resolveOlder = resolve;
+        }));
+        getLocalVideoDevices.mockResolvedValueOnce([builtIn]);
+        await act(async () => {
+            mediaDevices.dispatchEvent(new Event('devicechange'));
+            mediaDevices.dispatchEvent(new Event('devicechange'));
+        });
+        await act(async () => resolveOlder([builtIn, usb]));
+        await userEvent.click(screen.getByLabelText('Camera input'));
+
+        expect(screen.queryByText('USB Camera')).not.toBeInTheDocument();
     });
 });
