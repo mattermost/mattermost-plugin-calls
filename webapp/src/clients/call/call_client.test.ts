@@ -3727,6 +3727,8 @@ describe('CallClient', () => {
                 ['nothing is saved', null],
                 ['the saved camera is gone', JSON.stringify({deviceId: 'gone', label: 'Gone Camera'})],
                 ['the saved value is not valid JSON', '{not json'],
+                ['the saved value is null', 'null'],
+                ['the saved value has no deviceId', JSON.stringify({label: 'USB Camera'})],
             ])('uses the first camera when %s', async (_, stored) => {
                 mockCameras([builtIn, usb]);
                 if (stored) {
@@ -3858,12 +3860,42 @@ describe('CallClient', () => {
             expect(mockRoom.localParticipant.setCameraEnabled).toHaveBeenCalledWith(false);
         });
 
+        test('disableCamera does nothing after the call ended', async () => {
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Disconnected);
+
+            await client.disableCamera();
+
+            expect(mockRoom.localParticipant.setCameraEnabled).not.toHaveBeenCalled();
+        });
+
+        test('disableCamera logs a failure to turn the camera off', async () => {
+            const logErrSpy = jest.spyOn(log, 'logErr').mockImplementation(() => {});
+            const err = new Error('mute failed');
+            mockRoom.localParticipant.setCameraEnabled.mockRejectedValueOnce(err);
+            await client.connect({channelID: 'test-channel'});
+
+            await expect(client.disableCamera()).resolves.toBeUndefined();
+
+            expect(logErrSpy).toHaveBeenCalledWith('CallClient: disabling camera failed', err);
+            expect(cameraError).not.toHaveBeenCalled();
+            logErrSpy.mockRestore();
+        });
+
         test('isCameraEnabled reads the local participant', async () => {
             await client.connect({channelID: 'test-channel'});
             expect(client.isCameraEnabled()).toBe(false);
 
             mockRoom.localParticipant.isCameraEnabled = true;
             expect(client.isCameraEnabled()).toBe(true);
+        });
+
+        test('isCameraEnabled is false after the call ended', async () => {
+            mockRoom.localParticipant.isCameraEnabled = true;
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Disconnected);
+
+            expect(client.isCameraEnabled()).toBe(false);
         });
 
         describe('local camera lost mid-call', () => {
@@ -4187,6 +4219,20 @@ describe('CallClient', () => {
 
                 mockRoom.fire(RoomEvent.ConnectionQualityChanged, ConnectionQuality.Poor, makeRemote('sip:+15550100', undefined, ParticipantKind.SIP));
 
+                expect(remote).not.toHaveBeenCalled();
+            });
+
+            test('ignores updates that arrive after the call ended', async () => {
+                await client.connect({channelID: 'test-channel'});
+                mockRoom.fire(RoomEvent.Disconnected);
+                const local = jest.fn();
+                const remote = jest.fn();
+                client.on(CALL_EVENT.QUALITY_CHANGED, local);
+                client.on(CALL_EVENT.REMOTE_QUALITY_CHANGED, remote);
+
+                mockRoom.fire(RoomEvent.ConnectionQualityChanged, ConnectionQuality.Poor, makeRemote('r1___r1-session'));
+
+                expect(local).not.toHaveBeenCalled();
                 expect(remote).not.toHaveBeenCalled();
             });
         });
