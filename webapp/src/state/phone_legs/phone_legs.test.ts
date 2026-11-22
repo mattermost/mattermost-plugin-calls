@@ -1,10 +1,18 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {GlobalState} from '@mattermost/types/store';
 import {callEnded, unInitialized} from 'src/state/session/actions';
+import {PhoneLeg} from 'src/types/types';
 
 import {phoneLegStatusChanged} from './actions';
 import {reducer} from './reducer';
+import {
+    isCurrentPhoneCallActive,
+    isCurrentPhoneCallRinging,
+    phoneLegForCallInChannel,
+    phoneLegForCurrentCall,
+} from './selectors';
 
 describe('phoneLegs reducer', () => {
     it('starts empty', () => {
@@ -53,5 +61,46 @@ describe('phoneLegs reducer', () => {
     it('resets on un-initialize', () => {
         const state = reducer(undefined, phoneLegStatusChanged('channelA', 'active', 100));
         expect(reducer(state, unInitialized())).toEqual({});
+    });
+});
+
+describe('phoneLegs selectors', () => {
+    const phone = {number: '+15550100', displayNumber: '(555) 0100', label: '', targetUserID: ''};
+
+    const stateWith = ({phoneLeg, isPhoneCall = true}: {phoneLeg?: PhoneLeg; isPhoneCall?: boolean}) => ({
+        'plugins-com.mattermost.calls': {
+            calls: {channelA: {phone: isPhoneCall ? phone : undefined}},
+            phoneLegs: phoneLeg ? {channelA: phoneLeg} : {},
+            clientStateReducer: {channelID: 'channelA'},
+        },
+    } as unknown as GlobalState);
+
+    const ringing: PhoneLeg = {status: 'ringing', answeredAt: 0};
+    const active: PhoneLeg = {status: 'active', answeredAt: 200};
+    const hungUp: PhoneLeg = {status: 'hangup', answeredAt: 200};
+
+    it('phoneLegForCallInChannel returns the phone leg of the given channel', () => {
+        const state = stateWith({phoneLeg: ringing});
+
+        expect(phoneLegForCallInChannel(state, 'channelA')).toBe(ringing);
+        expect(phoneLegForCallInChannel(state, 'channelB')).toBeUndefined();
+    });
+
+    it('phoneLegForCurrentCall returns the phone leg of the current call', () => {
+        expect(phoneLegForCurrentCall(stateWith({phoneLeg: active}))).toBe(active);
+        expect(phoneLegForCurrentCall(stateWith({}))).toBeUndefined();
+    });
+
+    it.each([
+        ['no status yet', undefined, true, true, false],
+        ['ringing', ringing, true, true, false],
+        ['active', active, true, false, true],
+        ['hung up after answering', hungUp, true, false, false],
+        ['not a phone call', active, false, false, false],
+    ])('isCurrentPhoneCallRinging and isCurrentPhoneCallActive when %s', (_, phoneLeg, isPhoneCall, ringingExpected, activeExpected) => {
+        const state = stateWith({phoneLeg, isPhoneCall});
+
+        expect(isCurrentPhoneCallRinging(state)).toBe(ringingExpected);
+        expect(isCurrentPhoneCallActive(state)).toBe(activeExpected);
     });
 });
