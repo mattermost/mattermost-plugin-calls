@@ -4,6 +4,7 @@
 import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {UserProfile} from '@mattermost/types/users';
+import {CameraState} from 'src/clients/call/types';
 import {
     ActionCallEnded,
     ActionLocalSessionClose,
@@ -32,6 +33,10 @@ export const userCameraOff = (channelID: Channel['id'], sessionID: UserSessionSt
     },
 });
 export type ActionUserCameraOff = ReturnType<typeof userCameraOff>
+
+export const userCameraChanged = (channelID: Channel['id'], sessionID: UserSessionState['session_id'], userID: UserProfile['id'], cameraState: CameraState) => (
+    cameraState === CameraState.Off ? userCameraOff(channelID, sessionID, userID) : userCameraOn(channelID, sessionID, userID)
+);
 
 export type Actions =
   | ActionUnInitialized

@@ -121,7 +121,7 @@ import {
 } from 'src/phone_call';
 import {getPhoneCallProps, withoutSIPSessions} from 'src/phone_utils';
 import slashCommandsHandler from 'src/slash_commands';
-import {userCameraOff, userCameraOn} from 'src/state/camera_on_ids/actions';
+import {userCameraChanged} from 'src/state/camera_on_ids/actions';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {getSessionsMapFromSessions, localSessionClose, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {CurrentCallDataDefault, PhoneCallState} from 'src/types/types';
@@ -792,12 +792,7 @@ export default class Plugin {
                 });
 
                 window.callsClient.on(CALL_EVENT.CAMERA_CHANGED, (session_id: string, userID: string, cameraState: CameraState) => {
-                    const callChannelID = window.callsClient?.channelID ?? '';
-                    if (cameraState === CameraState.Off) {
-                        store.dispatch(userCameraOff(callChannelID, session_id, userID));
-                    } else {
-                        store.dispatch(userCameraOn(callChannelID, session_id, userID));
-                    }
+                    store.dispatch(userCameraChanged(window.callsClient?.channelID ?? '', session_id, userID, cameraState));
                 });
 
                 window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {

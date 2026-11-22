@@ -30,7 +30,7 @@ import {pluginId} from 'plugin/manifest';
 import {trackSIPCallStatus} from 'plugin/phone_call';
 import reducer from 'plugin/reducers';
 import {getCallIDForChannel} from 'plugin/selectors';
-import {userCameraOff, userCameraOn} from 'plugin/state/camera_on_ids/actions';
+import {userCameraChanged} from 'plugin/state/camera_on_ids/actions';
 import {userScreenShared, userScreenUnshared} from 'plugin/state/screen_sharing_ids/actions';
 import {localSessionClose, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/session/actions';
 import {Store} from 'plugin/types/mattermost-webapp';
@@ -120,11 +120,7 @@ function connectCall(
             store.dispatch(userUnmuted(callClient.channelID, sessionID, userID));
         });
         callClient.on(CALL_EVENT.CAMERA_CHANGED, (sessionID: string, userID: string, cameraState: CameraState) => {
-            if (cameraState === CameraState.Off) {
-                store.dispatch(userCameraOff(callClient.channelID, sessionID, userID));
-            } else {
-                store.dispatch(userCameraOn(callClient.channelID, sessionID, userID));
-            }
+            store.dispatch(userCameraChanged(callClient.channelID, sessionID, userID, cameraState));
         });
         callClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
             store.dispatch(usersVoiceActivityChanged(callClient.channelID, sessionIDs, userIDs));

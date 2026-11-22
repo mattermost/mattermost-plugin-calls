@@ -1,9 +1,10 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {CameraState} from 'src/clients/call/types';
 import {callEnded, localSessionClose, unInitialized, userLeft} from 'src/state/session/actions';
 
-import {userCameraOff, userCameraOn} from './actions';
+import {userCameraChanged, userCameraOff, userCameraOn} from './actions';
 import {reducer} from './reducer';
 import {cameraOnIdsForCurrentCall, isCameraOnForSession} from './selectors';
 
@@ -79,6 +80,16 @@ describe('cameraOnIDs reducer', () => {
         const state = reducer(undefined, userCameraOn('channelA', 's1', 'u1'));
 
         expect(reducer(state, action as never)).toBe(state);
+    });
+});
+
+describe('userCameraChanged', () => {
+    test('turns the camera off for the Off state', () => {
+        expect(userCameraChanged('channelA', 's1', 'u1', CameraState.Off)).toEqual(userCameraOff('channelA', 's1', 'u1'));
+    });
+
+    test.each([CameraState.Loading, CameraState.Ready])('turns the camera on for the %s state', (cameraState) => {
+        expect(userCameraChanged('channelA', 's1', 'u1', cameraState)).toEqual(userCameraOn('channelA', 's1', 'u1'));
     });
 });
 
