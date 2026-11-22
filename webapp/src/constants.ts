@@ -126,6 +126,8 @@ export const STORAGE_CALLS_CLIENT_STATS_KEY = 'calls_client_stats';
 export const STORAGE_CALLS_CLIENT_LOGS_KEY = 'calls_client_logs';
 export const STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY = 'calls_default_audio_input';
 export const STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY = 'calls_default_audio_output';
+export const STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY = 'calls_default_video_input';
+export const STORAGE_CALLS_MIRROR_VIDEO = 'calls_mirror_video';
 export const STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN = 'calls_share_audio_with_screen';
 export const STORAGE_CALLS_LOWER_HAND_ON_UNMUTE = 'calls_lower_hand_on_unmute';
 

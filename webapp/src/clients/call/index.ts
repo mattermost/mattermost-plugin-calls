@@ -3,5 +3,5 @@
 
 export {default} from './call_client';
 export {CALL_EVENT, CONNECTION_QUALITY} from './constants';
-export type {ConnectPayload} from './types';
+export {CameraError, CameraState, type CameraTrack, type ConnectPayload} from './types';
 export {DisconnectReason} from 'livekit-client';

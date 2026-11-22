@@ -15,4 +15,5 @@ export const USER_REACTED = `${pluginId}_user_reacted` as const;
 export const USER_REACTED_TIMEOUT = `${pluginId}_user_reacted_timeout` as const;
 export const USER_LEFT = `${pluginId}_user_left` as const;
 export const CALL_END = `${pluginId}_call_end` as const;
+export const LOCAL_SESSION_CLOSE = `${pluginId}_local_session_close` as const;
 

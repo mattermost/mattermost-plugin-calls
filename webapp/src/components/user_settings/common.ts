@@ -11,6 +11,7 @@ export type SelectOption = {
 export type DevicesSelectionProps = {
     deviceType: string;
     devices: MediaDeviceInfo[];
+    hasError: boolean;
     onSelectionChange?: (opt: SelectOption) => void;
 };
 

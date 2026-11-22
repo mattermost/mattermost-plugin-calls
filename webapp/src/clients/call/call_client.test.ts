@@ -22,6 +22,7 @@ import {
     STORAGE_CALLS_CLIENT_STATS_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
+    STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY,
     STORAGE_CALLS_LOWER_HAND_ON_UNMUTE,
 } from 'src/constants';
 import * as log from 'src/log';
@@ -29,8 +30,8 @@ import {flushLogsToAccumulated} from 'src/log';
 import {getPersistentStorage, getScreenStream} from 'src/utils';
 
 import CallClient from './call_client';
-import {AUDIO_CAPTURE_DEFAULTS, CALL_EVENT, CALL_MESSAGE_TOPICS} from './constants';
-import type {LiveKitSessionResponse} from './types';
+import {AUDIO_CAPTURE_DEFAULTS, CALL_EVENT, CALL_MESSAGE_TOPICS, CAMERA_PUBLISH_OPTIONS} from './constants';
+import {CameraError, CameraState, type LiveKitSessionResponse} from './types';
 
 jest.mock('livekit-client', () => {
     const actual = jest.requireActual('livekit-client');
@@ -120,6 +121,9 @@ function createMockRoom(): MockRoom {
             identity: 'me-id___me-session',
             getTrackPublication: jest.fn(),
             setMicrophoneEnabled: jest.fn().mockResolvedValue(null),
+            setCameraEnabled: jest.fn().mockResolvedValue(null),
+            isCameraEnabled: false,
+            permissions: {canPublish: true, canPublishSources: []},
             setScreenShareEnabled: jest.fn().mockResolvedValue(null),
             createScreenTracks: jest.fn().mockResolvedValue([]),
             createTracks: jest.fn().mockResolvedValue([]),
@@ -129,6 +133,7 @@ function createMockRoom(): MockRoom {
             publishData: jest.fn().mockResolvedValue(undefined),
             publishDtmf: jest.fn().mockResolvedValue(undefined),
             audioTrackPublications: new Map(),
+            videoTrackPublications: new Map(),
             trackPublications: new Map(),
             attributes: {},
         },
@@ -3614,6 +3619,616 @@ describe('CallClient', () => {
 
             expect(stats!.tracksInfo).toHaveLength(1);
             expect(stats!.rtcStats).toBeNull();
+        });
+    });
+
+    describe('camera', () => {
+        const makeCamera = (deviceId: string, label: string) => ({deviceId, label, kind: 'videoinput', groupId: ''}) as MediaDeviceInfo;
+        const builtIn = makeCamera('cam-1', 'Built-in Camera');
+        const usb = makeCamera('cam-2', 'USB Camera');
+
+        type CameraPub = {source: Track.Source; isMuted: boolean; isSubscribed: boolean; videoTrack?: unknown};
+
+        const makeCameraPub = ({isMuted = false, isSubscribed = false, videoTrack}: Partial<CameraPub> = {}): CameraPub => ({
+            source: Track.Source.Camera,
+            isMuted,
+            isSubscribed,
+            videoTrack,
+        });
+
+        const makeVideoTrack = () => ({sid: 'video-sid', source: Track.Source.Camera, kind: Track.Kind.Video});
+
+        const makeRemote = (identity: string, cameraPub?: CameraPub, kind = ParticipantKind.STANDARD) => ({
+            sid: `${identity}-sid`,
+            identity,
+            kind,
+            attributes: {},
+            getTrackPublication: jest.fn((source: Track.Source) => (source === Track.Source.Camera ? cameraPub : undefined)),
+        });
+
+        const setLocalCameraPub = (pub?: CameraPub) => {
+            mockRoom.localParticipant.getTrackPublication.mockImplementation((source: Track.Source) => (source === Track.Source.Camera ? pub : undefined));
+        };
+
+        const mockCameras = (cameras: MediaDeviceInfo[]) => {
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue(cameras);
+        };
+
+        const saveCamera = (device: MediaDeviceInfo) => {
+            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, JSON.stringify({deviceId: device.deviceId, label: device.label}));
+        };
+
+        let cameraChanged: jest.Mock;
+        let cameraError: jest.Mock;
+
+        beforeEach(() => {
+            cameraChanged = jest.fn();
+            cameraError = jest.fn();
+            client.on(CALL_EVENT.CAMERA_CHANGED, cameraChanged);
+            client.on(CALL_EVENT.CAMERA_ERROR, cameraError);
+        });
+
+        test('builds the Room with 720p camera capture and keeps adaptiveStream and dynacast off', () => {
+            expect(Room).toHaveBeenCalledWith(expect.objectContaining({
+                videoCaptureDefaults: {resolution: expect.objectContaining({width: 1280, height: 720})},
+                adaptiveStream: false,
+                dynacast: false,
+            }));
+        });
+
+        test('publishes the camera as a single 720p stream without simulcast', () => {
+            expect(CAMERA_PUBLISH_OPTIONS).toEqual({
+                simulcast: false,
+                videoEncoding: expect.objectContaining({maxBitrate: expect.any(Number)}),
+            });
+        });
+
+        test('captures nothing from the camera on connect, and reports it as off', async () => {
+            mockCameras([builtIn]);
+            await client.connect({channelID: 'test-channel'});
+            mockRoom.fire(RoomEvent.Connected);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(mockRoom.localParticipant.setCameraEnabled).not.toHaveBeenCalled();
+            for (const [options] of mockRoom.localParticipant.createTracks.mock.calls) {
+                expect(options.video).toBeFalsy();
+            }
+            for (const [constraints] of (navigator.mediaDevices.getUserMedia as jest.Mock).mock.calls) {
+                expect(constraints?.video).toBeFalsy();
+            }
+            expect(Room.getLocalDevices).not.toHaveBeenCalledWith('videoinput', expect.anything());
+            expect(cameraChanged).toHaveBeenCalledWith('me-session', 'me-id', CameraState.Off);
+        });
+
+        describe('enableCamera', () => {
+            test('turns on the saved camera with an exact deviceId and the camera publish options', async () => {
+                mockCameras([builtIn, usb]);
+                saveCamera(usb);
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(Room.getLocalDevices).toHaveBeenCalledWith('videoinput', false);
+                expect(mockRoom.localParticipant.setCameraEnabled).toHaveBeenCalledWith(true, {deviceId: {exact: 'cam-2'}}, CAMERA_PUBLISH_OPTIONS);
+                expect(cameraError).not.toHaveBeenCalled();
+            });
+
+            test('matches the saved camera by label when its deviceId changed', async () => {
+                mockCameras([builtIn, usb]);
+                window.localStorage.setItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, JSON.stringify({deviceId: 'old-id', label: 'USB Camera'}));
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(mockRoom.localParticipant.setCameraEnabled).toHaveBeenCalledWith(true, {deviceId: {exact: 'cam-2'}}, CAMERA_PUBLISH_OPTIONS);
+            });
+
+            test.each([
+                ['nothing is saved', null],
+                ['the saved camera is gone', JSON.stringify({deviceId: 'gone', label: 'Gone Camera'})],
+                ['the saved value is not valid JSON', '{not json'],
+            ])('uses the first camera when %s', async (_, stored) => {
+                mockCameras([builtIn, usb]);
+                if (stored) {
+                    window.localStorage.setItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, stored);
+                }
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(mockRoom.localParticipant.setCameraEnabled).toHaveBeenCalledWith(true, {deviceId: {exact: 'cam-1'}}, CAMERA_PUBLISH_OPTIONS);
+            });
+
+            test('captures without a deviceId when the browser hides device IDs', async () => {
+                mockCameras([makeCamera('', '')]);
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(mockRoom.localParticipant.setCameraEnabled).toHaveBeenCalledWith(true, undefined, CAMERA_PUBLISH_OPTIONS);
+            });
+
+            test('emits NotFound and captures nothing when there is no camera', async () => {
+                mockCameras([]);
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(cameraError).toHaveBeenCalledWith(CameraError.NotFound);
+                expect(mockRoom.localParticipant.setCameraEnabled).not.toHaveBeenCalled();
+            });
+
+            test('points an existing muted publication at the chosen camera before unmuting it', async () => {
+                mockCameras([builtIn, usb]);
+                saveCamera(usb);
+                setLocalCameraPub(makeCameraPub({isMuted: true}));
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('videoinput', 'cam-2', true);
+                const [switchOrder] = mockRoom.switchActiveDevice.mock.invocationCallOrder;
+                const [enableOrder] = mockRoom.localParticipant.setCameraEnabled.mock.invocationCallOrder;
+                expect(switchOrder).toBeLessThan(enableOrder);
+            });
+
+            test('does not switch devices when there is no publication yet', async () => {
+                mockCameras([builtIn]);
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(mockRoom.switchActiveDevice).not.toHaveBeenCalledWith('videoinput', expect.anything(), expect.anything());
+            });
+
+            test('does nothing before the room is connected', async () => {
+                mockCameras([builtIn]);
+
+                await client.enableCamera();
+
+                expect(mockRoom.localParticipant.setCameraEnabled).not.toHaveBeenCalled();
+                expect(cameraError).not.toHaveBeenCalled();
+            });
+
+            test('does nothing without permission to publish the camera', async () => {
+                mockCameras([builtIn]);
+                mockRoom.localParticipant.permissions = {canPublish: true, canPublishSources: [Track.sourceToProto(Track.Source.Microphone)]};
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(mockRoom.localParticipant.setCameraEnabled).not.toHaveBeenCalled();
+            });
+
+            test('does nothing when the camera is already on', async () => {
+                mockCameras([builtIn]);
+                mockRoom.localParticipant.isCameraEnabled = true;
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(mockRoom.localParticipant.setCameraEnabled).not.toHaveBeenCalled();
+            });
+
+            test.each([
+                ['NotAllowedError', CameraError.PermissionDenied],
+                ['PermissionDeniedError', CameraError.PermissionDenied],
+                ['NotFoundError', CameraError.NotFound],
+                ['NotReadableError', CameraError.DeviceInUse],
+                ['OverconstrainedError', CameraError.Other],
+            ])('maps a %s failure to %s', async (errorName, expected) => {
+                mockCameras([builtIn]);
+                mockRoom.localParticipant.setCameraEnabled.mockRejectedValueOnce(new DOMException('failed', errorName));
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(cameraError).toHaveBeenCalledTimes(1);
+                expect(cameraError).toHaveBeenCalledWith(expected);
+            });
+
+            test('maps a failure LiveKit cannot classify to Other', async () => {
+                mockCameras([builtIn]);
+                mockRoom.localParticipant.setCameraEnabled.mockRejectedValueOnce({});
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(cameraError).toHaveBeenCalledWith(CameraError.Other);
+            });
+
+            test('does not report a later camera mute as a disconnect after a failed start', async () => {
+                mockCameras([builtIn]);
+                mockRoom.localParticipant.setCameraEnabled.mockRejectedValueOnce(new DOMException('failed', 'NotReadableError'));
+                await client.connect({channelID: 'test-channel'});
+                await client.enableCamera();
+                cameraError.mockClear();
+
+                mockRoom.fire(RoomEvent.TrackMuted, makeCameraPub({isMuted: true}), mockRoom.localParticipant);
+
+                expect(cameraError).not.toHaveBeenCalled();
+            });
+        });
+
+        test('disableCamera mutes the camera through LiveKit', async () => {
+            await client.connect({channelID: 'test-channel'});
+
+            await client.disableCamera();
+
+            expect(mockRoom.localParticipant.setCameraEnabled).toHaveBeenCalledWith(false);
+        });
+
+        test('isCameraEnabled reads the local participant', async () => {
+            await client.connect({channelID: 'test-channel'});
+            expect(client.isCameraEnabled()).toBe(false);
+
+            mockRoom.localParticipant.isCameraEnabled = true;
+            expect(client.isCameraEnabled()).toBe(true);
+        });
+
+        describe('local camera lost mid-call', () => {
+            const turnOnLocalCamera = async () => {
+                mockCameras([builtIn]);
+                const pub = makeCameraPub({isSubscribed: true, videoTrack: makeVideoTrack()});
+                setLocalCameraPub(pub);
+                await client.connect({channelID: 'test-channel'});
+                await client.enableCamera();
+                mockRoom.fire(RoomEvent.LocalTrackPublished, pub, mockRoom.localParticipant);
+                expect(cameraChanged).toHaveBeenLastCalledWith('me-session', 'me-id', CameraState.Ready);
+                return pub;
+            };
+
+            test('reports a mute we did not ask for as off and Disconnected', async () => {
+                const pub = await turnOnLocalCamera();
+
+                pub.isMuted = true;
+                mockRoom.fire(RoomEvent.TrackMuted, pub, mockRoom.localParticipant);
+
+                expect(cameraChanged).toHaveBeenLastCalledWith('me-session', 'me-id', CameraState.Off);
+                expect(cameraError).toHaveBeenCalledTimes(1);
+                expect(cameraError).toHaveBeenCalledWith(CameraError.Disconnected);
+            });
+
+            test('does not report Disconnected when we turned the camera off', async () => {
+                const pub = await turnOnLocalCamera();
+
+                await client.disableCamera();
+                pub.isMuted = true;
+                mockRoom.fire(RoomEvent.TrackMuted, pub, mockRoom.localParticipant);
+
+                expect(cameraChanged).toHaveBeenLastCalledWith('me-session', 'me-id', CameraState.Off);
+                expect(cameraError).not.toHaveBeenCalled();
+            });
+
+            test('reports Disconnected only once', async () => {
+                const pub = await turnOnLocalCamera();
+
+                pub.isMuted = true;
+                mockRoom.fire(RoomEvent.TrackMuted, pub, mockRoom.localParticipant);
+                mockRoom.fire(RoomEvent.TrackMuted, pub, mockRoom.localParticipant);
+
+                expect(cameraError).toHaveBeenCalledTimes(1);
+            });
+
+            test('does not report Disconnected for a remote camera mute', async () => {
+                await turnOnLocalCamera();
+
+                const remotePub = makeCameraPub({isMuted: true});
+                mockRoom.fire(RoomEvent.TrackMuted, remotePub, makeRemote('user1___p1-session', remotePub));
+
+                expect(cameraError).not.toHaveBeenCalled();
+            });
+
+            test('reports off when the local camera is unpublished', async () => {
+                await turnOnLocalCamera();
+
+                mockRoom.fire(RoomEvent.LocalTrackUnpublished, makeCameraPub(), mockRoom.localParticipant);
+
+                expect(cameraChanged).toHaveBeenLastCalledWith('me-session', 'me-id', CameraState.Off);
+            });
+        });
+
+        describe('setVideoInputDevice', () => {
+            test('switches the published camera with an exact deviceId and saves the choice', async () => {
+                setLocalCameraPub(makeCameraPub({isSubscribed: true, videoTrack: makeVideoTrack()}));
+                mockRoom.switchActiveDevice.mockResolvedValueOnce(true);
+                await client.connect({channelID: 'test-channel'});
+
+                await client.setVideoInputDevice(usb);
+
+                expect(mockRoom.switchActiveDevice).toHaveBeenCalledWith('videoinput', 'cam-2', true);
+                expect(JSON.parse(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY) ?? '')).toEqual({deviceId: 'cam-2', label: 'USB Camera'});
+            });
+
+            test('only saves the choice when the camera has never been published', async () => {
+                await client.connect({channelID: 'test-channel'});
+
+                await client.setVideoInputDevice(usb);
+
+                expect(mockRoom.switchActiveDevice).not.toHaveBeenCalled();
+                expect(JSON.parse(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY) ?? '')).toEqual({deviceId: 'cam-2', label: 'USB Camera'});
+            });
+
+            test('keeps the previous choice when the switch does not take effect', async () => {
+                saveCamera(builtIn);
+                setLocalCameraPub(makeCameraPub({isSubscribed: true, videoTrack: makeVideoTrack()}));
+                mockRoom.switchActiveDevice.mockResolvedValueOnce(false);
+                await client.connect({channelID: 'test-channel'});
+
+                await client.setVideoInputDevice(usb);
+
+                expect(JSON.parse(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY) ?? '')).toEqual({deviceId: 'cam-1', label: 'Built-in Camera'});
+            });
+
+            test('emits the mapped CAMERA_ERROR and keeps the previous choice when the switch fails', async () => {
+                saveCamera(builtIn);
+                setLocalCameraPub(makeCameraPub({isSubscribed: true, videoTrack: makeVideoTrack()}));
+                mockRoom.switchActiveDevice.mockRejectedValueOnce(new DOMException('busy', 'NotReadableError'));
+                await client.connect({channelID: 'test-channel'});
+
+                await client.setVideoInputDevice(usb);
+
+                expect(cameraError).toHaveBeenCalledWith(CameraError.DeviceInUse);
+                expect(JSON.parse(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY) ?? '')).toEqual({deviceId: 'cam-1', label: 'Built-in Camera'});
+            });
+        });
+
+        describe('remote camera state', () => {
+            test('goes Loading on publish, Ready on subscribe, Off on mute, Ready on unmute and Off on unpublish', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const pub = makeCameraPub();
+                const remote = makeRemote('user1___p1-session', pub);
+
+                mockRoom.fire(RoomEvent.TrackPublished, pub, remote);
+                expect(cameraChanged).toHaveBeenLastCalledWith('p1-session', 'user1', CameraState.Loading);
+
+                const track = makeVideoTrack();
+                pub.isSubscribed = true;
+                pub.videoTrack = track;
+                mockRoom.fire(RoomEvent.TrackSubscribed, track, pub, remote);
+                expect(cameraChanged).toHaveBeenLastCalledWith('p1-session', 'user1', CameraState.Ready);
+
+                pub.isMuted = true;
+                mockRoom.fire(RoomEvent.TrackMuted, pub, remote);
+                expect(cameraChanged).toHaveBeenLastCalledWith('p1-session', 'user1', CameraState.Off);
+
+                pub.isMuted = false;
+                mockRoom.fire(RoomEvent.TrackUnmuted, pub, remote);
+                expect(cameraChanged).toHaveBeenLastCalledWith('p1-session', 'user1', CameraState.Ready);
+
+                mockRoom.fire(RoomEvent.TrackUnpublished, pub, remote);
+                expect(cameraChanged).toHaveBeenLastCalledWith('p1-session', 'user1', CameraState.Off);
+
+                expect(cameraChanged).toHaveBeenCalledTimes(5);
+            });
+
+            test('reports Off when a camera is published muted', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const pub = makeCameraPub({isMuted: true});
+
+                mockRoom.fire(RoomEvent.TrackPublished, pub, makeRemote('user1___p1-session', pub));
+
+                expect(cameraChanged).toHaveBeenCalledWith('p1-session', 'user1', CameraState.Off);
+            });
+
+            test.each([
+                [false, CameraState.Loading],
+                [true, CameraState.Off],
+            ])('on unsubscribe with the publication muted=%s, reports %s', async (isMuted, expected) => {
+                await client.connect({channelID: 'test-channel'});
+                const track = makeVideoTrack();
+                const pub = makeCameraPub({isSubscribed: true, videoTrack: track});
+                const remote = makeRemote('user1___p1-session', pub);
+                mockRoom.fire(RoomEvent.TrackSubscribed, track, pub, remote);
+
+                pub.isMuted = isMuted;
+                mockRoom.fire(RoomEvent.TrackUnsubscribed, track, pub, remote);
+
+                expect(cameraChanged).toHaveBeenLastCalledWith('p1-session', 'user1', expected);
+            });
+
+            test('does not repeat a state that has not changed', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const pub = makeCameraPub();
+                const remote = makeRemote('user1___p1-session', pub);
+
+                mockRoom.fire(RoomEvent.TrackPublished, pub, remote);
+                mockRoom.fire(RoomEvent.TrackUnmuted, pub, remote);
+
+                expect(cameraChanged).toHaveBeenCalledTimes(1);
+            });
+
+            test('reports Off before USER_LEFT when a participant with the camera on leaves', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const userLeft = jest.fn();
+                client.on(CALL_EVENT.USER_LEFT, userLeft);
+                const track = makeVideoTrack();
+                const pub = makeCameraPub({isSubscribed: true, videoTrack: track});
+                const remote = makeRemote('user1___p1-session', pub);
+                mockRoom.fire(RoomEvent.TrackSubscribed, track, pub, remote);
+
+                mockRoom.fire(RoomEvent.ParticipantDisconnected, remote);
+
+                expect(cameraChanged).toHaveBeenLastCalledWith('p1-session', 'user1', CameraState.Off);
+                expect(cameraChanged.mock.invocationCallOrder.at(-1)).toBeLessThan(userLeft.mock.invocationCallOrder[0]);
+            });
+
+            test('ignores camera events from a phone participant', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const pub = makeCameraPub();
+
+                mockRoom.fire(RoomEvent.TrackPublished, pub, makeRemote('sip:+15550100', pub, ParticipantKind.SIP));
+
+                expect(cameraChanged).not.toHaveBeenCalled();
+            });
+
+            test('ignores camera events from the bot', async () => {
+                (RestClient.fetch as jest.Mock).mockResolvedValue({...sessionResponse, bot_user_id: 'bot-id'});
+                await client.connect({channelID: 'test-channel'});
+                const pub = makeCameraPub();
+
+                mockRoom.fire(RoomEvent.TrackPublished, pub, makeRemote('bot-id___bot-session', pub));
+
+                expect(cameraChanged).not.toHaveBeenCalled();
+            });
+
+            test('seeds the camera state of participants already in the room on connect', async () => {
+                const track = makeVideoTrack();
+                mockRoom.remoteParticipants.set('r1', makeRemote('remote-1___r1-session', makeCameraPub({isSubscribed: true, videoTrack: track})));
+                mockRoom.remoteParticipants.set('r2', makeRemote('remote-2___r2-session'));
+
+                await client.connect({channelID: 'test-channel'});
+                mockRoom.fire(RoomEvent.Connected);
+
+                expect(cameraChanged).toHaveBeenCalledWith('r1-session', 'remote-1', CameraState.Ready);
+                expect(cameraChanged).toHaveBeenCalledWith('r2-session', 'remote-2', CameraState.Off);
+            });
+        });
+
+        describe('getCameraTrack', () => {
+            test('is Off for an unknown session', async () => {
+                await client.connect({channelID: 'test-channel'});
+
+                expect(client.getCameraTrack('nobody')).toEqual({state: CameraState.Off, track: null});
+            });
+
+            test.each([
+                ['no publication', undefined, CameraState.Off, false],
+                ['a muted publication', makeCameraPub({isMuted: true, isSubscribed: true, videoTrack: makeVideoTrack()}), CameraState.Off, false],
+                ['an unsubscribed publication', makeCameraPub(), CameraState.Loading, false],
+                ['a subscribed publication without a track yet', makeCameraPub({isSubscribed: true}), CameraState.Loading, false],
+                ['a subscribed publication with a track', makeCameraPub({isSubscribed: true, videoTrack: makeVideoTrack()}), CameraState.Ready, true],
+            ])('with %s, is %s', async (_, pub, state, hasTrack) => {
+                mockRoom.remoteParticipants.set('r1', makeRemote('remote-1___r1-session', pub));
+                await client.connect({channelID: 'test-channel'});
+
+                const cameraTrack = client.getCameraTrack('r1-session');
+
+                expect(cameraTrack.state).toBe(state);
+                expect(cameraTrack.track).toBe(hasTrack ? pub?.videoTrack : null);
+            });
+
+            test('reads the local camera for our own session', async () => {
+                const track = makeVideoTrack();
+                setLocalCameraPub(makeCameraPub({isSubscribed: true, videoTrack: track}));
+                await client.connect({channelID: 'test-channel'});
+
+                expect(client.getCameraTrack('me-session')).toEqual({state: CameraState.Ready, track});
+            });
+        });
+
+        test('reSyncMuteAndHandState re-emits every camera state, even when unchanged', async () => {
+            const track = makeVideoTrack();
+            mockRoom.remoteParticipants.set('r1', makeRemote('remote-1___r1-session', makeCameraPub({isSubscribed: true, videoTrack: track})));
+            await client.connect({channelID: 'test-channel'});
+
+            client.reSyncMuteAndHandState();
+            client.reSyncMuteAndHandState();
+
+            expect(cameraChanged).toHaveBeenCalledTimes(4);
+            expect(cameraChanged).toHaveBeenNthCalledWith(1, 'me-session', 'me-id', CameraState.Off);
+            expect(cameraChanged).toHaveBeenNthCalledWith(2, 'r1-session', 'remote-1', CameraState.Ready);
+        });
+
+        test('forgets the last camera states on disconnect', async () => {
+            await client.connect({channelID: 'test-channel'});
+            const pub = makeCameraPub();
+            mockRoom.fire(RoomEvent.TrackPublished, pub, makeRemote('user1___p1-session', pub));
+            mockRoom.fire(RoomEvent.Disconnected);
+
+            expect((client as unknown as {cameraStates: Map<string, CameraState>}).cameraStates.size).toBe(0);
+        });
+
+        describe('canPublishCamera', () => {
+            test.each([
+                ['every source is allowed', {canPublish: true, canPublishSources: []}, true],
+                ['the camera is listed', {canPublish: true, canPublishSources: [Track.sourceToProto(Track.Source.Microphone), Track.sourceToProto(Track.Source.Camera)]}, true],
+                ['the camera is not listed', {canPublish: true, canPublishSources: [Track.sourceToProto(Track.Source.Microphone)]}, false],
+                ['publishing is not allowed', {canPublish: false, canPublishSources: []}, false],
+                ['permissions are not known yet', undefined, false],
+            ])('is %p when %s', (_, permissions, expected) => {
+                mockRoom.localParticipant.permissions = permissions;
+
+                expect(client.canPublishCamera()).toBe(expected);
+            });
+        });
+
+        describe('connection quality', () => {
+            test('emits REMOTE_QUALITY_CHANGED, and not QUALITY_CHANGED, for another participant', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const local = jest.fn();
+                const remote = jest.fn();
+                client.on(CALL_EVENT.QUALITY_CHANGED, local);
+                client.on(CALL_EVENT.REMOTE_QUALITY_CHANGED, remote);
+
+                mockRoom.fire(RoomEvent.ConnectionQualityChanged, ConnectionQuality.Poor, makeRemote('r1___r1-session'));
+
+                expect(remote).toHaveBeenCalledWith('r1-session', 'r1', ConnectionQuality.Poor);
+                expect(local).not.toHaveBeenCalled();
+            });
+
+            test('emits only QUALITY_CHANGED for ourselves', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const local = jest.fn();
+                const remote = jest.fn();
+                client.on(CALL_EVENT.QUALITY_CHANGED, local);
+                client.on(CALL_EVENT.REMOTE_QUALITY_CHANGED, remote);
+
+                mockRoom.fire(RoomEvent.ConnectionQualityChanged, ConnectionQuality.Good, mockRoom.localParticipant);
+
+                expect(local).toHaveBeenCalledWith(ConnectionQuality.Good);
+                expect(remote).not.toHaveBeenCalled();
+            });
+
+            test('ignores the phone participant', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const remote = jest.fn();
+                client.on(CALL_EVENT.REMOTE_QUALITY_CHANGED, remote);
+
+                mockRoom.fire(RoomEvent.ConnectionQualityChanged, ConnectionQuality.Poor, makeRemote('sip:+15550100', undefined, ParticipantKind.SIP));
+
+                expect(remote).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('MediaDevicesError', () => {
+            test('leaves camera failures to CAMERA_ERROR', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const errorListener = jest.fn();
+                client.on(CALL_EVENT.ERROR, errorListener);
+
+                mockRoom.fire(RoomEvent.MediaDevicesError, new DOMException('busy', 'NotReadableError'), 'videoinput');
+
+                expect(errorListener).not.toHaveBeenCalled();
+            });
+
+            test('still reports microphone failures', async () => {
+                await client.connect({channelID: 'test-channel'});
+                const errorListener = jest.fn();
+                client.on(CALL_EVENT.ERROR, errorListener);
+
+                const err = new DOMException('busy', 'NotReadableError');
+                mockRoom.fire(RoomEvent.MediaDevicesError, err, 'audioinput');
+
+                expect(errorListener).toHaveBeenCalledWith(err);
+            });
+        });
+
+        describe('getLocalVideoDevices', () => {
+            test('lists cameras without asking for camera permission', async () => {
+                mockCameras([builtIn, usb]);
+
+                await expect(CallClient.getLocalVideoDevices()).resolves.toEqual([builtIn, usb]);
+
+                expect(Room.getLocalDevices).toHaveBeenCalledWith('videoinput', false);
+                expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+            });
+
+            test('asks for permission only when told to', async () => {
+                await CallClient.getLocalVideoDevices(true);
+
+                expect(Room.getLocalDevices).toHaveBeenCalledWith('videoinput', true);
+            });
         });
     });
 });

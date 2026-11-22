@@ -7,6 +7,7 @@ import {UserProfile} from '@mattermost/types/users';
 
 import {
     CALL_END,
+    LOCAL_SESSION_CLOSE,
     SESSIONS_RECEIVED,
     UN_INITIALIZED,
     USER_HAND_LOWERED,
@@ -137,6 +138,14 @@ export const callEnded = (channelID: Channel['id'], callID: string) => ({
     },
 });
 export type ActionCallEnded = ReturnType<typeof callEnded>
+
+export const localSessionClose = (channelID: Channel['id']) => ({
+    type: LOCAL_SESSION_CLOSE,
+    data: {
+        channelID,
+    },
+});
+export type ActionLocalSessionClose = ReturnType<typeof localSessionClose>
 
 export type Actions =
   | ActionUnInitialized
