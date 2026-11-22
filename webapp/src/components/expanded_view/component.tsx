@@ -19,7 +19,7 @@ import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
-import {CameraState, type ScreenShareTrack, type ScreenSharingSession} from 'src/clients/call/types';
+import type {CameraState, ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
@@ -135,8 +135,7 @@ interface Props extends RouteComponentProps {
     callHostChanged: (channelID: string, hostID: string) => void;
     userMuted: (channelID: string, sessionID: string, userID: string) => void;
     userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
-    userCameraOn: (channelID: string, sessionID: string, userID: string) => void;
-    userCameraOff: (channelID: string, sessionID: string, userID: string) => void;
+    userCameraChanged: (channelID: string, sessionID: string, userID: string, cameraState: CameraState) => void;
     joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
     leaveUser: (channelID: string, userID: string, sessionID: string) => void;
     usersVoiceActivityChanged: (channelID: string, sessionIDs: string[], userIDs: string[]) => void;
@@ -675,11 +674,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.props.userUnmuted(callsClient.channelID, sessionID, userID);
         });
         onClient(CALL_EVENT.CAMERA_CHANGED, (sessionID: string, userID: string, cameraState: CameraState) => {
-            if (cameraState === CameraState.Off) {
-                this.props.userCameraOff(callsClient.channelID, sessionID, userID);
-            } else {
-                this.props.userCameraOn(callsClient.channelID, sessionID, userID);
-            }
+            this.props.userCameraChanged(callsClient.channelID, sessionID, userID, cameraState);
         });
 
         // In the popout, this component's Redux store is separate from the
