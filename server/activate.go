@@ -179,6 +179,8 @@ func (p *Plugin) OnActivate() (retErr error) {
 
 	go p.reconciler()
 
+	go p.runMetricsUpdateJob()
+
 	p.sipTrunkActive.Store(true)
 	p.reconcileSIPTrunkAsync()
 

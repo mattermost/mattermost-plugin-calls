@@ -91,4 +91,10 @@ type CallProps struct {
 
 type CallStats struct {
 	ScreenDuration int64 `json:"screen_duration,omitempty"`
+	// VideoDuration is cumulative participant-seconds of video. Not written on v2 yet.
+	VideoDuration int64 `json:"video_duration,omitempty"`
+	// HasUsedVideo is set once any participant enables video. Not written on v2 yet.
+	HasUsedVideo bool `json:"has_used_video,omitempty"`
+	// HasUsedScreenShare is set once any participant shares their screen.
+	HasUsedScreenShare bool `json:"has_used_screen_share,omitempty"`
 }
