@@ -226,7 +226,7 @@ export default function AudioDevicesSettingsSection() {
                                     className='devices_settings_error'
                                     role='alert'
                                 >
-                                    {formatMessage({defaultMessage: 'Unable to load audio devices. Make sure a microphone is connected and that Mattermost is allowed to use it.'})}
+                                    {formatMessage({defaultMessage: 'Couldn\'t load your microphones and speakers. Make sure a microphone is connected and that Mattermost is allowed to use it.'})}
                                 </span>
                             )}
                             <Description>{description}</Description>
