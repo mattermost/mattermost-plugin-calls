@@ -262,7 +262,7 @@ func testGetActiveCallJobs(t *testing.T, store *Store) {
 }
 
 func testCallsJobsTableColumnAddition(t *testing.T, store *Store) {
-	// This test simulates adding a new column to the calls_jobs table
+	// This test simulates adding a new column to the calls_v2_jobs table
 	// and verifies that existing code can still fetch data correctly
 
 	// Create a job with the current schema
@@ -281,12 +281,12 @@ func testCallsJobsTableColumnAddition(t *testing.T, store *Store) {
 	err := store.CreateCallJob(job)
 	require.NoError(t, err)
 
-	// Simulate adding a new column to the calls_jobs table
+	// Simulate adding a new column to the calls_v2_jobs table
 	var alterTableSQL string
 	if store.driverName == model.DatabaseDriverPostgres {
-		alterTableSQL = "ALTER TABLE calls_jobs ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+		alterTableSQL = "ALTER TABLE calls_v2_jobs ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
 	} else {
-		alterTableSQL = "ALTER TABLE calls_jobs ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+		alterTableSQL = "ALTER TABLE calls_v2_jobs ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
 	}
 
 	_, err = store.wDB.Exec(alterTableSQL)
@@ -312,9 +312,9 @@ func testCallsJobsTableColumnAddition(t *testing.T, store *Store) {
 	// Clean up - drop the test column
 	var dropColumnSQL string
 	if store.driverName == model.DatabaseDriverPostgres {
-		dropColumnSQL = "ALTER TABLE calls_jobs DROP COLUMN test_column"
+		dropColumnSQL = "ALTER TABLE calls_v2_jobs DROP COLUMN test_column"
 	} else {
-		dropColumnSQL = "ALTER TABLE calls_jobs DROP COLUMN test_column"
+		dropColumnSQL = "ALTER TABLE calls_v2_jobs DROP COLUMN test_column"
 	}
 
 	_, err = store.wDB.Exec(dropColumnSQL)

@@ -41,7 +41,7 @@ func (s *Store) CreateCall(call *public.Call) error {
 	}
 
 	qb := getQueryBuilder().
-		Insert("calls").
+		Insert(tableCalls).
 		Columns(callsColumns...).
 		Values(call.ID, call.ChannelID, call.StartAt, call.EndAt, call.CreateAt, call.DeleteAt,
 			call.Title, call.PostID, call.ThreadID, call.OwnerID,
@@ -73,7 +73,7 @@ func (s *Store) UpdateCall(call *public.Call) error {
 	}
 
 	qb := getQueryBuilder().
-		Update("calls").
+		Update(tableCalls).
 		Set("EndAt", call.EndAt).
 		Set("DeleteAt", call.DeleteAt).
 		Set("ThreadID", call.ThreadID).
@@ -105,7 +105,7 @@ func (s *Store) DeleteCall(callID string) error {
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Update("calls").
+		Update(tableCalls).
 		Set("DeleteAt", time.Now().UnixMilli()).
 		Where(sq.Eq{"ID": callID})
 
@@ -131,7 +131,7 @@ func (s *Store) DeleteCallByChannelID(channelID string) error {
 	}(time.Now())
 
 	qb := getQueryBuilder().
-		Update("calls").
+		Update(tableCalls).
 		Set("DeleteAt", time.Now().UnixMilli()).
 		Where(sq.Eq{"ChannelID": channelID})
 
@@ -157,7 +157,7 @@ func (s *Store) GetCall(callID string, opts GetCallOpts) (*public.Call, error) {
 	}(time.Now())
 
 	qb := getQueryBuilder().Select(callsColumns...).
-		From("calls").
+		From(tableCalls).
 		Where(sq.Eq{"ID": callID})
 
 	q, args, err := qb.ToSql()
@@ -184,7 +184,7 @@ func (s *Store) GetCallActive(channelID string, opts GetCallOpts) (bool, error) 
 	}(time.Now())
 
 	qb := getQueryBuilder().Select("1").
-		From("calls").
+		From(tableCalls).
 		Where(
 			sq.And{
 				sq.Eq{"ChannelID": channelID},
@@ -217,7 +217,7 @@ func (s *Store) GetActiveCallByChannelID(channelID string, opts GetCallOpts) (*p
 	}(time.Now())
 
 	qb := getQueryBuilder().Select(callsColumns...).
-		From("calls").
+		From(tableCalls).
 		Where(
 			sq.And{
 				sq.Eq{"ChannelID": channelID},
@@ -281,7 +281,7 @@ func (s *Store) GetCalls(filter GetCallsFilter, opts GetCallOpts) ([]*public.Cal
 	}
 
 	qb := getQueryBuilder().Select(callsColumns...).
-		From("calls").
+		From(tableCalls).
 		Where(conds).
 		OrderBy("StartAt DESC, ID")
 
@@ -311,7 +311,7 @@ func (s *Store) GetAllActiveCalls(opts GetCallOpts) ([]*public.Call, error) {
 	}(time.Now())
 
 	qb := getQueryBuilder().Select(callsColumns...).
-		From("calls").
+		From(tableCalls).
 		Where(
 			sq.And{
 				sq.Eq{"EndAt": 0},

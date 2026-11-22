@@ -11,7 +11,7 @@ import (
 
 // Participant attendance auditing (MM-71363).
 //
-// Durable first-join / last-leave timestamps are written to the calls_participants
+// Durable first-join / last-leave timestamps are written to the calls_v2_participants
 // table synchronously on the join/leave lifecycle paths, alongside the existing
 // call and session writes, so an acknowledged join/leave always has a persisted
 // attendance record: the data survives a crash to the same degree as core call

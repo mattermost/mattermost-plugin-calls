@@ -144,7 +144,7 @@ func testGetAllCallsChannels(t *testing.T, store *Store) {
 }
 
 func testCallsChannelsTableColumnAddition(t *testing.T, store *Store) {
-	// This test simulates adding a new column to the calls_channels table
+	// This test simulates adding a new column to the calls_v2_channels table
 	// and verifies that existing code can still fetch data correctly
 
 	// Create a channel with the current schema
@@ -160,12 +160,12 @@ func testCallsChannelsTableColumnAddition(t *testing.T, store *Store) {
 	err := store.CreateCallsChannel(channel)
 	require.NoError(t, err)
 
-	// Simulate adding a new column to the calls_channels table
+	// Simulate adding a new column to the calls_v2_channels table
 	var alterTableSQL string
 	if store.driverName == model.DatabaseDriverPostgres {
-		alterTableSQL = "ALTER TABLE calls_channels ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+		alterTableSQL = "ALTER TABLE calls_v2_channels ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
 	} else {
-		alterTableSQL = "ALTER TABLE calls_channels ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
+		alterTableSQL = "ALTER TABLE calls_v2_channels ADD COLUMN test_column VARCHAR(26) DEFAULT NULL"
 	}
 
 	_, err = store.wDB.Exec(alterTableSQL)
@@ -191,9 +191,9 @@ func testCallsChannelsTableColumnAddition(t *testing.T, store *Store) {
 	// Clean up - drop the test column
 	var dropColumnSQL string
 	if store.driverName == model.DatabaseDriverPostgres {
-		dropColumnSQL = "ALTER TABLE calls_channels DROP COLUMN test_column"
+		dropColumnSQL = "ALTER TABLE calls_v2_channels DROP COLUMN test_column"
 	} else {
-		dropColumnSQL = "ALTER TABLE calls_channels DROP COLUMN test_column"
+		dropColumnSQL = "ALTER TABLE calls_v2_channels DROP COLUMN test_column"
 	}
 
 	_, err = store.wDB.Exec(dropColumnSQL)

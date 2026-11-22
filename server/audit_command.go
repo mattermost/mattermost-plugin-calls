@@ -431,7 +431,7 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 
 		// The participant set is the union of two sources so no attendee is ever
 		// dropped from the audit:
-		//  - calls_participants (authoritative; the dedicated attendance table), and
+		//  - calls_v2_participants (authoritative; the dedicated attendance table), and
 		//  - the call's participant list — Call.Participants once the call has ended,
 		//    or the live Props.Participants set while it is still active.
 		participantSet := map[string]struct{}{}
@@ -484,8 +484,8 @@ func (p *Plugin) buildAuditCSV(calls []*public.Call, participantTimes map[string
 
 		for _, id := range participants {
 			// Identities only present in Call.Participants / Props.Participants (not
-			// in calls_participants) are always Mattermost users; a phone callee only
-			// ever comes from the calls_participants table, so it carries a row here.
+			// in calls_v2_participants) are always Mattermost users; a phone callee only
+			// ever comes from the calls_v2_participants table, so it carries a row here.
 			identityType := public.IdentityTypeUser
 			var firstJoinUTC, lastLeaveUTC string
 			if cp := callParticipants[id]; cp != nil {

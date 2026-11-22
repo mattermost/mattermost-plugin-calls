@@ -28,6 +28,14 @@ func (p *Plugin) initDB() error {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 
+	// Best effort: pick up calls made under v1 since v2 last ran. A failure
+	// leaves them to be picked up at the next activation.
+	if n, err := store.CatchUpV1Calls(); err != nil {
+		p.LogWarn("Failed to copy v1 calls into v2 tables, will retry at next activation", "err", err.Error())
+	} else if n > 0 {
+		p.LogInfo("Copied calls made under v1 into v2 tables", "count", n)
+	}
+
 	p.store = store
 	p.metrics.RegisterDBMetrics(p.store.WriterDB(), "writer")
 
