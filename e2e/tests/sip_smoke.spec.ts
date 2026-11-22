@@ -9,7 +9,7 @@ import {RoomServiceClient, SipClient} from 'livekit-server-sdk';
 
 // LiveKit API endpoint + credentials, supplied to the playwright container by
 // e2e/scripts/run.sh. The `devkey` pair is the one shared with the SIP bridge
-// config (e2e/docker/livekit.yaml + ../../sip.yaml).
+// config (e2e/docker/livekit.yaml + dev/livekit-sip.yaml).
 const livekitHost = process.env.LIVEKIT_HOST || 'http://livekit:7880';
 const livekitApiKey = process.env.LIVEKIT_API_KEY || 'devkey';
 const livekitApiSecret = process.env.LIVEKIT_API_SECRET || 'this-is-a-32-plus-character-dev-secret';

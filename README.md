@@ -50,6 +50,31 @@ make dist-linux-amd64
 
 This produces `dist/com.mattermost.calls-<version>-linux-amd64-slim.tar.gz` containing only the one server binary. `dist-linux-arm64`, `dist-freebsd-amd64` and `dist-openbsd-amd64` are also available.
 
+### Running LiveKit locally
+
+Calls needs a LiveKit server. Start one in Docker with the target that matches how clients reach your Mattermost:
+
+| Target | Use it when |
+| --- | --- |
+| `make livekit-docker-start` | Local development on `http://localhost` |
+| `make livekit-tls-docker-start` | Other machines connect to an HTTPS Mattermost. Requires `LIVEKIT_TLS_CERT` and `LIVEKIT_TLS_KEY` |
+| `make livekit-sip-docker-start` | Testing outbound SIP calls |
+| `make livekit-sip-sink-docker-start` | Testing outbound SIP calls against a bundled auto-answer sink |
+
+Each target prints the plugin settings when it starts. Enter them in *System Console → Plugins → Calls*:
+
+| Setting | Value |
+| --- | --- |
+| LiveKit server URL | `ws://localhost:7880`. From other machines, `ws://<your-LAN-IP>:7880`. With `livekit-tls-docker-start`, `wss://<your-LAN-IP>:7443` |
+| LiveKit API key | `devkey` |
+| LiveKit API secret | `this-is-a-32-plus-character-dev-secret` |
+
+The key and secret come from the `keys:` block in `dev/livekit.yaml`. Stop LiveKit with `make livekit-docker-stop` or `make livekit-tls-docker-stop`. Both SIP targets share `make livekit-sip-docker-stop`, which also stops Redis, the SIP bridge and the Asterisk sink.
+
+The targets work out your machine's network address on their own. If that fails, or picks the wrong network, set it yourself, for example `make livekit-docker-start LIVEKIT_NODE_IP=192.168.1.20`.
+
+These credentials are public and for local development only. To run LiveKit on a real server, see [`deploy/compose`](deploy/compose/README.md).
+
 For more details on how to develop a plugin refer to the official [documentation](https://developers.mattermost.com/extend/plugins/).
 
 ## How to Release

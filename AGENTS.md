@@ -9,6 +9,8 @@ Mattermost Calls plugin: SIP, voice/video calling, and screen sharing, powered b
 - `standalone/` — self-contained app for the Desktop call widget and the recorder
 - `e2e/` — End-to-end Playwright tests
 - `lt/` — load-testing tool
+- `dev/` — Docker setup for a local LiveKit (dev only)
+- `deploy/compose/` — Docker Compose setup for running LiveKit on a real server
 
 ## Architecture
 
@@ -46,7 +48,7 @@ Calls needs a LiveKit server. The `Makefile` has several targets because the rig
 - `make livekit-sip-docker-start` — adds Redis and the SIP bridge for outbound SIP
 - `make livekit-sip-sink-docker-start` — the SIP stack plus a bundled Asterisk auto-answer sink for media testing
 
-Each has a matching `-stop` target.
+Stop them with `livekit-docker-stop`, `livekit-tls-docker-stop` or, for both SIP targets, `livekit-sip-docker-stop`. Their config lives in `dev/` and uses the public dev credentials (API key `devkey`, secret in `dev/livekit.yaml`), which each start target prints. `deploy/compose/` is the setup for real servers; never copy dev config there.
 
 ## Toolchain
 

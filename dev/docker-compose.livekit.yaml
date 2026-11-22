@@ -1,21 +1,24 @@
+# Local development only: every config in this folder uses the public `devkey`
+# credentials. For a real server, use deploy/compose/ instead.
+name: mattermost-calls-livekit-dev
 services:
   livekit-dev:
     image: livekit/livekit-server:v1.13.10
     restart: unless-stopped
     ports:
       - "7880:7880"       # Signaling (HTTP/WebSocket)
-      - "7881:7881"       # TURN/TCP fallback
+      - "7881:7881"       # WebRTC/TCP media (fallback when UDP is blocked)
       - "7882:7882/udp"   # WebRTC/UDP media
     volumes:
-      # Default is the lean, no-redis config. The SIP make targets override
-      # LIVEKIT_CONFIG=./livekit-sip.yaml to add the `redis:` block (distributed
-      # mode) the SIP bridge requires.
-      - ${LIVEKIT_CONFIG:-./livekit.yaml}:/etc/livekit.yaml
+      - ./livekit.yaml:/etc/livekit.yaml
     command: >
       --config /etc/livekit.yaml
       --node-ip=${LIVEKIT_NODE_IP}
     environment:
-      - LIVEKIT_NODE_IP=${LIVEKIT_NODE_IP}
+      # Empty runs LiveKit without Redis; the SIP make targets set it to redis:6379.
+      - REDIS_HOST=${LIVEKIT_REDIS_HOST:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # TLS-terminating reverse proxy for the LiveKit signaling WebSocket.
   # Only needed when external LAN machines connect to an HTTPS Mattermost
@@ -24,7 +27,7 @@ services:
   # Started via `make livekit-tls-docker-start`; not part of the plaintext
   # `livekit-docker-start` flow.
   livekit-proxy:
-    image: caddy:2
+    image: caddy:2.10-alpine
     restart: unless-stopped
     ports:
       - "7443:7443"       # wss signaling (TLS) -> livekit-dev:7880
@@ -37,8 +40,8 @@ services:
 
   # --- SIP outbound dialing infra (opt-in via the `sip` profile) ---------------
   # Brought up by `make livekit-sip-docker-start`, which also points livekit-dev
-  # at livekit-sip.yaml (redis-enabled). These never start on the default
-  # `make livekit-docker-start` path.
+  # at this Redis. These never start on the default `make livekit-docker-start`
+  # path.
 
   # Dedicated Redis for the LiveKit <-> SIP PSRPC bus. Deliberately NOT
   # Mattermost's Redis: avoids an availability dependency on MM's (optional)
@@ -62,10 +65,10 @@ services:
     profiles: ["sip"]
     restart: unless-stopped
     volumes:
-      - ./sip.yaml:/etc/sip.yaml
+      - ./livekit-sip.yaml:/etc/sip.yaml
     command: --config /etc/sip.yaml
     # To dial an EXTERNAL provider instead of the bundled sink, publish the SIP
-    # signaling + RTP ports to the host and flip use_external_ip in sip.yaml:
+    # signaling + RTP ports to the host and flip use_external_ip in livekit-sip.yaml:
     # ports:
     #   - "5060:5060/udp"
     #   - "10000-10100:10000-10100/udp"
@@ -80,9 +83,9 @@ services:
   # UAS that Answer()s, plays a greeting, then Echo()s the caller's RTP back to
   # confirm bidirectional media. For human/manual validation only.
   asterisk:
-    image: andrius/asterisk:20
+    image: andrius/asterisk:20@sha256:3eeac74ba7ce7981ec43ad552668df02cb2f274f60e3336c1c95bc07d11dd0cc # Asterisk 20.20.1
     profiles: ["sink"]
     restart: unless-stopped
     volumes:
-      - ./docker/asterisk/pjsip.conf:/etc/asterisk/pjsip.conf:ro
-      - ./docker/asterisk/extensions.conf:/etc/asterisk/extensions.conf:ro
+      - ./asterisk-pjsip.conf:/etc/asterisk/pjsip.conf:ro
+      - ./asterisk-extensions.conf:/etc/asterisk/extensions.conf:ro
