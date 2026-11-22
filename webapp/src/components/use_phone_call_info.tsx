@@ -10,7 +10,7 @@ import {useDispatch, useSelector} from 'react-redux';
 import {loadProfilesByIdsIfMissing} from 'src/actions';
 import {phoneNumberForDisplay} from 'src/phone_utils';
 import {phoneCallPropsForCurrentCall} from 'src/selectors';
-import {sipCallStateForCurrentCall} from 'src/state/sip_call_state/selectors';
+import {phoneLegForCurrentCall} from 'src/state/phone_legs/selectors';
 import {PhoneCallProps} from 'src/types/types';
 import {getUserDisplayName} from 'src/utils';
 
@@ -48,7 +48,7 @@ export function usePhoneCallInfo(): PhoneCallInfo {
     const dispatch = useDispatch();
     const {formatMessage} = useIntl();
     const phone = useSelector(phoneCallPropsForCurrentCall);
-    const sipState = useSelector(sipCallStateForCurrentCall);
+    const sipState = useSelector(phoneLegForCurrentCall);
     const targetUserID = phone?.targetUserID ?? '';
     const targetUser = useSelector((state: GlobalState) => (targetUserID ? getUser(state, targetUserID) : undefined));
 

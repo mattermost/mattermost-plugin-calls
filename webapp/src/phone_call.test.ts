@@ -17,7 +17,7 @@ import type CallClient from 'src/clients/call/call_client';
 import {CALL_EVENT} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
 import {channelIDForCurrentCall, clientConnecting, defaultEnabled, getCallIDForChannel, sipOutboundEnabled} from 'src/selectors';
-import {SIP_CALL_STATUS_CHANGED} from 'src/state/sip_call_state/action_types';
+import {PHONE_LEG_STATUS_CHANGED} from 'src/state/phone_legs/action_types';
 import {CallPostStatus} from 'src/types/types';
 import {getCallsClient, isCallsPopOut, isMobile, sendDesktopEvent, shouldRenderDesktopWidget} from 'src/utils';
 
@@ -660,7 +660,7 @@ describe('phone_call', () => {
 
     describe('trackSIPCallStatus', () => {
         const sipStatusAction = (status: string) => expect.objectContaining({
-            type: SIP_CALL_STATUS_CHANGED,
+            type: PHONE_LEG_STATUS_CHANGED,
             data: expect.objectContaining({channelID: 'bot-dm', status}),
         });
 

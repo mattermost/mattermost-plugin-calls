@@ -317,7 +317,7 @@ export type SIPCallStatus = 'dialing' | 'ringing' | 'automation' | 'active' | 'h
 
 export const SIP_CALL_STATUSES: ReadonlyArray<SIPCallStatus> = ['dialing', 'ringing', 'automation', 'active', 'hangup'];
 
-export type SIPCallState = {
+export type PhoneLeg = {
     status: SIPCallStatus;
 
     // When the leg first became active. Client-side only, so the call timer

@@ -44,7 +44,7 @@ const buildState = ({channelType = 'D', ringingEnabled = true, phone = false, si
                 ...(otherSessions && {'session-2': {session_id: 'session-2', user_id: 'other-user', unmuted: true, raised_hand: 0}}),
             },
         },
-        sipCallStates: sipState ? {'channel-id': sipState} : {},
+        phoneLegs: sipState ? {'channel-id': sipState} : {},
         callsConfig: {EnableRinging: ringingEnabled},
     },
     entities: {

@@ -73,7 +73,7 @@ const stubState = (channel: Channel) => ({
         calls: {},
         sessions: {},
         dmCalleeAnsweredAt: {},
-        sipCallStates: {},
+        phoneLegs: {},
     },
     entities: {
         channels: {channels: {[channel.id]: channel}},
@@ -548,7 +548,7 @@ describe('phone call', () => {
                         phone: {number: '+13125550174', displayNumber: '312-555-0174', label: 'DSN', targetUserID: '', ...phone},
                     },
                 },
-                sipCallStates: sipState ? {[botDMChannel.id]: sipState} : {},
+                phoneLegs: sipState ? {[botDMChannel.id]: sipState} : {},
             },
             entities: {
                 ...state.entities,

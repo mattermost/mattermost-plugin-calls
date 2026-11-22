@@ -6,27 +6,27 @@ import {createSelector} from 'reselect';
 import {RootState} from 'src/reducers';
 import {phoneCallPropsForCurrentCall} from 'src/selectors';
 import {channelIDForCurrentCall, pluginReduxStore} from 'src/state/root_selectors';
-import {SIPCallState} from 'src/types/types';
+import {PhoneLeg} from 'src/types/types';
 
-const sipCallStatesInPluginReduxStore = (state: GlobalState): RootState['sipCallStates'] =>
-    pluginReduxStore(state).sipCallStates;
+const phoneLegsInPluginReduxStore = (state: GlobalState): RootState['phoneLegs'] =>
+    pluginReduxStore(state).phoneLegs;
 
-export const sipCallStateForCallInChannel = (state: GlobalState, channelID: string): SIPCallState | undefined =>
-    sipCallStatesInPluginReduxStore(state)[channelID];
+export const phoneLegForCallInChannel = (state: GlobalState, channelID: string): PhoneLeg | undefined =>
+    phoneLegsInPluginReduxStore(state)[channelID];
 
-export const sipCallStateForCurrentCall: (state: GlobalState) => SIPCallState | undefined =
+export const phoneLegForCurrentCall: (state: GlobalState) => PhoneLeg | undefined =
     createSelector(
-        sipCallStatesInPluginReduxStore,
+        phoneLegsInPluginReduxStore,
         channelIDForCurrentCall,
-        (sipCallStates, channelID) => sipCallStates[channelID],
+        (phoneLegs, channelID) => phoneLegs[channelID],
     );
 
 // True while the phone leg of the current phone call has not been answered yet.
 export const isCurrentPhoneCallRinging: (state: GlobalState) => boolean =
     createSelector(
         phoneCallPropsForCurrentCall,
-        sipCallStateForCurrentCall,
-        (phone, sipState) => Boolean(phone) && !sipState?.answeredAt,
+        phoneLegForCurrentCall,
+        (phone, phoneLeg) => Boolean(phone) && !phoneLeg?.answeredAt,
     );
 
 // True while the phone leg of the current phone call is answered and connected.
@@ -34,6 +34,6 @@ export const isCurrentPhoneCallRinging: (state: GlobalState) => boolean =
 export const isCurrentPhoneCallActive: (state: GlobalState) => boolean =
     createSelector(
         phoneCallPropsForCurrentCall,
-        sipCallStateForCurrentCall,
-        (phone, sipState) => Boolean(phone) && sipState?.status === 'active',
+        phoneLegForCurrentCall,
+        (phone, phoneLeg) => Boolean(phone) && phoneLeg?.status === 'active',
     );

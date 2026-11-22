@@ -35,6 +35,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
+import {isCurrentPhoneCallActive, isCurrentPhoneCallRinging} from 'src/state/phone_legs/selectors';
 import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
 import {
     profilesInCurrentCallMap,
@@ -43,7 +44,6 @@ import {
     sessionsInCurrentCall,
     sessionsInCurrentCallMap,
 } from 'src/state/session/selectors';
-import {isCurrentPhoneCallActive, isCurrentPhoneCallRinging} from 'src/state/sip_call_state/selectors';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 

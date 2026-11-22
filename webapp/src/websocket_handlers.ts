@@ -206,7 +206,7 @@ export function handleUserJoined(store: Store, ev: WebSocketMessage<UserJoinedDa
         return;
     }
 
-    // The phone leg is tracked through sipCallStates, not as a participant.
+    // The phone leg is tracked through phoneLegs, not as a participant.
     if (ev.data.is_sip_participant) {
         return;
     }

@@ -5,19 +5,19 @@ import {Channel} from '@mattermost/types/channels';
 import {ActionCallEnded, ActionUnInitialized} from 'src/state/session/actions';
 import {SIPCallStatus} from 'src/types/types';
 
-import {SIP_CALL_STATUS_CHANGED} from './action_types';
+import {PHONE_LEG_STATUS_CHANGED} from './action_types';
 
-export const sipCallStatusChanged = (channelID: Channel['id'], status: SIPCallStatus, now = Date.now()) => ({
-    type: SIP_CALL_STATUS_CHANGED,
+export const phoneLegStatusChanged = (channelID: Channel['id'], status: SIPCallStatus, now = Date.now()) => ({
+    type: PHONE_LEG_STATUS_CHANGED,
     data: {
         channelID,
         status,
         now,
     },
 });
-export type ActionSIPCallStatusChanged = ReturnType<typeof sipCallStatusChanged>
+export type ActionPhoneLegStatusChanged = ReturnType<typeof phoneLegStatusChanged>
 
 export type Actions =
   | ActionUnInitialized
   | ActionCallEnded
-  | ActionSIPCallStatusChanged;
+  | ActionPhoneLegStatusChanged;
