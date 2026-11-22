@@ -20,7 +20,7 @@ jest.mock('src/log', () => ({
     logErr: jest.fn(),
 }));
 
-const LOAD_ERROR_MESSAGE = 'Unable to load audio devices. Make sure a microphone is connected and that Mattermost is allowed to use it.';
+const LOAD_ERROR_MESSAGE = 'Couldn\'t load your microphones and speakers. Make sure a microphone is connected and that Mattermost is allowed to use it.';
 
 const makeDevice = (kind: MediaDeviceKind, deviceId: string, label: string) => ({deviceId, label, kind, groupId: ''}) as MediaDeviceInfo;
 
