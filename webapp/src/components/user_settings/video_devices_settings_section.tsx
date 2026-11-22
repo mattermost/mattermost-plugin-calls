@@ -16,7 +16,7 @@ import CallClient, {CameraError} from 'src/clients/call';
 import {CAMERA_CAPTURE_DEFAULTS} from 'src/clients/call/constants';
 import Avatar from 'src/components/avatar/avatar';
 import {Description, Fieldset, SelectionWrapper, SelectLabel, type SelectOption} from 'src/components/user_settings/common';
-import VideoTrackPlayer from 'src/components/video_track_player';
+import VideoTrackPlayer from 'src/components/video_track_player/video_track_player';
 import {STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, STORAGE_CALLS_MIRROR_VIDEO} from 'src/constants';
 import {logErr} from 'src/log';
 
