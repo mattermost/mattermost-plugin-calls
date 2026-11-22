@@ -34,7 +34,6 @@ import {
     recentlyJoinedUsersInCurrentCall,
     recordingForCurrentCall,
     recordingsEnabled,
-    screenSharingSessionForCurrentCall,
     sessionForCurrentCall,
     sessionsForOtherUsersInCall,
     sessionsInCurrentCall,
@@ -43,6 +42,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
+import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 

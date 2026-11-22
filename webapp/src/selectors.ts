@@ -100,7 +100,7 @@ export const teamForCurrentCall: (state: GlobalState) => Team | null =
         },
     );
 
-const sessionsInCalls = (state: GlobalState): RootState['sessions'] => {
+export const sessionsInCalls = (state: GlobalState): RootState['sessions'] => {
     return pluginReduxStore(state).sessions;
 };
 
@@ -386,18 +386,6 @@ export const hostChangeAtForCurrentCall: (state: GlobalState) => number =
 export const callDismissedNotification = (state: GlobalState, channelID: string) => {
     return Boolean(pluginReduxStore(state).dismissedCalls[channelID]);
 };
-
-const screenSharingIDsForCalls = (state: GlobalState): RootState['screenSharingIDs'] => {
-    return pluginReduxStore(state).screenSharingIDs;
-};
-
-export const screenSharingSessionForCurrentCall: (state: GlobalState) => UserSessionState | undefined =
-    createSelector(
-        screenSharingIDsForCalls,
-        channelIDForCurrentCall,
-        sessionsInCalls,
-        (ids, channelID, sessions) => sessions[channelID]?.[ids[channelID]],
-    );
 
 export const threadIDForCallInChannel = (state: GlobalState, channelID: string) => {
     return pluginReduxStore(state).calls[channelID]?.threadID || '';

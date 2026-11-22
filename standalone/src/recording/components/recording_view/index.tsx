@@ -20,9 +20,9 @@ import {callProfileImages} from 'src/recording/selectors';
 import {
     hostIDForCurrentCall,
     profilesInCurrentCallMap,
-    screenSharingSessionForCurrentCall,
     sessionsInCurrentCall,
 } from 'src/selectors';
+import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
 
 const RecordingView = () => {
     const {formatMessage} = useIntl();
