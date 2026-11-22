@@ -1,11 +1,11 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {cameraOnIdsForCurrentCall, isCameraOnForSession} from 'src/selectors';
 import {callEnded, localSessionClose, unInitialized, userLeft} from 'src/state/session/actions';
 
 import {userCameraOff, userCameraOn} from './actions';
 import {reducer} from './reducer';
+import {cameraOnIdsForCurrentCall, isCameraOnForSession} from './selectors';
 
 describe('cameraOnIDs reducer', () => {
     test('starts empty', () => {

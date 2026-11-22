@@ -56,7 +56,7 @@ import {pluginId} from './manifest';
 
 const pluginReduxStateKey = `plugins-${pluginId}`;
 
-const pluginReduxStore = (state: GlobalState): RootState =>
+export const pluginReduxStore = (state: GlobalState): RootState =>
     (state[pluginReduxStateKey as keyof GlobalState] as unknown as RootState) ?? initialRootState;
 
 const callsStateInPluginReduxStore = (state: GlobalState): { [channelID: string]: callState } =>
@@ -398,21 +398,6 @@ export const screenSharingSessionForCurrentCall: (state: GlobalState) => UserSes
         sessionsInCalls,
         (ids, channelID, sessions) => sessions[channelID]?.[ids[channelID]],
     );
-
-const cameraOnIDsForCalls = (state: GlobalState): RootState['cameraOnIDs'] => {
-    return pluginReduxStore(state).cameraOnIDs;
-};
-
-export const cameraOnIdsForCurrentCall: (state: GlobalState) => RootState['cameraOnIDs'][Channel['id']] =
-    createSelector(
-        cameraOnIDsForCalls,
-        channelIDForCurrentCall,
-        (ids, channelID) => ids[channelID] || {},
-    );
-
-export const isCameraOnForSession = (state: GlobalState, sessionID: string): boolean => {
-    return Boolean(cameraOnIdsForCurrentCall(state)[sessionID]);
-};
 
 export const threadIDForCallInChannel = (state: GlobalState, channelID: string) => {
     return pluginReduxStore(state).calls[channelID]?.threadID || '';
