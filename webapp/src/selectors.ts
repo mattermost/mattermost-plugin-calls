@@ -399,6 +399,21 @@ export const screenSharingSessionForCurrentCall: (state: GlobalState) => UserSes
         (ids, channelID, sessions) => sessions[channelID]?.[ids[channelID]],
     );
 
+const cameraOnIDsForCalls = (state: GlobalState): RootState['cameraOnIDs'] => {
+    return pluginReduxStore(state).cameraOnIDs;
+};
+
+export const cameraOnIdsForCurrentCall: (state: GlobalState) => RootState['cameraOnIDs'][Channel['id']] =
+    createSelector(
+        cameraOnIDsForCalls,
+        channelIDForCurrentCall,
+        (ids, channelID) => ids[channelID] || {},
+    );
+
+export const isCameraOnForSession = (state: GlobalState, sessionID: string): boolean => {
+    return Boolean(cameraOnIdsForCurrentCall(state)[sessionID]);
+};
+
 export const threadIDForCallInChannel = (state: GlobalState, channelID: string) => {
     return pluginReduxStore(state).calls[channelID]?.threadID || '';
 };

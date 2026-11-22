@@ -42,6 +42,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
+import {userCameraOff, userCameraOn} from 'src/state/camera_on_ids/actions';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, selfFirstSortSessions, stateSortSessions} from 'src/utils';
@@ -121,6 +122,8 @@ const mapDispatchToProps = {
     openModal: modals.openModal,
     userMuted,
     userUnmuted,
+    userCameraOn,
+    userCameraOff,
     joinUser,
     leaveUser,
     usersVoiceActivityChanged,

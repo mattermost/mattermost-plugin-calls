@@ -34,7 +34,6 @@ import {
     leaveUser,
     loadCallState,
     loadProfilesByIdsIfMissing,
-    localSessionClose,
     openCallsUserSettings,
     selectRHSPost,
     setClientConnecting,
@@ -42,7 +41,7 @@ import {
     showSwitchCallModal,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import CallClient, {CALL_EVENT, DisconnectReason} from 'src/clients/call';
+import CallClient, {CALL_EVENT, CameraState, DisconnectReason} from 'src/clients/call';
 import type {ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
@@ -106,6 +105,7 @@ import {makeSameChannelLinkClickHandler} from 'src/components/same_channel_link_
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import RaiseHandSettingsSection from 'src/components/user_settings/raise_hand_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
+import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import {
@@ -121,8 +121,9 @@ import {
 } from 'src/phone_call';
 import {getPhoneCallProps, withoutSIPSessions} from 'src/phone_utils';
 import slashCommandsHandler from 'src/slash_commands';
+import {userCameraOff, userCameraOn} from 'src/state/camera_on_ids/actions';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
-import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
+import {getSessionsMapFromSessions, localSessionClose, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {CurrentCallDataDefault, PhoneCallState} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
 
@@ -159,6 +160,7 @@ import {
     channelIDForCurrentCall,
     clientConnecting,
     defaultEnabled,
+    dmVideoEnabled,
     getCallIDForChannel,
     hasPermissionsToEnableCalls,
     hostIDForCallInChannel,
@@ -789,6 +791,15 @@ export default class Plugin {
                     store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', session_id, userID));
                 });
 
+                window.callsClient.on(CALL_EVENT.CAMERA_CHANGED, (session_id: string, userID: string, cameraState: CameraState) => {
+                    const callChannelID = window.callsClient?.channelID ?? '';
+                    if (cameraState === CameraState.Off) {
+                        store.dispatch(userCameraOff(callChannelID, session_id, userID));
+                    } else {
+                        store.dispatch(userCameraOn(callChannelID, session_id, userID));
+                    }
+                });
+
                 window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
                     store.dispatch(usersVoiceActivityChanged(window.callsClient?.channelID ?? '', sessionIDs, userIDs));
                 });
@@ -1050,6 +1061,10 @@ export default class Plugin {
                     title: 'Audio devices settings',
                     component: AudioDevicesSettingsSection,
                 },
+                ...(dmVideoEnabled(store.getState()) ? [{
+                    title: 'Video devices settings',
+                    component: VideoDevicesSettingsSection,
+                }] : []),
                 {
                     title: 'Screen sharing settings',
                     component: ScreenSharingSettingsSection,
