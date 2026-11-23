@@ -20,7 +20,15 @@ describe('ScreenSharingSettingsSection', () => {
         window.localStorage.removeItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN);
     });
 
-    it('defaults to on when nothing is stored', async () => {
+    test('renders collapsed with its title and description', () => {
+        renderComponent();
+
+        expect(screen.getByRole('heading', {name: 'Screen sharing'})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Screen sharing Edit'})).toBeInTheDocument();
+        expect(screen.getByText('Configure your screen sharing settings.')).toBeInTheDocument();
+    });
+
+    test('defaults to on when nothing is stored', async () => {
         renderComponent();
         await userEvent.click(screen.getByText('Edit'));
 
@@ -28,7 +36,7 @@ describe('ScreenSharingSettingsSection', () => {
         expect(screen.getByLabelText('On')).toBeChecked();
     });
 
-    it('saves only on save and discards on cancel', async () => {
+    test('saves only on save and discards on cancel', async () => {
         renderComponent();
         await userEvent.click(screen.getByText('Edit'));
 

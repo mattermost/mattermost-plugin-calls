@@ -1,15 +1,12 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import './user_settings.scss';
-
 import React, {forwardRef, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 import ReactSelect from 'react-select';
 import CallClient from 'src/clients/call';
-import {
-    Description, type DevicesSelectionHandle, type DevicesSelectionProps, Fieldset,
-    SelectionWrapper, SelectLabel, type SelectOption} from 'src/components/user_settings/common';
+import {type DevicesSelectionHandle, type DevicesSelectionProps, type SelectOption} from 'src/components/user_settings/common';
+import {SettingsField, SettingsSectionCollapsed, SettingsSectionExpanded, useSettingsSection} from 'src/components/user_settings/settings_section';
 import {
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
@@ -81,19 +78,17 @@ const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
     }, [devices, selectedOption]);
 
     return (
-        <SelectionWrapper>
-            <SelectLabel
-                id={deviceType + 'Label'}
-                htmlFor={deviceType + 'Select'}
-            >
-                {label}
-            </SelectLabel>
+        <SettingsField
+            label={label}
+            labelId={deviceType + 'Label'}
+            htmlFor={deviceType + 'Select'}
+        >
             <ReactSelect
                 inputId={deviceType + 'Select'}
                 aria-labelledby={deviceType + 'Label'}
                 aria-invalid={hasError}
                 aria-errormessage={hasError ? AUDIO_DEVICES_MESSAGES_ID : undefined}
-                className='react-select singleSelect devices_settings_select'
+                className='react-select singleSelect CallsSettingsSection__select'
                 classNamePrefix='react-select'
                 options={options}
                 isClearable={false}
@@ -102,19 +97,17 @@ const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
                 value={getOption()}
                 onChange={(opt) => setSelectedOption(opt)}
             />
-        </SelectionWrapper>
+        </SettingsField>
     );
 });
 
 export default function AudioDevicesSettingsSection() {
     const {formatMessage} = useIntl();
-    const [active, setActive] = useState(false);
+    const {active, focusEdit, open, close} = useSettingsSection();
     const [devices, setDevices] = useState<MediaDevices>({inputs: [], outputs: []});
     const [loadFailed, setLoadFailed] = useState(false);
 
     const title = formatMessage({defaultMessage: 'Audio devices'});
-    const description = formatMessage({defaultMessage: 'Set up audio devices to be used for Mattermost calls'});
-    const editLabel = formatMessage({defaultMessage: 'Edit'});
 
     const audioInputsRef = useRef<DevicesSelectionHandle>(null);
     const audioOutputsRef = useRef<DevicesSelectionHandle>(null);
@@ -135,7 +128,7 @@ export default function AudioDevicesSettingsSection() {
             },
             ));
         }
-        setActive(false);
+        close();
     };
 
     const loadAudioDevices = async () => {
@@ -169,87 +162,47 @@ export default function AudioDevicesSettingsSection() {
 
     if (!active) {
         return (
-            <div
-                className='section-min'
-                onClick={() => setActive(!active)}
-            >
-                <div className='secion-min__header'>
-                    <h4 className='section-min__title'>
-                        <span>{title}</span>
-                    </h4>
-                    <button
-                        className='color--link style--none section-min__edit'
-                        aria-labelledby=''
-                        aria-expanded={active}
-                    >
-                        <i
-                            className='icon-pencil-outline'
-                            title={editLabel}
-                        />
-                        <span>{editLabel}</span>
-                    </button>
-                </div>
-                <div className='section-min__describe'>
-                    <span>{description}</span>
-                </div>
-            </div>
+            <SettingsSectionCollapsed
+                id='audioDevices'
+                title={title}
+                description={formatMessage({defaultMessage: 'Set up audio devices to be used for Mattermost calls.'})}
+                focusEdit={focusEdit}
+                onEdit={open}
+            />
         );
     }
 
     return (
-        <section className='section-max form-horizontal'>
-            <h4 className='col-sm-12 section-title'>
-                <span>{title}</span>
-            </h4>
-            <div className='sectionContent col-sm-10 col-sm-offset-2'>
-                <div
-                    tabIndex={-1}
-                    className='setting-list'
-                >
-                    <div className='setting-list-item'>
-                        <Fieldset>
-                            <AudioDevicesSelection
-                                deviceType='inputs'
-                                devices={devices.inputs}
-                                hasError={loadFailed}
-                                ref={audioInputsRef}
-                            />
-                            <AudioDevicesSelection
-                                deviceType='outputs'
-                                devices={devices.outputs}
-                                hasError={loadFailed}
-                                ref={audioOutputsRef}
-                            />
-                            {loadFailed && (
-                                <span
-                                    id={AUDIO_DEVICES_MESSAGES_ID}
-                                    className='devices_settings_error'
-                                    role='alert'
-                                >
-                                    {formatMessage({defaultMessage: 'Couldn\'t load your microphones and speakers. Make sure a microphone is connected and that Mattermost is allowed to use it.'})}
-                                </span>
-                            )}
-                            <Description>{description}</Description>
-                        </Fieldset>
-                    </div>
-                    <div className='setting-list-item'>
-                        <hr/>
-                        <button
-                            type='submit'
-                            className='btn btn-primary'
-                            onClick={handleSave}
-                        >
-                            {formatMessage({defaultMessage: 'Save'})}
-                        </button>
-                        <button
-                            className='btn btn-tertiary'
-                            onClick={() => setActive(false)}
-                        >
-                            {formatMessage({defaultMessage: 'Cancel'})}
-                        </button>
-                    </div>
-                </div>
+        <SettingsSectionExpanded
+            id='audioDevices'
+            title={title}
+            isFullWidth={true}
+            onSave={handleSave}
+            onCancel={close}
+        >
+            <div className='CallsSettingsSection__fields'>
+                <AudioDevicesSelection
+                    deviceType='inputs'
+                    devices={devices.inputs}
+                    hasError={loadFailed}
+                    ref={audioInputsRef}
+                />
+                <AudioDevicesSelection
+                    deviceType='outputs'
+                    devices={devices.outputs}
+                    hasError={loadFailed}
+                    ref={audioOutputsRef}
+                />
+                {loadFailed && (
+                    <span
+                        id={AUDIO_DEVICES_MESSAGES_ID}
+                        className='CallsSettingsSection__fieldMessage CallsSettingsSection__error'
+                        role='alert'
+                    >
+                        {formatMessage({defaultMessage: 'Couldn\'t load your microphones and speakers. Make sure a microphone is connected and that Mattermost is allowed to use it.'})}
+                    </span>
+                )}
             </div>
-        </section>
+        </SettingsSectionExpanded>
     );
 }

@@ -12,7 +12,7 @@ export default function ScreenSharingSettingsSection() {
 
     return (
         <OnOffSettingsSection
-            title={formatMessage({defaultMessage: 'Screen sharing settings'})}
+            title={formatMessage({defaultMessage: 'Screen sharing'})}
             description={formatMessage({defaultMessage: 'Configure your screen sharing settings.'})}
             settingTitle={formatMessage({defaultMessage: 'Share sound with screen'})}
             helpText={formatMessage({defaultMessage: 'When enabled, audio from your browser tab or system (depending on what\'s shared) will be included with the screen content.'})}

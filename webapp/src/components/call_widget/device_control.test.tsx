@@ -3,10 +3,15 @@
 
 import {act, render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
+import React, {useState} from 'react';
 import {IntlProvider} from 'react-intl';
 
 import DeviceControl, {DeviceControlProps} from './device_control';
+
+jest.mock('src/components/icons/muted_icon', () => ({__esModule: true, default: () => 'muted-icon'}));
+jest.mock('src/components/icons/unmuted_icon', () => ({__esModule: true, default: () => 'unmuted-icon'}));
+jest.mock('src/components/icons/video_off_outline', () => ({__esModule: true, default: () => 'video-off-icon'}));
+jest.mock('src/components/icons/video_outline', () => ({__esModule: true, default: () => 'video-icon'}));
 
 const makeDevice = (deviceId: string, label: string, kind: MediaDeviceKind = 'videoinput') => ({deviceId, label, kind, groupId: ''}) as MediaDeviceInfo;
 
@@ -14,25 +19,45 @@ const builtIn = makeDevice('cam-1', 'Built-in Camera');
 const usb = makeDevice('cam-2', 'USB Camera');
 const external = makeDevice('cam-3', 'External Camera');
 
+// Owns the menu state like the widget does, and still reports each change.
+function ControlledDeviceControl(props: DeviceControlProps) {
+    const [menuOpen, setMenuOpen] = useState(props.menuOpen);
+    return (
+        <DeviceControl
+            {...props}
+            menuOpen={menuOpen}
+            onMenuOpenChange={(open) => {
+                setMenuOpen(open);
+                props.onMenuOpenChange(open);
+            }}
+        />
+    );
+}
+
 describe('DeviceControl', () => {
     const renderControl = (props: Partial<DeviceControlProps> = {}) => {
         const allProps: DeviceControlProps = {
             id: 'calls-widget-camera',
             kind: 'videoinput',
             active: false,
+            status: 'ready',
             onToggle: jest.fn(),
             devices: [builtIn, usb, external],
             selectedDeviceId: usb.deviceId,
             onSelectDevice: jest.fn(),
+            menuOpen: false,
+            onMenuOpenChange: jest.fn(),
             ...props,
         };
         const result = render(
             <IntlProvider locale='en'>
-                <DeviceControl {...allProps}/>
+                <ControlledDeviceControl {...allProps}/>
             </IntlProvider>,
         );
         return {...result, props: allProps};
     };
+
+    const toggleIcon = (name: string) => screen.getByRole('button', {name}).textContent;
 
     const openMenu = async (name = 'Camera options') => {
         await userEvent.click(screen.getByRole('button', {name}));
@@ -40,27 +65,38 @@ describe('DeviceControl', () => {
     };
 
     test.each([
-        ['audioinput', true, 'Microphone', 'Mute', 'Microphone options'],
-        ['audioinput', false, 'Microphone', 'Unmute', 'Microphone options'],
-        ['videoinput', true, 'Camera', 'Turn off camera', 'Camera options'],
-        ['videoinput', false, 'Camera', 'Turn on camera', 'Camera options'],
-    ] as const)('%s with active=%s is named "%s", with "%s" in its tooltip, and "%s"', async (kind, active, toggleName, tooltip, menuName) => {
+        ['audioinput', true, 'Microphone', 'Mute', 'Microphone options', 'unmuted-icon'],
+        ['audioinput', false, 'Microphone', 'Unmute', 'Microphone options', 'muted-icon'],
+        ['videoinput', true, 'Camera', 'Turn off camera', 'Camera options', 'video-icon'],
+        ['videoinput', false, 'Camera', 'Turn on camera', 'Camera options', 'video-off-icon'],
+    ] as const)('a ready %s with active=%s is named "%s", with "%s" in its tooltip, "%s" and %s', async (kind, active, toggleName, tooltip, menuName, icon) => {
         renderControl({kind, active});
 
         const toggle = screen.getByRole('button', {name: toggleName});
         expect(toggle).toHaveAttribute('aria-pressed', String(active));
+        expect(toggleIcon(toggleName)).toBe(icon);
         expect(screen.getByRole('button', {name: menuName})).toHaveAttribute('aria-expanded', 'false');
 
         await userEvent.hover(toggle);
         expect(await screen.findByText(tooltip)).toBeInTheDocument();
     });
 
-    test('a toggle label override replaces the tooltip text but not the name', async () => {
-        renderControl({kind: 'audioinput', toggleLabel: 'No audio input devices'});
+    test.each([
+        ['audioinput', 'blocked', 'Microphone', 'No audio input permissions', 'unmuted-icon'],
+        ['audioinput', 'missing', 'Microphone', 'No audio input devices', 'unmuted-icon'],
+        ['videoinput', 'blocked', 'Camera', 'No camera permissions', 'video-icon'],
+        ['videoinput', 'missing', 'Camera', 'No camera found', 'video-icon'],
+    ] as const)('a %s that is %s keeps its name, explains why in its tooltip, and shows the on icon with a badge', async (kind, status, name, tooltip, icon) => {
+        const {container} = renderControl({kind, status, active: false, shortcut: 'Ctrl+Shift+Space'});
 
-        const toggle = screen.getByRole('button', {name: 'Microphone'});
+        const toggle = screen.getByRole('button', {name});
+        expect(toggleIcon(name)).toBe(icon);
+        expect(container.querySelector('.icon-close-circle')).toBeInTheDocument();
+
         await userEvent.hover(toggle);
-        expect(await screen.findByText('No audio input devices')).toBeInTheDocument();
+        expect(await screen.findByText(tooltip)).toBeInTheDocument();
+        expect(container.ownerDocument.querySelector('.DeviceControl__tooltipSubtext')).toBeInTheDocument();
+        expect(screen.queryByText('Space')).not.toBeInTheDocument();
     });
 
     test('id overrides replace the derived ids', async () => {
@@ -90,8 +126,8 @@ describe('DeviceControl', () => {
         const items = screen.getAllByRole('menuitemradio');
         expect(items.map((item) => item.textContent)).toEqual(['Built-in Camera', 'USB Camera', 'External Camera']);
         expect(items.map((item) => item.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false']);
-        expect(items[1].querySelector('.DeviceControl__tick')).toBeInTheDocument();
-        expect(items[0].querySelector('.DeviceControl__tick')).not.toBeInTheDocument();
+        expect(items[1].querySelector('.DeviceMenu__tick')).toBeInTheDocument();
+        expect(items[0].querySelector('.DeviceMenu__tick')).not.toBeInTheDocument();
         expect(items[1]).toHaveFocus();
     });
 
@@ -203,7 +239,7 @@ describe('DeviceControl', () => {
         ['audioinput', 'Microphone', 'Starting microphone…'],
         ['videoinput', 'Camera', 'Starting camera…'],
     ] as const)('a starting %s stays focusable and says it is starting instead of the label and shortcut', async (kind, name, tooltip) => {
-        renderControl({kind, status: 'starting', toggleLabel: 'Unmute', tooltipSubtext: 'subtext', shortcut: 'Ctrl+Shift+Space'});
+        renderControl({kind, status: 'starting', shortcut: 'Ctrl+Shift+Space'});
 
         const toggle = screen.getByRole('button', {name});
         expect(toggle).toBeEnabled();
@@ -211,8 +247,17 @@ describe('DeviceControl', () => {
 
         act(() => toggle.focus());
         expect(await screen.findByText(tooltip)).toBeInTheDocument();
-        expect(screen.queryByText('Unmute')).not.toBeInTheDocument();
-        expect(screen.queryByText('subtext')).not.toBeInTheDocument();
+        expect(screen.queryByText(/^(Unmute|Turn on camera)$/)).not.toBeInTheDocument();
+        expect(screen.queryByText('Space')).not.toBeInTheDocument();
+    });
+
+    test('a ready device shows its shortcut in the tooltip', async () => {
+        renderControl({kind: 'audioinput', shortcut: 'Ctrl+Shift+Space'});
+
+        await userEvent.hover(screen.getByRole('button', {name: 'Microphone'}));
+
+        expect(await screen.findByText('Unmute')).toBeInTheDocument();
+        expect(screen.getByText('Space')).toBeInTheDocument();
     });
 
     test('the chevron is disabled when no device can be selected', () => {
@@ -235,22 +280,34 @@ describe('DeviceControl', () => {
         expect(screen.getByRole('menuitemradio', {name: label})).toBeInTheDocument();
     });
 
-    test('a controlled menu follows menuOpen and reports changes', async () => {
-        const onMenuOpenChange = jest.fn();
-        const {rerender, props} = renderControl({menuOpen: false, onMenuOpenChange});
+    test('the menu follows menuOpen and reports changes', async () => {
+        const props: DeviceControlProps = {
+            id: 'calls-widget-camera',
+            kind: 'videoinput',
+            active: false,
+            status: 'ready',
+            onToggle: jest.fn(),
+            devices: [builtIn, usb],
+            onSelectDevice: jest.fn(),
+            menuOpen: false,
+            onMenuOpenChange: jest.fn(),
+        };
+        const widget = (menuOpen: boolean) => (
+            <IntlProvider locale='en'>
+                <DeviceControl
+                    {...props}
+                    menuOpen={menuOpen}
+                />
+            </IntlProvider>
+        );
+        const {rerender} = render(widget(false));
+        const onMenuOpenChange = props.onMenuOpenChange;
 
         await userEvent.click(screen.getByRole('button', {name: 'Camera options'}));
         expect(onMenuOpenChange).toHaveBeenLastCalledWith(true);
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();
 
-        rerender(
-            <IntlProvider locale='en'>
-                <DeviceControl
-                    {...props}
-                    menuOpen={true}
-                />
-            </IntlProvider>,
-        );
+        rerender(widget(true));
         expect(screen.getByRole('menu', {name: 'Camera options'})).toBeInTheDocument();
 
         await userEvent.keyboard('{Escape}');

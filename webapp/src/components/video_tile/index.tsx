@@ -6,9 +6,9 @@ import {getUser} from 'mattermost-redux/selectors/entities/users';
 import React, {useState} from 'react';
 import {useSelector} from 'react-redux';
 import {useCameraTrack} from 'src/components/use_camera_track';
-import {STORAGE_CALLS_MIRROR_VIDEO} from 'src/constants';
 import {connectionStateForSession} from 'src/state/connection_quality/selectors';
 import {sessionsInCurrentCallMap} from 'src/state/session/selectors';
+import {mirrorSelfView} from 'src/utils';
 
 import VideoTile, {type VideoTileSize} from './video_tile';
 
@@ -20,14 +20,12 @@ type Props = {
     className?: string;
 };
 
-const readMirrorPreference = () => window.localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO) === 'on';
-
 export default function ConnectedVideoTile({sessionID, size, isSelf = false, hideMuteState = false, className}: Props) {
     const session = useSelector((state: GlobalState) => sessionsInCurrentCallMap(state)?.[sessionID]);
     const profile = useSelector((state: GlobalState) => (session ? getUser(state, session.user_id) : undefined));
     const connectionState = useSelector((state: GlobalState) => connectionStateForSession(state, sessionID));
     const {state: cameraState, track} = useCameraTrack(sessionID);
-    const [mirrorPreference] = useState(readMirrorPreference);
+    const [mirrorPreference] = useState(mirrorSelfView);
 
     if (!session) {
         return null;

@@ -15,7 +15,7 @@ describe('OnOffSettingsSection', () => {
         <IntlProvider locale='en'>
             <OnOffSettingsSection
                 title='Section title'
-                description='Section description'
+                description='Section description.'
                 settingTitle='Setting title'
                 helpText='Help text'
                 storageKey={storageKey}
@@ -33,30 +33,30 @@ describe('OnOffSettingsSection', () => {
         window.localStorage.removeItem(storageKey);
     });
 
-    it('renders collapsed with title and description', () => {
+    test('renders collapsed with title and description', () => {
         renderComponent();
 
         expect(screen.getByText('Section title')).toBeInTheDocument();
-        expect(screen.getByText('Section description')).toBeInTheDocument();
+        expect(screen.getByText('Section description.')).toBeInTheDocument();
         expect(screen.queryByLabelText('On')).not.toBeInTheDocument();
     });
 
-    it('labels the edit button with the section title', () => {
+    test('labels the edit button with the section title', () => {
         renderComponent();
 
-        expect(screen.getByRole('button', {name: /Section title/})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Section title Edit'})).toBeInTheDocument();
     });
 
-    it('uses the default value when nothing is stored', async () => {
+    test('uses the default value when nothing is stored', async () => {
         renderComponent('on');
         await openSection();
 
-        expect(screen.getByText('Setting title')).toBeInTheDocument();
+        expect(screen.getByRole('heading', {name: 'Setting title'})).toBeInTheDocument();
         expect(screen.getByText('Help text')).toBeInTheDocument();
         expect(screen.getByLabelText('On')).toBeChecked();
     });
 
-    it('writes to storage only on save', async () => {
+    test('writes to storage only on save', async () => {
         renderComponent();
         await openSection();
 
@@ -68,7 +68,7 @@ describe('OnOffSettingsSection', () => {
         expect(screen.queryByLabelText('On')).not.toBeInTheDocument();
     });
 
-    it('discards the selection on cancel', async () => {
+    test('discards the selection on cancel', async () => {
         window.localStorage.setItem(storageKey, 'off');
         renderComponent();
         await openSection();
@@ -82,7 +82,16 @@ describe('OnOffSettingsSection', () => {
         expect(screen.getByLabelText('Off')).toBeChecked();
     });
 
-    it('re-reads storage when opened, picking up changes made elsewhere', async () => {
+    test.each(['Save', 'Cancel'])('returns focus to Edit after %s', async (action) => {
+        renderComponent();
+        await openSection();
+
+        await userEvent.click(screen.getByText(action));
+
+        expect(screen.getByRole('button', {name: 'Section title Edit'})).toHaveFocus();
+    });
+
+    test('re-reads storage when opened, picking up changes made elsewhere', async () => {
         window.localStorage.setItem(storageKey, 'off');
         renderComponent();
 

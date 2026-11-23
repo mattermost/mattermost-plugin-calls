@@ -6,7 +6,7 @@ import {Post} from '@mattermost/types/posts';
 import {Duration} from 'luxon';
 import {createIntl} from 'react-intl';
 import type CallClient from 'src/clients/call';
-import {STORAGE_CALLS_LOWER_HAND_ON_UNMUTE} from 'src/constants';
+import {STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, STORAGE_CALLS_MIRROR_VIDEO} from 'src/constants';
 
 import {pluginId} from './manifest';
 import {
@@ -22,6 +22,7 @@ import {
     isMobile,
     lowerHandOnUnmute,
     maxAttemptsReachedErr,
+    mirrorSelfView,
     runWithRetry,
     selfFirstSortSessions,
     shouldRenderCallsIncoming,
@@ -844,6 +845,24 @@ describe('utils', () => {
 
             expect(getDisplayMedia).toHaveBeenCalledWith({video: true, audio: false});
         });
+    });
+});
+
+describe('mirrorSelfView', () => {
+    afterEach(() => {
+        window.localStorage.removeItem(STORAGE_CALLS_MIRROR_VIDEO);
+    });
+
+    test.each([
+        ['unset', null, true],
+        ['on', 'on', true],
+        ['off', 'off', false],
+    ])('is %s -> %s', (_, stored, expected) => {
+        if (stored) {
+            window.localStorage.setItem(STORAGE_CALLS_MIRROR_VIDEO, stored);
+        }
+
+        expect(mirrorSelfView()).toBe(expected);
     });
 });
 

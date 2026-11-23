@@ -5,7 +5,7 @@
 
 import './expanded_view.scss';
 
-import {EmojiData, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
@@ -18,8 +18,10 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
+import type {CallStoreSyncOptions} from 'src/call_store_sync';
+import type CallClient from 'src/clients/call';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
-import type {CameraState, ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
+import type {DeviceStatus, ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
@@ -47,7 +49,7 @@ import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expan
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import ScreenSharePlayer from 'src/components/screen_share_player';
-import {CallAlertConfigs, DEGRADED_CALL_QUALITY_ALERT_WAIT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
+import {CallAlertConfigs, DEGRADED_CALL_QUALITY_ALERT_WAIT} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -132,23 +134,7 @@ interface Props extends RouteComponentProps {
     otherSessions: UserSessionState[];
     isDMCalling: boolean;
     clientConnecting: boolean;
-    callHostChanged: (channelID: string, hostID: string) => void;
-    userMuted: (channelID: string, sessionID: string, userID: string) => void;
-    userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
-    userCameraChanged: (channelID: string, sessionID: string, userID: string, cameraState: CameraState) => void;
-    sessionConnectionQualityChanged: (channelID: string, sessionID: string, quality: CONNECTION_QUALITY) => void;
-    localSessionReconnecting: (channelID: string, sessionID: string) => void;
-    localSessionReconnected: (channelID: string, sessionID: string) => void;
-    joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
-    leaveUser: (channelID: string, userID: string, sessionID: string) => void;
-    usersVoiceActivityChanged: (channelID: string, sessionIDs: string[], userIDs: string[]) => void;
-    userRaisedHand: (channelID: string, sessionID: string, userID: string, raisedHandTimestamp: number) => void;
-    userLoweredHand: (channelID: string, sessionID: string, userID: string) => void;
-    userReacted: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
-    userReactedTimeout: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
-    userScreenShared: (channelID: string, sessionID: string, userID: string) => void;
-    userScreenUnshared: (channelID: string, sessionID: string, userID: string) => void;
-    liveCaptionReceived: (channelID: string, userID: string, sessionID: string, displayName: string, text: string) => void;
+    syncCallClientToStore: (client: CallClient, options: CallStoreSyncOptions) => () => void;
     fetchCallState: (channelID: string) => void;
 }
 
@@ -157,7 +143,7 @@ interface State {
     showParticipantsList: boolean,
     showLiveCaptions: boolean,
     showFirefoxScreenShareWarning: boolean,
-    micPermissionPending: boolean,
+    micStatus: DeviceStatus,
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
     leaveMenuOpen: boolean,
@@ -320,7 +306,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             showParticipantsList: false,
             showLiveCaptions: false,
             showFirefoxScreenShareWarning: false,
-            micPermissionPending: true,
+            micStatus: 'starting',
             alerts: CallAlertStatesDefault,
             removeConfirmation: null,
             leaveMenuOpen: false,
@@ -670,78 +656,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         onClient(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
             this.setState({screenTrack: session?.track ?? null});
         });
-        onClient(CALL_EVENT.MUTE, (sessionID: string, userID: string) => {
-            this.props.userMuted(callsClient.channelID, sessionID, userID);
-        });
-        onClient(CALL_EVENT.UNMUTE, (sessionID: string, userID: string) => {
-            this.props.userUnmuted(callsClient.channelID, sessionID, userID);
-        });
-        onClient(CALL_EVENT.CAMERA_CHANGED, (sessionID: string, userID: string, cameraState: CameraState) => {
-            this.props.userCameraChanged(callsClient.channelID, sessionID, userID, cameraState);
-        });
 
-        // In the popout, this component's Redux store is separate from the
-        // opener's. The opener subscribes USER_JOINED / USER_LEFT /
-        // USERS_VOICE_ACTIVITY_CHANGED in its own index.tsx — gate on
-        // window.opener so we don't double-dispatch in the inline case.
-        if (window.opener) {
-            onClient(CALL_EVENT.HOST_CHANGED, (hostID: string) => {
-                this.props.callHostChanged(callsClient.channelID, hostID);
-            });
-            onClient(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
-                if (session) {
-                    this.props.userScreenShared(callsClient.channelID, session.sessionID, session.userID);
-                } else {
-                    const sharerSessionID = this.props.screenSharingSession?.session_id ?? '';
-                    this.props.userScreenUnshared(callsClient.channelID, sharerSessionID, '');
-                }
-            });
-            onClient(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {
-                this.props.joinUser(callsClient.channelID, userID, sessionID, Boolean(isFromInitialSync));
-            });
-            onClient(CALL_EVENT.USER_LEFT, (sessionID: string, userID: string) => {
-                this.props.leaveUser(callsClient.channelID, userID, sessionID);
-            });
-            onClient(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
-                this.props.usersVoiceActivityChanged(callsClient.channelID, sessionIDs, userIDs);
-            });
-            onClient(CALL_EVENT.RAISE_HAND, (sessionID: string, userID: string, raisedHandTimestamp: number) => {
-                this.props.userRaisedHand(callsClient.channelID, sessionID, userID, raisedHandTimestamp);
-            });
-            onClient(CALL_EVENT.LOWER_HAND, (sessionID: string, userID: string) => {
-                this.props.userLoweredHand(callsClient.channelID, sessionID, userID);
-            });
-            onClient(CALL_EVENT.CAPTION, (sessionID: string, userID: string, text: string) => {
-                this.props.liveCaptionReceived(callsClient.channelID, userID, sessionID, getUserDisplayName(this.props.profiles[userID]), text);
-            });
-            onClient(CALL_EVENT.REACTION, (sessionID: string, userID: string, emoji: EmojiData, timestamp: number) => {
-                // Mirrors dispatchReaction() (the main-window path): store the reaction with
-                // the sender's display name, then auto-clear it after the standard timeout.
-                const reaction: Reaction = {
-                    user_id: userID,
-                    session_id: sessionID,
-                    emoji,
-                    timestamp,
-                    displayName: getUserDisplayName(this.props.profiles[userID]),
-                };
-                this.props.userReacted(callsClient.channelID, userID, sessionID, reaction);
-                setTimeout(() => {
-                    this.props.userReactedTimeout(callsClient.channelID, userID, sessionID, reaction);
-                }, REACTION_TIMEOUT_IN_REACTION_STREAM);
-            });
-            onClient(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
-                this.props.sessionConnectionQualityChanged(callsClient.channelID, callsClient.getSessionID() ?? '', quality);
-            });
-            onClient(CALL_EVENT.REMOTE_QUALITY_CHANGED, (sessionID: string, _userID: string, quality: CONNECTION_QUALITY) => {
-                this.props.sessionConnectionQualityChanged(callsClient.channelID, sessionID, quality);
-            });
-            onClient(CALL_EVENT.RECONNECTING, () => {
-                this.props.localSessionReconnecting(callsClient.channelID, callsClient.getSessionID() ?? '');
-            });
-            onClient(CALL_EVENT.RECONNECTED, () => {
-                this.props.localSessionReconnected(callsClient.channelID, callsClient.getSessionID() ?? '');
-            });
-        }
+        // The popout has its own Redux store. Inline, the main window already syncs the room into this store.
+        const inPopout = Boolean(window.opener);
+        this.callClientUnsubscribers.push(this.props.syncCallClientToStore(callsClient, {
+            roomState: inPopout,
+            captions: inPopout,
+            callState: false,
+        }));
 
         onClient(CALL_EVENT.DEVICE_FALLBACK, (device: MediaDeviceInfo) => {
             if (device.kind === 'audioinput') {
@@ -775,16 +697,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         });
 
+        onClient(CALL_EVENT.MIC_STATUS_CHANGED, (micStatus: DeviceStatus) => {
+            this.setState({micStatus});
+        });
         onClient(CALL_EVENT.DEVICE_CHANGE, (audioDevices: MediaDevices) => {
             this.setAudioDevices(audioDevices);
-            if (audioDevices.inputs.length === 0) {
-                this.setState({micPermissionPending: false});
-            }
         });
         onClient(CALL_EVENT.ERROR, (err: Error) => {
             if (err?.message === AudioInputPermissionsErr.message) {
                 this.setState({
-                    micPermissionPending: false,
                     alerts: {
                         ...this.state.alerts,
                         missingAudioInputPermissions: {
@@ -793,14 +714,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         },
                     },
                 });
-            } else {
-                this.setState({micPermissionPending: false});
             }
         });
 
         onClient(CALL_EVENT.INIT_AUDIO, () => {
             this.setState({
-                micPermissionPending: false,
                 alerts: {
                     ...this.state.alerts,
                     missingAudioInputPermissions: {
@@ -816,7 +734,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
-            micPermissionPending: !callsClient.isMicTrackPublished(),
+            micStatus: callsClient.getMicStatus(),
             alerts: {
                 ...this.state.alerts,
                 missingAudioInputPermissions: {
@@ -1141,21 +1059,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         const {formatMessage} = this.props.intl;
 
-        const noInputDevices = this.state.alerts.missingAudioInput.active;
-        const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
+        const {micStatus} = this.state;
+        const micUnavailable = micStatus !== 'ready';
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
-        const micPermissionPending = this.state.micPermissionPending;
         const isMuted = this.isMuted();
-        const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions && !micPermissionPending ? MutedIcon : UnmutedIcon;
+        const MuteIcon = isMuted && !micUnavailable ? MutedIcon : UnmutedIcon;
 
         let muteTooltipText = isMuted ? formatMessage({defaultMessage: 'Unmute'}) : formatMessage({defaultMessage: 'Mute'});
         let muteTooltipSubtext = isMuted ? formatMessage({defaultMessage: 'Or hold space bar'}) : '';
 
-        if (noInputDevices) {
+        if (micStatus === 'missing') {
             muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
             muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext!);
-        }
-        if (noAudioPermissions) {
+        } else if (micStatus === 'blocked') {
             muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!);
             muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext!);
         }
@@ -1313,11 +1229,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 dataTestId={isMuted ? 'calls-popout-muted' : 'calls-popout-unmuted'}
                                 ariaLabel={muteTooltipText}
                                 // eslint-disable-next-line no-undefined
-                                onToggle={noInputDevices || micPermissionPending ? undefined : this.onMuteToggle}
+                                onToggle={micStatus === 'missing' || micStatus === 'starting' ? undefined : this.onMuteToggle}
                                 tooltipText={muteTooltipText}
                                 tooltipSubtext={muteTooltipSubtext}
                                 // eslint-disable-next-line no-undefined
-                                shortcut={noInputDevices || noAudioPermissions || micPermissionPending ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
+                                shortcut={micUnavailable ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
                                 bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
                                 bgColorHover={isMuted ? '' : 'rgba(61, 184, 135, 0.20)'}
                                 iconFill={isMuted ? '' : 'rgba(61, 184, 135, 0.80)'}
@@ -1330,7 +1246,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         }}
                                     />
                                 }
-                                unavailable={noInputDevices || noAudioPermissions || micPermissionPending}
+                                unavailable={micUnavailable}
                             />
 
                             {this.props.allowScreenSharing &&

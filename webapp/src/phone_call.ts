@@ -415,7 +415,7 @@ export function registerTelLinkDialing(store: Store, connect: ConnectPhoneCall) 
     };
 }
 
-export function trackSIPCallStatus(store: Store, client: CallClient) {
+export function trackSIPCallStatus(store: Pick<Store, 'dispatch'>, client: CallClient) {
     const onStatus = (status: string) => {
         const sipStatus = toSIPCallStatus(status);
         if (sipStatus) {
@@ -424,6 +424,10 @@ export function trackSIPCallStatus(store: Store, client: CallClient) {
     };
     client.on(CALL_EVENT.SIP_STATUS_CHANGED, onStatus);
     client.on(CALL_EVENT.SIP_LEFT, onStatus);
+    return () => {
+        client.off(CALL_EVENT.SIP_STATUS_CHANGED, onStatus);
+        client.off(CALL_EVENT.SIP_LEFT, onStatus);
+    };
 }
 
 // Ends the phone call once the caller's client leaves it or never joins it. The

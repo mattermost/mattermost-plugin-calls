@@ -1,0 +1,64 @@
+$label-column-width: 160px;
+$column-gap: 16px;
+
+.CallsSettingsSection {
+    .CallsSettingsSection__fields {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .CallsSettingsSection__field {
+        display: grid;
+        align-items: center;
+        gap: $column-gap;
+        grid-template-columns: $label-column-width minmax(0, 1fr);
+    }
+
+    .CallsSettingsSection__field--top {
+        align-items: start;
+    }
+
+    .CallsSettingsSection__label {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 20px;
+    }
+
+    .CallsSettingsSection__control {
+        display: flex;
+        width: 100%;
+        max-width: 320px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .CallsSettingsSection__select {
+        width: 100%;
+    }
+
+    // Sits under the controls, so it starts past the label column.
+    .CallsSettingsSection__fieldMessage {
+        display: flex;
+        max-width: 320px;
+        flex-direction: column;
+        margin-left: $label-column-width + $column-gap;
+    }
+
+    .CallsSettingsSection__error {
+        color: var(--error-text);
+    }
+
+    @media (max-width: 600px) {
+        .CallsSettingsSection__field {
+            gap: 8px;
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .CallsSettingsSection__fieldMessage {
+            margin-left: 0;
+        }
+    }
+}

@@ -18,7 +18,7 @@ const makeHandler = (overrides: {
 } = {}) => {
     const onJoinCall = overrides.onJoinCall ?? jest.fn();
     const handler = makeSameChannelLinkClickHandler(
-        () => overrides.teamName === null ? '' : (overrides.teamName ?? TEAM),
+        () => (overrides.teamName === null ? '' : (overrides.teamName ?? TEAM)),
         () => overrides.channelId ?? CHANNEL_ID,
         () => overrides.channelName ?? CHANNEL_NAME,
         onJoinCall,

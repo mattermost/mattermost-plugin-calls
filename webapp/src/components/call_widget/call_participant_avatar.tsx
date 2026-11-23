@@ -16,12 +16,11 @@ import {ParticipantAvatar, SpeakerAvatar} from './speaker_avatar';
 interface Props {
     sessions: UserSessionState[];
     profiles: IDMappedObjects<UserProfile>;
-    clientConnecting: boolean;
 }
 
 export function CallParticipantAvatar(props: Props) {
     const channel = useSelector(channelForCurrentCall);
-    const {isDMCalling, dmCallee} = useDMCallingState();
+    const {dmCallee} = useDMCallingState();
     const phoneCall = usePhoneCallInfo();
 
     if (!channel) {
@@ -38,9 +37,8 @@ export function CallParticipantAvatar(props: Props) {
         );
     }
 
-    if (isDirectChannel(channel) && (isDMCalling || props.clientConnecting)) {
-        // While a DM call is ringing (callee hasn't joined yet), show the callee's avatar.
-        // Once answered, and for all other calls, use the active speaker.
+    if (isDirectChannel(channel)) {
+        // A DM call always shows the other person, not the active speaker.
         return <ParticipantAvatar profile={dmCallee}/>;
     }
 

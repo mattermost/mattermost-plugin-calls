@@ -9,40 +9,25 @@ import 'mattermost-webapp/components/widgets/menu/menu_wrapper.scss';
 import 'mattermost-webapp/components/widgets/menu/menu_items/menu_item.scss';
 import '@mattermost/compass-icons/css/compass-icons.css';
 
-import {
-    CallJobState,
-    CallState,
-    EmojiData,
-} from '@mattermost/calls-common/lib/types';
 import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {getCallActive, getCallsConfig, getCallsVersionInfo, joinUser, leaveUser, loadCallState, setClientConnecting} from 'plugin/actions';
-import CallClient, {CALL_EVENT, CameraState, CONNECTION_QUALITY, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
-import type {ScreenSharingSession} from 'plugin/clients/call/types';
+import {getCallActive, getCallsConfig, getCallsVersionInfo, setClientConnecting} from 'plugin/actions';
+import {syncCallClientToStore} from 'plugin/call_store_sync';
+import CallClient, {CALL_EVENT, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
 import RestClient from 'plugin/clients/rest';
 import {
     logDebug,
     logErr,
 } from 'plugin/log';
 import {pluginId} from 'plugin/manifest';
-import {trackSIPCallStatus} from 'plugin/phone_call';
 import reducer from 'plugin/reducers';
-import {getCallIDForChannel} from 'plugin/selectors';
-import {userCameraChanged} from 'plugin/state/camera_on_ids/actions';
-import {localSessionReconnected, localSessionReconnecting, sessionConnectionQualityChanged} from 'plugin/state/connection_quality/actions';
-import {userScreenShared, userScreenUnshared} from 'plugin/state/screen_sharing_ids/actions';
-import {localSessionClose, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/session/actions';
+import {localSessionClose} from 'plugin/state/session/actions';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
-import {
-    applyCallHostChanged,
-    applyCallJobState,
-    dispatchReaction,
-} from 'plugin/websocket_handlers';
 import {Reducer} from 'redux';
 import {CurrentCallDataDefault} from 'src/types/types';
 
@@ -88,72 +73,7 @@ function connectCall(
         // The full call state snapshot arrives before the room connects, which is
         // what lets the LiveKit-sourced state below layer on top of a populated
         // session list without any ordering dance.
-        callClient.on(CALL_EVENT.CALL_STATE, (callState: CallState) => {
-            store.dispatch(loadCallState(callClient.channelID, callState));
-        });
-
-        callClient.on(CALL_EVENT.HOST_CHANGED, (hostID: string) => {
-            applyCallHostChanged(store, callClient.channelID, hostID, getCallIDForChannel(store.getState(), callClient.channelID));
-        });
-
-        callClient.on(CALL_EVENT.JOB_STATE, (jobState: CallJobState) => {
-            applyCallJobState(store, callClient.channelID, jobState);
-        });
-
-        callClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
-            if (session) {
-                store.dispatch(userScreenShared(callClient.channelID, session.sessionID, session.userID));
-            } else {
-                store.dispatch(userScreenUnshared(callClient.channelID, '', ''));
-            }
-        });
-
-        callClient.on(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {
-            store.dispatch(joinUser(callClient.channelID, userID, sessionID, Boolean(isFromInitialSync)));
-        });
-        callClient.on(CALL_EVENT.USER_LEFT, (sessionID: string, userID: string) => {
-            store.dispatch(leaveUser(callClient.channelID, userID, sessionID));
-        });
-        callClient.on(CALL_EVENT.MUTE, (sessionID: string, userID: string) => {
-            store.dispatch(userMuted(callClient.channelID, sessionID, userID));
-        });
-        callClient.on(CALL_EVENT.UNMUTE, (sessionID: string, userID: string) => {
-            store.dispatch(userUnmuted(callClient.channelID, sessionID, userID));
-        });
-        callClient.on(CALL_EVENT.CAMERA_CHANGED, (sessionID: string, userID: string, cameraState: CameraState) => {
-            store.dispatch(userCameraChanged(callClient.channelID, sessionID, userID, cameraState));
-        });
-        callClient.on(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
-            store.dispatch(sessionConnectionQualityChanged(callClient.channelID, callClient.getSessionID() ?? '', quality));
-        });
-        callClient.on(CALL_EVENT.REMOTE_QUALITY_CHANGED, (sessionID: string, _userID: string, quality: CONNECTION_QUALITY) => {
-            store.dispatch(sessionConnectionQualityChanged(callClient.channelID, sessionID, quality));
-        });
-        callClient.on(CALL_EVENT.RECONNECTING, () => {
-            store.dispatch(localSessionReconnecting(callClient.channelID, callClient.getSessionID() ?? ''));
-        });
-        callClient.on(CALL_EVENT.RECONNECTED, () => {
-            store.dispatch(localSessionReconnected(callClient.channelID, callClient.getSessionID() ?? ''));
-        });
-        callClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
-            store.dispatch(usersVoiceActivityChanged(callClient.channelID, sessionIDs, userIDs));
-        });
-        callClient.on(CALL_EVENT.RAISE_HAND, (sessionID: string, userID: string, raisedHandTimestamp: number) => {
-            store.dispatch(userRaisedHand(callClient.channelID, sessionID, userID, raisedHandTimestamp));
-        });
-        callClient.on(CALL_EVENT.LOWER_HAND, (sessionID: string, userID: string) => {
-            store.dispatch(userLoweredHand(callClient.channelID, sessionID, userID));
-        });
-        callClient.on(CALL_EVENT.REACTION, (sessionID: string, userID: string, emoji: EmojiData, timestamp: number) => {
-            dispatchReaction(store, callClient.channelID, {
-                user_id: userID,
-                session_id: sessionID,
-                emoji,
-                timestamp,
-            });
-        });
-
-        trackSIPCallStatus(store, callClient);
+        syncCallClientToStore(callClient, store, {captions: false, unshareStoreSharer: false});
 
         let lastError: Error | undefined;
 

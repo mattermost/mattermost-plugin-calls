@@ -112,7 +112,7 @@ const Profile = styled.div<ProfileProps>`
         margin-left: -${({$size}) => $size * 0.25}px;
     }
 
-    box-shadow: ${({$borderGlowWidth, $borderGlowColor}) => $borderGlowWidth > 0 ? `0px 0px 0px ${$borderGlowWidth}px ${$borderGlowColor}` : 'none'};
+    box-shadow: ${({$borderGlowWidth, $borderGlowColor}) => ($borderGlowWidth > 0 ? `0px 0px 0px ${$borderGlowWidth}px ${$borderGlowColor}` : 'none')};
 `;
 
 const ProfilePlain = styled(Profile)`

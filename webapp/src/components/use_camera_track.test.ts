@@ -2,33 +2,21 @@
 // See LICENSE.txt for license information.
 
 import {act, renderHook} from '@testing-library/react';
-import {EventEmitter} from 'events';
 import type {VideoTrack} from 'livekit-client';
-import type CallClient from 'src/clients/call';
 import {CALL_EVENT} from 'src/clients/call/constants';
-import {CameraState, type CameraTrack} from 'src/clients/call/types';
+import {CameraState} from 'src/clients/call/types';
+import {FakeCallClient, installFakeCallClient} from 'src/test_utils/fake_call_client';
 
 import {useCameraTrack} from './use_camera_track';
 
 const makeTrack = () => ({}) as VideoTrack;
 
-class FakeClient extends EventEmitter {
-    cameras = new Map<string, CameraTrack>();
-    getCameraTrack = jest.fn((sessionID: string) => this.cameras.get(sessionID) ?? {state: CameraState.Off, track: null});
-
-    setCamera(sessionID: string, camera: CameraTrack) {
-        this.cameras.set(sessionID, camera);
-        this.emit(CALL_EVENT.CAMERA_CHANGED, sessionID, `user-${sessionID}`, camera.state);
-    }
-}
-
 describe('useCameraTrack', () => {
-    let client: FakeClient;
+    let client: FakeCallClient;
     const originalCallsClient = window.callsClient;
 
     beforeEach(() => {
-        client = new FakeClient();
-        window.callsClient = client as unknown as CallClient;
+        client = installFakeCallClient();
     });
 
     afterEach(() => {

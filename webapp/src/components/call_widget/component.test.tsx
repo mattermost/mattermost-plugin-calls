@@ -7,13 +7,14 @@ import type {Team} from '@mattermost/types/teams';
 import type {UserProfile} from '@mattermost/types/users';
 import {act, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type {VideoTrack} from 'livekit-client';
 import React from 'react';
 import {createIntl, RawIntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
-import type CallClient from 'src/clients/call';
 import {CALL_EVENT} from 'src/clients/call/constants';
-import {CameraError} from 'src/clients/call/types';
+import {CameraError, type DeviceStatus, type ScreenSharingSession} from 'src/clients/call/types';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
+import {FakeCallClient, installFakeCallClient} from 'src/test_utils/fake_call_client';
 import {mockStore} from 'src/testUtils';
 
 import CallWidget from './component';
@@ -76,6 +77,8 @@ jest.mock('./use_video_input_devices', () => ({
 }));
 
 const intl = createIntl({locale: 'en', messages: {}});
+
+const finishMediaAreaCollapse = () => fireEvent.transitionEnd(document.querySelector('.CallWidgetMediaArea__expander')!);
 
 const stubChannel = {
     id: 'channel-id',
@@ -147,6 +150,8 @@ const props: Props = {
     isPhoneCallActive: false,
     dmVideoEnabled: false,
     isCameraOn: false,
+    isOtherCameraOn: false,
+    currentSessionID: '',
 };
 
 describe('CallWidget', () => {
@@ -156,17 +161,7 @@ describe('CallWidget', () => {
 
     beforeEach(() => {
         originalCallsClient = window.callsClient;
-        disconnect = jest.fn();
-        window.callsClient = {
-            disconnect,
-            channelID: 'channel-id',
-            canPlaybackAudio: true,
-            getRemoteScreenTrack: () => null,
-            getLocalScreenTrack: () => null,
-            on: jest.fn(),
-            off: jest.fn(),
-            isMicTrackPublished: () => false,
-        } as unknown as CallClient;
+        disconnect = installFakeCallClient().disconnect;
         openSpy = jest.spyOn(window, 'open');
     });
 
@@ -244,23 +239,11 @@ describe('CallWidget', () => {
 
 describe('remote audio playback blocked banner', () => {
     let originalCallsClient: typeof window.callsClient;
-    let handlers: Map<string, (...args: unknown[]) => void>;
-    let startAudio: jest.Mock;
+    let client: FakeCallClient;
 
     const renderWidget = (canPlaybackAudio: boolean) => {
-        window.callsClient = {
-            disconnect: jest.fn(),
-            channelID: 'channel-id',
-            canPlaybackAudio,
-            startAudio,
-            getRemoteScreenTrack: () => null,
-            getLocalScreenTrack: () => null,
-            on: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
-                handlers.set(event, handler);
-            }),
-            off: jest.fn(),
-            isMicTrackPublished: () => false,
-        } as unknown as CallClient;
+        client = installFakeCallClient();
+        client.canPlaybackAudio = canPlaybackAudio;
 
         render(
             <Provider store={mockStore(stubState(stubChannel))}>
@@ -273,14 +256,12 @@ describe('remote audio playback blocked banner', () => {
 
     const firePlaybackStatus = (canPlayback: boolean) => {
         act(() => {
-            handlers.get(canPlayback ? CALL_EVENT.REMOTE_AUDIO_PLAYBACK_UNBLOCKED : CALL_EVENT.REMOTE_AUDIO_PLAYBACK_BLOCKED)?.();
+            client.emit(canPlayback ? CALL_EVENT.REMOTE_AUDIO_PLAYBACK_UNBLOCKED : CALL_EVENT.REMOTE_AUDIO_PLAYBACK_BLOCKED);
         });
     };
 
     beforeEach(() => {
         originalCallsClient = window.callsClient;
-        handlers = new Map();
-        startAudio = jest.fn().mockResolvedValue(undefined);
     });
 
     afterEach(() => {
@@ -315,75 +296,129 @@ describe('remote audio playback blocked banner', () => {
 
         await user.click(screen.getByRole('button', {name: /enable audio/i}));
 
-        expect(startAudio).toHaveBeenCalledTimes(1);
+        expect(client.startAudio).toHaveBeenCalledTimes(1);
     });
 });
 
-describe('screen sharing panel', () => {
+describe('screen sharing in the media area', () => {
     const currentUserSession: UserSessionState = {session_id: 'session-1', user_id: 'user-id', unmuted: false, raised_hand: 0};
     const sharerSession: UserSessionState = {session_id: 'session-2', user_id: 'other-user', unmuted: false, raised_hand: 0};
-    let handlers: Map<string, (...args: unknown[]) => void>;
+    let client: FakeCallClient;
 
-    const makeTrack = () => ({attach: jest.fn(), detach: jest.fn()});
+    const makeTrack = () => ({
+        attach: jest.fn(),
+        detach: jest.fn(),
+        mediaStreamTrack: {getSettings: () => ({displaySurface: 'monitor'})},
+    }) as unknown as VideoTrack & {attach: jest.Mock; detach: jest.Mock};
+    const remoteShare = (track: VideoTrack | null): ScreenSharingSession => ({sessionID: sharerSession.session_id, userID: sharerSession.user_id, isLocal: false, track});
+    const ownShare = (track: VideoTrack | null): ScreenSharingSession => ({sessionID: currentUserSession.session_id, userID: currentUserSession.user_id, isLocal: true, track});
 
-    const renderWidget = (remoteTrack: ReturnType<typeof makeTrack>) => {
-        window.callsClient = {
-            disconnect: jest.fn(),
-            channelID: 'channel-id',
-            canPlaybackAudio: true,
-            getRemoteScreenTrack: () => remoteTrack,
-            getLocalScreenTrack: () => null,
-            on: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
-                handlers.set(event, handler);
-            }),
-            off: jest.fn(),
-            isMicTrackPublished: () => false,
-        } as unknown as CallClient;
-
-        return render(
-            <Provider store={mockStore(stubState(stubChannel))}>
-                <RawIntlProvider value={intl}>
-                    <CallWidget
-                        {...props}
-                        sessions={[currentUserSession, sharerSession]}
-                        currentSession={currentUserSession}
-                        screenSharingSession={sharerSession}
-                        profiles={{'other-user': {id: 'other-user', username: 'sharer'} as UserProfile}}
-                    />
-                </RawIntlProvider>
-            </Provider>,
-        );
+    // Sets the share the client already has when the widget loads, without an event.
+    const sharingOnLoad = (share: ScreenSharingSession) => {
+        client.screenSharingSessionID = share.sessionID;
+        client.localScreenTrack = share.isLocal ? share.track : null;
+        client.remoteScreenTrack = share.isLocal ? null : share.track;
     };
 
+    const widget = (overrides: Partial<Props> = {}) => (
+        <Provider store={mockStore(stubState(stubChannel))}>
+            <RawIntlProvider value={intl}>
+                <CallWidget
+                    {...props}
+                    sessions={[currentUserSession, sharerSession]}
+                    currentSession={currentUserSession}
+                    currentSessionID={currentUserSession.session_id}
+                    screenSharingSession={sharerSession}
+                    profiles={{'other-user': {id: 'other-user', username: 'sharer'} as UserProfile}}
+                    {...overrides}
+                />
+            </RawIntlProvider>
+        </Provider>
+    );
+
+    const mediaArea = () => screen.queryByTestId('calls-widget-media-area');
+
     beforeEach(() => {
-        handlers = new Map();
+        client = installFakeCallClient();
+        client.getSessionID.mockReturnValue(currentUserSession.session_id);
     });
 
     afterEach(() => {
         window.callsClient = undefined;
     });
 
-    test('attaches the remote screen share track to the screen player', () => {
+    test('plays someone else\'s share inside the media area with a presenting bar and no Pop out', () => {
         const track = makeTrack();
-        const {container} = renderWidget(track);
+        sharingOnLoad(remoteShare(track));
+        render(widget());
 
-        const player = container.querySelector('#screen-player');
+        const player = mediaArea()?.querySelector('#screen-player');
         expect(player).toBeInstanceOf(HTMLVideoElement);
         expect(track.attach).toHaveBeenCalledWith(player);
+        expect(screen.getByText('sharer is presenting')).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: /pop out/i})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Stop'})).not.toBeInTheDocument();
+    });
+
+    test('opens on the dark background while the remote track is still loading', () => {
+        sharingOnLoad(remoteShare(null));
+        render(widget());
+
+        expect(mediaArea()).toBeInTheDocument();
+        expect(document.querySelector('#screen-player')).toBeInTheDocument();
     });
 
     test('moves the screen player to the track a new screen sharing event brings', () => {
         const first = makeTrack();
         const second = makeTrack();
-        const {container} = renderWidget(first);
-        const player = container.querySelector('#screen-player');
+        sharingOnLoad(remoteShare(first));
+        render(widget());
+        const player = document.querySelector('#screen-player');
 
-        act(() => {
-            handlers.get(CALL_EVENT.SCREEN_SHARING_CHANGED)?.({sessionID: 'session-2', userID: 'other-user', isLocal: false, track: second});
-        });
+        act(() => client.setScreenShare(remoteShare(second)));
 
         expect(first.detach).toHaveBeenCalledWith(player);
         expect(second.attach).toHaveBeenCalledWith(player);
+    });
+
+    test('shows your own share when the widget loads mid-share, and Stop ends it', async () => {
+        const user = userEvent.setup();
+        const track = makeTrack();
+        sharingOnLoad(ownShare(track));
+        render(widget({screenSharingSession: currentUserSession}));
+
+        expect(track.attach).toHaveBeenCalledWith(document.querySelector('#screen-player'));
+        expect(screen.getByText('You are presenting your entire screen')).toBeInTheDocument();
+        const stop = screen.getByTestId('calls-widget-stop-screenshare');
+        expect(stop).toHaveAttribute('id', 'calls-widget-stop-screenshare');
+
+        await user.click(stop);
+
+        expect(client.unshareScreen).toHaveBeenCalledTimes(1);
+    });
+
+    test('a channel call has no media area until someone shares, and loses it when they stop', () => {
+        render(widget({screenSharingSession: undefined}));
+        expect(mediaArea()).not.toBeInTheDocument();
+
+        act(() => client.setScreenShare(remoteShare(makeTrack())));
+        expect(mediaArea()).toBeInTheDocument();
+
+        act(() => client.setScreenShare(null));
+        expect(mediaArea()).toBeInTheDocument();
+
+        finishMediaAreaCollapse();
+        expect(mediaArea()).not.toBeInTheDocument();
+    });
+
+    test.each([
+        ['screen sharing is off', {allowScreenSharing: false}],
+        ['it is a phone call', {isPhoneCall: true}],
+    ])('shows no share when %s', (_, overrides: Partial<Props>) => {
+        sharingOnLoad(remoteShare(makeTrack()));
+        render(widget(overrides));
+
+        expect(mediaArea()).not.toBeInTheDocument();
     });
 });
 
@@ -404,17 +439,7 @@ describe('leave button behavior', () => {
     const otherSession = stubSession('session-2', 'other-user');
 
     beforeEach(() => {
-        disconnect = jest.fn();
-        window.callsClient = {
-            disconnect,
-            channelID: 'channel-id',
-            canPlaybackAudio: true,
-            getRemoteScreenTrack: () => null,
-            getLocalScreenTrack: () => null,
-            on: jest.fn(),
-            off: jest.fn(),
-            isMicTrackPublished: () => false,
-        } as unknown as (typeof window)['callsClient'];
+        disconnect = installFakeCallClient().disconnect;
     });
 
     afterEach(() => {
@@ -611,21 +636,10 @@ describe('phone call', () => {
     const renderWidget = (state: ReturnType<typeof phoneState>, overrides: Partial<Props> = {}) => render(widget(state, overrides));
 
     let originalWebappUtils: typeof window.WebappUtils;
-    let sendDTMF: jest.Mock;
+    let sendDTMF: FakeCallClient['sendDTMF'];
 
     beforeEach(() => {
-        sendDTMF = jest.fn().mockResolvedValue(undefined);
-        window.callsClient = {
-            disconnect: jest.fn(),
-            sendDTMF,
-            channelID: 'channel-id',
-            canPlaybackAudio: true,
-            getRemoteScreenTrack: () => null,
-            getLocalScreenTrack: () => null,
-            on: jest.fn(),
-            off: jest.fn(),
-            isMicTrackPublished: () => false,
-        } as unknown as (typeof window)['callsClient'];
+        sendDTMF = installFakeCallClient().sendDTMF;
 
         // The settings menu reads window.WebappUtils, which the host webapp provides.
         originalWebappUtils = window.WebappUtils;
@@ -812,8 +826,7 @@ describe('camera video and device controls', () => {
     const builtInMic = {deviceId: 'built-in', label: 'Built-in Microphone', kind: 'audioinput'} as MediaDeviceInfo;
     const usbMic = {deviceId: 'usb', label: 'USB Microphone', kind: 'audioinput'} as MediaDeviceInfo;
 
-    let handlers: Map<string, (...args: unknown[]) => void>;
-    let client: Record<string, unknown>;
+    let client: FakeCallClient;
 
     const videoProps: Partial<Props> = {
         channel: dmChannel,
@@ -821,6 +834,7 @@ describe('camera video and device controls', () => {
         sessions: [selfSession, otherSession],
         otherSessions: [otherSession],
         currentSession: selfSession,
+        currentSessionID: selfSession.session_id,
     };
 
     const widget = (overrides: Partial<Props> = {}) => (
@@ -844,7 +858,7 @@ describe('camera video and device controls', () => {
 
     const fireDevices = (inputs: MediaDeviceInfo[]) => {
         act(() => {
-            handlers.get(CALL_EVENT.DEVICE_CHANGE)?.({inputs, outputs: []});
+            client.setAudioDevices({inputs, outputs: []});
         });
     };
 
@@ -855,29 +869,7 @@ describe('camera video and device controls', () => {
 
     beforeEach(() => {
         mockCameras = [mockCamera];
-        handlers = new Map();
-        client = {
-            disconnect: jest.fn(),
-            channelID: 'channel-id',
-            canPlaybackAudio: true,
-            currentAudioInputDevice: null,
-            getRemoteScreenTrack: () => null,
-            getLocalScreenTrack: () => null,
-            canPublishCamera: () => true,
-            enableCamera: jest.fn(),
-            disableCamera: jest.fn(),
-            mute: jest.fn(),
-            unmute: jest.fn(),
-            setAudioInputDevice: jest.fn(),
-            raiseHand: jest.fn(),
-            unraiseHand: jest.fn(),
-            on: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
-                handlers.set(event, handler);
-            }),
-            off: jest.fn(),
-            isMicTrackPublished: () => true,
-        };
-        window.callsClient = client as unknown as CallClient;
+        client = installFakeCallClient();
     });
 
     afterEach(() => {
@@ -904,7 +896,7 @@ describe('camera video and device controls', () => {
         ['it is a phone call', {isPhoneCall: true}, true],
         ['the client may not publish a camera', {}, false],
     ])('has no camera button when %s', (_, overrides: Partial<Props>, canPublish) => {
-        client.canPublishCamera = () => canPublish;
+        client.canPublishCamera.mockReturnValue(canPublish);
         renderWidget(overrides);
 
         expect(screen.getByRole('button', {name: 'Microphone'})).toBeInTheDocument();
@@ -912,7 +904,7 @@ describe('camera video and device controls', () => {
     });
 
     test('while connecting, shows the camera from the settings alone', () => {
-        client.canPublishCamera = () => false;
+        client.canPublishCamera.mockReturnValue(false);
         renderWidget({clientConnecting: true});
 
         expect(screen.getByRole('button', {name: 'Camera'})).toBeDisabled();
@@ -929,23 +921,29 @@ describe('camera video and device controls', () => {
         expect(camera).toHaveAttribute('aria-pressed', String(isCameraOn));
 
         await user.click(camera);
-        expect(client[method]).toHaveBeenCalledTimes(1);
+        expect(client[method as 'enableCamera' | 'disableCamera']).toHaveBeenCalledTimes(1);
     });
 
     const ringing: Partial<Props> = {isDMCalling: true, sessions: [selfSession], otherSessions: []};
 
-    const videoTiles = () => within(screen.getByTestId('calls-widget-video-area')).getAllByTestId('video-tile').map((tile) => [tile.dataset.sessionId, tile.dataset.size]);
+    const videoTiles = () => within(screen.getByTestId('calls-widget-media-area')).queryAllByTestId('video-tile').map((tile) => [tile.dataset.sessionId, tile.dataset.size]);
 
     test('shows your own video large while ringing once the camera is on', () => {
         const {container, rerender} = renderWidget({...ringing, isCameraOn: false});
         const cameraOffLabels = bottomBarLabels(container);
-        expect(screen.queryByTestId('calls-widget-video-area')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('calls-widget-media-area')).not.toBeInTheDocument();
 
         rerender(widget({...ringing, isCameraOn: true}));
 
         expect(bottomBarLabels(container)).toEqual(cameraOffLabels);
         expect(videoTiles()).toEqual([['session-1', 'large']]);
         expect(screen.getByRole('button', {name: 'Camera'})).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    test('shows your own video before your session reaches the store', () => {
+        renderWidget({...ringing, currentSession: undefined, isCameraOn: true});
+
+        expect(videoTiles()).toEqual([['session-1', 'large']]);
     });
 
     test('moves your video to the corner when the other person answers', () => {
@@ -959,8 +957,11 @@ describe('camera video and device controls', () => {
         ]);
     });
 
-    test('shows the other person large and the self-view small once the call is answered', () => {
-        renderWidget();
+    test.each([
+        ['your camera', {isCameraOn: true}],
+        ['the other person\'s camera', {isOtherCameraOn: true}],
+    ])('once answered, shows the other person large and the self-view small when %s is on', (_, overrides: Partial<Props>) => {
+        renderWidget(overrides);
 
         expect(videoTiles()).toEqual([
             ['session-2', 'large'],
@@ -968,14 +969,63 @@ describe('camera video and device controls', () => {
         ]);
     });
 
+    test('closes the area once both cameras are off', () => {
+        const {rerender} = renderWidget({isOtherCameraOn: true});
+        expect(screen.getByTestId('calls-widget-media-area')).toBeInTheDocument();
+
+        rerender(widget({isOtherCameraOn: false}));
+        expect(videoTiles()).toEqual([
+            ['session-2', 'large'],
+            ['session-1', 'small'],
+        ]);
+
+        finishMediaAreaCollapse();
+        expect(screen.queryByTestId('calls-widget-media-area')).not.toBeInTheDocument();
+    });
+
+    test('collapses your own video when you turn the camera off while ringing', () => {
+        const {rerender} = renderWidget({...ringing, isCameraOn: true});
+
+        rerender(widget({...ringing, isCameraOn: false}));
+        expect(videoTiles()).toEqual([['session-1', 'large']]);
+
+        finishMediaAreaCollapse();
+        expect(screen.queryByTestId('calls-widget-media-area')).not.toBeInTheDocument();
+    });
+
+    test('a screen share replaces the camera tiles, which come back when it ends', () => {
+        renderWidget({isCameraOn: true, isOtherCameraOn: true});
+
+        act(() => client.setScreenShare({sessionID: 'session-2', userID: 'other-user', isLocal: false, track: null}));
+        expect(videoTiles()).toEqual([]);
+        expect(document.querySelector('#screen-player')).toBeInTheDocument();
+
+        act(() => client.setScreenShare(null));
+        expect(document.querySelector('#screen-player')).not.toBeInTheDocument();
+        expect(videoTiles()).toEqual([
+            ['session-2', 'large'],
+            ['session-1', 'small'],
+        ]);
+    });
+
+    test('keeps the same area when the content switches, so it does not grow again', () => {
+        renderWidget({isCameraOn: true});
+        const area = screen.getByTestId('calls-widget-media-area');
+
+        act(() => client.setScreenShare({sessionID: 'session-2', userID: 'other-user', isLocal: false, track: null}));
+
+        expect(screen.getByTestId('calls-widget-media-area')).toBe(area);
+    });
+
     test.each([
         ['while ringing with the camera off', {...ringing, isCameraOn: false}],
-        ['while connecting', {clientConnecting: true}],
-        ['without DM video', {dmVideoEnabled: false}],
-    ])('has no video area %s', (_, overrides: Partial<Props>) => {
+        ['once answered with both cameras off', {}],
+        ['while connecting', {clientConnecting: true, isCameraOn: true}],
+        ['without DM video', {dmVideoEnabled: false, isCameraOn: true}],
+    ])('has no media area %s', (_, overrides: Partial<Props>) => {
         renderWidget(overrides);
 
-        expect(screen.queryByTestId('calls-widget-video-area')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('calls-widget-media-area')).not.toBeInTheDocument();
     });
 
     test.each([
@@ -985,7 +1035,7 @@ describe('camera video and device controls', () => {
         ['the chosen device by label when its ID changed', {deviceId: 'stale-id', label: usbMic.label}, usbMic.label],
     ])('the mic menu ticks %s', async (_, current, expectedLabel) => {
         const user = userEvent.setup();
-        client.currentAudioInputDevice = current;
+        client.currentAudioInputDevice = current as MediaDeviceInfo | null;
         renderWidget();
         fireDevices([defaultMic, builtInMic, usbMic]);
 
@@ -1038,6 +1088,35 @@ describe('camera video and device controls', () => {
         expect(within(menu).queryByText('Additional settings')).not.toBeInTheDocument();
     });
 
+    test('the audio output submenu ticks the current speaker, switches on pick, and Escape still closes More options', async () => {
+        const user = userEvent.setup();
+        const speaker = {deviceId: 'speaker-1', label: 'Built-in Speakers', kind: 'audiooutput'} as MediaDeviceInfo;
+        const headphones = {deviceId: 'speaker-2', label: 'Headphones', kind: 'audiooutput'} as MediaDeviceInfo;
+        client.currentAudioOutputDevice = speaker;
+        renderWidget();
+        act(() => {
+            client.setAudioDevices({inputs: [defaultMic], outputs: [speaker, headphones]});
+        });
+
+        await user.click(screen.getByRole('button', {name: 'More options'}));
+        await user.click(document.getElementById('calls-widget-audiooutput-button')!);
+
+        const menu = screen.getByRole('menu', {name: 'Audio output'});
+        expect(menu).toHaveAttribute('id', 'calls-widget-audiooutputs-menu');
+        expect(checkedItems('Audio output')).toEqual([speaker.label]);
+        expect(screen.getByRole('menuitemradio', {name: speaker.label})).toHaveFocus();
+
+        await user.keyboard('{Escape}');
+        expect(screen.queryByRole('menu', {name: 'Audio output'})).not.toBeInTheDocument();
+        expect(screen.queryByTestId('calls-widget-menu')).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', {name: 'More options'}));
+        await user.click(document.getElementById('calls-widget-audiooutput-button')!);
+        await user.click(screen.getByRole('menuitemradio', {name: headphones.label}));
+        expect(client.setAudioOutputDevice).toHaveBeenCalledWith(headphones);
+        expect(screen.queryByRole('menu', {name: 'Audio output'})).not.toBeInTheDocument();
+    });
+
     test('raise hand moved from the bottom bar into More options in a group call', async () => {
         const user = userEvent.setup();
         const {container} = renderWidget({channel: stubChannel, otherSessions: []});
@@ -1083,7 +1162,7 @@ describe('camera video and device controls', () => {
         renderWidget();
 
         act(() => {
-            handlers.get(CALL_EVENT.CAMERA_ERROR)?.(err);
+            client.emit(CALL_EVENT.CAMERA_ERROR, err);
         });
 
         expect(screen.getByText(text)).toBeInTheDocument();
@@ -1093,8 +1172,8 @@ describe('camera video and device controls', () => {
         const {rerender} = renderWidget();
 
         act(() => {
-            handlers.get(CALL_EVENT.CAMERA_ERROR)?.(CameraError.NotFound);
-            handlers.get(CALL_EVENT.CAMERA_ERROR)?.(CameraError.DeviceInUse);
+            client.emit(CALL_EVENT.CAMERA_ERROR, CameraError.NotFound);
+            client.emit(CALL_EVENT.CAMERA_ERROR, CameraError.DeviceInUse);
         });
 
         expect(screen.queryByText('No camera found. Try plugging in a camera.')).not.toBeInTheDocument();
@@ -1107,7 +1186,7 @@ describe('camera video and device controls', () => {
 
     describe('microphone and camera status', () => {
         const fire = (event: string, ...args: unknown[]) => act(() => {
-            handlers.get(event)?.(...args);
+            client.emit(event, ...args);
         });
 
         const deviceStatus = (name: 'Microphone' | 'Camera') => screen.getByRole('button', {name}).closest('.DeviceControl')?.getAttribute('data-status');
@@ -1116,15 +1195,17 @@ describe('camera video and device controls', () => {
 
         const deferredEnableCamera = () => {
             const resolvers: Array<() => void> = [];
-            client.enableCamera = jest.fn(() => new Promise<void>((resolve) => {
-                resolvers.push(resolve);
+            client.enableCamera.mockImplementation(() => new Promise<undefined>((resolve) => {
+                resolvers.push(() => resolve(undefined));
             }));
             return resolvers;
         };
 
-        test('the mic is starting until the client has set it up, and ignores the button and shortcut until then', async () => {
+        const setMicStatus = (status: DeviceStatus) => act(() => client.setMicStatus(status));
+
+        test('the mic follows the client\'s status, and ignores the button and shortcut while starting', async () => {
             const user = userEvent.setup();
-            client.isMicTrackPublished = () => false;
+            client.micStatus = 'starting';
             renderWidget();
 
             expect(deviceStatus('Microphone')).toBe('starting');
@@ -1136,9 +1217,8 @@ describe('camera video and device controls', () => {
             expect(client.mute).not.toHaveBeenCalled();
             expect(client.unmute).not.toHaveBeenCalled();
 
-            fire(CALL_EVENT.INIT_AUDIO);
+            setMicStatus('ready');
             expect(deviceStatus('Microphone')).toBe('ready');
-            (client.unmute as jest.Mock).mockClear();
 
             pressMuteShortcut();
             expect(client.mute).toHaveBeenCalledTimes(1);
@@ -1151,14 +1231,13 @@ describe('camera video and device controls', () => {
         });
 
         test.each([
-            ['blocked', () => handlers.get(CALL_EVENT.ERROR)?.(AudioInputPermissionsErr), 'No audio input permissions'],
-            ['missing', () => handlers.get(CALL_EVENT.DEVICE_CHANGE)?.({inputs: [], outputs: []}), 'No audio input devices'],
-        ])('the mic shows %s with a badge', async (status, trigger, tooltip) => {
+            ['blocked', 'No audio input permissions'],
+            ['missing', 'No audio input devices'],
+        ] as const)('the mic shows %s with a badge', async (status, tooltip) => {
             const user = userEvent.setup();
-            client.isMicTrackPublished = () => false;
             renderWidget();
 
-            act(trigger);
+            setMicStatus(status);
 
             expect(deviceStatus('Microphone')).toBe(status);
             expect(hasBadge('Microphone')).toBe(true);
@@ -1166,44 +1245,24 @@ describe('camera video and device controls', () => {
             expect(await screen.findByText(tooltip)).toBeInTheDocument();
         });
 
-        test('a blocked mic stays blocked rather than missing when the browser also lists no inputs', () => {
-            client.isMicTrackPublished = () => false;
-            renderWidget();
-
-            fire(CALL_EVENT.ERROR, AudioInputPermissionsErr);
-            fireDevices([]);
-
-            expect(deviceStatus('Microphone')).toBe('blocked');
-        });
-
         test('a missing mic ignores the shortcut', () => {
             renderWidget();
-            fireDevices([]);
+            setMicStatus('missing');
 
             pressMuteShortcut();
 
             expect(client.mute).not.toHaveBeenCalled();
         });
 
-        test('plugging in a mic after none were found starts it again until the client has set it up', () => {
-            renderWidget();
-            fireDevices([]);
-            expect(deviceStatus('Microphone')).toBe('missing');
-
-            client.isMicTrackPublished = () => false;
-            fireDevices([defaultMic]);
-            expect(deviceStatus('Microphone')).toBe('starting');
-
-            fire(CALL_EVENT.INIT_AUDIO);
-            expect(deviceStatus('Microphone')).toBe('ready');
-        });
-
-        test('other device changes leave a working mic ready', () => {
+        test.each([
+            ['a denied permission', () => client.emit(CALL_EVENT.ERROR, AudioInputPermissionsErr), 'Allow microphone access to Mattermost.'],
+            ['no inputs', () => client.setAudioDevices({inputs: [], outputs: []}), 'Unable to find a valid audio input device. Try plugging in an audio input device.'],
+        ])('%s still shows its banner', (_, trigger, banner) => {
             renderWidget();
 
-            fireDevices([defaultMic, usbMic]);
+            act(trigger);
 
-            expect(deviceStatus('Microphone')).toBe('ready');
+            expect(screen.getByText(banner)).toBeInTheDocument();
         });
 
         test('the camera is starting from the click until it turns on, and ignores clicks meanwhile', async () => {

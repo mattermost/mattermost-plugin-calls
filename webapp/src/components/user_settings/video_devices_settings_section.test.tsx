@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {act, fireEvent, render, screen} from '@testing-library/react';
+import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {createLocalVideoTrack, MediaDeviceFailure, TrackEvent} from 'livekit-client';
 import React from 'react';
@@ -10,8 +10,10 @@ import {Provider} from 'react-redux';
 import ReactSelect from 'react-select';
 import CallClient from 'src/clients/call';
 import {CAMERA_CAPTURE_DEFAULTS} from 'src/clients/call/constants';
+import {CameraState} from 'src/clients/call/types';
 import {STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, STORAGE_CALLS_MIRROR_VIDEO} from 'src/constants';
 import {logErr} from 'src/log';
+import {type FakeCallClient, installFakeCallClient} from 'src/test_utils/fake_call_client';
 import {mockStore} from 'src/testUtils';
 
 import VideoDevicesSettingsSection from './video_devices_settings_section';
@@ -24,7 +26,9 @@ jest.mock('livekit-client', () => ({
 jest.mock('src/clients/call', () => ({
     __esModule: true,
     default: {getLocalVideoDevices: jest.fn()},
+    CALL_EVENT: jest.requireActual('src/clients/call/constants').CALL_EVENT,
     CameraError: jest.requireActual('src/clients/call/types').CameraError,
+    CameraState: jest.requireActual('src/clients/call/types').CameraState,
 }));
 
 jest.mock('src/log', () => ({
@@ -45,6 +49,8 @@ jest.mock('react-select', () => {
 const MESSAGES_ID = 'videoInputMessages';
 const LOAD_ERROR_MESSAGE = 'Unable to load video devices. Make sure a camera is connected and that Mattermost is allowed to use it.';
 const MIRRORED_CLASS = 'VideoDevicesSettings__video--mirrored';
+const DESCRIPTION = 'Set up video devices to be used for Mattermost calls.';
+const SESSION_ID = 'session-id';
 
 const makeCamera = (deviceId: string, label: string) => ({deviceId, label, kind: 'videoinput', groupId: ''}) as MediaDeviceInfo;
 
@@ -131,14 +137,96 @@ describe('VideoDevicesSettingsSection', () => {
     afterEach(() => {
         window.localStorage.removeItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY);
         window.localStorage.removeItem(STORAGE_CALLS_MIRROR_VIDEO);
+        window.callsClient = undefined;
         jest.clearAllMocks();
     });
 
     test('does not load devices while collapsed', () => {
         renderComponent();
 
-        expect(screen.getByText('Video devices')).toBeInTheDocument();
+        expect(screen.getByRole('heading', {name: 'Video devices'})).toBeInTheDocument();
+        expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
         expect(getLocalVideoDevices).not.toHaveBeenCalled();
+    });
+
+    test('names Edit after the section and keeps it on the right of the title', () => {
+        renderComponent();
+
+        const edit = screen.getByRole('button', {name: 'Video devices Edit'});
+        expect(edit.parentElement).toHaveClass('section-min__header');
+    });
+
+    test.each(['Save', 'Cancel'])('returns focus to Edit after %s', async (action) => {
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Camera');
+
+        await userEvent.click(screen.getByText(action));
+
+        expect(screen.getByRole('button', {name: 'Video devices Edit'})).toHaveFocus();
+    });
+
+    test('lays out Camera input, Preview and Options in the label column', async () => {
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Camera');
+
+        for (const label of ['Camera input', 'Preview', 'Options']) {
+            expect(screen.getByText(label)).toHaveClass('CallsSettingsSection__label');
+        }
+        expect(screen.getByLabelText('Camera input')).toHaveAttribute('id', 'videoInputSelect');
+        expect(screen.getByRole('group', {name: 'Camera preview'})).toHaveClass('VideoDevicesSettings__preview');
+        expect(screen.getByRole('group', {name: 'Options'})).toContainElement(screen.getByRole('checkbox', {name: 'Mirror my video'}));
+    });
+
+    test('mirrors by default and explains, once and under the checkbox, that it is saved on this device', async () => {
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Camera');
+
+        const note = 'Only you see it mirrored. Saved on this device only.';
+        const mirror = screen.getByRole('checkbox', {name: 'Mirror my video'});
+        expect(mirror).toBeChecked();
+        expect(mirror).toHaveAccessibleDescription(note);
+        expect(screen.getByText(note)).toHaveClass('help-text', 'VideoDevicesSettings__mirrorNote');
+        expect(screen.getAllByText(/Saved on this device only/)).toHaveLength(1);
+        expect(document.getElementById('videoInputSelect')).not.toHaveAttribute('aria-describedby', expect.stringContaining('videoInputHelp'));
+    });
+
+    test('shows the section description only while collapsed', async () => {
+        renderComponent();
+        expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
+
+        await openSection();
+        await screen.findByText('Built-in Camera');
+
+        expect(screen.queryByText(DESCRIPTION)).not.toBeInTheDocument();
+    });
+
+    test('picking a camera while the preview is off does not start it', async () => {
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Camera');
+
+        await userEvent.click(screen.getByLabelText('Camera input'));
+        await userEvent.click(screen.getByText('USB Camera'));
+
+        expect(createTrack).not.toHaveBeenCalled();
+        expect(getVideo()).toBeNull();
+        expect(screen.getByRole('button', {name: 'Turn on camera'})).toBeInTheDocument();
+    });
+
+    test('mirroring changes the preview before Save', async () => {
+        window.localStorage.setItem(STORAGE_CALLS_MIRROR_VIDEO, 'off');
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Camera');
+        await turnOnCamera();
+
+        await userEvent.click(screen.getByLabelText('Mirror my video'));
+
+        expect(getVideo()).toHaveClass(MIRRORED_CLASS);
+        expect(window.localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO)).toBe('off');
     });
 
     test('lists cameras without asking for camera access before the click', async () => {
@@ -321,14 +409,13 @@ describe('VideoDevicesSettingsSection', () => {
         expect(getLiveRegion()).toHaveTextContent('Camera on');
     });
 
-    test('saves the selected camera and the mirror setting', async () => {
+    test('saves the selected camera and the default mirror setting', async () => {
         renderComponent();
         await openSection();
         await screen.findByText('Built-in Camera');
 
         await userEvent.click(screen.getByLabelText('Camera input'));
         await userEvent.click(screen.getByText('USB Camera'));
-        await userEvent.click(screen.getByLabelText('Mirror video'));
         await userEvent.click(screen.getByText('Save'));
 
         expect(JSON.parse(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY) ?? '')).toEqual({deviceId: 'cam-2', label: 'USB Camera'});
@@ -336,17 +423,21 @@ describe('VideoDevicesSettingsSection', () => {
         expect(screen.getByText('Edit')).toBeInTheDocument();
     });
 
-    test('saves mirror off when it is unchecked', async () => {
-        window.localStorage.setItem(STORAGE_CALLS_MIRROR_VIDEO, 'on');
+    test.each([
+        ['off when it is unchecked', null, 'off'],
+        ['on when it is checked again', 'off', 'on'],
+    ])('saves mirror %s', async (_, stored, saved) => {
+        if (stored) {
+            window.localStorage.setItem(STORAGE_CALLS_MIRROR_VIDEO, stored);
+        }
         renderComponent();
         await openSection();
         await screen.findByText('Built-in Camera');
-        expect(screen.getByLabelText('Mirror video')).toBeChecked();
 
-        await userEvent.click(screen.getByLabelText('Mirror video'));
+        await userEvent.click(screen.getByLabelText('Mirror my video'));
         await userEvent.click(screen.getByText('Save'));
 
-        expect(window.localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO)).toBe('off');
+        expect(window.localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO)).toBe(saved);
     });
 
     test('keeps the saved camera when saving with no camera to pick', async () => {
@@ -366,7 +457,7 @@ describe('VideoDevicesSettingsSection', () => {
         await openSection();
         await screen.findByText('Built-in Camera');
         const track = await turnOnCamera();
-        await userEvent.click(screen.getByLabelText('Mirror video'));
+        await userEvent.click(screen.getByLabelText('Mirror my video'));
 
         await userEvent.click(screen.getByText('Cancel'));
 
@@ -445,29 +536,35 @@ describe('VideoDevicesSettingsSection', () => {
         expect(track.stop).toHaveBeenCalledTimes(1);
     });
 
-    test('mirrors only the preview when Mirror video is checked', async () => {
+    test('the preview follows the Mirror my video checkbox', async () => {
         renderComponent();
         await openSection();
         await screen.findByText('Built-in Camera');
         await turnOnCamera();
-        expect(getVideo()).not.toHaveClass(MIRRORED_CLASS);
-
-        await userEvent.click(screen.getByLabelText('Mirror video'));
         expect(getVideo()).toHaveClass(MIRRORED_CLASS);
 
-        await userEvent.click(screen.getByLabelText('Mirror video'));
+        await userEvent.click(screen.getByLabelText('Mirror my video'));
         expect(getVideo()).not.toHaveClass(MIRRORED_CLASS);
+
+        await userEvent.click(screen.getByLabelText('Mirror my video'));
+        expect(getVideo()).toHaveClass(MIRRORED_CLASS);
     });
 
-    test('starts mirrored when mirroring was saved', async () => {
-        window.localStorage.setItem(STORAGE_CALLS_MIRROR_VIDEO, 'on');
+    test.each([
+        ['nothing is saved', null, true],
+        ['mirroring was saved', 'on', true],
+        ['mirroring was turned off', 'off', false],
+    ])('starts mirrored=%s when %s', async (_, stored, mirrored) => {
+        if (stored) {
+            window.localStorage.setItem(STORAGE_CALLS_MIRROR_VIDEO, stored);
+        }
         renderComponent();
         await openSection();
         await screen.findByText('Built-in Camera');
 
         await turnOnCamera();
 
-        expect(getVideo()).toHaveClass(MIRRORED_CLASS);
+        expect(getVideo()?.classList.contains(MIRRORED_CLASS)).toBe(mirrored);
     });
 
     describe('errors', () => {
@@ -633,5 +730,189 @@ describe('VideoDevicesSettingsSection', () => {
         await userEvent.click(screen.getByLabelText('Camera input'));
 
         expect(screen.queryByText('USB Camera')).not.toBeInTheDocument();
+    });
+
+    describe('in a call', () => {
+        let client: FakeCallClient;
+
+        const setCallCamera = (track: FakeTrack | null) => {
+            act(() => client.setCamera(SESSION_ID, track ? {state: CameraState.Ready, track: track as never} : {state: CameraState.Off, track: null}));
+        };
+
+        // Shows the call's track, which the section must never capture again or stop.
+        const turnOnCallPreview = async (callTrack: FakeTrack) => {
+            await userEvent.click(screen.getByRole('button', {name: 'Turn on camera'}));
+            expect(callTrack.attach).toHaveBeenCalledWith(getVideo());
+            fireEvent.playing(getVideo());
+            await screen.findByRole('button', {name: 'Turn off camera'});
+        };
+
+        const waitForAttach = (track: FakeTrack) => waitFor(() => expect(track.attach).toHaveBeenCalled());
+
+        beforeEach(() => {
+            client = installFakeCallClient();
+        });
+
+        test('does not start the preview until Turn on camera, even with the call camera on', async () => {
+            const callTrack = makeTrack('cam-1');
+            client.cameras.set(SESSION_ID, {state: CameraState.Ready, track: callTrack as never});
+            renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+
+            expect(getVideo()).toBeNull();
+            expect(callTrack.attach).not.toHaveBeenCalled();
+            expect(screen.getByRole('button', {name: 'Turn on camera'})).toBeInTheDocument();
+        });
+
+        test('preselects the camera the call is using', async () => {
+            client.cameras.set(SESSION_ID, {state: CameraState.Ready, track: makeTrack('cam-2') as never});
+            renderComponent();
+            await openSection();
+
+            expect(await screen.findByText('USB Camera')).toBeInTheDocument();
+        });
+
+        test.each(['Save', 'Cancel', 'Turn off camera'])('reuses the call camera instead of capturing it again, and leaves it running after %s', async (action) => {
+            const callTrack = makeTrack('cam-1');
+            client.cameras.set(SESSION_ID, {state: CameraState.Ready, track: callTrack as never});
+            renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+
+            await turnOnCallPreview(callTrack);
+            await userEvent.click(screen.getByText(action));
+
+            expect(createTrack).not.toHaveBeenCalled();
+            expect(callTrack.stop).not.toHaveBeenCalled();
+            expect(client.setVideoInputDevice).not.toHaveBeenCalled();
+        });
+
+        test('leaves the call camera running when the section unmounts', async () => {
+            const callTrack = makeTrack('cam-1');
+            client.cameras.set(SESSION_ID, {state: CameraState.Ready, track: callTrack as never});
+            const {unmount} = renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+            await turnOnCallPreview(callTrack);
+
+            unmount();
+
+            expect(callTrack.stop).not.toHaveBeenCalled();
+        });
+
+        test('previews another camera with its own capture, then hands it to the call on Save', async () => {
+            const callTrack = makeTrack('cam-1');
+            client.cameras.set(SESSION_ID, {state: CameraState.Ready, track: callTrack as never});
+            renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+            await turnOnCallPreview(callTrack);
+
+            const ownTrack = makeTrack('cam-2');
+            createTrack.mockResolvedValueOnce(ownTrack);
+            await userEvent.click(screen.getByLabelText('Camera input'));
+            await userEvent.click(screen.getByText('USB Camera'));
+
+            expect(createTrack).toHaveBeenCalledWith(expectedCapture('cam-2'));
+            expect(ownTrack.attach).toHaveBeenCalledWith(getVideo());
+
+            await userEvent.click(screen.getByText('Save'));
+
+            expect(client.setVideoInputDevice).toHaveBeenCalledWith(usb);
+            expect(ownTrack.stop.mock.invocationCallOrder[0]).toBeLessThan(client.setVideoInputDevice.mock.invocationCallOrder[0]);
+            expect(callTrack.stop).not.toHaveBeenCalled();
+            expect(ownTrack.restartTrack).not.toHaveBeenCalled();
+        });
+
+        test('Cancel after previewing another camera leaves the call camera where it was', async () => {
+            const callTrack = makeTrack('cam-1');
+            client.cameras.set(SESSION_ID, {state: CameraState.Ready, track: callTrack as never});
+            renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+            await turnOnCallPreview(callTrack);
+            const ownTrack = makeTrack('cam-2');
+            createTrack.mockResolvedValueOnce(ownTrack);
+            await userEvent.click(screen.getByLabelText('Camera input'));
+            await userEvent.click(screen.getByText('USB Camera'));
+
+            await userEvent.click(screen.getByText('Cancel'));
+
+            expect(ownTrack.stop).toHaveBeenCalledTimes(1);
+            expect(client.setVideoInputDevice).not.toHaveBeenCalled();
+            expect(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY)).toBeNull();
+        });
+
+        test('going back to the call camera releases the other capture', async () => {
+            const callTrack = makeTrack('cam-1');
+            client.cameras.set(SESSION_ID, {state: CameraState.Ready, track: callTrack as never});
+            renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+            await turnOnCallPreview(callTrack);
+            const ownTrack = makeTrack('cam-2');
+            createTrack.mockResolvedValueOnce(ownTrack);
+            await userEvent.click(screen.getByLabelText('Camera input'));
+            await userEvent.click(screen.getByText('USB Camera'));
+            await waitForAttach(ownTrack);
+
+            await userEvent.click(screen.getByLabelText('Camera input'));
+            await userEvent.click(screen.getAllByText('Built-in Camera').at(-1) as HTMLElement);
+
+            expect(ownTrack.stop).toHaveBeenCalledTimes(1);
+            expect(callTrack.attach).toHaveBeenCalledTimes(2);
+            expect(createTrack).toHaveBeenCalledTimes(1);
+        });
+
+        test('switches to the call track when the call camera turns on during the preview', async () => {
+            renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+            const ownTrack = await turnOnCamera(makeTrack('cam-1'));
+
+            const callTrack = makeTrack('cam-1');
+            setCallCamera(callTrack);
+
+            expect(ownTrack.stop).toHaveBeenCalledTimes(1);
+            expect(callTrack.attach).toHaveBeenCalledWith(getVideo());
+            expect(screen.getByRole('button', {name: 'Turn off camera'})).toBeInTheDocument();
+
+            await userEvent.click(screen.getByText('Cancel'));
+            expect(callTrack.stop).not.toHaveBeenCalled();
+        });
+
+        test('stops the preview and announces it when the call camera turns off', async () => {
+            const callTrack = makeTrack('cam-1');
+            client.cameras.set(SESSION_ID, {state: CameraState.Ready, track: callTrack as never});
+            renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+            await turnOnCallPreview(callTrack);
+
+            setCallCamera(null);
+
+            expect(getVideo()).toBeNull();
+            expect(screen.getByRole('button', {name: 'Turn on camera'})).toBeInTheDocument();
+            expect(getLiveRegion()).toHaveTextContent('Camera off');
+            expect(createTrack).not.toHaveBeenCalled();
+            expect(callTrack.stop).not.toHaveBeenCalled();
+        });
+
+        test('with the call camera off, uses its own capture and saves without moving the call camera', async () => {
+            renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+            const ownTrack = await turnOnCamera(makeTrack('cam-1'));
+            await userEvent.click(screen.getByLabelText('Camera input'));
+            await userEvent.click(screen.getByText('USB Camera'));
+
+            await userEvent.click(screen.getByText('Save'));
+
+            expect(ownTrack.restartTrack).toHaveBeenCalledWith(expectedCapture('cam-2'));
+            expect(ownTrack.stop).toHaveBeenCalledTimes(1);
+            expect(client.setVideoInputDevice).not.toHaveBeenCalled();
+            expect(JSON.parse(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY) ?? '')).toEqual({deviceId: 'cam-2', label: 'USB Camera'});
+        });
     });
 });

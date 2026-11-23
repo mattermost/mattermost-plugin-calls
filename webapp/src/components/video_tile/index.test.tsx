@@ -2,15 +2,13 @@
 // See LICENSE.txt for license information.
 
 import {act, render} from '@testing-library/react';
-import {EventEmitter} from 'events';
 import type {VideoTrack} from 'livekit-client';
 import React from 'react';
 import {Provider} from 'react-redux';
 import {AnyAction, createStore} from 'redux';
-import type CallClient from 'src/clients/call';
-import {CALL_EVENT} from 'src/clients/call/constants';
-import {CameraState, type CameraTrack} from 'src/clients/call/types';
+import {CameraState} from 'src/clients/call/types';
 import {STORAGE_CALLS_MIRROR_VIDEO} from 'src/constants';
+import {FakeCallClient, installFakeCallClient} from 'src/test_utils/fake_call_client';
 
 import ConnectedVideoTile from './index';
 import VideoTile, {Props as VideoTileProps} from './video_tile';
@@ -25,17 +23,6 @@ const mockedVideoTile = VideoTile as jest.MockedFunction<typeof VideoTile>;
 const CHANNEL_ID = 'channel-id';
 
 const makeTrack = () => ({}) as VideoTrack;
-
-class FakeClient extends EventEmitter {
-    channelID = CHANNEL_ID;
-    cameras = new Map<string, CameraTrack>();
-    getCameraTrack = (sessionID: string) => this.cameras.get(sessionID) ?? {state: CameraState.Off, track: null};
-
-    setCamera(sessionID: string, camera: CameraTrack) {
-        this.cameras.set(sessionID, camera);
-        this.emit(CALL_EVENT.CAMERA_CHANGED, sessionID, `user-${sessionID}`, camera.state);
-    }
-}
 
 const buildState = (connectionQuality: Record<string, string> = {}) => ({
     'plugins-com.mattermost.calls': {
@@ -64,7 +51,7 @@ const REPLACE_STATE = 'test/replace_state';
 const lastProps = (): VideoTileProps => mockedVideoTile.mock.calls[mockedVideoTile.mock.calls.length - 1][0];
 
 describe('ConnectedVideoTile', () => {
-    let client: FakeClient;
+    let client: FakeCallClient;
     const originalCallsClient = window.callsClient;
 
     const renderTile = (props: Partial<React.ComponentProps<typeof ConnectedVideoTile>> = {}, state = buildState()) => {
@@ -85,8 +72,8 @@ describe('ConnectedVideoTile', () => {
     };
 
     beforeEach(() => {
-        client = new FakeClient();
-        window.callsClient = client as unknown as CallClient;
+        client = installFakeCallClient();
+        client.channelID = CHANNEL_ID;
         window.localStorage.removeItem(STORAGE_CALLS_MIRROR_VIDEO);
         mockedVideoTile.mockClear();
     });
@@ -130,11 +117,15 @@ describe('ConnectedVideoTile', () => {
     });
 
     test.each([
+        [true, null, true],
         [true, 'on', true],
         [true, 'off', false],
+        [false, null, false],
         [false, 'on', false],
     ])('with isSelf %s and the mirror preference %s, isMirrored is %s', (isSelf, preference, expected) => {
-        window.localStorage.setItem(STORAGE_CALLS_MIRROR_VIDEO, preference);
+        if (preference) {
+            window.localStorage.setItem(STORAGE_CALLS_MIRROR_VIDEO, preference);
+        }
 
         renderTile({isSelf});
 

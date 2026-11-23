@@ -2477,6 +2477,84 @@ describe('CallClient', () => {
             });
         });
 
+        describe('mic status', () => {
+            const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+            let statuses: string[];
+
+            beforeEach(() => {
+                statuses = [];
+                client.on(CALL_EVENT.MIC_STATUS_CHANGED, (status: string) => statuses.push(status));
+                client.on(CALL_EVENT.ERROR, jest.fn());
+            });
+
+            test('is starting until the mic is set up, then ready', async () => {
+                expect(client.getMicStatus()).toBe('starting');
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic]);
+                mockRoom.localParticipant.createTracks.mockResolvedValueOnce([makeMicTrack()]);
+                publishAsMic();
+
+                await join();
+
+                expect(client.getMicStatus()).toBe('ready');
+                expect(statuses).toEqual(['ready']);
+            });
+
+            test.each([
+                ['blocked when permission is denied', 'NotAllowedError', [builtInMic], 'blocked'],
+                ['missing when no mic is found', 'NotFoundError', [], 'missing'],
+                ['ready after any other capture error', 'AbortError', [builtInMic], 'ready'],
+            ])('is %s', async (_, errorName, devices, expected) => {
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue(devices);
+                mockRoom.localParticipant.createTracks.mockRejectedValueOnce(Object.assign(new Error('capture failed'), {name: errorName}));
+
+                await join();
+                await settle();
+
+                expect(client.getMicStatus()).toBe(expected);
+                expect(statuses).toEqual([expected]);
+            });
+
+            test('stays blocked rather than missing when the browser also lists no inputs', async () => {
+                mockRoom.localParticipant.createTracks.mockRejectedValueOnce(Object.assign(new Error('denied'), {name: 'NotAllowedError'}));
+                await join();
+
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([]);
+                mockRoom.fire(RoomEvent.MediaDevicesChanged);
+                await settle();
+
+                expect(client.getMicStatus()).toBe('blocked');
+            });
+
+            test('starts again when a mic is plugged in after none were found, until it is set up', async () => {
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([]);
+                mockRoom.localParticipant.createTracks.mockRejectedValueOnce(Object.assign(new Error('none'), {name: 'NotFoundError'}));
+                await join();
+                await settle();
+
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic]);
+                mockRoom.localParticipant.createTracks.mockResolvedValueOnce([makeMicTrack()]);
+                publishAsMic();
+                mockRoom.fire(RoomEvent.MediaDevicesChanged);
+                await settle();
+                await settle();
+
+                expect(statuses).toEqual(['missing', 'starting', 'ready']);
+            });
+
+            test('device changes leave a working mic ready', async () => {
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic]);
+                mockRoom.localParticipant.createTracks.mockResolvedValueOnce([makeMicTrack()]);
+                publishAsMic();
+                await join();
+
+                (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([builtInMic, usbMic]);
+                mockRoom.fire(RoomEvent.MediaDevicesChanged);
+                await settle();
+
+                expect(statuses).toEqual(['ready']);
+            });
+        });
+
         it('mutex prevents double publishTrack when Connected and MediaDevicesChanged race concurrently (Safari)', async () => {
             // Safari does not expose mic devices via enumerateDevices() until permission is
             // granted, so the initial input count is 0. When the user clicks Allow, Safari
@@ -3364,7 +3442,7 @@ describe('CallClient', () => {
             await client.connect({channelID: 'test-channel'});
 
             mockRoom.remoteParticipants.set('other', {
-                getTrackPublication: (source: Track.Source) => source === Track.Source.ScreenShare ? {} : null,
+                getTrackPublication: (source: Track.Source) => (source === Track.Source.ScreenShare ? {} : null),
             });
 
             const stopFn = jest.fn();
@@ -4290,6 +4368,26 @@ describe('CallClient', () => {
                 await CallClient.getLocalVideoDevices(true);
 
                 expect(Room.getLocalDevices).toHaveBeenCalledWith('videoinput', true);
+            });
+        });
+
+        describe('getSelectedVideoInputDeviceId', () => {
+            test.each([
+                ['the saved ID', {deviceId: 'cam-2', label: 'USB Camera'}, 'cam-2'],
+                ['the saved label when the ID changed', {deviceId: 'old-id', label: 'USB Camera'}, 'cam-2'],
+                ['the first camera when nothing matches', {deviceId: 'old-id', label: 'Gone'}, 'cam-1'],
+                ['the first camera when nothing is saved', null, 'cam-1'],
+            ])('picks %s', (_, stored, expected) => {
+                if (stored) {
+                    window.localStorage.setItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, JSON.stringify(stored));
+                }
+
+                expect(CallClient.getSelectedVideoInputDeviceId([builtIn, usb])).toBe(expected);
+            });
+
+            test('skips cameras without an ID', () => {
+                expect(CallClient.getSelectedVideoInputDeviceId([makeCamera('', ''), usb])).toBe('cam-2');
+                expect(CallClient.getSelectedVideoInputDeviceId([makeCamera('', '')])).toBeUndefined();
             });
         });
     });

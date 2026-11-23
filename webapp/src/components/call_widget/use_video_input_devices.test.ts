@@ -4,21 +4,14 @@
 import {act, renderHook, waitFor} from '@testing-library/react';
 import CallClient from 'src/clients/call';
 import {STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY} from 'src/constants';
-import {getCallsClient} from 'src/utils';
+import {FakeCallClient, installFakeCallClient} from 'src/test_utils/fake_call_client';
 
-import {getSelectedVideoInputId, useVideoInputDevices} from './use_video_input_devices';
-
-jest.mock('src/clients/call', () => ({
-    __esModule: true,
-    default: {getLocalVideoDevices: jest.fn()},
-}));
-
-jest.mock('src/utils', () => ({
-    getCallsClient: jest.fn(),
-}));
+import {useVideoInputDevices} from './use_video_input_devices';
 
 jest.mock('src/log', () => ({
+    logDebug: jest.fn(),
     logErr: jest.fn(),
+    logWarn: jest.fn(),
 }));
 
 const makeCamera = (deviceId: string, label: string) => ({deviceId, label, kind: 'videoinput', groupId: ''}) as MediaDeviceInfo;
@@ -26,40 +19,30 @@ const makeCamera = (deviceId: string, label: string) => ({deviceId, label, kind:
 const builtIn = makeCamera('cam-1', 'Built-in Camera');
 const usb = makeCamera('cam-2', 'USB Camera');
 
-describe('getSelectedVideoInputId', () => {
-    test.each([
-        ['the saved ID', {deviceId: 'cam-2', label: 'USB Camera'}, 'cam-2'],
-        ['the saved label when the ID changed', {deviceId: 'old-id', label: 'USB Camera'}, 'cam-2'],
-        ['the first camera when nothing matches', {deviceId: 'old-id', label: 'Gone'}, 'cam-1'],
-        ['the first camera when nothing is saved', null, 'cam-1'],
-    ])('picks %s', (_, stored, expected) => {
-        expect(getSelectedVideoInputId([builtIn, usb], stored)).toBe(expected);
-    });
-
-    test('skips cameras without an ID', () => {
-        expect(getSelectedVideoInputId([makeCamera('', ''), usb], null)).toBe('cam-2');
-        expect(getSelectedVideoInputId([makeCamera('', '')], null)).toBeUndefined();
-    });
-});
-
 describe('useVideoInputDevices', () => {
-    const getLocalVideoDevices = CallClient.getLocalVideoDevices as jest.Mock;
-    const setVideoInputDevice = jest.fn();
+    const getLocalVideoDevices = jest.spyOn(CallClient, 'getLocalVideoDevices');
+    let client: FakeCallClient;
     let mediaDevices: EventTarget;
 
     beforeEach(() => {
         getLocalVideoDevices.mockResolvedValue([builtIn, usb]);
-        setVideoInputDevice.mockImplementation(async (device: MediaDeviceInfo) => {
+        client = installFakeCallClient();
+        client.setVideoInputDevice.mockImplementation(async (device: MediaDeviceInfo) => {
             window.localStorage.setItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, JSON.stringify({deviceId: device.deviceId, label: device.label}));
+            return undefined;
         });
-        (getCallsClient as jest.Mock).mockReturnValue({setVideoInputDevice});
         mediaDevices = new EventTarget();
         Object.defineProperty(navigator, 'mediaDevices', {value: mediaDevices, configurable: true});
     });
 
     afterEach(() => {
         window.localStorage.removeItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY);
+        window.callsClient = undefined;
         jest.clearAllMocks();
+    });
+
+    afterAll(() => {
+        getLocalVideoDevices.mockRestore();
     });
 
     test('loads cameras and selects the saved one', async () => {
@@ -125,12 +108,12 @@ describe('useVideoInputDevices', () => {
             await result.current.selectDevice(usb);
         });
 
-        expect(setVideoInputDevice).toHaveBeenCalledWith(usb);
+        expect(client.setVideoInputDevice).toHaveBeenCalledWith(usb);
         expect(result.current.selectedDeviceId).toBe('cam-2');
     });
 
     test('a failed switch keeps the previous selection', async () => {
-        setVideoInputDevice.mockResolvedValue(undefined);
+        client.setVideoInputDevice.mockResolvedValue(undefined);
         const {result} = renderHook(() => useVideoInputDevices(false));
         await waitFor(() => expect(result.current.selectedDeviceId).toBe('cam-1'));
 

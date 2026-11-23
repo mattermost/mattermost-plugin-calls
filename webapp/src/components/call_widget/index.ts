@@ -78,6 +78,7 @@ const mapStateToProps = (state: GlobalState) => {
     // Our session can be missing from the store while connecting, but the client already knows it.
     const currentSession = sessionForCurrentCall(state);
     const currentSessionID = currentSession?.session_id || getCallsClientSessionID();
+    const otherSessions = sessionsForOtherUsersInCall(state);
 
     return {
         currentUserID,
@@ -89,6 +90,7 @@ const mapStateToProps = (state: GlobalState) => {
         sessions,
         sessionsMap: sessionsInCurrentCallMap(state),
         currentSession,
+        currentSessionID,
         profiles,
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),
@@ -106,7 +108,7 @@ const mapStateToProps = (state: GlobalState) => {
         callThreadID,
         recordingsEnabled: recordingsEnabled(state),
         connectedDMUser,
-        otherSessions: sessionsForOtherUsersInCall(state),
+        otherSessions,
         isAdmin: isCurrentUserSystemAdmin(state),
         isDMCalling: isCurrentDMCallInCallingState(state),
         isPhoneCall: isCurrentCallPhoneCall(state),
@@ -114,6 +116,7 @@ const mapStateToProps = (state: GlobalState) => {
         isPhoneCallActive: isCurrentPhoneCallActive(state),
         dmVideoEnabled: dmVideoEnabled(state),
         isCameraOn: isCameraOnForSession(state, currentSessionID),
+        isOtherCameraOn: isCameraOnForSession(state, otherSessions[0]?.session_id ?? ''),
     };
 };
 

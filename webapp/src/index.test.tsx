@@ -176,16 +176,16 @@ describe('Plugin', () => {
             expect(await registeredSections(true)).toEqual([
                 {title: 'Audio devices settings', component: AudioDevicesSettingsSection},
                 {title: 'Video devices settings', component: VideoDevicesSettingsSection},
-                {title: 'Screen sharing settings', component: ScreenSharingSettingsSection},
-                {title: 'Raise hand settings', component: RaiseHandSettingsSection},
+                {title: 'Screen sharing', component: ScreenSharingSettingsSection},
+                {title: 'Raise hand', component: RaiseHandSettingsSection},
             ]);
         });
 
         test('leaves out Video devices when DM video is disabled', async () => {
             expect(await registeredSections(false)).toEqual([
                 {title: 'Audio devices settings', component: AudioDevicesSettingsSection},
-                {title: 'Screen sharing settings', component: ScreenSharingSettingsSection},
-                {title: 'Raise hand settings', component: RaiseHandSettingsSection},
+                {title: 'Screen sharing', component: ScreenSharingSettingsSection},
+                {title: 'Raise hand', component: RaiseHandSettingsSection},
             ]);
         });
     });

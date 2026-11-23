@@ -1,22 +1,18 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {EventEmitter} from 'events';
 import React from 'react';
+import {CallStoreSyncOptions, syncCallClientToStore} from 'src/call_store_sync';
 import {CALL_EVENT} from 'src/clients/call/constants';
 import {CameraState} from 'src/clients/call/types';
-import {getCallsClient} from 'src/utils';
+import {userCameraChanged} from 'src/state/camera_on_ids/actions';
+import {installFakeCallClient} from 'src/test_utils/fake_call_client';
 
 // media-chrome ships ESM that jest doesn't transform; the helper under test doesn't use it.
 jest.mock('media-chrome/dist/react', () => ({
     MediaControlBar: 'div',
     MediaController: 'div',
     MediaFullscreenButton: 'div',
-}));
-
-jest.mock('src/utils', () => ({
-    ...jest.requireActual('src/utils'),
-    getCallsClient: jest.fn(),
 }));
 
 // The component reads window.ProductApi at module scope for its contextType, so the global has
@@ -29,46 +25,42 @@ window.ProductApi = {
 const {default: ExpandedView, isActiveElementInteractable} = require('./component');
 
 describe('ExpandedView call client events', () => {
-    const makeCallsClient = () => Object.assign(new EventEmitter(), {
-        channelID: 'channel-id',
-        getAudioDevices: () => ({inputs: [], outputs: []}),
-        getLocalScreenTrack: () => null,
-        getRemoteScreenTrack: () => null,
-        isMicTrackPublished: () => true,
-    });
-
     // Mounting the full view needs most of the app; componentDidMount alone wires the call client.
     const mountView = () => {
-        const callsClient = makeCallsClient();
-        (getCallsClient as jest.Mock).mockReturnValue(callsClient);
+        const callsClient = installFakeCallClient();
+        const dispatch = jest.fn();
         const props = {
             theme: {type: 'Denim', sidebarBg: '#1e325c'},
             history: {},
             fetchCallState: jest.fn(),
-            userCameraChanged: jest.fn(),
+            syncCallClientToStore: (client: Parameters<typeof syncCallClientToStore>[0], options: CallStoreSyncOptions) => syncCallClientToStore(client, {dispatch, getState: () => ({}) as never}, options),
         };
         const view = new ExpandedView(props);
         view.setState = jest.fn();
         view.componentDidMount();
-        return {view, props, callsClient};
+        return {view, dispatch, callsClient};
     };
 
+    afterEach(() => {
+        window.callsClient = undefined;
+    });
+
     test.each([CameraState.Off, CameraState.Loading, CameraState.Ready])('forwards the %s camera state for the call channel', (cameraState) => {
-        const {view, props, callsClient} = mountView();
+        const {view, dispatch, callsClient} = mountView();
 
         callsClient.emit(CALL_EVENT.CAMERA_CHANGED, 'session-id', 'user-id', cameraState);
 
-        expect(props.userCameraChanged).toHaveBeenCalledWith('channel-id', 'session-id', 'user-id', cameraState);
+        expect(dispatch).toHaveBeenCalledWith(userCameraChanged('channel-id', 'session-id', 'user-id', cameraState));
         view.componentWillUnmount();
     });
 
     test('stops forwarding camera changes once unmounted', () => {
-        const {view, props, callsClient} = mountView();
+        const {view, dispatch, callsClient} = mountView();
 
         view.componentWillUnmount();
         callsClient.emit(CALL_EVENT.CAMERA_CHANGED, 'session-id', 'user-id', CameraState.Ready);
 
-        expect(props.userCameraChanged).not.toHaveBeenCalled();
+        expect(dispatch).not.toHaveBeenCalled();
     });
 });
 

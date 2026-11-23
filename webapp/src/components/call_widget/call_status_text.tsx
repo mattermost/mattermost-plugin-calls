@@ -16,12 +16,11 @@ import {ParticipantName, SpeakerName} from './speaker_name';
 interface Props {
     sessions: UserSessionState[];
     profiles: IDMappedObjects<UserProfile>;
-    clientConnecting: boolean;
 }
 
 export function CallStatusText(props: Props) {
     const channel = useSelector(channelForCurrentCall);
-    const {isDMCalling, dmCallee} = useDMCallingState();
+    const {dmCallee} = useDMCallingState();
     const phoneCall = usePhoneCallInfo();
 
     if (!channel) {
@@ -39,9 +38,8 @@ export function CallStatusText(props: Props) {
         );
     }
 
-    if (isDirectChannel(channel) && (isDMCalling || props.clientConnecting)) {
-        // While a DM call is ringing (callee hasn't joined yet), show the callee's name.
-        // Once answered, and for all other calls, use the active speaker.
+    if (isDirectChannel(channel)) {
+        // A DM call always shows the other person's name, without an "is talking" indicator.
         if (!dmCallee) {
             return null;
         }
