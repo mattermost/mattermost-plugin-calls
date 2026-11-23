@@ -3,7 +3,7 @@
 
 import {useEffect, useState} from 'react';
 
-export type MediaPermissionName = 'camera' | 'microphone';
+type MediaPermissionName = 'camera' | 'microphone';
 
 // Null where the browser can't report this permission (for example older Firefox and Safari).
 export function usePermissionState(name: MediaPermissionName): PermissionState | null {
@@ -14,7 +14,7 @@ export function usePermissionState(name: MediaPermissionName): PermissionState |
         let status: PermissionStatus | null = null;
         const onChange = () => setState(status?.state ?? null);
 
-        navigator.permissions?.query({name: name as PermissionName}).then((result) => {
+        navigator.permissions?.query({name}).then((result) => {
             if (cancelled) {
                 return;
             }

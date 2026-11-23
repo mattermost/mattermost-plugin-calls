@@ -5,7 +5,7 @@ import './device_control.scss';
 
 import classNames from 'classnames';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {Overlay, OverlayProps} from 'react-bootstrap';
+import {Overlay} from 'react-bootstrap';
 import {IntlShape, useIntl} from 'react-intl';
 import CompassIcon from 'src/components/icons/compassIcon';
 import MutedIcon from 'src/components/icons/muted_icon';
@@ -46,7 +46,6 @@ export type DeviceControlProps = {
     // Tooltip text for the toggle. The accessible name stays "Microphone" or "Camera".
     toggleLabel?: string;
     tooltipSubtext?: string;
-    tooltipPosition?: OverlayProps['placement'];
     shortcut?: string;
 
     // Pass both to control the menu from outside, e.g. to keep one widget menu open at a time.
@@ -138,7 +137,7 @@ const getDefaultIcon = (kind: DeviceControlKind, active: boolean) => {
 };
 
 // Browsers hide labels until the user grants access, so unlabeled devices get a numbered name.
-export const getDeviceLabel = (kind: DeviceControlKind, device: MediaDeviceInfo, index: number, formatMessage: IntlShape['formatMessage']) => {
+const getDeviceLabel = (kind: DeviceControlKind, device: MediaDeviceInfo, index: number, formatMessage: IntlShape['formatMessage']) => {
     if (!device.label) {
         switch (kind) {
         case 'audioinput':
@@ -291,7 +290,7 @@ export default function DeviceControl(props: DeviceControlProps) {
         <Overlay
             target={ref.current as HTMLButtonElement}
             show={tooltipTarget === target && !menuOpen}
-            placement={props.tooltipPosition || 'top'}
+            placement='top'
         >
             <StyledTooltip id={`tooltip-${props.id}-${target}`}>
                 <div>{text}</div>
@@ -322,7 +321,6 @@ export default function DeviceControl(props: DeviceControlProps) {
                 aria-disabled={starting}
                 aria-busy={starting}
                 disabled={props.disabled}
-                // eslint-disable-next-line no-undefined
                 onClick={starting ? undefined : props.onToggle}
                 onFocus={() => setTooltipTarget('toggle')}
                 onBlur={() => setTooltipTarget(null)}

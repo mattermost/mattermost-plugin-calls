@@ -51,7 +51,7 @@ const AVATAR_FONT_SIZE_PX: Record<VideoTileSize, number> = {
 const BADGE_EMOJI_SIZE_PX = 14;
 
 // hasFrames is false until the video element is actually playing, which can lag the track.
-export const getVideoTileState = (cameraState: CameraState, hasFrames: boolean, connectionState: ConnectionState): VideoTileState => {
+const getVideoTileState = (cameraState: CameraState, hasFrames: boolean, connectionState: ConnectionState): VideoTileState => {
     if (connectionState === 'reconnecting') {
         return 'reconnecting';
     }

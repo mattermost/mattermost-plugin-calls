@@ -10,9 +10,7 @@ import {STORAGE_CALLS_MIRROR_VIDEO} from 'src/constants';
 import {connectionStateForSession} from 'src/state/connection_quality/selectors';
 import {sessionsInCurrentCallMap} from 'src/state/session/selectors';
 
-import VideoTile, {type VideoTileSize, type VideoTileState} from './video_tile';
-
-export type {VideoTileSize, VideoTileState};
+import VideoTile, {type VideoTileSize} from './video_tile';
 
 type Props = {
     sessionID: string;
@@ -24,9 +22,6 @@ type Props = {
 
 const readMirrorPreference = () => window.localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO) === 'on';
 
-/** A video tile for one session in the current call. It reads that session's state, profile,
- * camera track and connection quality itself, so callers only pass the session id and layout.
- */
 export default function ConnectedVideoTile({sessionID, size, isSelf = false, hideMuteState = false, className}: Props) {
     const session = useSelector((state: GlobalState) => sessionsInCurrentCallMap(state)?.[sessionID]);
     const profile = useSelector((state: GlobalState) => (session ? getUser(state, session.user_id) : undefined));

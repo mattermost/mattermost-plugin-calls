@@ -585,7 +585,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }
             }
 
-            // The client captures a newly plugged-in mic when it had none, the same check as its hot-plug handling.
+            // The client captures a newly plugged-in mic when it had none.
             const micPluggedIn = this.state.alerts.missingAudioInput.active && devices.inputs.length > 0 && !window.callsClient?.isMicTrackPublished();
 
             this.setState({
