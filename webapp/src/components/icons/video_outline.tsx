@@ -13,10 +13,11 @@ export default function VideoOutlineIcon(props: Props) {
     return (
         <svg
             {...props}
-            viewBox='3 6 18 12'
+            fill={props.fill || 'currentColor'}
+            viewBox='2 1.9 20 19.1'
             role='img'
         >
-            <path d='M15,8V16H5V8H15M16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5V7A1,1 0 0,0 16,6Z'/>
+            <path d='M18,10.5V7c0-1.3-0.7-2-2-2H4C2.8,5,2,5.8,2,7v10c0,1.2,0.9,2,2,2h12c1.3,0,2-0.8,2-2v-3.5l4,4v-11L18,10.5z M16,17H4V7h12V17z'/>
         </svg>
     );
 }

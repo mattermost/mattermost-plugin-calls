@@ -5,7 +5,7 @@ import type {UserSessionState} from '@mattermost/calls-common/lib/types';
 import type {Channel} from '@mattermost/types/channels';
 import type {Team} from '@mattermost/types/teams';
 import type {UserProfile} from '@mattermost/types/users';
-import {act, render, screen, waitFor, within} from '@testing-library/react';
+import {act, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import {createIntl, RawIntlProvider} from 'react-intl';
@@ -13,6 +13,7 @@ import {Provider} from 'react-redux';
 import type CallClient from 'src/clients/call';
 import {CALL_EVENT} from 'src/clients/call/constants';
 import {CameraError} from 'src/clients/call/types';
+import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import {mockStore} from 'src/testUtils';
 
 import CallWidget from './component';
@@ -64,10 +65,11 @@ jest.mock('src/components/video_tile', () => ({
 }));
 
 const mockCamera = {deviceId: 'camera-1', label: 'FaceTime Camera', kind: 'videoinput'} as MediaDeviceInfo;
+let mockCameras: MediaDeviceInfo[] = [mockCamera];
 
 jest.mock('./use_video_input_devices', () => ({
     useVideoInputDevices: () => ({
-        devices: [mockCamera],
+        devices: mockCameras,
         selectedDeviceId: mockCamera.deviceId,
         selectDevice: jest.fn(),
     }),
@@ -163,6 +165,7 @@ describe('CallWidget', () => {
             getLocalScreenTrack: () => null,
             on: jest.fn(),
             off: jest.fn(),
+            isMicTrackPublished: () => false,
         } as unknown as CallClient;
         openSpy = jest.spyOn(window, 'open');
     });
@@ -256,6 +259,7 @@ describe('remote audio playback blocked banner', () => {
                 handlers.set(event, handler);
             }),
             off: jest.fn(),
+            isMicTrackPublished: () => false,
         } as unknown as CallClient;
 
         render(
@@ -333,6 +337,7 @@ describe('screen sharing panel', () => {
                 handlers.set(event, handler);
             }),
             off: jest.fn(),
+            isMicTrackPublished: () => false,
         } as unknown as CallClient;
 
         return render(
@@ -408,6 +413,7 @@ describe('leave button behavior', () => {
             getLocalScreenTrack: () => null,
             on: jest.fn(),
             off: jest.fn(),
+            isMicTrackPublished: () => false,
         } as unknown as (typeof window)['callsClient'];
     });
 
@@ -618,6 +624,7 @@ describe('phone call', () => {
             getLocalScreenTrack: () => null,
             on: jest.fn(),
             off: jest.fn(),
+            isMicTrackPublished: () => false,
         } as unknown as (typeof window)['callsClient'];
 
         // The settings menu reads window.WebappUtils, which the host webapp provides.
@@ -847,6 +854,7 @@ describe('camera video and device controls', () => {
     };
 
     beforeEach(() => {
+        mockCameras = [mockCamera];
         handlers = new Map();
         client = {
             disconnect: jest.fn(),
@@ -858,6 +866,8 @@ describe('camera video and device controls', () => {
             canPublishCamera: () => true,
             enableCamera: jest.fn(),
             disableCamera: jest.fn(),
+            mute: jest.fn(),
+            unmute: jest.fn(),
             setAudioInputDevice: jest.fn(),
             raiseHand: jest.fn(),
             unraiseHand: jest.fn(),
@@ -865,6 +875,7 @@ describe('camera video and device controls', () => {
                 handlers.set(event, handler);
             }),
             off: jest.fn(),
+            isMicTrackPublished: () => true,
         };
         window.callsClient = client as unknown as CallClient;
     });
@@ -1092,5 +1103,215 @@ describe('camera video and device controls', () => {
         rerender(widget({isCameraOn: true}));
 
         expect(screen.queryByText('Your camera is being used by another app.')).not.toBeInTheDocument();
+    });
+
+    describe('microphone and camera status', () => {
+        const fire = (event: string, ...args: unknown[]) => act(() => {
+            handlers.get(event)?.(...args);
+        });
+
+        const deviceStatus = (name: 'Microphone' | 'Camera') => screen.getByRole('button', {name}).closest('.DeviceControl')?.getAttribute('data-status');
+        const hasBadge = (name: 'Microphone' | 'Camera') => Boolean(screen.getByRole('button', {name}).closest('.DeviceControl')?.querySelector('.icon-close-circle'));
+        const pressMuteShortcut = () => fireEvent.keyDown(document, {key: ' ', code: 'Space', ctrlKey: true, shiftKey: true});
+
+        const deferredEnableCamera = () => {
+            const resolvers: Array<() => void> = [];
+            client.enableCamera = jest.fn(() => new Promise<void>((resolve) => {
+                resolvers.push(resolve);
+            }));
+            return resolvers;
+        };
+
+        test('the mic is starting until the client has set it up, and ignores the button and shortcut until then', async () => {
+            const user = userEvent.setup();
+            client.isMicTrackPublished = () => false;
+            renderWidget();
+
+            expect(deviceStatus('Microphone')).toBe('starting');
+            expect(hasBadge('Microphone')).toBe(false);
+            expect(screen.getByRole('button', {name: 'Microphone'})).toHaveAttribute('aria-disabled', 'true');
+
+            await user.click(screen.getByRole('button', {name: 'Microphone'}));
+            pressMuteShortcut();
+            expect(client.mute).not.toHaveBeenCalled();
+            expect(client.unmute).not.toHaveBeenCalled();
+
+            fire(CALL_EVENT.INIT_AUDIO);
+            expect(deviceStatus('Microphone')).toBe('ready');
+            (client.unmute as jest.Mock).mockClear();
+
+            pressMuteShortcut();
+            expect(client.mute).toHaveBeenCalledTimes(1);
+        });
+
+        test('a widget that mounts after the mic is set up starts ready', () => {
+            renderWidget();
+
+            expect(deviceStatus('Microphone')).toBe('ready');
+        });
+
+        test.each([
+            ['blocked', () => handlers.get(CALL_EVENT.ERROR)?.(AudioInputPermissionsErr), 'No audio input permissions'],
+            ['missing', () => handlers.get(CALL_EVENT.DEVICE_CHANGE)?.({inputs: [], outputs: []}), 'No audio input devices'],
+        ])('the mic shows %s with a badge', async (status, trigger, tooltip) => {
+            const user = userEvent.setup();
+            client.isMicTrackPublished = () => false;
+            renderWidget();
+
+            act(trigger);
+
+            expect(deviceStatus('Microphone')).toBe(status);
+            expect(hasBadge('Microphone')).toBe(true);
+            await user.hover(screen.getByRole('button', {name: 'Microphone'}));
+            expect(await screen.findByText(tooltip)).toBeInTheDocument();
+        });
+
+        test('a blocked mic stays blocked rather than missing when the browser also lists no inputs', () => {
+            client.isMicTrackPublished = () => false;
+            renderWidget();
+
+            fire(CALL_EVENT.ERROR, AudioInputPermissionsErr);
+            fireDevices([]);
+
+            expect(deviceStatus('Microphone')).toBe('blocked');
+        });
+
+        test('a missing mic ignores the shortcut', () => {
+            renderWidget();
+            fireDevices([]);
+
+            pressMuteShortcut();
+
+            expect(client.mute).not.toHaveBeenCalled();
+        });
+
+        test('plugging in a mic after none were found starts it again until the client has set it up', () => {
+            renderWidget();
+            fireDevices([]);
+            expect(deviceStatus('Microphone')).toBe('missing');
+
+            client.isMicTrackPublished = () => false;
+            fireDevices([defaultMic]);
+            expect(deviceStatus('Microphone')).toBe('starting');
+
+            fire(CALL_EVENT.INIT_AUDIO);
+            expect(deviceStatus('Microphone')).toBe('ready');
+        });
+
+        test('other device changes leave a working mic ready', () => {
+            renderWidget();
+
+            fireDevices([defaultMic, usbMic]);
+
+            expect(deviceStatus('Microphone')).toBe('ready');
+        });
+
+        test('the camera is starting from the click until it turns on, and ignores clicks meanwhile', async () => {
+            const user = userEvent.setup();
+            const resolvers = deferredEnableCamera();
+            const {rerender} = renderWidget({isCameraOn: false});
+
+            await user.click(screen.getByRole('button', {name: 'Camera'}));
+            expect(deviceStatus('Camera')).toBe('starting');
+            expect(screen.getByRole('button', {name: 'Camera options'})).toBeDisabled();
+
+            await user.click(screen.getByRole('button', {name: 'Camera'}));
+            expect(client.enableCamera).toHaveBeenCalledTimes(1);
+
+            rerender(widget({isCameraOn: true}));
+            expect(deviceStatus('Camera')).toBe('ready');
+            expect(screen.getByRole('button', {name: 'Camera'})).toHaveAttribute('aria-pressed', 'true');
+
+            await act(async () => resolvers[0]());
+            expect(deviceStatus('Camera')).toBe('ready');
+        });
+
+        test('the camera goes back to ready if turning it on ends without turning it on', async () => {
+            const user = userEvent.setup();
+            const resolvers = deferredEnableCamera();
+            renderWidget({isCameraOn: false});
+
+            await user.click(screen.getByRole('button', {name: 'Camera'}));
+            await act(async () => resolvers[0]());
+
+            expect(deviceStatus('Camera')).toBe('ready');
+            expect(screen.getByRole('button', {name: 'Camera'})).toHaveAttribute('aria-pressed', 'false');
+        });
+
+        test.each([
+            [CameraError.PermissionDenied, 'blocked', true],
+            [CameraError.NotFound, 'missing', true],
+            [CameraError.DeviceInUse, 'ready', false],
+            [CameraError.Disconnected, 'ready', false],
+            [CameraError.Other, 'ready', false],
+        ])('a %s error while starting ends it as %s', async (err, status, badge) => {
+            const user = userEvent.setup();
+            mockCameras = [];
+            deferredEnableCamera();
+            renderWidget({isCameraOn: false});
+
+            await user.click(screen.getByRole('button', {name: 'Camera'}));
+            fire(CALL_EVENT.CAMERA_ERROR, err);
+
+            expect(deviceStatus('Camera')).toBe(status);
+            expect(hasBadge('Camera')).toBe(badge);
+            expect(screen.getByRole('button', {name: 'Camera'})).toHaveAttribute('aria-disabled', 'false');
+        });
+
+        test('a missing camera shows ready again once a camera is plugged in', () => {
+            mockCameras = [];
+            renderWidget({isCameraOn: false});
+            fire(CALL_EVENT.CAMERA_ERROR, CameraError.NotFound);
+            expect(deviceStatus('Camera')).toBe('missing');
+
+            mockCameras = [mockCamera];
+            fireDevices([defaultMic]);
+
+            expect(deviceStatus('Camera')).toBe('ready');
+        });
+
+        test('a blocked camera retries on click, and clears once the camera turns on', async () => {
+            const user = userEvent.setup();
+            const resolvers = deferredEnableCamera();
+            const {rerender} = renderWidget({isCameraOn: false});
+            fire(CALL_EVENT.CAMERA_ERROR, CameraError.PermissionDenied);
+            expect(deviceStatus('Camera')).toBe('blocked');
+
+            await user.click(screen.getByRole('button', {name: 'Camera'}));
+            expect(client.enableCamera).toHaveBeenCalledTimes(1);
+            expect(deviceStatus('Camera')).toBe('starting');
+
+            rerender(widget({isCameraOn: true}));
+            await act(async () => resolvers[0]());
+            expect(deviceStatus('Camera')).toBe('ready');
+            expect(hasBadge('Camera')).toBe(false);
+        });
+
+        test('a slow earlier attempt finishing does not end a newer attempt early', async () => {
+            const user = userEvent.setup();
+            const resolvers = deferredEnableCamera();
+            renderWidget({isCameraOn: false});
+
+            await user.click(screen.getByRole('button', {name: 'Camera'}));
+            fire(CALL_EVENT.CAMERA_ERROR, CameraError.DeviceInUse);
+            await user.click(screen.getByRole('button', {name: 'Camera'}));
+            expect(deviceStatus('Camera')).toBe('starting');
+
+            await act(async () => resolvers[0]());
+            expect(deviceStatus('Camera')).toBe('starting');
+
+            await act(async () => resolvers[1]());
+            expect(deviceStatus('Camera')).toBe('ready');
+        });
+
+        test('turning the camera off is immediate and has no starting state', async () => {
+            const user = userEvent.setup();
+            renderWidget({isCameraOn: true});
+
+            await user.click(screen.getByRole('button', {name: 'Camera'}));
+
+            expect(client.disableCamera).toHaveBeenCalledTimes(1);
+            expect(deviceStatus('Camera')).toBe('ready');
+        });
     });
 });

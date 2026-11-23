@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {render, screen} from '@testing-library/react';
+import {act, render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import {IntlProvider} from 'react-intl';
@@ -179,6 +179,40 @@ describe('DeviceControl', () => {
 
         expect(screen.getByRole('button', {name: 'Camera'})).toBeDisabled();
         expect(screen.getByRole('button', {name: 'Camera options'})).toBeDisabled();
+    });
+
+    test.each([
+        ['ready', false, true, true],
+        ['starting', false, false, false],
+        ['blocked', true, true, true],
+        ['missing', true, true, true],
+    ] as const)('status %s: badge=%s, toggle works=%s, chevron enabled=%s', async (status, badge, toggleWorks, chevronEnabled) => {
+        const {container, props} = renderControl({status, active: true});
+
+        const toggle = screen.getByRole('button', {name: 'Camera'});
+        await userEvent.click(toggle);
+
+        expect(Boolean(container.querySelector('.icon-close-circle'))).toBe(badge);
+        expect(toggle).toHaveAttribute('aria-disabled', String(!toggleWorks));
+        expect(props.onToggle).toHaveBeenCalledTimes(toggleWorks ? 1 : 0);
+        expect(screen.getByRole('button', {name: 'Camera options'})).toHaveProperty('disabled', !chevronEnabled);
+        expect(Boolean(container.querySelector('.DeviceControl--active'))).toBe(status === 'ready');
+    });
+
+    test.each([
+        ['audioinput', 'Microphone', 'Starting microphone…'],
+        ['videoinput', 'Camera', 'Starting camera…'],
+    ] as const)('a starting %s stays focusable and says it is starting instead of the label and shortcut', async (kind, name, tooltip) => {
+        renderControl({kind, status: 'starting', toggleLabel: 'Unmute', tooltipSubtext: 'subtext', shortcut: 'Ctrl+Shift+Space'});
+
+        const toggle = screen.getByRole('button', {name});
+        expect(toggle).toBeEnabled();
+        expect(toggle).toHaveAttribute('aria-busy', 'true');
+
+        act(() => toggle.focus());
+        expect(await screen.findByText(tooltip)).toBeInTheDocument();
+        expect(screen.queryByText('Unmute')).not.toBeInTheDocument();
+        expect(screen.queryByText('subtext')).not.toBeInTheDocument();
     });
 
     test('the chevron is disabled when no device can be selected', () => {

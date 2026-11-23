@@ -99,7 +99,7 @@ import styled from 'styled-components';
 import {CallParticipantAvatar} from './call_participant_avatar';
 import {CallStatusText} from './call_status_text';
 import CameraControl from './camera_control';
-import DeviceControl, {DeviceControlKind, getSelectedAudioInputId} from './device_control';
+import DeviceControl, {DeviceControlKind, DeviceStatus, getSelectedAudioInputId} from './device_control';
 import JoinNotification from './join_notification';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
 import VideoArea from './video_area';
@@ -186,6 +186,8 @@ interface State {
     removeConfirmation: RemoveConfirmationData | null,
     leaveMenuOpen: boolean,
     micPermissionPending: boolean,
+    cameraStarting: boolean,
+    cameraError: CameraError | null,
 }
 
 const CAMERA_ERROR_ALERT_IDS = ['cameraPermissionDenied', 'cameraNotFound', 'cameraInUse', 'cameraDisconnected', 'cameraFailed'];
@@ -209,6 +211,25 @@ const getCameraErrorAlertID = (err: CameraError) => {
     }
 };
 
+// Only the errors the button can show. The rest are explained by their banner alone, and a retry may work.
+const getCameraErrorStatus = (err: CameraError | null): DeviceStatus => {
+    switch (err) {
+    case CameraError.PermissionDenied:
+        return 'blocked';
+    case CameraError.NotFound:
+        return 'missing';
+    case CameraError.DeviceInUse:
+    case CameraError.Disconnected:
+    case CameraError.Other:
+    case null:
+        return 'ready';
+    default: {
+        const unhandled: never = err;
+        return unhandled;
+    }
+    }
+};
+
 export default class CallWidget extends React.PureComponent<Props, State> {
     private readonly node: React.RefObject<HTMLDivElement>;
     private readonly menuNode: React.RefObject<HTMLDivElement>;
@@ -221,6 +242,10 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     private prevDevicePixelRatio = 0;
     private unsubscribers: (() => void)[] = [];
     private callQualityBannerLocked = false;
+    private unmounted = false;
+
+    // Bumped on every camera turn-on so a slow earlier attempt can't end a newer one's starting state.
+    private cameraStartID = 0;
     private readonly expandedViewWindowRef: React.MutableRefObject<Window | null>;
 
     private genStyle: () => Record<string, React.CSSProperties> = () => {
@@ -353,6 +378,8 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             removeConfirmation: null,
             leaveMenuOpen: false,
             micPermissionPending: true,
+            cameraStarting: false,
+            cameraError: null,
         };
         this.node = React.createRef();
         this.menuNode = React.createRef();
@@ -526,6 +553,9 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         this.setState({
             screenTrack: window.callsClient.getRemoteScreenTrack(),
+
+            // The Desktop widget can mount after the client already set up the mic and sent INIT_AUDIO.
+            micPermissionPending: this.state.micPermissionPending && !window.callsClient.isMicTrackPublished(),
         });
 
         // One derived sharer covers local and remote alike, and clears when
@@ -555,10 +585,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 }
             }
 
+            // The client captures a newly plugged-in mic when it had none, the same check as its hot-plug handling.
+            const micPluggedIn = this.state.alerts.missingAudioInput.active && devices.inputs.length > 0 && !window.callsClient?.isMicTrackPublished();
+
             this.setState({
                 ...state,
                 devices,
                 ...(devices.inputs.length === 0 && {micPermissionPending: false}),
+                ...(micPluggedIn && {micPermissionPending: true}),
                 alerts: {
                     ...this.state.alerts,
                     missingAudioInput: {
@@ -690,17 +724,20 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         });
 
         window.callsClient.on(CALL_EVENT.CAMERA_ERROR, (err: CameraError) => {
+            this.setState({cameraError: err, cameraStarting: false});
             this.setCameraErrorAlert(getCameraErrorAlertID(err));
         });
     }
 
     public componentDidUpdate(prevProps: Props) {
         if (!prevProps.isCameraOn && this.props.isCameraOn) {
+            this.setState({cameraError: null, cameraStarting: false});
             this.setCameraErrorAlert(null);
         }
     }
 
     public componentWillUnmount() {
+        this.unmounted = true;
         this.unsubscribers.forEach((unsubscribe) => unsubscribe());
         this.unsubscribers = [];
 
@@ -952,6 +989,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
+        // Also reached from the keyboard shortcut. Unmuting before the muted mic track is
+        // published would make LiveKit publish a second track that ignores mute.
+        const micStatus = this.getMicStatus();
+        if (micStatus === 'starting' || micStatus === 'missing') {
+            return;
+        }
+
         // This is needed to prevent a conflict with the accessibility controller on buttons.
         if (document.activeElement instanceof HTMLElement) {
             document.activeElement.blur();
@@ -966,7 +1010,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
-    onCameraToggle = () => {
+    onCameraToggle = async () => {
         if (!window.callsClient) {
             return;
         }
@@ -974,11 +1018,39 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (this.props.isCameraOn) {
             logDebug('CallWidget.onCameraToggle: turning camera off');
             window.callsClient.disableCamera();
-        } else {
-            logDebug('CallWidget.onCameraToggle: turning camera on');
-            window.callsClient.enableCamera();
+            return;
+        }
+
+        if (this.state.cameraStarting) {
+            return;
+        }
+
+        logDebug('CallWidget.onCameraToggle: turning camera on');
+        const startID = ++this.cameraStartID;
+        this.setState({cameraStarting: true, cameraError: null});
+        try {
+            await window.callsClient.enableCamera();
+        } finally {
+            // enableCamera also returns without turning the camera on, e.g. when no longer connected.
+            if (!this.unmounted && startID === this.cameraStartID) {
+                this.setState({cameraStarting: false});
+            }
         }
     };
+
+    getMicStatus(): DeviceStatus {
+        if (this.state.alerts.missingAudioInputPermissions.active) {
+            return 'blocked';
+        }
+        if (this.state.alerts.missingAudioInput.active) {
+            return 'missing';
+        }
+        return this.state.micPermissionPending ? 'starting' : 'ready';
+    }
+
+    getCameraStatus(): DeviceStatus {
+        return this.state.cameraStarting ? 'starting' : getCameraErrorStatus(this.state.cameraError);
+    }
 
     // Before connecting, the client doesn't know its publish permissions yet, so only the settings decide.
     isVideoMode() {
@@ -2342,22 +2414,30 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const {formatMessage} = this.props.intl;
 
-        const noInputDevices = this.state.alerts.missingAudioInput.active;
-        const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
-        const micPermissionPending = this.state.micPermissionPending;
+        const micStatus = this.getMicStatus();
 
-        const MuteIcon = this.isMuted() && !noInputDevices && !noAudioPermissions && !micPermissionPending ? MutedIcon : UnmutedIcon;
-
+        let MuteIcon = this.isMuted() ? MutedIcon : UnmutedIcon;
         let muteTooltipText = this.isMuted() ? formatMessage({defaultMessage: 'Unmute'}) : formatMessage({defaultMessage: 'Mute'});
         let muteTooltipSubtext = '';
 
-        if (noInputDevices) {
-            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
-            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext!);
-        }
-        if (noAudioPermissions) {
+        switch (micStatus) {
+        case 'blocked':
+            MuteIcon = UnmutedIcon;
             muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!);
             muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext!);
+            break;
+        case 'missing':
+            MuteIcon = UnmutedIcon;
+            muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
+            muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext!);
+            break;
+        case 'starting':
+        case 'ready':
+            break;
+        default: {
+            const unhandled: never = micStatus;
+            return unhandled;
+        }
         }
 
         const mainStyle = {
@@ -2557,18 +2637,17 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             menuId='calls-widget-audioinputs-menu'
                             kind='audioinput'
                             active={!this.isMuted()}
-                            // eslint-disable-next-line no-undefined
-                            onToggle={noInputDevices || micPermissionPending ? undefined : this.onMuteToggle}
+                            onToggle={this.onMuteToggle}
                             icon={<MuteIcon/>}
                             devices={micDevices}
                             selectedDeviceId={getSelectedAudioInputId(micDevices, this.state.currentAudioInputDevice ?? window.callsClient.currentAudioInputDevice)}
                             onSelectDevice={this.onAudioInputDeviceClick}
                             disabled={this.props.clientConnecting}
-                            unavailable={noInputDevices || noAudioPermissions || micPermissionPending}
+                            status={micStatus}
                             toggleLabel={muteTooltipText}
                             tooltipSubtext={muteTooltipSubtext}
                             // eslint-disable-next-line no-undefined
-                            shortcut={noInputDevices || noAudioPermissions || micPermissionPending ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
+                            shortcut={micStatus === 'ready' ? reverseKeyMappings.widget[MUTE_UNMUTE][0] : undefined}
                             menuOpen={this.state.deviceMenu === 'audioinput'}
                             onMenuOpenChange={(open) => this.onDeviceMenuChange('audioinput', open)}
                             // eslint-disable-next-line no-undefined
@@ -2578,6 +2657,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         {videoMode &&
                             <CameraControl
                                 cameraOn={this.props.isCameraOn}
+                                status={this.getCameraStatus()}
                                 onToggle={this.onCameraToggle}
                                 disabled={this.props.clientConnecting}
                                 menuOpen={this.state.deviceMenu === 'videoinput'}

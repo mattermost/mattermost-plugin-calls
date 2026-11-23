@@ -26,7 +26,8 @@
       outline-offset: -2px;
     }
 
-    &:disabled {
+    &:disabled,
+    &[aria-disabled='true'] {
       cursor: not-allowed;
 
       &:hover {

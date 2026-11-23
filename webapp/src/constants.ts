@@ -97,12 +97,16 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
         type: CallAlertType.Error,
         icon: 'video-outline',
         bannerText: defineMessage({defaultMessage: 'Allow camera access to Mattermost to turn on your camera.'}),
+        tooltipText: defineMessage({defaultMessage: 'No camera permissions'}),
+        tooltipSubtext: defineMessage({defaultMessage: 'Allow camera access to Mattermost.'}),
         dismissable: true,
     },
     cameraNotFound: {
         type: CallAlertType.Error,
         icon: 'video-outline',
         bannerText: defineMessage({defaultMessage: 'No camera found. Try plugging in a camera.'}),
+        tooltipText: defineMessage({defaultMessage: 'No camera found'}),
+        tooltipSubtext: defineMessage({defaultMessage: 'Try plugging in a camera.'}),
         dismissable: true,
     },
     cameraInUse: {

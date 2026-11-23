@@ -20,6 +20,10 @@ import UnavailableIconWrapper from './unavailable_icon_wrapper';
 
 export type DeviceControlKind = 'audioinput' | 'videoinput';
 
+// starting: the device is being set up and can't be used yet.
+// blocked: access was denied. missing: no device was found.
+export type DeviceStatus = 'starting' | 'ready' | 'blocked' | 'missing';
+
 export type DeviceControlProps = {
     id: string;
 
@@ -36,7 +40,7 @@ export type DeviceControlProps = {
     selectedDeviceId?: string;
     onSelectDevice: (device: MediaDeviceInfo) => void;
     disabled?: boolean;
-    unavailable?: boolean;
+    status?: DeviceStatus;
     icon?: React.ReactNode;
 
     // Tooltip text for the toggle. The accessible name stays "Microphone" or "Camera".
@@ -61,6 +65,34 @@ const getDefaultToggleLabel = (kind: DeviceControlKind, active: boolean, formatM
         return active ? formatMessage({defaultMessage: 'Turn off camera'}) : formatMessage({defaultMessage: 'Turn on camera'});
     default: {
         const unhandled: never = kind;
+        return unhandled;
+    }
+    }
+};
+
+const getStartingLabel = (kind: DeviceControlKind, formatMessage: IntlShape['formatMessage']) => {
+    switch (kind) {
+    case 'audioinput':
+        return formatMessage({defaultMessage: 'Starting microphone…'});
+    case 'videoinput':
+        return formatMessage({defaultMessage: 'Starting camera…'});
+    default: {
+        const unhandled: never = kind;
+        return unhandled;
+    }
+    }
+};
+
+const isUnavailable = (status: DeviceStatus) => {
+    switch (status) {
+    case 'blocked':
+    case 'missing':
+        return true;
+    case 'starting':
+    case 'ready':
+        return false;
+    default: {
+        const unhandled: never = status;
         return unhandled;
     }
     }
@@ -146,13 +178,18 @@ export default function DeviceControl(props: DeviceControlProps) {
     const chevronRef = useRef<HTMLButtonElement>(null);
     const menuListRef = useRef<HTMLUListElement | null>(null);
 
-    // Devices without an ID can't be selected exactly.
+    const status = props.status ?? 'ready';
+    const starting = status === 'starting';
+    const unavailable = isUnavailable(status);
+    const toggleDisabled = props.disabled || starting;
+
+    // Devices without an ID can't be selected exactly. Switching while starting would race the setup.
     const devices = props.devices.filter((device) => device.deviceId);
-    const menuDisabled = props.disabled || devices.length === 0;
+    const menuDisabled = toggleDisabled || devices.length === 0;
     const menuOpen = !menuDisabled && (props.menuOpen ?? internalMenuOpen);
 
     const toggleName = getToggleName(props.kind, formatMessage);
-    const toggleLabel = props.toggleLabel ?? getDefaultToggleLabel(props.kind, props.active, formatMessage);
+    const toggleLabel = starting ? getStartingLabel(props.kind, formatMessage) : props.toggleLabel ?? getDefaultToggleLabel(props.kind, props.active, formatMessage);
     const menuLabel = getMenuLabel(props.kind, formatMessage);
     const menuID = props.menuId ?? `${props.id}-menu`;
 
@@ -268,9 +305,10 @@ export default function DeviceControl(props: DeviceControlProps) {
         <div
             ref={rootRef}
             className={classNames('DeviceControl', {
-                'DeviceControl--active': props.active && !props.unavailable,
-                'DeviceControl--disabled': props.disabled,
+                'DeviceControl--active': props.active && status === 'ready',
+                'DeviceControl--disabled': toggleDisabled,
             })}
+            data-status={status}
         >
             <button
                 ref={toggleRef}
@@ -279,14 +317,21 @@ export default function DeviceControl(props: DeviceControlProps) {
                 className='DeviceControl__toggle'
                 aria-label={toggleName}
                 aria-pressed={props.active}
+
+                // Focusable while starting, so the hover and focus tooltip can say why it can't be used yet.
+                aria-disabled={starting}
+                aria-busy={starting}
                 disabled={props.disabled}
-                onClick={props.onToggle}
+                // eslint-disable-next-line no-undefined
+                onClick={starting ? undefined : props.onToggle}
+                onFocus={() => setTooltipTarget('toggle')}
+                onBlur={() => setTooltipTarget(null)}
                 onMouseEnter={() => setTooltipTarget('toggle')}
                 onMouseLeave={() => setTooltipTarget(null)}
             >
                 <UnavailableIconWrapper
                     icon={props.icon ?? getDefaultIcon(props.kind, props.active)}
-                    unavailable={Boolean(props.unavailable)}
+                    unavailable={unavailable}
                 />
             </button>
             <button
@@ -307,7 +352,7 @@ export default function DeviceControl(props: DeviceControlProps) {
                 <CompassIcon icon={menuOpen ? 'chevron-down' : 'chevron-up'}/>
             </button>
 
-            {renderTooltip('toggle', toggleRef, toggleLabel, props.tooltipSubtext, props.shortcut)}
+            {renderTooltip('toggle', toggleRef, toggleLabel, starting ? undefined : props.tooltipSubtext, starting ? undefined : props.shortcut)}
             {renderTooltip('chevron', chevronRef, menuLabel)}
 
             {menuOpen &&
