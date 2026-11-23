@@ -16,7 +16,7 @@ import {FormattedMessage, IntlShape} from 'react-intl';
 import {compareSemVer} from 'semver-parser';
 import {hostRemove} from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call';
+import {CALL_EVENT, CameraError, CONNECTION_QUALITY} from 'src/clients/call';
 import type {ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
 import Avatar from 'src/components/avatar/avatar';
 import {Badge} from 'src/components/badge';
@@ -43,7 +43,6 @@ import PopOutIcon from 'src/components/icons/popout';
 import RaisedHandIcon from 'src/components/icons/raised_hand';
 import RecordCircleIcon from 'src/components/icons/record_circle';
 import RecordSquareIcon from 'src/components/icons/record_square';
-import SettingsWheelIcon from 'src/components/icons/settings_wheel';
 import ShareScreenIcon from 'src/components/icons/share_screen';
 import ShowMoreIcon from 'src/components/icons/show_more';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
@@ -99,8 +98,11 @@ import styled from 'styled-components';
 
 import {CallParticipantAvatar} from './call_participant_avatar';
 import {CallStatusText} from './call_status_text';
+import CameraControl from './camera_control';
+import DeviceControl, {DeviceControlKind, getSelectedAudioInputId} from './device_control';
 import JoinNotification from './join_notification';
 import UnavailableIconWrapper from './unavailable_icon_wrapper';
+import VideoArea from './video_area';
 import WidgetBanner from './widget_banner';
 import WidgetButton from './widget_button';
 
@@ -144,7 +146,6 @@ interface Props {
     stopCallRecording: (channelID: string) => void,
     recordingsEnabled: boolean,
     openModal: <P>(modalData: ModalData<P>) => void;
-    openCallsUserSettings: () => void;
     currentUserProfile: UserProfile | undefined,
     connectedDMUser: UserProfile | undefined,
     isAdmin: boolean,
@@ -152,6 +153,8 @@ interface Props {
     isPhoneCall: boolean,
     isPhoneCallRinging: boolean,
     isPhoneCallActive: boolean,
+    dmVideoEnabled: boolean,
+    isCameraOn: boolean,
 }
 
 interface DraggingState {
@@ -168,6 +171,7 @@ interface State {
     showMenu: boolean,
     showParticipantsList: boolean,
     showDialPad: boolean,
+    deviceMenu: DeviceControlKind | null,
 
     // Kept here rather than in the panel so they survive closing and reopening it.
     dialPadDigits: string,
@@ -176,7 +180,6 @@ interface State {
     currentAudioInputDevice?: MediaDeviceInfo | null,
     currentAudioOutputDevice?: MediaDeviceInfo | null,
     devices?: MediaDevices,
-    showAudioInputDevicesMenu?: boolean,
     showAudioOutputDevicesMenu?: boolean,
     dragging: DraggingState,
     alerts: CallAlertStates,
@@ -185,13 +188,36 @@ interface State {
     micPermissionPending: boolean,
 }
 
+const CAMERA_ERROR_ALERT_IDS = ['cameraPermissionDenied', 'cameraNotFound', 'cameraInUse', 'cameraDisconnected', 'cameraFailed'];
+
+const getCameraErrorAlertID = (err: CameraError) => {
+    switch (err) {
+    case CameraError.PermissionDenied:
+        return 'cameraPermissionDenied';
+    case CameraError.NotFound:
+        return 'cameraNotFound';
+    case CameraError.DeviceInUse:
+        return 'cameraInUse';
+    case CameraError.Disconnected:
+        return 'cameraDisconnected';
+    case CameraError.Other:
+        return 'cameraFailed';
+    default: {
+        const unhandled: never = err;
+        return unhandled;
+    }
+    }
+};
+
 export default class CallWidget extends React.PureComponent<Props, State> {
     private readonly node: React.RefObject<HTMLDivElement>;
     private readonly menuNode: React.RefObject<HTMLDivElement>;
     private audioMenu: HTMLUListElement | null = null;
+    private deviceMenu: HTMLUListElement | null = null;
     private widgetResizerObserver: ResizeObserver | null = null;
     private menuResizeObserver: ResizeObserver | null = null;
     private audioMenuResizeObserver: ResizeObserver | null = null;
+    private deviceMenuResizeObserver: ResizeObserver | null = null;
     private prevDevicePixelRatio = 0;
     private unsubscribers: (() => void)[] = [];
     private callQualityBannerLocked = false;
@@ -310,6 +336,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showMenu: false,
             showParticipantsList: false,
             showDialPad: false,
+            deviceMenu: null,
             dialPadDigits: '',
             dialPadError: false,
             dragging: {
@@ -661,6 +688,16 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 });
             }
         });
+
+        window.callsClient.on(CALL_EVENT.CAMERA_ERROR, (err: CameraError) => {
+            this.setCameraErrorAlert(getCameraErrorAlertID(err));
+        });
+    }
+
+    public componentDidUpdate(prevProps: Props) {
+        if (!prevProps.isCameraOn && this.props.isCameraOn) {
+            this.setCameraErrorAlert(null);
+        }
     }
 
     public componentWillUnmount() {
@@ -674,7 +711,21 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         if (this.menuResizeObserver) {
             this.menuResizeObserver.disconnect();
         }
+
+        this.deviceMenuResizeObserver?.disconnect();
     }
+
+    // Only the newest camera error shows, and all of them clear once the camera turns on.
+    private setCameraErrorAlert = (alertID: string | null) => {
+        this.setState((prevState) => {
+            const alerts = {...prevState.alerts};
+            CAMERA_ERROR_ALERT_IDS.forEach((id) => {
+                const show = id === alertID;
+                alerts[id] = {active: show, show};
+            });
+            return {alerts};
+        });
+    };
 
     private getGlobalWidgetBounds = () => {
         const bounds = {
@@ -708,6 +759,14 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
             if (this.audioMenu) {
                 bounds.width += this.audioMenu.getBoundingClientRect().width + hMargin;
+            }
+
+            // The device menu opens above the base widget, over the menu stack.
+            if (this.deviceMenu) {
+                const deviceMenuRect = this.deviceMenu.getBoundingClientRect();
+                const baseRect = baseWidget.getBoundingClientRect();
+                bounds.height = Math.max(bounds.height, baseRect.height + deviceMenuRect.height + (2 * vMargin));
+                bounds.width = Math.max(bounds.width, deviceMenuRect.width + hMargin);
             }
         }
 
@@ -852,17 +911,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({showMenu: false});
     };
 
-    onCallsSettingsButtonClick = () => {
-        if (this.props.global && window.desktopAPI?.openCallsUserSettings) {
-            logDebug('desktopAPI.openCallsUserSettings');
-            window.desktopAPI.openCallsUserSettings();
-        } else {
-            this.props.openCallsUserSettings();
-        }
-
-        this.setState({showMenu: false});
-    };
-
     onShareScreenToggle = async () => {
         if (!this.props.allowScreenSharing) {
             return;
@@ -918,6 +966,28 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
+    onCameraToggle = () => {
+        if (!window.callsClient) {
+            return;
+        }
+
+        if (this.props.isCameraOn) {
+            logDebug('CallWidget.onCameraToggle: turning camera off');
+            window.callsClient.disableCamera();
+        } else {
+            logDebug('CallWidget.onCameraToggle: turning camera on');
+            window.callsClient.enableCamera();
+        }
+    };
+
+    // Before connecting, the client doesn't know its publish permissions yet, so only the settings decide.
+    isVideoMode() {
+        if (!this.props.dmVideoEnabled || !isDMChannel(this.props.channel) || this.props.isPhoneCall) {
+            return false;
+        }
+        return this.props.clientConnecting || Boolean(window.callsClient?.canPublishCamera());
+    }
+
     isMuted() {
         return this.props.currentSession ? !this.props.currentSession.unmuted : true;
     }
@@ -943,7 +1013,22 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showMenu: !this.state.showMenu,
             showParticipantsList: false,
             showDialPad: false,
+            deviceMenu: null,
         });
+    };
+
+    onDeviceMenuChange = (kind: DeviceControlKind, open: boolean) => {
+        if (open) {
+            this.setState({
+                deviceMenu: kind,
+                showMenu: false,
+                showParticipantsList: false,
+                showDialPad: false,
+            });
+            return;
+        }
+
+        this.setState((prevState) => (prevState.deviceMenu === kind ? {deviceMenu: null} : null));
     };
 
     onDialPadButtonClick = () => {
@@ -951,6 +1036,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             showDialPad: !this.state.showDialPad,
             dialPadError: false,
             showMenu: false,
+            deviceMenu: null,
         });
     };
 
@@ -979,6 +1065,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         this.setState({
             showParticipantsList: !this.state.showParticipantsList,
             showMenu: false,
+            deviceMenu: null,
         });
     };
 
@@ -987,7 +1074,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             logDebug(`CallWidget.onAudioInputDeviceClick: switching audio input to '${device.label}'`);
             window.callsClient?.setAudioInputDevice(device);
         }
-        this.setState({showAudioInputDevicesMenu: false, currentAudioInputDevice: device});
+        this.setState({currentAudioInputDevice: device});
     };
 
     onAudioOutputDeviceClick = (device: MediaDeviceInfo) => {
@@ -1188,18 +1275,28 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
-    renderDevicesList = (deviceType: string, devices: MediaDeviceInfo[]) => {
+    deviceMenuRefCb = (el: HTMLUListElement | null) => {
+        this.deviceMenuResizeObserver?.disconnect();
+        this.deviceMenuResizeObserver = null;
+
+        this.deviceMenu = el;
+
+        if (el) {
+            this.deviceMenuResizeObserver = new ResizeObserver(this.sendGlobalWidgetBounds);
+            this.deviceMenuResizeObserver.observe(el);
+        } else {
+            this.sendGlobalWidgetBounds();
+        }
+    };
+
+    renderAudioOutputDevicesList = (devices: MediaDeviceInfo[]) => {
         const {formatMessage} = this.props.intl;
 
-        if (deviceType === 'audioinput' && !this.state.showAudioInputDevicesMenu) {
+        if (!this.state.showAudioOutputDevicesMenu) {
             return null;
         }
 
-        if (deviceType === 'audiooutput' && !this.state.showAudioOutputDevicesMenu) {
-            return null;
-        }
-
-        const currentDevice = deviceType === 'audioinput' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
+        const currentDevice = this.state.currentAudioOutputDevice;
 
         // Note: this is system default, not the concept of default that we save in local storage in client.ts
         const makeDeviceLabel = (device: MediaDeviceInfo) => {
@@ -1209,13 +1306,11 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return device.label;
         };
 
-        const onClickHandler = deviceType === 'audioinput' ? this.onAudioInputDeviceClick : this.onAudioOutputDeviceClick;
-
         const deviceList = devices.map((device) => {
             return (
                 <li
                     className='MenuItem'
-                    key={`${deviceType}-device-${device.deviceId}`}
+                    key={`audiooutput-device-${device.deviceId}`}
                     role='menuitem'
                     aria-label={makeDeviceLabel(device)}
                 >
@@ -1229,7 +1324,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             alignItems: 'center',
                             gap: '8px',
                         }}
-                        onClick={() => onClickHandler(device)}
+                        onClick={() => this.onAudioOutputDeviceClick(device)}
                     >
                         <span
                             style={{
@@ -1263,7 +1358,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                 style={{position: 'relative'}}
             >
                 <ul
-                    id={`calls-widget-${deviceType}s-menu`}
+                    id='calls-widget-audiooutputs-menu'
                     className='Menu__content dropdown-menu'
                     style={this.style.devicesMenu}
                     // eslint-disable-next-line no-undefined
@@ -1276,50 +1371,20 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
-    renderDevices = (deviceType: string) => {
-        if (!window.callsClient || !this.state.devices) {
-            return null;
-        }
-        if (deviceType === 'audiooutput' && this.state.devices.outputs.length === 0) {
+    renderAudioOutputDevices = () => {
+        if (!window.callsClient || !this.state.devices || this.state.devices.outputs.length === 0) {
             return null;
         }
 
         const {formatMessage} = this.props.intl;
 
-        const currentDevice = deviceType === 'audioinput' ? this.state.currentAudioInputDevice : this.state.currentAudioOutputDevice;
-
-        const DeviceIcon = deviceType === 'audioinput' ? UnmutedIcon : SpeakerIcon;
-
-        const noInputDevices = deviceType === 'audioinput' && this.state.devices.inputs?.length === 0;
-        const noInputPermissions = (deviceType === 'audioinput' && this.state.alerts.missingAudioInputPermissions.active);
-
-        let label = currentDevice?.label || formatMessage({defaultMessage: 'Default'});
-        if (noInputPermissions) {
-            label = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!);
-        } else if (noInputDevices) {
-            label = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
-        }
+        const label = this.state.currentAudioOutputDevice?.label || formatMessage({defaultMessage: 'Default'});
 
         const onClickHandler = () => {
-            if (deviceType === 'audioinput') {
-                this.setState({
-                    showAudioInputDevicesMenu: !this.state.showAudioInputDevicesMenu,
-                    showAudioOutputDevicesMenu: false,
-                });
-            } else if (deviceType === 'audiooutput') {
-                this.setState({
-                    showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu,
-                    showAudioInputDevicesMenu: false,
-                });
-            } else {
-                this.setState({
-                    showAudioInputDevicesMenu: false,
-                    showAudioOutputDevicesMenu: false,
-                });
-            }
+            this.setState({showAudioOutputDevicesMenu: !this.state.showAudioOutputDevicesMenu});
         };
 
-        const devices = deviceType === 'audioinput' ? this.state.devices.inputs?.filter((device) => device.deviceId && device.label) : this.state.devices.outputs?.filter((device) => device.deviceId && device.label);
+        const devices = this.state.devices.outputs.filter((device) => device.deviceId && device.label);
 
         const isDisabled = devices.length === 0;
 
@@ -1331,25 +1396,24 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         };
 
         let showSubMenu = false;
-        if ((deviceType === 'audioinput' && this.state.showAudioInputDevicesMenu) ||
-      (deviceType === 'audiooutput' && this.state.showAudioOutputDevicesMenu)) {
+        if (this.state.showAudioOutputDevicesMenu) {
             buttonStyle.background = 'rgba(var(--center-channel-color-rgb), 0.08)';
             showSubMenu = devices.length > 0;
         }
 
-        const deviceTypeLabel = deviceType === 'audioinput' ? formatMessage({defaultMessage: 'Microphone'}) : formatMessage({defaultMessage: 'Audio output'});
+        const deviceTypeLabel = formatMessage({defaultMessage: 'Audio output'});
 
         return (
             <React.Fragment>
-                {devices.length > 0 && this.renderDevicesList(deviceType, devices)}
+                {devices.length > 0 && this.renderAudioOutputDevicesList(devices)}
                 <li
                     className='MenuItem'
                     role='menuitem'
                     aria-label={deviceTypeLabel}
                 >
                     <button
-                        id={`calls-widget-${deviceType}-button`}
-                        aria-controls={`calls-widget-${deviceType}s-menu`}
+                        id='calls-widget-audiooutput-button'
+                        aria-controls='calls-widget-audiooutputs-menu'
                         aria-expanded={showSubMenu}
                         className='style--none'
                         style={buttonStyle}
@@ -1357,7 +1421,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         disabled={isDisabled}
                     >
 
-                        <DeviceIcon
+                        <SpeakerIcon
                             style={{
                                 width: '16px',
                                 height: '16px',
@@ -1414,53 +1478,47 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
     };
 
-    renderAdditionalSettingsMenuItem = () => {
+    renderRaiseHandMenuItem = () => {
         const {formatMessage} = this.props.intl;
-
-        // We should show this only if we have the matching functionality available.
-        if (this.props.global && !window.desktopAPI?.openCallsUserSettings) {
-            return null;
-        } else if (!this.props.global && !window.WebappUtils.openUserSettings) {
-            return null;
-        }
-
-        const label = formatMessage({defaultMessage: 'Additional settings'});
+        const isHandRaised = this.isHandRaised();
+        const HandIcon = isHandRaised ? UnraisedHandIcon : RaisedHandIcon;
+        const label = isHandRaised ? formatMessage({defaultMessage: 'Lower hand'}) : formatMessage({defaultMessage: 'Raise hand'});
 
         return (
-            <>
-                <li
-                    className='MenuItem'
-                    role='menuitem'
-                    aria-label={label}
+            <li
+                className='MenuItem'
+                role='menuitem'
+                aria-label={label}
+            >
+                <button
+                    id='raise-hand'
+                    className='style--none'
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                    }}
+                    onClick={() => {
+                        this.onRaiseHandToggle();
+                        this.setState({showMenu: false});
+                    }}
                 >
-                    <button
-                        id='calls-widget-menu-additional-settings-button'
-                        className='style--none'
+                    <div
                         style={{
                             display: 'flex',
-                            flexDirection: 'column',
+                            alignItems: 'center',
+                            width: '100%',
+                            padding: '2px 0',
+                            gap: '8px',
                         }}
-                        onClick={() => this.onCallsSettingsButtonClick()}
                     >
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                width: '100%',
-                                padding: '2px 0',
-                                gap: '8px',
-                            }}
-                        >
-                            <SettingsWheelIcon
-                                style={{width: '16px', height: '16px'}}
-                                fill={'rgba(var(--center-channel-color-rgb), 0.64)'}
-                            />
-                            <span>{label}</span>
-                        </div>
-
-                    </button>
-                </li>
-            </>
+                        <HandIcon
+                            style={{width: '16px', height: '16px'}}
+                            fill={isHandRaised ? 'var(--away-indicator)' : 'rgba(var(--center-channel-color-rgb), 0.64)'}
+                        />
+                        <span>{label}</span>
+                    </div>
+                </button>
+            </li>
         );
     };
 
@@ -1656,6 +1714,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         );
 
         const showScreenShareItem = this.props.allowScreenSharing && !this.props.wider && !this.props.isPhoneCall;
+        const audioOutputItem = this.renderAudioOutputDevices();
 
         return (
             <div
@@ -1670,14 +1729,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                     style={this.style.settingsMenu}
                     role='menu'
                 >
-                    {this.renderDevices('audiooutput')}
-                    {this.renderDevices('audioinput')}
-                    { divider }
+                    {audioOutputItem}
+                    {audioOutputItem && divider}
+                    {!isDMChannel(this.props.channel) && this.renderRaiseHandMenuItem()}
                     {showScreenShareItem && this.renderScreenSharingMenuItem()}
                     {showScreenShareItem && divider}
                     {this.props.recordingsEnabled && isHost && this.renderRecordingMenuItem()}
                     {this.renderChatThreadMenuItem()}
-                    {this.renderAdditionalSettingsMenuItem()}
                 </ul>
             </div>
         );
@@ -2310,11 +2368,12 @@ export default class CallWidget extends React.PureComponent<Props, State> {
 
         const ShowIcon = window.desktop && !this.props.global ? ExpandIcon : PopOutIcon;
 
-        const HandIcon = this.isHandRaised() ? UnraisedHandIcon : RaisedHandIcon;
-
         const MenuIcon = HorizontalDotsIcon;
 
-        const handTooltipText = this.isHandRaised() ? formatMessage({defaultMessage: 'Lower hand'}) : formatMessage({defaultMessage: 'Raise hand'});
+        const micDevices = this.state.devices?.inputs.filter((device) => device.deviceId && device.label) ?? [];
+        const videoMode = this.isVideoMode();
+        const callAnswered = !this.props.isDMCalling && !this.props.clientConnecting;
+        const showVideoArea = videoMode && (callAnswered || (this.props.isDMCalling && this.props.isCameraOn));
 
         const isHost = this.props.callHostID === this.props.currentUserID;
         const showLeaveMenuShim = !(this.state.showMenu || this.state.showParticipantsList || this.props.screenSharingSession) && this.state.leaveMenuOpen;
@@ -2432,6 +2491,13 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                         }
                     </div>
 
+                    {showVideoArea &&
+                        <VideoArea
+                            otherSessionID={this.props.otherSessions[0]?.session_id}
+                            selfSessionID={this.props.currentSession?.session_id}
+                        />
+                    }
+
                     <div
                         className='calls-widget-bottom-bar'
                         style={this.style.bottomBar}
@@ -2452,7 +2518,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                         style={{fill: showDialPad ? 'var(--button-bg)' : ''}}
                                     />
                                 }
-                                style={{marginRight: 'auto'}}
                             />
                         )}
 
@@ -2472,7 +2537,6 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                                         style={{fill: this.state.showParticipantsList ? 'var(--button-bg)' : ''}}
                                     />
                                 }
-                                style={{marginRight: 'auto'}}
                             >
                                 <span
                                     style={{
@@ -2486,45 +2550,44 @@ export default class CallWidget extends React.PureComponent<Props, State> {
                             </WidgetButton>
                         )}
 
-                        <WidgetButton
-                            id='voice-mute-unmute'
-                            ariaLabel={muteTooltipText}
+                        <DeviceControl
+                            id='calls-widget-mic'
+                            toggleId='voice-mute-unmute'
+                            chevronId='calls-widget-audioinput-button'
+                            menuId='calls-widget-audioinputs-menu'
+                            kind='audioinput'
+                            active={!this.isMuted()}
                             // eslint-disable-next-line no-undefined
                             onToggle={noInputDevices || micPermissionPending ? undefined : this.onMuteToggle}
+                            icon={<MuteIcon/>}
+                            devices={micDevices}
+                            selectedDeviceId={getSelectedAudioInputId(micDevices, this.state.currentAudioInputDevice ?? window.callsClient.currentAudioInputDevice)}
+                            onSelectDevice={this.onAudioInputDeviceClick}
+                            disabled={this.props.clientConnecting}
+                            unavailable={noInputDevices || noAudioPermissions || micPermissionPending}
+                            toggleLabel={muteTooltipText}
+                            tooltipSubtext={muteTooltipSubtext}
                             // eslint-disable-next-line no-undefined
                             shortcut={noInputDevices || noAudioPermissions || micPermissionPending ? undefined : reverseKeyMappings.widget[MUTE_UNMUTE][0]}
-                            tooltipText={muteTooltipText}
-                            tooltipSubtext={muteTooltipSubtext}
-                            bgColor={this.isMuted() ? '' : 'rgba(61, 184, 135, 0.16)'}
-                            disabled={this.props.clientConnecting}
-                            icon={
-                                <MuteIcon
-                                    style={{
-                                        fill: this.isMuted() ? '' : 'rgba(61, 184, 135, 1)',
-                                    }}
-                                />
-                            }
-                            unavailable={noInputDevices || noAudioPermissions || micPermissionPending}
+                            menuOpen={this.state.deviceMenu === 'audioinput'}
+                            onMenuOpenChange={(open) => this.onDeviceMenuChange('audioinput', open)}
+                            // eslint-disable-next-line no-undefined
+                            menuRef={this.props.global ? this.deviceMenuRefCb : undefined}
                         />
 
-                        {!isDMChannel(this.props.channel) &&
-                            <WidgetButton
-                                id='raise-hand'
-                                ariaLabel={handTooltipText}
-                                onToggle={() => this.onRaiseHandToggle()}
-                                shortcut={reverseKeyMappings.widget[RAISE_LOWER_HAND][0]}
-                                tooltipText={handTooltipText}
-                                bgColor={this.isHandRaised() ? 'rgba(var(--away-indicator-rgb), 0.16)' : ''}
+                        {videoMode &&
+                            <CameraControl
+                                cameraOn={this.props.isCameraOn}
+                                onToggle={this.onCameraToggle}
                                 disabled={this.props.clientConnecting}
-                                icon={
-                                    <HandIcon
-                                        style={{
-                                            fill: this.isHandRaised() ? 'var(--away-indicator)' : '',
-                                        }}
-                                    />
-                                }
+                                menuOpen={this.state.deviceMenu === 'videoinput'}
+                                onMenuOpenChange={(open) => this.onDeviceMenuChange('videoinput', open)}
+                                // eslint-disable-next-line no-undefined
+                                menuRef={this.props.global ? this.deviceMenuRefCb : undefined}
                             />
                         }
+
+                        <div style={{marginRight: 'auto'}}/>
 
                         {this.props.allowScreenSharing && !this.props.isPhoneCall && (this.props.wider || isDMChannel(this.props.channel)) && this.renderScreenShareButton()}
 

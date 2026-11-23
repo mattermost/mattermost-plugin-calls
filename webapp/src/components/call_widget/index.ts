@@ -9,7 +9,6 @@ import {injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import {bindActionCreators, Dispatch} from 'redux';
 import {
-    openCallsUserSettings,
     recordingPromptDismissedAt,
     selectRHSPost,
     showExpandedView,
@@ -20,6 +19,7 @@ import {
 import {
     allowScreenSharing,
     clientConnecting,
+    dmVideoEnabled,
     expandedView,
     getChannelUrlAndDisplayName,
     hostChangeAtForCurrentCall,
@@ -35,6 +35,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
+import {isCameraOnForSession} from 'src/state/camera_on_ids/selectors';
 import {isCurrentPhoneCallActive, isCurrentPhoneCallRinging} from 'src/state/phone_legs/selectors';
 import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
 import {
@@ -44,7 +45,7 @@ import {
     sessionsInCurrentCall,
     sessionsInCurrentCallMap,
 } from 'src/state/session/selectors';
-import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
+import {alphaSortSessions, getCallsClientSessionID, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 
 import CallWidget from './component';
@@ -74,6 +75,10 @@ const mapStateToProps = (state: GlobalState) => {
         connectedDMUser = getUser(state, otherID);
     }
 
+    // Our session can be missing from the store while connecting, but the client already knows it.
+    const currentSession = sessionForCurrentCall(state);
+    const currentSessionID = currentSession?.session_id || getCallsClientSessionID();
+
     return {
         currentUserID,
         currentUserProfile: getCurrentUser(state),
@@ -83,7 +88,7 @@ const mapStateToProps = (state: GlobalState) => {
         channelDisplayName,
         sessions,
         sessionsMap: sessionsInCurrentCallMap(state),
-        currentSession: sessionForCurrentCall(state),
+        currentSession,
         profiles,
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),
@@ -107,6 +112,8 @@ const mapStateToProps = (state: GlobalState) => {
         isPhoneCall: isCurrentCallPhoneCall(state),
         isPhoneCallRinging: isCurrentPhoneCallRinging(state),
         isPhoneCallActive: isCurrentPhoneCallActive(state),
+        dmVideoEnabled: dmVideoEnabled(state),
+        isCameraOn: isCameraOnForSession(state, currentSessionID),
     };
 };
 
@@ -118,7 +125,6 @@ const mapDispatchToProps = (dispatch: Dispatch) => bindActionCreators({
     startCallRecording,
     stopCallRecording,
     openModal: modals?.openModal,
-    openCallsUserSettings,
 }, dispatch);
 
 export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(CallWidget));

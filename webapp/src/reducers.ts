@@ -7,6 +7,7 @@ import {CallJobState, LiveCaption, Reaction, UserSessionState} from '@mattermost
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {reducer as cameraOnIDs} from 'src/state/camera_on_ids/reducer';
+import {reducer as connectionQuality} from 'src/state/connection_quality/reducer';
 import {reducer as phoneLegs} from 'src/state/phone_legs/reducer';
 import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
 import {
@@ -797,6 +798,7 @@ const rootReducer = combineReducers({
     phoneLegs,
     screenSharingIDs,
     cameraOnIDs,
+    connectionQuality,
     expandedView,
     switchCallModal,
     screenSourceModal,

@@ -1,0 +1,273 @@
+@keyframes video-tile-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes video-tile-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.56;
+  }
+}
+
+@keyframes video-tile-wave {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.VideoTile {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  aspect-ratio: 16 / 9;
+  background: color-mix(in srgb, var(--calls-bg, #1e325c) 40%, #000);
+  color: #fff;
+  isolation: isolate;
+
+  // Drawn above the video so the speaking border is never covered.
+  &::after {
+    position: absolute;
+    z-index: 3;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 2px transparent;
+    content: '';
+    inset: 0;
+    pointer-events: none;
+    transition: box-shadow 0.15s ease-out;
+  }
+
+  &.VideoTile--speaking::after {
+    box-shadow: inset 0 0 0 2px var(--online-indicator, #3db887);
+  }
+
+  &.VideoTile--small {
+    border-radius: 6px;
+  }
+
+  .VideoTile__video {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s ease-out, filter 0.3s ease-out;
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .VideoTile__video--visible {
+    opacity: 1;
+  }
+
+  .VideoTile__video--mirrored video {
+    transform: scaleX(-1);
+  }
+
+  &.VideoTile--poor .VideoTile__video {
+    filter: brightness(0.56);
+  }
+
+  &.VideoTile--reconnecting .VideoTile__video {
+    filter: grayscale(1) brightness(0.48);
+  }
+
+  .VideoTile__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &.VideoTile--loading .VideoTile__avatar {
+    animation: video-tile-pulse 1.6s ease-in-out infinite;
+  }
+
+  .VideoTile__status {
+    position: absolute;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    inset: 0;
+  }
+
+  .VideoTile__spinner {
+    width: 24px;
+    height: 24px;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 255, 255, 0.24);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: video-tile-spin 0.8s linear infinite;
+  }
+
+  &.VideoTile--small .VideoTile__spinner {
+    width: 16px;
+    height: 16px;
+  }
+
+  .VideoTile__statusText {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.48);
+  }
+
+  .VideoTile__badge {
+    position: absolute;
+    z-index: 2;
+    top: 8px;
+    display: flex;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.56);
+    font-size: 14px;
+
+    svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    i::before {
+      margin: 0;
+    }
+  }
+
+  .VideoTile__badge--topLeft {
+    left: 8px;
+  }
+
+  .VideoTile__badge--topRight {
+    right: 8px;
+  }
+
+  .VideoTile__badge--hand {
+    background: #fff;
+    color: var(--away-indicator, #ffbc1f);
+  }
+
+  .VideoTile__badge--warning {
+    color: var(--away-indicator, #ffbc1f);
+  }
+
+  .VideoTile__label {
+    position: absolute;
+    z-index: 2;
+    bottom: 8px;
+    left: 8px;
+    display: flex;
+    max-width: calc(100% - 16px);
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.56);
+    font-size: 12px;
+    font-weight: 600;
+    gap: 4px;
+    line-height: 16px;
+  }
+
+  &.VideoTile--small {
+    .VideoTile__badge {
+      top: 4px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .VideoTile__badge--topLeft {
+      left: 4px;
+    }
+
+    .VideoTile__badge--topRight {
+      right: 4px;
+    }
+
+    .VideoTile__label {
+      bottom: 4px;
+      left: 4px;
+      max-width: calc(100% - 8px);
+      padding: 0 4px;
+      font-size: 10px;
+      line-height: 14px;
+    }
+  }
+
+  .VideoTile__name {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .VideoTile__muteIcon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    fill: #fff;
+  }
+
+  .VideoTile__muteIcon--muted {
+    fill: rgba(255, 255, 255, 0.64);
+  }
+
+  .VideoTile__wave {
+    display: flex;
+    height: 10px;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 1px;
+
+    span {
+      width: 2px;
+      height: 100%;
+      border-radius: 1px;
+      background: var(--online-indicator, #3db887);
+      animation: video-tile-wave 0.9s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    span:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    span:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .VideoTile {
+    &::after,
+    .VideoTile__video {
+      transition: none;
+    }
+
+    &.VideoTile--loading .VideoTile__avatar,
+    .VideoTile__wave span {
+      animation: none;
+    }
+  }
+}

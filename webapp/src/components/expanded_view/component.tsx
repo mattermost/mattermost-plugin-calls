@@ -136,6 +136,9 @@ interface Props extends RouteComponentProps {
     userMuted: (channelID: string, sessionID: string, userID: string) => void;
     userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
     userCameraChanged: (channelID: string, sessionID: string, userID: string, cameraState: CameraState) => void;
+    sessionConnectionQualityChanged: (channelID: string, sessionID: string, quality: CONNECTION_QUALITY) => void;
+    localSessionReconnecting: (channelID: string, sessionID: string) => void;
+    localSessionReconnected: (channelID: string, sessionID: string) => void;
     joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
     leaveUser: (channelID: string, userID: string, sessionID: string) => void;
     usersVoiceActivityChanged: (channelID: string, sessionIDs: string[], userIDs: string[]) => void;
@@ -725,6 +728,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 setTimeout(() => {
                     this.props.userReactedTimeout(callsClient.channelID, userID, sessionID, reaction);
                 }, REACTION_TIMEOUT_IN_REACTION_STREAM);
+            });
+            onClient(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
+                this.props.sessionConnectionQualityChanged(callsClient.channelID, callsClient.getSessionID() ?? '', quality);
+            });
+            onClient(CALL_EVENT.REMOTE_QUALITY_CHANGED, (sessionID: string, _userID: string, quality: CONNECTION_QUALITY) => {
+                this.props.sessionConnectionQualityChanged(callsClient.channelID, sessionID, quality);
+            });
+            onClient(CALL_EVENT.RECONNECTING, () => {
+                this.props.localSessionReconnecting(callsClient.channelID, callsClient.getSessionID() ?? '');
+            });
+            onClient(CALL_EVENT.RECONNECTED, () => {
+                this.props.localSessionReconnected(callsClient.channelID, callsClient.getSessionID() ?? '');
             });
         }
 

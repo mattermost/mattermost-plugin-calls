@@ -1,0 +1,159 @@
+// No position here, so the menu sizes against the widget's controls row and spans the widget.
+.DeviceControl {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 4px;
+  color: rgba(var(--center-channel-color-rgb), 0.64);
+
+  .DeviceControl__toggle,
+  .DeviceControl__chevron {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    app-region: no-drag;
+
+    &:hover {
+      background: rgba(var(--center-channel-color-rgb), 0.12);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--button-bg);
+      outline-offset: -2px;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+
+      &:hover {
+        background: none;
+      }
+    }
+
+    i::before {
+      margin: 0;
+    }
+  }
+
+  .DeviceControl__toggle {
+    padding: 5px;
+    border-radius: 4px 0 0 4px;
+
+    svg {
+      fill: rgba(var(--center-channel-color-rgb), 0.64);
+    }
+
+    i {
+      font-size: 16px;
+    }
+  }
+
+  .DeviceControl__chevron {
+    width: 18px;
+    padding: 0;
+    border-radius: 0 4px 4px 0;
+
+    i {
+      font-size: 14px;
+    }
+  }
+
+  &.DeviceControl--active {
+    background: rgba(61, 184, 135, 0.16);
+
+    .DeviceControl__toggle {
+      color: rgb(61, 184, 135);
+
+      svg {
+        fill: rgb(61, 184, 135);
+      }
+    }
+
+    .DeviceControl__toggle:hover,
+    .DeviceControl__chevron:hover {
+      background: rgba(61, 184, 135, 0.16);
+    }
+  }
+
+  &.DeviceControl--disabled {
+    color: rgba(var(--center-channel-color-rgb), 0.32);
+
+    .DeviceControl__toggle svg {
+      fill: rgba(var(--center-channel-color-rgb), 0.32);
+    }
+  }
+
+  .DeviceControl__chevron:disabled {
+    color: rgba(var(--center-channel-color-rgb), 0.32);
+  }
+
+  .DeviceControl__menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 4px);
+    left: 0;
+    z-index: 1;
+    max-height: 214px;
+    margin: 0;
+    padding: 8px 0;
+    overflow: auto;
+    list-style: none;
+    background: var(--center-channel-bg);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  .DeviceControl__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    color: var(--center-channel-color);
+    font-size: 14px;
+    line-height: 20px;
+    text-align: left;
+    cursor: pointer;
+    app-region: no-drag;
+
+    &:hover {
+      background: rgba(var(--center-channel-color-rgb), 0.08);
+    }
+
+    &.DeviceControl__item--selected {
+      background: rgba(var(--button-bg-rgb), 0.08);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--button-bg);
+      outline-offset: -2px;
+    }
+  }
+
+  .DeviceControl__itemLabel {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .DeviceControl__tick {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    fill: var(--button-bg);
+  }
+}
+
+.DeviceControl__tooltipSubtext {
+  opacity: 0.56;
+}
