@@ -7,6 +7,7 @@ import {createLocalVideoTrack, MediaDeviceFailure, TrackEvent} from 'livekit-cli
 import React from 'react';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
+import ReactSelect from 'react-select';
 import CallClient from 'src/clients/call';
 import {CAMERA_CAPTURE_DEFAULTS} from 'src/clients/call/constants';
 import {STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, STORAGE_CALLS_MIRROR_VIDEO} from 'src/constants';
@@ -29,6 +30,17 @@ jest.mock('src/clients/call', () => ({
 jest.mock('src/log', () => ({
     logErr: jest.fn(),
 }));
+
+// Wraps the real select so tests can send changes the UI can't produce.
+jest.mock('react-select', () => {
+    const actual = jest.requireActual('react-select');
+    const {createElement} = jest.requireActual('react');
+    return {
+        ...actual,
+        __esModule: true,
+        default: jest.fn((props) => createElement(actual.default, props)),
+    };
+});
 
 const MESSAGES_ID = 'videoInputMessages';
 const LOAD_ERROR_MESSAGE = 'Unable to load video devices. Make sure a camera is connected and that Mattermost is allowed to use it.';
@@ -276,6 +288,21 @@ describe('VideoDevicesSettingsSection', () => {
 
         expect(track.restartTrack).toHaveBeenCalledWith(expectedCapture('cam-2'));
         expect(createTrack).toHaveBeenCalledTimes(1);
+    });
+
+    test('ignores an empty camera selection', async () => {
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Camera');
+        const track = await turnOnCamera();
+
+        const {onChange} = (ReactSelect as unknown as jest.Mock).mock.lastCall[0];
+        await act(() => onChange(null));
+
+        expect(screen.getByText('Built-in Camera')).toBeInTheDocument();
+        expect(track.restartTrack).not.toHaveBeenCalled();
+        expect(track.stop).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', {name: 'Turn off camera'})).toBeInTheDocument();
     });
 
     test('keeps the camera on when frames resume after switching cameras', async () => {
