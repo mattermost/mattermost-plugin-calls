@@ -412,10 +412,10 @@ test.describe('sending voice', {tag: '@livekit'}, () => {
         }
 
         const muteButton = speaker.page.locator('#voice-mute-unmute');
-        await expect(muteButton).toHaveAttribute('aria-label', 'Mute');
-        for (const label of ['Unmute', 'Mute', 'Unmute', 'Mute']) {
+        await expect(muteButton).toHaveAttribute('aria-pressed', 'true');
+        for (const pressed of ['false', 'true', 'false', 'true']) {
             await muteButton.click();
-            await expect(muteButton).toHaveAttribute('aria-label', label);
+            await expect(muteButton).toHaveAttribute('aria-pressed', pressed);
         }
         /* eslint-enable no-await-in-loop */
 

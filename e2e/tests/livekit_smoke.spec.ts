@@ -108,17 +108,16 @@ test.describe('livekit framework smoke', {tag: '@livekit-smoke'}, () => {
             await page.waitForFunction(() => window.e2eCallStateLoaded?.());
 
             // Joining a regular channel starts muted (auto-unmute only fires in
-            // DM/GM channels), so the mic button's aria-label is "Unmute". Click
-            // it and assert it flips to "Mute". The flip requires the round-trip
+            // DM/GM channels), so the mic button is not pressed. Click it and
+            // assert it flips to pressed. The flip requires the round-trip
             // to land: setMicrophoneEnabled(true) publishes the audio track to
             // LiveKit → server marks the session unmuted → broadcasts via WS →
             // redux updates `currentSession.unmuted` → button re-renders. A
-            // half-negotiated track or a stuck WS would leave the label as
-            // "Unmute".
+            // half-negotiated track or a stuck WS would leave it unpressed.
             const muteButton = page.locator('#voice-mute-unmute');
-            await expect(muteButton).toHaveAttribute('aria-label', 'Unmute');
+            await expect(muteButton).toHaveAttribute('aria-pressed', 'false');
             await muteButton.click();
-            await expect(muteButton).toHaveAttribute('aria-label', 'Mute');
+            await expect(muteButton).toHaveAttribute('aria-pressed', 'true');
 
             await devPage.leaveFromWidget();
             await expect(page.locator('#calls-widget')).toBeHidden();
