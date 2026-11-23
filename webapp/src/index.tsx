@@ -180,6 +180,7 @@ import {
     getUserIDsForSessions,
     isCallsPopOut,
     isDMChannel,
+    logClientEnvironment,
     playSound,
     sendDesktopEvent,
     setCallsGlobalCSSVars,
@@ -663,6 +664,7 @@ export default class Plugin {
             // Log separator for new call
             const isStarting = !channelHasCall(store.getState(), channelID);
             logInfo(`=== ${isStarting ? 'starting' : 'joining'} call at ${new Date().toISOString()}`);
+            await logClientEnvironment();
 
             // Flush separator immediately (ensures desktop clients capture it)
             flushLogsToAccumulated();
