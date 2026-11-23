@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {act, render, screen} from '@testing-library/react';
+import {act, render, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, {useState} from 'react';
 import {IntlProvider} from 'react-intl';
@@ -170,14 +170,35 @@ describe('DeviceControl', () => {
         expect(screen.getByRole('button', {name: 'Camera options'})).toHaveAttribute('aria-expanded', 'false');
     });
 
-    test('arrow keys on the chevron open the menu', async () => {
+    test.each(['{ArrowUp}', '{ArrowDown}'])('%s on the chevron opens the menu', async (key) => {
         renderControl();
         screen.getByRole('button', {name: 'Camera options'}).focus();
 
-        await userEvent.keyboard('{ArrowUp}');
+        await userEvent.keyboard(key);
 
         expect(screen.getByRole('menu', {name: 'Camera options'})).toBeInTheDocument();
         expect(screen.getByRole('menuitemradio', {name: 'USB Camera'})).toHaveFocus();
+    });
+
+    test('other keys on the chevron leave the menu closed', async () => {
+        const {props} = renderControl();
+        screen.getByRole('button', {name: 'Camera options'}).focus();
+
+        await userEvent.keyboard('a');
+
+        expect(props.onMenuOpenChange).not.toHaveBeenCalled();
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    test('the toggle tooltip hides when the pointer leaves', async () => {
+        renderControl();
+        const toggle = screen.getByRole('button', {name: 'Camera'});
+
+        await userEvent.hover(toggle);
+        expect(await screen.findByText('Turn on camera')).toBeInTheDocument();
+
+        await userEvent.unhover(toggle);
+        await waitFor(() => expect(screen.queryByText('Turn on camera')).not.toBeInTheDocument());
     });
 
     test('choosing another device selects it, closes the menu and returns focus', async () => {

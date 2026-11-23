@@ -5,7 +5,7 @@ import {EventEmitter} from 'events';
 import type CallClient from 'src/clients/call';
 import {CALL_EVENT} from 'src/clients/call/constants';
 import {CameraState, type CameraTrack, type DeviceStatus, type ScreenShareTrack, type ScreenSharingSession} from 'src/clients/call/types';
-import type {MediaDevices} from 'src/types/types';
+import type {MediaDevices, ShareScreenResult} from 'src/types/types';
 
 /**
  * A stand-in for CallClient in tests. Fire events with emit(). Methods are jest.fn, so tests
@@ -41,6 +41,7 @@ export class FakeCallClient extends EventEmitter {
     getRemoteScreenTrack = jest.fn(() => this.remoteScreenTrack);
     getLocalScreenTrack = jest.fn(() => this.localScreenTrack);
     getCurrentScreenSharingSessionID = jest.fn(() => this.screenSharingSessionID);
+    shareScreen = jest.fn(async (_sourceID?: string, _withAudio?: boolean): Promise<ShareScreenResult> => [null, null]);
     unshareScreen = jest.fn(async () => undefined);
     getMicStatus = jest.fn(() => this.micStatus);
     getAudioDevices = jest.fn(() => this.audioDevices);

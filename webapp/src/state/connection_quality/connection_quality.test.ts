@@ -13,6 +13,12 @@ describe('connectionQuality reducer', () => {
         expect(reducer(undefined, {type: 'unknown'} as never)).toEqual({});
     });
 
+    test('leaves the state as it is for other actions', () => {
+        const state = reducer(undefined, sessionConnectionQualityChanged('channelA', 's1', CONNECTION_QUALITY.Poor));
+
+        expect(reducer(state, {type: 'unknown'} as never)).toBe(state);
+    });
+
     test.each([
         [CONNECTION_QUALITY.Poor, {channelA: {s1: 'poor'}}],
         [CONNECTION_QUALITY.Lost, {channelA: {s1: 'reconnecting'}}],

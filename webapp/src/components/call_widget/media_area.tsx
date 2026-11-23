@@ -27,9 +27,14 @@ type Props = {
     cameras: CameraSessions | null;
 };
 
-type Content =
-    | {kind: 'share'; share: ScreenSharingSession; presenterName?: string}
-    | {kind: 'cameras'; cameras: CameraSessions};
+type ContentByKind = {
+    share: {share: ScreenSharingSession; presenterName?: string};
+    cameras: {cameras: CameraSessions};
+};
+
+type Content<K extends keyof ContentByKind = keyof ContentByKind> = {[P in K]: {kind: P} & ContentByKind[P]}[K];
+
+type ContentRenderers = {[K in keyof ContentByKind]: (content: Content<K>) => React.ReactNode};
 
 // Covers the 300ms collapse when transitionend never fires, as in a hidden tab.
 const COLLAPSE_FALLBACK_MS = 500;
@@ -96,24 +101,17 @@ export default function MediaArea({shareAllowed, presenterName, onStopSharing, c
         return null;
     }
 
-    const renderContent = () => {
-        switch (content.kind) {
-        case 'share':
-            return (
-                <ScreenShare
-                    share={content.share}
-                    presenterName={content.presenterName}
-                    onStopSharing={onStopSharing}
-                />
-            );
-        case 'cameras':
-            return <CameraTiles {...content.cameras}/>;
-        default: {
-            const unhandled: never = content;
-            return unhandled;
-        }
-        }
+    const renderers: ContentRenderers = {
+        share: (shown) => (
+            <ScreenShare
+                share={shown.share}
+                presenterName={shown.presenterName}
+                onStopSharing={onStopSharing}
+            />
+        ),
+        cameras: (shown) => <CameraTiles {...shown.cameras}/>,
     };
+    const renderContent = <K extends keyof ContentByKind>(shown: Content<K>) => renderers[shown.kind](shown);
 
     // The expander stays mounted while the content switches, so it only grows when the area first appears.
     // While collapsing it keeps showing the last content, which is stale, so it is hidden from input.
@@ -131,7 +129,7 @@ export default function MediaArea({shareAllowed, presenterName, onStopSharing, c
                     className='CallWidgetMediaArea'
                     data-testid='calls-widget-media-area'
                 >
-                    {renderContent()}
+                    {renderContent(content)}
                 </div>
             </div>
         </div>

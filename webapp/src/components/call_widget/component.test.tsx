@@ -1153,6 +1153,110 @@ describe('camera video and device controls', () => {
     });
 
     test.each([
+        ['Start presenting', undefined, 'shareScreen', ['', true]],
+        ['Stop presenting', selfSession, 'unshareScreen', []],
+    ])('%s from More options calls the client and closes the menu', async (label, screenSharingSession, method, args) => {
+        const user = userEvent.setup();
+        renderWidget({channel: stubChannel, otherSessions: [], screenSharingSession});
+
+        await user.click(screen.getByRole('button', {name: 'More options'}));
+        expect(within(screen.getByTestId('calls-widget-menu')).getByRole('menuitem', {name: label})).toBeInTheDocument();
+        await user.click(document.getElementById('calls-widget-menu-screenshare')!);
+
+        expect(client[method as 'shareScreen' | 'unshareScreen']).toHaveBeenCalledWith(...args);
+        await waitFor(() => expect(screen.queryByTestId('calls-widget-menu')).not.toBeInTheDocument());
+    });
+
+    test('the audio output row says Default until a speaker is chosen, and Tab closes only its submenu', async () => {
+        const user = userEvent.setup();
+        const speaker = {deviceId: 'speaker-1', label: 'Built-in Speakers', kind: 'audiooutput'} as MediaDeviceInfo;
+        client.currentAudioOutputDevice = null;
+        renderWidget();
+        act(() => {
+            client.setAudioDevices({inputs: [defaultMic], outputs: [speaker]});
+        });
+
+        await user.click(screen.getByRole('button', {name: 'More options'}));
+        const button = document.getElementById('calls-widget-audiooutput-button')!;
+        expect(button).toHaveTextContent('Default');
+
+        await user.click(button);
+        expect(screen.getByRole('menu', {name: 'Audio output'})).toBeInTheDocument();
+        await user.keyboard('{Tab}');
+
+        expect(screen.queryByRole('menu', {name: 'Audio output'})).not.toBeInTheDocument();
+        expect(screen.getByTestId('calls-widget-menu')).toBeInTheDocument();
+    });
+
+    describe('in the Desktop widget window', () => {
+        type FakeObserver = {callback: () => void; observe: jest.Mock; disconnect: jest.Mock; unobserve: jest.Mock};
+        const MENU_SIZE = {width: 280, height: 200};
+        let observers: FakeObserver[];
+        let resizeCallsWidget: jest.Mock;
+        let rectSpy: jest.SpyInstance;
+        const originalResizeObserver = window.ResizeObserver;
+        const originalDesktopAPI = window.desktopAPI;
+
+        // Only menus have a size, so the bounds show whether the open menu is accounted for.
+        const sizeOf = (el: Element) => (el.getAttribute('role') === 'menu' ? MENU_SIZE : {width: 0, height: 0});
+
+        const observerOf = (el: Element) => observers.find((o) => o.observe.mock.calls.some(([target]) => target === el));
+
+        beforeEach(() => {
+            observers = [];
+            window.ResizeObserver = jest.fn((callback: () => void) => {
+                const observer = {callback, observe: jest.fn(), disconnect: jest.fn(), unobserve: jest.fn()};
+                observers.push(observer);
+                return observer;
+            }) as unknown as typeof ResizeObserver;
+            resizeCallsWidget = jest.fn();
+            window.desktopAPI = {resizeCallsWidget} as unknown as typeof window.desktopAPI;
+            rectSpy = jest.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function(this: Element) {
+                const {width, height} = sizeOf(this);
+                return {width, height, x: 0, y: 0, top: 0, left: 0, right: width, bottom: height, toJSON: () => ({})} as DOMRect;
+            });
+        });
+
+        afterEach(() => {
+            window.ResizeObserver = originalResizeObserver;
+            window.desktopAPI = originalDesktopAPI;
+            rectSpy.mockRestore();
+        });
+
+        test.each(['Microphone options', 'Camera options'])('grows the window to fit the %s menu and shrinks it once closed', async (name) => {
+            const user = userEvent.setup();
+            renderWidget({global: true});
+            fireDevices([defaultMic]);
+
+            await user.click(screen.getByRole('button', {name}));
+            const menu = screen.getByRole('menu', {name});
+            const observer = observerOf(menu);
+            expect(observer).toBeDefined();
+
+            act(() => observer!.callback());
+            expect(resizeCallsWidget).toHaveBeenLastCalledWith(MENU_SIZE.width + 6, MENU_SIZE.height + 12);
+
+            await user.keyboard('{Escape}');
+            expect(observer!.disconnect).toHaveBeenCalled();
+            expect(resizeCallsWidget).toHaveBeenLastCalledWith(6, 6);
+        });
+
+        test('watches the audio output submenu so the window fits it', async () => {
+            const user = userEvent.setup();
+            const speaker = {deviceId: 'speaker-1', label: 'Built-in Speakers', kind: 'audiooutput'} as MediaDeviceInfo;
+            renderWidget({global: true});
+            act(() => {
+                client.setAudioDevices({inputs: [defaultMic], outputs: [speaker]});
+            });
+
+            await user.click(screen.getByRole('button', {name: 'More options'}));
+            await user.click(document.getElementById('calls-widget-audiooutput-button')!);
+
+            expect(observerOf(screen.getByRole('menu', {name: 'Audio output'}))).toBeDefined();
+        });
+    });
+
+    test.each([
         [CameraError.PermissionDenied, 'Allow camera access to Mattermost to turn on your camera.'],
         [CameraError.NotFound, 'No camera found. Try plugging in a camera.'],
         [CameraError.DeviceInUse, 'Your camera is being used by another app.'],

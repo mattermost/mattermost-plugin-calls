@@ -4,7 +4,7 @@
 import './device_menu.scss';
 
 import classNames from 'classnames';
-import React, {useCallback, useEffect, useRef} from 'react';
+import React, {useCallback, useRef} from 'react';
 import {MessageDescriptor, useIntl} from 'react-intl';
 import TickIcon from 'src/components/icons/tick';
 
@@ -29,29 +29,26 @@ export type DeviceMenuProps = {
     menuRef?: (el: HTMLUListElement | null) => void;
 };
 
+const getItems = (list: HTMLUListElement) => Array.from(list.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'));
+
 export default function DeviceMenu({id, label, devices, selectedDeviceId, onSelect, onClose, unlabeledDevice, className, style, menuRef}: DeviceMenuProps) {
     const {formatMessage} = useIntl();
-    const listRef = useRef<HTMLUListElement | null>(null);
-
-    const getItems = () => Array.from(listRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]') ?? []);
-
-    useEffect(() => {
-        const items = getItems();
-        const selected = items.find((item) => item.getAttribute('aria-checked') === 'true');
-        (selected ?? items[0])?.focus();
-    }, []);
 
     const menuRefRef = useRef(menuRef);
     menuRefRef.current = menuRef;
 
-    // Stable, so the owner's ref only fires when the menu mounts or unmounts.
+    // Stable, so it only runs when the menu mounts or unmounts. On mount it focuses the selected device.
     const setListRef = useCallback((el: HTMLUListElement | null) => {
-        listRef.current = el;
+        if (el) {
+            const items = getItems(el);
+            const selected = items.find((item) => item.getAttribute('aria-checked') === 'true');
+            (selected ?? items[0])?.focus();
+        }
         menuRefRef.current?.(el);
     }, []);
 
-    const onKeyDown = (e: React.KeyboardEvent) => {
-        const items = getItems();
+    const onKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
+        const items = getItems(e.currentTarget);
         const current = items.indexOf(document.activeElement as HTMLButtonElement);
 
         switch (e.key) {

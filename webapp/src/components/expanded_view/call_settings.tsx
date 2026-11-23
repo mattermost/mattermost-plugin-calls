@@ -181,7 +181,7 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
                     </DeviceTypeButtonBody>
 
                     {devices.length > 0 &&
-                    <ShowDevicesIcon $isDisabled={isDisabled}>
+                    <ShowDevicesIcon>
                         <ShowMoreIcon/>
                     </ShowDevicesIcon>
                     }
@@ -191,12 +191,13 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
     );
 };
 
-const ShowDevicesIcon = styled.div<{$isDisabled: boolean}>`
+// Only shown while there are devices to pick, so it is never disabled.
+const ShowDevicesIcon = styled.div`
 &&& {
     svg {
       width: 16px;
       height: 16px;
-      fill: ${({$isDisabled}) => ($isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)')};
+      fill: rgba(var(--center-channel-color-rgb), 0.56);
     }
 }
 `;

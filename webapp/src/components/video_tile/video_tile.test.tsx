@@ -3,7 +3,7 @@
 
 import {Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {UserProfile} from '@mattermost/types/users';
-import {fireEvent, render, screen} from '@testing-library/react';
+import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type {VideoTrack} from 'livekit-client';
 import React from 'react';
@@ -143,6 +143,17 @@ describe('VideoTile', () => {
         await userEvent.hover(screen.getByTestId('video-tile-poor-connection'));
 
         expect(await screen.findByText('Poor connection')).toBeInTheDocument();
+
+        await userEvent.unhover(screen.getByTestId('video-tile-poor-connection'));
+
+        await waitFor(() => expect(screen.queryByText('Poor connection')).not.toBeInTheDocument());
+    });
+
+    test('names a user without a loaded profile "Unknown user"', () => {
+        renderTile({profile: undefined});
+
+        expect(screen.getByRole('img', {name: 'Unknown user: camera off, muted'})).toBeInTheDocument();
+        expect(screen.getByAltText('user profile image')).toHaveAttribute('src', '/api/v4/users/user-1/image');
     });
 
     test('resumes the paused video once the connection recovers', () => {

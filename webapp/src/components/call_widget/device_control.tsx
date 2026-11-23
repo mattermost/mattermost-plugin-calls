@@ -120,25 +120,18 @@ type ToggleDisplay = {
     unavailable: boolean;
 };
 
-// An unavailable device shows its "on" icon under the badge, so the badge isn't drawn over a slash.
-const getToggleDisplay = (kind: DeviceControlKind, status: DeviceStatus, active: boolean): ToggleDisplay => {
-    const display = KIND_DISPLAY[kind];
-    const Icon = active ? display.OnIcon : display.OffIcon;
+const activeIcon = (display: KindDisplay, active: boolean) => (active ? display.OnIcon : display.OffIcon);
 
-    switch (status) {
-    case 'starting':
-        return {text: display.starting, Icon, unavailable: false};
-    case 'ready':
-        return {text: active ? display.turnOff : display.turnOn, Icon, unavailable: false};
-    case 'blocked':
-    case 'missing':
-        return {...display[status], Icon: display.OnIcon, unavailable: true};
-    default: {
-        const unhandled: never = status;
-        return unhandled;
-    }
-    }
+// An unavailable device shows its "on" icon under the badge, so the badge isn't drawn over a slash.
+const TOGGLE_DISPLAYS: Record<DeviceStatus, (display: KindDisplay, active: boolean) => ToggleDisplay> = {
+    starting: (display, active) => ({text: display.starting, Icon: activeIcon(display, active), unavailable: false}),
+    ready: (display, active) => ({text: active ? display.turnOff : display.turnOn, Icon: activeIcon(display, active), unavailable: false}),
+    blocked: (display) => ({...display.blocked, Icon: display.OnIcon, unavailable: true}),
+    missing: (display) => ({...display.missing, Icon: display.OnIcon, unavailable: true}),
 };
+
+const getToggleDisplay = (kind: DeviceControlKind, status: DeviceStatus, active: boolean): ToggleDisplay =>
+    TOGGLE_DISPLAYS[status](KIND_DISPLAY[kind], active);
 
 export default function DeviceControl(props: DeviceControlProps) {
     const {formatMessage} = useIntl();

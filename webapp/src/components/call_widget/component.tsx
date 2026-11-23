@@ -1005,7 +1005,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
             return;
         }
 
-        this.setState((prevState) => (prevState.deviceMenu === kind ? {deviceMenu: null} : null));
+        this.setState({deviceMenu: null});
     };
 
     onDialPadButtonClick = () => {

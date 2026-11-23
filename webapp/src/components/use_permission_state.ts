@@ -11,23 +11,23 @@ export function usePermissionState(name: MediaPermissionName): PermissionState |
 
     useEffect(() => {
         let cancelled = false;
-        let status: PermissionStatus | null = null;
-        const onChange = () => setState(status?.state ?? null);
+        let stopListening: (() => void) | undefined;
 
-        navigator.permissions?.query({name}).then((result) => {
+        navigator.permissions?.query({name}).then((status) => {
             if (cancelled) {
                 return;
             }
-            status = result;
-            setState(result.state);
-            result.addEventListener('change', onChange);
+            const onChange = () => setState(status.state);
+            setState(status.state);
+            status.addEventListener('change', onChange);
+            stopListening = () => status.removeEventListener('change', onChange);
         }).catch(() => {
             setState(null);
         });
 
         return () => {
             cancelled = true;
-            status?.removeEventListener('change', onChange);
+            stopListening?.();
         };
     }, [name]);
 

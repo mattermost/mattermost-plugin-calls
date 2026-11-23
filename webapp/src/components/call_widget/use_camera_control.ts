@@ -20,26 +20,22 @@ type CameraStatusInput = {
 // The button only shows the errors it can explain; the rest have their banner, and a retry may work.
 // The live device list and permission refine those: a plugged-in camera clears "missing", a granted
 // permission clears "blocked", and a denied one shows "blocked" before anyone clicks.
-export function getCameraStatus({starting, error, cameraOn, deviceCount, permission}: CameraStatusInput): DeviceStatus {
-    if (starting) {
+const readyUnlessDenied = ({cameraOn, permission}: CameraStatusInput): DeviceStatus =>
+    (!cameraOn && permission === 'denied' ? 'blocked' : 'ready');
+
+const STATUS_FOR_ERROR: Record<CameraError, (input: CameraStatusInput) => DeviceStatus> = {
+    [CameraError.PermissionDenied]: ({permission}) => (permission === 'granted' ? 'ready' : 'blocked'),
+    [CameraError.NotFound]: ({deviceCount}) => (deviceCount > 0 ? 'ready' : 'missing'),
+    [CameraError.DeviceInUse]: readyUnlessDenied,
+    [CameraError.Disconnected]: readyUnlessDenied,
+    [CameraError.Other]: readyUnlessDenied,
+};
+
+export function getCameraStatus(input: CameraStatusInput): DeviceStatus {
+    if (input.starting) {
         return 'starting';
     }
-
-    switch (error) {
-    case CameraError.PermissionDenied:
-        return permission === 'granted' ? 'ready' : 'blocked';
-    case CameraError.NotFound:
-        return deviceCount > 0 ? 'ready' : 'missing';
-    case CameraError.DeviceInUse:
-    case CameraError.Disconnected:
-    case CameraError.Other:
-    case null:
-        return !cameraOn && permission === 'denied' ? 'blocked' : 'ready';
-    default: {
-        const unhandled: never = error;
-        return unhandled;
-    }
-    }
+    return input.error === null ? readyUnlessDenied(input) : STATUS_FOR_ERROR[input.error](input);
 }
 
 export function useCameraControl(cameraOn: boolean) {

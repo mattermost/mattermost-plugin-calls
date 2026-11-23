@@ -138,7 +138,8 @@ export default function VideoDevicesSettingsSection() {
     // Until the call's track reports its device, assume it is the one picked.
     const isCallCamera = (deviceId: string | undefined) => callCameraOn && (!callDeviceId || !deviceId || deviceId === callDeviceId);
 
-    const usesCallTrack = previewState !== 'off' && isCallCamera(getSelectedOption()?.value);
+    const selectedDeviceId = getSelectedOption()?.value ?? '';
+    const usesCallTrack = previewState !== 'off' && isCallCamera(selectedDeviceId);
     const shownTrack = usesCallTrack ? callCamera.track : previewTrack;
 
     // Only ever stops the preview's own capture, never the call's track.
@@ -270,7 +271,7 @@ export default function VideoDevicesSettingsSection() {
         }
 
         if (callCameraOn) {
-            startCapture(getSelectedOption()?.value ?? '');
+            startCapture(selectedDeviceId);
         } else {
             stopPreview();
             setAnnouncement(cameraOffText);

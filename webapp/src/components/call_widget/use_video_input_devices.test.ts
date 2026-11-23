@@ -4,6 +4,7 @@
 import {act, renderHook, waitFor} from '@testing-library/react';
 import CallClient from 'src/clients/call';
 import {STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY} from 'src/constants';
+import {logErr} from 'src/log';
 import {FakeCallClient, installFakeCallClient} from 'src/test_utils/fake_call_client';
 
 import {useVideoInputDevices} from './use_video_input_devices';
@@ -79,6 +80,21 @@ describe('useVideoInputDevices', () => {
         rerender({cameraOn: true});
 
         await waitFor(() => expect(result.current.devices).toEqual([builtIn, usb]));
+        expect(result.current.selectedDeviceId).toBe('cam-1');
+    });
+
+    test('logs a failed load and keeps the previous list', async () => {
+        const {result} = renderHook(() => useVideoInputDevices(false));
+        await waitFor(() => expect(result.current.devices).toEqual([builtIn, usb]));
+
+        const err = new Error('enumerate failed');
+        getLocalVideoDevices.mockRejectedValueOnce(err);
+        await act(async () => {
+            mediaDevices.dispatchEvent(new Event('devicechange'));
+        });
+
+        expect(logErr).toHaveBeenCalledWith('failed to get video devices', err);
+        expect(result.current.devices).toEqual([builtIn, usb]);
         expect(result.current.selectedDeviceId).toBe('cam-1');
     });
 

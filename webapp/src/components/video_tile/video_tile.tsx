@@ -10,7 +10,7 @@ import type {VideoTrack} from 'livekit-client';
 import {Client4} from 'mattermost-redux/client';
 import React, {useEffect, useRef, useState} from 'react';
 import {Overlay, Tooltip} from 'react-bootstrap';
-import {useIntl} from 'react-intl';
+import {defineMessage, MessageDescriptor, useIntl} from 'react-intl';
 import {CameraState} from 'src/clients/call/types';
 import Avatar from 'src/components/avatar/avatar';
 import {Emoji} from 'src/components/emoji/emoji';
@@ -50,27 +50,43 @@ const AVATAR_FONT_SIZE_PX: Record<VideoTileSize, number> = {
 
 const BADGE_EMOJI_SIZE_PX = 14;
 
+const TILE_STATES: Record<CameraState, (hasFrames: boolean, connectionState: ConnectionState) => VideoTileState> = {
+    [CameraState.Off]: () => 'off',
+    [CameraState.Loading]: () => 'loading',
+    [CameraState.Ready]: (hasFrames, connectionState) => {
+        if (!hasFrames) {
+            return 'loading';
+        }
+        return connectionState === 'poor' ? 'poor' : 'video';
+    },
+};
+
 // hasFrames is false until the video element is actually playing, which can lag the track.
 const getVideoTileState = (cameraState: CameraState, hasFrames: boolean, connectionState: ConnectionState): VideoTileState => {
     if (connectionState === 'reconnecting') {
         return 'reconnecting';
     }
+    return TILE_STATES[cameraState](hasFrames, connectionState);
+};
 
-    switch (cameraState) {
-    case CameraState.Off:
-        return 'off';
-    case CameraState.Loading:
-        return 'loading';
-    case CameraState.Ready:
-        if (!hasFrames) {
-            return 'loading';
-        }
-        return connectionState === 'poor' ? 'poor' : 'video';
-    default: {
-        const unhandled: never = cameraState;
-        return unhandled;
-    }
-    }
+const CAMERA_STATUS_MESSAGES: Record<CameraState, MessageDescriptor> = {
+    [CameraState.Off]: defineMessage({defaultMessage: 'camera off'}),
+    [CameraState.Loading]: defineMessage({defaultMessage: 'camera connecting'}),
+    [CameraState.Ready]: defineMessage({defaultMessage: 'camera on'}),
+};
+
+const CONNECTION_STATUS_MESSAGES: Record<ConnectionState, MessageDescriptor | null> = {
+    good: null,
+    poor: defineMessage({defaultMessage: 'poor connection'}),
+    reconnecting: defineMessage({defaultMessage: 'reconnecting'}),
+};
+
+const STATUS_TEXT_MESSAGES: Record<VideoTileState, MessageDescriptor | null> = {
+    loading: defineMessage({defaultMessage: 'Connecting…'}),
+    reconnecting: defineMessage({defaultMessage: 'Reconnecting…'}),
+    video: null,
+    off: null,
+    poor: null,
 };
 
 export default function VideoTile({
@@ -117,34 +133,12 @@ export default function VideoTile({
     const displayName = getUserDisplayName(profile) || formatMessage({defaultMessage: 'Unknown user'});
     const name = isSelf ? `${displayName} ${formatMessage({defaultMessage: '(you)'})}` : displayName;
 
-    const cameraStatus = () => {
-        switch (cameraState) {
-        case CameraState.Off:
-            return formatMessage({defaultMessage: 'camera off'});
-        case CameraState.Loading:
-            return formatMessage({defaultMessage: 'camera connecting'});
-        case CameraState.Ready:
-            return hasFrames ? formatMessage({defaultMessage: 'camera on'}) : formatMessage({defaultMessage: 'camera connecting'});
-        default: {
-            const unhandled: never = cameraState;
-            return unhandled;
-        }
-        }
-    };
+    // A ready camera is still connecting until its first frame plays.
+    const cameraStatus = () => formatMessage(CAMERA_STATUS_MESSAGES[cameraState === CameraState.Ready && !hasFrames ? CameraState.Loading : cameraState]);
 
     const connectionStatus = () => {
-        switch (connectionState) {
-        case 'good':
-            return null;
-        case 'poor':
-            return formatMessage({defaultMessage: 'poor connection'});
-        case 'reconnecting':
-            return formatMessage({defaultMessage: 'reconnecting'});
-        default: {
-            const unhandled: never = connectionState;
-            return unhandled;
-        }
-        }
+        const message = CONNECTION_STATUS_MESSAGES[connectionState];
+        return message && formatMessage(message);
     };
 
     const muteStatus = () => {
@@ -163,23 +157,11 @@ export default function VideoTile({
     const ariaLabel = formatMessage({defaultMessage: '{name}: {statuses}'}, {name, statuses: statuses.join(', ')});
 
     const statusText = () => {
-        if (size === 'small') {
+        const message = STATUS_TEXT_MESSAGES[tileState];
+        if (size === 'small' || !message) {
             return null;
         }
-        switch (tileState) {
-        case 'loading':
-            return formatMessage({defaultMessage: 'Connecting…'});
-        case 'reconnecting':
-            return formatMessage({defaultMessage: 'Reconnecting…'});
-        case 'video':
-        case 'off':
-        case 'poor':
-            return null;
-        default: {
-            const unhandled: never = tileState;
-            return unhandled;
-        }
-        }
+        return formatMessage(message);
     };
 
     const showSpinner = tileState === 'loading' || tileState === 'reconnecting';

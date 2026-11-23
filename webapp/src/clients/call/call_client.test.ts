@@ -2162,6 +2162,25 @@ describe('CallClient', () => {
             expect(deviceChangeListener).toHaveBeenCalled();
         });
 
+        test.each([
+            ['adopts the input LiveKit switched to and emits DEVICE_CHANGE', 'mic-2', 'mic-2', 1],
+            ['ignores a switch to the input already in use', 'mic-1', 'mic-1', 0],
+            ['ignores a switch to an input it does not know', 'mic-unknown', 'mic-1', 0],
+        ])('on ActiveDeviceChanged it %s', async (_, switchedTo, expectedDeviceID, deviceChanges) => {
+            (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice, inputDevice2]);
+            await client.connect({channelID: 'test-channel'});
+            await client.setAudioInputDevice(inputDevice);
+            mockRoom.fire(RoomEvent.MediaDevicesChanged);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            const deviceChangeListener = jest.fn();
+            client.on(CALL_EVENT.DEVICE_CHANGE, deviceChangeListener);
+
+            mockRoom.fire(RoomEvent.ActiveDeviceChanged, 'audioinput', switchedTo);
+
+            expect(client.currentAudioInputDevice?.deviceId).toBe(expectedDeviceID);
+            expect(deviceChangeListener).toHaveBeenCalledTimes(deviceChanges);
+        });
+
         it('clears the input without DEVICE_FALLBACK when the last input is unplugged', async () => {
             (navigator.mediaDevices.enumerateDevices as jest.Mock).mockResolvedValue([inputDevice]);
             await client.connect({channelID: 'test-channel'});

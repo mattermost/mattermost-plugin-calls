@@ -24,22 +24,12 @@ type State = {
 const emptyState: State = {};
 
 // Unknown means LiveKit has no measurement yet, so it leaves the stored state as it is.
-const toConnectionState = (quality: CONNECTION_QUALITY): ConnectionState | null => {
-    switch (quality) {
-    case CONNECTION_QUALITY.Excellent:
-    case CONNECTION_QUALITY.Good:
-        return 'good';
-    case CONNECTION_QUALITY.Poor:
-        return 'poor';
-    case CONNECTION_QUALITY.Lost:
-        return 'reconnecting';
-    case CONNECTION_QUALITY.Unknown:
-        return null;
-    default: {
-        const unhandled: never = quality;
-        return unhandled;
-    }
-    }
+const CONNECTION_STATES: Record<CONNECTION_QUALITY, ConnectionState | null> = {
+    [CONNECTION_QUALITY.Excellent]: 'good',
+    [CONNECTION_QUALITY.Good]: 'good',
+    [CONNECTION_QUALITY.Poor]: 'poor',
+    [CONNECTION_QUALITY.Lost]: 'reconnecting',
+    [CONNECTION_QUALITY.Unknown]: null,
 };
 
 const setSession = (state: State, channelID: Channel['id'], sessionID: UserSessionState['session_id'], connection: DegradedConnectionState): State => {
@@ -98,7 +88,7 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
     }
 
     case SESSION_CONNECTION_QUALITY_CHANGED: {
-        const connection = toConnectionState(action.data.quality);
+        const connection = CONNECTION_STATES[action.data.quality];
         if (!connection || !action.data.channelID || !action.data.session_id) {
             return initialState;
         }
