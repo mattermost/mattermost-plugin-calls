@@ -3,7 +3,7 @@
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import {createLocalVideoTrack, TrackEvent} from 'livekit-client';
+import {createLocalVideoTrack, MediaDeviceFailure, TrackEvent} from 'livekit-client';
 import React from 'react';
 import {IntlProvider} from 'react-intl';
 import {Provider} from 'react-redux';
@@ -278,6 +278,22 @@ describe('VideoDevicesSettingsSection', () => {
         expect(createTrack).toHaveBeenCalledTimes(1);
     });
 
+    test('keeps the camera on when frames resume after switching cameras', async () => {
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Camera');
+        await turnOnCamera();
+        await userEvent.click(screen.getByLabelText('Camera input'));
+        await userEvent.click(screen.getByText('USB Camera'));
+
+        fireEvent.playing(getVideo());
+
+        expect(screen.getByRole('button', {name: 'Turn off camera'})).toBeInTheDocument();
+        expect(getVideo()).not.toHaveClass('VideoDevicesSettings__video--hidden');
+        expect(screen.queryByAltText('alice profile image')).not.toBeInTheDocument();
+        expect(getLiveRegion()).toHaveTextContent('Camera on');
+    });
+
     test('saves the selected camera and the mirror setting', async () => {
         renderComponent();
         await openSection();
@@ -465,6 +481,20 @@ describe('VideoDevicesSettingsSection', () => {
             await userEvent.click(screen.getByRole('button', {name: 'Turn on camera'}));
 
             expect(await screen.findByText('Couldn\'t start your camera. Try again.')).toBeInTheDocument();
+        });
+
+        test('shows the failure type as is when it is newer than this section', async () => {
+            const getFailure = jest.spyOn(MediaDeviceFailure, 'getFailure').mockReturnValue('FutureFailure' as MediaDeviceFailure);
+            createTrack.mockRejectedValueOnce(new DOMException('failed', 'FutureError'));
+            renderComponent();
+            await openSection();
+            await screen.findByText('Built-in Camera');
+
+            await userEvent.click(screen.getByRole('button', {name: 'Turn on camera'}));
+
+            expect(await screen.findByText('FutureFailure')).toBeInTheDocument();
+            expectLinkedMessage('FutureFailure');
+            getFailure.mockRestore();
         });
 
         test('shows a linked message and announces off when the camera is unplugged', async () => {

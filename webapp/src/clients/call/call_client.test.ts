@@ -8,6 +8,7 @@ import {
     DisconnectReason,
     LocalAudioTrack,
     LocalVideoTrack,
+    MediaDeviceFailure,
     ParticipantKind,
     Room,
     RoomEvent,
@@ -3837,6 +3838,21 @@ describe('CallClient', () => {
                 await client.enableCamera();
 
                 expect(cameraError).toHaveBeenCalledWith(CameraError.Other);
+            });
+
+            test('maps a failure type newer than this client to Other and warns about it', async () => {
+                const getFailure = jest.spyOn(MediaDeviceFailure, 'getFailure').mockReturnValue('FutureFailure' as MediaDeviceFailure);
+                const warnSpy = jest.spyOn(log, 'logWarn').mockImplementation(() => {});
+                mockCameras([builtIn]);
+                mockRoom.localParticipant.setCameraEnabled.mockRejectedValueOnce(new DOMException('failed', 'FutureError'));
+                await client.connect({channelID: 'test-channel'});
+
+                await client.enableCamera();
+
+                expect(cameraError).toHaveBeenCalledWith(CameraError.Other);
+                expect(warnSpy).toHaveBeenCalledWith('CallClient: unknown media device failure', 'FutureFailure');
+                getFailure.mockRestore();
+                warnSpy.mockRestore();
             });
 
             test('does not report a later camera mute as a disconnect after a failed start', async () => {
