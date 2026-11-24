@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
-import {CallChannelState} from '@mattermost/calls-common/lib/types';
+import {CallChannelState, CallJobState, EmojiData} from '@mattermost/calls-common/lib/types';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {GlobalState} from '@mattermost/types/store';
 import {getChannel as getChannelAction} from 'mattermost-redux/actions/channels';
@@ -31,7 +31,9 @@ import {
     getCallsStats,
     getCallsVersionInfo,
     incomingCallOnChannel,
+    joinUser,
     leaveUser,
+    loadCallState,
     loadProfilesByIdsIfMissing,
     openCallsUserSettings,
     selectRHSPost,
@@ -40,8 +42,8 @@ import {
     showSwitchCallModal,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import {syncCallClientToStore} from 'src/call_store_sync';
-import CallClient, {CALL_EVENT, DisconnectReason} from 'src/clients/call';
+import CallClient, {CALL_EVENT, CameraState, CONNECTION_QUALITY, DisconnectReason} from 'src/clients/call';
+import type {ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableDMVideo from 'src/components/admin_console_settings/enable_dm_video';
@@ -115,11 +117,16 @@ import {
     phoneDialingSupported,
     registerPhoneDialer,
     registerTelLinkDialing,
+    trackSIPCallStatus,
     watchPhoneCall,
 } from 'src/phone_call';
 import {getPhoneCallProps, withoutSIPSessions} from 'src/phone_utils';
 import slashCommandsHandler from 'src/slash_commands';
-import {getSessionsMapFromSessions, localSessionClose, sessionsReceived, unInitialized} from 'src/state/session/actions';
+import {userCameraChanged} from 'src/state/camera_on_ids/actions';
+import {localSessionReconnected, localSessionReconnecting, sessionConnectionQualityChanged} from 'src/state/connection_quality/actions';
+import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
+import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
+import {getSessionsMapFromSessions, localSessionClose, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {sessionsInCurrentCall} from 'src/state/session/selectors';
 import {CurrentCallDataDefault, PhoneCallState} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
@@ -158,6 +165,7 @@ import {
     clientConnecting,
     defaultEnabled,
     dmVideoEnabled,
+    getCallIDForChannel,
     hasPermissionsToEnableCalls,
     hostIDForCallInChannel,
     isCloudStarter,
@@ -181,6 +189,10 @@ import {
     shouldRenderDesktopWidget,
 } from './utils';
 import {
+    applyCallHostChanged,
+    applyCallJobState,
+    dispatchCaption,
+    dispatchReaction,
     handleCallEnd,
     handleCallHostChanged,
     handleCallJobState,
@@ -772,7 +784,98 @@ export default class Plugin {
                     store.dispatch(displayCallErrorModal(err, window.callsClient?.channelID));
                 });
 
-                syncCallClientToStore(window.callsClient, store, {getClient: () => window.callsClient});
+                window.callsClient.on(CALL_EVENT.MUTE, (session_id: string, userID: string) => {
+                    store.dispatch(userMuted(window.callsClient?.channelID ?? '', session_id, userID));
+                });
+
+                window.callsClient.on(CALL_EVENT.UNMUTE, (session_id: string, userID: string) => {
+                    store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', session_id, userID));
+                });
+
+                window.callsClient.on(CALL_EVENT.CAMERA_CHANGED, (session_id: string, userID: string, cameraState: CameraState) => {
+                    store.dispatch(userCameraChanged(window.callsClient?.channelID ?? '', session_id, userID, cameraState));
+                });
+
+                window.callsClient.on(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
+                    store.dispatch(sessionConnectionQualityChanged(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? '', quality));
+                });
+
+                window.callsClient.on(CALL_EVENT.REMOTE_QUALITY_CHANGED, (session_id: string, _userID: string, quality: CONNECTION_QUALITY) => {
+                    store.dispatch(sessionConnectionQualityChanged(window.callsClient?.channelID ?? '', session_id, quality));
+                });
+
+                window.callsClient.on(CALL_EVENT.RECONNECTING, () => {
+                    store.dispatch(localSessionReconnecting(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? ''));
+                });
+
+                window.callsClient.on(CALL_EVENT.RECONNECTED, () => {
+                    store.dispatch(localSessionReconnected(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? ''));
+                });
+
+                window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
+                    store.dispatch(usersVoiceActivityChanged(window.callsClient?.channelID ?? '', sessionIDs, userIDs));
+                });
+
+                window.callsClient.on(CALL_EVENT.USER_JOINED, (session_id: string, userID: string, isFromInitialSync?: boolean) => {
+                    store.dispatch(joinUser(window.callsClient?.channelID ?? '', userID, session_id, Boolean(isFromInitialSync)));
+                });
+
+                window.callsClient.on(CALL_EVENT.USER_LEFT, (session_id: string, userID: string) => {
+                    store.dispatch(leaveUser(window.callsClient?.channelID ?? '', userID, session_id));
+                });
+
+                window.callsClient.on(CALL_EVENT.RAISE_HAND, (session_id: string, userID: string, raisedHandTimestamp: number) => {
+                    store.dispatch(userRaisedHand(window.callsClient?.channelID ?? '', session_id, userID, raisedHandTimestamp));
+                });
+
+                window.callsClient.on(CALL_EVENT.LOWER_HAND, (session_id: string, userID: string) => {
+                    store.dispatch(userLoweredHand(window.callsClient?.channelID ?? '', session_id, userID));
+                });
+
+                window.callsClient.on(CALL_EVENT.REACTION, (session_id: string, userID: string, emoji: EmojiData, timestamp: number) => {
+                    dispatchReaction(store, window.callsClient?.channelID ?? '', {
+                        user_id: userID,
+                        session_id,
+                        emoji,
+                        timestamp,
+                    });
+                });
+
+                window.callsClient.on(CALL_EVENT.CAPTION, (session_id: string, userID: string, text: string) => {
+                    dispatchCaption(store, window.callsClient?.channelID ?? '', userID, session_id, text);
+                });
+
+                // The snapshot returned by the join request, which replaces the
+                // call_state the Calls WebSocket used to push on join.
+                window.callsClient.on(CALL_EVENT.CALL_STATE, (callState: PhoneCallState) => {
+                    store.dispatch(loadCallState(window.callsClient?.channelID ?? '', callState));
+                });
+
+                // Host and job state arrive over LiveKit room metadata. Observers
+                // still get them over the main WebSocket, which is why the server
+                // publishes both.
+                window.callsClient.on(CALL_EVENT.HOST_CHANGED, (hostID: string) => {
+                    const callChannelID = window.callsClient?.channelID ?? '';
+                    applyCallHostChanged(store, callChannelID, hostID, getCallIDForChannel(store.getState(), callChannelID));
+                });
+
+                window.callsClient.on(CALL_EVENT.JOB_STATE, (jobState: CallJobState) => {
+                    // Job state is keyed on the channel id, matching the callID the
+                    // server sends on the call_job_state broadcast.
+                    applyCallJobState(store, window.callsClient?.channelID ?? '', jobState);
+                });
+
+                trackSIPCallStatus(store, window.callsClient);
+
+                window.callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
+                    const callChannelID = window.callsClient?.channelID ?? '';
+                    if (session) {
+                        store.dispatch(userScreenShared(callChannelID, session.sessionID, session.userID));
+                    } else {
+                        const sharerSession = screenSharingSessionForCurrentCall(store.getState());
+                        store.dispatch(userScreenUnshared(callChannelID, sharerSession?.session_id ?? '', ''));
+                    }
+                });
 
                 store.dispatch(setClientConnecting(true));
 
