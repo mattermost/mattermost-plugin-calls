@@ -26,7 +26,7 @@ import {
     getCallIDForChannel,
     sipOutboundEnabled,
 } from 'src/selectors';
-import {sipCallStatusChanged} from 'src/state/sip_call_state/actions';
+import {phoneLegStatusChanged} from 'src/state/phone_legs/actions';
 import type {Store} from 'src/types/mattermost-webapp';
 import {CallPostStatus} from 'src/types/types';
 import {
@@ -419,7 +419,7 @@ export function trackSIPCallStatus(store: Store, client: CallClient) {
     const onStatus = (status: string) => {
         const sipStatus = toSIPCallStatus(status);
         if (sipStatus) {
-            store.dispatch(sipCallStatusChanged(client.channelID, sipStatus));
+            store.dispatch(phoneLegStatusChanged(client.channelID, sipStatus));
         }
     };
     client.on(CALL_EVENT.SIP_STATUS_CHANGED, onStatus);

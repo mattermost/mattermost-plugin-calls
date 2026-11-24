@@ -7,7 +7,8 @@ import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/use
 import {generateId} from 'mattermost-redux/utils/helpers';
 import {CALL_HOST, HOST_CONTROL_NOTICE, HOST_CONTROL_NOTICE_TIMEOUT_EVENT} from 'src/action_types';
 import {HOST_CONTROL_NOTICE_TIMEOUT} from 'src/constants';
-import {channelHasCall, hostIDForCallInChannel, profilesInCurrentCallMap} from 'src/selectors';
+import {channelHasCall, hostIDForCallInChannel} from 'src/selectors';
+import {profilesInCurrentCallMap} from 'src/state/session/selectors';
 import {HostControlNotice, HostControlNoticeType} from 'src/types/types';
 import {getUserDisplayName, isDMChannel} from 'src/utils';
 

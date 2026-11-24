@@ -25,6 +25,7 @@ import {
     displayFreeTrial,
     displayGenericErrorModal,
     fetchCallState,
+    followThread,
     getCallsConfig,
     getCallsConfigEnvOverrides,
     getCallsStats,
@@ -34,7 +35,6 @@ import {
     leaveUser,
     loadCallState,
     loadProfilesByIdsIfMissing,
-    localSessionClose,
     openCallsUserSettings,
     selectRHSPost,
     setClientConnecting,
@@ -42,12 +42,13 @@ import {
     showSwitchCallModal,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import CallClient, {CALL_EVENT, DisconnectReason} from 'src/clients/call';
+import CallClient, {CALL_EVENT, CameraState, DisconnectReason} from 'src/clients/call';
 import type {ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableDMVideo from 'src/components/admin_console_settings/enable_dm_video';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
+import HiddenSetting from 'src/components/admin_console_settings/hidden_setting';
 import EnableSIPOutbound from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound';
 import EnableSIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound_allowlist';
 import LiveKitAPIKey from 'src/components/admin_console_settings/livekit_service/livekit_api_key';
@@ -106,6 +107,7 @@ import {makeSameChannelLinkClickHandler} from 'src/components/same_channel_link_
 import AudioDevicesSettingsSection from 'src/components/user_settings/audio_devices_settings_section';
 import RaiseHandSettingsSection from 'src/components/user_settings/raise_hand_settings_section';
 import ScreenSharingSettingsSection from 'src/components/user_settings/screen_sharing_settings_section';
+import VideoDevicesSettingsSection from 'src/components/user_settings/video_devices_settings_section';
 import {CALL_EVENT_POST_TYPE, CALL_RECORDING_POST_TYPE, CALL_TRANSCRIPTION_POST_TYPE, DisabledCallsErr} from 'src/constants';
 import {desktopNotificationHandler} from 'src/desktop_notifications';
 import {
@@ -122,7 +124,9 @@ import {
 import {getPhoneCallProps, withoutSIPSessions} from 'src/phone_utils';
 import {applyScreenSharingChanged} from 'src/screen_sharing';
 import slashCommandsHandler from 'src/slash_commands';
-import {getSessionsMapFromSessions, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
+import {userCameraChanged} from 'src/state/camera_on_ids/actions';
+import {getSessionsMapFromSessions, localSessionClose, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
+import {sessionsInCurrentCall} from 'src/state/session/selectors';
 import {CurrentCallDataDefault, PhoneCallState} from 'src/types/types';
 import {modals} from 'src/webapp_globals';
 
@@ -159,19 +163,18 @@ import {
     channelIDForCurrentCall,
     clientConnecting,
     defaultEnabled,
+    dmVideoEnabled,
     getCallIDForChannel,
     hasPermissionsToEnableCalls,
     hostIDForCallInChannel,
     isCloudStarter,
     isLimitRestricted,
     ringingEnabled,
-    sessionsInCurrentCall,
 } from './selectors';
 import {JOIN_CALL, keyToAction} from './shortcuts';
 import {convertStatsToPanels} from './stats';
 import {PhoneCallRequest, PluginRegistry, Store} from './types/mattermost-webapp';
 import {
-    followThread,
     getCallsClient,
     getChannelURL,
     getPluginPath,
@@ -553,6 +556,11 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('SIPTrunkNumber', SIPTrunkNumber);
         registry.registerAdminConsoleCustomSetting('SIPTrunkAuthUsername', SIPTrunkAuthUsername);
         registry.registerAdminConsoleCustomSetting('SIPTrunkAuthPassword', SIPTrunkAuthPassword);
+
+        // Owned by Calls v1. Declared (and rendered as nothing) only so the server masks them.
+        registry.registerAdminConsoleCustomSetting('TURNStaticAuthSecret', HiddenSetting);
+        registry.registerAdminConsoleCustomSetting('ICEServersConfigs', HiddenSetting);
+
         registry.registerAdminConsoleCustomSetting('SIPTrunkTransport', SIPTrunkTransport);
         registry.registerAdminConsoleCustomSetting('SIPTrunkMediaEncryption', SIPTrunkMediaEncryption);
         registry.registerAdminConsoleCustomSetting('SIPTrunkStatus', SIPTrunkStatusSetting);
@@ -786,6 +794,10 @@ export default class Plugin {
 
                 window.callsClient.on(CALL_EVENT.UNMUTE, (session_id: string, userID: string) => {
                     store.dispatch(userUnmuted(window.callsClient?.channelID ?? '', session_id, userID));
+                });
+
+                window.callsClient.on(CALL_EVENT.CAMERA_CHANGED, (session_id: string, userID: string, cameraState: CameraState) => {
+                    store.dispatch(userCameraChanged(window.callsClient?.channelID ?? '', session_id, userID, cameraState));
                 });
 
                 window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
@@ -1043,6 +1055,10 @@ export default class Plugin {
                     title: 'Audio devices settings',
                     component: AudioDevicesSettingsSection,
                 },
+                ...(dmVideoEnabled(store.getState()) ? [{
+                    title: 'Video devices settings',
+                    component: VideoDevicesSettingsSection,
+                }] : []),
                 {
                     title: 'Screen sharing settings',
                     component: ScreenSharingSettingsSection,

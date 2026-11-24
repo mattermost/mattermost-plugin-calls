@@ -4,7 +4,8 @@
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {connect} from 'react-redux';
-import {channelHasCall, profilesInCallInChannel} from 'src/selectors';
+import {channelHasCall} from 'src/selectors';
+import {profilesInCallInChannel} from 'src/state/session/selectors';
 
 import ChannelLinkLabel from './component';
 

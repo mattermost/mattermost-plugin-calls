@@ -20,7 +20,7 @@ jest.mock('src/log', () => ({
     logErr: jest.fn(),
 }));
 
-const LOAD_ERROR_MESSAGE = 'Unable to load audio devices. Make sure a microphone is connected and that Mattermost is allowed to use it.';
+const LOAD_ERROR_MESSAGE = 'Couldn\'t load your microphones and speakers. Make sure a microphone is connected and that Mattermost is allowed to use it.';
 
 const makeDevice = (kind: MediaDeviceKind, deviceId: string, label: string) => ({deviceId, label, kind, groupId: ''}) as MediaDeviceInfo;
 
@@ -153,6 +153,35 @@ describe('AudioDevicesSettingsSection', () => {
         expect(logErr).toHaveBeenCalledWith('failed to get audio devices', err);
         expect(getLocalAudioDevices).toHaveBeenCalledTimes(1);
         expect(screen.getByText('Save')).toBeInTheDocument();
+    });
+
+    test('links the load failure message to both selects', async () => {
+        getLocalAudioDevices.mockRejectedValue(new DOMException('failed', 'NotAllowedError'));
+        renderComponent();
+        await openSection();
+
+        const message = await screen.findByRole('alert');
+        expect(message).toHaveTextContent(LOAD_ERROR_MESSAGE);
+        expect(message.id).not.toBe('');
+        for (const label of ['Microphone input', 'Speaker output']) {
+            const select = screen.getByLabelText(label);
+            expect(select).toHaveAttribute('aria-invalid', 'true');
+            expect(select).toHaveAttribute('aria-errormessage', message.id);
+        }
+    });
+
+    test('does not mark the selects invalid when devices load', async () => {
+        mockDevices([mic, speakers]);
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Microphone');
+
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        for (const label of ['Microphone input', 'Speaker output']) {
+            const select = screen.getByLabelText(label);
+            expect(select).not.toHaveAttribute('aria-invalid', 'true');
+            expect(select).not.toHaveAttribute('aria-errormessage');
+        }
     });
 
     it('empties the lists while loading fails and hides the message once devices load', async () => {
