@@ -72,6 +72,11 @@ type configuration struct {
 	// Managed trunk: SIP auth credentials. May be empty for an unauthenticated provider.
 	SIPTrunkAuthUsername string
 	SIPTrunkAuthPassword string
+	// Calls v1 secrets. Unused by v2; declared (hidden in the System Console) only so
+	// they are masked in admin config and env responses while v2 is installed.
+	// Keys must match v1 exactly.
+	TURNStaticAuthSecret string
+	ICEServersConfigs    string
 	// Managed trunk: SIP signaling transport (auto, udp, tcp, tls).
 	SIPTrunkTransport string
 	// Managed trunk: SRTP media encryption (disable, allow, require). Carriers requiring
@@ -313,6 +318,8 @@ func (c *configuration) Clone() *configuration {
 	cfg.SIPTrunkNumber = c.SIPTrunkNumber
 	cfg.SIPTrunkAuthUsername = c.SIPTrunkAuthUsername
 	cfg.SIPTrunkAuthPassword = c.SIPTrunkAuthPassword
+	cfg.TURNStaticAuthSecret = c.TURNStaticAuthSecret
+	cfg.ICEServersConfigs = c.ICEServersConfigs
 	cfg.SIPTrunkTransport = c.SIPTrunkTransport
 	cfg.SIPTrunkMediaEncryption = c.SIPTrunkMediaEncryption
 	cfg.SIPTrunkDefaultCountryCode = c.SIPTrunkDefaultCountryCode
@@ -491,11 +498,13 @@ func (p *Plugin) getAdminClientConfig(c *configuration) configuration {
 	cfg.TranscribeAPIAzureSpeechKey = maskSecret(cfg.TranscribeAPIAzureSpeechKey)
 	cfg.LiveKitAPISecret = maskSecret(cfg.LiveKitAPISecret)
 	cfg.SIPTrunkAuthPassword = maskSecret(cfg.SIPTrunkAuthPassword)
+	cfg.TURNStaticAuthSecret = maskSecret(cfg.TURNStaticAuthSecret)
+	cfg.ICEServersConfigs = maskSecret(cfg.ICEServersConfigs)
 
 	return *cfg
 }
 
-var secretSettingKeys = []string{"TranscribeAPIAzureSpeechKey", "LiveKitAPISecret", "SIPTrunkAuthPassword"}
+var secretSettingKeys = []string{"TranscribeAPIAzureSpeechKey", "LiveKitAPISecret", "SIPTrunkAuthPassword", "TURNStaticAuthSecret", "ICEServersConfigs"}
 
 func maskSecret(s string) string {
 	if s == "" {
