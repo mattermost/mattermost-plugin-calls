@@ -325,6 +325,7 @@ export default class PlaywrightDevPage {
     }
 
     async raiseHand() {
+        await this.page.locator('#calls-widget-toggle-menu-button').click();
         await this.page.locator('#raise-hand').click();
     }
 

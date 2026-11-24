@@ -20,7 +20,7 @@ import {parseSemVer} from 'semver-parser';
 import type CallClient from 'src/clients/call';
 import {SCREEN_SHARE_AUDIO_CAPTURE_OPTIONS} from 'src/clients/call/constants';
 import RestClient from 'src/clients/rest';
-import {STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
+import {STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, STORAGE_CALLS_MIRROR_VIDEO, STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN} from 'src/constants';
 import {CallPostStatus, CallsPostProps} from 'src/types/types';
 import {notificationSounds} from 'src/webapp_globals';
 
@@ -619,6 +619,11 @@ export function getPersistentStorage() {
 export function shareAudioWithScreen() {
     // Defaults to on when unset, so the browser surfaces its share-audio option.
     return window.localStorage.getItem(STORAGE_CALLS_SHARE_AUDIO_WITH_SCREEN) !== 'off';
+}
+
+export function mirrorSelfView() {
+    // Defaults to on when unset, like a mirror. Only this device's own view is flipped.
+    return window.localStorage.getItem(STORAGE_CALLS_MIRROR_VIDEO) !== 'off';
 }
 
 export function lowerHandOnUnmute() {

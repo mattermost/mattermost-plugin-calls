@@ -6,12 +6,12 @@ import {useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {openCallsUserSettings} from 'src/actions';
 import {CALL_EVENT} from 'src/clients/call/constants';
+import DeviceMenu from 'src/components/call_widget/device_menu';
 import CCIcon from 'src/components/icons/cc_icon';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
 import SettingsWheelIcon from 'src/components/icons/settings_wheel';
 import ShowMoreIcon from 'src/components/icons/show_more';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
-import TickIcon from 'src/components/icons/tick';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
 import {areLiveCaptionsAvailableInCurrentCall} from 'src/selectors';
 import type {
@@ -22,97 +22,7 @@ import styled from 'styled-components';
 
 import ControlsButton from './controls_button';
 
-type MediaDevicesListProps = {
-    deviceType: string;
-    devices: MediaDeviceInfo[];
-    currentDevice: MediaDeviceInfo | null;
-    onDeviceClick: (device: MediaDeviceInfo) => void;
-}
-
-const MediaDevicesList = ({deviceType, devices, currentDevice, onDeviceClick}: MediaDevicesListProps) => {
-    const {formatMessage} = useIntl();
-
-    // Note: this is system default, not the concept of default that we save in local storage in client.ts
-    const makeDeviceLabel = (device: MediaDeviceInfo) => {
-        if (device.deviceId.startsWith('default') && !device.label.startsWith('Default')) {
-            return formatMessage({defaultMessage: 'Default - {deviceLabel}'}, {deviceLabel: device.label});
-        }
-        return device.label;
-    };
-
-    const list = devices.map((device) => {
-        const isCurrentDevice = device.deviceId === currentDevice?.deviceId;
-        return (
-            <li
-                className='MenuItem'
-                key={`${deviceType}-device-${device.deviceId}`}
-                role='menuitem'
-                aria-label={makeDeviceLabel(device)}
-            >
-                <DeviceButton
-                    className='style--none'
-                    onClick={() => onDeviceClick(device)}
-                    $isCurrentDevice={isCurrentDevice}
-                >
-                    <DeviceName>
-                        {makeDeviceLabel(device)}
-                    </DeviceName>
-                    { isCurrentDevice &&
-                    <DeviceSelectedIcon>
-                        <TickIcon/>
-                    </DeviceSelectedIcon>
-                    }
-                </DeviceButton>
-            </li>
-        );
-    });
-
-    return (
-        <div
-            className='Menu'
-            role='menu'
-            style={{position: 'relative'}}
-        >
-            <DevicesList
-                id={`calls-popout-${deviceType}s-menu`}
-                className='Menu__content dropdown-menu'
-            >
-                {list}
-            </DevicesList>
-        </div>
-    );
-};
-
-const DeviceSelectedIcon = styled.div`
-&&&& {
-    svg {
-      width: 14px;
-      height: 14px;
-      fill: var(--button-bg);
-    }
-}
-`;
-
-const DeviceName = styled.span`
-  color: var(--center-channel-color);
-  font-size: 14px;
-  width: 100%;
-  text-overflow: ellipsis;
-  overflow: hidden;
-`;
-
-const DeviceButton = styled.button<{$isCurrentDevice: boolean}>`
-&&& {
-  display: flex;
-  background: ${({$isCurrentDevice}) => $isCurrentDevice ? 'rgba(28, 88, 217, 0.08)' : ''};
-  line-height: 20px;
-  padding: 8px 20px;
-  align-items: center;
-  gap: 8px;
-}
-`;
-
-const DevicesList = styled.ul`
+const DevicesList = styled(DeviceMenu)`
 &&&& {
   top: 0;
   left: calc(100% + 4px);
@@ -120,6 +30,11 @@ const DevicesList = styled.ul`
   width: 280px;
   max-height: 164px;
   border-radius: 8px;
+
+  .DeviceMenu__tick {
+    width: 14px;
+    height: 14px;
+  }
 }
 `;
 
@@ -135,22 +50,25 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
     const [currentAudioOutputDevice, setCurrentAudioOutputDevice] = useState<MediaDeviceInfo | null>(null);
     const [audioDevices, setAudioDevices] = useState<MediaDevices>({inputs: [], outputs: []});
 
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
     const handleDeviceClick = (device: MediaDeviceInfo) => {
         const callsClient = getCallsClient();
 
         if (deviceType === 'audioinput') {
-            if (device.deviceId !== currentAudioInputDevice?.deviceId) {
-                callsClient?.setAudioInputDevice(device);
-            }
+            callsClient?.setAudioInputDevice(device);
             setCurrentAudioInputDevice(device);
         } else if (deviceType === 'audiooutput') {
-            if (device.deviceId !== currentAudioOutputDevice?.deviceId) {
-                callsClient?.setAudioOutputDevice(device);
-            }
+            callsClient?.setAudioOutputDevice(device);
             setCurrentAudioOutputDevice(device);
         }
+    };
 
+    const closeDevicesList = (returnFocus: boolean) => {
         onToggle(deviceType);
+        if (returnFocus) {
+            buttonRef.current?.focus();
+        }
     };
 
     const handleDeviceChange = (aDevices: MediaDevices) => {
@@ -217,12 +135,20 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
     return (
         <>
             {isActive &&
-            <MediaDevicesList
-                deviceType={deviceType}
-                devices={devices}
-                currentDevice={currentDevice}
-                onDeviceClick={handleDeviceClick}
-            />
+            <div
+                className='Menu'
+                style={{position: 'relative'}}
+            >
+                <DevicesList
+                    id={`calls-popout-${deviceType}s-menu`}
+                    label={deviceTypeLabel}
+                    devices={devices}
+                    selectedDeviceId={currentDevice?.deviceId}
+                    onSelect={handleDeviceClick}
+                    onClose={closeDevicesList}
+                    className='Menu__content dropdown-menu DeviceMenu--submenu'
+                />
+            </div>
             }
             <li
                 className='MenuItem'
@@ -230,6 +156,7 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
                 aria-label={deviceTypeLabel}
             >
                 <DeviceTypeButton
+                    ref={buttonRef}
                     id={`calls-popout-${deviceType}-button`}
                     className='style--none'
                     disabled={isDisabled}
@@ -254,7 +181,7 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
                     </DeviceTypeButtonBody>
 
                     {devices.length > 0 &&
-                    <ShowDevicesIcon $isDisabled={isDisabled}>
+                    <ShowDevicesIcon>
                         <ShowMoreIcon/>
                     </ShowDevicesIcon>
                     }
@@ -264,12 +191,13 @@ const Devices = ({deviceType, isActive, onToggle}: DevicesProps) => {
     );
 };
 
-const ShowDevicesIcon = styled.div<{$isDisabled: boolean}>`
+// Only shown while there are devices to pick, so it is never disabled.
+const ShowDevicesIcon = styled.div`
 &&& {
     svg {
       width: 16px;
       height: 16px;
-      fill: ${({$isDisabled}) => $isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)'};
+      fill: rgba(var(--center-channel-color-rgb), 0.56);
     }
 }
 `;
@@ -284,7 +212,7 @@ const DeviceTypeLabel = styled.span`
 
 const DeviceLabel = styled.span<{$isDisabled: boolean}>`
 &&& {
-  color: ${({$isDisabled}) => $isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)'};
+  color: ${({$isDisabled}) => ($isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)')};
   font-size: 12px;
   width: 100%;
   line-height: 16px;
@@ -311,7 +239,7 @@ const DeviceIcon = styled.div<{$isDisabled: boolean}>`
     svg {
       width: 16px;
       height: 16px;
-      fill: ${({$isDisabled}) => $isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)'};
+      fill: ${({$isDisabled}) => ($isDisabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : 'rgba(var(--center-channel-color-rgb), 0.56)')};
     }
     flex-shrink: 0;
 }
@@ -322,8 +250,8 @@ const DeviceTypeButton = styled.button<{$active: boolean, disabled: boolean}>`
     display: flex;
     align-items: start;
     padding: 6px 16px;
-    color: ${({disabled}) => disabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : ''};
-    background: ${({$active}) => $active ? 'rgba(var(--center-channel-color-rgb), 0.08)' : ''};
+    color: ${({disabled}) => (disabled ? 'rgba(var(--center-channel-color-rgb), 0.32)' : '')};
+    background: ${({$active}) => ($active ? 'rgba(var(--center-channel-color-rgb), 0.08)' : '')};
     gap: 16px;
 }
 `;

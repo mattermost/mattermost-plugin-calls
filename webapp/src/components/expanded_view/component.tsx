@@ -19,7 +19,7 @@ import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
-import type {CameraState, ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
+import type {CameraState, DeviceStatus, ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
@@ -136,6 +136,9 @@ interface Props extends RouteComponentProps {
     userMuted: (channelID: string, sessionID: string, userID: string) => void;
     userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
     userCameraChanged: (channelID: string, sessionID: string, userID: string, cameraState: CameraState) => void;
+    sessionConnectionQualityChanged: (channelID: string, sessionID: string, quality: CONNECTION_QUALITY) => void;
+    localSessionReconnecting: (channelID: string, sessionID: string) => void;
+    localSessionReconnected: (channelID: string, sessionID: string) => void;
     joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
     leaveUser: (channelID: string, userID: string, sessionID: string) => void;
     usersVoiceActivityChanged: (channelID: string, sessionIDs: string[], userIDs: string[]) => void;
@@ -154,7 +157,7 @@ interface State {
     showParticipantsList: boolean,
     showLiveCaptions: boolean,
     showFirefoxScreenShareWarning: boolean,
-    micPermissionPending: boolean,
+    micStatus: DeviceStatus,
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
     leaveMenuOpen: boolean,
@@ -317,7 +320,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             showParticipantsList: false,
             showLiveCaptions: false,
             showFirefoxScreenShareWarning: false,
-            micPermissionPending: true,
+            micStatus: 'starting',
             alerts: CallAlertStatesDefault,
             removeConfirmation: null,
             leaveMenuOpen: false,
@@ -726,6 +729,18 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     this.props.userReactedTimeout(callsClient.channelID, userID, sessionID, reaction);
                 }, REACTION_TIMEOUT_IN_REACTION_STREAM);
             });
+            onClient(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
+                this.props.sessionConnectionQualityChanged(callsClient.channelID, callsClient.getSessionID() ?? '', quality);
+            });
+            onClient(CALL_EVENT.REMOTE_QUALITY_CHANGED, (sessionID: string, _userID: string, quality: CONNECTION_QUALITY) => {
+                this.props.sessionConnectionQualityChanged(callsClient.channelID, sessionID, quality);
+            });
+            onClient(CALL_EVENT.RECONNECTING, () => {
+                this.props.localSessionReconnecting(callsClient.channelID, callsClient.getSessionID() ?? '');
+            });
+            onClient(CALL_EVENT.RECONNECTED, () => {
+                this.props.localSessionReconnected(callsClient.channelID, callsClient.getSessionID() ?? '');
+            });
         }
 
         onClient(CALL_EVENT.DEVICE_FALLBACK, (device: MediaDeviceInfo) => {
@@ -760,16 +775,15 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
         });
 
+        onClient(CALL_EVENT.MIC_STATUS_CHANGED, (micStatus: DeviceStatus) => {
+            this.setState({micStatus});
+        });
         onClient(CALL_EVENT.DEVICE_CHANGE, (audioDevices: MediaDevices) => {
             this.setAudioDevices(audioDevices);
-            if (audioDevices.inputs.length === 0) {
-                this.setState({micPermissionPending: false});
-            }
         });
         onClient(CALL_EVENT.ERROR, (err: Error) => {
             if (err?.message === AudioInputPermissionsErr.message) {
                 this.setState({
-                    micPermissionPending: false,
                     alerts: {
                         ...this.state.alerts,
                         missingAudioInputPermissions: {
@@ -778,14 +792,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         },
                     },
                 });
-            } else {
-                this.setState({micPermissionPending: false});
             }
         });
 
         onClient(CALL_EVENT.INIT_AUDIO, () => {
             this.setState({
-                micPermissionPending: false,
                 alerts: {
                     ...this.state.alerts,
                     missingAudioInputPermissions: {
@@ -801,7 +812,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         // eslint-disable-next-line react/no-did-mount-set-state
         this.setState({
-            micPermissionPending: !callsClient.isMicTrackPublished(),
+            micStatus: callsClient.getMicStatus(),
             alerts: {
                 ...this.state.alerts,
                 missingAudioInputPermissions: {
@@ -1126,21 +1137,19 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         const {formatMessage} = this.props.intl;
 
-        const noInputDevices = this.state.alerts.missingAudioInput.active;
-        const noAudioPermissions = this.state.alerts.missingAudioInputPermissions.active;
+        const {micStatus} = this.state;
+        const micUnavailable = micStatus !== 'ready';
         const noScreenPermissions = this.state.alerts.missingScreenPermissions.active;
-        const micPermissionPending = this.state.micPermissionPending;
         const isMuted = this.isMuted();
-        const MuteIcon = isMuted && !noInputDevices && !noAudioPermissions && !micPermissionPending ? MutedIcon : UnmutedIcon;
+        const MuteIcon = isMuted && !micUnavailable ? MutedIcon : UnmutedIcon;
 
         let muteTooltipText = isMuted ? formatMessage({defaultMessage: 'Unmute'}) : formatMessage({defaultMessage: 'Mute'});
         let muteTooltipSubtext = isMuted ? formatMessage({defaultMessage: 'Or hold space bar'}) : '';
 
-        if (noInputDevices) {
+        if (micStatus === 'missing') {
             muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInput.tooltipText!);
             muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInput.tooltipSubtext!);
-        }
-        if (noAudioPermissions) {
+        } else if (micStatus === 'blocked') {
             muteTooltipText = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipText!);
             muteTooltipSubtext = formatMessage(CallAlertConfigs.missingAudioInputPermissions.tooltipSubtext!);
         }
@@ -1298,11 +1307,11 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 dataTestId={isMuted ? 'calls-popout-muted' : 'calls-popout-unmuted'}
                                 ariaLabel={muteTooltipText}
                                 // eslint-disable-next-line no-undefined
-                                onToggle={noInputDevices || micPermissionPending ? undefined : this.onMuteToggle}
+                                onToggle={micStatus === 'missing' || micStatus === 'starting' ? undefined : this.onMuteToggle}
                                 tooltipText={muteTooltipText}
                                 tooltipSubtext={muteTooltipSubtext}
                                 // eslint-disable-next-line no-undefined
-                                shortcut={noInputDevices || noAudioPermissions || micPermissionPending ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
+                                shortcut={micUnavailable ? undefined : reverseKeyMappings.popout[MUTE_UNMUTE][0]}
                                 bgColor={isMuted ? '' : 'rgba(61, 184, 135, 0.16)'}
                                 bgColorHover={isMuted ? '' : 'rgba(61, 184, 135, 0.20)'}
                                 iconFill={isMuted ? '' : 'rgba(61, 184, 135, 0.80)'}
@@ -1315,7 +1324,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                         }}
                                     />
                                 }
-                                unavailable={noInputDevices || noAudioPermissions || micPermissionPending}
+                                unavailable={micUnavailable}
                             />
 
                             {this.props.allowScreenSharing &&

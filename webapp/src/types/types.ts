@@ -163,6 +163,26 @@ export const CallAlertStatesDefault = {
         active: false,
         show: false,
     },
+    cameraPermissionDenied: {
+        active: false,
+        show: false,
+    },
+    cameraNotFound: {
+        active: false,
+        show: false,
+    },
+    cameraInUse: {
+        active: false,
+        show: false,
+    },
+    cameraDisconnected: {
+        active: false,
+        show: false,
+    },
+    cameraFailed: {
+        active: false,
+        show: false,
+    },
 };
 
 export type CallJobReduxState = {

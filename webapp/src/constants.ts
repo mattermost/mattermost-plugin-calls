@@ -93,6 +93,40 @@ export const CallAlertConfigs: { [key: string]: CallAlertConfig } = {
         actionText: defineMessage({defaultMessage: 'Enable audio'}),
         dismissable: false,
     },
+    cameraPermissionDenied: {
+        type: CallAlertType.Error,
+        icon: 'video-outline',
+        bannerText: defineMessage({defaultMessage: 'Allow camera access to Mattermost to turn on your camera.'}),
+        tooltipText: defineMessage({defaultMessage: 'No camera permissions'}),
+        tooltipSubtext: defineMessage({defaultMessage: 'Allow camera access to Mattermost.'}),
+        dismissable: true,
+    },
+    cameraNotFound: {
+        type: CallAlertType.Error,
+        icon: 'video-outline',
+        bannerText: defineMessage({defaultMessage: 'No camera found. Try plugging in a camera.'}),
+        tooltipText: defineMessage({defaultMessage: 'No camera found'}),
+        tooltipSubtext: defineMessage({defaultMessage: 'Try plugging in a camera.'}),
+        dismissable: true,
+    },
+    cameraInUse: {
+        type: CallAlertType.Error,
+        icon: 'video-outline',
+        bannerText: defineMessage({defaultMessage: 'Your camera is being used by another app.'}),
+        dismissable: true,
+    },
+    cameraDisconnected: {
+        type: CallAlertType.Warning,
+        icon: 'video-outline',
+        bannerText: defineMessage({defaultMessage: 'Your camera was disconnected.'}),
+        dismissable: true,
+    },
+    cameraFailed: {
+        type: CallAlertType.Error,
+        icon: 'video-outline',
+        bannerText: defineMessage({defaultMessage: 'Unable to turn on your camera.'}),
+        dismissable: true,
+    },
 };
 
 export const CallRecordingDisclaimerStrings: {[key: string]: {[key: string]: MessageDescriptor}} = {
