@@ -14,8 +14,8 @@ import {
     channelIDForCurrentCall,
     dismissedCallForCurrentChannel,
     isLimitRestricted,
-    profilesInCallInCurrentChannel,
 } from 'src/selectors';
+import {profilesInCallInCurrentChannel} from 'src/state/session/selectors';
 import {callStartedTimestampFn} from 'src/utils';
 
 const ChannelCallToast = () => {

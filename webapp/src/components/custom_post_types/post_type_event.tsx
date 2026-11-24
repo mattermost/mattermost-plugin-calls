@@ -32,9 +32,8 @@ import {
     idForCallInChannel,
     isCloudProfessionalOrEnterpriseorEnterpriseAdvanceOrTrial,
     maxParticipants,
-    numUsersInCallInChannel,
-    profilesInCallInChannel,
 } from 'src/selectors';
+import {numUsersInCallInChannel, profilesInCallInChannel} from 'src/state/session/selectors';
 import {CALL_TYPE_PHONE, CallPostStatus, CallsPostProps} from 'src/types/types';
 import {
     callStartedTimestampFn,

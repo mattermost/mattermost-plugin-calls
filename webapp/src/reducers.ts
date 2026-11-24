@@ -7,6 +7,7 @@ import {CallJobState, LiveCaption, Reaction, UserSessionState} from '@mattermost
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
 import {reducer as cameraOnIDs} from 'src/state/camera_on_ids/reducer';
+import {reducer as phoneLegs} from 'src/state/phone_legs/reducer';
 import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
 import {
     CALL_END,
@@ -19,7 +20,6 @@ import {
 } from 'src/state/session/action_types';
 import {ActionLocalSessionClose} from 'src/state/session/actions';
 import {reducer as sessions} from 'src/state/session/reducer';
-import {reducer as sipCallStates} from 'src/state/sip_call_state/reducer';
 import {
     CallsConfig,
     CallsConfigDefault,
@@ -794,7 +794,7 @@ const rootReducer = combineReducers({
     calls,
     hosts,
     dmCalleeAnsweredAt,
-    sipCallStates,
+    phoneLegs,
     screenSharingIDs,
     cameraOnIDs,
     expandedView,

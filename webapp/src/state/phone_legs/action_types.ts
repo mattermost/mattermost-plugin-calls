@@ -3,4 +3,4 @@
 
 import {pluginId} from 'src/manifest';
 
-export const SIP_CALL_STATUS_CHANGED = `${pluginId}_sip_call_status_changed` as const;
+export const PHONE_LEG_STATUS_CHANGED = `${pluginId}_phone_leg_status_changed` as const;

@@ -5,11 +5,14 @@ import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 import {CALL_HOST, HOST_CONTROL_NOTICE} from 'src/action_types';
 import {applyCallHostChanged} from 'src/host_change';
-import {channelHasCall, hostIDForCallInChannel, profilesInCurrentCallMap} from 'src/selectors';
+import {channelHasCall, hostIDForCallInChannel} from 'src/selectors';
+import {profilesInCurrentCallMap} from 'src/state/session/selectors';
 
 jest.mock('src/selectors', () => ({
     channelHasCall: jest.fn(),
     hostIDForCallInChannel: jest.fn(),
+}));
+jest.mock('src/state/session/selectors', () => ({
     profilesInCurrentCallMap: jest.fn(),
 }));
 jest.mock('src/utils', () => ({

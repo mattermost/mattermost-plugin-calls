@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {Reaction} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {GlobalState} from '@mattermost/types/store';
 import {Team} from '@mattermost/types/teams';
@@ -32,12 +32,17 @@ import {
     callState,
     hostControlNoticeState,
     hostsState,
-    initialRootState,
     liveCaptionState,
     recentlyJoinedUsersState,
-    RootState,
     usersReactionsState,
 } from 'src/reducers';
+import {channelIDForCurrentCall, pluginReduxStore} from 'src/state/root_selectors';
+import {
+    profilesInCallInCurrentChannel,
+    profilesInCurrentCall,
+    sessionsForOtherUsersInCall,
+    sessionsInCurrentCall,
+} from 'src/state/session/selectors';
 import {
     CallJobReduxState,
     CallsConfig,
@@ -48,25 +53,13 @@ import {
     IncomingCallNotification,
     LiveCaptions,
     PhoneCallProps,
-    SIPCallState,
 } from 'src/types/types';
-import {getCallsClientChannelID, getCallsClientInitTime, getCallsClientSessionID, getChannelURL, getUserIdFromDM} from 'src/utils';
+import {getCallsClientInitTime, getChannelURL, getUserIdFromDM} from 'src/utils';
 
-import {pluginId} from './manifest';
-
-const pluginReduxStateKey = `plugins-${pluginId}`;
-
-export const pluginReduxStore = (state: GlobalState): RootState =>
-    (state[pluginReduxStateKey as keyof GlobalState] as unknown as RootState) ?? initialRootState;
+export {channelIDForCurrentCall};
 
 const callsStateInPluginReduxStore = (state: GlobalState): { [channelID: string]: callState } =>
     pluginReduxStore(state).calls;
-
-// Not memoised: getCallsClientChannelID reads window.callsClient, which is outside the store and so
-// invisible to reselect's input comparison. A stale value here would propagate to every selector
-// keyed on the current call.
-export const channelIDForCurrentCall = (state: GlobalState): string =>
-    getCallsClientChannelID() || pluginReduxStore(state).clientStateReducer?.channelID || '';
 
 export const channelForCurrentCall = (state: GlobalState): Channel | undefined =>
     getAllChannels(state)[channelIDForCurrentCall(state)];
@@ -100,73 +93,6 @@ export const teamForCurrentCall: (state: GlobalState) => Team | null =
         },
     );
 
-const sessionsInCalls = (state: GlobalState): RootState['sessions'] => {
-    return pluginReduxStore(state).sessions;
-};
-
-const userProfiles = (state: GlobalState) => state.entities.users.profiles;
-
-const getProfilesMapFromSessions = (sessions: Record<string, UserSessionState>, profiles: Record<string, UserProfile>) => {
-    const profilesMap: Record<string, UserProfile> = {};
-    for (const session of Object.values(sessions || {})) {
-        if (profiles[session.user_id]) {
-            profilesMap[session.user_id] = profiles[session.user_id];
-        }
-    }
-    return profilesMap;
-};
-
-export const profilesInCurrentCall: (state: GlobalState) => UserProfile[] =
-    createSelector(
-        userProfiles,
-        sessionsInCalls,
-        channelIDForCurrentCall,
-        (profiles, sessions, channelID) => {
-            return Object.values(getProfilesMapFromSessions(sessions[channelID], profiles));
-        },
-    );
-
-export const profilesInCallInCurrentChannel: (state: GlobalState) => UserProfile[] =
-    createSelector(
-        userProfiles,
-        sessionsInCalls,
-        getCurrentChannelId,
-        (profiles, sessions, currChannelId) => {
-            return Object.values(getProfilesMapFromSessions(sessions[currChannelId], profiles));
-        },
-    );
-
-// profilesInCurrentCallMap creates an id->UserProfile object for the currently connected call.
-export const profilesInCurrentCallMap: (state: GlobalState) => { [id: string]: UserProfile } =
-    createSelector(
-        userProfiles,
-        sessionsInCalls,
-        channelIDForCurrentCall,
-        (profiles, sessions, channelID) => {
-            return getProfilesMapFromSessions(sessions[channelID], profiles);
-        },
-    );
-
-export const profilesInCallInChannel = (state: GlobalState, channelID: string): UserProfile[] => {
-    return Object.values(getProfilesMapFromSessions(sessionsInCalls(state)[channelID], userProfiles(state)));
-};
-
-export const numProfilesInCallInChannel = (state: GlobalState, channelID: string): number => {
-    return profilesInCallInChannel(state, channelID).length;
-};
-
-export const numSessionsInCallInChannel = (state: GlobalState, channelID: string): number => {
-    return Object.keys(sessionsInCalls(state)[channelID] || {}).length;
-};
-
-// numUsersInCallInChannel counts the distinct users in the call rather than their sessions,
-// since a single user can be connected from multiple clients. Unlike numProfilesInCallInChannel
-// it doesn't need the profiles to have been fetched, so it never undercounts.
-export const numUsersInCallInChannel = (state: GlobalState, channelID: string): number => {
-    const sessions = sessionsInCalls(state)[channelID] || {};
-    return new Set(Object.values(sessions).map((session) => session.user_id)).size;
-};
-
 export const channelHasCall = (state: GlobalState, channelId: string): boolean => {
     return Boolean(callsStateInPluginReduxStore(state)[channelId]);
 };
@@ -176,35 +102,6 @@ export const currentChannelHasCall: (state: GlobalState) => boolean =
         callsStateInPluginReduxStore,
         getCurrentChannelId,
         (callsStates, currChannelId) => Boolean(callsStates[currChannelId]),
-    );
-
-export const sessionsInCurrentCall: (state: GlobalState) => UserSessionState[] =
-    createSelector(
-        sessionsInCalls,
-        channelIDForCurrentCall,
-        (sessions, channelID) => Object.values(sessions[channelID] || {}),
-    );
-
-export const sessionsForOtherUsersInCall: (state: GlobalState) => UserSessionState[] =
-    createSelector(
-        getCurrentUserId,
-        sessionsInCurrentCall,
-        (currentUserID, sessions) => sessions.filter((session) => session.user_id !== currentUserID),
-    );
-
-export const sessionsInCurrentCallMap: (state: GlobalState) => { [sessionID: string]: UserSessionState } =
-    createSelector(
-        sessionsInCalls,
-        channelIDForCurrentCall,
-        (sessions, channelID) => sessions[channelID],
-    );
-
-export const sessionForCurrentCall: (state: GlobalState) => UserSessionState =
-    createSelector(
-        sessionsInCalls,
-        channelIDForCurrentCall,
-        getCallsClientSessionID,
-        (sessions, channelID, sessionID) => sessions[channelID]?.[sessionID],
     );
 
 const reactionsInCalls = (state: GlobalState): usersReactionsState => {
@@ -265,36 +162,6 @@ export const phoneCallPropsForCurrentCall: (state: GlobalState) => PhoneCallProp
 
 export const isCurrentCallPhoneCall = (state: GlobalState): boolean =>
     Boolean(phoneCallPropsForCurrentCall(state));
-
-const sipCallStatesInPluginReduxStore = (state: GlobalState): RootState['sipCallStates'] =>
-    pluginReduxStore(state).sipCallStates;
-
-export const sipCallStateForCallInChannel = (state: GlobalState, channelID: string): SIPCallState | undefined =>
-    sipCallStatesInPluginReduxStore(state)[channelID];
-
-export const sipCallStateForCurrentCall: (state: GlobalState) => SIPCallState | undefined =
-    createSelector(
-        sipCallStatesInPluginReduxStore,
-        channelIDForCurrentCall,
-        (sipCallStates, channelID) => sipCallStates[channelID],
-    );
-
-// True while the phone leg of the current phone call has not been answered yet.
-export const isCurrentPhoneCallRinging: (state: GlobalState) => boolean =
-    createSelector(
-        phoneCallPropsForCurrentCall,
-        sipCallStateForCurrentCall,
-        (phone, sipState) => Boolean(phone) && !sipState?.answeredAt,
-    );
-
-// True while the phone leg of the current phone call is answered and connected.
-// Unlike !isCurrentPhoneCallRinging, this turns false again once the phone hangs up.
-export const isCurrentPhoneCallActive: (state: GlobalState) => boolean =
-    createSelector(
-        phoneCallPropsForCurrentCall,
-        sipCallStateForCurrentCall,
-        (phone, sipState) => Boolean(phone) && sipState?.status === 'active',
-    );
 
 export const callInCurrentChannel: (state: GlobalState) => callState | undefined =
     createSelector(
@@ -386,18 +253,6 @@ export const hostChangeAtForCurrentCall: (state: GlobalState) => number =
 export const callDismissedNotification = (state: GlobalState, channelID: string) => {
     return Boolean(pluginReduxStore(state).dismissedCalls[channelID]);
 };
-
-const screenSharingIDsForCalls = (state: GlobalState): RootState['screenSharingIDs'] => {
-    return pluginReduxStore(state).screenSharingIDs;
-};
-
-export const screenSharingSessionForCurrentCall: (state: GlobalState) => UserSessionState | undefined =
-    createSelector(
-        screenSharingIDsForCalls,
-        channelIDForCurrentCall,
-        sessionsInCalls,
-        (ids, channelID, sessions) => sessions[channelID]?.[ids[channelID]],
-    );
 
 export const threadIDForCallInChannel = (state: GlobalState, channelID: string) => {
     return pluginReduxStore(state).calls[channelID]?.threadID || '';

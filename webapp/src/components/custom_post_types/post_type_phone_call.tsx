@@ -22,7 +22,9 @@ import Timestamp from 'src/components/timestamp';
 import {MESSAGE_DISPLAY, MESSAGE_DISPLAY_COMPACT, MESSAGE_DISPLAY_DEFAULT} from 'src/constants';
 import {dialFromUI, phoneDialingSupported} from 'src/phone_call';
 import {getPhoneCallPropsFromPostProps, phoneNumberForDisplay} from 'src/phone_utils';
-import {channelIDForCurrentCall, profilesInCallInChannel, sipCallStateForCallInChannel} from 'src/selectors';
+import {channelIDForCurrentCall} from 'src/selectors';
+import {phoneLegForCallInChannel} from 'src/state/phone_legs/selectors';
+import {profilesInCallInChannel} from 'src/state/session/selectors';
 import {CallPostStatus, CallsPostProps, PhoneCallProps} from 'src/types/types';
 import {callStartedTimestampFn, getCallPropsFromPost, getCallsClient, getUserDisplayName, toHuman, untranslatable} from 'src/utils';
 
@@ -83,7 +85,7 @@ export const PostTypePhoneCall = ({post, isRHS}: Props) => {
     const currentUserID = useSelector(getCurrentUserId);
     const targetUser = useSelector((state: GlobalState) => (phone.targetUserID ? getUser(state, phone.targetUserID) : undefined));
     const connectedID = useSelector(channelIDForCurrentCall);
-    const sipState = useSelector((state: GlobalState) => sipCallStateForCallInChannel(state, post.channel_id));
+    const sipState = useSelector((state: GlobalState) => phoneLegForCallInChannel(state, post.channel_id));
     const profiles = useSelector((state: GlobalState) => profilesInCallInChannel(state, post.channel_id), shallowEqual);
     const militaryTime = useSelector((state: GlobalState) => getBool(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.USE_MILITARY_TIME, false));
     const compactDisplay = useSelector((state: GlobalState) => get(state, Preferences.CATEGORY_DISPLAY_SETTINGS, MESSAGE_DISPLAY, MESSAGE_DISPLAY_DEFAULT)) === MESSAGE_DISPLAY_COMPACT;

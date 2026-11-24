@@ -13,10 +13,9 @@ import {HostNotices} from 'src/components/host_notices';
 import HandEmoji from 'src/components/icons/hand';
 import {
     hostControlNoticesForCurrentCall,
-    profilesInCurrentCallMap,
     reactionsInCurrentCall,
-    sessionsInCurrentCall,
 } from 'src/selectors';
+import {profilesInCurrentCallMap, sessionsInCurrentCall} from 'src/state/session/selectors';
 import {getUserDisplayName, split} from 'src/utils';
 import styled, {css} from 'styled-components';
 
