@@ -8,17 +8,15 @@ import {getCurrentUserId, getUser, isCurrentUserSystemAdmin} from 'mattermost-re
 import {connect} from 'react-redux';
 import {withRouter} from 'react-router-dom';
 import {
-    callHostChanged,
     fetchCallState,
     hideExpandedView,
-    joinUser,
-    leaveUser,
-    liveCaptionReceived,
     prefetchThread,
     recordingPromptDismissedAt,
     showScreenSourceModal,
     startCallRecording,
 } from 'src/actions';
+import {CallStoreSyncOptions, syncCallClientToStore} from 'src/call_store_sync';
+import type CallClient from 'src/clients/call';
 import {
     allowScreenSharing,
     areHostControlsAllowed,
@@ -36,10 +34,7 @@ import {
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
-import {userCameraChanged} from 'src/state/camera_on_ids/actions';
-import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
-import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {
     profilesInCurrentCallMap,
     sessionForCurrentCall,
@@ -47,6 +42,7 @@ import {
     sessionsInCurrentCall,
     sessionsInCurrentCallMap,
 } from 'src/state/session/selectors';
+import {Dispatch} from 'src/types/mattermost-webapp';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, selfFirstSortSessions, stateSortSessions} from 'src/utils';
 import {closeRhs, getIsRhsOpen, getRhsSelectedPostId, modals, selectRhsPost} from 'src/webapp_globals';
 
@@ -111,10 +107,8 @@ const mapStateToProps = (state: GlobalState) => {
 };
 
 const mapDispatchToProps = {
-    callHostChanged,
     fetchCallState,
     hideExpandedView,
-    liveCaptionReceived,
     showScreenSourceModal,
     closeRhs,
     selectRhsPost,
@@ -122,18 +116,8 @@ const mapDispatchToProps = {
     startCallRecording,
     recordingPromptDismissedAt,
     openModal: modals.openModal,
-    userMuted,
-    userUnmuted,
-    userCameraChanged,
-    joinUser,
-    leaveUser,
-    usersVoiceActivityChanged,
-    userRaisedHand,
-    userLoweredHand,
-    userReacted,
-    userReactedTimeout,
-    userScreenShared,
-    userScreenUnshared,
+    syncCallClientToStore: (client: CallClient, options: CallStoreSyncOptions) => (dispatch: Dispatch, getState: () => GlobalState) =>
+        syncCallClientToStore(client, {dispatch, getState}, options),
 };
 
 export default withRouter(connect(mapStateToProps, mapDispatchToProps)(ExpandedView));
