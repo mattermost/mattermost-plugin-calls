@@ -1,0 +1,90 @@
+// Covers the stage, so the view's position is measured against it; only the view itself takes input.
+.SelfView {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+
+  .SelfView__tile {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: clamp(160px, 22%, 280px);
+    border-radius: var(--radius-m);
+    box-shadow: var(--elevation-4);
+    cursor: grab;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    will-change: transform;
+
+    &:focus-visible {
+      outline: 2px solid var(--focus-ring-color, var(--button-bg));
+      outline-offset: 2px;
+    }
+
+    &:hover,
+    &:focus-within {
+      .SelfView__menuAnchor {
+        opacity: 1;
+      }
+    }
+  }
+
+  .SelfView__tile--dragging {
+    cursor: grabbing;
+  }
+
+  .SelfView__menuAnchor {
+    position: absolute;
+    z-index: 4;
+    top: var(--spacing-xxs);
+    right: var(--spacing-xxs);
+    opacity: 0;
+    transition: opacity var(--duration-quick) var(--ease-entrance);
+  }
+
+  .SelfView__chip {
+    position: absolute;
+    pointer-events: auto;
+  }
+
+  .SelfView__chip--top-left {
+    top: var(--spacing-l);
+    left: var(--spacing-l);
+  }
+
+  .SelfView__chip--top-right {
+    top: var(--spacing-l);
+    right: var(--spacing-l);
+  }
+
+  .SelfView__chip--bottom-left {
+    bottom: var(--spacing-l);
+    left: var(--spacing-l);
+  }
+
+  .SelfView__chip--bottom-right {
+    right: var(--spacing-l);
+    bottom: var(--spacing-l);
+  }
+
+  .SelfView__announcer {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.SelfView__menu {
+  z-index: var(--z-menu);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .SelfView .SelfView__menuAnchor {
+    transition: none;
+  }
+}

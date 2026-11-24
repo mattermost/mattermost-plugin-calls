@@ -21,7 +21,7 @@ import VideoTrackPlayer from 'src/components/video_track_player/video_track_play
 import type {ConnectionState} from 'src/state/connection_quality/reducer';
 import {getUserDisplayName} from 'src/utils';
 
-export type VideoTileSize = 'large' | 'small';
+export type VideoTileSize = 'stage' | 'large' | 'small';
 
 export type VideoTileState = 'video' | 'off' | 'loading' | 'poor' | 'reconnecting';
 
@@ -39,11 +39,13 @@ export type Props = {
 };
 
 const AVATAR_SIZE_PX: Record<VideoTileSize, number> = {
+    stage: 128,
     large: 72,
     small: 32,
 };
 
 const AVATAR_FONT_SIZE_PX: Record<VideoTileSize, number> = {
+    stage: 40,
     large: 24,
     small: 12,
 };

@@ -59,6 +59,54 @@
     border-radius: 6px;
   }
 
+  &.VideoTile--stage {
+    height: 100%;
+    aspect-ratio: auto;
+
+    .VideoTile__video video {
+      object-fit: contain;
+    }
+
+    .VideoTile__label {
+      bottom: 12px;
+      left: 12px;
+      padding: 4px 8px;
+      font-size: 14px;
+      line-height: 20px;
+    }
+
+    .VideoTile__badge {
+      top: 12px;
+      width: 32px;
+      height: 32px;
+      border-radius: 16px;
+      font-size: 18px;
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    .VideoTile__badge--topLeft {
+      left: 12px;
+    }
+
+    .VideoTile__badge--topRight {
+      right: 12px;
+    }
+
+    .VideoTile__muteIcon {
+      width: 16px;
+      height: 16px;
+    }
+
+    .VideoTile__statusText {
+      font-size: 14px;
+      line-height: 20px;
+    }
+  }
+
   .VideoTile__video {
     position: absolute;
     inset: 0;

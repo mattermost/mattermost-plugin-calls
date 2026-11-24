@@ -91,6 +91,7 @@ import {
     untranslatable,
 } from 'src/utils';
 import {serverDismissedAt} from 'src/utils/clock_skew';
+import {CallAlertID, CAMERA_ALERT_IDS, CAMERA_ERROR_ALERT_IDS, isVideoMode, showCameras} from 'src/video_mode';
 import styled from 'styled-components';
 
 import {CallParticipantAvatar} from './call_participant_avatar';
@@ -189,18 +190,6 @@ interface State {
     leaveMenuOpen: boolean,
     micStatus: DeviceStatus,
 }
-
-type AlertID = keyof typeof CallAlertStatesDefault;
-
-const CAMERA_ERROR_ALERT_IDS: Record<CameraError, AlertID> = {
-    [CameraError.PermissionDenied]: 'cameraPermissionDenied',
-    [CameraError.NotFound]: 'cameraNotFound',
-    [CameraError.DeviceInUse]: 'cameraInUse',
-    [CameraError.Disconnected]: 'cameraDisconnected',
-    [CameraError.Other]: 'cameraFailed',
-};
-
-const CAMERA_ALERT_IDS = Object.values(CAMERA_ERROR_ALERT_IDS);
 
 export default class CallWidget extends React.PureComponent<Props, State> {
     private readonly node: React.RefObject<HTMLDivElement>;
@@ -691,7 +680,7 @@ export default class CallWidget extends React.PureComponent<Props, State> {
     }
 
     // Only the newest camera error shows, and all of them clear once the camera turns on.
-    private setCameraErrorAlert = (alertID: AlertID | null) => {
+    private setCameraErrorAlert = (alertID: CallAlertID | null) => {
         this.setState((prevState) => {
             const alerts = {...prevState.alerts};
             CAMERA_ALERT_IDS.forEach((id) => {
@@ -941,23 +930,24 @@ export default class CallWidget extends React.PureComponent<Props, State> {
         }
     };
 
-    // Before connecting, the client doesn't know its publish permissions yet, so only the settings decide.
     isVideoMode() {
-        if (!this.props.dmVideoEnabled || !isDMChannel(this.props.channel) || this.props.isPhoneCall) {
-            return false;
-        }
-        return this.props.clientConnecting || Boolean(window.callsClient?.canPublishCamera());
+        return isVideoMode({
+            dmVideoEnabled: this.props.dmVideoEnabled,
+            channel: this.props.channel,
+            isPhoneCall: this.props.isPhoneCall,
+            clientConnecting: this.props.clientConnecting,
+            canPublishCamera: Boolean(window.callsClient?.canPublishCamera()),
+        });
     }
 
-    // While ringing only our own camera can show. Once answered, either person's camera does.
     showCameras() {
-        if (!this.isVideoMode()) {
-            return false;
-        }
-        if (this.props.isDMCalling) {
-            return this.props.isCameraOn;
-        }
-        return !this.props.clientConnecting && (this.props.isCameraOn || this.props.isOtherCameraOn);
+        return showCameras({
+            videoMode: this.isVideoMode(),
+            isDMCalling: this.props.isDMCalling,
+            clientConnecting: this.props.clientConnecting,
+            isCameraOn: this.props.isCameraOn,
+            isOtherCameraOn: this.props.isOtherCameraOn,
+        });
     }
 
     onStopSharing = () => {

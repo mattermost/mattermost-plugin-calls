@@ -9,6 +9,8 @@ import {CALL_EVENT} from 'src/clients/call/constants';
 import DeviceMenu from 'src/components/call_widget/device_menu';
 import CCIcon from 'src/components/icons/cc_icon';
 import HorizontalDotsIcon from 'src/components/icons/horizontal_dots';
+import RecordCircleIcon from 'src/components/icons/record_circle';
+import RecordSquareIcon from 'src/components/icons/record_square';
 import SettingsWheelIcon from 'src/components/icons/settings_wheel';
 import ShowMoreIcon from 'src/components/icons/show_more';
 import SpeakerIcon from 'src/components/icons/speaker_icon';
@@ -261,9 +263,10 @@ type CallSettingsMenuButtonProps = {
     icon: React.ReactNode;
     label: string;
     onClick: () => void;
+    disabled?: boolean;
 }
 
-const CallSettingsMenuButton = ({id, icon, label, onClick}: CallSettingsMenuButtonProps) => {
+const CallSettingsMenuButton = ({id, icon, label, onClick, disabled}: CallSettingsMenuButtonProps) => {
     return (
         <li
             className='MenuItem'
@@ -274,6 +277,7 @@ const CallSettingsMenuButton = ({id, icon, label, onClick}: CallSettingsMenuButt
                 id={id}
                 className='style--none'
                 onClick={onClick}
+                disabled={disabled}
             >
                 {icon}
                 {label}
@@ -299,12 +303,20 @@ const CallSettingsMenuButtonWrapper = styled.button`
 }
 `;
 
+// Lets the call window offer recording from this menu instead of its own button.
+export type RecordMenuItem = {
+    isRecording: boolean;
+    disabled: boolean;
+    onToggle: () => void;
+};
+
 type CallSettingsProps = {
     onLiveCaptionsToggle: () => void;
     showLiveCaptions: boolean;
+    recordItem?: RecordMenuItem;
 }
 
-export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSettingsProps) {
+export function CallSettings({onLiveCaptionsToggle, showLiveCaptions, recordItem}: CallSettingsProps) {
     const [showAudioInputs, setShowAudioInputs] = useState(false);
     const [showAudioOutputs, setShowAudioOutputs] = useState(false);
     const showCCButton = useSelector(areLiveCaptionsAvailableInCurrentCall);
@@ -348,6 +360,19 @@ export function CallSettings({onLiveCaptionsToggle, showLiveCaptions}: CallSetti
                     onToggle={onToggle}
                 />
 
+                {recordItem &&
+                <>
+                    <li className='MenuGroup menu-divider'/>
+                    <CallSettingsMenuButton
+                        id='calls-popout-record-button'
+                        icon={recordItem.isRecording ? <RecordSquareIcon/> : <RecordCircleIcon/>}
+                        label={recordItem.isRecording ? formatMessage({defaultMessage: 'Stop recording'}) : formatMessage({defaultMessage: 'Record call'})}
+                        onClick={recordItem.onToggle}
+                        disabled={recordItem.disabled}
+                    />
+                </>
+                }
+
                 { (showCCButton || showAdditionalSetttingsButton) && <li className='MenuGroup menu-divider'/>}
                 { showCCButton &&
                 <>
@@ -389,9 +414,10 @@ const MenuList = styled.ul`
 type CallSettingsButtonProps = {
     onLiveCaptionsToggle: () => void;
     showLiveCaptions: boolean;
+    recordItem?: RecordMenuItem;
 };
 
-export function CallSettingsButton({onLiveCaptionsToggle, showLiveCaptions}: CallSettingsButtonProps) {
+export function CallSettingsButton({onLiveCaptionsToggle, showLiveCaptions, recordItem}: CallSettingsButtonProps) {
     const [showCallSettings, setShowCallSettings] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const {formatMessage} = useIntl();
@@ -434,6 +460,13 @@ export function CallSettingsButton({onLiveCaptionsToggle, showLiveCaptions}: Cal
                 <CallSettings
                     onLiveCaptionsToggle={onCCButtonToggle}
                     showLiveCaptions={showLiveCaptions}
+                    recordItem={recordItem && {
+                        ...recordItem,
+                        onToggle: () => {
+                            setShowCallSettings(false);
+                            recordItem.onToggle();
+                        },
+                    }}
                 />
             )}
             <ControlsButton

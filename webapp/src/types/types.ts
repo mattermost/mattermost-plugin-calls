@@ -202,10 +202,20 @@ export type ShareScreenResult = [track: ScreenShareTrack | null, error: ShareScr
 // set it directly in the window.opener.currentCallData, and read that data when needing up-to-date
 // data. The widget needs to set/read data on its window.currentCallData object.
 // Reminder: obviously this is not reactive; setting data will not update the other window.
+export type SelfViewCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
+export type SelfViewState = {
+    corner: SelfViewCorner;
+    hidden: boolean;
+};
+
 export type CurrentCallData = {
     recordingPromptDismissedAt: number;
     missingScreenPermissions: boolean;
     dmCalleeAnsweredAt: number;
+
+    // Kept here, not in the popout, so it survives closing and reopening the call window.
+    selfView?: SelfViewState;
 }
 
 export const CurrentCallDataDefault: CurrentCallData = {

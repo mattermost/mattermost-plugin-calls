@@ -3,6 +3,7 @@
 
 import type {VideoTrack} from 'livekit-client';
 import React, {useEffect, useRef, VideoHTMLAttributes} from 'react';
+import {isCallsPopOut} from 'src/utils';
 
 type Props = {
     track: VideoTrack | null;
@@ -27,7 +28,18 @@ export default function VideoTrackPlayer({track, onPlaying, ...attrs}: Props) {
         video.addEventListener('loadeddata', handlePlaying);
         track.attach(video);
 
+        // In the call window the track belongs to the opener, whose instanceof checks miss this
+        // window's <video>, so attach() skips its inline setup and the deferred play Firefox needs.
+        let playTimeout: number | undefined;
+        if (isCallsPopOut()) {
+            video.playsInline = true;
+            playTimeout = window.setTimeout(() => {
+                video.play().catch(() => undefined);
+            }, 0);
+        }
+
         return () => {
+            window.clearTimeout(playTimeout);
             video.removeEventListener('playing', handlePlaying);
             video.removeEventListener('loadeddata', handlePlaying);
             track.detach(video);

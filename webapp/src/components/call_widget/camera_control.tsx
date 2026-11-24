@@ -7,19 +7,21 @@ import DeviceControl from './device_control';
 import {useCameraControl} from './use_camera_control';
 
 type Props = {
+    id?: string;
     cameraOn: boolean;
     disabled?: boolean;
     menuOpen: boolean;
     onMenuOpenChange: (open: boolean) => void;
     menuRef?: (el: HTMLUListElement | null) => void;
+    className?: string;
 };
 
-export default function CameraControl({cameraOn, disabled, menuOpen, onMenuOpenChange, menuRef}: Props) {
+export default function CameraControl({id = 'calls-widget-camera', cameraOn, disabled, menuOpen, onMenuOpenChange, menuRef, className}: Props) {
     const {status, toggle, devices, selectedDeviceId, selectDevice} = useCameraControl(cameraOn);
 
     return (
         <DeviceControl
-            id='calls-widget-camera'
+            id={id}
             kind='videoinput'
             active={cameraOn}
             status={status}
@@ -31,6 +33,7 @@ export default function CameraControl({cameraOn, disabled, menuOpen, onMenuOpenC
             menuOpen={menuOpen}
             onMenuOpenChange={onMenuOpenChange}
             menuRef={menuRef}
+            className={className}
         />
     );
 }

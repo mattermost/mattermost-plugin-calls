@@ -27,6 +27,7 @@ export type Props = {
     ariaLabel: string,
     ariaControls?: string,
     ariaExpanded?: boolean,
+    ariaPressed?: boolean,
 }
 
 export default function ControlsButton(props: Props) {
@@ -72,6 +73,7 @@ export default function ControlsButton(props: Props) {
                 aria-label={props.ariaLabel}
                 aria-controls={props.ariaControls}
                 aria-expanded={props.ariaExpanded}
+                aria-pressed={props.ariaPressed}
                 onClick={onClick}
                 disabled={props.disabled}
                 $bgColor={props.bgColor}
