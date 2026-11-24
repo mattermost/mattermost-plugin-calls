@@ -159,4 +159,70 @@ describe('VideoTrackPlayer', () => {
         expect(video).toHaveClass('preview');
         expect(video.muted).toBe(true);
     });
+
+    describe('in the call window', () => {
+        const originalOpener = Object.getOwnPropertyDescriptor(window, 'opener');
+        let play: jest.SpyInstance;
+
+        const setOpener = (opener: unknown) => {
+            Object.defineProperty(window, 'opener', {value: opener, configurable: true, writable: true});
+        };
+
+        beforeEach(() => {
+            jest.useFakeTimers();
+            play = jest.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+            setOpener({callsClient: {}});
+        });
+
+        afterEach(() => {
+            jest.useRealTimers();
+            play.mockRestore();
+            if (originalOpener) {
+                Object.defineProperty(window, 'opener', originalOpener);
+            }
+        });
+
+        test('plays inline and starts playback once attach() has returned', () => {
+            const track = makeTrack();
+            const {container} = render(<VideoTrackPlayer track={asTrack(track)}/>);
+            const video = getVideo(container);
+
+            expect(video.playsInline).toBe(true);
+            expect(play).not.toHaveBeenCalled();
+
+            jest.runOnlyPendingTimers();
+
+            expect(play).toHaveBeenCalledTimes(1);
+            expect(play.mock.instances[0]).toBe(video);
+        });
+
+        test('ignores a rejected play()', async () => {
+            play.mockRejectedValue(new Error('NotAllowedError'));
+            render(<VideoTrackPlayer track={asTrack(makeTrack())}/>);
+
+            jest.runOnlyPendingTimers();
+            await Promise.resolve();
+
+            expect(play).toHaveBeenCalledTimes(1);
+        });
+
+        test('cancels the deferred play when unmounted first', () => {
+            const {unmount} = render(<VideoTrackPlayer track={asTrack(makeTrack())}/>);
+
+            unmount();
+            jest.runOnlyPendingTimers();
+
+            expect(play).not.toHaveBeenCalled();
+        });
+
+        test('leaves playback to attach() outside the call window', () => {
+            setOpener(null);
+            const {container} = render(<VideoTrackPlayer track={asTrack(makeTrack())}/>);
+
+            jest.runOnlyPendingTimers();
+
+            expect(getVideo(container).playsInline).toBe(false);
+            expect(play).not.toHaveBeenCalled();
+        });
+    });
 });

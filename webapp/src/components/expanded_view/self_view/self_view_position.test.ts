@@ -127,4 +127,12 @@ describe('self view state', () => {
 
         expect(readSelfViewState()).toEqual(SELF_VIEW_STATE_DEFAULT);
     });
+
+    test('ignores writes when there is no call data', () => {
+        window.currentCallData = undefined;
+
+        expect(() => writeSelfViewState({corner: 'top-left'})).not.toThrow();
+        expect(window.currentCallData).toBeUndefined();
+        expect(readSelfViewState()).toEqual(SELF_VIEW_STATE_DEFAULT);
+    });
 });

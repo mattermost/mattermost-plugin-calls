@@ -3,10 +3,11 @@
 
 import React from 'react';
 import {createIntl} from 'react-intl';
-import {CALL_EVENT} from 'src/clients/call/constants';
+import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
 import {CameraError, CameraState, type DeviceStatus} from 'src/clients/call/types';
-import {installFakeCallClient} from 'src/test_utils/fake_call_client';
-import {CallAlertStatesDefault} from 'src/types/types';
+import {DEGRADED_CALL_QUALITY_ALERT_WAIT} from 'src/constants';
+import {FakeCallClient, installFakeCallClient} from 'src/test_utils/fake_call_client';
+import {CallAlertStatesDefault, CallAlertType} from 'src/types/types';
 
 import {CallSettingsButton} from './call_settings';
 import DMVideoStage from './dm_video_stage';
@@ -278,6 +279,291 @@ describe('ExpandedView in a direct message video call', () => {
         view.state = {...view.state, alerts: {...view.state.alerts, degradedCallQuality: {active: true, show: true}}};
 
         expect(view.getHeaderWarnings()).toEqual([]);
+    });
+
+    type View = ReturnType<typeof makeView>;
+    type Element = React.ReactElement<Record<string, unknown>>;
+
+    // The view isn't mounted, so state updates are applied by hand.
+    const applyStateUpdates = (view: View) => {
+        view.setState = jest.fn((update) => {
+            const patch = typeof update === 'function' ? update(view.state, view.props) : update;
+            view.state = {...view.state, ...patch};
+        });
+        return view;
+    };
+
+    const callProp = (el: Element | null, name: string, ...args: unknown[]) => (el?.props[name] as (...a: unknown[]) => unknown)(...args);
+
+    const updateProps = (view: View, props: Record<string, unknown>) => {
+        const prevProps = view.props;
+        view.props = {...prevProps, ...props};
+        view.componentDidUpdate(prevProps);
+    };
+
+    const fakeClient = () => window.callsClient as unknown as FakeCallClient;
+
+    test('keeps at most one device menu open', () => {
+        const view = applyStateUpdates(makeView());
+        const menusOpen = () => {
+            const tree = view.render();
+            return [findElement(tree, byID('calls-popout-mic'))?.props.menuOpen, findElement(tree, byID('calls-popout-camera'))?.props.menuOpen];
+        };
+        expect(menusOpen()).toEqual([false, false]);
+
+        callProp(findElement(view.render(), byID('calls-popout-mic')), 'onMenuOpenChange', true);
+        expect(menusOpen()).toEqual([true, false]);
+
+        callProp(findElement(view.render(), byID('calls-popout-camera')), 'onMenuOpenChange', true);
+        expect(menusOpen()).toEqual([false, true]);
+
+        callProp(findElement(view.render(), byID('calls-popout-camera')), 'onMenuOpenChange', false);
+        expect(menusOpen()).toEqual([false, false]);
+    });
+
+    test('switches the mic only when a different one is picked', () => {
+        const builtInMic = {deviceId: 'mic-1', label: 'Built-in Mic', kind: 'audioinput', groupId: ''} as MediaDeviceInfo;
+        const usbMic = {deviceId: 'mic-2', label: 'USB Mic', kind: 'audioinput', groupId: ''} as MediaDeviceInfo;
+        const view = applyStateUpdates(makeView());
+        view.state = {...view.state, audioInputs: [builtInMic, usbMic], currentAudioInputDevice: builtInMic};
+        const mic = () => findElement(view.render(), byID('calls-popout-mic'));
+        expect(mic()?.props.selectedDeviceId).toBe('mic-1');
+
+        callProp(mic(), 'onSelectDevice', usbMic);
+
+        expect(fakeClient().setAudioInputDevice).toHaveBeenCalledWith(usbMic);
+        expect(mic()?.props.selectedDeviceId).toBe('mic-2');
+
+        callProp(mic(), 'onSelectDevice', usbMic);
+
+        expect(fakeClient().setAudioInputDevice).toHaveBeenCalledTimes(1);
+    });
+
+    test('clears camera alerts once the camera turns on', () => {
+        const view = applyStateUpdates(makeView());
+        view.state = {...view.state, alerts: {...CallAlertStatesDefault, cameraFailed: {active: true, show: true}}};
+        const warningIDs = () => view.getHeaderWarnings().map((w: {id: string}) => w.id);
+
+        updateProps(view, {ownConnectionState: 'good'});
+        expect(warningIDs()).toEqual(['cameraFailed']);
+
+        updateProps(view, {isCameraOn: true});
+        expect(warningIDs()).toEqual([]);
+    });
+
+    test('lists alerts as header warnings, dismissable only where configured', () => {
+        const view = applyStateUpdates(makeView());
+        view.state = {
+            ...view.state,
+            alerts: {
+                ...CallAlertStatesDefault,
+                missingAudioInput: {active: true, show: true},
+                remoteAudioPlaybackBlocked: {active: true, show: true},
+            },
+        };
+
+        const warnings = view.getHeaderWarnings();
+
+        expect(warnings).toEqual([
+            {
+                id: 'missingAudioInput',
+                tone: CallAlertType.Error,
+                icon: 'microphone-off',
+                message: 'Unable to find a valid audio input device. Try plugging in an audio input device.',
+                onDismiss: expect.any(Function),
+            },
+            {
+                id: 'remoteAudioPlaybackBlocked',
+                tone: CallAlertType.Warning,
+                icon: 'speaker',
+                message: 'Your browser blocked call audio.',
+                onDismiss: undefined,
+            },
+        ]);
+
+        warnings[0].onDismiss();
+
+        expect(view.getHeaderWarnings().map((w: {id: string}) => w.id)).toEqual(['remoteAudioPlaybackBlocked']);
+        expect(view.state.alerts.missingAudioInput).toEqual({active: true, show: false});
+    });
+
+    test('dismissing the connection warning hides it for that state', () => {
+        const view = applyStateUpdates(makeView({ownConnectionState: 'poor'}));
+
+        view.getHeaderWarnings()[0].onDismiss();
+
+        expect(view.state.dismissedConnectionState).toBe('poor');
+        expect(view.getHeaderWarnings()).toEqual([]);
+    });
+
+    describe('recording from the More menu', () => {
+        const recordItem = (view: View) => findElement(view.render(), (el) => el.type === CallSettingsButton)?.props.recordItem as {disabled: boolean; onToggle: () => Promise<void>} | undefined;
+
+        test('starts a recording', async () => {
+            const view = makeView({startCallRecording: jest.fn(), openModal: jest.fn()});
+
+            await recordItem(view)?.onToggle();
+
+            expect(view.props.startCallRecording).toHaveBeenCalledWith('channel-id');
+            expect(view.props.openModal).not.toHaveBeenCalled();
+        });
+
+        test('asks to confirm stopping a recording', async () => {
+            const view = makeView({isRecording: true, startCallRecording: jest.fn(), openModal: jest.fn()});
+
+            await recordItem(view)?.onToggle();
+
+            expect(view.props.openModal).toHaveBeenCalledWith(expect.objectContaining({dialogProps: {channelID: 'channel-id'}}));
+            expect(view.props.startCallRecording).not.toHaveBeenCalled();
+        });
+
+        test('is disabled while the call is ringing', () => {
+            expect(recordItem(makeView({isDMCalling: true}))?.disabled).toBe(true);
+        });
+
+        test.each([
+            ['the user is not the host', {callHostID: 'other-id'}],
+            ['recordings are off', {recordingsEnabled: false}],
+        ])('is missing when %s', (_, props) => {
+            expect(recordItem(makeView(props))).toBeUndefined();
+        });
+    });
+
+    describe('chat focus', () => {
+        const chatProps = {
+            threadID: 'thread-id',
+            isRhsOpen: false,
+            rhsSelectedThreadID: undefined,
+            selectRhsPost: jest.fn(),
+            currentTeamID: 'team-id',
+            channelTeam: {id: 'team-id', name: 'team'},
+        };
+        const openChat = (view: View) => updateProps(view, {isRhsOpen: true, rhsSelectedThreadID: 'thread-id'});
+        const closeChat = (view: View) => updateProps(view, {isRhsOpen: false});
+        const addChatPanel = () => {
+            document.body.innerHTML = '<div id="sidebar-right"><textarea></textarea></div><button id="calls-popout-chat-button"></button><button id="other-button"></button>';
+            return document.querySelector('#sidebar-right textarea') as HTMLTextAreaElement;
+        };
+
+        beforeEach(() => {
+            jest.useFakeTimers();
+        });
+
+        afterEach(() => {
+            jest.useRealTimers();
+            document.body.innerHTML = '';
+        });
+
+        test('focuses the reply box once it appears after opening chat from the button', async () => {
+            const view = makeView(chatProps);
+
+            await view.toggleChat();
+            expect(chatProps.selectRhsPost).toHaveBeenCalledWith('thread-id');
+            openChat(view);
+            jest.advanceTimersByTime(100);
+
+            const input = addChatPanel();
+            expect(input).not.toHaveFocus();
+            jest.advanceTimersByTime(50);
+
+            expect(input).toHaveFocus();
+            expect(jest.getTimerCount()).toBe(0);
+        });
+
+        test('stops looking for the reply box after a second', async () => {
+            const view = makeView(chatProps);
+            await view.toggleChat();
+            openChat(view);
+
+            jest.advanceTimersByTime(1050);
+            expect(jest.getTimerCount()).toBe(0);
+
+            const input = addChatPanel();
+            jest.advanceTimersByTime(1000);
+            expect(input).not.toHaveFocus();
+        });
+
+        test('leaves focus alone when chat is opened some other way', () => {
+            const input = addChatPanel();
+            const view = makeView(chatProps);
+
+            openChat(view);
+            jest.runOnlyPendingTimers();
+
+            expect(input).not.toHaveFocus();
+        });
+
+        test('stops looking for the reply box once unmounted', async () => {
+            const view = makeView(chatProps);
+            await view.toggleChat();
+            openChat(view);
+            expect(jest.getTimerCount()).toBe(1);
+
+            view.componentWillUnmount();
+
+            expect(jest.getTimerCount()).toBe(0);
+        });
+
+        test.each([
+            ['in the chat panel', () => (document.querySelector('#sidebar-right textarea') as HTMLElement).focus(), true],
+            ['lost with the panel', () => (document.activeElement as HTMLElement | null)?.blur(), true],
+            ['elsewhere in the window', () => document.getElementById('other-button')?.focus(), false],
+        ])('when chat closes with focus %s, focus returns to the chat button: %s', (_, placeFocus, returned) => {
+            addChatPanel();
+            const view = makeView({...chatProps, isRhsOpen: true, rhsSelectedThreadID: 'thread-id'});
+            placeFocus();
+
+            closeChat(view);
+
+            expect(document.getElementById('calls-popout-chat-button') === document.activeElement).toBe(returned);
+        });
+    });
+});
+
+describe('ExpandedView call quality banner', () => {
+    const intl = createIntl({locale: 'en', messages: {}});
+    const session = {session_id: 'session-id', user_id: 'user-id', unmuted: false, raised_hand: 0};
+
+    beforeEach(() => {
+        jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
+        window.callsClient = undefined;
+    });
+
+    test('stays away for a while after it is dismissed', () => {
+        const client = installFakeCallClient();
+        client.audioDevices = {inputs: [{deviceId: 'mic-1', label: 'Mic', kind: 'audioinput', groupId: ''} as MediaDeviceInfo], outputs: []};
+        const view = new ExpandedView({
+            intl,
+            theme: {type: 'Denim', sidebarBg: '#1e325c'},
+            history: {},
+            sessions: [session],
+            currentSession: session,
+            fetchCallState: jest.fn(),
+        });
+        view.setState = jest.fn((update) => {
+            view.state = {...view.state, ...(typeof update === 'function' ? update(view.state, view.props) : update)};
+        });
+        view.componentDidMount();
+        const bannerShown = () => view.state.alerts.degradedCallQuality.show;
+
+        client.emit(CALL_EVENT.QUALITY_CHANGED, CONNECTION_QUALITY.Poor);
+        expect(bannerShown()).toBe(true);
+
+        view.renderAlertBanner().props.onClose();
+        expect(bannerShown()).toBe(false);
+
+        client.emit(CALL_EVENT.QUALITY_CHANGED, CONNECTION_QUALITY.Lost);
+        expect(bannerShown()).toBe(false);
+
+        jest.advanceTimersByTime(DEGRADED_CALL_QUALITY_ALERT_WAIT);
+        client.emit(CALL_EVENT.QUALITY_CHANGED, CONNECTION_QUALITY.Poor);
+        expect(bannerShown()).toBe(true);
+
+        view.componentWillUnmount();
     });
 });
 

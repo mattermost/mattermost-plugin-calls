@@ -9,7 +9,7 @@ import {Provider} from 'react-redux';
 import {FakeCallClient, installFakeCallClient} from 'src/test_utils/fake_call_client';
 import {mockStore} from 'src/testUtils';
 
-import {CallSettings} from './call_settings';
+import {CallSettings, CallSettingsButton, RecordMenuItem} from './call_settings';
 
 jest.mock('src/selectors', () => ({
     ...jest.requireActual('src/selectors'),
@@ -111,5 +111,94 @@ describe('CallSettings device lists', () => {
         expect(button).toBeDisabled();
         expect(button).toHaveTextContent('Default');
         expect(document.getElementById('calls-popout-audiooutput-button')).toBeEnabled();
+    });
+});
+
+describe('CallSettings record item', () => {
+    beforeEach(() => {
+        installFakeCallClient();
+        window.WebappUtils = {} as typeof window.WebappUtils;
+    });
+
+    afterEach(() => {
+        window.callsClient = undefined;
+    });
+
+    const makeRecordItem = (item: Partial<RecordMenuItem> = {}): RecordMenuItem => ({
+        isRecording: false,
+        disabled: false,
+        onToggle: jest.fn(),
+        ...item,
+    });
+
+    const wrap = (children: React.ReactNode) => (
+        <Provider store={mockStore()}>
+            <IntlProvider locale='en'>
+                {children}
+            </IntlProvider>
+        </Provider>
+    );
+
+    const renderSettings = (recordItem?: RecordMenuItem) => render(wrap(
+        <CallSettings
+            onLiveCaptionsToggle={jest.fn()}
+            showLiveCaptions={false}
+            recordItem={recordItem}
+        />,
+    ));
+
+    const recordButton = () => document.getElementById('calls-popout-record-button');
+
+    test('has no record item unless one is passed', () => {
+        renderSettings();
+
+        expect(recordButton()).not.toBeInTheDocument();
+    });
+
+    test.each([
+        [false, 'Record call'],
+        [true, 'Stop recording'],
+    ])('with isRecording %s, labels the item %s', (isRecording, label) => {
+        renderSettings(makeRecordItem({isRecording}));
+
+        expect(screen.getByRole('menuitem', {name: label})).toContainElement(recordButton());
+        expect(recordButton()).toHaveTextContent(label);
+    });
+
+    test('calls onToggle when clicked', async () => {
+        const item = makeRecordItem();
+        renderSettings(item);
+
+        await userEvent.click(recordButton()!);
+
+        expect(item.onToggle).toHaveBeenCalledTimes(1);
+    });
+
+    test('is disabled while recording can\'t be toggled', async () => {
+        const item = makeRecordItem({disabled: true});
+        renderSettings(item);
+
+        expect(recordButton()).toBeDisabled();
+        await userEvent.click(recordButton()!);
+        expect(item.onToggle).not.toHaveBeenCalled();
+    });
+
+    test('the More button closes its menu before toggling recording', async () => {
+        const item = makeRecordItem();
+        render(wrap(
+            <CallSettingsButton
+                onLiveCaptionsToggle={jest.fn()}
+                showLiveCaptions={false}
+                recordItem={item}
+            />,
+        ));
+
+        await userEvent.click(document.getElementById('calls-popout-settings-button')!);
+        expect(document.getElementById('calls-popout-settings-menu')).toBeInTheDocument();
+
+        await userEvent.click(recordButton()!);
+
+        expect(item.onToggle).toHaveBeenCalledTimes(1);
+        expect(document.getElementById('calls-popout-settings-menu')).not.toBeInTheDocument();
     });
 });

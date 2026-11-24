@@ -126,6 +126,61 @@ describe('CallNoticeStack', () => {
         expect(messages()).toEqual(['You are now the host']);
     });
 
+    test.each([
+        [HostControlNoticeType.LowerHand, 'bob', 'bob lowered your hand', 'hand'],
+        [HostControlNoticeType.HostChanged, 'alice', 'alice is now the host', 'host'],
+        [HostControlNoticeType.HostRemoved, 'carol', 'carol was removed from the call', 'removed'],
+    ])('shows a %s host notice', (type, displayName, message, kind) => {
+        renderStack({sessions: {self: session('self')}});
+
+        setCall({sessions: {self: session('self')}, hostNotices: [{type, callID: CHANNEL_ID, noticeID: 'n1', displayName, userID: 'user-other'}]});
+
+        expect(messages()).toEqual([message]);
+        expect(screen.getByRole('listitem')).toHaveAttribute('data-kind', kind);
+    });
+
+    test('does not repeat host notices that were there before it mounted', () => {
+        const notice = {type: HostControlNoticeType.HostRemoved, callID: CHANNEL_ID, noticeID: 'n1', displayName: 'carol'};
+        renderStack({sessions: {self: session('self')}, hostNotices: [notice]});
+
+        setCall({sessions: {self: session('self'), other: session('other')}, hostNotices: [notice]});
+
+        expect(messages()).toEqual(['alice joined the call']);
+    });
+
+    test('names someone without a profile "Someone"', () => {
+        renderStack({sessions: {self: session('self')}});
+
+        setCall({sessions: {self: session('self'), ghost: session('ghost')}});
+
+        expect(messages()).toEqual(['Someone joined the call']);
+    });
+
+    test('removes a notice without the fade when reduced motion is preferred', () => {
+        Object.defineProperty(window, 'matchMedia', {
+            configurable: true,
+            writable: true,
+            value: jest.fn((query: string) => ({matches: query === '(prefers-reduced-motion: reduce)'})),
+        });
+        try {
+            renderStack({sessions: {self: session('self')}});
+            setCall({sessions: {self: session('self'), other: session('other')}});
+
+            act(() => {
+                jest.advanceTimersByTime(NOTICE_TIMEOUT_MS);
+            });
+            expect(screen.getByRole('listitem')).toHaveClass('CallNoticeStack__notice--leaving');
+
+            // Fake timers run a zero delay set during a tick 1ms later.
+            act(() => {
+                jest.advanceTimersByTime(1);
+            });
+            expect(messages()).toEqual([]);
+        } finally {
+            Reflect.deleteProperty(window, 'matchMedia');
+        }
+    });
+
     test('fades a notice after 3 seconds', () => {
         renderStack({sessions: {self: session('self')}});
         setCall({sessions: {self: session('self'), other: session('other')}});

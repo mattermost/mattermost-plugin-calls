@@ -238,7 +238,7 @@ export function useSelfViewPosition({initialCorner, onCornerChange}: Options) {
             settle();
             return;
         }
-        const velocity = releaseVelocity(drag.samples);
+        const velocity = releaseVelocity(drag.samples.filter((sample) => e.timeStamp - sample.t <= VELOCITY_WINDOW_MS));
         springRef.current = {...springRef.current, velocity: {x: velocity.x * 1000, y: velocity.y * 1000}};
         const projected = projectPosition(springRef.current.position, velocity);
         changeCorner(nearestCorner(projected, sizeOf(containerRef.current), sizeOf(tileRef.current)), 'drag');
