@@ -1,0 +1,43 @@
+# Single-instance Redis for LiveKit distributed mode (multi-node routing, SIP).
+# State is ephemeral (no persistence). This is a single point of failure for
+# new rooms; use a managed Redis (for example ElastiCache) for production HA and
+# set livekit.redis.address accordingly.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livekit-redis
+  namespace: livekit
+  labels: {app.kubernetes.io/name: livekit-redis}
+spec:
+  replicas: 1
+  # Never run two Redis pods at once: they do not share state, so a rolling
+  # update would split LiveKit across two independent instances.
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: livekit-redis}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: livekit-redis}
+    spec:
+      containers:
+        - name: redis
+          image: redis:8.10.2-alpine
+          args: ["--save", "", "--appendonly", "no"]
+          ports: [{name: redis, containerPort: 6379}]
+          readinessProbe:
+            exec: {command: ["redis-cli", "ping"]}
+          livenessProbe:
+            exec: {command: ["redis-cli", "ping"]}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: livekit-redis
+  namespace: livekit
+spec:
+  selector: {app.kubernetes.io/name: livekit-redis}
+  ports: [{name: redis, port: 6379, targetPort: redis}]
