@@ -19,7 +19,7 @@ import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
-import type {ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
+import type {CameraState, ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
@@ -135,6 +135,7 @@ interface Props extends RouteComponentProps {
     callHostChanged: (channelID: string, hostID: string) => void;
     userMuted: (channelID: string, sessionID: string, userID: string) => void;
     userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
+    userCameraChanged: (channelID: string, sessionID: string, userID: string, cameraState: CameraState) => void;
     joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
     leaveUser: (channelID: string, userID: string, sessionID: string) => void;
     usersVoiceActivityChanged: (channelID: string, sessionIDs: string[], userIDs: string[]) => void;
@@ -671,6 +672,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         });
         onClient(CALL_EVENT.UNMUTE, (sessionID: string, userID: string) => {
             this.props.userUnmuted(callsClient.channelID, sessionID, userID);
+        });
+        onClient(CALL_EVENT.CAMERA_CHANGED, (sessionID: string, userID: string, cameraState: CameraState) => {
+            this.props.userCameraChanged(callsClient.channelID, sessionID, userID, cameraState);
         });
 
         // In the popout, this component's Redux store is separate from the

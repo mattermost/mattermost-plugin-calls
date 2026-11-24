@@ -58,6 +58,33 @@ export type ScreenSharingSession = {
     track: ScreenShareTrack | null;
 };
 
+export enum CameraState {
+    Off = 'off',
+    Loading = 'loading',
+    Ready = 'ready',
+}
+
+/**
+ * A participant's camera, read from its LiveKit publication. `track` is null
+ * unless the state is Ready.
+ */
+export type CameraTrack = {
+    state: CameraState;
+    track: VideoTrack | null;
+};
+
+/**
+ * The first four values match LiveKit's MediaDeviceFailure. Disconnected is
+ * ours: LiveKit has no value for a camera lost mid-call.
+ */
+export enum CameraError {
+    PermissionDenied = 'PermissionDenied',
+    NotFound = 'NotFound',
+    DeviceInUse = 'DeviceInUse',
+    Other = 'Other',
+    Disconnected = 'Disconnected',
+}
+
 /**
  * A remote audio track we play through an element created by LiveKit's attach().
  */

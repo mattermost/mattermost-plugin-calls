@@ -12,11 +12,9 @@ import {Team} from '@mattermost/types/teams';
 import {UserProfile} from '@mattermost/types/users';
 import {IDMappedObjects} from '@mattermost/types/utilities';
 import {DateTime, Duration, DurationLikeObject} from 'luxon';
-import {setThreadFollow} from 'mattermost-redux/actions/threads';
 import {General} from 'mattermost-redux/constants';
 import {getRedirectChannelNameForTeam} from 'mattermost-redux/selectors/entities/channels';
 import {getCurrentRelativeTeamUrl, getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {IntlShape} from 'react-intl';
 import {parseSemVer} from 'semver-parser';
 import type CallClient from 'src/clients/call';
@@ -28,11 +26,9 @@ import {notificationSounds} from 'src/webapp_globals';
 
 import {logDebug, logErr, logInfo, logWarn} from './log';
 import {pluginId, version as pluginVersion} from './manifest';
-import {threadIDForCallInChannel} from './selectors';
 import JoinSelfSound from './sounds/join_self.mp3';
 import JoinUserSound from './sounds/join_user.mp3';
 import LeaveSelfSound from './sounds/leave_self.mp3';
-import {Store} from './types/mattermost-webapp';
 
 export function getPluginPath() {
     return `${window.basename || ''}/plugins/${pluginId}`;
@@ -369,19 +365,6 @@ export function playSound(name: string) {
         audio.src = '';
         audio.remove();
     };
-}
-
-export async function followThread(store: Store, channelID: string, teamID?: string) {
-    if (!teamID) {
-        logDebug('followThread: no team for channel');
-        return;
-    }
-    const threadID = threadIDForCallInChannel(store.getState(), channelID);
-    if (threadID) {
-        store.dispatch(setThreadFollow(getCurrentUserId(store.getState()), teamID, threadID, true));
-    } else {
-        logErr('Unable to follow call\'s thread, not registered in store');
-    }
 }
 
 export function shouldRenderDesktopWidget() {

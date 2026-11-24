@@ -17,7 +17,9 @@ import {
 import {logErr} from 'src/log';
 import type {MediaDevices} from 'src/types/types';
 
-const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectionProps>(({deviceType, devices}: DevicesSelectionProps, ref) => {
+const AUDIO_DEVICES_MESSAGES_ID = 'audioDevicesMessages';
+
+const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectionProps>(({deviceType, devices, hasError}: DevicesSelectionProps, ref) => {
     const {formatMessage} = useIntl();
     const [selectedOption, setSelectedOption] = useState<SelectOption|null>(null);
 
@@ -89,6 +91,8 @@ const AudioDevicesSelection = forwardRef<DevicesSelectionHandle, DevicesSelectio
             <ReactSelect
                 inputId={deviceType + 'Select'}
                 aria-labelledby={deviceType + 'Label'}
+                aria-invalid={hasError}
+                aria-errormessage={hasError ? AUDIO_DEVICES_MESSAGES_ID : undefined}
                 className='react-select singleSelect devices_settings_select'
                 classNamePrefix='react-select'
                 options={options}
@@ -207,16 +211,22 @@ export default function AudioDevicesSettingsSection() {
                             <AudioDevicesSelection
                                 deviceType='inputs'
                                 devices={devices.inputs}
+                                hasError={loadFailed}
                                 ref={audioInputsRef}
                             />
                             <AudioDevicesSelection
                                 deviceType='outputs'
                                 devices={devices.outputs}
+                                hasError={loadFailed}
                                 ref={audioOutputsRef}
                             />
                             {loadFailed && (
-                                <span className='devices_settings_error'>
-                                    {formatMessage({defaultMessage: 'Unable to load audio devices. Make sure a microphone is connected and that Mattermost is allowed to use it.'})}
+                                <span
+                                    id={AUDIO_DEVICES_MESSAGES_ID}
+                                    className='devices_settings_error'
+                                    role='alert'
+                                >
+                                    {formatMessage({defaultMessage: 'Couldn\'t load your microphones and speakers. Make sure a microphone is connected and that Mattermost is allowed to use it.'})}
                                 </span>
                             )}
                             <Description>{description}</Description>

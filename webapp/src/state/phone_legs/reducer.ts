@@ -3,13 +3,13 @@
 
 import {Reducer} from 'redux';
 import {CALL_END, UN_INITIALIZED} from 'src/state/session/action_types';
-import {SIPCallState} from 'src/types/types';
+import {PhoneLeg} from 'src/types/types';
 
-import {SIP_CALL_STATUS_CHANGED} from './action_types';
+import {PHONE_LEG_STATUS_CHANGED} from './action_types';
 import {Actions} from './actions';
 
 export type State = {
-    [channelID: string]: SIPCallState;
+    [channelID: string]: PhoneLeg;
 }
 
 const emptyState: State = {};
@@ -21,7 +21,7 @@ export const reducer: Reducer<State, Actions> = (state = emptyState, action): St
     case UN_INITIALIZED:
         return emptyState;
 
-    case SIP_CALL_STATUS_CHANGED: {
+    case PHONE_LEG_STATUS_CHANGED: {
         const {channelID, status, now} = action.data;
         const current = state[channelID];
 

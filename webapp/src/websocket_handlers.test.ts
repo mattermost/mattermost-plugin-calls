@@ -28,8 +28,10 @@ jest.mock('src/phone_call', () => ({
 }));
 jest.mock('./selectors', () => ({
     channelIDForCurrentCall: jest.fn(),
-    profilesInCurrentCallMap: jest.fn(() => ({})),
     ringingEnabled: jest.fn(() => false),
+}));
+jest.mock('src/state/session/selectors', () => ({
+    profilesInCurrentCallMap: jest.fn(() => ({})),
 }));
 jest.mock('./utils', () => ({
     getCallsClient: jest.fn(),

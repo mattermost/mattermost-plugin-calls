@@ -27,22 +27,23 @@ import {
     hostIDForCurrentCall,
     isCurrentCallPhoneCall,
     isCurrentDMCallInCallingState,
-    isCurrentPhoneCallActive,
-    isCurrentPhoneCallRinging,
     isRecordingInCurrentCall,
-    profilesInCurrentCallMap,
     recentlyJoinedUsersInCurrentCall,
     recordingForCurrentCall,
     recordingsEnabled,
-    screenSharingSessionForCurrentCall,
-    sessionForCurrentCall,
-    sessionsForOtherUsersInCall,
-    sessionsInCurrentCall,
-    sessionsInCurrentCallMap,
     sortedIncomingCalls,
     threadIDForCallInChannel,
     transcriptionsEnabled,
 } from 'src/selectors';
+import {isCurrentPhoneCallActive, isCurrentPhoneCallRinging} from 'src/state/phone_legs/selectors';
+import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
+import {
+    profilesInCurrentCallMap,
+    sessionForCurrentCall,
+    sessionsForOtherUsersInCall,
+    sessionsInCurrentCall,
+    sessionsInCurrentCallMap,
+} from 'src/state/session/selectors';
 import {alphaSortSessions, getUserIdFromDM, isDMChannel, stateSortSessions} from 'src/utils';
 import {modals} from 'src/webapp_globals';
 

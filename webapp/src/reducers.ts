@@ -6,17 +6,20 @@
 import {CallJobState, LiveCaption, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
 import {combineReducers} from 'redux';
 import {MAX_NUM_REACTIONS_IN_REACTION_STREAM} from 'src/constants';
+import {reducer as cameraOnIDs} from 'src/state/camera_on_ids/reducer';
+import {reducer as phoneLegs} from 'src/state/phone_legs/reducer';
 import {reducer as screenSharingIDs} from 'src/state/screen_sharing_ids/reducer';
 import {
     CALL_END,
+    LOCAL_SESSION_CLOSE,
     UN_INITIALIZED,
     USER_JOINED,
     USER_LEFT,
     USER_REACTED,
     USER_REACTED_TIMEOUT,
 } from 'src/state/session/action_types';
+import {ActionLocalSessionClose} from 'src/state/session/actions';
 import {reducer as sessions} from 'src/state/session/reducer';
-import {reducer as sipCallStates} from 'src/state/sip_call_state/reducer';
 import {
     CallsConfig,
     CallsConfigDefault,
@@ -53,7 +56,6 @@ import {
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
     LIVE_CAPTIONS_ENABLED,
-    LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
     RECEIVED_CALLS_USER_PREFERENCES,
@@ -301,13 +303,6 @@ export type callsJobState = {
     [callID: string]: CallJobState;
 }
 
-type localSessionCloseAction = {
-    type: string;
-    data: {
-        channelID: string;
-    };
-}
-
 type jobStateAction = {
     type: string;
     data: {
@@ -324,12 +319,12 @@ type disclaimerDismissedAction = {
     };
 }
 
-const recordings = (state: callsJobState = {}, action: jobStateAction | localSessionCloseAction | disclaimerDismissedAction) => {
+const recordings = (state: callsJobState = {}, action: jobStateAction | ActionLocalSessionClose | disclaimerDismissedAction) => {
     switch (action.type) {
     case UN_INITIALIZED:
         return {};
     case LOCAL_SESSION_CLOSE: {
-        const theAction = action as localSessionCloseAction;
+        const theAction = action as ActionLocalSessionClose;
         const nextState = {...state};
         delete nextState[theAction.data.channelID];
         return nextState;
@@ -799,8 +794,9 @@ const rootReducer = combineReducers({
     calls,
     hosts,
     dmCalleeAnsweredAt,
-    sipCallStates,
+    phoneLegs,
     screenSharingIDs,
+    cameraOnIDs,
     expandedView,
     switchCallModal,
     screenSourceModal,
