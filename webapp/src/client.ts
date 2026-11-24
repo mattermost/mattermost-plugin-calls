@@ -150,6 +150,9 @@ export default class CallsClient extends EventEmitter {
                 this.videoDevices = devices.filter((device) => device.kind === 'videoinput');
             }
 
+            // The full device list above can get truncated in exported logs so we log a compact summary.
+            logDebug(`device counts: audioinput=${inputs.length} audiooutput=${outputs.length} videoinput=${devices.filter((device) => device.kind === 'videoinput').length} (enableVideo=${this.config.enableVideo})`);
+
             if (this.currentAudioInputDevice) {
                 await this.handleAudioDeviceFallback('input');
             }

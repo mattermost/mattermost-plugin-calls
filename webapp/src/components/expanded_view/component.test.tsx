@@ -268,6 +268,56 @@ describe('ExpandedView', () => {
             expect(screen.getByText(bannerText)).toBeInTheDocument();
         });
     });
+
+    // Only DM calls have video. In any other call the client does not track video devices, so its
+    // list is always empty and that must never be reported as a missing camera.
+    describe('missing video input banner', () => {
+        const bannerText = 'Unable to find a valid video input device. Try plugging in a video input device.';
+
+        // With no audio devices the missing-audio banner would be shown instead and mask this one.
+        beforeEach(() => {
+            Object.assign(window.callsClient as object, {
+                getAudioDevices: () => ({inputs: [{deviceId: 'mic'}], outputs: []}),
+                getVideoDevices: () => [],
+            });
+        });
+
+        const emitDeviceChange = (videoDevices: unknown[]) => {
+            const onMock = window.callsClient!.on as unknown as jest.Mock;
+            const handler = onMock.mock.calls.find(([ev]) => ev === 'devicechange')![1];
+            act(() => handler({inputs: [{deviceId: 'mic'}], outputs: []}, videoDevices));
+        };
+
+        test('is not shown on mount in a call without video', () => {
+            renderExpandedView([stubSession('session-1', 'user-id')], {enableVideo: false}, true);
+
+            expect(screen.queryByText(bannerText)).not.toBeInTheDocument();
+        });
+
+        test('is not shown after a device change in a call without video', () => {
+            renderExpandedView([stubSession('session-1', 'user-id')], {enableVideo: false}, true);
+
+            emitDeviceChange([]);
+
+            expect(screen.queryByText(bannerText)).not.toBeInTheDocument();
+        });
+
+        test('is shown after a device change leaves a video call without cameras, and clears when one returns', () => {
+            renderExpandedView([stubSession('session-1', 'user-id')], {enableVideo: true}, true);
+
+            emitDeviceChange([]);
+            expect(screen.getByText(bannerText)).toBeInTheDocument();
+
+            emitDeviceChange([{deviceId: 'cam'}]);
+            expect(screen.queryByText(bannerText)).not.toBeInTheDocument();
+        });
+
+        test('is shown on mount in a video call without cameras', () => {
+            renderExpandedView([stubSession('session-1', 'user-id')], {enableVideo: true}, true);
+
+            expect(screen.getByText(bannerText)).toBeInTheDocument();
+        });
+    });
 });
 
 describe('isActiveElementInteractable', () => {
