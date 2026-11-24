@@ -7,7 +7,7 @@ import {CALL_HOST, CALL_RECORDING_STATE, CALL_STATE, LIVE_CAPTION, USER_JOINED_T
 import {CALL_EVENT} from 'src/clients/call/constants';
 import {CameraState} from 'src/clients/call/types';
 import reducer from 'src/reducers';
-import {USER_CAMERA_ON} from 'src/state/camera_on_ids/action_types';
+import {USER_CAMERA_OFF, USER_CAMERA_ON} from 'src/state/camera_on_ids/action_types';
 import {PHONE_LEG_STATUS_CHANGED} from 'src/state/phone_legs/action_types';
 import {USER_SCREEN_OFF, USER_SCREEN_ON} from 'src/state/screen_sharing_ids/action_types';
 import {
@@ -70,13 +70,21 @@ describe('syncCallClientToStore', () => {
 
         client.emit(CALL_EVENT.MUTE, 'session-1', 'user-1');
         client.emit(CALL_EVENT.UNMUTE, 'session-1', 'user-1');
-        client.emit(CALL_EVENT.CAMERA_CHANGED, 'session-1', 'user-1', CameraState.Ready);
+        client.setCamera('session-1', {state: CameraState.Ready, track: null});
 
         expect(store.actions).toEqual([
             expect.objectContaining({type: USER_MUTED, data: expect.objectContaining({channelID: 'channel-id', session_id: 'session-1'})}),
             expect.objectContaining({type: USER_UNMUTED, data: expect.objectContaining({channelID: 'channel-id', session_id: 'session-1'})}),
             expect.objectContaining({type: USER_CAMERA_ON, data: expect.objectContaining({channelID: 'channel-id', session_id: 'session-1'})}),
         ]);
+    });
+
+    test('syncs a camera turning off', () => {
+        sync();
+
+        client.setCamera('session-1', {state: CameraState.Off, track: null});
+
+        expect(store.actions).toEqual([{type: USER_CAMERA_OFF, data: {channelID: 'channel-id', session_id: 'session-1', userID: 'user-session-1'}}]);
     });
 
     test('reads the channel from getClient when each event arrives', () => {
@@ -130,7 +138,7 @@ describe('syncCallClientToStore', () => {
     ])('ends screen sharing for %s', (_, unshareStoreSharer, sessionID) => {
         sync({unshareStoreSharer});
 
-        client.emit(CALL_EVENT.SCREEN_SHARING_CHANGED, null);
+        client.setScreenShare(null);
 
         expect(store.actions).toContainEqual(expect.objectContaining({type: USER_SCREEN_OFF, data: expect.objectContaining({session_id: sessionID})}));
     });
@@ -139,15 +147,18 @@ describe('syncCallClientToStore', () => {
         store = makeStore({withSharer: false});
         sync();
 
-        client.emit(CALL_EVENT.SCREEN_SHARING_CHANGED, null);
+        client.setScreenShare(null);
 
         expect(store.actions).toContainEqual(expect.objectContaining({type: USER_SCREEN_OFF, data: expect.objectContaining({session_id: ''})}));
     });
 
-    test('starts screen sharing for the session that shares', () => {
+    test.each([
+        ['a remote', false],
+        ['a local', true],
+    ])('starts screen sharing for %s session that shares', (_, isLocal) => {
         sync();
 
-        client.emit(CALL_EVENT.SCREEN_SHARING_CHANGED, {sessionID: 'session-1', userID: 'user-1', isLocal: false, track: null});
+        client.setScreenShare({sessionID: 'session-1', userID: 'user-1', isLocal, track: null});
 
         expect(store.actions).toContainEqual({type: USER_SCREEN_ON, data: {channelID: 'channel-id', session_id: 'session-1', userID: 'user-1'}});
     });
