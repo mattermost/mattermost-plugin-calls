@@ -35,6 +35,7 @@ import {userScreenShared, userScreenUnshared} from 'plugin/state/screen_sharing_
 import {localSessionClose, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/session/actions';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
+    logClientEnvironment,
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
 import {
@@ -266,6 +267,8 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
     } catch (e) {
         throw new Error(`failed to fetch channel data: ${e}`);
     }
+
+    await logClientEnvironment();
 
     connectCall(
         {
