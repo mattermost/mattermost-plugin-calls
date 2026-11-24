@@ -347,16 +347,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     setMissingScreenPermissions = (missing: boolean, forward?: boolean) => {
-        this.setState({
+        this.setState((prevState) => ({
             alerts: {
-                ...this.state.alerts,
+                ...prevState.alerts,
                 missingScreenPermissions: {
-                    ...this.state.alerts.missingScreenPermissions,
+                    ...prevState.alerts.missingScreenPermissions,
                     active: missing,
                     show: missing,
                 },
             },
-        });
+        }));
 
         if (forward && window.opener?.callActions?.setMissingScreenPermissions) {
             window.opener.callActions.setMissingScreenPermissions(missing);

@@ -317,6 +317,29 @@ describe('ExpandedView', () => {
 
             expect(screen.getByText(bannerText)).toBeInTheDocument();
         });
+
+        // The pop-out forwards missing screen permissions from the opener window on mount, which
+        // must not overwrite the alerts already set during mount.
+        test('is shown on mount in a pop-out window that also has missing screen permissions', () => {
+            Object.defineProperty(window, 'opener', {
+                configurable: true,
+                value: {
+                    callsClient: window.callsClient,
+                    currentCallData: {missingScreenPermissions: true},
+                },
+            });
+
+            try {
+                renderExpandedView([stubSession('session-1', 'user-id')], {
+                    enableVideo: true,
+                    history: {block: jest.fn(() => jest.fn())},
+                } as Partial<Props>, true);
+
+                expect(screen.getByText(bannerText)).toBeInTheDocument();
+            } finally {
+                Object.defineProperty(window, 'opener', {configurable: true, value: null});
+            }
+        });
     });
 });
 
