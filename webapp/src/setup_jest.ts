@@ -9,3 +9,6 @@ global.TextEncoder = TextEncoder;
 
 // @ts-ignore
 global.TextDecoder = TextDecoder;
+
+// src/index.tsx registers the plugin as soon as it is imported.
+window.registerPlugin = jest.fn();

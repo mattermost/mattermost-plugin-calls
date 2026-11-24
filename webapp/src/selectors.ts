@@ -56,7 +56,7 @@ import {pluginId} from './manifest';
 
 const pluginReduxStateKey = `plugins-${pluginId}`;
 
-const pluginReduxStore = (state: GlobalState): RootState =>
+export const pluginReduxStore = (state: GlobalState): RootState =>
     (state[pluginReduxStateKey as keyof GlobalState] as unknown as RootState) ?? initialRootState;
 
 const callsStateInPluginReduxStore = (state: GlobalState): { [channelID: string]: callState } =>

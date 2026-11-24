@@ -74,7 +74,6 @@ import {
     LIVE_CAPTION,
     LIVE_CAPTION_TIMEOUT_EVENT,
     LIVE_CAPTIONS_ENABLED,
-    LOCAL_SESSION_CLOSE,
     RECEIVED_CALLS_CONFIG,
     RECEIVED_CALLS_CONFIG_ENV_OVERRIDES,
     RECEIVED_CALLS_VERSION_INFO,
@@ -805,15 +804,6 @@ export const setDMCalleeAnsweredAt = (callID: string, answeredAt: number) => ({
         answeredAt,
     },
 });
-
-export const localSessionClose = (channelID: string) => (dispatch: Dispatch) => {
-    dispatch({
-        type: LOCAL_SESSION_CLOSE,
-        data: {
-            channelID,
-        },
-    });
-};
 
 export const callHostChanged = (channelID: string, hostID: string) => (dispatch: Dispatch, getState: GetStateFunc) => {
     applyCallHostChanged({dispatch, getState}, channelID, hostID, getCallIDForChannel(getState(), channelID));

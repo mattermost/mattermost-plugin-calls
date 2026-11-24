@@ -1,7 +1,15 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {AudioCaptureOptions, AudioPresets, ConnectionQuality, TrackPublishDefaults} from 'livekit-client';
+import {
+    AudioCaptureOptions,
+    AudioPresets,
+    ConnectionQuality,
+    TrackPublishDefaults,
+    TrackPublishOptions,
+    VideoCaptureOptions,
+    VideoPresets,
+} from 'livekit-client';
 
 /**
  * CallClient emitted public event names.
@@ -24,6 +32,10 @@ export const CALL_EVENT = {
     DEVICE_CHANGE: 'devicechange',
     DEVICE_FALLBACK: 'devicefallback',
     QUALITY_CHANGED: 'qualityChanged',
+
+    // REMOTE_QUALITY_CHANGED carries another participant's connection quality
+    // (sessionID, userID, quality). QUALITY_CHANGED stays for our own.
+    REMOTE_QUALITY_CHANGED: 'remoteQualityChanged',
     RAISE_HAND: 'raiseHand',
     LOWER_HAND: 'lowerHand',
     REACTION: 'reaction',
@@ -46,6 +58,15 @@ export const CALL_EVENT = {
     // screen event rather than assigned per event, so it is order-independent
     // and self-healing.
     SCREEN_SHARING_CHANGED: 'screenSharingChanged',
+
+    // CAMERA_CHANGED carries a participant's camera state (sessionID, userID,
+    // CameraState), derived from LiveKit publication state. It covers on, off
+    // and loading-to-ready.
+    CAMERA_CHANGED: 'cameraChanged',
+
+    // CAMERA_ERROR carries a CameraError when the local camera fails to start
+    // or is lost mid-call.
+    CAMERA_ERROR: 'cameraError',
 
     // Phone legs bridged in over SIP are not call participants (no USER_JOINED/
     // USER_LEFT). Their progress is reported through these two events instead,
@@ -120,4 +141,15 @@ export const TRACK_PUBLISHING_DEFAULTS: TrackPublishDefaults = {
     dtx: true,
     red: true,
     audioPreset: AudioPresets.speech,
+};
+
+// Passed to each camera publish rather than set in publishDefaults, which
+// applies to every track and would change screen share too.
+export const CAMERA_PUBLISH_OPTIONS: TrackPublishOptions = {
+    simulcast: false,
+    videoEncoding: VideoPresets.h720.encoding,
+};
+
+export const CAMERA_CAPTURE_DEFAULTS: VideoCaptureOptions = {
+    resolution: VideoPresets.h720.resolution,
 };

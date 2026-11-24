@@ -18,8 +18,8 @@ import {Client4} from 'mattermost-redux/client';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTheme, Theme} from 'mattermost-redux/selectors/entities/preferences';
 import configureStore from 'mattermost-redux/store';
-import {getCallActive, getCallsConfig, getCallsVersionInfo, joinUser, leaveUser, loadCallState, localSessionClose, setClientConnecting} from 'plugin/actions';
-import CallClient, {CALL_EVENT, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
+import {getCallActive, getCallsConfig, getCallsVersionInfo, joinUser, leaveUser, loadCallState, setClientConnecting} from 'plugin/actions';
+import CallClient, {CALL_EVENT, CameraState, ConnectPayload, DisconnectReason} from 'plugin/clients/call';
 import type {ScreenSharingSession} from 'plugin/clients/call/types';
 import RestClient from 'plugin/clients/rest';
 import {
@@ -30,8 +30,9 @@ import {pluginId} from 'plugin/manifest';
 import {trackSIPCallStatus} from 'plugin/phone_call';
 import reducer from 'plugin/reducers';
 import {getCallIDForChannel} from 'plugin/selectors';
+import {userCameraChanged} from 'plugin/state/camera_on_ids/actions';
 import {userScreenShared, userScreenUnshared} from 'plugin/state/screen_sharing_ids/actions';
-import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/session/actions';
+import {localSessionClose, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/session/actions';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
     setCallsGlobalCSSVars,
@@ -117,6 +118,9 @@ function connectCall(
         });
         callClient.on(CALL_EVENT.UNMUTE, (sessionID: string, userID: string) => {
             store.dispatch(userUnmuted(callClient.channelID, sessionID, userID));
+        });
+        callClient.on(CALL_EVENT.CAMERA_CHANGED, (sessionID: string, userID: string, cameraState: CameraState) => {
+            store.dispatch(userCameraChanged(callClient.channelID, sessionID, userID, cameraState));
         });
         callClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
             store.dispatch(usersVoiceActivityChanged(callClient.channelID, sessionIDs, userIDs));

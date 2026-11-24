@@ -34,6 +34,7 @@ import {
     STORAGE_CALLS_CLIENT_STATS_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY,
     STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY,
+    STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY,
 } from 'src/constants';
 import {dtmfCode, DTMFDigit} from 'src/dtmf';
 import {flushLogsToAccumulated, logDebug, logErr, logInfo, logWarn} from 'src/log';
@@ -47,6 +48,8 @@ import {
     CALL_EVENT,
     CALL_MESSAGE_TOPICS,
     CALL_TOKEN_API_PATH,
+    CAMERA_CAPTURE_DEFAULTS,
+    CAMERA_PUBLISH_OPTIONS,
     HOST_CONTROL_ACTIONS,
     SCREEN_SHARE_AUDIO_CAPTURE_OPTIONS,
     TRACK_PUBLISHING_DEFAULTS,
@@ -55,6 +58,9 @@ import {
 import {createLowerHandOnUnmute} from './lower_hand_on_unmute';
 import {
     CallRoomMetadata,
+    CameraError,
+    CameraState,
+    CameraTrack,
     CaptionPayload,
     ConnectPayload,
     HostControlPayload,
@@ -141,6 +147,15 @@ export default class CallClient extends EventEmitter {
     private screenSharingSessionID: string | null = null;
     private screenShareTrack: ScreenShareTrack | null = null;
 
+    // The camera state last emitted per session, so handlers that land on the
+    // same state stay silent.
+    private cameraStates = new Map<string, CameraState>();
+
+    // Whether the local camera being off is our doing. LiveKit mutes the camera
+    // itself when it can't restart it on the same device, and that is how an
+    // unplugged camera shows up.
+    private localCameraOffRequested = true;
+
     // Most recent periodic stats sample, captured while the call is live. On a
     // remote-initiated teardown (host ends the call, network drop) the peer
     // connections are already gone by the time we learn about it, so this is the
@@ -162,6 +177,7 @@ export default class CallClient extends EventEmitter {
 
         const room = new LiveKitRoom({
             audioCaptureDefaults: AUDIO_CAPTURE_DEFAULTS,
+            videoCaptureDefaults: CAMERA_CAPTURE_DEFAULTS,
 
             // adaptiveStream/dynacast are disabled so screen shares always send
             // full resolution (MM-69110). adaptiveStream picks a subscriber's
@@ -733,6 +749,132 @@ export default class CallClient extends EventEmitter {
         }
     }
 
+    public isCameraEnabled(): boolean {
+        return this.room?.localParticipant.isCameraEnabled ?? false;
+    }
+
+    // Mirrors LiveKit's own check: an empty source list allows every source.
+    public canPublishCamera(): boolean {
+        const permissions = this.room?.localParticipant.permissions;
+        if (!permissions?.canPublish) {
+            return false;
+        }
+        const sources = permissions.canPublishSources;
+        return sources.length === 0 || sources.includes(Track.sourceToProto(Track.Source.Camera));
+    }
+
+    // Captures with an exact deviceId so that, if the camera is unplugged,
+    // LiveKit's restart can't land on another camera. It mutes the track
+    // instead, which handleTrackMuted reports as Disconnected.
+    public async enableCamera(): Promise<void> {
+        const room = this.room;
+        if (!room || !this.roomConnected) {
+            logWarn('CallClient: enableCamera called while not connected');
+            return;
+        }
+        if (!this.canPublishCamera()) {
+            logWarn('CallClient: enableCamera called without permission to publish the camera');
+            return;
+        }
+        if (this.isCameraEnabled()) {
+            return;
+        }
+
+        try {
+            // Not asking LiveKit to unlock labels, which opens the camera just to
+            // list it. Until permission is granted the IDs can be empty, so the
+            // capture then goes without an exact device.
+            const devices = await LiveKitRoom.getLocalDevices('videoinput', false);
+            if (devices.length === 0) {
+                logDebug('CallClient: no camera found');
+                this.emit(CALL_EVENT.CAMERA_ERROR, CameraError.NotFound);
+                return;
+            }
+            const deviceId = this.getStoredVideoInputDeviceId(devices) ?? devices.find((dev) => dev.deviceId)?.deviceId;
+
+            this.localCameraOffRequested = false;
+
+            // Turning the camera back on unmutes the existing publication, which
+            // ignores the capture options, so point it at the device first. On a
+            // muted track this only updates its constraints.
+            if (deviceId && room.localParticipant.getTrackPublication(Track.Source.Camera)) {
+                await room.switchActiveDevice('videoinput', deviceId, true);
+            }
+            await room.localParticipant.setCameraEnabled(true, deviceId ? {deviceId: {exact: deviceId}} : undefined, CAMERA_PUBLISH_OPTIONS);
+            logDebug('CallClient: camera enabled', {deviceId});
+        } catch (err) {
+            this.localCameraOffRequested = true;
+            this.emitCameraError('enabling camera failed', err);
+        }
+    }
+
+    // Mutes rather than unpublishes; LiveKit also stops the device, so the
+    // camera light goes off.
+    public async disableCamera(): Promise<void> {
+        if (!this.room) {
+            return;
+        }
+
+        this.localCameraOffRequested = true;
+        try {
+            await this.room.localParticipant.setCameraEnabled(false);
+            logDebug('CallClient: camera disabled');
+        } catch (err) {
+            logErr('CallClient: disabling camera failed', err);
+        }
+    }
+
+    // Saved only once the switch succeeds, so a failure keeps the previous choice.
+    public async setVideoInputDevice(device: MediaDeviceInfo): Promise<void> {
+        try {
+            if (this.room?.localParticipant.getTrackPublication(Track.Source.Camera)) {
+                const switched = await this.room.switchActiveDevice('videoinput', device.deviceId, true);
+                if (!switched) {
+                    logWarn('CallClient: camera device switch did not take effect', {deviceId: device.deviceId, label: device.label});
+                    return;
+                }
+            }
+
+            window.localStorage.setItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, JSON.stringify({
+                deviceId: device.deviceId,
+                label: device.label,
+            }));
+            logDebug('CallClient: camera device set', {deviceId: device.deviceId, label: device.label});
+        } catch (err) {
+            this.emitCameraError('switching camera device failed', err);
+        }
+    }
+
+    private emitCameraError(message: string, err: unknown) {
+        const cameraError = this.toCameraError(err);
+        if (cameraError === CameraError.PermissionDenied) {
+            logDebug(`CallClient: ${message}, camera permission denied`);
+        } else {
+            logErr(`CallClient: ${message}`, {cameraError, err});
+        }
+        this.emit(CALL_EVENT.CAMERA_ERROR, cameraError);
+    }
+
+    private toCameraError(err: unknown): CameraError {
+        const failure = MediaDeviceFailure.getFailure(err);
+        switch (failure) {
+        case MediaDeviceFailure.PermissionDenied:
+            return CameraError.PermissionDenied;
+        case MediaDeviceFailure.NotFound:
+            return CameraError.NotFound;
+        case MediaDeviceFailure.DeviceInUse:
+            return CameraError.DeviceInUse;
+        case MediaDeviceFailure.Other:
+        case undefined:
+            return CameraError.Other;
+        default: {
+            const unhandled: never = failure;
+            logWarn('CallClient: unknown media device failure', unhandled);
+            return CameraError.Other;
+        }
+        }
+    }
+
     public async setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
         if (store) {
             window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({
@@ -821,6 +963,11 @@ export default class CallClient extends EventEmitter {
             }
         }
         return null;
+    }
+
+    public getCameraTrack(sessionID: string): CameraTrack {
+        const participant = this.participantForSession(sessionID);
+        return participant ? this.cameraTrackFor(participant) : {state: CameraState.Off, track: null};
     }
 
     public getRemoteVoiceTracks(): MediaStreamTrack[] {
@@ -1016,9 +1163,9 @@ export default class CallClient extends EventEmitter {
     }
 
     /**
-     * Emits the LiveKit-owned per-participant state — mic mute and raised hand —
-     * that the server does not track. Layered on top of an already-created
-     * session; does NOT emit USER_JOINED.
+     * Emits the LiveKit-owned per-participant state — mic mute, raised hand and
+     * camera — that the server does not track. Layered on top of an
+     * already-created session; does NOT emit USER_JOINED.
      */
     private emitLiveKitOwnedState(participant: Participant) {
         const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
@@ -1030,10 +1177,12 @@ export default class CallClient extends EventEmitter {
         if (raisedHand > 0) {
             this.emit(CALL_EVENT.RAISE_HAND, sessionID, userID, raisedHand);
         }
+
+        this.emitCameraState(participant, {force: true});
     }
 
     /**
-     * Re-emits the LiveKit-owned mute + raised-hand state for every current
+     * Re-emits the LiveKit-owned mute, raised-hand and camera state for every current
      * participant, without re-emitting USER_JOINED (so existing sessions keep their
      * voice/reaction state). Used by the expanded-view popout to overlay accurate
      * state on top of its WS call_state seed, which carries stale unmuted/raised_hand
@@ -1177,6 +1326,8 @@ export default class CallClient extends EventEmitter {
         this.stopStatsPolling();
         this.lowerHandTimer.dispose();
         this.detachAllRemoteAudio();
+        this.cameraStates.clear();
+        this.localCameraOffRequested = true;
 
         this.emit(CALL_EVENT.DISCONNECTED, reason);
 
@@ -1207,10 +1358,16 @@ export default class CallClient extends EventEmitter {
     /**
      * Fires when:
      * - our mic track is created and published.
+     * - our camera is turned on for the first time.
      * - we start sharing our screen.
      * Since this is for us, we are already subscribed to our own tracks as soon as we publish them.
      */
     private handleLocalTrackPublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
+        if (localTrackPublication.source === Track.Source.Camera) {
+            logDebug('CallClient: local camera track published', this.trackPubSummary(localTrackPublication));
+            this.emitCameraState(localParticipant);
+        }
+
         if (localTrackPublication.source === Track.Source.Microphone) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
             this.emit(localTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
@@ -1240,13 +1397,18 @@ export default class CallClient extends EventEmitter {
 
     /**
      * Fires when:
-     * - our mic track is fully torn down (disconnect, explicit unpublish).
+     * - our mic or camera track is fully torn down (disconnect, explicit unpublish).
      * - we stop sharing our screen.
      * - the browser's native "Stop sharing" bar ends the capture. LiveKit unpublishes
      *   ended screen tracks itself, so we don't set an onended handler of our own.
      */
     private handleLocalTrackUnpublished(localTrackPublication: LocalTrackPublication, localParticipant: LocalParticipant) {
         const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(localParticipant);
+
+        if (localTrackPublication.source === Track.Source.Camera) {
+            logDebug(`CallClient: local camera track unpublished for user ${userID}`, this.trackPubSummary(localTrackPublication));
+            this.emitCameraState(localParticipant, {state: CameraState.Off});
+        }
 
         if (localTrackPublication.source === Track.Source.Microphone) {
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
@@ -1275,10 +1437,16 @@ export default class CallClient extends EventEmitter {
     /**
      * Fires when:
      * - a remote participant publishes a mic track (e.g., they unmute for the first time).
+     * - a remote participant turns their camera on for the first time.
      * - a remote participant publishes a screen-share track.
      */
     private handleRemoteTrackPublished(remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
         const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
+
+        if (remoteTrackPublication.source === Track.Source.Camera) {
+            logDebug(`CallClient: remote camera stream announced for user ${userID}`, this.trackPubSummary(remoteTrackPublication));
+            this.emitCameraState(remoteParticipant);
+        }
 
         if (remoteTrackPublication.source === Track.Source.Microphone) {
             this.emit(remoteTrackPublication.isMuted ? CALL_EVENT.MUTE : CALL_EVENT.UNMUTE, sessionID, userID);
@@ -1298,12 +1466,18 @@ export default class CallClient extends EventEmitter {
      * Fires when
      * - a remote participant's audio bits start flowing to us (mic or screen-share audio). We play it through LiveKit's attach().
      * - a remote participant's screen-share video starts flowing to us. The track goes to the widget for `<video>` playback.
+     * - a remote participant's camera starts flowing to us. Tiles read it through getCameraTrack.
      */
     private handleRemoteTrackSubscribed(remoteTrack: RemoteTrack, _remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
         const {userID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
 
         if (remoteTrack.source === Track.Source.Microphone || remoteTrack.source === Track.Source.ScreenShareAudio) {
             this.attachRemoteAudio(remoteTrack, userID);
+        }
+
+        if (remoteTrack.source === Track.Source.Camera) {
+            logDebug(`CallClient: remote camera stream subscribed for user ${userID}`, this.trackSummary(remoteTrack));
+            this.emitCameraState(remoteParticipant);
         }
 
         if (remoteTrack.source === Track.Source.ScreenShare || remoteTrack.source === Track.Source.ScreenShareAudio) {
@@ -1317,8 +1491,16 @@ export default class CallClient extends EventEmitter {
      * publication being removed. Folded into the same recompute so the derived
      * sharer never outlives the media.
      */
-    private handleRemoteTrackUnsubscribed(remoteTrack: RemoteTrack, _remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
+    private handleRemoteTrackUnsubscribed(remoteTrack: RemoteTrack, remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
         this.detachRemoteAudio(remoteTrack);
+
+        // LiveKit fires this before clearing the publication's track, so the
+        // state is not derived from the publication here.
+        if (remoteTrack.source === Track.Source.Camera) {
+            const {userID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
+            logDebug(`CallClient: remote camera stream unsubscribed for user ${userID}`, this.trackSummary(remoteTrack));
+            this.emitCameraState(remoteParticipant, {state: remoteTrackPublication.isMuted ? CameraState.Off : CameraState.Loading});
+        }
 
         if (remoteTrack.source === Track.Source.ScreenShare || remoteTrack.source === Track.Source.ScreenShareAudio) {
             const {userID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
@@ -1329,11 +1511,16 @@ export default class CallClient extends EventEmitter {
 
     /**
      * Fires when -
-     * a remote participant tears down their mic track (rare; usually only on leave).
+     * a remote participant tears down their mic or camera track (rare; usually only on leave).
      * a remote participant tears down their screen-share track.
      */
     private handleRemoteTrackUnpublished(remoteTrackPublication: RemoteTrackPublication, remoteParticipant: RemoteParticipant) {
         const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(remoteParticipant);
+
+        if (remoteTrackPublication.source === Track.Source.Camera) {
+            logDebug(`CallClient: remote camera stream unpublished for user ${userID}`, this.trackPubSummary(remoteTrackPublication));
+            this.emitCameraState(remoteParticipant, {state: CameraState.Off});
+        }
 
         if (remoteTrackPublication.source === Track.Source.Microphone) {
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
@@ -1478,10 +1665,22 @@ export default class CallClient extends EventEmitter {
     }
 
     /**
-     * Fires when any participant (local or remote) mutes an existing mic publication.
-     * Emits MUTE keyed by that participant's sid + identity.
+     * Fires when any participant (local or remote) mutes an existing mic or camera publication.
+     * Emits MUTE or CAMERA_CHANGED keyed by that participant's sid + identity.
      */
     private handleTrackMuted(trackPublication: TrackPublication, participant: Participant) {
+        if (trackPublication.source === Track.Source.Camera) {
+            const {userID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+            logDebug(`CallClient: camera muted for user ${userID}`, this.trackPubSummary(trackPublication));
+            this.emitCameraState(participant);
+
+            if (participant === this.room?.localParticipant && !this.localCameraOffRequested) {
+                this.localCameraOffRequested = true;
+                logWarn('CallClient: camera stopped without being turned off, treating it as disconnected', this.trackPubSummary(trackPublication));
+                this.emit(CALL_EVENT.CAMERA_ERROR, CameraError.Disconnected);
+            }
+        }
+
         if (trackPublication.source === Track.Source.Microphone) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.MUTE, sessionID, userID);
@@ -1495,10 +1694,16 @@ export default class CallClient extends EventEmitter {
     }
 
     /**
-     * Fires when any participant (local or remote) unmutes an existing mic publication.
-     * Emits UNMUTE keyed by that participant's sid + identity.
+     * Fires when any participant (local or remote) unmutes an existing mic or camera publication.
+     * Emits UNMUTE or CAMERA_CHANGED keyed by that participant's sid + identity.
      */
     private handleTrackUnmuted(trackPublication: TrackPublication, participant: Participant) {
+        if (trackPublication.source === Track.Source.Camera) {
+            const {userID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+            logDebug(`CallClient: camera unmuted for user ${userID}`, this.trackPubSummary(trackPublication));
+            this.emitCameraState(participant);
+        }
+
         if (trackPublication.source === Track.Source.Microphone) {
             const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
             this.emit(CALL_EVENT.UNMUTE, sessionID, userID);
@@ -1566,6 +1771,8 @@ export default class CallClient extends EventEmitter {
                 type: 'human',
                 identity: remoteParticipant.identity,
             });
+            this.emitCameraState(remoteParticipant, {state: CameraState.Off});
+            this.cameraStates.delete(sessionID);
             this.emit(CALL_EVENT.USER_LEFT, sessionID, userID);
 
             // A disconnect removes the participant's publications without firing
@@ -1742,7 +1949,12 @@ export default class CallClient extends EventEmitter {
      * Fires when LiveKit encounters an error while attempting to create a media track.
      * It throws for any device error, could be audio, video, or screen share.
      */
-    private handleMediaDevicesError(err: Error) {
+    private handleMediaDevicesError(err: Error, kind?: MediaDeviceKind) {
+        // Camera failures are reported through CAMERA_ERROR.
+        if (kind === 'videoinput') {
+            return;
+        }
+
         if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
             // We already handle this error type in the respective handlers
             return;
@@ -1869,12 +2081,24 @@ export default class CallClient extends EventEmitter {
 
     /**
      * Fires when LiveKit publishes a new ConnectionQuality value for any participant.
-     * We only surface the local participant's quality and not the remote participants' quality.
+     * Our own quality goes out as QUALITY_CHANGED, everyone else's as REMOTE_QUALITY_CHANGED.
      */
     private handleConnectionQualityChanged(quality: ConnectionQuality, participant: Participant) {
-        if (this.room && this.room.localParticipant === participant) {
-            this.emit(CALL_EVENT.QUALITY_CHANGED, quality);
+        if (!this.room) {
+            return;
         }
+
+        if (this.room.localParticipant === participant) {
+            this.emit(CALL_EVENT.QUALITY_CHANGED, quality);
+            return;
+        }
+
+        if (this.isBotParticipant(participant) || this.isSipParticipant(participant)) {
+            return;
+        }
+
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+        this.emit(CALL_EVENT.REMOTE_QUALITY_CHANGED, sessionID, userID, quality);
     }
 
     private async createSession(connectPayload: ConnectPayload): Promise<LiveKitSessionResponse> {
@@ -1973,6 +2197,36 @@ export default class CallClient extends EventEmitter {
         return participant.getTrackPublication(Track.Source.ScreenShare)?.videoTrack ?? null;
     }
 
+    private cameraTrackFor(participant: Participant): CameraTrack {
+        const publication = participant.getTrackPublication(Track.Source.Camera);
+        if (!publication || publication.isMuted) {
+            return {state: CameraState.Off, track: null};
+        }
+        if (!publication.isSubscribed || !publication.videoTrack) {
+            return {state: CameraState.Loading, track: null};
+        }
+        return {state: CameraState.Ready, track: publication.videoTrack};
+    }
+
+    // Emits CAMERA_CHANGED when the participant's camera state differs from the
+    // last one emitted. `state` overrides the derived one for events that fire
+    // before LiveKit updates the publication; `force` re-emits for resyncs.
+    private emitCameraState(participant: Participant, {state, force = false}: {state?: CameraState; force?: boolean} = {}) {
+        if (this.isBotParticipant(participant) || this.isSipParticipant(participant)) {
+            return;
+        }
+
+        const {userID, sessionID} = this.parseUserIdAndSessionIdFromIdentity(participant);
+        const cameraState = state ?? this.cameraTrackFor(participant).state;
+        if (!force && this.cameraStates.get(sessionID) === cameraState) {
+            return;
+        }
+        this.cameraStates.set(sessionID, cameraState);
+
+        logDebug('CallClient: camera state changed', {sessionID, userID, state: cameraState});
+        this.emit(CALL_EVENT.CAMERA_CHANGED, sessionID, userID, cameraState);
+    }
+
     /**
      * Whether a participant is the recording/transcribing bot, by comparing the
      * user id in its identity with the bot user id from the join response. Both
@@ -2025,6 +2279,15 @@ export default class CallClient extends EventEmitter {
         const inputs = await LiveKitRoom.getLocalDevices('audioinput');
         const outputs = await LiveKitRoom.getLocalDevices('audiooutput');
         return {inputs, outputs};
+    }
+
+    /**
+     * Lists cameras without a call, e.g. for user settings. Doesn't ask for camera
+     * permission by default, since that opens the camera just to read labels; until
+     * access is granted the browser can return devices with empty labels and IDs.
+     */
+    public static async getLocalVideoDevices(requestPermissions = false): Promise<MediaDeviceInfo[]> {
+        return LiveKitRoom.getLocalDevices('videoinput', requestPermissions);
     }
 
     private async enumerateDevices(): Promise<MediaDevices> {
@@ -2111,5 +2374,37 @@ export default class CallClient extends EventEmitter {
             logWarn('CallClient: listing audio inputs failed, using the stored input as is', err);
             return stored.deviceId;
         }
+    }
+
+    // Kept apart from the audio helpers: the camera has no legacy raw-string format.
+    private readStoredVideoInputDevice(): {deviceId: string; label?: string} | null {
+        const data = window.localStorage.getItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY);
+        if (!data) {
+            return null;
+        }
+
+        try {
+            const stored = JSON.parse(data) as {deviceId?: string; label?: string} | null;
+            return stored?.deviceId ? {deviceId: stored.deviceId, label: stored.label} : null;
+        } catch (err) {
+            logWarn('CallClient: stored camera device failed to parse', err);
+            return null;
+        }
+    }
+
+    // Matches the saved camera by deviceId, then by label, since the browser
+    // can change device IDs between sessions.
+    private getStoredVideoInputDeviceId(devices: MediaDeviceInfo[]): string | undefined {
+        const stored = this.readStoredVideoInputDevice();
+        if (!stored) {
+            return undefined;
+        }
+
+        const match = devices.find((dev) => dev.deviceId === stored.deviceId) ??
+            devices.find((dev) => Boolean(stored.label) && dev.label === stored.label);
+        if (!match) {
+            logDebug('CallClient: stored camera device not found in current inventory', {deviceId: stored.deviceId, label: stored.label});
+        }
+        return match?.deviceId;
     }
 }
