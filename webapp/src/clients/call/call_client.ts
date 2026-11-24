@@ -113,6 +113,28 @@ function mergeStatsReports(reports: RTCStatsReport[]): RTCStatsReport {
 // RTCMonitor cadence.
 const STATS_POLL_INTERVAL_MS = 10_000;
 
+const CAMERA_ERROR_BY_FAILURE: Record<MediaDeviceFailure, CameraError> = {
+    [MediaDeviceFailure.PermissionDenied]: CameraError.PermissionDenied,
+    [MediaDeviceFailure.NotFound]: CameraError.NotFound,
+    [MediaDeviceFailure.DeviceInUse]: CameraError.DeviceInUse,
+    [MediaDeviceFailure.Other]: CameraError.Other,
+};
+
+export function toCameraError(err: unknown): CameraError {
+    const failure = MediaDeviceFailure.getFailure(err);
+    if (!failure) {
+        return CameraError.Other;
+    }
+
+    // LiveKit may add failure types this client doesn't know yet.
+    const cameraError = CAMERA_ERROR_BY_FAILURE[failure];
+    if (!cameraError) {
+        logWarn('CallClient: unknown media device failure', failure);
+        return CameraError.Other;
+    }
+    return cameraError;
+}
+
 // getMicStatus reports these in order: blocked, then missing, then starting.
 type MicState = {
     blocked: boolean;
@@ -891,33 +913,13 @@ export default class CallClient extends EventEmitter {
     }
 
     private emitCameraError(message: string, err: unknown) {
-        const cameraError = this.toCameraError(err);
+        const cameraError = toCameraError(err);
         if (cameraError === CameraError.PermissionDenied) {
             logDebug(`CallClient: ${message}, camera permission denied`);
         } else {
             logErr(`CallClient: ${message}`, {cameraError, err});
         }
         this.emit(CALL_EVENT.CAMERA_ERROR, cameraError);
-    }
-
-    private toCameraError(err: unknown): CameraError {
-        const failure = MediaDeviceFailure.getFailure(err);
-        switch (failure) {
-        case MediaDeviceFailure.PermissionDenied:
-            return CameraError.PermissionDenied;
-        case MediaDeviceFailure.NotFound:
-            return CameraError.NotFound;
-        case MediaDeviceFailure.DeviceInUse:
-            return CameraError.DeviceInUse;
-        case MediaDeviceFailure.Other:
-        case undefined:
-            return CameraError.Other;
-        default: {
-            const unhandled: never = failure;
-            logWarn('CallClient: unknown media device failure', unhandled);
-            return CameraError.Other;
-        }
-        }
     }
 
     public async setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {

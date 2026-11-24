@@ -4,14 +4,14 @@
 import './video_devices_settings_section.scss';
 
 import classNames from 'classnames';
-import {createLocalVideoTrack, LocalVideoTrack, MediaDeviceFailure, TrackEvent, type VideoCaptureOptions} from 'livekit-client';
+import {createLocalVideoTrack, LocalVideoTrack, TrackEvent, type VideoCaptureOptions} from 'livekit-client';
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentUser} from 'mattermost-redux/selectors/entities/users';
 import React, {useEffect, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import ReactSelect from 'react-select';
-import CallClient, {CameraError, CameraState} from 'src/clients/call';
+import CallClient, {CameraError, CameraState, toCameraError} from 'src/clients/call';
 import {CAMERA_CAPTURE_DEFAULTS} from 'src/clients/call/constants';
 import Avatar from 'src/components/avatar/avatar';
 import {useCameraTrack} from 'src/components/use_camera_track';
@@ -47,25 +47,6 @@ const readStoredDevice = (): StoredDevice | null => {
         return JSON.parse(data);
     } catch {
         return null;
-    }
-};
-
-const toCameraError = (err: unknown): CameraError => {
-    const failure = MediaDeviceFailure.getFailure(err);
-    switch (failure) {
-    case MediaDeviceFailure.PermissionDenied:
-        return CameraError.PermissionDenied;
-    case MediaDeviceFailure.NotFound:
-        return CameraError.NotFound;
-    case MediaDeviceFailure.DeviceInUse:
-        return CameraError.DeviceInUse;
-    case MediaDeviceFailure.Other:
-    case undefined:
-        return CameraError.Other;
-    default: {
-        const unhandled: never = failure;
-        return unhandled;
-    }
     }
 };
 

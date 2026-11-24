@@ -12,7 +12,7 @@ import CallClient from 'src/clients/call';
 import {CAMERA_CAPTURE_DEFAULTS} from 'src/clients/call/constants';
 import {CameraState} from 'src/clients/call/types';
 import {STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY, STORAGE_CALLS_MIRROR_VIDEO} from 'src/constants';
-import {logErr} from 'src/log';
+import {logErr, logWarn} from 'src/log';
 import {type FakeCallClient, installFakeCallClient} from 'src/test_utils/fake_call_client';
 import {mockStore} from 'src/testUtils';
 
@@ -29,10 +29,12 @@ jest.mock('src/clients/call', () => ({
     CALL_EVENT: jest.requireActual('src/clients/call/constants').CALL_EVENT,
     CameraError: jest.requireActual('src/clients/call/types').CameraError,
     CameraState: jest.requireActual('src/clients/call/types').CameraState,
+    toCameraError: jest.requireActual('src/clients/call/call_client').toCameraError,
 }));
 
 jest.mock('src/log', () => ({
     logErr: jest.fn(),
+    logWarn: jest.fn(),
 }));
 
 // Wraps the real select so tests can send changes the UI can't produce.
@@ -607,7 +609,7 @@ describe('VideoDevicesSettingsSection', () => {
             expect(await screen.findByText('Couldn\'t start your camera. Try again.')).toBeInTheDocument();
         });
 
-        test('shows the failure type as is when it is newer than this section', async () => {
+        test('shows the generic message for a failure type newer than this client', async () => {
             const getFailure = jest.spyOn(MediaDeviceFailure, 'getFailure').mockReturnValue('FutureFailure' as MediaDeviceFailure);
             createTrack.mockRejectedValueOnce(new DOMException('failed', 'FutureError'));
             renderComponent();
@@ -616,8 +618,10 @@ describe('VideoDevicesSettingsSection', () => {
 
             await userEvent.click(screen.getByRole('button', {name: 'Turn on camera'}));
 
-            expect(await screen.findByText('FutureFailure')).toBeInTheDocument();
-            expectLinkedMessage('FutureFailure');
+            expect(await screen.findByText('Couldn\'t start your camera. Try again.')).toBeInTheDocument();
+            expectLinkedMessage('Couldn\'t start your camera. Try again.');
+            expect(screen.queryByText('FutureFailure')).not.toBeInTheDocument();
+            expect(logWarn).toHaveBeenCalledWith('CallClient: unknown media device failure', 'FutureFailure');
             getFailure.mockRestore();
         });
 
