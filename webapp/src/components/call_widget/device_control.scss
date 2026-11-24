@@ -109,6 +109,82 @@
   }
 }
 
+// The call window's dark controls bar, sized like its other 44px buttons.
+.DeviceControl.DeviceControl--popout {
+  position: relative;
+  border-radius: 8px;
+  background: rgba(var(--button-color-rgb), 0.08);
+  color: rgba(var(--button-color-rgb), 0.56);
+
+  .DeviceControl__toggle,
+  .DeviceControl__chevron {
+    &:hover {
+      background: rgba(var(--button-color-rgb), 0.12);
+      color: var(--button-color);
+    }
+
+    &:focus-visible {
+      outline-color: var(--button-color);
+    }
+  }
+
+  .DeviceControl__toggle {
+    padding: 12px;
+    border-radius: 8px 0 0 8px;
+
+    svg {
+      width: 20px;
+      height: 20px;
+      fill: rgba(var(--button-color-rgb), 0.56);
+    }
+
+    &:hover svg {
+      fill: var(--button-color);
+    }
+  }
+
+  .DeviceControl__chevron {
+    width: 24px;
+    border-radius: 0 8px 8px 0;
+  }
+
+  &.DeviceControl--active {
+    background: rgba(61, 184, 135, 0.16);
+
+    .DeviceControl__toggle {
+      color: rgba(61, 184, 135, 0.8);
+
+      svg {
+        fill: rgba(61, 184, 135, 0.8);
+      }
+    }
+
+    .DeviceControl__toggle:hover,
+    .DeviceControl__chevron:hover {
+      background: rgba(61, 184, 135, 0.2);
+    }
+  }
+
+  &.DeviceControl--disabled {
+    color: rgba(var(--button-color-rgb), 0.32);
+
+    .DeviceControl__toggle svg {
+      fill: rgba(var(--button-color-rgb), 0.32);
+    }
+  }
+
+  .DeviceControl__chevron:disabled {
+    color: rgba(var(--button-color-rgb), 0.32);
+  }
+
+  .DeviceControl__menu {
+    right: auto;
+    left: 0;
+    width: 280px;
+    color: var(--center-channel-color);
+  }
+}
+
 .DeviceControl__tooltipSubtext {
   opacity: 0.56;
 }

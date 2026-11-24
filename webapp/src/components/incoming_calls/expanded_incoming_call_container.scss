@@ -1,0 +1,47 @@
+.ExpandedIncomingCalls {
+  display: flex;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xxxs);
+}
+
+.ExpandedIncomingCall {
+  display: flex;
+  max-width: 360px;
+  align-items: center;
+  padding: var(--spacing-xxxs) var(--spacing-xxxs) var(--spacing-xxxs) var(--spacing-xs);
+  border-radius: var(--radius-pill);
+
+  // Darkened so white text keeps 4.5:1 on the theme's green.
+  background: linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.32)), var(--online-indicator);
+  box-shadow: var(--elevation-2);
+  color: var(--button-color);
+  cursor: pointer;
+  gap: var(--spacing-xs);
+
+  .ExpandedIncomingCall__message {
+    overflow: hidden;
+    min-width: 0;
+    flex: 1;
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font-size: var(--font-size-75);
+    line-height: var(--line-height-75);
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:focus-visible {
+      border-radius: var(--radius-s);
+      outline: 2px solid var(--button-color);
+      outline-offset: 2px;
+    }
+  }
+
+  .ExpandedIncomingCall__join {
+    flex-shrink: 0;
+  }
+}

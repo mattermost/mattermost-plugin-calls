@@ -48,6 +48,7 @@ export type DeviceControlProps = {
     menuOpen: boolean;
     onMenuOpenChange: (open: boolean) => void;
     menuRef?: (el: HTMLUListElement | null) => void;
+    className?: string;
 };
 
 type TooltipTarget = 'toggle' | 'chevron' | null;
@@ -210,7 +211,7 @@ export default function DeviceControl(props: DeviceControlProps) {
             className={classNames('DeviceControl', {
                 'DeviceControl--active': props.active && status === 'ready',
                 'DeviceControl--disabled': toggleDisabled,
-            })}
+            }, props.className)}
             data-status={status}
         >
             <button

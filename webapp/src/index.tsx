@@ -2,6 +2,8 @@
 // See LICENSE.txt for license information.
 
 /* eslint-disable max-lines */
+import '@mattermost/compass-ui/styles';
+
 import {CallChannelState, CallJobState, EmojiData} from '@mattermost/calls-common/lib/types';
 import {PluginAnalyticsRow} from '@mattermost/types/admin';
 import {GlobalState} from '@mattermost/types/store';

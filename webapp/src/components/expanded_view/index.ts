@@ -24,10 +24,12 @@ import {
     areHostControlsAllowed,
     channelForCurrentCall,
     clientConnecting,
+    dmVideoEnabled,
     expandedView,
     getChannelUrlAndDisplayName,
     hostChangeAtForCurrentCall,
     hostIDForCurrentCall,
+    isCurrentCallPhoneCall,
     isCurrentDMCallInCallingState,
     isRecordingInCurrentCall,
     recordingForCurrentCall,
@@ -37,7 +39,9 @@ import {
     transcriptionsEnabled,
 } from 'src/selectors';
 import {userCameraChanged} from 'src/state/camera_on_ids/actions';
+import {isCameraOnForSession} from 'src/state/camera_on_ids/selectors';
 import {localSessionReconnected, localSessionReconnecting, sessionConnectionQualityChanged} from 'src/state/connection_quality/actions';
+import {connectionStateForSession} from 'src/state/connection_quality/selectors';
 import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
 import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
@@ -76,6 +80,8 @@ const mapStateToProps = (state: GlobalState) => {
     const {channelDisplayName} = getChannelUrlAndDisplayName(state, channel);
 
     const thread = getThread(state, threadID);
+    const currentSession = sessionForCurrentCall(state);
+    const otherSessions = sessionsForOtherUsersInCall(state);
 
     return {
         show: expandedView(state),
@@ -84,7 +90,7 @@ const mapStateToProps = (state: GlobalState) => {
         profiles,
         sessions,
         sessionsMap: sessionsInCurrentCallMap(state),
-        currentSession: sessionForCurrentCall(state),
+        currentSession,
         callHostID: hostIDForCurrentCall(state),
         callHostChangeAt: hostChangeAtForCurrentCall(state),
         callRecording: recordingForCurrentCall(state),
@@ -105,9 +111,13 @@ const mapStateToProps = (state: GlobalState) => {
         transcriptionsEnabled: transcriptionsEnabled(state),
         isAdmin: isCurrentUserSystemAdmin(state),
         hostControlsAllowed: areHostControlsAllowed(state),
-        otherSessions: sessionsForOtherUsersInCall(state),
+        otherSessions,
         isDMCalling: isCurrentDMCallInCallingState(state),
         clientConnecting: clientConnecting(state),
+        dmVideoEnabled: dmVideoEnabled(state),
+        isPhoneCall: isCurrentCallPhoneCall(state),
+        isCameraOn: isCameraOnForSession(state, currentSession?.session_id ?? ''),
+        ownConnectionState: connectionStateForSession(state, currentSession?.session_id ?? ''),
     };
 };
 

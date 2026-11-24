@@ -15,13 +15,16 @@ import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {MediaControlBar, MediaController, MediaFullscreenButton} from 'media-chrome/dist/react';
 import React from 'react';
 import {OverlayTrigger, Tooltip} from 'react-bootstrap';
-import {IntlShape} from 'react-intl';
+import {defineMessage, IntlShape, MessageDescriptor} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
-import type {CameraState, DeviceStatus, ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
+import type {CameraError, CameraState, DeviceStatus, ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
+import CameraControl from 'src/components/call_widget/camera_control';
+import DeviceControl, {DeviceControlKind} from 'src/components/call_widget/device_control';
+import {getSelectableDevices, getSelectedAudioInputId} from 'src/components/call_widget/device_selection';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
 import {AudioInputPermissionsErr} from 'src/components/error_modal/error_messages';
 import CallParticipantRHS from 'src/components/expanded_view/call_participant_rhs';
@@ -37,11 +40,13 @@ import CompassIcon from 'src/components/icons/compassIcon';
 import LeaveCallIcon from 'src/components/icons/leave_call_icon';
 import MutedIcon from 'src/components/icons/muted_icon';
 import ParticipantsIcon from 'src/components/icons/participants';
+import RaisedHandIcon from 'src/components/icons/raised_hand';
 import RecordCircleIcon from 'src/components/icons/record_circle';
 import RecordSquareIcon from 'src/components/icons/record_square';
 import ScreenIcon from 'src/components/icons/screen_icon';
 import ShareScreenIcon from 'src/components/icons/share_screen';
 import UnmutedIcon from 'src/components/icons/unmuted_icon';
+import UnraisedHandIcon from 'src/components/icons/unraised_hand';
 import UnshareScreenIcon from 'src/components/icons/unshare_screen';
 import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expanded_incoming_call_container';
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
@@ -61,10 +66,12 @@ import {
     reverseKeyMappings,
     SHARE_UNSHARE_SCREEN,
 } from 'src/shortcuts';
+import type {ConnectionState} from 'src/state/connection_quality/reducer';
 import {ModalData} from 'src/types/mattermost-webapp';
 import {
     CallAlertStates,
     CallAlertStatesDefault,
+    CallAlertType,
     CallJobReduxState,
     MediaDevices,
     RemoveConfirmationData,
@@ -81,11 +88,15 @@ import {
     untranslatable,
 } from 'src/utils';
 import {serverDismissedAt} from 'src/utils/clock_skew';
+import {CallAlertID, CAMERA_ALERT_IDS, CAMERA_ERROR_ALERT_IDS, isVideoMode} from 'src/video_mode';
 import styled, {createGlobalStyle, css} from 'styled-components';
 
+import CallHeader, {HeaderWarning} from './call_header';
 import {CallSettingsButton} from './call_settings';
 import ControlsButton, {CallThreadIcon, MentionsCounter, UnreadDot} from './controls_button';
+import DMVideoStage from './dm_video_stage';
 import GlobalBanner from './global_banner';
+import CallNoticeStack from './notice_stack/call_notice_stack';
 import {ParticipantsGrid} from './participants_grid';
 import {ReactionButton, ReactionButtonRef} from './reaction_button';
 import RecordingInfoPrompt from './recording_info_prompt';
@@ -132,6 +143,10 @@ interface Props extends RouteComponentProps {
     otherSessions: UserSessionState[];
     isDMCalling: boolean;
     clientConnecting: boolean;
+    dmVideoEnabled: boolean;
+    isPhoneCall: boolean;
+    isCameraOn: boolean;
+    ownConnectionState: ConnectionState;
     callHostChanged: (channelID: string, hostID: string) => void;
     userMuted: (channelID: string, sessionID: string, userID: string) => void;
     userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
@@ -161,7 +176,23 @@ interface State {
     alerts: CallAlertStates,
     removeConfirmation: RemoveConfirmationData | null,
     leaveMenuOpen: boolean,
+    deviceMenu: DeviceControlKind | null,
+    audioInputs: MediaDeviceInfo[],
+    currentAudioInputDevice: MediaDeviceInfo | null,
+
+    // The connection state whose notice was dismissed; a change of state shows the notice again.
+    dismissedConnectionState: ConnectionState | null,
 }
+
+const OWN_CONNECTION_MESSAGES: Record<Exclude<ConnectionState, 'good'>, MessageDescriptor> = {
+    poor: defineMessage({defaultMessage: 'Your connection is poor. Video may pause.'}),
+    reconnecting: defineMessage({defaultMessage: 'Reconnecting to the call…'}),
+};
+
+// The host webapp renders the reply box asynchronously, so it may take a moment to appear.
+const CHAT_FOCUS_ATTEMPTS = 20;
+const CHAT_FOCUS_INTERVAL_MS = 50;
+const CHAT_INPUT_SELECTOR = '#sidebar-right textarea, #sidebar-right [contenteditable="true"]';
 
 const StyledMediaController = styled(MediaController)`
     width: 100%;
@@ -199,6 +230,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     private callQualityBannerLocked = false;
     private callClientUnsubscribers: Array<() => void> = [];
     private hasReSyncedLiveKitState = false;
+    private chatFocusTimer?: number;
+    private chatOpenedFromButton = false;
 
     static contextType = window.ProductApi.WebSocketProvider;
     declare context: React.ContextType<typeof window.ProductApi.WebSocketProvider>;
@@ -324,6 +357,10 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             alerts: CallAlertStatesDefault,
             removeConfirmation: null,
             leaveMenuOpen: false,
+            deviceMenu: null,
+            audioInputs: [],
+            currentAudioInputDevice: null,
+            dismissedConnectionState: null,
         };
 
         if (window.opener) {
@@ -452,6 +489,8 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     setAudioDevices = (devices: MediaDevices) => {
         this.setState({
+            audioInputs: devices.inputs,
+            currentAudioInputDevice: getCallsClient()?.currentAudioInputDevice ?? this.state.currentAudioInputDevice,
             alerts: {
                 ...this.state.alerts,
                 missingAudioInput: {
@@ -499,6 +538,59 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
     isHandRaised() {
         return this.props.currentSession ? this.props.currentSession.raised_hand > 0 : false;
+    }
+
+    isVideoMode() {
+        return isVideoMode({
+            dmVideoEnabled: this.props.dmVideoEnabled,
+            channel: this.props.channel,
+            isPhoneCall: this.props.isPhoneCall,
+            clientConnecting: this.props.clientConnecting,
+            canPublishCamera: Boolean(getCallsClient()?.canPublishCamera()),
+        });
+    }
+
+    onDeviceMenuChange = (kind: DeviceControlKind, open: boolean) => {
+        this.setState({deviceMenu: open ? kind : null});
+    };
+
+    onAudioInputDeviceClick = (device: MediaDeviceInfo) => {
+        if (device.deviceId !== this.state.currentAudioInputDevice?.deviceId) {
+            logDebug(`ExpandedView.onAudioInputDeviceClick: switching audio input to '${device.label}'`);
+            getCallsClient()?.setAudioInputDevice(device);
+        }
+        this.setState({currentAudioInputDevice: device});
+    };
+
+    // Only the newest camera error shows, and all of them clear once the camera turns on.
+    setCameraErrorAlert = (alertID: CallAlertID | null) => {
+        this.setState((prevState) => {
+            const alerts = {...prevState.alerts};
+            CAMERA_ALERT_IDS.forEach((id) => {
+                const show = id === alertID;
+                alerts[id] = {active: show, show};
+            });
+            return {alerts};
+        });
+    };
+
+    dismissOwnConnectionNotice = () => {
+        this.setState({dismissedConnectionState: this.props.ownConnectionState});
+    };
+
+    focusChatInput = (attempt = 0) => {
+        const input = document.querySelector<HTMLElement>(CHAT_INPUT_SELECTOR);
+        if (input) {
+            input.focus();
+            return;
+        }
+        if (attempt < CHAT_FOCUS_ATTEMPTS) {
+            this.chatFocusTimer = window.setTimeout(() => this.focusChatInput(attempt + 1), CHAT_FOCUS_INTERVAL_MS);
+        }
+    };
+
+    isChatOpen(props: Props = this.props) {
+        return Boolean(props.isRhsOpen && props.rhsSelectedThreadID === props.threadID);
     }
 
     onRecordToggle = async () => {
@@ -609,6 +701,28 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     public componentDidUpdate(prevProps: Props) {
         if (prevProps.theme.type !== this.props.theme.type) {
             this.style = this.genStyle();
+        }
+
+        if (!prevProps.isCameraOn && this.props.isCameraOn) {
+            this.setCameraErrorAlert(null);
+        }
+
+        if (prevProps.ownConnectionState !== this.props.ownConnectionState && this.state.dismissedConnectionState) {
+            // eslint-disable-next-line react/no-did-update-set-state
+            this.setState({dismissedConnectionState: null});
+        }
+
+        const chatWasOpen = this.isChatOpen(prevProps);
+        const chatIsOpen = this.isChatOpen();
+        if (!chatWasOpen && chatIsOpen && this.chatOpenedFromButton) {
+            this.chatOpenedFromButton = false;
+            this.focusChatInput();
+        } else if (chatWasOpen && !chatIsOpen) {
+            // Only take focus back when it was in the panel that just closed, or was lost with it.
+            const active = document.activeElement;
+            if (!active || active === document.body || document.getElementById('sidebar-right')?.contains(active)) {
+                document.getElementById('calls-popout-chat-button')?.focus();
+            }
         }
 
         if (window.opener) {
@@ -778,6 +892,9 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         onClient(CALL_EVENT.MIC_STATUS_CHANGED, (micStatus: DeviceStatus) => {
             this.setState({micStatus});
         });
+        onClient(CALL_EVENT.CAMERA_ERROR, (err: CameraError) => {
+            this.setCameraErrorAlert(CAMERA_ERROR_ALERT_IDS[err]);
+        });
         onClient(CALL_EVENT.DEVICE_CHANGE, (audioDevices: MediaDevices) => {
             this.setAudioDevices(audioDevices);
         });
@@ -881,6 +998,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             this.props.history.push(`/${this.props.channelTeam.name}/pl/${this.props.threadID}`);
         } else if (this.props.threadID) {
             // open thread
+            this.chatOpenedFromButton = true;
             this.props.selectRhsPost?.(this.props.threadID);
         }
     };
@@ -893,6 +1011,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
 
         this.callClientUnsubscribers.forEach((unsubscribe) => unsubscribe());
         this.callClientUnsubscribers = [];
+        window.clearTimeout(this.chatFocusTimer);
     }
 
     dismissRecordingPrompt = (minDismissedAt = 0) => {
@@ -933,6 +1052,58 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         });
     };
 
+    dismissAlert = (alertID: string) => {
+        this.setState((prevState) => ({
+            alerts: {
+                ...prevState.alerts,
+                [alertID]: {
+                    ...prevState.alerts[alertID],
+                    show: false,
+                },
+            },
+        }));
+        if (alertID === 'degradedCallQuality') {
+            this.callQualityBannerLocked = true;
+            setTimeout(() => {
+                this.callQualityBannerLocked = false;
+            }, DEGRADED_CALL_QUALITY_ALERT_WAIT);
+        }
+    };
+
+    // In the call window, permission, device and network warnings sit in the header.
+    // The own-connection notice replaces the call quality banner there.
+    getHeaderWarnings = (): HeaderWarning[] => {
+        const {formatMessage} = this.props.intl;
+        const warnings: HeaderWarning[] = [];
+
+        const own = this.props.ownConnectionState;
+        if (own !== 'good' && this.state.dismissedConnectionState !== own) {
+            warnings.push({
+                id: 'ownConnection',
+                tone: CallAlertType.Warning,
+                icon: 'alert-outline',
+                message: formatMessage(OWN_CONNECTION_MESSAGES[own]),
+                onDismiss: this.dismissOwnConnectionNotice,
+            });
+        }
+
+        for (const [alertID, alertState] of Object.entries(this.state.alerts)) {
+            if (!alertState.show || alertID === 'degradedCallQuality') {
+                continue;
+            }
+            const alertConfig = CallAlertConfigs[alertID];
+            warnings.push({
+                id: alertID,
+                tone: alertConfig.type,
+                icon: alertConfig.icon,
+                message: formatMessage(alertConfig.bannerText, alertState.args),
+                onDismiss: alertConfig.dismissable ? () => this.dismissAlert(alertID) : undefined,
+            });
+        }
+
+        return warnings;
+    };
+
     shouldRenderAlertBanner = () => {
         return Object.entries(this.state.alerts).filter((kv) => kv[1].show).length > 0;
     };
@@ -946,27 +1117,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             }
 
             const alertConfig = CallAlertConfigs[alertID];
-
-            let onClose;
-            if (alertConfig.dismissable) {
-                onClose = () => {
-                    this.setState({
-                        alerts: {
-                            ...this.state.alerts,
-                            [alertID]: {
-                                ...alertState,
-                                show: false,
-                            },
-                        },
-                    });
-                    if (alertID === 'degradedCallQuality') {
-                        this.callQualityBannerLocked = true;
-                        setTimeout(() => {
-                            this.callQualityBannerLocked = false;
-                        }, DEGRADED_CALL_QUALITY_ALERT_WAIT);
-                    }
-                };
-            }
+            const onClose = alertConfig.dismissable ? () => this.dismissAlert(alertID) : undefined;
 
             return (
                 <GlobalBanner
@@ -1203,6 +1354,17 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const leaveCallTooltipText = this.props.isDMCalling ? formatMessage({defaultMessage: 'Cancel call'}) : formatMessage({defaultMessage: 'Leave call'});
         const closeViewLabel = formatMessage({defaultMessage: 'Close window'});
 
+        const videoMode = this.isVideoMode();
+        const callName = this.props.connectedDMUser ? getUserDisplayName(this.props.connectedDMUser) : this.props.channelDisplayName;
+        const handRaised = this.isHandRaised();
+        const raiseHandText = handRaised ? formatMessage({defaultMessage: 'Lower hand'}) : formatMessage({defaultMessage: 'Raise hand'});
+        const micDevices = getSelectableDevices(this.state.audioInputs);
+        const recordItem = videoMode && isHost && this.props.recordingsEnabled ? {
+            isRecording,
+            disabled: this.props.isDMCalling,
+            onToggle: () => this.onRecordToggle(),
+        } : undefined;
+
         return (
             <div
                 ref={this.expandedRootRef}
@@ -1215,8 +1377,20 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 }}
             >
                 <div style={this.style.main}>
-                    {this.renderAlertBanner()}
+                    {videoMode ? (
+                        <CallHeader
+                            title={formatMessage({defaultMessage: 'Call · {name}'}, {name: callName})}
+                            clientConnecting={this.props.clientConnecting}
+                            participantCount={this.props.sessions.length}
+                            recordingBadge={this.renderRecordingBadge()}
+                            isSharing={isSharing}
+                            onStopSharing={this.onShareScreenToggle}
+                            onCollapse={this.onCloseViewClick}
+                            warnings={this.getHeaderWarnings()}
+                        />
+                    ) : this.renderAlertBanner()}
 
+                    {!videoMode &&
                     <div
                         data-testid={'calls-expanded-view-top-container'}
                         style={this.style.topContainer}
@@ -1250,8 +1424,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             </CloseViewButton>
                         </OverlayTrigger>
                     </div>
+                    }
 
-                    {!this.props.screenSharingSession && this.props.currentSession && this.props.channel &&
+                    {videoMode && this.props.currentSession &&
+                    <DMVideoStage
+                        selfSessionID={this.props.currentSession.session_id}
+                        otherSessionID={this.props.otherSessions[0]?.session_id}
+                    />
+                    }
+
+                    {!videoMode && !this.props.screenSharingSession && this.props.currentSession && this.props.channel &&
                     <ParticipantsGrid
                         callID={this.props.channel.id}
                         callHostID={this.props.callHostID}
@@ -1263,7 +1445,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                     />
                     }
 
-                    {this.props.screenSharingSession && this.renderScreenSharingPlayer()}
+                    {!videoMode && this.props.screenSharingSession && this.renderScreenSharingPlayer()}
 
                     {this.state.showLiveCaptions &&
                         <LiveCaptionsOverlay>
@@ -1302,6 +1484,36 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                         </div>
 
                         <div style={this.style.centerControls}>
+                            {videoMode && (
+                                <>
+                                    <DeviceControl
+                                        id='calls-popout-mic'
+                                        toggleId='calls-popout-mute-button'
+                                        kind='audioinput'
+                                        className='DeviceControl--popout'
+                                        active={!isMuted}
+                                        status={micStatus}
+                                        onToggle={this.onMuteToggle}
+                                        devices={micDevices}
+                                        selectedDeviceId={getSelectedAudioInputId(micDevices, this.state.currentAudioInputDevice ?? callsClient.currentAudioInputDevice)}
+                                        onSelectDevice={this.onAudioInputDeviceClick}
+                                        disabled={this.props.clientConnecting}
+                                        shortcut={reverseKeyMappings.popout[MUTE_UNMUTE][0]}
+                                        menuOpen={this.state.deviceMenu === 'audioinput'}
+                                        onMenuOpenChange={(open) => this.onDeviceMenuChange('audioinput', open)}
+                                    />
+                                    <CameraControl
+                                        id='calls-popout-camera'
+                                        className='DeviceControl--popout'
+                                        cameraOn={this.props.isCameraOn}
+                                        disabled={this.props.clientConnecting}
+                                        menuOpen={this.state.deviceMenu === 'videoinput'}
+                                        onMenuOpenChange={(open) => this.onDeviceMenuChange('videoinput', open)}
+                                    />
+                                </>
+                            )}
+
+                            {!videoMode &&
                             <ControlsButton
                                 id='calls-popout-mute-button'
                                 dataTestId={isMuted ? 'calls-popout-muted' : 'calls-popout-unmuted'}
@@ -1326,6 +1538,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 }
                                 unavailable={micUnavailable}
                             />
+                            }
 
                             {this.props.allowScreenSharing &&
                                 <ControlsButton
@@ -1358,7 +1571,23 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                                 isHandRaised={this.isHandRaised()}
                             />
 
-                            {isHost && this.props.recordingsEnabled &&
+                            {videoMode &&
+                                <ControlsButton
+                                    id='calls-popout-raise-hand-button'
+                                    ariaLabel={raiseHandText}
+                                    ariaPressed={handRaised}
+                                    onToggle={this.onRaiseHandToggle}
+                                    tooltipText={raiseHandText}
+                                    shortcut={reverseKeyMappings.popout[RAISE_LOWER_HAND][0]}
+                                    bgColor={handRaised ? 'rgba(255, 188, 66, 0.16)' : ''}
+                                    bgColorHover={handRaised ? 'rgba(255, 188, 66, 0.20)' : ''}
+                                    iconFill={handRaised ? 'rgb(255, 188, 66)' : ''}
+                                    iconFillHover={handRaised ? 'rgb(255, 188, 66)' : ''}
+                                    icon={handRaised ? <RaisedHandIcon style={{width: '20px', height: '20px'}}/> : <UnraisedHandIcon style={{width: '20px', height: '20px'}}/>}
+                                />
+                            }
+
+                            {!videoMode && isHost && this.props.recordingsEnabled &&
                                 <ControlsButton
                                     id='calls-popout-record-button'
                                     ariaLabel={recordTooltipText}
@@ -1403,6 +1632,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                             <CallSettingsButton
                                 onLiveCaptionsToggle={this.onLiveCaptionsToggle}
                                 showLiveCaptions={this.state.showLiveCaptions}
+                                recordItem={recordItem}
                             />
                         </div>
                         <div style={{flex: '1', display: 'flex', justifyContent: 'flex-end'}}>
@@ -1495,6 +1725,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 }
 
                 <ReactionOverlay>
+                    {videoMode && <CallNoticeStack currentSessionID={this.props.currentSession?.session_id}/>}
                     <ReactionStream/>
                     <RecordingInfoPrompt
                         isHost={this.props.callHostID === this.props.currentUserID}

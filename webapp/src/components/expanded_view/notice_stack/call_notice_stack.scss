@@ -1,0 +1,49 @@
+@keyframes call-notice-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.CallNoticeStack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+  gap: var(--spacing-xxxs);
+  list-style: none;
+
+  .CallNoticeStack__notice {
+    display: flex;
+    max-width: 320px;
+    align-items: center;
+    padding: var(--spacing-xxxs) var(--spacing-s);
+    border-radius: var(--radius-pill);
+    background: rgba(0, 0, 0, 0.72);
+    box-shadow: var(--elevation-2);
+    color: var(--button-color);
+    font-size: var(--font-size-75);
+    font-weight: var(--font-weight-semibold);
+    gap: var(--spacing-xxs);
+    line-height: var(--line-height-75);
+    animation: call-notice-enter var(--duration-quick) var(--ease-entrance);
+    transition: opacity 200ms var(--ease-exit);
+  }
+
+  .CallNoticeStack__notice--leaving {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .CallNoticeStack .CallNoticeStack__notice {
+    animation: none;
+    transition: none;
+  }
+}
