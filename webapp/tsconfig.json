@@ -18,6 +18,10 @@
     ],
     "paths": {
       "src/*": [
+        "./src/*",
+        "../standalone/src/*"
+      ],
+      "plugin/*": [
         "./src/*"
       ]
     }

@@ -1,7 +1,7 @@
 // Copyright (c) 2020-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {test} from '@playwright/test';
+import {expect, test} from '@playwright/test';
 
 import PlaywrightDevPage from '../page';
 import {
@@ -51,6 +51,35 @@ test.describe('standalone widget indicators', {tag: '@livekit'}, () => {
         // user1 mutes again (toggle); user2's widget should reflect that
         await user1NormalPage.unmute();
         await user2WidgetPage.expectMuted(usernames[1], true);
+
+        await Promise.all([
+            user0Page.leaveCall(),
+            user1NormalPage.leaveCall(),
+            user2WidgetPage.leaveFromWidget(),
+        ]);
+    });
+
+    test('screen share clears when sharing stops', async ({page}) => {
+        // user0 starts the call
+        const user0Page = new PlaywrightDevPage(page);
+        const [_, user1NormalPage] = await Promise.all([
+            user0Page.startCall(),
+            startCall(userStorages[1]),
+        ]);
+
+        // user2 joins via standalone widget, which has no main WebSocket
+        const user2WidgetPage = await newUserPage(userStorages[2]);
+        await user2WidgetPage.openWidget(getChannelNamesForTest()[0]);
+
+        // user1 starts sharing; user2's widget should show the share
+        await user1NormalPage.shareScreen();
+        await expect(user2WidgetPage.page.locator('#screen-player')).toBeVisible();
+        await user2WidgetPage.expectScreenPlaying();
+
+        // user1 stops sharing; user2's widget should clear the share
+        await user1NormalPage.page.getByTestId('calls-widget-stop-screenshare').click();
+        await expect(user1NormalPage.page.locator('#screen-player')).toBeHidden();
+        await expect(user2WidgetPage.page.locator('#screen-player')).toBeHidden();
 
         await Promise.all([
             user0Page.leaveCall(),
