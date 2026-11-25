@@ -122,10 +122,9 @@ import {
     watchPhoneCall,
 } from 'src/phone_call';
 import {getPhoneCallProps, withoutSIPSessions} from 'src/phone_utils';
+import {applyScreenSharingChanged} from 'src/screen_sharing';
 import slashCommandsHandler from 'src/slash_commands';
 import {userCameraChanged} from 'src/state/camera_on_ids/actions';
-import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
-import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
 import {getSessionsMapFromSessions, localSessionClose, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {sessionsInCurrentCall} from 'src/state/session/selectors';
 import {CurrentCallDataDefault, PhoneCallState} from 'src/types/types';
@@ -859,13 +858,7 @@ export default class Plugin {
                 trackSIPCallStatus(store, window.callsClient);
 
                 window.callsClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
-                    const callChannelID = window.callsClient?.channelID ?? '';
-                    if (session) {
-                        store.dispatch(userScreenShared(callChannelID, session.sessionID, session.userID));
-                    } else {
-                        const sharerSession = screenSharingSessionForCurrentCall(store.getState());
-                        store.dispatch(userScreenUnshared(callChannelID, sharerSession?.session_id ?? '', ''));
-                    }
+                    applyScreenSharingChanged(store, window.callsClient?.channelID ?? '', session);
                 });
 
                 store.dispatch(setClientConnecting(true));

@@ -29,9 +29,9 @@ import {
 import {pluginId} from 'plugin/manifest';
 import {trackSIPCallStatus} from 'plugin/phone_call';
 import reducer from 'plugin/reducers';
+import {applyScreenSharingChanged} from 'plugin/screen_sharing';
 import {getCallIDForChannel} from 'plugin/selectors';
 import {userCameraChanged} from 'plugin/state/camera_on_ids/actions';
-import {userScreenShared, userScreenUnshared} from 'plugin/state/screen_sharing_ids/actions';
 import {localSessionClose, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'plugin/state/session/actions';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
@@ -101,11 +101,7 @@ function connectCall(
         });
 
         callClient.on(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
-            if (session) {
-                store.dispatch(userScreenShared(callClient.channelID, session.sessionID, session.userID));
-            } else {
-                store.dispatch(userScreenUnshared(callClient.channelID, '', ''));
-            }
+            applyScreenSharingChanged(store, callClient.channelID, session);
         });
 
         callClient.on(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {
