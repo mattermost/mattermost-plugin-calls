@@ -347,16 +347,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     setMissingScreenPermissions = (missing: boolean, forward?: boolean) => {
-        this.setState({
+        this.setState((prevState) => ({
             alerts: {
-                ...this.state.alerts,
+                ...prevState.alerts,
                 missingScreenPermissions: {
-                    ...this.state.alerts.missingScreenPermissions,
+                    ...prevState.alerts.missingScreenPermissions,
                     active: missing,
                     show: missing,
                 },
             },
-        });
+        }));
 
         if (forward && window.opener?.callActions?.setMissingScreenPermissions) {
             window.opener.callActions.setMissingScreenPermissions(missing);
@@ -434,29 +434,32 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
     };
 
     setAudioDevices = (devices: MediaDevices) => {
-        this.setState({
+        this.setState((prevState) => ({
             alerts: {
-                ...this.state.alerts,
+                ...prevState.alerts,
                 missingAudioInput: {
-                    ...this.state.alerts.missingAudioInput,
+                    ...prevState.alerts.missingAudioInput,
                     active: devices.inputs.length === 0,
                     show: devices.inputs.length === 0,
                 },
             },
-        });
+        }));
     };
 
     setVideoDevices = (devices: MediaDeviceInfo[]) => {
-        this.setState({
+        // Video is only enabled for DM calls. Otherwise the client does not track
+        // video devices at all so an empty list is expected and not an error.
+        const missing = this.props.enableVideo && devices.length === 0;
+        this.setState((prevState) => ({
             alerts: {
-                ...this.state.alerts,
+                ...prevState.alerts,
                 missingVideoInput: {
-                    ...this.state.alerts.missingVideoInput,
-                    active: devices.length === 0,
-                    show: devices.length === 0,
+                    ...prevState.alerts.missingVideoInput,
+                    active: missing,
+                    show: missing,
                 },
             },
-        });
+        }));
     };
 
     onDisconnectClick = () => {
@@ -762,16 +765,16 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         const otherVideoStream = callsClient.getRemoteVideoStream();
 
         // eslint-disable-next-line react/no-did-mount-set-state
-        this.setState({
+        this.setState((prevState) => ({
             alerts: {
-                ...this.state.alerts,
+                ...prevState.alerts,
                 missingAudioInputPermissions: {
-                    ...this.state.alerts.missingAudioInputPermissions,
-                    active: !this.state.alerts.missingAudioInput.active && !callsClient.audioTrack,
-                    show: !this.state.alerts.missingAudioInput.active && !callsClient.audioTrack,
+                    ...prevState.alerts.missingAudioInputPermissions,
+                    active: !prevState.alerts.missingAudioInput.active && !callsClient.audioTrack,
+                    show: !prevState.alerts.missingAudioInput.active && !callsClient.audioTrack,
                 },
                 missingVideoInputPermissions: {
-                    ...this.state.alerts.missingVideoInputPermissions,
+                    ...prevState.alerts.missingVideoInputPermissions,
                     active: this.props.enableVideo && callsClient.videoPermissionsMissing,
                     show: this.props.enableVideo && callsClient.videoPermissionsMissing,
                 },
@@ -779,7 +782,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
             screenStream,
             selfVideoStream,
             otherVideoStream,
-        });
+        }));
 
         if (window.opener) {
             // core styling for rhs in expanded window
