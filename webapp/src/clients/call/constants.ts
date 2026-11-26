@@ -22,6 +22,9 @@ export const CALL_EVENT = {
     RECONNECTED: 'reconnected',
     ERROR: 'error',
     INIT_AUDIO: 'initaudio',
+
+    // MIC_STATUS_CHANGED carries the local mic's DeviceStatus, also readable with getMicStatus().
+    MIC_STATUS_CHANGED: 'micStatusChanged',
     MUTE: 'mute',
     UNMUTE: 'unmute',
     USERS_VOICE_ACTIVITY_CHANGED: 'usersVoiceActivityChanged',

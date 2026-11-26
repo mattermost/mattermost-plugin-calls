@@ -42,7 +42,7 @@ import {
     showSwitchCallModal,
 } from 'src/actions';
 import {navigateToURL} from 'src/browser_routing';
-import CallClient, {CALL_EVENT, CameraState, DisconnectReason} from 'src/clients/call';
+import CallClient, {CALL_EVENT, CameraState, CONNECTION_QUALITY, DisconnectReason} from 'src/clients/call';
 import type {ScreenSharingSession} from 'src/clients/call/types';
 import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
@@ -125,6 +125,7 @@ import {getPhoneCallProps, withoutSIPSessions} from 'src/phone_utils';
 import {applyScreenSharingChanged} from 'src/screen_sharing';
 import slashCommandsHandler from 'src/slash_commands';
 import {userCameraChanged} from 'src/state/camera_on_ids/actions';
+import {localSessionReconnected, localSessionReconnecting, sessionConnectionQualityChanged} from 'src/state/connection_quality/actions';
 import {getSessionsMapFromSessions, localSessionClose, sessionsReceived, unInitialized, userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {sessionsInCurrentCall} from 'src/state/session/selectors';
 import {CurrentCallDataDefault, PhoneCallState} from 'src/types/types';
@@ -365,11 +366,11 @@ export default class Plugin {
                     component: AudioDevicesSettingsSection,
                 },
                 {
-                    title: 'Screen sharing settings',
+                    title: 'Screen sharing',
                     component: ScreenSharingSettingsSection,
                 },
                 {
-                    title: 'Raise hand settings',
+                    title: 'Raise hand',
                     component: RaiseHandSettingsSection,
                 },
             ],
@@ -802,6 +803,22 @@ export default class Plugin {
                     store.dispatch(userCameraChanged(window.callsClient?.channelID ?? '', session_id, userID, cameraState));
                 });
 
+                window.callsClient.on(CALL_EVENT.QUALITY_CHANGED, (quality: CONNECTION_QUALITY) => {
+                    store.dispatch(sessionConnectionQualityChanged(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? '', quality));
+                });
+
+                window.callsClient.on(CALL_EVENT.REMOTE_QUALITY_CHANGED, (session_id: string, _userID: string, quality: CONNECTION_QUALITY) => {
+                    store.dispatch(sessionConnectionQualityChanged(window.callsClient?.channelID ?? '', session_id, quality));
+                });
+
+                window.callsClient.on(CALL_EVENT.RECONNECTING, () => {
+                    store.dispatch(localSessionReconnecting(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? ''));
+                });
+
+                window.callsClient.on(CALL_EVENT.RECONNECTED, () => {
+                    store.dispatch(localSessionReconnected(window.callsClient?.channelID ?? '', window.callsClient?.getSessionID() ?? ''));
+                });
+
                 window.callsClient.on(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
                     store.dispatch(usersVoiceActivityChanged(window.callsClient?.channelID ?? '', sessionIDs, userIDs));
                 });
@@ -1062,11 +1079,11 @@ export default class Plugin {
                     component: VideoDevicesSettingsSection,
                 }] : []),
                 {
-                    title: 'Screen sharing settings',
+                    title: 'Screen sharing',
                     component: ScreenSharingSettingsSection,
                 },
                 {
-                    title: 'Raise hand settings',
+                    title: 'Raise hand',
                     component: RaiseHandSettingsSection,
                 },
             ];

@@ -3,6 +3,7 @@
 
 import React, {useState} from 'react';
 import {useIntl} from 'react-intl';
+import {SettingsSectionCollapsed, SettingsSectionExpanded, useSettingsSection} from 'src/components/user_settings/settings_section';
 import {untranslatable} from 'src/utils';
 
 type OnOffValue = 'on' | 'off';
@@ -29,29 +30,24 @@ export default function OnOffSettingsSection({
     inputName,
 }: Props) {
     const {formatMessage} = useIntl();
+    const {active, focusEdit, open, close} = useSettingsSection();
 
     const readStoredValue = () => window.localStorage.getItem(storageKey) || defaultValue;
 
-    const [active, setActive] = useState(false);
     const [value, setValue] = useState(readStoredValue);
 
-    const editLabel = formatMessage({defaultMessage: 'Edit'});
     const onLabel = formatMessage({defaultMessage: 'On'});
     const offLabel = formatMessage({defaultMessage: 'Off'});
 
     // Re-read on open so a value changed elsewhere (e.g. another window) isn't overwritten.
     const handleOpen = () => {
         setValue(readStoredValue());
-        setActive(true);
+        open();
     };
 
     const handleSave = () => {
         window.localStorage.setItem(storageKey, value);
-        setActive(false);
-    };
-
-    const handleCancel = () => {
-        setActive(false);
+        close();
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,98 +56,53 @@ export default function OnOffSettingsSection({
 
     if (!active) {
         return (
-            <div
-                className='section-min'
-                onClick={handleOpen}
-            >
-                <div className='section-min__header'>
-                    <h4
-                        id={`${inputName}Title`}
-                        className='section-min__title'
-                    >
-                        <span>{title}</span>
-                    </h4>
-                    <button
-                        id={`${inputName}Edit`}
-                        className='color--link style--none section-min__edit'
-                        aria-labelledby={`${inputName}Title ${inputName}Edit`}
-                        aria-expanded={active}
-                    >
-                        <i
-                            className='icon-pencil-outline'
-                            title={editLabel}
-                        />
-                        <span>{editLabel}</span>
-                    </button>
-                </div>
-                <div className='section-min__describe'>
-                    <span>{description}</span>
-                </div>
-            </div>
+            <SettingsSectionCollapsed
+                id={inputName}
+                title={title}
+                description={description}
+                focusEdit={focusEdit}
+                onEdit={handleOpen}
+            />
         );
     }
 
     return (
-        <section className='section-max form-horizontal'>
-            <h4
-                id='settingTitle'
-                className='col-sm-12 section-title'
-            ><span>{settingTitle}</span></h4>
-            <div className='sectionContent col-sm-10 col-sm-offset-2'>
-                <div
-                    tabIndex={-1}
-                    className='setting-list'
-                >
-                    <div className='setting-list-item'>
-                        <fieldset>
-                            <legend className='form-legend hidden-label'>{untranslatable(inputName)}</legend>
-                            <div className='radio'>
-                                <label>
-                                    <input
-                                        type='radio'
-                                        name={inputName}
-                                        value='on'
-                                        onChange={handleChange}
-                                        checked={value === 'on'}
-                                    />
-                                    {onLabel}
-                                </label><br/>
-                            </div>
-                            <div className='radio'>
-                                <label>
-                                    <input
-                                        type='radio'
-                                        name={inputName}
-                                        value='off'
-                                        onChange={handleChange}
-                                        checked={value === 'off'}
-                                    />
-                                    {offLabel}
-                                </label><br/>
-                            </div>
-                            <div className='mt-5'>
-                                <p>{helpText}</p>
-                            </div>
-                        </fieldset>
-                    </div>
-                    <div className='setting-list-item'>
-                        <hr/>
-                        <button
-                            type='submit'
-                            className='btn btn-primary'
-                            onClick={handleSave}
-                        >
-                            {formatMessage({defaultMessage: 'Save'})}
-                        </button>
-                        <button
-                            className='btn btn-tertiary'
-                            onClick={handleCancel}
-                        >
-                            {formatMessage({defaultMessage: 'Cancel'})}
-                        </button>
-                    </div>
+        <SettingsSectionExpanded
+            id={inputName}
+            title={settingTitle}
+            onSave={handleSave}
+            onCancel={close}
+        >
+            <fieldset>
+                <legend className='form-legend hidden-label'>{untranslatable(inputName)}</legend>
+                <div className='radio'>
+                    <label>
+                        <input
+                            type='radio'
+                            name={inputName}
+                            value='on'
+                            onChange={handleChange}
+                            checked={value === 'on'}
+                        />
+                        {onLabel}
+                    </label><br/>
                 </div>
-            </div>
-        </section>
+                <div className='radio'>
+                    <label>
+                        <input
+                            type='radio'
+                            name={inputName}
+                            value='off'
+                            onChange={handleChange}
+                            checked={value === 'off'}
+                        />
+                        {offLabel}
+                    </label><br/>
+                </div>
+                <div className='mt-5'>
+                    <p>{helpText}</p>
+                </div>
+            </fieldset>
+        </SettingsSectionExpanded>
     );
 }

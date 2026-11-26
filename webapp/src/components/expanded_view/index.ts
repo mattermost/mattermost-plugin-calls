@@ -37,6 +37,7 @@ import {
     transcriptionsEnabled,
 } from 'src/selectors';
 import {userCameraChanged} from 'src/state/camera_on_ids/actions';
+import {localSessionReconnected, localSessionReconnecting, sessionConnectionQualityChanged} from 'src/state/connection_quality/actions';
 import {screenSharingCleared, userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
@@ -125,6 +126,9 @@ const mapDispatchToProps = {
     userMuted,
     userUnmuted,
     userCameraChanged,
+    sessionConnectionQualityChanged,
+    localSessionReconnecting,
+    localSessionReconnected,
     joinUser,
     leaveUser,
     usersVoiceActivityChanged,

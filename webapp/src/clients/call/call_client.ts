@@ -63,6 +63,7 @@ import {
     CameraTrack,
     CaptionPayload,
     ConnectPayload,
+    DeviceStatus,
     HostControlPayload,
     LiveKitSessionResponse,
     ReactionPayload,
@@ -111,6 +112,35 @@ function mergeStatsReports(reports: RTCStatsReport[]): RTCStatsReport {
 // is available to log if the call is torn down remotely. Matches the v1 client's
 // RTCMonitor cadence.
 const STATS_POLL_INTERVAL_MS = 10_000;
+
+const CAMERA_ERROR_BY_FAILURE: Record<MediaDeviceFailure, CameraError> = {
+    [MediaDeviceFailure.PermissionDenied]: CameraError.PermissionDenied,
+    [MediaDeviceFailure.NotFound]: CameraError.NotFound,
+    [MediaDeviceFailure.DeviceInUse]: CameraError.DeviceInUse,
+    [MediaDeviceFailure.Other]: CameraError.Other,
+};
+
+export function toCameraError(err: unknown): CameraError {
+    const failure = MediaDeviceFailure.getFailure(err);
+    if (!failure) {
+        return CameraError.Other;
+    }
+
+    // LiveKit may add failure types this client doesn't know yet.
+    const cameraError = CAMERA_ERROR_BY_FAILURE[failure];
+    if (!cameraError) {
+        logWarn('CallClient: unknown media device failure', failure);
+        return CameraError.Other;
+    }
+    return cameraError;
+}
+
+// getMicStatus reports these in order: blocked, then missing, then starting.
+type MicState = {
+    blocked: boolean;
+    missing: boolean;
+    starting: boolean;
+};
 
 export default class CallClient extends EventEmitter {
     public channelID = '';
@@ -166,6 +196,8 @@ export default class CallClient extends EventEmitter {
     // Mutex for ensureMicrophoneTrack — set synchronously before the first await so
     // concurrent callers are blocked immediately.
     private micTrackEnsureInProgress = false;
+
+    private micState: MicState = {blocked: false, missing: false, starting: true};
 
     // Cached enumerated audio devices so we can call getAudioDevices() synchronously
     private audioDevices: MediaDevices = {inputs: [], outputs: []};
@@ -435,6 +467,41 @@ export default class CallClient extends EventEmitter {
 
     public isMicTrackPublished(): boolean {
         return Boolean(this.room?.localParticipant.getTrackPublication(Track.Source.Microphone));
+    }
+
+    public getMicStatus(): DeviceStatus {
+        const {blocked, missing, starting} = this.micState;
+        if (blocked) {
+            return 'blocked';
+        }
+        if (missing) {
+            return 'missing';
+        }
+        return starting ? 'starting' : 'ready';
+    }
+
+    private updateMicState(update: Partial<MicState>) {
+        const previous = this.getMicStatus();
+        this.micState = {...this.micState, ...update};
+        const status = this.getMicStatus();
+        if (status !== previous) {
+            logDebug(`CallClient: mic status changed to '${status}'`);
+            this.emit(CALL_EVENT.MIC_STATUS_CHANGED, status);
+        }
+    }
+
+    // Every audio device list goes out through here, so the mic status follows it. A mic
+    // plugged in after none were found is captured again, so it starts again.
+    private emitDeviceChange() {
+        const missing = this.audioDevices.inputs.length === 0;
+        if (missing) {
+            this.updateMicState({missing, starting: false});
+        } else if (this.micState.missing && !this.isMicTrackPublished()) {
+            this.updateMicState({missing, starting: true});
+        } else {
+            this.updateMicState({missing});
+        }
+        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
     }
 
     public async mute(): Promise<void> {
@@ -742,7 +809,7 @@ export default class CallClient extends EventEmitter {
             this.currentAudioInputDevice = device;
 
             logDebug('CallClient: audio input device switch successful', {deviceId: device.deviceId, label: device.label});
-            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+            this.emitDeviceChange();
         } catch (err) {
             logErr('CallClient: audio input device switch failed',
                 {requestedDeviceId: device.deviceId, requestedLabel: device.label, errName: (err instanceof Error) ? err.name : 'unknown', err});
@@ -790,7 +857,7 @@ export default class CallClient extends EventEmitter {
                 this.emit(CALL_EVENT.CAMERA_ERROR, CameraError.NotFound);
                 return;
             }
-            const deviceId = this.getStoredVideoInputDeviceId(devices) ?? devices.find((dev) => dev.deviceId)?.deviceId;
+            const deviceId = CallClient.getSelectedVideoInputDeviceId(devices);
 
             this.localCameraOffRequested = false;
 
@@ -846,33 +913,13 @@ export default class CallClient extends EventEmitter {
     }
 
     private emitCameraError(message: string, err: unknown) {
-        const cameraError = this.toCameraError(err);
+        const cameraError = toCameraError(err);
         if (cameraError === CameraError.PermissionDenied) {
             logDebug(`CallClient: ${message}, camera permission denied`);
         } else {
             logErr(`CallClient: ${message}`, {cameraError, err});
         }
         this.emit(CALL_EVENT.CAMERA_ERROR, cameraError);
-    }
-
-    private toCameraError(err: unknown): CameraError {
-        const failure = MediaDeviceFailure.getFailure(err);
-        switch (failure) {
-        case MediaDeviceFailure.PermissionDenied:
-            return CameraError.PermissionDenied;
-        case MediaDeviceFailure.NotFound:
-            return CameraError.NotFound;
-        case MediaDeviceFailure.DeviceInUse:
-            return CameraError.DeviceInUse;
-        case MediaDeviceFailure.Other:
-        case undefined:
-            return CameraError.Other;
-        default: {
-            const unhandled: never = failure;
-            logWarn('CallClient: unknown media device failure', unhandled);
-            return CameraError.Other;
-        }
-        }
     }
 
     public async setAudioOutputDevice(device: MediaDeviceInfo, store: boolean = true): Promise<void> {
@@ -887,7 +934,7 @@ export default class CallClient extends EventEmitter {
         logDebug('CallClient: audio output device change requested', {deviceId: device.deviceId, label: device.label});
 
         // Emitted before switching so the picker updates even if the switch is slow or fails.
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+        this.emitDeviceChange();
 
         // Applies to every attached remote audio element, and LiveKit keeps the
         // device for elements attached later.
@@ -1268,18 +1315,21 @@ export default class CallClient extends EventEmitter {
                 await this.setAudioOutputDevice(storedOutput, false);
             }
 
-            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+            this.emitDeviceChange();
 
+            this.updateMicState({blocked: false, starting: false});
             this.emit(CALL_EVENT.INIT_AUDIO);
         } catch (err) {
             if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.PermissionDenied) {
                 logDebug('CallClient: requesting microphone permission denied by user');
+                this.updateMicState({blocked: true, starting: false});
                 this.emit(CALL_EVENT.ERROR, AudioInputPermissionsErr);
             } else if (MediaDeviceFailure.getFailure(err) === MediaDeviceFailure.NotFound) {
                 logDebug('CallClient: no audio input device found');
                 notFound = true;
             } else {
                 logErr('CallClient: failed to request microphone permission', err);
+                this.updateMicState({starting: false});
                 this.emit(CALL_EVENT.ERROR, err);
             }
         } finally {
@@ -1291,7 +1341,7 @@ export default class CallClient extends EventEmitter {
             // MediaDevicesChanged (e.g. user plugs in a mic immediately after joining) is not blocked.
             // DEVICE_CHANGE triggers the missing-audio-input alert in the UI.
             await this.enumerateDevices();
-            this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+            this.emitDeviceChange();
         }
     }
 
@@ -1961,6 +2011,7 @@ export default class CallClient extends EventEmitter {
         }
 
         logErr('CallClient: media device error occurred', err);
+        this.updateMicState({starting: false});
         this.emit(CALL_EVENT.ERROR, err);
     }
 
@@ -1992,7 +2043,7 @@ export default class CallClient extends EventEmitter {
             if (match && match.deviceId !== this.currentAudioInputDevice?.deviceId) {
                 this.currentAudioInputDevice = match;
                 logDebug('CallClient: active audio input device changed by LiveKit', {deviceId: match.deviceId, label: match.label});
-                this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+                this.emitDeviceChange();
             }
         }
     }
@@ -2051,7 +2102,7 @@ export default class CallClient extends EventEmitter {
 
         this.syncAudioOutputDevice();
 
-        this.emit(CALL_EVENT.DEVICE_CHANGE, this.audioDevices);
+        this.emitDeviceChange();
     }
 
     /**
@@ -2376,8 +2427,28 @@ export default class CallClient extends EventEmitter {
         }
     }
 
+    /**
+     * The camera the client captures from: the saved one, matched by deviceId and then by
+     * label since the browser can change device IDs between sessions, else the first camera.
+     * Cameras without an ID are skipped, since they can't be captured exactly.
+     */
+    public static getSelectedVideoInputDeviceId(devices: MediaDeviceInfo[]): string | undefined {
+        const selectable = devices.filter((dev) => dev.deviceId);
+        const stored = CallClient.readStoredVideoInputDevice();
+        if (!stored) {
+            return selectable[0]?.deviceId;
+        }
+
+        const match = selectable.find((dev) => dev.deviceId === stored.deviceId) ??
+            selectable.find((dev) => Boolean(stored.label) && dev.label === stored.label);
+        if (!match) {
+            logDebug('CallClient: stored camera device not found in current inventory', {deviceId: stored.deviceId, label: stored.label});
+        }
+        return (match ?? selectable[0])?.deviceId;
+    }
+
     // Kept apart from the audio helpers: the camera has no legacy raw-string format.
-    private readStoredVideoInputDevice(): {deviceId: string; label?: string} | null {
+    private static readStoredVideoInputDevice(): {deviceId: string; label?: string} | null {
         const data = window.localStorage.getItem(STORAGE_CALLS_DEFAULT_VIDEO_INPUT_KEY);
         if (!data) {
             return null;
@@ -2390,21 +2461,5 @@ export default class CallClient extends EventEmitter {
             logWarn('CallClient: stored camera device failed to parse', err);
             return null;
         }
-    }
-
-    // Matches the saved camera by deviceId, then by label, since the browser
-    // can change device IDs between sessions.
-    private getStoredVideoInputDeviceId(devices: MediaDeviceInfo[]): string | undefined {
-        const stored = this.readStoredVideoInputDevice();
-        if (!stored) {
-            return undefined;
-        }
-
-        const match = devices.find((dev) => dev.deviceId === stored.deviceId) ??
-            devices.find((dev) => Boolean(stored.label) && dev.label === stored.label);
-        if (!match) {
-            logDebug('CallClient: stored camera device not found in current inventory', {deviceId: stored.deviceId, label: stored.label});
-        }
-        return match?.deviceId;
     }
 }

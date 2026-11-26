@@ -249,7 +249,6 @@ test.describe('setting audio input device', {tag: '@livekit'}, () => {
         const devPage = new PlaywrightDevPage(page);
         await devPage.startCall();
 
-        await page.locator('#calls-widget-toggle-menu-button').click();
         await expect(page.locator('#calls-widget-audioinput-button')).toBeVisible();
         await page.locator('#calls-widget-audioinput-button').click();
         await expect(page.locator('#calls-widget-audioinputs-menu')).toBeVisible();

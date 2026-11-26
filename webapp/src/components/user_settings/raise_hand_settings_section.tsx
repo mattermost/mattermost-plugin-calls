@@ -13,7 +13,7 @@ export default function RaiseHandSettingsSection() {
 
     return (
         <OnOffSettingsSection
-            title={formatMessage({defaultMessage: 'Raise hand settings'})}
+            title={formatMessage({defaultMessage: 'Raise hand'})}
             description={formatMessage({defaultMessage: 'Configure your raise hand settings.'})}
             settingTitle={formatMessage({defaultMessage: 'Lower hand when I unmute for more than {seconds, plural, one {# second} other {# seconds}}'}, {seconds})}
             helpText={formatMessage({defaultMessage: 'When enabled, your raised hand will be automatically lowered after you stay unmuted for more than {seconds, plural, one {# second} other {# seconds}}.'}, {seconds})}

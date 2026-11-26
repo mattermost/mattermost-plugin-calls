@@ -74,6 +74,12 @@ export type CameraTrack = {
 };
 
 /**
+ * A mic or camera's availability. starting: being set up and can't be used yet.
+ * blocked: access was denied. missing: no device was found.
+ */
+export type DeviceStatus = 'starting' | 'ready' | 'blocked' | 'missing';
+
+/**
  * The first four values match LiveKit's MediaDeviceFailure. Disconnected is
  * ours: LiveKit has no value for a camera lost mid-call.
  */

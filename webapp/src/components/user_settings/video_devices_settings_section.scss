@@ -1,27 +1,24 @@
 .VideoDevicesSettings {
-    .VideoDevicesSettings__messages {
-        display: flex;
-        flex-direction: column;
-    }
-
+    // Same look as the call's self view: the avatar on the dark call background.
     .VideoDevicesSettings__preview {
         position: relative;
         display: flex;
         overflow: hidden;
-        width: 320px;
-        max-width: 100%;
+        width: 100%;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         border-radius: 8px;
         aspect-ratio: 16 / 9;
-        background: rgba(var(--center-channel-color-rgb), 0.08);
+        background: color-mix(in srgb, var(--calls-bg, #1e325c) 40%, #000);
         gap: 8px;
     }
 
     .VideoDevicesSettings__video {
+        position: absolute;
         width: 100%;
         height: 100%;
+        inset: 0;
         object-fit: cover;
     }
 
@@ -30,14 +27,24 @@
     }
 
     .VideoDevicesSettings__video--hidden {
-        position: absolute;
         opacity: 0;
     }
 
     .VideoDevicesSettings__status {
-        color: rgba(var(--center-channel-color-rgb), 0.72);
+        color: rgba(255, 255, 255, 0.72);
         font-size: 14px;
         line-height: 20px;
+    }
+
+    .VideoDevicesSettings__checkbox {
+        margin: 0;
+    }
+
+    // Indented to the label text, past Bootstrap's 20px checkbox gutter.
+    .VideoDevicesSettings__mirrorNote {
+        display: block;
+        margin: 4px 0 0;
+        padding-left: 20px;
     }
 
     .VideoDevicesSettings__liveRegion {

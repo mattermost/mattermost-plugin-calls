@@ -72,7 +72,7 @@ describe('AudioDevicesSettingsSection', () => {
         window.localStorage.removeItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY);
     });
 
-    it('does not load devices while collapsed', () => {
+    test('does not load devices while collapsed', () => {
         mockDevices([mic, speakers]);
         renderComponent();
 
@@ -80,7 +80,43 @@ describe('AudioDevicesSettingsSection', () => {
         expect(getLocalAudioDevices).not.toHaveBeenCalled();
     });
 
-    it('loads devices through the call client instead of the browser API', async () => {
+    test('shows the title with Edit on the right and the description while collapsed', () => {
+        mockDevices([mic, speakers]);
+        renderComponent();
+
+        const edit = screen.getByRole('button', {name: 'Audio devices Edit'});
+        expect(edit).toHaveClass('section-min__edit');
+        expect(edit.parentElement).toHaveClass('section-min__header');
+        expect(screen.getByText('Set up audio devices to be used for Mattermost calls.')).toBeInTheDocument();
+    });
+
+    test('labels both selects in the label column', async () => {
+        mockDevices([mic, speakers]);
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Microphone');
+
+        for (const label of ['Microphone input', 'Speaker output']) {
+            expect(screen.getByText(label)).toHaveClass('CallsSettingsSection__label');
+            expect(screen.getByLabelText(label)).toBeInTheDocument();
+        }
+        expect(screen.getByRole('heading', {name: 'Audio devices'})).toBeInTheDocument();
+        expect(screen.queryByText(/Saved on this device only/)).not.toBeInTheDocument();
+        expect(screen.queryByText('Set up audio devices to be used for Mattermost calls.')).not.toBeInTheDocument();
+    });
+
+    test.each(['Save', 'Cancel'])('returns focus to Edit after %s', async (action) => {
+        mockDevices([mic, speakers]);
+        renderComponent();
+        await openSection();
+        await screen.findByText('Built-in Microphone');
+
+        await userEvent.click(screen.getByText(action));
+
+        expect(screen.getByRole('button', {name: 'Audio devices Edit'})).toHaveFocus();
+    });
+
+    test('loads devices through the call client instead of the browser API', async () => {
         mockDevices([mic, speakers]);
         renderComponent();
         await openSection();
@@ -91,7 +127,7 @@ describe('AudioDevicesSettingsSection', () => {
         expect(mediaDevices.enumerateDevices).not.toHaveBeenCalled();
     });
 
-    it('shows device names and preselects the saved devices', async () => {
+    test('shows device names and preselects the saved devices', async () => {
         window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY, JSON.stringify({
             deviceId: headphones.deviceId,
             label: headphones.label,
@@ -109,7 +145,7 @@ describe('AudioDevicesSettingsSection', () => {
         expect(screen.getByText('Headset Microphone')).toBeInTheDocument();
     });
 
-    it('updates the lists when a device is plugged in or unplugged', async () => {
+    test('updates the lists when a device is plugged in or unplugged', async () => {
         window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, JSON.stringify({
             deviceId: headsetMic.deviceId,
             label: headsetMic.label,
@@ -130,7 +166,7 @@ describe('AudioDevicesSettingsSection', () => {
         expect(screen.queryByText('Headset Microphone')).not.toBeInTheDocument();
     });
 
-    it('stops listening for device changes on cancel', async () => {
+    test('stops listening for device changes on cancel', async () => {
         mockDevices([mic, speakers]);
         renderComponent();
         await openSection();
@@ -143,7 +179,7 @@ describe('AudioDevicesSettingsSection', () => {
         expect(getLocalAudioDevices).not.toHaveBeenCalled();
     });
 
-    it.each(['NotAllowedError', 'NotFoundError'])('shows a message when devices cannot be loaded (%s)', async (errorName) => {
+    test.each(['NotAllowedError', 'NotFoundError'])('shows a message when devices cannot be loaded (%s)', async (errorName) => {
         const err = new DOMException('failed', errorName);
         getLocalAudioDevices.mockRejectedValue(err);
         renderComponent();
@@ -184,7 +220,7 @@ describe('AudioDevicesSettingsSection', () => {
         }
     });
 
-    it('empties the lists while loading fails and hides the message once devices load', async () => {
+    test('empties the lists while loading fails and hides the message once devices load', async () => {
         mockDevices([mic, speakers]);
         renderComponent();
         await openSection();
@@ -202,7 +238,7 @@ describe('AudioDevicesSettingsSection', () => {
         expect(screen.queryByText(LOAD_ERROR_MESSAGE)).not.toBeInTheDocument();
     });
 
-    it('ignores an older load that fails after a newer one succeeds', async () => {
+    test('ignores an older load that fails after a newer one succeeds', async () => {
         let rejectFirstLoad: (err: Error) => void = () => {};
         getLocalAudioDevices.mockImplementationOnce(() => new Promise((_, reject) => {
             rejectFirstLoad = reject;
@@ -220,7 +256,7 @@ describe('AudioDevicesSettingsSection', () => {
         expect(screen.queryByText(LOAD_ERROR_MESSAGE)).not.toBeInTheDocument();
     });
 
-    it('keeps the saved devices when saving after a failed load', async () => {
+    test('keeps the saved devices when saving after a failed load', async () => {
         const savedInput = JSON.stringify({deviceId: headsetMic.deviceId, label: headsetMic.label});
         const savedOutput = JSON.stringify({deviceId: headphones.deviceId, label: headphones.label});
         window.localStorage.setItem(STORAGE_CALLS_DEFAULT_AUDIO_INPUT_KEY, savedInput);
@@ -236,7 +272,7 @@ describe('AudioDevicesSettingsSection', () => {
         expect(window.localStorage.getItem(STORAGE_CALLS_DEFAULT_AUDIO_OUTPUT_KEY)).toBe(savedOutput);
     });
 
-    it('saves the selected devices on save', async () => {
+    test('saves the selected devices on save', async () => {
         mockDevices([mic, headsetMic, speakers, headphones]);
         renderComponent();
         await openSection();

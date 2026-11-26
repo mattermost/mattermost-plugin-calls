@@ -24,15 +24,16 @@ describe('RaiseHandSettingsSection', () => {
         window.localStorage.removeItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE);
     });
 
-    it('renders collapsed by default', () => {
+    test('renders collapsed by default', () => {
         renderComponent();
 
-        expect(screen.getByText('Raise hand settings')).toBeInTheDocument();
+        expect(screen.getByRole('heading', {name: 'Raise hand'})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Raise hand Edit'})).toBeInTheDocument();
         expect(screen.getByText('Configure your raise hand settings.')).toBeInTheDocument();
         expect(screen.queryByLabelText('On')).not.toBeInTheDocument();
     });
 
-    it('defaults to off when nothing is stored', async () => {
+    test('defaults to off when nothing is stored', async () => {
         renderComponent();
         await openSection();
 
@@ -41,7 +42,7 @@ describe('RaiseHandSettingsSection', () => {
         expect(screen.getByLabelText('Off')).toBeChecked();
     });
 
-    it('shows the stored value as selected', async () => {
+    test('shows the stored value as selected', async () => {
         window.localStorage.setItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, 'on');
         renderComponent();
         await openSection();
@@ -50,7 +51,7 @@ describe('RaiseHandSettingsSection', () => {
         expect(screen.getByLabelText('Off')).not.toBeChecked();
     });
 
-    it('persists the selection to localStorage only on save', async () => {
+    test('persists the selection to localStorage only on save', async () => {
         renderComponent();
         await openSection();
 
@@ -62,7 +63,7 @@ describe('RaiseHandSettingsSection', () => {
         expect(window.localStorage.getItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE)).toBe('on');
     });
 
-    it('discards the selection on cancel', async () => {
+    test('discards the selection on cancel', async () => {
         window.localStorage.setItem(STORAGE_CALLS_LOWER_HAND_ON_UNMUTE, 'off');
         renderComponent();
         await openSection();
@@ -76,7 +77,7 @@ describe('RaiseHandSettingsSection', () => {
         expect(screen.getByLabelText('On')).not.toBeChecked();
     });
 
-    it('collapses on save and on cancel', async () => {
+    test('collapses on save and on cancel', async () => {
         renderComponent();
 
         await openSection();
