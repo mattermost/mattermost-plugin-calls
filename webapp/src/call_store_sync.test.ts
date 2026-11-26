@@ -9,7 +9,7 @@ import {CameraState} from 'src/clients/call/types';
 import reducer from 'src/reducers';
 import {USER_CAMERA_OFF, USER_CAMERA_ON} from 'src/state/camera_on_ids/action_types';
 import {PHONE_LEG_STATUS_CHANGED} from 'src/state/phone_legs/action_types';
-import {USER_SCREEN_OFF, USER_SCREEN_ON} from 'src/state/screen_sharing_ids/action_types';
+import {SCREEN_SHARING_CLEARED, USER_SCREEN_ON} from 'src/state/screen_sharing_ids/action_types';
 import {
     USER_HAND_LOWERED,
     USER_HAND_RAISED,
@@ -133,23 +133,16 @@ describe('syncCallClientToStore', () => {
     });
 
     test.each([
-        ['the sharer the store knows', true, sharer.session_id],
-        ['no session', false, ''],
-    ])('ends screen sharing for %s', (_, unshareStoreSharer, sessionID) => {
-        sync({unshareStoreSharer});
-
-        client.setScreenShare(null);
-
-        expect(store.actions).toContainEqual(expect.objectContaining({type: USER_SCREEN_OFF, data: expect.objectContaining({session_id: sessionID})}));
-    });
-
-    test('ends screen sharing for no session when the store knows no sharer', () => {
-        store = makeStore({withSharer: false});
+        ['a sharer the store knows', true],
+        ['no sharer in the store', false],
+    ])('clears screen sharing with %s when nobody shares', (_, withSharer) => {
+        store = makeStore({withSharer});
         sync();
 
         client.setScreenShare(null);
 
-        expect(store.actions).toContainEqual(expect.objectContaining({type: USER_SCREEN_OFF, data: expect.objectContaining({session_id: ''})}));
+        expect(store.actions).toEqual([{type: SCREEN_SHARING_CLEARED, data: {channelID: 'channel-id'}}]);
+        expect(store.store.getState()['plugins-com.mattermost.calls'].screenSharingIDs).toEqual({});
     });
 
     test.each([

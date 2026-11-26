@@ -7,10 +7,9 @@ import CallClient, {CALL_EVENT, CameraState} from 'src/clients/call';
 import type {ScreenSharingSession} from 'src/clients/call/types';
 import {applyCallHostChanged} from 'src/host_change';
 import {trackSIPCallStatus} from 'src/phone_call';
+import {applyScreenSharingChanged} from 'src/screen_sharing';
 import {getCallIDForChannel} from 'src/selectors';
 import {userCameraChanged} from 'src/state/camera_on_ids/actions';
-import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
-import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
 import {userLoweredHand, userMuted, userRaisedHand, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {Store} from 'src/types/mattermost-webapp';
 import {PhoneCallState} from 'src/types/types';
@@ -27,9 +26,6 @@ export type CallStoreSyncOptions = {
 
     // The join snapshot, recording and caption jobs, and the phone leg.
     callState?: boolean;
-
-    // Ends screen sharing for the sharer the store knows, rather than for no session.
-    unshareStoreSharer?: boolean;
 };
 
 type Handler<A extends unknown[]> = (...args: A) => void;
@@ -43,7 +39,6 @@ export function syncCallClientToStore(client: CallClient, store: Pick<Store, 'di
     roomState = true,
     captions = true,
     callState = true,
-    unshareStoreSharer = true,
 }: CallStoreSyncOptions = {}): () => void {
     const unsubscribers: Array<() => void> = [];
     const listen = <A extends unknown[]>(event: string, handler: Handler<A>) => {
@@ -89,13 +84,7 @@ export function syncCallClientToStore(client: CallClient, store: Pick<Store, 'di
             applyCallHostChanged(store, callChannelID, hostID, getCallIDForChannel(store.getState(), callChannelID));
         });
         listen(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
-            const callChannelID = channelID();
-            if (session) {
-                store.dispatch(userScreenShared(callChannelID, session.sessionID, session.userID));
-            } else {
-                const sharerSessionID = unshareStoreSharer ? screenSharingSessionForCurrentCall(store.getState())?.session_id ?? '' : '';
-                store.dispatch(userScreenUnshared(callChannelID, sharerSessionID, ''));
-            }
+            applyScreenSharingChanged(store, channelID(), session);
         });
     }
 

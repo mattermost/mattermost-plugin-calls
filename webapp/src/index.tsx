@@ -46,6 +46,7 @@ import RestClient from 'src/clients/rest';
 import AllowScreenSharing from 'src/components/admin_console_settings/allow_screen_sharing';
 import EnableDMVideo from 'src/components/admin_console_settings/enable_dm_video';
 import EnableRinging from 'src/components/admin_console_settings/enable_ringing';
+import HiddenSetting from 'src/components/admin_console_settings/hidden_setting';
 import EnableSIPOutbound from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound';
 import EnableSIPOutboundAllowlist from 'src/components/admin_console_settings/livekit_service/enable_sip_outbound_allowlist';
 import LiveKitAPIKey from 'src/components/admin_console_settings/livekit_service/livekit_api_key';
@@ -175,6 +176,7 @@ import {
     getUserIDsForSessions,
     isCallsPopOut,
     isDMChannel,
+    logClientEnvironment,
     playSound,
     sendDesktopEvent,
     setCallsGlobalCSSVars,
@@ -545,6 +547,11 @@ export default class Plugin {
         registry.registerAdminConsoleCustomSetting('SIPTrunkNumber', SIPTrunkNumber);
         registry.registerAdminConsoleCustomSetting('SIPTrunkAuthUsername', SIPTrunkAuthUsername);
         registry.registerAdminConsoleCustomSetting('SIPTrunkAuthPassword', SIPTrunkAuthPassword);
+
+        // Owned by Calls v1. Declared (and rendered as nothing) only so the server masks them.
+        registry.registerAdminConsoleCustomSetting('TURNStaticAuthSecret', HiddenSetting);
+        registry.registerAdminConsoleCustomSetting('ICEServersConfigs', HiddenSetting);
+
         registry.registerAdminConsoleCustomSetting('SIPTrunkTransport', SIPTrunkTransport);
         registry.registerAdminConsoleCustomSetting('SIPTrunkMediaEncryption', SIPTrunkMediaEncryption);
         registry.registerAdminConsoleCustomSetting('SIPTrunkStatus', SIPTrunkStatusSetting);
@@ -654,6 +661,7 @@ export default class Plugin {
             // Log separator for new call
             const isStarting = !channelHasCall(store.getState(), channelID);
             logInfo(`=== ${isStarting ? 'starting' : 'joining'} call at ${new Date().toISOString()}`);
+            await logClientEnvironment();
 
             // Flush separator immediately (ensures desktop clients capture it)
             flushLogsToAccumulated();

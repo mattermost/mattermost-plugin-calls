@@ -22,6 +22,10 @@ const config = {
         '^.+\\.(css|less|scss)$': 'identity-obj-proxy',
         '^.*i18n.*\\.(json)$': '<rootDir>/tests/i18n_mock.json',
         '^bundle-loader\\?lazy\\!(.*)$': '$1',
+
+        // The standalone bundle imports webapp code through this alias.
+        '^plugin/(.*)$': '<rootDir>/src/$1',
+        '^(react|react-dom|react-intl|react-redux)$': '<rootDir>/node_modules/$1',
     },
     moduleDirectories: [
         'node_modules',

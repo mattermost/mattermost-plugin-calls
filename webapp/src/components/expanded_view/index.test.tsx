@@ -11,7 +11,7 @@ import {AnyAction, applyMiddleware, combineReducers, createStore, Middleware} fr
 import {thunk} from 'redux-thunk';
 import {CALL_EVENT} from 'src/clients/call/constants';
 import reducer from 'src/reducers';
-import {USER_SCREEN_OFF} from 'src/state/screen_sharing_ids/action_types';
+import {SCREEN_SHARING_CLEARED} from 'src/state/screen_sharing_ids/action_types';
 import {USER_MUTED} from 'src/state/session/action_types';
 import {installFakeCallClient} from 'src/test_utils/fake_call_client';
 
@@ -98,7 +98,8 @@ describe('ConnectedExpandedView', () => {
         });
 
         expect(actions).toContainEqual(expect.objectContaining({type: USER_MUTED, data: expect.objectContaining({channelID: CHANNEL_ID, session_id: 'session-1'})}));
-        expect(actions).toContainEqual(expect.objectContaining({type: USER_SCREEN_OFF, data: expect.objectContaining({session_id: sharer.session_id})}));
+        expect(actions).toContainEqual({type: SCREEN_SHARING_CLEARED, data: {channelID: CHANNEL_ID}});
+        expect(store.getState()['plugins-com.mattermost.calls'].screenSharingIDs).toEqual({});
 
         unsubscribe();
         expect(client.eventNames().filter((event) => client.listenerCount(event) > 0)).toEqual([]);

@@ -63,6 +63,20 @@
             "type": "bool",
             "default": false,
             "help_text": "When set to true, ringing functionality is enabled: participants in direct or group messages will receive a desktop alert and a ringing notification when a call is started."
+          },
+          {
+            "key": "TURNStaticAuthSecret",
+            "display_name": "TURN static auth secret",
+            "type": "custom",
+            "secret": true,
+            "default": ""
+          },
+          {
+            "key": "ICEServersConfigs",
+            "display_name": "ICE Servers Configurations",
+            "type": "custom",
+            "secret": true,
+            "default": ""
           }
         ]
       },

@@ -26,6 +26,7 @@ import reducer from 'plugin/reducers';
 import {localSessionClose} from 'plugin/state/session/actions';
 import {Store} from 'plugin/types/mattermost-webapp';
 import {
+    logClientEnvironment,
     setCallsGlobalCSSVars,
 } from 'plugin/utils';
 import {Reducer} from 'redux';
@@ -73,7 +74,7 @@ function connectCall(
         // The full call state snapshot arrives before the room connects, which is
         // what lets the LiveKit-sourced state below layer on top of a populated
         // session list without any ordering dance.
-        syncCallClientToStore(callClient, store, {captions: false, unshareStoreSharer: false});
+        syncCallClientToStore(callClient, store, {captions: false});
 
         let lastError: Error | undefined;
 
@@ -199,6 +200,8 @@ export default async function initialiseEmbedApp(cfg: InitConfig) {
     } catch (e) {
         throw new Error(`failed to fetch channel data: ${e}`);
     }
+
+    await logClientEnvironment();
 
     connectCall(
         {
