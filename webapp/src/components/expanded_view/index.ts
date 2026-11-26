@@ -38,7 +38,7 @@ import {
 } from 'src/selectors';
 import {userCameraChanged} from 'src/state/camera_on_ids/actions';
 import {localSessionReconnected, localSessionReconnecting, sessionConnectionQualityChanged} from 'src/state/connection_quality/actions';
-import {userScreenShared, userScreenUnshared} from 'src/state/screen_sharing_ids/actions';
+import {screenSharingCleared, userScreenShared} from 'src/state/screen_sharing_ids/actions';
 import {screenSharingSessionForCurrentCall} from 'src/state/screen_sharing_ids/selectors';
 import {userLoweredHand, userMuted, userRaisedHand, userReacted, userReactedTimeout, usersVoiceActivityChanged, userUnmuted} from 'src/state/session/actions';
 import {
@@ -137,7 +137,7 @@ const mapDispatchToProps = {
     userReacted,
     userReactedTimeout,
     userScreenShared,
-    userScreenUnshared,
+    screenSharingCleared,
 };
 
 export default withRouter(connect(mapStateToProps, mapDispatchToProps)(ExpandedView));

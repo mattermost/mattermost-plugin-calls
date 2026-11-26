@@ -147,7 +147,7 @@ interface Props extends RouteComponentProps {
     userReacted: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
     userReactedTimeout: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
     userScreenShared: (channelID: string, sessionID: string, userID: string) => void;
-    userScreenUnshared: (channelID: string, sessionID: string, userID: string) => void;
+    screenSharingCleared: (channelID: string) => void;
     liveCaptionReceived: (channelID: string, userID: string, sessionID: string, displayName: string, text: string) => void;
     fetchCallState: (channelID: string) => void;
 }
@@ -692,8 +692,7 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
                 if (session) {
                     this.props.userScreenShared(callsClient.channelID, session.sessionID, session.userID);
                 } else {
-                    const sharerSessionID = this.props.screenSharingSession?.session_id ?? '';
-                    this.props.userScreenUnshared(callsClient.channelID, sharerSessionID, '');
+                    this.props.screenSharingCleared(callsClient.channelID);
                 }
             });
             onClient(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {

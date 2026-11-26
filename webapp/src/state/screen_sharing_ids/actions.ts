@@ -10,7 +10,7 @@ import {
     ActionUserLeft,
 } from 'src/state/session/actions';
 
-import {USER_SCREEN_OFF, USER_SCREEN_ON} from './action_types';
+import {SCREEN_SHARING_CLEARED, USER_SCREEN_OFF, USER_SCREEN_ON} from './action_types';
 
 export const userScreenShared = (channelID: Channel['id'], sessionID: UserSessionState['session_id'], userID: UserProfile['id']) => ({
     type: USER_SCREEN_ON,
@@ -32,9 +32,21 @@ export const userScreenUnshared = (channelID: Channel['id'], sessionID: UserSess
 });
 export type ActionUserScreenUnshared = ReturnType<typeof userScreenUnshared>
 
+// Clears the channel's sharer unconditionally. For the call client's derived
+// "nobody is sharing" signal, which has no stale-event ordering problem.
+// userScreenUnshared keeps its session id guard for the websocket path.
+export const screenSharingCleared = (channelID: Channel['id']) => ({
+    type: SCREEN_SHARING_CLEARED,
+    data: {
+        channelID,
+    },
+});
+export type ActionScreenSharingCleared = ReturnType<typeof screenSharingCleared>
+
 export type Actions =
   | ActionUnInitialized
   | ActionUserLeft
   | ActionCallEnded
   | ActionUserScreenShared
-  | ActionUserScreenUnshared;
+  | ActionUserScreenUnshared
+  | ActionScreenSharingCleared;

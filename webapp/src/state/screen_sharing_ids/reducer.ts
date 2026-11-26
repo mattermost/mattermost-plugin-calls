@@ -5,7 +5,7 @@ import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Reducer} from 'redux';
 import {CALL_END, UN_INITIALIZED, USER_LEFT} from 'src/state/session/action_types';
 
-import {USER_SCREEN_OFF, USER_SCREEN_ON} from './action_types';
+import {SCREEN_SHARING_CLEARED, USER_SCREEN_OFF, USER_SCREEN_ON} from './action_types';
 import {Actions} from './actions';
 
 type State = {
@@ -34,6 +34,16 @@ export const reducer: Reducer<State, Actions> = (initialState = emptyState, acti
         }
 
         if (action.data.session_id !== currentScreenSharerSessionID) {
+            return initialState;
+        }
+
+        const nextState = {...initialState};
+        delete nextState[action.data.channelID];
+        return nextState;
+    }
+
+    case SCREEN_SHARING_CLEARED: {
+        if (!(action.data.channelID in initialState)) {
             return initialState;
         }
 
