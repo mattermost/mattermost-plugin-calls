@@ -242,7 +242,7 @@ export function handleUserScreenOff(store: Store, ev: WebSocketMessage<UserScree
 // current call's profiles) in Redux and schedules its removal after the standard timeout.
 // Shared by the plugin-WS handler and the LiveKit data-message bridge so both transports
 // produce identical state.
-export function dispatchReaction(store: Store, channelID: string, data: UserReactionData) {
+export function dispatchReaction(store: Pick<Store, 'dispatch' | 'getState'>, channelID: string, data: UserReactionData) {
     if (channelIDForCurrentCall(store.getState()) !== channelID) {
         return;
     }
@@ -284,7 +284,7 @@ export function handleCallJobState(store: Store, ev: WebSocketMessage<CallJobSta
  * observer WebSocket broadcast and the LiveKit room metadata, which carries the
  * job sub-objects in this same shape for exactly that reason.
  */
-export function applyCallJobState(store: Store, callID: string, jobState: CallJobState) {
+export function applyCallJobState(store: Pick<Store, 'dispatch'>, callID: string, jobState: CallJobState) {
     if (jobState.err) {
         jobState.error_at = Date.now();
     }
@@ -342,7 +342,7 @@ export function handleUserRemovedFromChannel(store: Store, ev: WebSocketMessage<
     }
 }
 
-export function dispatchCaption(store: Store, channelID: string, userID: string, sessionID: string, text: string) {
+export function dispatchCaption(store: Pick<Store, 'dispatch' | 'getState'>, channelID: string, userID: string, sessionID: string, text: string) {
     const currentChannelID = channelIDForCurrentCall(store.getState());
     if (currentChannelID !== channelID) {
         logWarn('dispatchCaption: caption ignored, not for the current call', {channelID, currentChannelID});

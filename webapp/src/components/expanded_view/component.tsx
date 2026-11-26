@@ -5,7 +5,7 @@
 
 import './expanded_view.scss';
 
-import {EmojiData, Reaction, UserSessionState} from '@mattermost/calls-common/lib/types';
+import {UserSessionState} from '@mattermost/calls-common/lib/types';
 import {Channel} from '@mattermost/types/channels';
 import {Post} from '@mattermost/types/posts';
 import {Team} from '@mattermost/types/teams';
@@ -18,8 +18,10 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {IntlShape} from 'react-intl';
 import {RouteComponentProps} from 'react-router-dom';
 import {hostMuteOthers, hostRemove} from 'src/actions';
+import type {CallStoreSyncOptions} from 'src/call_store_sync';
+import type CallClient from 'src/clients/call';
 import {CALL_EVENT, CONNECTION_QUALITY} from 'src/clients/call/constants';
-import type {CameraState, ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
+import type {ScreenShareTrack, ScreenSharingSession} from 'src/clients/call/types';
 import {Badge} from 'src/components/badge';
 import {CallStatusTimer} from 'src/components/call_status_timer';
 import DotMenu, {DotMenuButton, DropdownMenu} from 'src/components/dot_menu/dot_menu';
@@ -47,7 +49,7 @@ import {ExpandedIncomingCallContainer} from 'src/components/incoming_calls/expan
 import {LeaveCallMenu} from 'src/components/leave_call_menu';
 import {ReactionStream} from 'src/components/reaction_stream/reaction_stream';
 import ScreenSharePlayer from 'src/components/screen_share_player';
-import {CallAlertConfigs, DEGRADED_CALL_QUALITY_ALERT_WAIT, REACTION_TIMEOUT_IN_REACTION_STREAM} from 'src/constants';
+import {CallAlertConfigs, DEGRADED_CALL_QUALITY_ALERT_WAIT} from 'src/constants';
 import {logDebug, logErr} from 'src/log';
 import {
     keyToAction,
@@ -132,20 +134,7 @@ interface Props extends RouteComponentProps {
     otherSessions: UserSessionState[];
     isDMCalling: boolean;
     clientConnecting: boolean;
-    callHostChanged: (channelID: string, hostID: string) => void;
-    userMuted: (channelID: string, sessionID: string, userID: string) => void;
-    userUnmuted: (channelID: string, sessionID: string, userID: string) => void;
-    userCameraChanged: (channelID: string, sessionID: string, userID: string, cameraState: CameraState) => void;
-    joinUser: (channelID: string, userID: string, sessionID: string, isFromInitialSync: boolean) => void;
-    leaveUser: (channelID: string, userID: string, sessionID: string) => void;
-    usersVoiceActivityChanged: (channelID: string, sessionIDs: string[], userIDs: string[]) => void;
-    userRaisedHand: (channelID: string, sessionID: string, userID: string, raisedHandTimestamp: number) => void;
-    userLoweredHand: (channelID: string, sessionID: string, userID: string) => void;
-    userReacted: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
-    userReactedTimeout: (channelID: string, userID: string, sessionID: string, reaction: Reaction) => void;
-    userScreenShared: (channelID: string, sessionID: string, userID: string) => void;
-    screenSharingCleared: (channelID: string) => void;
-    liveCaptionReceived: (channelID: string, userID: string, sessionID: string, displayName: string, text: string) => void;
+    syncCallClientToStore: (client: CallClient, options: CallStoreSyncOptions) => () => void;
     fetchCallState: (channelID: string) => void;
 }
 
@@ -667,65 +656,14 @@ export default class ExpandedView extends React.PureComponent<Props, State> {
         onClient(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
             this.setState({screenTrack: session?.track ?? null});
         });
-        onClient(CALL_EVENT.MUTE, (sessionID: string, userID: string) => {
-            this.props.userMuted(callsClient.channelID, sessionID, userID);
-        });
-        onClient(CALL_EVENT.UNMUTE, (sessionID: string, userID: string) => {
-            this.props.userUnmuted(callsClient.channelID, sessionID, userID);
-        });
-        onClient(CALL_EVENT.CAMERA_CHANGED, (sessionID: string, userID: string, cameraState: CameraState) => {
-            this.props.userCameraChanged(callsClient.channelID, sessionID, userID, cameraState);
-        });
 
-        // In the popout, this component's Redux store is separate from the
-        // opener's. The opener subscribes USER_JOINED / USER_LEFT /
-        // USERS_VOICE_ACTIVITY_CHANGED in its own index.tsx — gate on
-        // window.opener so we don't double-dispatch in the inline case.
-        if (window.opener) {
-            onClient(CALL_EVENT.HOST_CHANGED, (hostID: string) => {
-                this.props.callHostChanged(callsClient.channelID, hostID);
-            });
-            onClient(CALL_EVENT.SCREEN_SHARING_CHANGED, (session: ScreenSharingSession | null) => {
-                if (session) {
-                    this.props.userScreenShared(callsClient.channelID, session.sessionID, session.userID);
-                } else {
-                    this.props.screenSharingCleared(callsClient.channelID);
-                }
-            });
-            onClient(CALL_EVENT.USER_JOINED, (sessionID: string, userID: string, isFromInitialSync?: boolean) => {
-                this.props.joinUser(callsClient.channelID, userID, sessionID, Boolean(isFromInitialSync));
-            });
-            onClient(CALL_EVENT.USER_LEFT, (sessionID: string, userID: string) => {
-                this.props.leaveUser(callsClient.channelID, userID, sessionID);
-            });
-            onClient(CALL_EVENT.USERS_VOICE_ACTIVITY_CHANGED, (sessionIDs: string[], userIDs: string[]) => {
-                this.props.usersVoiceActivityChanged(callsClient.channelID, sessionIDs, userIDs);
-            });
-            onClient(CALL_EVENT.RAISE_HAND, (sessionID: string, userID: string, raisedHandTimestamp: number) => {
-                this.props.userRaisedHand(callsClient.channelID, sessionID, userID, raisedHandTimestamp);
-            });
-            onClient(CALL_EVENT.LOWER_HAND, (sessionID: string, userID: string) => {
-                this.props.userLoweredHand(callsClient.channelID, sessionID, userID);
-            });
-            onClient(CALL_EVENT.CAPTION, (sessionID: string, userID: string, text: string) => {
-                this.props.liveCaptionReceived(callsClient.channelID, userID, sessionID, getUserDisplayName(this.props.profiles[userID]), text);
-            });
-            onClient(CALL_EVENT.REACTION, (sessionID: string, userID: string, emoji: EmojiData, timestamp: number) => {
-                // Mirrors dispatchReaction() (the main-window path): store the reaction with
-                // the sender's display name, then auto-clear it after the standard timeout.
-                const reaction: Reaction = {
-                    user_id: userID,
-                    session_id: sessionID,
-                    emoji,
-                    timestamp,
-                    displayName: getUserDisplayName(this.props.profiles[userID]),
-                };
-                this.props.userReacted(callsClient.channelID, userID, sessionID, reaction);
-                setTimeout(() => {
-                    this.props.userReactedTimeout(callsClient.channelID, userID, sessionID, reaction);
-                }, REACTION_TIMEOUT_IN_REACTION_STREAM);
-            });
-        }
+        // The popout has its own Redux store. Inline, the main window already syncs the room into this store.
+        const inPopout = Boolean(window.opener);
+        this.callClientUnsubscribers.push(this.props.syncCallClientToStore(callsClient, {
+            roomState: inPopout,
+            captions: inPopout,
+            callState: false,
+        }));
 
         onClient(CALL_EVENT.DEVICE_FALLBACK, (device: MediaDeviceInfo) => {
             if (device.kind === 'audioinput') {
